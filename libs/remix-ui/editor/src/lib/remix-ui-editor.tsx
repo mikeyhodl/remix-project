@@ -166,9 +166,9 @@ export const EditorUI = (props: EditorUIProps) => {
   \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix-project.org/\n
   \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text2' })}: https://remix-ide.readthedocs.io/en/latest/\n
   \t\t\t\t\t\t\t\tGithub: https://github.com/ethereum/remix-project\n
-  \t\t\t\t\t\t\t\tGitter: https://gitter.im/ethereum/remix\n
+  \t\t\t\t\t\t\t\tDiscord: https://discord.gg/mh9hFCKkEq\n
   \t\t\t\t\t\t\t\tMedium: https://medium.com/remix-ide\n
-  \t\t\t\t\t\t\t\tTwitter: https://twitter.com/ethereumremix\n
+  \t\t\t\t\t\t\t\tX: https://x.com/ethereumremix\n
   `
   const pasteCodeRef = useRef(false)
   const editorRef = useRef(null)
@@ -353,6 +353,8 @@ export const EditorUI = (props: EditorUIProps) => {
       monacoRef.current.editor.setModelLanguage(file.model, 'remix-toml')
     }
   }, [props.currentFile])
+
+  const inlineCompletionProvider = new RemixInLineCompletionProvider(props, monacoRef.current)
 
   const convertToMonacoDecoration = (decoration: lineText | sourceAnnotation | sourceMarker, typeOfDecoration: string) => {
     if (typeOfDecoration === 'sourceAnnotationsPerFile') {
@@ -674,6 +676,17 @@ export const EditorUI = (props: EditorUIProps) => {
       }
     })
 
+    editor.onDidChangeModelContent((e) => {
+      if (inlineCompletionProvider.currentCompletion) {
+        const changes = e.changes;
+        // Check if the change matches the current completion
+        if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
+          _paq.push(['trackEvent', 'ai', 'solcoder', inlineCompletionProvider.currentCompletion.task + '_accepted'])
+          inlineCompletionProvider.currentCompletion = null;
+        }
+      }
+    });
+
     // add context menu items
     const zoominAction = {
       id: 'zoomIn',
@@ -977,7 +990,7 @@ export const EditorUI = (props: EditorUIProps) => {
     monacoRef.current.languages.registerReferenceProvider('remix-solidity', new RemixReferenceProvider(props, monaco))
     monacoRef.current.languages.registerHoverProvider('remix-solidity', new RemixHoverProvider(props, monaco))
     monacoRef.current.languages.registerCompletionItemProvider('remix-solidity', new RemixCompletionProvider(props, monaco))
-    monacoRef.current.languages.registerInlineCompletionsProvider('remix-solidity', new RemixInLineCompletionProvider(props, monaco))
+    monacoRef.current.languages.registerInlineCompletionsProvider('remix-solidity', inlineCompletionProvider)
     monaco.languages.registerCodeActionProvider('remix-solidity', new RemixCodeActionProvider(props, monaco))
 
     loadTypes(monacoRef.current)
