@@ -6,6 +6,7 @@ import SelectDropdown from './select-dropdown'
 import { ThemeContext } from '@remix-ui/home-tab'
 import type { ViewPlugin } from '@remixproject/engine-web'
 import { CustomTooltip } from '@remix-ui/helper'
+import { MCPServerManager } from './mcp-server-manager'
 
 type SettingsSectionUIProps = {
   plugin: ViewPlugin,
@@ -105,9 +106,15 @@ export const SettingsSectionUI: React.FC<SettingsSectionUIProps> = ({ plugin, se
                           {option.type === 'toggle' && <ToggleSwitch id={option.name} isOn={toggleValue} onClick={() => handleToggle(option.name)} />}
                           {option.type === 'select' && <div style={{ minWidth: '110px' }}><SelectDropdown value={selectValue} options={option.selectOptions} name={option.name} dispatch={dispatch as any} /></div>}
                           {option.type === 'button' && <button className="btn btn-secondary btn-sm" onClick={() => handleButtonClick(option.buttonOptions)}><FormattedMessage id={option.buttonOptions.label} /></button>}
+                          {option.type === 'custom' && option.customComponent === 'mcpServerManager' && <span></span>}
                         </div>
                       </div>
                       {option.description && <span className="text-secondary mt-1">{typeof option.description === 'string' ? <FormattedMessage id={option.description} /> : option.description}</span>}
+                      {option.type === 'custom' && option.customComponent === 'mcpServerManager' && (
+                        <div className="mt-3">
+                          <MCPServerManager plugin={plugin} />
+                        </div>
+                      )}
                       {
                         option.footnote ? option.footnote.link ?
                           <a href={option.footnote.link} className={`mt-1 ${option.footnote.styleClass}`} target="_blank" rel="noopener noreferrer">{option.footnote.text}</a>

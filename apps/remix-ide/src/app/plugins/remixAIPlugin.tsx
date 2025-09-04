@@ -2,6 +2,8 @@ import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
+import { MCPInferencer } from '@remix/remix-ai-core';
+import { MCPServer, MCPConnectionStatus } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 const _paq = (window._paq = window._paq || [])
@@ -18,7 +20,9 @@ const profile = {
     "code_insertion", "error_explaining", "vulnerability_check", 'generate',
     "initialize", 'chatPipe', 'ProcessChatRequestBuffer', 'isChatRequestPending',
     'resetChatRequestBuffer', 'setAssistantThrId',
-    'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel'],
+    'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel',
+    'addMCPServer', 'removeMCPServer', 'getMCPConnectionStatus', 'getMCPResources', 'getMCPTools', 'executeMCPTool',
+    'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled'],
   events: [],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
@@ -45,6 +49,10 @@ export class RemixAIPlugin extends Plugin {
   assistantThreadId: string = ''
   useRemoteInferencer:boolean = false
   completionAgent: CodeCompletionAgent
+  mcpServers: MCPServer[] = []
+  mcpInferencer: MCPInferencer | null = null
+  mcpEnabled: boolean = false
+  baseInferencer: any = null
 
   constructor(inDesktop:boolean) {
     super(profile)
@@ -67,6 +75,9 @@ export class RemixAIPlugin extends Plugin {
     this.codeExpAgent = new CodeExplainAgent(this)
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
+
+    // Load MCP servers from settings
+    this.loadMCPServersFromSettings();
   }
 
   async initialize(model1?:IModel, model2?:IModel, remoteModel?:IRemoteModel, useRemote?:boolean){
@@ -102,10 +113,12 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
+    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
+
     if (this.isOnDesktop && !this.useRemoteInferencer) {
-      return await this.call(this.remixDesktopPluginName, 'code_generation', prompt, params)
+      return await this.call(this.remixDesktopPluginName, 'code_generation', enrichedPrompt, params)
     } else {
-      return await this.remoteInferencer.code_generation(prompt, params)
+      return await this.remoteInferencer.code_generation(enrichedPrompt, params)
     }
   }
 
@@ -122,8 +135,9 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
 
-    let newPrompt = await this.codeExpAgent.chatCommand(prompt)
+    let newPrompt = await this.codeExpAgent.chatCommand(enrichedPrompt)
     // add workspace context
     newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
 
@@ -138,12 +152,13 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
+    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
     let result
     if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'code_explaining', prompt, context, params)
+      result = await this.call(this.remixDesktopPluginName, 'code_explaining', enrichedPrompt, context, params)
 
     } else {
-      result = await this.remoteInferencer.code_explaining(prompt, context, params)
+      result = await this.remoteInferencer.code_explaining(enrichedPrompt, context, params)
     }
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
@@ -367,6 +382,37 @@ export class RemixAIPlugin extends Plugin {
           this.isInferencing = false
         })
       }
+    } else if (provider === 'mcp') {
+      // Switch to MCP inferencer
+      if (!this.mcpInferencer || !(this.mcpInferencer instanceof MCPInferencer)) {
+        this.mcpInferencer = new MCPInferencer(this.mcpServers);
+        this.mcpInferencer.event.on('onInference', () => {
+          this.isInferencing = true
+        })
+        this.mcpInferencer.event.on('onInferenceDone', () => {
+          this.isInferencing = false
+        })
+        this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+          console.log(`MCP server connected: ${serverName}`)
+        })
+        this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+          console.error(`MCP server error (${serverName}):`, error)
+        })
+
+        // Connect to all configured servers
+        await this.mcpInferencer.connectAllServers();
+      }
+
+      this.remoteInferencer = this.mcpInferencer;
+
+      if (this.assistantProvider !== provider){
+        // clear the threadIds
+        this.assistantThreadId = ''
+        GenerationParams.threadId = ''
+        CompletionParams.threadId = ''
+        AssistantParams.threadId = ''
+      }
+      this.assistantProvider = provider
     } else if (provider === 'ollama') {
       const isAvailable = await isOllamaAvailable();
       if (!isAvailable) {
@@ -434,6 +480,179 @@ export class RemixAIPlugin extends Plugin {
 
   resetChatRequestBuffer() {
     this.chatRequestBuffer = null
+  }
+
+  // MCP Server Management Methods
+  async addMCPServer(server: MCPServer): Promise<void> {
+    try {
+      // Add to local configuration
+      this.mcpServers.push(server);
+
+      // If MCP inferencer is active, add the server dynamically
+      if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+        await this.mcpInferencer.addMCPServer(server);
+      }
+
+      // Persist configuration
+      await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
+    } catch (error) {
+      console.error('Failed to add MCP server:', error);
+      throw error;
+    }
+  }
+
+  async removeMCPServer(serverName: string): Promise<void> {
+    try {
+      // Remove from local configuration
+      this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
+
+      // If MCP inferencer is active, remove the server dynamically
+      if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+        await this.mcpInferencer.removeMCPServer(serverName);
+      }
+
+      // Persist configuration
+      await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
+    } catch (error) {
+      console.error('Failed to remove MCP server:', error);
+      throw error;
+    }
+  }
+
+  getMCPConnectionStatus(): MCPConnectionStatus[] {
+    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      return this.mcpInferencer.getConnectionStatuses();
+    }
+    return [];
+  }
+
+  async getMCPResources(): Promise<Record<string, any[]>> {
+    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      return await this.mcpInferencer.getAllResources();
+    }
+    return {};
+  }
+
+  async getMCPTools(): Promise<Record<string, any[]>> {
+    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      return await this.mcpInferencer.getAllTools();
+    }
+    return {};
+  }
+
+  async executeMCPTool(serverName: string, toolName: string, arguments_: Record<string, any>): Promise<any> {
+    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      return await this.mcpInferencer.executeTool(serverName, { name: toolName, arguments: arguments_ });
+    }
+    throw new Error('MCP provider not active');
+  }
+
+  private async loadMCPServersFromSettings(): Promise<void> {
+    try {
+      const savedServers = await this.call('settings', 'get', 'settings/mcp/servers');
+      if (savedServers) {
+        this.mcpServers = JSON.parse(savedServers);
+      } else {
+        // Initialize with default MCP servers
+        const defaultServers: MCPServer[] = [
+          {
+            name: 'OpenZeppelin Contracts',
+            description: 'OpenZeppelin smart contract library and security tools',
+            transport: 'sse',
+            url: 'https://mcp.openzeppelin.com/contracts/solidity/mcp',
+            autoStart: true,
+            enabled: true,
+            timeout: 30000
+          }
+        ];
+        this.mcpServers = defaultServers;
+        // Save default servers to settings
+        await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(defaultServers));
+      }
+    } catch (error) {
+      console.warn('Failed to load MCP servers from settings:', error);
+      this.mcpServers = [];
+    }
+  }
+
+  async enableMCPEnhancement(): Promise<void> {
+    if (!this.mcpServers || this.mcpServers.length === 0) {
+      console.warn('No MCP servers configured');
+      return;
+    }
+
+    // Initialize MCP inferencer if not already done
+    if (!this.mcpInferencer) {
+      this.mcpInferencer = new MCPInferencer(this.mcpServers);
+      this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+        console.log(`MCP server connected: ${serverName}`);
+      });
+      this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+        console.error(`MCP server error (${serverName}):`, error);
+      });
+
+      // Connect to all MCP servers
+      await this.mcpInferencer.connectAllServers();
+    }
+
+    this.mcpEnabled = true;
+    console.log('MCP enhancement enabled');
+  }
+
+  async disableMCPEnhancement(): Promise<void> {
+    this.mcpEnabled = false;
+    console.log('MCP enhancement disabled');
+  }
+
+  isMCPEnabled(): boolean {
+    return this.mcpEnabled;
+  }
+
+  private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {
+    if (!this.mcpEnabled || !this.mcpInferencer) {
+      return prompt;
+    }
+
+    try {
+      // Get MCP resources and tools context
+      const resources = await this.mcpInferencer.getAllResources();
+      const tools = await this.mcpInferencer.getAllTools();
+
+      let mcpContext = '';
+
+      // Add available resources context
+      if (Object.keys(resources).length > 0) {
+        mcpContext += '\n--- Available MCP Resources ---\n';
+        for (const [serverName, serverResources] of Object.entries(resources)) {
+          if (serverResources.length > 0) {
+            mcpContext += `Server: ${serverName}\n`;
+            for (const resource of serverResources.slice(0, 3)) { // Limit to first 3
+              mcpContext += `- ${resource.name}: ${resource.description || resource.uri}\n`;
+            }
+          }
+        }
+        mcpContext += '--- End Resources ---\n';
+      }
+
+      // Add available tools context
+      if (Object.keys(tools).length > 0) {
+        mcpContext += '\n--- Available MCP Tools ---\n';
+        for (const [serverName, serverTools] of Object.entries(tools)) {
+          if (serverTools.length > 0) {
+            mcpContext += `Server: ${serverName}\n`;
+            for (const tool of serverTools) {
+              mcpContext += `- ${tool.name}: ${tool.description || 'No description'}\n`;
+            }
+          }
+        }
+        mcpContext += '--- End Tools ---\n';
+      }
+
+      return mcpContext ? `${mcpContext}\n${prompt}` : prompt;
+    } catch (error) {
+      console.warn('Failed to enrich with MCP context:', error);
+      return prompt;
+    }
   }
 
 }

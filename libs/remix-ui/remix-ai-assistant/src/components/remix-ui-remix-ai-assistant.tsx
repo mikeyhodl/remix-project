@@ -48,6 +48,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [contextChoice, setContextChoice] = useState<'none' | 'current' | 'opened' | 'workspace'>(
     'none'
   )
+  const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
@@ -466,6 +467,37 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     fetchAssistantChoice()
   }, [assistantChoice, isOllamaFailureFallback])
 
+  // Initialize MCP enhancement state
+  useEffect(() => {
+    const initMCPState = async () => {
+      try {
+        const mcpStatus = await props.plugin.call('remixAI', 'isMCPEnabled')
+        setMcpEnhanced(mcpStatus)
+      } catch (error) {
+        console.warn('Failed to get MCP status:', error)
+      }
+    }
+    initMCPState()
+  }, [])
+
+  // Handle MCP enhancement toggle
+  useEffect(() => {
+    const handleMCPToggle = async () => {
+      try {
+        if (mcpEnhanced) {
+          await props.plugin.call('remixAI', 'enableMCPEnhancement')
+        } else {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        }
+      } catch (error) {
+        console.warn('Failed to toggle MCP enhancement:', error)
+      }
+    }
+    if (mcpEnhanced !== null) { // Only call when state is initialized
+      handleMCPToggle()
+    }
+  }, [mcpEnhanced])
+
   // Fetch available models everytime Ollama is selected
   useEffect(() => {
     const fetchModels = async () => {
@@ -680,6 +712,24 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               choice={assistantChoice}
               groupList={aiAssistantGroupList}
             />
+            <div className="border-top mt-2 pt-2">
+              <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
+              <div className="form-check ms-2 mb-2">
+                <input 
+                  className="form-check-input" 
+                  type="checkbox" 
+                  id="mcpEnhancementToggle"
+                  checked={mcpEnhanced}
+                  onChange={(e) => setMcpEnhanced(e.target.checked)}
+                />
+                <label className="form-check-label small" htmlFor="mcpEnhancementToggle">
+                  Enable MCP context enhancement
+                </label>
+              </div>
+              <div className="small text-muted ms-2">
+                Adds relevant context from configured MCP servers to AI requests
+              </div>
+            </div>
           </div>
         )}
         {showModelOptions && assistantChoice === 'ollama' && (

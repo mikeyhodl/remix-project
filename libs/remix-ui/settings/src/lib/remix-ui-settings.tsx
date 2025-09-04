@@ -140,6 +140,27 @@ const settingsSections: SettingsSection[] = [
           link: 'https://remix-ide.readthedocs.io/en/latest/ai.html'
         }
       }]
+    },
+    {
+      title: 'MCP Servers',
+      options: [{
+        name: 'mcp/servers/enable',
+        label: 'Enable MCP Integration',
+        description: 'Connect to Model Context Protocol servers for enhanced AI context',
+        type: 'toggle',
+        footnote: {
+          text: 'Learn more about MCP',
+          link: 'https://modelcontextprotocol.io/',
+          styleClass: 'text-primary'
+        }
+      },
+      {
+        name: 'mcp-server-management',
+        label: 'MCP Server Configuration',
+        description: 'Manage your MCP server connections',
+        type: 'custom',
+        customComponent: 'mcpServerManager'
+      }]
     }
   ]},
   { key: 'services', label: 'settings.services', description: 'settings.servicesDescription', subSections: [

@@ -54,7 +54,7 @@ export interface SettingsSection {
         link?: string,
         styleClass?: string
       },
-      type: 'toggle' | 'select' | 'button',
+      type: 'toggle' | 'select' | 'button' | 'custom',
       selectOptions?: {
         label: string,
         value: string
@@ -71,7 +71,8 @@ export interface SettingsSection {
         pluginName?: string,
         pluginMethod?: string,
         pluginArgs?: string
-      }
+      },
+      customComponent?: string
     }[]
   }[]
 }
@@ -112,6 +113,8 @@ export interface SettingsState {
   'sindri-access-token': ConfigState,
   'etherscan-access-token': ConfigState,
   'ai-privacy-policy': ConfigState,
+  'mcp/servers/enable': ConfigState,
+  'mcp-server-management': ConfigState,
   toaster: ConfigState
 }
 export interface SettingsActionPayloadTypes {

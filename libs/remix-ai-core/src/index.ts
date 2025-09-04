@@ -7,6 +7,7 @@ import { DefaultModels, InsertionParams, CompletionParams, GenerationParams, Ass
 import { buildChatPrompt } from './prompts/promptBuilder'
 import { RemoteInferencer } from './inferencers/remote/remoteInference'
 import { OllamaInferencer } from './inferencers/local/ollamaInferencer'
+import { MCPInferencer, MCPEnhancedInferencer } from './inferencers/mcp/mcpInferencer'
 import { isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHost } from './inferencers/local/ollama'
 import { FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS } from './inferencers/local/fimModelConfig'
 import { ChatHistory } from './prompts/chat'
@@ -15,13 +16,14 @@ import { ChatCommandParser } from './helpers/chatCommandParser'
 export {
   IModel, IModelResponse, ChatCommandParser,
   ModelType, DefaultModels, ICompletions, IParams, IRemoteModel, buildChatPrompt,
-  RemoteInferencer, OllamaInferencer, isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHost,
+  RemoteInferencer, OllamaInferencer, MCPInferencer, MCPEnhancedInferencer, isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHost,
   FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS,
   InsertionParams, CompletionParams, GenerationParams, AssistantParams,
   ChatEntry, AIRequestType, ChatHistory, downloadLatestReleaseExecutable
 }
 
 export * from './types/types'
+export * from './types/mcp'
 export * from './helpers/streamHandler'
 export * from './agents/codeExplainAgent'
 export * from './agents/completionAgent'
