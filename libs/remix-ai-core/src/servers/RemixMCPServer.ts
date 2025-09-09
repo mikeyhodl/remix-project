@@ -1,0 +1,547 @@
+/**
+ * Remix IDE MCP Server Implementation
+ */
+
+import EventEmitter from 'events';
+import { ICustomRemixApi } from '@remix-api';
+import { 
+  MCPInitializeResult, 
+  MCPServerCapabilities, 
+  MCPToolCall, 
+  MCPToolResult,
+  MCPResource,
+  MCPResourceContent
+} from '../types/mcp';
+import {
+  IRemixMCPServer,
+  RemixMCPServerConfig,
+  ServerState,
+  ServerStats,
+  ToolExecutionStatus,
+  ResourceCacheEntry,
+  AuditLogEntry,
+  PermissionCheckResult,
+  MCPMessage,
+  MCPResponse,
+  MCPErrorCode,
+  ServerEvents
+} from './types/mcpServer';
+import { ToolRegistry } from './types/mcpTools';
+import { ResourceProviderRegistry } from './types/mcpResources';
+import { RemixToolRegistry } from './registry/RemixToolRegistry';
+import { RemixResourceProviderRegistry } from './registry/RemixResourceProviderRegistry';
+
+/**
+ * Main Remix MCP Server implementation
+ */
+export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
+  private _config: RemixMCPServerConfig;
+  private _state: ServerState = ServerState.STOPPED;
+  private _stats: ServerStats;
+  private _tools: ToolRegistry;
+  private _resources: ResourceProviderRegistry;
+  private _remixApi: ICustomRemixApi;
+  private _activeExecutions: Map<string, ToolExecutionStatus> = new Map();
+  private _resourceCache: Map<string, ResourceCacheEntry> = new Map();
+  private _auditLog: AuditLogEntry[] = [];
+  private _startTime: Date = new Date();
+
+  constructor(config: RemixMCPServerConfig, remixApi: ICustomRemixApi) {
+    super();
+    this._config = config;
+    this._remixApi = remixApi;
+    this._tools = new RemixToolRegistry();
+    this._resources = new RemixResourceProviderRegistry();
+    
+    this._stats = {
+      uptime: 0,
+      totalToolCalls: 0,
+      totalResourcesServed: 0,
+      activeToolExecutions: 0,
+      cacheHitRate: 0,
+      errorCount: 0,
+      lastActivity: new Date()
+    };
+
+    this.setupEventHandlers();
+  }
+
+  get config(): RemixMCPServerConfig {
+    return this._config;
+  }
+
+  get state(): ServerState {
+    return this._state;
+  }
+
+  get stats(): ServerStats {
+    this._stats.uptime = Date.now() - this._startTime.getTime();
+    this._stats.activeToolExecutions = this._activeExecutions.size;
+    return this._stats;
+  }
+
+  get tools(): ToolRegistry {
+    return this._tools;
+  }
+
+  get resources(): ResourceProviderRegistry {
+    return this._resources;
+  }
+
+  get remixApi(): ICustomRemixApi {
+    return this._remixApi;
+  }
+
+  /**
+   * Initialize the MCP server
+   */
+  async initialize(): Promise<MCPInitializeResult> {
+    try {
+      this.setState(ServerState.STARTING);
+      
+      // Initialize tool registry with default tools
+      await this.initializeDefaultTools();
+      
+      // Initialize resource providers
+      await this.initializeDefaultResourceProviders();
+      
+      // Setup cleanup intervals
+      this.setupCleanupIntervals();
+      
+      const result: MCPInitializeResult = {
+        protocolVersion: '2024-11-05',
+        capabilities: this.getCapabilities(),
+        serverInfo: {
+          name: this._config.name,
+          version: this._config.version
+        },
+        instructions: `Remix IDE MCP Server initialized. Available tools: ${this._tools.list().length}, Resource providers: ${this._resources.list().length}`
+      };
+
+      this.setState(ServerState.RUNNING);
+      this.log('Server initialized successfully', 'info');
+      
+      return result;
+    } catch (error) {
+      this.setState(ServerState.ERROR);
+      this.log(`Server initialization failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Start the server
+   */
+  async start(): Promise<void> {
+    if (this._state !== ServerState.STOPPED) {
+      throw new Error(`Cannot start server in state: ${this._state}`);
+    }
+
+    await this.initialize();
+  }
+
+  /**
+   * Stop the server
+   */
+  async stop(): Promise<void> {
+    this.setState(ServerState.STOPPING);
+
+    // Cancel active tool executions
+    for (const [id, execution] of this._activeExecutions) {
+      execution.status = 'failed';
+      execution.error = 'Server shutdown';
+      execution.endTime = new Date();
+      this.emit('tool-executed', execution);
+    }
+    this._activeExecutions.clear();
+
+    // Clear cache
+    this._resourceCache.clear();
+    this.emit('cache-cleared');
+
+    this.setState(ServerState.STOPPED);
+    this.log('Server stopped', 'info');
+  }
+
+  /**
+   * Get server capabilities
+   */
+  getCapabilities(): MCPServerCapabilities {
+    return {
+      resources: {
+        subscribe: true,
+        listChanged: true
+      },
+      tools: {
+        listChanged: true
+      },
+      prompts: {
+        listChanged: false
+      },
+      logging: {},
+      experimental: {
+        remix: {
+          compilation: this._config.features?.compilation !== false,
+          deployment: this._config.features?.deployment !== false,
+          debugging: this._config.features?.debugging !== false,
+          analysis: this._config.features?.analysis !== false,
+          testing: this._config.features?.testing !== false,
+          git: this._config.features?.git !== false
+        }
+      }
+    };
+  }
+
+  /**
+   * Handle MCP protocol messages
+   */
+  async handleMessage(message: MCPMessage): Promise<MCPResponse> {
+    try {
+      this._stats.lastActivity = new Date();
+
+      switch (message.method) {
+        case 'initialize':
+          const initResult = await this.initialize();
+          return { id: message.id, result: initResult };
+
+        case 'tools/list':
+          const tools = this._tools.list().map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          }));
+          return { id: message.id, result: { tools } };
+
+        case 'tools/call':
+          const toolResult = await this.executeTool(message.params as MCPToolCall);
+          return { id: message.id, result: toolResult };
+
+        case 'resources/list':
+          const resources = await this._resources.getResources();
+          return { id: message.id, result: { resources: resources.resources } };
+
+        case 'resources/read':
+          const content = await this.getResourceContent(message.params.uri);
+          return { id: message.id, result: content };
+
+        case 'server/capabilities':
+          return { id: message.id, result: this.getCapabilities() };
+
+        case 'server/stats':
+          return { id: message.id, result: this.stats };
+
+        default:
+          return {
+            id: message.id,
+            error: {
+              code: MCPErrorCode.METHOD_NOT_FOUND,
+              message: `Unknown method: ${message.method}`
+            }
+          };
+      }
+    } catch (error) {
+      this._stats.errorCount++;
+      this.log(`Message handling error: ${error.message}`, 'error');
+      
+      return {
+        id: message.id,
+        error: {
+          code: MCPErrorCode.INTERNAL_ERROR,
+          message: error.message,
+          data: this._config.debug ? error.stack : undefined
+        }
+      };
+    }
+  }
+
+  /**
+   * Execute a tool
+   */
+  private async executeTool(call: MCPToolCall): Promise<MCPToolResult> {
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = new Date();
+    
+    const execution: ToolExecutionStatus = {
+      id: executionId,
+      toolName: call.name,
+      startTime,
+      status: 'running',
+      context: {
+        workspace: await this.getCurrentWorkspace(),
+        user: 'default', // TODO: Get actual user
+        permissions: [] // TODO: Get actual permissions
+      }
+    };
+
+    this._activeExecutions.set(executionId, execution);
+    this.emit('tool-executed', execution);
+
+    try {
+      // Check permissions
+      const permissionCheck = await this.checkPermissions(`tool:${call.name}`, 'default');
+      if (!permissionCheck.allowed) {
+        throw new Error(`Permission denied: ${permissionCheck.reason}`);
+      }
+
+      // Set timeout
+      const timeout = this._config.toolTimeout || 30000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Tool execution timeout')), timeout);
+      });
+
+      // Execute tool
+      const toolPromise = this._tools.execute(call, {
+        workspace: execution.context.workspace,
+        currentFile: await this.getCurrentFile(),
+        permissions: execution.context.permissions,
+        timestamp: Date.now(),
+        requestId: executionId
+      }, this._remixApi);
+
+      const result = await Promise.race([toolPromise, timeoutPromise]);
+
+      // Update execution status
+      execution.status = 'completed';
+      execution.endTime = new Date();
+      this._stats.totalToolCalls++;
+
+      this.emit('tool-executed', execution);
+      this.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() });
+
+      return result;
+
+    } catch (error) {
+      execution.status = error.message.includes('timeout') ? 'timeout' : 'failed';
+      execution.error = error.message;
+      execution.endTime = new Date();
+      this._stats.errorCount++;
+
+      this.emit('tool-executed', execution);
+      this.log(`Tool execution failed: ${call.name}`, 'error', { executionId, error: error.message });
+
+      throw error;
+    } finally {
+      this._activeExecutions.delete(executionId);
+    }
+  }
+
+  /**
+   * Get resource content with caching
+   */
+  private async getResourceContent(uri: string): Promise<MCPResourceContent> {
+    // Check cache first
+    if (this._config.enableResourceCache !== false) {
+      const cached = this._resourceCache.get(uri);
+      if (cached && Date.now() - cached.timestamp.getTime() < cached.ttl) {
+        cached.accessCount++;
+        cached.lastAccess = new Date();
+        this._stats.totalResourcesServed++;
+        this.emit('resource-accessed', uri, 'default');
+        return cached.content;
+      }
+    }
+
+    // Get from provider
+    const content = await this._resources.getResourceContent(uri);
+    
+    // Cache result
+    if (this._config.enableResourceCache !== false) {
+      this._resourceCache.set(uri, {
+        uri,
+        content,
+        timestamp: new Date(),
+        ttl: this._config.resourceCacheTTL || 300000, // 5 minutes default
+        accessCount: 1,
+        lastAccess: new Date()
+      });
+    }
+
+    this._stats.totalResourcesServed++;
+    this.emit('resource-accessed', uri, 'default');
+    
+    return content;
+  }
+
+  /**
+   * Check permissions for operation
+   */
+  async checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult> {
+    // TODO: Implement actual permission checking
+    // For now, allow all operations
+    return {
+      allowed: true,
+      requiredPermissions: [],
+      userPermissions: ['*']
+    };
+  }
+
+  /**
+   * Get active tool executions
+   */
+  getActiveExecutions(): ToolExecutionStatus[] {
+    return Array.from(this._activeExecutions.values());
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    const entries = Array.from(this._resourceCache.values());
+    const totalAccess = entries.reduce((sum, entry) => sum + entry.accessCount, 0);
+    const cacheHits = totalAccess - entries.length;
+    
+    return {
+      size: entries.length,
+      hitRate: totalAccess > 0 ? cacheHits / totalAccess : 0,
+      entries
+    };
+  }
+
+  /**
+   * Get audit log entries
+   */
+  getAuditLog(limit: number = 100): AuditLogEntry[] {
+    return this._auditLog.slice(-limit);
+  }
+
+  /**
+   * Clear resource cache
+   */
+  clearCache(): void {
+    this._resourceCache.clear();
+    this.emit('cache-cleared');
+    this.log('Resource cache cleared', 'info');
+  }
+
+  /**
+   * Refresh all resources
+   */
+  async refreshResources(): Promise<void> {
+    try {
+      const result = await this._resources.getResources();
+      this.emit('resources-refreshed', result.resources.length);
+      this.log(`Resources refreshed: ${result.resources.length}`, 'info');
+    } catch (error) {
+      this.log(`Failed to refresh resources: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Set server state
+   */
+  private setState(newState: ServerState): void {
+    const oldState = this._state;
+    this._state = newState;
+    this.emit('state-changed', newState, oldState);
+  }
+
+  /**
+   * Setup event handlers
+   */
+  private setupEventHandlers(): void {
+    // Tool registry events
+    this._tools.on?.('tool-registered', (toolName: string) => {
+      this.log(`Tool registered: ${toolName}`, 'info');
+    });
+
+    this._tools.on?.('tool-unregistered', (toolName: string) => {
+      this.log(`Tool unregistered: ${toolName}`, 'info');
+    });
+
+    // Resource registry events
+    this._resources.subscribe((event) => {
+      this.log(`Resource ${event.type}: ${event.resource.uri}`, 'info');
+    });
+  }
+
+  /**
+   * Initialize default tools
+   */
+  private async initializeDefaultTools(): Promise<void> {
+    // Tools will be registered by their respective handlers
+    // This is a placeholder for tool initialization
+    this.log('Default tools initialized', 'info');
+  }
+
+  /**
+   * Initialize default resource providers
+   */
+  private async initializeDefaultResourceProviders(): Promise<void> {
+    // Resource providers will be registered by their respective classes
+    // This is a placeholder for resource provider initialization
+    this.log('Default resource providers initialized', 'info');
+  }
+
+  /**
+   * Setup cleanup intervals
+   */
+  private setupCleanupIntervals(): void {
+    // Clean up old cache entries
+    setInterval(() => {
+      const now = Date.now();
+      for (const [uri, entry] of this._resourceCache.entries()) {
+        if (now - entry.timestamp.getTime() > entry.ttl) {
+          this._resourceCache.delete(uri);
+        }
+      }
+    }, 60000); // Clean every minute
+
+    // Truncate audit log
+    setInterval(() => {
+      if (this._auditLog.length > 1000) {
+        this._auditLog = this._auditLog.slice(-500);
+      }
+    }, 300000); // Clean every 5 minutes
+  }
+
+  /**
+   * Get current workspace
+   */
+  private async getCurrentWorkspace(): Promise<string> {
+    try {
+      // TODO: Get actual current workspace from Remix API
+      return 'default';
+    } catch (error) {
+      return 'default';
+    }
+  }
+
+  /**
+   * Get current file
+   */
+  private async getCurrentFile(): Promise<string> {
+    try {
+      // TODO: Get actual current file from Remix API
+      return '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Log message with audit trail
+   */
+  private log(message: string, level: 'info' | 'warning' | 'error', details?: any): void {
+    if (this._config.debug || level !== 'info') {
+      console.log(`[RemixMCPServer] ${level.toUpperCase()}: ${message}`, details || '');
+    }
+
+    if (this._config.security?.enableAuditLog !== false) {
+      const entry: AuditLogEntry = {
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date(),
+        type: level === 'error' ? 'error' : 'info',
+        user: 'system',
+        details: {
+          message,
+          ...details
+        },
+        severity: level
+      };
+
+      this._auditLog.push(entry);
+      this.emit('audit-log', entry);
+    }
+  }
+}

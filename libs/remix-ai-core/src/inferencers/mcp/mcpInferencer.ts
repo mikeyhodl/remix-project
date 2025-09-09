@@ -12,8 +12,14 @@ import {
   MCPConnectionStatus,
   MCPInitializeResult,
   MCPProviderParams,
-  MCPAwareParams
+  MCPAwareParams,
+  EnhancedMCPProviderParams,
+  UserIntent,
+  ResourceScore,
+  ResourceSelectionResult
 } from "../../types/mcp";
+import { IntentAnalyzer } from "../../services/intentAnalyzer";
+import { ResourceScoring } from "../../services/resourceScoring";
 
 export class MCPClient {
   private server: MCPServer;
@@ -177,6 +183,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private connectionStatuses: Map<string, MCPConnectionStatus> = new Map();
   private resourceCache: Map<string, MCPResourceContent> = new Map();
   private cacheTimeout: number = 300000; // 5 minutes
+  private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
+  private resourceScoring: ResourceScoring = new ResourceScoring();
 
   constructor(servers: MCPServer[] = [], apiUrl?: string, completionUrl?: string) {
     super(apiUrl, completionUrl);
@@ -272,17 +280,117 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
   }
 
-  private async enrichContextWithMCPResources(params: IParams): Promise<string> {
-    const mcpParams = (params as any).mcp as MCPProviderParams;
+  private async enrichContextWithMCPResources(params: IParams, prompt?: string): Promise<string> {
+    const mcpParams = (params as any).mcp as EnhancedMCPProviderParams;
     if (!mcpParams?.mcpServers?.length) {
       return "";
     }
 
+    // Use intelligent resource selection if enabled
+    if (mcpParams.enableIntentMatching && prompt) {
+      return this.intelligentResourceSelection(prompt, mcpParams);
+    }
+
+    // Fallback to original logic
+    return this.legacyResourceSelection(mcpParams);
+  }
+
+  private async intelligentResourceSelection(prompt: string, mcpParams: EnhancedMCPProviderParams): Promise<string> {
+    try {
+      // Analyze user intent
+      const intent = await this.intentAnalyzer.analyzeIntent(prompt);
+      
+      // Gather all available resources
+      const allResources: Array<{ resource: MCPResource; serverName: string }> = [];
+      
+      for (const serverName of mcpParams.mcpServers || []) {
+        const client = this.mcpClients.get(serverName);
+        if (!client || !client.isConnected()) continue;
+
+        try {
+          const resources = await client.listResources();
+          resources.forEach(resource => {
+            allResources.push({ resource, serverName });
+          });
+        } catch (error) {
+          console.warn(`Failed to list resources from ${serverName}:`, error);
+        }
+      }
+
+      if (allResources.length === 0) {
+        return "";
+      }
+
+      // Score resources against intent
+      const scoredResources = await this.resourceScoring.scoreResources(
+        allResources,
+        intent,
+        mcpParams
+      );
+
+      // Select best resources
+      const selectedResources = this.resourceScoring.selectResources(
+        scoredResources,
+        mcpParams.maxResources || 10,
+        mcpParams.selectionStrategy || 'hybrid'
+      );
+
+      // Log selection for debugging
+      this.event.emit('mcpResourceSelection', {
+        intent,
+        totalResourcesConsidered: allResources.length,
+        selectedResources: selectedResources.map(r => ({
+          name: r.resource.name,
+          score: r.score,
+          reasoning: r.reasoning
+        }))
+      });
+
+      // Build context from selected resources
+      let mcpContext = "";
+      for (const scoredResource of selectedResources) {
+        const { resource, serverName } = scoredResource;
+        
+        try {
+          // Try to get from cache first
+          let content = this.resourceCache.get(resource.uri);
+          if (!content) {
+            const client = this.mcpClients.get(serverName);
+            if (client) {
+              content = await client.readResource(resource.uri);
+              // Cache with TTL
+              this.resourceCache.set(resource.uri, content);
+              setTimeout(() => {
+                this.resourceCache.delete(resource.uri);
+              }, this.cacheTimeout);
+            }
+          }
+
+          if (content?.text) {
+            mcpContext += `\n--- Resource: ${resource.name} (Score: ${Math.round(scoredResource.score * 100)}%) ---\n`;
+            mcpContext += `Relevance: ${scoredResource.reasoning}\n`;
+            mcpContext += content.text;
+            mcpContext += "\n--- End Resource ---\n";
+          }
+        } catch (error) {
+          console.warn(`Failed to read resource ${resource.uri}:`, error);
+        }
+      }
+
+      return mcpContext;
+    } catch (error) {
+      console.error('Error in intelligent resource selection:', error);
+      // Fallback to legacy selection
+      return this.legacyResourceSelection(mcpParams);
+    }
+  }
+
+  private async legacyResourceSelection(mcpParams: EnhancedMCPProviderParams): Promise<string> {
     let mcpContext = "";
     const maxResources = mcpParams.maxResources || 10;
     let resourceCount = 0;
 
-    for (const serverName of mcpParams.mcpServers) {
+    for (const serverName of mcpParams.mcpServers || []) {
       if (resourceCount >= maxResources) break;
 
       const client = this.mcpClients.get(serverName);
@@ -329,35 +437,35 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
   // Override completion methods to include MCP context
   async code_completion(prompt: string, promptAfter: string, ctxFiles: any, fileName: string, options: IParams = CompletionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.code_completion(enrichedPrompt, promptAfter, ctxFiles, fileName, options);
   }
 
   async code_insertion(msg_pfx: string, msg_sfx: string, ctxFiles: any, fileName: string, options: IParams = InsertionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, msg_pfx);
     const enrichedPrefix = mcpContext ? `${mcpContext}\n\n${msg_pfx}` : msg_pfx;
 
     return super.code_insertion(enrichedPrefix, msg_sfx, ctxFiles, fileName, options);
   }
 
   async code_generation(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.code_generation(enrichedPrompt, options);
   }
 
   async answer(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.answer(enrichedPrompt, options);
   }
 
   async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
     return super.code_explaining(prompt, enrichedContext, options);
@@ -432,11 +540,13 @@ export class MCPEnhancedInferencer implements ICompletions, IGeneration {
   private connectionStatuses: Map<string, MCPConnectionStatus> = new Map();
   private resourceCache: Map<string, MCPResourceContent> = new Map();
   private cacheTimeout: number = 300000; // 5 minutes
+  private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
+  private resourceScoring: ResourceScoring = new ResourceScoring();
   public event: EventEmitter;
 
   constructor(baseInferencer: ICompletions & IGeneration, servers: MCPServer[] = []) {
     this.baseInferencer = baseInferencer;
-    this.event = this.baseInferencer.event || new EventEmitter();
+    this.event = new EventEmitter();
     this.initializeMCPServers(servers);
   }
 
@@ -542,17 +652,117 @@ export class MCPEnhancedInferencer implements ICompletions, IGeneration {
     }
   }
 
-  private async enrichContextWithMCPResources(params: IParams): Promise<string> {
-    const mcpParams = (params as any).mcp as MCPProviderParams;
+  private async enrichContextWithMCPResources(params: IParams, prompt?: string): Promise<string> {
+    const mcpParams = (params as any).mcp as EnhancedMCPProviderParams;
     if (!mcpParams?.mcpServers?.length) {
       return "";
     }
 
+    // Use intelligent resource selection if enabled
+    if (mcpParams.enableIntentMatching && prompt) {
+      return this.intelligentResourceSelection(prompt, mcpParams);
+    }
+
+    // Fallback to original logic
+    return this.legacyResourceSelection(mcpParams);
+  }
+
+  private async intelligentResourceSelection(prompt: string, mcpParams: EnhancedMCPProviderParams): Promise<string> {
+    try {
+      // Analyze user intent
+      const intent = await this.intentAnalyzer.analyzeIntent(prompt);
+      
+      // Gather all available resources
+      const allResources: Array<{ resource: MCPResource; serverName: string }> = [];
+      
+      for (const serverName of mcpParams.mcpServers || []) {
+        const client = this.mcpClients.get(serverName);
+        if (!client || !client.isConnected()) continue;
+
+        try {
+          const resources = await client.listResources();
+          resources.forEach(resource => {
+            allResources.push({ resource, serverName });
+          });
+        } catch (error) {
+          console.warn(`Failed to list resources from ${serverName}:`, error);
+        }
+      }
+
+      if (allResources.length === 0) {
+        return "";
+      }
+
+      // Score resources against intent
+      const scoredResources = await this.resourceScoring.scoreResources(
+        allResources,
+        intent,
+        mcpParams
+      );
+
+      // Select best resources
+      const selectedResources = this.resourceScoring.selectResources(
+        scoredResources,
+        mcpParams.maxResources || 10,
+        mcpParams.selectionStrategy || 'hybrid'
+      );
+
+      // Log selection for debugging
+      this.event.emit('mcpResourceSelection', {
+        intent,
+        totalResourcesConsidered: allResources.length,
+        selectedResources: selectedResources.map(r => ({
+          name: r.resource.name,
+          score: r.score,
+          reasoning: r.reasoning
+        }))
+      });
+
+      // Build context from selected resources
+      let mcpContext = "";
+      for (const scoredResource of selectedResources) {
+        const { resource, serverName } = scoredResource;
+        
+        try {
+          // Try to get from cache first
+          let content = this.resourceCache.get(resource.uri);
+          if (!content) {
+            const client = this.mcpClients.get(serverName);
+            if (client) {
+              content = await client.readResource(resource.uri);
+              // Cache with TTL
+              this.resourceCache.set(resource.uri, content);
+              setTimeout(() => {
+                this.resourceCache.delete(resource.uri);
+              }, this.cacheTimeout);
+            }
+          }
+
+          if (content?.text) {
+            mcpContext += `\n--- Resource: ${resource.name} (Score: ${Math.round(scoredResource.score * 100)}%) ---\n`;
+            mcpContext += `Relevance: ${scoredResource.reasoning}\n`;
+            mcpContext += content.text;
+            mcpContext += "\n--- End Resource ---\n";
+          }
+        } catch (error) {
+          console.warn(`Failed to read resource ${resource.uri}:`, error);
+        }
+      }
+
+      return mcpContext;
+    } catch (error) {
+      console.error('Error in intelligent resource selection:', error);
+      // Fallback to legacy selection
+      return this.legacyResourceSelection(mcpParams);
+    }
+  }
+
+  private async legacyResourceSelection(mcpParams: EnhancedMCPProviderParams): Promise<string> {
     let mcpContext = "";
     const maxResources = mcpParams.maxResources || 10;
     let resourceCount = 0;
 
-    for (const serverName of mcpParams.mcpServers) {
+    for (const serverName of mcpParams.mcpServers || []) {
       if (resourceCount >= maxResources) break;
 
       const client = this.mcpClients.get(serverName);
@@ -599,39 +809,45 @@ export class MCPEnhancedInferencer implements ICompletions, IGeneration {
 
   // Override completion methods to include MCP context
   async code_completion(prompt: string, promptAfter: string, ctxFiles: any, fileName: string, options: IParams = CompletionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return this.baseInferencer.code_completion(enrichedPrompt, promptAfter, ctxFiles, fileName, options);
   }
 
   async code_insertion(msg_pfx: string, msg_sfx: string, ctxFiles: any, fileName: string, options: IParams = InsertionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, msg_pfx);
     const enrichedPrefix = mcpContext ? `${mcpContext}\n\n${msg_pfx}` : msg_pfx;
 
     return this.baseInferencer.code_insertion(enrichedPrefix, msg_sfx, ctxFiles, fileName, options);
   }
 
   async code_generation(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return this.baseInferencer.code_generation(enrichedPrompt, options);
   }
 
   async answer(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return this.baseInferencer.answer(enrichedPrompt, options);
   }
 
   async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options);
+    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
     return this.baseInferencer.code_explaining(prompt, enrichedContext, options);
   }
+
+  async error_explaining(prompt, params:IParams): Promise<any>{}
+  async generate(prompt, params:IParams): Promise<any>{}
+  async generateWorkspace(prompt, params:IParams): Promise<any>{}
+  async vulnerability_check(prompt, params:IParams): Promise<any>{}
+
 
   // MCP-specific methods
   getConnectionStatuses(): MCPConnectionStatus[] {

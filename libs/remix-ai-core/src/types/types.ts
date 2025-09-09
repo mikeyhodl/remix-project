@@ -67,7 +67,7 @@ export interface IModelResponse {
 }
 
 export interface ICompletions{
-  code_completion(context, ctxFiles, fileName, params:IParams): Promise<any>;
+  code_completion(prompt, context, ctxFiles, fileName, params:IParams): Promise<any>;
   code_insertion(msg_pfx, msg_sfx, ctxFiles, fileName, params:IParams): Promise<any>;
 }
 export interface IGeneration{
