@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Registry } from '@remix-project/remix-lib';
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
@@ -14,8 +15,23 @@ function trackMatomoEvent(category: string, action: string, name?: string) {
 // default Ollama ports to check (11434 is the legacy/standard port)
 const OLLAMA_PORTS = [11434, 11435, 11436];
 const OLLAMA_BASE_HOST = 'http://localhost';
+const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';
 
 let discoveredOllamaHost: string | null = null;
+
+function getConfiguredOllamaEndpoint(): string | null {
+  try {
+    const config = Registry.getInstance().get('config').api;
+    const configuredEndpoint = config.get('settings/ollama-endpoint');
+    if (configuredEndpoint && configuredEndpoint !== DEFAULT_OLLAMA_HOST) {
+      _paq.push(['trackEvent', 'ai', 'remixAI', 'ollama_using_configured_endpoint', configuredEndpoint]);
+      return configuredEndpoint;
+    }
+  } catch (error) {
+    _paq.push(['trackEvent', 'ai', 'remixAI', 'ollama_config_access_failed', error.message || 'unknown']);
+  }
+  return null;
+}
 
 export async function discoverOllamaHost(): Promise<string | null> {
   if (discoveredOllamaHost) {
@@ -23,6 +39,23 @@ export async function discoverOllamaHost(): Promise<string | null> {
     return discoveredOllamaHost;
   }
 
+  // First, try to use the configured endpoint from settings
+  const configuredEndpoint = getConfiguredOllamaEndpoint();
+  if (configuredEndpoint) {
+    try {
+      const res = await axios.get(`${configuredEndpoint}/api/tags`, { timeout: 2000 });
+      if (res.status === 200) {
+        discoveredOllamaHost = configuredEndpoint;
+        _paq.push(['trackEvent', 'ai', 'remixAI', 'ollama_configured_endpoint_success', configuredEndpoint]);
+        return configuredEndpoint;
+      }
+    } catch (error) {
+      _paq.push(['trackEvent', 'ai', 'remixAI', 'ollama_configured_endpoint_failed', `${configuredEndpoint}:${error.message || 'unknown'}`]);
+      // Fall back to discovery if configured endpoint fails
+    }
+  }
+
+  // Fall back to port discovery if no configured endpoint or it failed
   for (const port of OLLAMA_PORTS) {
     const host = `${OLLAMA_BASE_HOST}:${port}`;
     trackMatomoEvent('ai', 'remixAI', `ollama_port_check:${port}`);
@@ -73,6 +106,12 @@ export function getOllamaHost(): string | null {
 export function resetOllamaHost(): void {
   trackMatomoEvent('ai', 'remixAI', `ollama_reset_host:${discoveredOllamaHost || 'null'}`);
   discoveredOllamaHost = null;
+}
+
+export function resetOllamaHostOnSettingsChange(): void {
+  // This function should be called when Ollama settings are updated
+  resetOllamaHost();
+  _paq.push(['trackEvent', 'ai', 'remixAI', 'ollama_reset_on_settings_change']);
 }
 
 export async function pullModel(modelName: string): Promise<void> {
