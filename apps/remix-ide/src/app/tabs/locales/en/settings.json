@@ -70,7 +70,7 @@
   "settings.enableMCPEnhancement": "Enable MCP Integration",
   "settings.enableMCPEnhancementDescription": "Manage your MCP server connections",
   "settings.aiPrivacyPolicyDescription": "Understand how RemixAI processes your data.",
-  "settings.ollamaConfig": "Ollama Configuration",
+  "settings.ollamaConfig": "Ollama URL Configuration",
   "settings.ollamaConfigDescription": "Configure Ollama endpoint for local AI model integration",
   "settings.ollama-endpoint": "ENDPOINT URL"
 }
