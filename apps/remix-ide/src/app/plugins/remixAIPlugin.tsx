@@ -393,7 +393,7 @@ export class RemixAIPlugin extends Plugin {
     } else if (provider === 'mcp') {
       // Switch to MCP inferencer
       if (!this.mcpInferencer || !(this.mcpInferencer instanceof MCPInferencer)) {
-        this.mcpInferencer = new MCPInferencer(this.mcpServers);
+        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
         this.mcpInferencer.event.on('onInference', () => {
           this.isInferencing = true
         })
@@ -670,7 +670,7 @@ export class RemixAIPlugin extends Plugin {
     // Initialize MCP inferencer if not already done
     if (!this.mcpInferencer) {
       console.log(`[RemixAI Plugin] Initializing MCP inferencer`);
-      this.mcpInferencer = new MCPInferencer(this.mcpServers);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
         console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
       });

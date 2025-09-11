@@ -20,6 +20,7 @@ import {
 } from "../../types/mcp";
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
+import { RemixMCPServer } from '@remix/remix-ai-core';
 
 export class MCPClient {
   private server: IMCPServer;
@@ -28,48 +29,80 @@ export class MCPClient {
   private eventEmitter: EventEmitter;
   private resources: IMCPResource[] = [];
   private tools: IMCPTool[] = [];
+  private remixMCPServer?: RemixMCPServer; // Will be injected for internal transport
+  
+  // SSE connection properties
+  private eventSource?: EventSource;
+  private pendingRequests: Map<number, {resolve: Function, reject: Function, timeout: NodeJS.Timeout}> = new Map();
+  private requestId: number = 1;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private reconnectTimeout?: NodeJS.Timeout;
 
-  constructor(server: IMCPServer) {
+  constructor(server: IMCPServer, remixMCPServer?: any) {
     this.server = server;
     this.eventEmitter = new EventEmitter();
+    this.remixMCPServer = remixMCPServer;
   }
 
   async connect(): Promise<IMCPInitializeResult> {
     try {
-      console.log(`[MCP] Connecting to server: ${this.server.name} (${this.server.url})`);
+      console.log(`[MCP] Connecting to server: ${this.server.name} (transport: ${this.server.transport})`);
       this.eventEmitter.emit('connecting', this.server.name);
 
-      // TODO: Implement actual MCP client connection
-      // This is a placeholder implementation
-      // In a real implementation, this would:
-      // 1. Establish connection based on transport type (stdio/sse/websocket)
-      // 2. Send initialize request
-      // 3. Handle initialization response
+      if (this.server.transport === 'internal') {
+        // Handle internal transport using RemixMCPServer
+        if (!this.remixMCPServer) {
+          throw new Error(`Internal RemixMCPServer not available for ${this.server.name}`);
+        }
 
-      console.log(`[MCP] Establishing connection to ${this.server.name}...`);
-      await this.delay(1000); // Simulate connection delay
+        console.log(`[MCP] Connecting to internal RemixMCPServer: ${this.server.name}`);
+        const result = await this.remixMCPServer.initialize();
+        this.connected = true;
+        this.capabilities = result.capabilities;
+        
+        console.log(`[MCP] Successfully connected to internal server ${this.server.name}`);
+        this.eventEmitter.emit('connected', this.server.name, result);
+        return result;
 
-      this.connected = true;
-      console.log(`[MCP] Successfully connected to ${this.server.name}`);
-      this.capabilities = {
-        resources: { subscribe: true, listChanged: true },
-        tools: { listChanged: true },
-        prompts: { listChanged: true }
-      };
+      } else if (this.server.transport === 'sse') {
+        // Handle SSE transport
+        if (!this.server.url) {
+          throw new Error(`SSE URL not specified for server ${this.server.name}`);
+        }
 
-      const result: IMCPInitializeResult = {
-        protocolVersion: "2024-11-05",
-        capabilities: this.capabilities,
-        serverInfo: {
-          name: this.server.name,
-          version: "1.0.0"
-        },
-        instructions: `Connected to ${this.server.name} MCP server`
-      };
+        console.log(`[MCP] Establishing SSE connection to ${this.server.name} at ${this.server.url}...`);
+        const result = await this.connectSSE();
+        console.log(`[MCP] SSE connection established with ${this.server.name}`);
+        return result;
 
-      this.eventEmitter.emit('connected', this.server.name, result);
-      console.log(`[MCP] Connection established with capabilities:`, this.capabilities);
-      return result;
+      } else {
+        // TODO: Implement stdio and websocket transports
+        console.log(`[MCP] Transport ${this.server.transport} not yet implemented, using placeholder for ${this.server.name}...`);
+        await this.delay(1000); // Simulate connection delay
+
+        this.connected = true;
+        console.log(`[MCP] Successfully connected to ${this.server.name}`);
+        this.capabilities = {
+          resources: { subscribe: true, listChanged: true },
+          tools: { listChanged: true },
+          prompts: { listChanged: true }
+        };
+
+        const result: IMCPInitializeResult = {
+          protocolVersion: "2024-11-05",
+          capabilities: this.capabilities,
+          serverInfo: {
+            name: this.server.name,
+            version: "1.0.0"
+          },
+          instructions: `Connected to ${this.server.name} MCP server (placeholder)`
+        };
+
+        this.eventEmitter.emit('connected', this.server.name, result);
+        console.log(`[MCP] Connection established with capabilities:`, this.capabilities);
+        return result;
+      }
 
     } catch (error) {
       console.error(`[MCP] Failed to connect to ${this.server.name}:`, error);
@@ -81,6 +114,14 @@ export class MCPClient {
   async disconnect(): Promise<void> {
     if (this.connected) {
       console.log(`[MCP] Disconnecting from server: ${this.server.name}`);
+      
+      // Handle different transport types
+      if (this.server.transport === 'sse') {
+        this.closeSSE();
+      } else if (this.server.transport === 'internal' && this.remixMCPServer) {
+        await this.remixMCPServer.stop();
+      }
+      
       this.connected = false;
       this.resources = [];
       this.tools = [];
@@ -96,20 +137,51 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Listing resources from ${this.server.name}...`);
-    // TODO: Implement actual resource listing
-    // Placeholder implementation
-    const mockResources: IMCPResource[] = [
-      {
-        uri: `file://${this.server.name}/README.md`,
-        name: "README",
-        description: "Project documentation",
-        mimeType: "text/markdown"
+    
+    if (this.server.transport === 'internal' && this.remixMCPServer) {
+      // Use internal RemixMCPServer
+      const response = await this.remixMCPServer.handleMessage({
+        id: Date.now().toString(),
+        method: 'resources/list',
+        params: {}
+      });
+      
+      if (response.error) {
+        throw new Error(`Failed to list resources: ${response.error.message}`);
       }
-    ];
+      
+      this.resources = response.result.resources || [];
+      console.log(`[MCP] Found ${this.resources.length} resources from internal server ${this.server.name}:`, this.resources.map(r => r.name));
+      return this.resources;
 
-    this.resources = mockResources;
-    console.log(`[MCP] Found ${mockResources.length} resources from ${this.server.name}:`, mockResources.map(r => r.name));
-    return mockResources;
+    } else if (this.server.transport === 'sse') {
+      // Use SSE transport
+      const result = await this.sendSSEMessage({
+        jsonrpc: '2.0',
+        method: 'resources/list',
+        params: {}
+      });
+      
+      this.resources = result.resources || [];
+      console.log(`[MCP] Found ${this.resources.length} resources from SSE server ${this.server.name}:`, this.resources.map(r => r.name));
+      return this.resources;
+
+    } else {
+      // TODO: Implement actual resource listing for external servers
+      // Placeholder implementation
+      const mockResources: IMCPResource[] = [
+        {
+          uri: `file://${this.server.name}/README.md`,
+          name: "README",
+          description: "Project documentation",
+          mimeType: "text/markdown"
+        }
+      ];
+
+      this.resources = mockResources;
+      console.log(`[MCP] Found ${mockResources.length} resources from ${this.server.name}:`, mockResources.map(r => r.name));
+      return mockResources;
+    }
   }
 
   async readResource(uri: string): Promise<IMCPResourceContent> {
@@ -119,14 +191,43 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Reading resource: ${uri} from ${this.server.name}`);
-    // TODO: Implement actual resource reading
-    const content: IMCPResourceContent = {
-      uri,
-      mimeType: "text/plain",
-      text: `Content from ${uri} via ${this.server.name}`
-    };
-    console.log(`[MCP] Resource read successfully: ${uri}`);
-    return content;
+    
+    if (this.server.transport === 'internal' && this.remixMCPServer) {
+      // Use internal RemixMCPServer
+      const response = await this.remixMCPServer.handleMessage({
+        id: Date.now().toString(),
+        method: 'resources/read',
+        params: { uri }
+      });
+      
+      if (response.error) {
+        throw new Error(`Failed to read resource: ${response.error.message}`);
+      }
+      
+      console.log(`[MCP] Resource read successfully from internal server: ${uri}`);
+      return response.result;
+
+    } else if (this.server.transport === 'sse') {
+      // Use SSE transport
+      const result = await this.sendSSEMessage({
+        jsonrpc: '2.0',
+        method: 'resources/read',
+        params: { uri }
+      });
+      
+      console.log(`[MCP] Resource read successfully from SSE server: ${uri}`);
+      return result;
+
+    } else {
+      // TODO: Implement actual resource reading for external servers
+      const content: IMCPResourceContent = {
+        uri,
+        mimeType: "text/plain",
+        text: `Content from ${uri} via ${this.server.name}`
+      };
+      console.log(`[MCP] Resource read successfully: ${uri}`);
+      return content;
+    }
   }
 
   async listTools(): Promise<IMCPTool[]> {
@@ -136,24 +237,55 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Listing tools from ${this.server.name}...`);
-    // TODO: Implement actual tool listing
-    const mockTools: IMCPTool[] = [
-      {
-        name: "file_read",
-        description: "Read file contents",
-        inputSchema: {
-          type: "object",
-          properties: {
-            path: { type: "string" }
-          },
-          required: ["path"]
-        }
+    
+    if (this.server.transport === 'internal' && this.remixMCPServer) {
+      // Use internal RemixMCPServer
+      const response = await this.remixMCPServer.handleMessage({
+        id: Date.now().toString(),
+        method: 'tools/list',
+        params: {}
+      });
+      
+      if (response.error) {
+        throw new Error(`Failed to list tools: ${response.error.message}`);
       }
-    ];
+      
+      this.tools = response.result.tools || [];
+      console.log(`[MCP] Found ${this.tools.length} tools from internal server ${this.server.name}:`, this.tools.map(t => t.name));
+      return this.tools;
 
-    this.tools = mockTools;
-    console.log(`[MCP] Found ${mockTools.length} tools from ${this.server.name}:`, mockTools.map(t => t.name));
-    return mockTools;
+    } else if (this.server.transport === 'sse') {
+      // Use SSE transport
+      const result = await this.sendSSEMessage({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        params: {}
+      });
+      
+      this.tools = result.tools || [];
+      console.log(`[MCP] Found ${this.tools.length} tools from SSE server ${this.server.name}:`, this.tools.map(t => t.name));
+      return this.tools;
+
+    } else {
+      // TODO: Implement actual tool listing for external servers
+      const mockTools: IMCPTool[] = [
+        {
+          name: "file_read",
+          description: "Read file contents",
+          inputSchema: {
+            type: "object",
+            properties: {
+              path: { type: "string" }
+            },
+            required: ["path"]
+          }
+        }
+      ];
+
+      this.tools = mockTools;
+      console.log(`[MCP] Found ${mockTools.length} tools from ${this.server.name}:`, mockTools.map(t => t.name));
+      return mockTools;
+    }
   }
 
   async callTool(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
@@ -163,15 +295,44 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
-    // TODO: Implement actual tool execution
-    const result: IMCPToolResult = {
-      content: [{
-        type: 'text',
-        text: `Tool ${toolCall.name} executed with args: ${JSON.stringify(toolCall.arguments)}`
-      }]
-    };
-    console.log(`[MCP] Tool ${toolCall.name} executed successfully`);
-    return result;
+    
+    if (this.server.transport === 'internal' && this.remixMCPServer) {
+      // Use internal RemixMCPServer
+      const response = await this.remixMCPServer.handleMessage({
+        id: Date.now().toString(),
+        method: 'tools/call',
+        params: toolCall
+      });
+      
+      if (response.error) {
+        throw new Error(`Failed to call tool: ${response.error.message}`);
+      }
+      
+      console.log(`[MCP] Tool ${toolCall.name} executed successfully on internal server`);
+      return response.result;
+
+    } else if (this.server.transport === 'sse') {
+      // Use SSE transport
+      const result = await this.sendSSEMessage({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: toolCall
+      });
+      
+      console.log(`[MCP] Tool ${toolCall.name} executed successfully on SSE server`);
+      return result;
+
+    } else {
+      // TODO: Implement actual tool execution for external servers
+      const result: IMCPToolResult = {
+        content: [{
+          type: 'text',
+          text: `Tool ${toolCall.name} executed with args: ${JSON.stringify(toolCall.arguments)}`
+        }]
+      };
+      console.log(`[MCP] Tool ${toolCall.name} executed successfully`);
+      return result;
+    }
   }
 
   isConnected(): boolean {
@@ -190,6 +351,313 @@ export class MCPClient {
     this.eventEmitter.off(event, listener);
   }
 
+  /**
+   * Check if the server has a specific capability
+   */
+  hasCapability(capability: string): boolean {
+    if (!this.capabilities) return false;
+    
+    const parts = capability.split('.');
+    let current = this.capabilities;
+    
+    for (const part of parts) {
+      if (current[part] === undefined) return false;
+      current = current[part];
+    }
+    
+    return !!current;
+  }
+
+  /**
+   * Get server capabilities
+   */
+  getCapabilities(): any {
+    return this.capabilities;
+  }
+
+  /**
+   * Connect to MCP server via SSE
+   */
+  private async connectSSE(): Promise<IMCPInitializeResult> {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log(`[MCP] Creating SSE connection to ${this.server.url} for ${this.server.name}...`);
+        
+        if (!this.server.url) {
+          throw new Error(`No URL configured for SSE server ${this.server.name}`);
+        }
+
+        // Check if EventSource is supported
+        if (typeof EventSource === 'undefined') {
+          throw new Error('EventSource (SSE) is not supported in this environment');
+        }
+        
+        // For MCP over SSE, the URL should be the SSE endpoint
+        // The server will send MCP messages as SSE events
+        this.eventSource = new EventSource(this.server.url, {
+          withCredentials: false // Can be configured per server if needed
+        });
+        
+        // Set up event handlers
+        this.eventSource.onopen = () => {
+          console.log(`[MCP] SSE connection opened to ${this.server.name}`);
+          this.reconnectAttempts = 0;
+          
+          // Send initialization via HTTP POST to the control endpoint
+          this.initializeSSEConnection()
+            .then((result) => {
+              this.connected = true;
+              this.capabilities = result.capabilities;
+              console.log(`[MCP] SSE initialization successful for ${this.server.name}:`, result);
+              this.eventEmitter.emit('connected', this.server.name, result);
+              resolve(result);
+            })
+            .catch((error) => {
+              console.error(`[MCP] SSE initialization failed for ${this.server.name}:`, error);
+              this.eventSource?.close();
+              reject(error);
+            });
+        };
+        
+        this.eventSource.onmessage = (event) => {
+          this.handleSSEMessage(event);
+        };
+        
+        this.eventSource.onerror = (error) => {
+          console.error(`[MCP] SSE connection error for ${this.server.name}:`, error);
+          if (this.connected && this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.scheduleReconnect();
+          } else {
+            this.eventEmitter.emit('error', this.server.name, new Error('SSE connection error'));
+            if (!this.connected) {
+              reject(new Error('Failed to establish SSE connection'));
+            }
+          }
+        };
+
+        // Set connection timeout
+        setTimeout(() => {
+          if (!this.connected) {
+            this.eventSource?.close();
+            reject(new Error(`SSE connection timeout for ${this.server.name}`));
+          }
+        }, this.server.timeout || 30000);
+
+      } catch (error) {
+        console.error(`[MCP] Failed to create SSE connection for ${this.server.name}:`, error);
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Initialize SSE connection by sending the initialize request
+   */
+  private async initializeSSEConnection(): Promise<IMCPInitializeResult> {
+    const initMessage = {
+      jsonrpc: '2.0',
+      id: this.getNextRequestId(),
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          resources: { subscribe: true },
+          sampling: {}
+        },
+        clientInfo: {
+          name: 'Remix IDE',
+          version: '1.0.0'
+        }
+      }
+    };
+
+    const result = await this.sendSSEMessage(initMessage);
+    return result as IMCPInitializeResult;
+  }
+
+  /**
+   * Handle incoming SSE messages
+   */
+  private handleSSEMessage(event: MessageEvent) {
+    try {
+      console.log(`[MCP] Received SSE event from ${this.server.name}:`, event);
+      
+      let message;
+      try {
+        // Try to parse as JSON
+        message = JSON.parse(event.data);
+      } catch (parseError) {
+        console.warn(`[MCP] Failed to parse SSE message as JSON from ${this.server.name}:`, event.data);
+        return;
+      }
+      
+      console.log(`[MCP] Parsed SSE message from ${this.server.name}:`, message);
+      
+      // Handle JSON-RPC response
+      if (message.id && this.pendingRequests.has(message.id)) {
+        const request = this.pendingRequests.get(message.id)!;
+        this.pendingRequests.delete(message.id);
+        clearTimeout(request.timeout);
+        
+        if (message.error) {
+          const error = new Error(message.error.message || 'MCP request failed');
+          console.error(`[MCP] SSE request ${message.id} failed for ${this.server.name}:`, message.error);
+          request.reject(error);
+        } else {
+          console.log(`[MCP] SSE request ${message.id} completed for ${this.server.name}:`, message.result);
+          request.resolve(message.result);
+        }
+      } 
+      // Handle JSON-RPC notification (server-initiated messages)
+      else if (message.method && !message.id) {
+        console.log(`[MCP] Received notification from ${this.server.name}:`, message.method);
+        this.eventEmitter.emit('notification', this.server.name, message);
+      }
+      // Handle JSON-RPC request (server asking client)
+      else if (message.method && message.id) {
+        console.log(`[MCP] Received request from ${this.server.name}:`, message.method);
+        this.eventEmitter.emit('request', this.server.name, message);
+      }
+      else {
+        console.warn(`[MCP] Received unknown message type from ${this.server.name}:`, message);
+      }
+    } catch (error) {
+      console.error(`[MCP] Error handling SSE message from ${this.server.name}:`, error);
+    }
+  }
+
+  /**
+   * Send a message via SSE (using POST to control endpoint)
+   */
+  private async sendSSEMessage(message: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const requestId = message.id || this.getNextRequestId();
+      const messageWithId = { ...message, id: requestId };
+      
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        reject(new Error(`Request timeout for ${this.server.name}`));
+      }, this.server.timeout || 30000);
+
+      this.pendingRequests.set(requestId, { resolve, reject, timeout });
+
+      // For MCP over SSE, determine the control endpoint
+      // Common patterns:
+      // - SSE endpoint: /events or /sse
+      // - Control endpoint: /mcp, /control, or the base URL
+      let controlUrl = this.server.url!;
+      if (controlUrl.includes('/events')) {
+        controlUrl = controlUrl.replace('/events', '/mcp');
+      } else if (controlUrl.includes('/sse')) {
+        controlUrl = controlUrl.replace('/sse', '/mcp');
+      } else {
+        // If no specific SSE path, append /mcp
+        controlUrl = controlUrl.replace(/\/$/, '') + '/mcp';
+      }
+      
+      console.log(`[MCP] Sending ${message.method} request to ${controlUrl} for ${this.server.name}`);
+      fetch(controlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(messageWithId)
+      })
+      .then(async (response) => {
+        console.log('SSE sending message connect', response)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // For SSE, we might get an immediate response or wait for SSE message
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          // Immediate JSON response
+          const result = await response.json();
+          clearTimeout(timeout);
+          this.pendingRequests.delete(requestId);
+          resolve(result.result || result);
+        }
+        // Otherwise, we wait for the SSE response
+      })
+      .catch((error) => {
+        console.error(`[MCP] Failed to send ${message.method} request to ${this.server.name}:`, error);
+        clearTimeout(timeout);
+        this.pendingRequests.delete(requestId);
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Get next request ID
+   */
+  private getNextRequestId(): number {
+    return this.requestId++;
+  }
+
+  /**
+   * Schedule reconnection attempt for SSE
+   */
+  private scheduleReconnect(): void {
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff, max 30s
+    
+    console.log(`[MCP] Scheduling SSE reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms for ${this.server.name}`);
+    
+    this.reconnectTimeout = setTimeout(async () => {
+      try {
+        console.log(`[MCP] Attempting SSE reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} for ${this.server.name}`);
+        
+        // Close current connection first
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = undefined;
+        }
+        
+        // Attempt reconnection
+        await this.connectSSE();
+        console.log(`[MCP] SSE reconnect successful for ${this.server.name}`);
+        
+      } catch (error) {
+        console.error(`[MCP] SSE reconnect failed for ${this.server.name}:`, error);
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.scheduleReconnect();
+        } else {
+          console.error(`[MCP] Max SSE reconnect attempts reached for ${this.server.name}`);
+          this.connected = false;
+          this.eventEmitter.emit('error', this.server.name, new Error('Max reconnect attempts exceeded'));
+        }
+      }
+    }, delay);
+  }
+
+  /**
+   * Close SSE connection
+   */
+  private closeSSE(): void {
+    // Clear reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
+    
+    if (this.eventSource) {
+      console.log(`[MCP] Closing SSE connection to ${this.server.name}`);
+      this.eventSource.close();
+      this.eventSource = undefined;
+    }
+    
+    // Reject all pending requests
+    for (const [, request] of this.pendingRequests) {
+      clearTimeout(request.timeout);
+      request.reject(new Error('Connection closed'));
+    }
+    this.pendingRequests.clear();
+    this.reconnectAttempts = 0;
+  }
+
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -206,9 +674,11 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private cacheTimeout: number = 300000; // 5 minutes
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
+  private remixMCPServer?: any; // Internal RemixMCPServer instance
 
-  constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string) {
+  constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any) {
     super(apiUrl, completionUrl);
+    this.remixMCPServer = remixMCPServer;
     console.log(`[MCP Inferencer] Initializing with ${servers.length} servers:`, servers.map(s => s.name));
     this.initializeMCPServers(servers);
   }
@@ -218,7 +688,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     for (const server of servers) {
       if (server.enabled !== false) {
         console.log(`[MCP Inferencer] Setting up client for server: ${server.name}`);
-        const client = new MCPClient(server);
+        const client = new MCPClient(
+          server, 
+          server.transport === 'internal' ? this.remixMCPServer : undefined
+        );
         this.mcpClients.set(server.name, client);
         this.connectionStatuses.set(server.name, {
           status: 'disconnected',
@@ -288,7 +761,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       throw new Error(`MCP server ${server.name} already exists`);
     }
 
-    const client = new MCPClient(server);
+    const client = new MCPClient(
+      server, 
+      server.transport === 'internal' ? this.remixMCPServer : undefined
+    );
     this.mcpClients.set(server.name, client);
     this.connectionStatuses.set(server.name, {
       status: 'disconnected',

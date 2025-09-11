@@ -93,7 +93,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
 
       let newServers: IMCPServer[]
       if (editingServer) {
-        // Update existing server
         newServers = servers.map(s => s.name === editingServer.name ? server : s)
       } else {
         // Add new server
