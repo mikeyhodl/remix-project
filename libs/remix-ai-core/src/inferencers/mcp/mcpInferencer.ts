@@ -3,39 +3,40 @@ import { GenerationParams, CompletionParams, InsertionParams } from "../../types
 import { RemoteInferencer } from "../remote/remoteInference";
 import EventEmitter from "events";
 import {
-  MCPServer,
-  MCPResource,
-  MCPResourceContent,
-  MCPTool,
-  MCPToolCall,
-  MCPToolResult,
-  MCPConnectionStatus,
-  MCPInitializeResult,
-  MCPProviderParams,
-  MCPAwareParams,
-  EnhancedMCPProviderParams,
-  UserIntent,
-  ResourceScore,
-  ResourceSelectionResult
+  IMCPServer,
+  IMCPResource,
+  IMCPResourceContent,
+  IMCPTool,
+  IMCPToolCall,
+  IMCPToolResult,
+  IMCPConnectionStatus,
+  IMCPInitializeResult,
+  IMCPProviderParams,
+  IMCPAwareParams,
+  IEnhancedMCPProviderParams,
+  IUserIntent,
+  IResourceScore,
+  IResourceSelectionResult
 } from "../../types/mcp";
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 
 export class MCPClient {
-  private server: MCPServer;
+  private server: IMCPServer;
   private connected: boolean = false;
   private capabilities?: any;
   private eventEmitter: EventEmitter;
-  private resources: MCPResource[] = [];
-  private tools: MCPTool[] = [];
+  private resources: IMCPResource[] = [];
+  private tools: IMCPTool[] = [];
 
-  constructor(server: MCPServer) {
+  constructor(server: IMCPServer) {
     this.server = server;
     this.eventEmitter = new EventEmitter();
   }
 
-  async connect(): Promise<MCPInitializeResult> {
+  async connect(): Promise<IMCPInitializeResult> {
     try {
+      console.log(`[MCP] Connecting to server: ${this.server.name} (${this.server.url})`);
       this.eventEmitter.emit('connecting', this.server.name);
 
       // TODO: Implement actual MCP client connection
@@ -45,16 +46,18 @@ export class MCPClient {
       // 2. Send initialize request
       // 3. Handle initialization response
 
+      console.log(`[MCP] Establishing connection to ${this.server.name}...`);
       await this.delay(1000); // Simulate connection delay
 
       this.connected = true;
+      console.log(`[MCP] Successfully connected to ${this.server.name}`);
       this.capabilities = {
         resources: { subscribe: true, listChanged: true },
         tools: { listChanged: true },
         prompts: { listChanged: true }
       };
 
-      const result: MCPInitializeResult = {
+      const result: IMCPInitializeResult = {
         protocolVersion: "2024-11-05",
         capabilities: this.capabilities,
         serverInfo: {
@@ -65,9 +68,11 @@ export class MCPClient {
       };
 
       this.eventEmitter.emit('connected', this.server.name, result);
+      console.log(`[MCP] Connection established with capabilities:`, this.capabilities);
       return result;
 
     } catch (error) {
+      console.error(`[MCP] Failed to connect to ${this.server.name}:`, error);
       this.eventEmitter.emit('error', this.server.name, error);
       throw error;
     }
@@ -75,21 +80,25 @@ export class MCPClient {
 
   async disconnect(): Promise<void> {
     if (this.connected) {
+      console.log(`[MCP] Disconnecting from server: ${this.server.name}`);
       this.connected = false;
       this.resources = [];
       this.tools = [];
       this.eventEmitter.emit('disconnected', this.server.name);
+      console.log(`[MCP] Disconnected from ${this.server.name}`);
     }
   }
 
-  async listResources(): Promise<MCPResource[]> {
+  async listResources(): Promise<IMCPResource[]> {
     if (!this.connected) {
+      console.error(`[MCP] Cannot list resources - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    console.log(`[MCP] Listing resources from ${this.server.name}...`);
     // TODO: Implement actual resource listing
     // Placeholder implementation
-    const mockResources: MCPResource[] = [
+    const mockResources: IMCPResource[] = [
       {
         uri: `file://${this.server.name}/README.md`,
         name: "README",
@@ -99,29 +108,36 @@ export class MCPClient {
     ];
 
     this.resources = mockResources;
+    console.log(`[MCP] Found ${mockResources.length} resources from ${this.server.name}:`, mockResources.map(r => r.name));
     return mockResources;
   }
 
-  async readResource(uri: string): Promise<MCPResourceContent> {
+  async readResource(uri: string): Promise<IMCPResourceContent> {
     if (!this.connected) {
+      console.error(`[MCP] Cannot read resource - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    console.log(`[MCP] Reading resource: ${uri} from ${this.server.name}`);
     // TODO: Implement actual resource reading
-    return {
+    const content: IMCPResourceContent = {
       uri,
       mimeType: "text/plain",
       text: `Content from ${uri} via ${this.server.name}`
     };
+    console.log(`[MCP] Resource read successfully: ${uri}`);
+    return content;
   }
 
-  async listTools(): Promise<MCPTool[]> {
+  async listTools(): Promise<IMCPTool[]> {
     if (!this.connected) {
+      console.error(`[MCP] Cannot list tools - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    console.log(`[MCP] Listing tools from ${this.server.name}...`);
     // TODO: Implement actual tool listing
-    const mockTools: MCPTool[] = [
+    const mockTools: IMCPTool[] = [
       {
         name: "file_read",
         description: "Read file contents",
@@ -136,21 +152,26 @@ export class MCPClient {
     ];
 
     this.tools = mockTools;
+    console.log(`[MCP] Found ${mockTools.length} tools from ${this.server.name}:`, mockTools.map(t => t.name));
     return mockTools;
   }
 
-  async callTool(toolCall: MCPToolCall): Promise<MCPToolResult> {
+  async callTool(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
     if (!this.connected) {
+      console.error(`[MCP] Cannot call tool - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    console.log(`[MCP] Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
     // TODO: Implement actual tool execution
-    return {
+    const result: IMCPToolResult = {
       content: [{
         type: 'text',
         text: `Tool ${toolCall.name} executed with args: ${JSON.stringify(toolCall.arguments)}`
       }]
     };
+    console.log(`[MCP] Tool ${toolCall.name} executed successfully`);
+    return result;
   }
 
   isConnected(): boolean {
@@ -180,20 +201,23 @@ export class MCPClient {
  */
 export class MCPInferencer extends RemoteInferencer implements ICompletions, IGeneration {
   private mcpClients: Map<string, MCPClient> = new Map();
-  private connectionStatuses: Map<string, MCPConnectionStatus> = new Map();
-  private resourceCache: Map<string, MCPResourceContent> = new Map();
+  private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
+  private resourceCache: Map<string, IMCPResourceContent> = new Map();
   private cacheTimeout: number = 300000; // 5 minutes
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
 
-  constructor(servers: MCPServer[] = [], apiUrl?: string, completionUrl?: string) {
+  constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string) {
     super(apiUrl, completionUrl);
+    console.log(`[MCP Inferencer] Initializing with ${servers.length} servers:`, servers.map(s => s.name));
     this.initializeMCPServers(servers);
   }
 
-  private initializeMCPServers(servers: MCPServer[]): void {
+  private initializeMCPServers(servers: IMCPServer[]): void {
+    console.log(`[MCP Inferencer] Initializing MCP servers...`);
     for (const server of servers) {
       if (server.enabled !== false) {
+        console.log(`[MCP Inferencer] Setting up client for server: ${server.name}`);
         const client = new MCPClient(server);
         this.mcpClients.set(server.name, client);
         this.connectionStatuses.set(server.name, {
@@ -202,7 +226,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         // Set up event listeners
-        client.on('connected', (serverName: string, result: MCPInitializeResult) => {
+        client.on('connected', (serverName: string, result: IMCPInitializeResult) => {
+          console.log(`[MCP Inferencer] Server connected: ${serverName}`);
           this.connectionStatuses.set(serverName, {
             status: 'connected',
             serverName,
@@ -212,6 +237,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         client.on('error', (serverName: string, error: Error) => {
+          console.error(`[MCP Inferencer] Server error: ${serverName}:`, error);
           this.connectionStatuses.set(serverName, {
             status: 'error',
             serverName,
@@ -222,6 +248,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         client.on('disconnected', (serverName: string) => {
+          console.log(`[MCP Inferencer] Server disconnected: ${serverName}`);
           this.connectionStatuses.set(serverName, {
             status: 'disconnected',
             serverName
@@ -233,25 +260,31 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   async connectAllServers(): Promise<void> {
+    console.log(`[MCP Inferencer] Connecting to all ${this.mcpClients.size} servers...`);
     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
       try {
         await client.connect();
       } catch (error) {
-        console.warn(`Failed to connect to MCP server ${client.getServerName()}:`, error);
+        console.warn(`[MCP Inferencer] Failed to connect to MCP server ${client.getServerName()}:`, error);
       }
     });
 
     await Promise.allSettled(promises);
+    console.log(`[MCP Inferencer] Connection attempts completed`);
   }
 
   async disconnectAllServers(): Promise<void> {
+    console.log(`[MCP Inferencer] Disconnecting from all servers...`);
     const promises = Array.from(this.mcpClients.values()).map(client => client.disconnect());
     await Promise.allSettled(promises);
+    console.log(`[MCP Inferencer] All servers disconnected`);
     this.resourceCache.clear();
   }
 
-  async addMCPServer(server: MCPServer): Promise<void> {
+  async addMCPServer(server: IMCPServer): Promise<void> {
+    console.log(`[MCP Inferencer] Adding MCP server: ${server.name}`);
     if (this.mcpClients.has(server.name)) {
+      console.error(`[MCP Inferencer] Server ${server.name} already exists`);
       throw new Error(`MCP server ${server.name} already exists`);
     }
 
@@ -263,57 +296,76 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     if (server.autoStart !== false) {
+      console.log(`[MCP Inferencer] Auto-connecting to server: ${server.name}`);
       try {
         await client.connect();
       } catch (error) {
-        console.warn(`Failed to auto-connect to MCP server ${server.name}:`, error);
+        console.warn(`[MCP Inferencer] Failed to auto-connect to MCP server ${server.name}:`, error);
       }
     }
+    console.log(`[MCP Inferencer] Server ${server.name} added successfully`);
   }
 
   async removeMCPServer(serverName: string): Promise<void> {
+    console.log(`[MCP Inferencer] Removing MCP server: ${serverName}`);
     const client = this.mcpClients.get(serverName);
     if (client) {
       await client.disconnect();
       this.mcpClients.delete(serverName);
       this.connectionStatuses.delete(serverName);
+      console.log(`[MCP Inferencer] Server ${serverName} removed successfully`);
+    } else {
+      console.warn(`[MCP Inferencer] Server ${serverName} not found`);
     }
   }
 
-  private async enrichContextWithMCPResources(params: IParams, prompt?: string): Promise<string> {
-    const mcpParams = (params as any).mcp as EnhancedMCPProviderParams;
+  private async enrichContextWithIMCPResources(params: IParams, prompt?: string): Promise<string> {
+    console.log(`[MCP Inferencer] Enriching context with MCP resources...`);
+    const mcpParams = (params as any).mcp as IEnhancedMCPProviderParams;
     if (!mcpParams?.mcpServers?.length) {
+      console.log(`[MCP Inferencer] No MCP servers specified for enrichment`);
       return "";
     }
 
+    console.log(`[MCP Inferencer] Using ${mcpParams.mcpServers.length} servers:`, mcpParams.mcpServers);
+
     // Use intelligent resource selection if enabled
     if (mcpParams.enableIntentMatching && prompt) {
+      console.log(`[MCP Inferencer] Using intelligent resource selection`);
       return this.intelligentResourceSelection(prompt, mcpParams);
     }
 
     // Fallback to original logic
+    console.log(`[MCP Inferencer] Using legacy resource selection`);
     return this.legacyResourceSelection(mcpParams);
   }
 
-  private async intelligentResourceSelection(prompt: string, mcpParams: EnhancedMCPProviderParams): Promise<string> {
+  private async intelligentResourceSelection(prompt: string, mcpParams: IEnhancedMCPProviderParams): Promise<string> {
     try {
+      console.log(`[MCP Inferencer] Starting intelligent resource selection for prompt: "${prompt.substring(0, 100)}..."`);
       // Analyze user intent
       const intent = await this.intentAnalyzer.analyzeIntent(prompt);
+      console.log(`[MCP Inferencer] Analyzed intent:`, intent);
       
       // Gather all available resources
-      const allResources: Array<{ resource: MCPResource; serverName: string }> = [];
+      const allResources: Array<{ resource: IMCPResource; serverName: string }> = [];
       
       for (const serverName of mcpParams.mcpServers || []) {
         const client = this.mcpClients.get(serverName);
-        if (!client || !client.isConnected()) continue;
+        if (!client || !client.isConnected()) {
+          console.warn(`[MCP Inferencer] Server ${serverName} is not connected, skipping`);
+          continue;
+        }
 
         try {
+          console.log(`[MCP Inferencer] Listing resources from server: ${serverName}`);
           const resources = await client.listResources();
           resources.forEach(resource => {
             allResources.push({ resource, serverName });
           });
+          console.log(`[MCP Inferencer] Found ${resources.length} resources from ${serverName}`);
         } catch (error) {
-          console.warn(`Failed to list resources from ${serverName}:`, error);
+          console.warn(`[MCP Inferencer] Failed to list resources from ${serverName}:`, error);
         }
       }
 
@@ -385,7 +437,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
   }
 
-  private async legacyResourceSelection(mcpParams: EnhancedMCPProviderParams): Promise<string> {
+  private async legacyResourceSelection(mcpParams: IEnhancedMCPProviderParams): Promise<string> {
     let mcpContext = "";
     const maxResources = mcpParams.maxResources || 10;
     let resourceCount = 0;
@@ -437,42 +489,42 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
   // Override completion methods to include MCP context
   async code_completion(prompt: string, promptAfter: string, ctxFiles: any, fileName: string, options: IParams = CompletionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
+    const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.code_completion(enrichedPrompt, promptAfter, ctxFiles, fileName, options);
   }
 
   async code_insertion(msg_pfx: string, msg_sfx: string, ctxFiles: any, fileName: string, options: IParams = InsertionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, msg_pfx);
+    const mcpContext = await this.enrichContextWithIMCPResources(options, msg_pfx);
     const enrichedPrefix = mcpContext ? `${mcpContext}\n\n${msg_pfx}` : msg_pfx;
 
     return super.code_insertion(enrichedPrefix, msg_sfx, ctxFiles, fileName, options);
   }
 
   async code_generation(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
+    const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.code_generation(enrichedPrompt, options);
   }
 
   async answer(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
+    const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     return super.answer(enrichedPrompt, options);
   }
 
   async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
+    const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
     return super.code_explaining(prompt, enrichedContext, options);
   }
 
   // MCP-specific methods
-  getConnectionStatuses(): MCPConnectionStatus[] {
+  getConnectionStatuses(): IMCPConnectionStatus[] {
     return Array.from(this.connectionStatuses.values());
   }
 
@@ -482,8 +534,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       .map(([name, _]) => name);
   }
 
-  async getAllResources(): Promise<Record<string, MCPResource[]>> {
-    const result: Record<string, MCPResource[]> = {};
+  async getAllResources(): Promise<Record<string, IMCPResource[]>> {
+    const result: Record<string, IMCPResource[]> = {};
 
     for (const [serverName, client] of this.mcpClients) {
       if (client.isConnected()) {
@@ -499,8 +551,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     return result;
   }
 
-  async getAllTools(): Promise<Record<string, MCPTool[]>> {
-    const result: Record<string, MCPTool[]> = {};
+  async getAllTools(): Promise<Record<string, IMCPTool[]>> {
+    const result: Record<string, IMCPTool[]> = {};
 
     for (const [serverName, client] of this.mcpClients) {
       if (client.isConnected()) {
@@ -516,7 +568,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     return result;
   }
 
-  async executeTool(serverName: string, toolCall: MCPToolCall): Promise<MCPToolResult> {
+  async executeTool(serverName: string, toolCall: IMCPToolCall): Promise<IMCPToolResult> {
     const client = this.mcpClients.get(serverName);
     if (!client) {
       throw new Error(`MCP server ${serverName} not found`);
@@ -534,376 +586,376 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
  * MCPEnhancedInferencer wraps any inferencer to add MCP support
  * It manages MCP server connections and integrates MCP resources/tools with AI requests
  */
-export class MCPEnhancedInferencer implements ICompletions, IGeneration {
-  private baseInferencer: ICompletions & IGeneration;
-  private mcpClients: Map<string, MCPClient> = new Map();
-  private connectionStatuses: Map<string, MCPConnectionStatus> = new Map();
-  private resourceCache: Map<string, MCPResourceContent> = new Map();
-  private cacheTimeout: number = 300000; // 5 minutes
-  private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
-  private resourceScoring: ResourceScoring = new ResourceScoring();
-  public event: EventEmitter;
+// export class MCPEnhancedInferencer implements ICompletions, IGeneration {
+//   private baseInferencer: ICompletions & IGeneration;
+//   private mcpClients: Map<string, MCPClient> = new Map();
+//   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
+//   private resourceCache: Map<string, IMCPResourceContent> = new Map();
+//   private cacheTimeout: number = 300000; // 5 minutes
+//   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
+//   private resourceScoring: ResourceScoring = new ResourceScoring();
+//   public event: EventEmitter;
 
-  constructor(baseInferencer: ICompletions & IGeneration, servers: MCPServer[] = []) {
-    this.baseInferencer = baseInferencer;
-    this.event = new EventEmitter();
-    this.initializeMCPServers(servers);
-  }
+//   constructor(baseInferencer: ICompletions & IGeneration, servers: MCPServer[] = []) {
+//     this.baseInferencer = baseInferencer;
+//     this.event = new EventEmitter();
+//     this.initializeMCPServers(servers);
+//   }
 
-  // Delegate all properties to base inferencer
-  get api_url(): string {
-    return (this.baseInferencer as any).api_url;
-  }
+//   // Delegate all properties to base inferencer
+//   get api_url(): string {
+//     return (this.baseInferencer as any).api_url;
+//   }
 
-  get completion_url(): string {
-    return (this.baseInferencer as any).completion_url;
-  }
+//   get completion_url(): string {
+//     return (this.baseInferencer as any).completion_url;
+//   }
 
-  get max_history(): number {
-    return (this.baseInferencer as any).max_history || 7;
-  }
+//   get max_history(): number {
+//     return (this.baseInferencer as any).max_history || 7;
+//   }
 
-  private initializeMCPServers(servers: MCPServer[]): void {
-    for (const server of servers) {
-      if (server.enabled !== false) {
-        const client = new MCPClient(server);
-        this.mcpClients.set(server.name, client);
-        this.connectionStatuses.set(server.name, {
-          status: 'disconnected',
-          serverName: server.name
-        });
+//   private initializeMCPServers(servers: MCPServer[]): void {
+//     for (const server of servers) {
+//       if (server.enabled !== false) {
+//         const client = new MCPClient(server);
+//         this.mcpClients.set(server.name, client);
+//         this.connectionStatuses.set(server.name, {
+//           status: 'disconnected',
+//           serverName: server.name
+//         });
 
-        // Set up event listeners
-        client.on('connected', (serverName: string, result: MCPInitializeResult) => {
-          this.connectionStatuses.set(serverName, {
-            status: 'connected',
-            serverName,
-            capabilities: result.capabilities
-          });
-          this.event.emit('mcpServerConnected', serverName, result);
-        });
+//         // Set up event listeners
+//         client.on('connected', (serverName: string, result: MCPInitializeResult) => {
+//           this.connectionStatuses.set(serverName, {
+//             status: 'connected',
+//             serverName,
+//             capabilities: result.capabilities
+//           });
+//           this.event.emit('mcpServerConnected', serverName, result);
+//         });
 
-        client.on('error', (serverName: string, error: Error) => {
-          this.connectionStatuses.set(serverName, {
-            status: 'error',
-            serverName,
-            error: error.message,
-            lastAttempt: Date.now()
-          });
-          this.event.emit('mcpServerError', serverName, error);
-        });
+//         client.on('error', (serverName: string, error: Error) => {
+//           this.connectionStatuses.set(serverName, {
+//             status: 'error',
+//             serverName,
+//             error: error.message,
+//             lastAttempt: Date.now()
+//           });
+//           this.event.emit('mcpServerError', serverName, error);
+//         });
 
-        client.on('disconnected', (serverName: string) => {
-          this.connectionStatuses.set(serverName, {
-            status: 'disconnected',
-            serverName
-          });
-          this.event.emit('mcpServerDisconnected', serverName);
-        });
-      }
-    }
-  }
+//         client.on('disconnected', (serverName: string) => {
+//           this.connectionStatuses.set(serverName, {
+//             status: 'disconnected',
+//             serverName
+//           });
+//           this.event.emit('mcpServerDisconnected', serverName);
+//         });
+//       }
+//     }
+//   }
 
-  async connectAllServers(): Promise<void> {
-    const promises = Array.from(this.mcpClients.values()).map(async (client) => {
-      try {
-        await client.connect();
-      } catch (error) {
-        console.warn(`Failed to connect to MCP server ${client.getServerName()}:`, error);
-      }
-    });
+//   async connectAllServers(): Promise<void> {
+//     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
+//       try {
+//         await client.connect();
+//       } catch (error) {
+//         console.warn(`Failed to connect to MCP server ${client.getServerName()}:`, error);
+//       }
+//     });
 
-    await Promise.allSettled(promises);
-  }
+//     await Promise.allSettled(promises);
+//   }
 
-  async disconnectAllServers(): Promise<void> {
-    const promises = Array.from(this.mcpClients.values()).map(client => client.disconnect());
-    await Promise.allSettled(promises);
-    this.resourceCache.clear();
-  }
+//   async disconnectAllServers(): Promise<void> {
+//     const promises = Array.from(this.mcpClients.values()).map(client => client.disconnect());
+//     await Promise.allSettled(promises);
+//     this.resourceCache.clear();
+//   }
 
-  async addMCPServer(server: MCPServer): Promise<void> {
-    if (this.mcpClients.has(server.name)) {
-      throw new Error(`MCP server ${server.name} already exists`);
-    }
+//   async addMCPServer(server: IMCPServer): Promise<void> {
+//     if (this.mcpClients.has(server.name)) {
+//       throw new Error(`MCP server ${server.name} already exists`);
+//     }
 
-    const client = new MCPClient(server);
-    this.mcpClients.set(server.name, client);
-    this.connectionStatuses.set(server.name, {
-      status: 'disconnected',
-      serverName: server.name
-    });
+//     const client = new MCPClient(server);
+//     this.mcpClients.set(server.name, client);
+//     this.connectionStatuses.set(server.name, {
+//       status: 'disconnected',
+//       serverName: server.name
+//     });
 
-    if (server.autoStart !== false) {
-      try {
-        await client.connect();
-      } catch (error) {
-        console.warn(`Failed to auto-connect to MCP server ${server.name}:`, error);
-      }
-    }
-  }
+//     if (server.autoStart !== false) {
+//       try {
+//         await client.connect();
+//       } catch (error) {
+//         console.warn(`Failed to auto-connect to MCP server ${server.name}:`, error);
+//       }
+//     }
+//   }
 
-  async removeMCPServer(serverName: string): Promise<void> {
-    const client = this.mcpClients.get(serverName);
-    if (client) {
-      await client.disconnect();
-      this.mcpClients.delete(serverName);
-      this.connectionStatuses.delete(serverName);
-    }
-  }
+//   async removeMCPServer(serverName: string): Promise<void> {
+//     const client = this.mcpClients.get(serverName);
+//     if (client) {
+//       await client.disconnect();
+//       this.mcpClients.delete(serverName);
+//       this.connectionStatuses.delete(serverName);
+//     }
+//   }
 
-  private async enrichContextWithMCPResources(params: IParams, prompt?: string): Promise<string> {
-    const mcpParams = (params as any).mcp as EnhancedMCPProviderParams;
-    if (!mcpParams?.mcpServers?.length) {
-      return "";
-    }
+//   private async enrichContextWithIMCPResources(params: IParams, prompt?: string): Promise<string> {
+//     const mcpParams = (params as any).mcp as IEnhancedMCPProviderParams;
+//     if (!mcpParams?.mcpServers?.length) {
+//       return "";
+//     }
 
-    // Use intelligent resource selection if enabled
-    if (mcpParams.enableIntentMatching && prompt) {
-      return this.intelligentResourceSelection(prompt, mcpParams);
-    }
+//     // Use intelligent resource selection if enabled
+//     if (mcpParams.enableIntentMatching && prompt) {
+//       return this.intelligentResourceSelection(prompt, mcpParams);
+//     }
 
-    // Fallback to original logic
-    return this.legacyResourceSelection(mcpParams);
-  }
+//     // Fallback to original logic
+//     return this.legacyResourceSelection(mcpParams);
+//   }
 
-  private async intelligentResourceSelection(prompt: string, mcpParams: EnhancedMCPProviderParams): Promise<string> {
-    try {
-      // Analyze user intent
-      const intent = await this.intentAnalyzer.analyzeIntent(prompt);
+//   private async intelligentResourceSelection(prompt: string, mcpParams: IEnhancedMCPProviderParams): Promise<string> {
+//     try {
+//       // Analyze user intent
+//       const intent = await this.intentAnalyzer.analyzeIntent(prompt);
       
-      // Gather all available resources
-      const allResources: Array<{ resource: MCPResource; serverName: string }> = [];
+//       // Gather all available resources
+//       const allResources: Array<{ resource: IMCPResource; serverName: string }> = [];
       
-      for (const serverName of mcpParams.mcpServers || []) {
-        const client = this.mcpClients.get(serverName);
-        if (!client || !client.isConnected()) continue;
+//       for (const serverName of mcpParams.mcpServers || []) {
+//         const client = this.mcpClients.get(serverName);
+//         if (!client || !client.isConnected()) continue;
 
-        try {
-          const resources = await client.listResources();
-          resources.forEach(resource => {
-            allResources.push({ resource, serverName });
-          });
-        } catch (error) {
-          console.warn(`Failed to list resources from ${serverName}:`, error);
-        }
-      }
+//         try {
+//           const resources = await client.listResources();
+//           resources.forEach(resource => {
+//             allResources.push({ resource, serverName });
+//           });
+//         } catch (error) {
+//           console.warn(`Failed to list resources from ${serverName}:`, error);
+//         }
+//       }
 
-      if (allResources.length === 0) {
-        return "";
-      }
+//       if (allResources.length === 0) {
+//         return "";
+//       }
 
-      // Score resources against intent
-      const scoredResources = await this.resourceScoring.scoreResources(
-        allResources,
-        intent,
-        mcpParams
-      );
+//       // Score resources against intent
+//       const scoredResources = await this.resourceScoring.scoreResources(
+//         allResources,
+//         intent,
+//         mcpParams
+//       );
 
-      // Select best resources
-      const selectedResources = this.resourceScoring.selectResources(
-        scoredResources,
-        mcpParams.maxResources || 10,
-        mcpParams.selectionStrategy || 'hybrid'
-      );
+//       // Select best resources
+//       const selectedResources = this.resourceScoring.selectResources(
+//         scoredResources,
+//         mcpParams.maxResources || 10,
+//         mcpParams.selectionStrategy || 'hybrid'
+//       );
 
-      // Log selection for debugging
-      this.event.emit('mcpResourceSelection', {
-        intent,
-        totalResourcesConsidered: allResources.length,
-        selectedResources: selectedResources.map(r => ({
-          name: r.resource.name,
-          score: r.score,
-          reasoning: r.reasoning
-        }))
-      });
+//       // Log selection for debugging
+//       this.event.emit('mcpResourceSelection', {
+//         intent,
+//         totalResourcesConsidered: allResources.length,
+//         selectedResources: selectedResources.map(r => ({
+//           name: r.resource.name,
+//           score: r.score,
+//           reasoning: r.reasoning
+//         }))
+//       });
 
-      // Build context from selected resources
-      let mcpContext = "";
-      for (const scoredResource of selectedResources) {
-        const { resource, serverName } = scoredResource;
+//       // Build context from selected resources
+//       let mcpContext = "";
+//       for (const scoredResource of selectedResources) {
+//         const { resource, serverName } = scoredResource;
         
-        try {
-          // Try to get from cache first
-          let content = this.resourceCache.get(resource.uri);
-          if (!content) {
-            const client = this.mcpClients.get(serverName);
-            if (client) {
-              content = await client.readResource(resource.uri);
-              // Cache with TTL
-              this.resourceCache.set(resource.uri, content);
-              setTimeout(() => {
-                this.resourceCache.delete(resource.uri);
-              }, this.cacheTimeout);
-            }
-          }
+//         try {
+//           // Try to get from cache first
+//           let content = this.resourceCache.get(resource.uri);
+//           if (!content) {
+//             const client = this.mcpClients.get(serverName);
+//             if (client) {
+//               content = await client.readResource(resource.uri);
+//               // Cache with TTL
+//               this.resourceCache.set(resource.uri, content);
+//               setTimeout(() => {
+//                 this.resourceCache.delete(resource.uri);
+//               }, this.cacheTimeout);
+//             }
+//           }
 
-          if (content?.text) {
-            mcpContext += `\n--- Resource: ${resource.name} (Score: ${Math.round(scoredResource.score * 100)}%) ---\n`;
-            mcpContext += `Relevance: ${scoredResource.reasoning}\n`;
-            mcpContext += content.text;
-            mcpContext += "\n--- End Resource ---\n";
-          }
-        } catch (error) {
-          console.warn(`Failed to read resource ${resource.uri}:`, error);
-        }
-      }
+//           if (content?.text) {
+//             mcpContext += `\n--- Resource: ${resource.name} (Score: ${Math.round(scoredResource.score * 100)}%) ---\n`;
+//             mcpContext += `Relevance: ${scoredResource.reasoning}\n`;
+//             mcpContext += content.text;
+//             mcpContext += "\n--- End Resource ---\n";
+//           }
+//         } catch (error) {
+//           console.warn(`Failed to read resource ${resource.uri}:`, error);
+//         }
+//       }
 
-      return mcpContext;
-    } catch (error) {
-      console.error('Error in intelligent resource selection:', error);
-      // Fallback to legacy selection
-      return this.legacyResourceSelection(mcpParams);
-    }
-  }
+//       return mcpContext;
+//     } catch (error) {
+//       console.error('Error in intelligent resource selection:', error);
+//       // Fallback to legacy selection
+//       return this.legacyResourceSelection(mcpParams);
+//     }
+//   }
 
-  private async legacyResourceSelection(mcpParams: EnhancedMCPProviderParams): Promise<string> {
-    let mcpContext = "";
-    const maxResources = mcpParams.maxResources || 10;
-    let resourceCount = 0;
+//   private async legacyResourceSelection(mcpParams: IEnhancedMCPProviderParams): Promise<string> {
+//     let mcpContext = "";
+//     const maxResources = mcpParams.maxResources || 10;
+//     let resourceCount = 0;
 
-    for (const serverName of mcpParams.mcpServers || []) {
-      if (resourceCount >= maxResources) break;
+//     for (const serverName of mcpParams.mcpServers || []) {
+//       if (resourceCount >= maxResources) break;
 
-      const client = this.mcpClients.get(serverName);
-      if (!client || !client.isConnected()) continue;
+//       const client = this.mcpClients.get(serverName);
+//       if (!client || !client.isConnected()) continue;
 
-      try {
-        const resources = await client.listResources();
+//       try {
+//         const resources = await client.listResources();
 
-        for (const resource of resources) {
-          if (resourceCount >= maxResources) break;
+//         for (const resource of resources) {
+//           if (resourceCount >= maxResources) break;
 
-          // Check resource priority if specified
-          if (mcpParams.resourcePriorityThreshold &&
-              resource.annotations?.priority &&
-              resource.annotations.priority < mcpParams.resourcePriorityThreshold) {
-            continue;
-          }
+//           // Check resource priority if specified
+//           if (mcpParams.resourcePriorityThreshold &&
+//               resource.annotations?.priority &&
+//               resource.annotations.priority < mcpParams.resourcePriorityThreshold) {
+//             continue;
+//           }
 
-          // Try to get from cache first
-          let content = this.resourceCache.get(resource.uri);
-          if (!content) {
-            content = await client.readResource(resource.uri);
-            // Cache with TTL
-            this.resourceCache.set(resource.uri, content);
-            setTimeout(() => {
-              this.resourceCache.delete(resource.uri);
-            }, this.cacheTimeout);
-          }
+//           // Try to get from cache first
+//           let content = this.resourceCache.get(resource.uri);
+//           if (!content) {
+//             content = await client.readResource(resource.uri);
+//             // Cache with TTL
+//             this.resourceCache.set(resource.uri, content);
+//             setTimeout(() => {
+//               this.resourceCache.delete(resource.uri);
+//             }, this.cacheTimeout);
+//           }
 
-          if (content.text) {
-            mcpContext += `\n--- Resource: ${resource.name} (${resource.uri}) ---\n`;
-            mcpContext += content.text;
-            mcpContext += "\n--- End Resource ---\n";
-            resourceCount++;
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to get resources from MCP server ${serverName}:`, error);
-      }
-    }
+//           if (content.text) {
+//             mcpContext += `\n--- Resource: ${resource.name} (${resource.uri}) ---\n`;
+//             mcpContext += content.text;
+//             mcpContext += "\n--- End Resource ---\n";
+//             resourceCount++;
+//           }
+//         }
+//       } catch (error) {
+//         console.warn(`Failed to get resources from MCP server ${serverName}:`, error);
+//       }
+//     }
 
-    return mcpContext;
-  }
+//     return mcpContext;
+//   }
 
-  // Override completion methods to include MCP context
-  async code_completion(prompt: string, promptAfter: string, ctxFiles: any, fileName: string, options: IParams = CompletionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
-    const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
+//   // Override completion methods to include MCP context
+//   async code_completion(prompt: string, promptAfter: string, ctxFiles: any, fileName: string, options: IParams = CompletionParams): Promise<any> {
+//     const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
+//     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
-    return this.baseInferencer.code_completion(enrichedPrompt, promptAfter, ctxFiles, fileName, options);
-  }
+//     return this.baseInferencer.code_completion(enrichedPrompt, promptAfter, ctxFiles, fileName, options);
+//   }
 
-  async code_insertion(msg_pfx: string, msg_sfx: string, ctxFiles: any, fileName: string, options: IParams = InsertionParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, msg_pfx);
-    const enrichedPrefix = mcpContext ? `${mcpContext}\n\n${msg_pfx}` : msg_pfx;
+//   async code_insertion(msg_pfx: string, msg_sfx: string, ctxFiles: any, fileName: string, options: IParams = InsertionParams): Promise<any> {
+//     const mcpContext = await this.enrichContextWithIMCPResources(options, msg_pfx);
+//     const enrichedPrefix = mcpContext ? `${mcpContext}\n\n${msg_pfx}` : msg_pfx;
 
-    return this.baseInferencer.code_insertion(enrichedPrefix, msg_sfx, ctxFiles, fileName, options);
-  }
+//     return this.baseInferencer.code_insertion(enrichedPrefix, msg_sfx, ctxFiles, fileName, options);
+//   }
 
-  async code_generation(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
-    const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
+//   async code_generation(prompt: string, options: IParams = GenerationParams): Promise<any> {
+//     const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
+//     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
-    return this.baseInferencer.code_generation(enrichedPrompt, options);
-  }
+//     return this.baseInferencer.code_generation(enrichedPrompt, options);
+//   }
 
-  async answer(prompt: string, options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
-    const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
+//   async answer(prompt: string, options: IParams = GenerationParams): Promise<any> {
+//     const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
+//     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
-    return this.baseInferencer.answer(enrichedPrompt, options);
-  }
+//     return this.baseInferencer.answer(enrichedPrompt, options);
+//   }
 
-  async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
-    const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
-    const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
+//   async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
+//     const mcpContext = await this.enrichContextWithIMCPResources(options, prompt);
+//     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
-    return this.baseInferencer.code_explaining(prompt, enrichedContext, options);
-  }
+//     return this.baseInferencer.code_explaining(prompt, enrichedContext, options);
+//   }
 
-  async error_explaining(prompt, params:IParams): Promise<any>{}
-  async generate(prompt, params:IParams): Promise<any>{}
-  async generateWorkspace(prompt, params:IParams): Promise<any>{}
-  async vulnerability_check(prompt, params:IParams): Promise<any>{}
+//   async error_explaining(prompt, params:IParams): Promise<any>{}
+//   async generate(prompt, params:IParams): Promise<any>{}
+//   async generateWorkspace(prompt, params:IParams): Promise<any>{}
+//   async vulnerability_check(prompt, params:IParams): Promise<any>{}
 
 
-  // MCP-specific methods
-  getConnectionStatuses(): MCPConnectionStatus[] {
-    return Array.from(this.connectionStatuses.values());
-  }
+//   // MCP-specific methods
+//   getConnectionStatuses(): IMCPConnectionStatus[] {
+//     return Array.from(this.connectionStatuses.values());
+//   }
 
-  getConnectedServers(): string[] {
-    return Array.from(this.connectionStatuses.entries())
-      .filter(([_, status]) => status.status === 'connected')
-      .map(([name, _]) => name);
-  }
+//   getConnectedServers(): string[] {
+//     return Array.from(this.connectionStatuses.entries())
+//       .filter(([_, status]) => status.status === 'connected')
+//       .map(([name, _]) => name);
+//   }
 
-  async getAllResources(): Promise<Record<string, MCPResource[]>> {
-    const result: Record<string, MCPResource[]> = {};
+//   async getAllResources(): Promise<Record<string, IMCPResource[]>> {
+//     const result: Record<string, IMCPResource[]> = {};
 
-    for (const [serverName, client] of this.mcpClients) {
-      if (client.isConnected()) {
-        try {
-          result[serverName] = await client.listResources();
-        } catch (error) {
-          console.warn(`Failed to list resources from ${serverName}:`, error);
-          result[serverName] = [];
-        }
-      }
-    }
+//     for (const [serverName, client] of this.mcpClients) {
+//       if (client.isConnected()) {
+//         try {
+//           result[serverName] = await client.listResources();
+//         } catch (error) {
+//           console.warn(`Failed to list resources from ${serverName}:`, error);
+//           result[serverName] = [];
+//         }
+//       }
+//     }
 
-    return result;
-  }
+//     return result;
+//   }
 
-  async getAllTools(): Promise<Record<string, MCPTool[]>> {
-    const result: Record<string, MCPTool[]> = {};
+//   async getAllTools(): Promise<Record<string, IMCPTool[]>> {
+//     const result: Record<string, IMCPTool[]> = {};
 
-    for (const [serverName, client] of this.mcpClients) {
-      if (client.isConnected()) {
-        try {
-          result[serverName] = await client.listTools();
-        } catch (error) {
-          console.warn(`Failed to list tools from ${serverName}:`, error);
-          result[serverName] = [];
-        }
-      }
-    }
+//     for (const [serverName, client] of this.mcpClients) {
+//       if (client.isConnected()) {
+//         try {
+//           result[serverName] = await client.listTools();
+//         } catch (error) {
+//           console.warn(`Failed to list tools from ${serverName}:`, error);
+//           result[serverName] = [];
+//         }
+//       }
+//     }
 
-    return result;
-  }
+//     return result;
+//   }
 
-  async executeTool(serverName: string, toolCall: MCPToolCall): Promise<MCPToolResult> {
-    const client = this.mcpClients.get(serverName);
-    if (!client) {
-      throw new Error(`MCP server ${serverName} not found`);
-    }
+//   async executeTool(serverName: string, toolCall: IIMCPToolCall): Promise<IMCPToolResult> {
+//     const client = this.mcpClients.get(serverName);
+//     if (!client) {
+//       throw new Error(`MCP server ${serverName} not found`);
+//     }
 
-    if (!client.isConnected()) {
-      throw new Error(`MCP server ${serverName} is not connected`);
-    }
+//     if (!client.isConnected()) {
+//       throw new Error(`MCP server ${serverName} is not connected`);
+//     }
 
-    return client.callTool(toolCall);
-  }
-}
+//     return client.callTool(toolCall);
+//   }
+// }

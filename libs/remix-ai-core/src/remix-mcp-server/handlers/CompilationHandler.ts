@@ -2,8 +2,7 @@
  * Compilation Tool Handlers for Remix MCP Server
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolResult } from '../../types/mcp';
+import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
 import { 
   ToolCategory, 
@@ -12,6 +11,7 @@ import {
   CompilerConfigArgs,
   CompilationResult
 } from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Solidity Compile Tool Handler
@@ -71,14 +71,14 @@ export class SolidityCompileHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: SolidityCompileArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: SolidityCompileArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get current compiler configuration or create new one
       let compilerConfig: any = {};
       
       try {
         // Try to get existing compiler config
-        const currentConfig = await remixApi.config.methods.getAppParameter('solidity-compiler');
+        const currentConfig = await plugin.call('config', 'getAppParameter', 'solidity-compiler');
         if (currentConfig) {
           compilerConfig = JSON.parse(currentConfig);
         }
@@ -100,13 +100,13 @@ export class SolidityCompileHandler extends BaseToolHandler {
       if (args.evmVersion) compilerConfig.evmVersion = args.evmVersion;
 
       // Set compiler configuration
-      await remixApi.config.methods.setAppParameter('solidity-compiler', JSON.stringify(compilerConfig));
+      await plugin.call('config', 'setAppParameter', 'solidity-compiler', JSON.stringify(compilerConfig));
 
       // Trigger compilation
       let compilationResult: any;
       if (args.file) {
         // Compile specific file - need to use plugin API or direct compilation
-        const content = await remixApi.fileManager.methods.readFile(args.file);
+        const content = await plugin.call('filemanager', 'readFile', args.file);
         // TODO: Implement direct compilation with solc
         compilationResult = { success: false, message: 'Direct file compilation not yet implemented' };
       } else {
@@ -161,10 +161,10 @@ export class GetCompilationResultHandler extends BaseToolHandler {
     return ['compile:read'];
   }
 
-  async execute(args: any, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Implement getting compilation result from Remix API
-      const compilationResult: any = null; // await remixApi.solidity.getCompilationResult();
+      const compilationResult: any = null; // await plugin.call.solidity.getCompilationResult();
       
       if (!compilationResult) {
         return this.createErrorResult('No compilation result available');
@@ -255,7 +255,7 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: CompilerConfigArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: CompilerConfigArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const config = {
         version: args.version,
@@ -265,7 +265,7 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
         language: args.language || 'Solidity'
       };
 
-      await remixApi.config.methods.setAppParameter('solidity-compiler', JSON.stringify(config));
+      await plugin.call('config', 'setAppParameter', 'solidity-compiler', JSON.stringify(config));
 
       return this.createSuccessResult({
         success: true,
@@ -293,9 +293,9 @@ export class GetCompilerConfigHandler extends BaseToolHandler {
     return ['compile:read'];
   }
 
-  async execute(args: any, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const configString = await remixApi.config.methods.getAppParameter('solidity-compiler');
+      const configString = await plugin.call('config', 'getAppParameter', 'solidity-compiler');
       
       let config: any;
       if (configString) {
@@ -348,12 +348,12 @@ export class CompileWithHardhatHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { configPath?: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { configPath?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const configPath = args.configPath || 'hardhat.config.js';
       
       // Check if hardhat config exists
-      const exists = await remixApi.fileManager.methods.exists(configPath);
+      const exists = await plugin.call('filemanager', 'exists', configPath);
       if (!exists) {
         return this.createErrorResult(`Hardhat config file not found: ${configPath}`);
       }
@@ -400,12 +400,12 @@ export class CompileWithTruffleHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { configPath?: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { configPath?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const configPath = args.configPath || 'truffle.config.js';
       
       // Check if truffle config exists
-      const exists = await remixApi.fileManager.methods.exists(configPath);
+      const exists = await plugin.call('filemanager', 'exists', configPath);
       if (!exists) {
         return this.createErrorResult(`Truffle config file not found: ${configPath}`);
       }
@@ -439,7 +439,7 @@ export class GetCompilerVersionsHandler extends BaseToolHandler {
     return ['compile:read'];
   }
 
-  async execute(_args: any, _remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get available compiler versions from Remix API
       const versions = ['0.8.19', '0.8.18', '0.8.17', '0.8.16', '0.8.15']; // Mock data

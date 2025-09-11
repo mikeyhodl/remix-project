@@ -2,8 +2,8 @@
  * Validation Middleware for Remix MCP Server
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolCall, MCPToolResult } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
 import { ToolExecutionContext } from '../types/mcpTools';
 
 export interface ValidationConfig {
@@ -41,16 +41,19 @@ export interface ValidationWarning {
  * Validation middleware for MCP tool calls
  */
 export class ValidationMiddleware {
-  constructor(private config: ValidationConfig) {}
+  private _plugin
+  constructor(private config: ValidationConfig, plugin) {
+    this._plugin = plugin
+  }
 
   /**
    * Validate a tool call and its arguments
    */
   async validateToolCall(
-    call: MCPToolCall, 
+    call: IMCPToolCall, 
     inputSchema: any,
     context: ToolExecutionContext,
-    remixApi: ICustomRemixApi
+    plugin: Plugin
   ): Promise<ValidationResult> {
     const result: ValidationResult = {
       valid: true,
@@ -83,10 +86,10 @@ export class ValidationMiddleware {
       }
 
       // Custom validations specific to tools
-      await this.customValidations(call, context, remixApi, result);
+      await this.customValidations(call, context, plugin, result);
 
       // Business logic validations
-      await this.businessLogicValidations(call, context, remixApi, result);
+      await this.businessLogicValidations(call, context, plugin, result);
 
       result.valid = result.errors.length === 0;
 
@@ -105,7 +108,7 @@ export class ValidationMiddleware {
   /**
    * Validate basic call structure
    */
-  private validateCallStructure(call: MCPToolCall, result: ValidationResult): void {
+  private validateCallStructure(call: IMCPToolCall, result: ValidationResult): void {
     if (!call.name) {
       result.errors.push({
         field: 'name',
@@ -480,9 +483,9 @@ export class ValidationMiddleware {
    * Custom validations for specific tools
    */
   private async customValidations(
-    call: MCPToolCall, 
+    call: IMCPToolCall, 
     context: ToolExecutionContext, 
-    remixApi: ICustomRemixApi, 
+    plugin: Plugin, 
     result: ValidationResult
   ): Promise<void> {
     const customValidator = this.config.customValidators.get(call.name);
@@ -496,19 +499,19 @@ export class ValidationMiddleware {
     switch (call.name) {
       case 'file_write':
       case 'file_create':
-        await this.validateFileWrite(call.arguments, remixApi, result);
+        await this.validateFileWrite(call.arguments, plugin, result);
         break;
         
       case 'deploy_contract':
-        await this.validateContractDeployment(call.arguments, remixApi, result);
+        await this.validateContractDeployment(call.arguments, plugin, result);
         break;
         
       case 'call_contract':
-        await this.validateContractCall(call.arguments, remixApi, result);
+        await this.validateContractCall(call.arguments, plugin, result);
         break;
         
       case 'set_breakpoint':
-        await this.validateBreakpoint(call.arguments, remixApi, result);
+        await this.validateBreakpoint(call.arguments, plugin, result);
         break;
     }
   }
@@ -517,9 +520,9 @@ export class ValidationMiddleware {
    * Business logic validations
    */
   private async businessLogicValidations(
-    call: MCPToolCall, 
+    call: IMCPToolCall, 
     context: ToolExecutionContext, 
-    remixApi: ICustomRemixApi, 
+    plugin: Plugin, 
     result: ValidationResult
   ): Promise<void> {
     // Validate workspace state
@@ -552,14 +555,14 @@ export class ValidationMiddleware {
   /**
    * Validate file write operations
    */
-  private async validateFileWrite(args: any, remixApi: ICustomRemixApi, result: ValidationResult): Promise<void> {
+  private async validateFileWrite(args: any, plugin: Plugin, result: ValidationResult): Promise<void> {
     if (!args.path) return;
 
     try {
       // Check if path is writable
       const parentPath = args.path.substring(0, args.path.lastIndexOf('/'));
       if (parentPath) {
-        const exists = await remixApi.fileManager.exists(parentPath);
+        const exists = await this._plugin.call('fileManager', 'exists', parentPath)
         if (!exists) {
           result.warnings.push({
             field: 'path',
@@ -593,7 +596,7 @@ export class ValidationMiddleware {
   /**
    * Validate contract deployment
    */
-  private async validateContractDeployment(args: any, remixApi: ICustomRemixApi, result: ValidationResult): Promise<void> {
+  private async validateContractDeployment(args: any, plugin: Plugin, result: ValidationResult): Promise<void> {
     // Validate constructor arguments
     if (args.constructorArgs && Array.isArray(args.constructorArgs)) {
       args.constructorArgs.forEach((arg: any, index: number) => {
@@ -625,7 +628,7 @@ export class ValidationMiddleware {
   /**
    * Validate contract calls
    */
-  private async validateContractCall(args: any, remixApi: ICustomRemixApi, result: ValidationResult): Promise<void> {
+  private async validateContractCall(args: any, plugin: Plugin, result: ValidationResult): Promise<void> {
     // Validate ABI format
     if (args.abi && Array.isArray(args.abi)) {
       const method = args.abi.find((item: any) => item.name === args.methodName && item.type === 'function');
@@ -647,11 +650,11 @@ export class ValidationMiddleware {
   /**
    * Validate breakpoint settings
    */
-  private async validateBreakpoint(args: any, remixApi: ICustomRemixApi, result: ValidationResult): Promise<void> {
+  private async validateBreakpoint(args: any, plugin: Plugin, result: ValidationResult): Promise<void> {
     if (!args.sourceFile) return;
 
     try {
-      const exists = await remixApi.fileManager.exists(args.sourceFile);
+      const exists = await this._plugin.call('fileManager', 'exists', args.sourceFile)
       if (!exists) {
         result.errors.push({
           field: 'sourceFile',
@@ -662,7 +665,7 @@ export class ValidationMiddleware {
       }
 
       // Validate line number exists in file
-      const content = await remixApi.fileManager.readFile(args.sourceFile);
+      const content = await this._plugin.call('fileManager', 'readFile', args.sourceFile)
       const lines = content.split('\n');
       if (args.lineNumber > lines.length) {
         result.errors.push({
@@ -717,7 +720,7 @@ export class ValidationMiddleware {
     return workspaceTools.includes(toolName);
   }
 
-  private isMainnetOperation(call: MCPToolCall): boolean {
+  private isMainnetOperation(call: IMCPToolCall): boolean {
     const args = call.arguments || {};
     return args.network === 'mainnet' || args.network === '1' || args.chainId === 1;
   }

@@ -2,20 +2,21 @@
  * MCP (Model Context Protocol) types and interfaces for Remix AI integration
  */
 
-export interface MCPServer {
-  name: string;
-  description?: string;
-  transport: 'stdio' | 'sse' | 'websocket';
-  command?: string[];
-  args?: string[];
-  url?: string;
-  env?: Record<string, string>;
-  autoStart?: boolean;
-  timeout?: number;
-  enabled?: boolean;
+export interface IMCPServer {
+  name: string
+  description?: string
+  transport: 'stdio' | 'sse' | 'websocket' | 'internal'
+  command?: string[]
+  args?: string[]
+  url?: string
+  env?: Record<string, string>
+  autoStart?: boolean
+  timeout?: number
+  enabled?: boolean
+  isBuiltIn?: boolean  // Cannot be removed if true
 }
 
-export interface MCPResource {
+export interface IMCPResource {
   uri: string;
   name: string;
   description?: string;
@@ -26,14 +27,14 @@ export interface MCPResource {
   };
 }
 
-export interface MCPResourceContent {
+export interface IMCPResourceContent {
   uri: string;
   mimeType?: string;
   text?: string;
   blob?: string;
 }
 
-export interface MCPTool {
+export interface IMCPTool {
   name: string;
   description?: string;
   inputSchema: {
@@ -44,12 +45,12 @@ export interface MCPTool {
   };
 }
 
-export interface MCPToolCall {
+export interface IMCPToolCall {
   name: string;
   arguments?: Record<string, any>;
 }
 
-export interface MCPToolResult {
+export interface IMCPToolResult {
   content: Array<{
     type: 'text' | 'image' | 'resource';
     text?: string;
@@ -59,7 +60,7 @@ export interface MCPToolResult {
   isError?: boolean;
 }
 
-export interface MCPPrompt {
+export interface IMCPPrompt {
   name: string;
   description?: string;
   arguments?: Array<{
@@ -69,7 +70,7 @@ export interface MCPPrompt {
   }>;
 }
 
-export interface MCPServerCapabilities {
+export interface IMCPServerCapabilities {
   resources?: {
     subscribe?: boolean;
     listChanged?: boolean;
@@ -84,7 +85,7 @@ export interface MCPServerCapabilities {
   experimental?: Record<string, any>;
 }
 
-export interface MCPClientCapabilities {
+export interface IMCPClientCapabilities {
   resources?: {
     subscribe?: boolean;
   };
@@ -95,9 +96,9 @@ export interface MCPClientCapabilities {
   experimental?: Record<string, any>;
 }
 
-export interface MCPInitializeResult {
+export interface IMCPInitializeResult {
   protocolVersion: string;
-  capabilities: MCPServerCapabilities;
+  capabilities: IMCPServerCapabilities;
   serverInfo: {
     name: string;
     version: string;
@@ -105,18 +106,18 @@ export interface MCPInitializeResult {
   instructions?: string;
 }
 
-export interface MCPConnectionStatus {
+export interface IMCPConnectionStatus {
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   serverName: string;
   error?: string;
   lastAttempt?: number;
-  capabilities?: MCPServerCapabilities;
+  capabilities?: IMCPServerCapabilities;
 }
 
 /**
  * MCP provider configuration for AI parameters
  */
-export interface MCPProviderParams {
+export interface IMCPProviderParams {
   mcpServers?: string[];
   maxResources?: number;
   resourcePriorityThreshold?: number;
@@ -127,7 +128,7 @@ export interface MCPProviderParams {
 /**
  * Intent analysis results
  */
-export interface UserIntent {
+export interface IUserIntent {
   /** Primary intent type */
   type: 'coding' | 'documentation' | 'debugging' | 'explanation' | 'generation' | 'completion';
   /** Confidence score 0-1 */
@@ -145,9 +146,9 @@ export interface UserIntent {
 /**
  * Resource relevance score
  */
-export interface ResourceScore {
+export interface IResourceScore {
   /** Resource reference */
-  resource: MCPResource;
+  resource: IMCPResource;
   /** Server name */
   serverName: string;
   /** Overall relevance score 0-1 */
@@ -167,21 +168,21 @@ export interface ResourceScore {
 /**
  * Enhanced resource selection result
  */
-export interface ResourceSelectionResult {
+export interface IResourceSelectionResult {
   /** Selected resources with scores */
-  selectedResources: ResourceScore[];
+  selectedResources: IResourceScore[];
   /** Total resources considered */
   totalResourcesConsidered: number;
   /** Selection strategy used */
   strategy: 'priority' | 'semantic' | 'hybrid';
   /** Intent analysis result */
-  intent: UserIntent;
+  intent: IUserIntent;
 }
 
 /**
  * Extended MCP provider configuration with intent matching
  */
-export interface EnhancedMCPProviderParams extends MCPProviderParams {
+export interface IEnhancedMCPProviderParams extends IMCPProviderParams {
   /** Enable intelligent resource selection */
   enableIntentMatching?: boolean;
   /** Minimum relevance score threshold */
@@ -199,7 +200,7 @@ export interface EnhancedMCPProviderParams extends MCPProviderParams {
 /**
  * Extended IParams interface with MCP support
  */
-export interface MCPAwareParams {
+export interface IMCPAwareParams {
   /** MCP-specific parameters */
-  mcp?: EnhancedMCPProviderParams;
+  mcp?: IEnhancedMCPProviderParams;
 }

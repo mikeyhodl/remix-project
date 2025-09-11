@@ -65,5 +65,9 @@
   "settings.aiCopilotDescription": "AI Copilot assists with code suggestions and improvements.",
   "settings.aiPrivacyPolicy": "AI Privacy & Data Usage",
   "settings.viewPrivacyPolicy": "View Privacy Policy",
-  "settings.aiPrivacyPolicyDescription": "Understand how AI processes your data."
+  "settings.aiPrivacyPolicyDescription": "Understand how AI processes your data.",
+  "settings.mcpServerConfiguration": "MCP Server Configuration",
+  "settings.mcpServerConfigurationDescription": "Connect to Model Context Protocol servers for enhanced AI context",
+  "settings.enableMCPEnhancement": "Enable MCP Integration",
+  "settings.enableMCPEnhancementDescription": "Manage your MCP server connections"
 }

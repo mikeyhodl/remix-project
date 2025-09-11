@@ -2,8 +2,7 @@
  * File Management Tool Handlers for Remix MCP Server
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolResult } from '../../types/mcp';
+import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
 import { 
   ToolCategory, 
@@ -17,6 +16,7 @@ import {
   DirectoryListArgs,
   FileOperationResult
 } from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * File Read Tool Handler
@@ -49,14 +49,14 @@ export class FileReadHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileReadArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileReadArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.path);
+      const exists = await plugin.call('filemanager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`File not found: ${args.path}`);
       }
 
-      const content = await remixApi.fileManager.methods.readFile(args.path);
+      const content = await plugin.call('filemanager', 'readFile', args.path)
       
       const result: FileOperationResult = {
         success: true,
@@ -116,9 +116,9 @@ export class FileWriteHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileWriteArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileWriteArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      await remixApi.fileManager.methods.writeFile(args.path, args.content);
+      await plugin.call('filemanager', 'writeFile', args.path, args.content);
       
       const result: FileOperationResult = {
         success: true,
@@ -185,17 +185,17 @@ export class FileCreateHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileCreateArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileCreateArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.path);
+      const exists = await plugin.call('filemanager', 'exists', args.path)
       if (exists) {
         return this.createErrorResult(`Path already exists: ${args.path}`);
       }
 
       if (args.type === 'directory') {
-        await remixApi.fileManager.methods.mkdir(args.path);
+        await plugin.call('filemanager', 'mkdir', args.path);
       } else {
-        await remixApi.fileManager.methods.writeFile(args.path, args.content || '');
+        await plugin.call('filemanager', 'writeFile', args.path, args.content || '');
       }
       
       const result: FileOperationResult = {
@@ -243,14 +243,14 @@ export class FileDeleteHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileDeleteArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileDeleteArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.path);
+      const exists = await plugin.call('filemanager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`Path not found: ${args.path}`);
       }
 
-      await remixApi.fileManager.methods.remove(args.path);
+      await plugin.call('filemanager', 'remove', args.path);
       
       const result: FileOperationResult = {
         success: true,
@@ -300,19 +300,19 @@ export class FileMoveHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileMoveArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileMoveArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.from);
+      const exists = await plugin.call('filemanager', 'exists', args.from);
       if (!exists) {
         return this.createErrorResult(`Source path not found: ${args.from}`);
       }
 
-      const destExists = await remixApi.fileManager.methods.exists(args.to);
+      const destExists = await plugin.call('filemanager', 'exists', args.to);
       if (destExists) {
         return this.createErrorResult(`Destination path already exists: ${args.to}`);
       }
 
-      await remixApi.fileManager.methods.rename(args.from, args.to);
+      await await plugin.call('filemanager', 'rename', args.from, args.to);
       
       const result: FileOperationResult = {
         success: true,
@@ -363,15 +363,15 @@ export class FileCopyHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: FileCopyArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: FileCopyArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.from);
+      const exists = await plugin.call('filemanager', 'exists', args.from);
       if (!exists) {
         return this.createErrorResult(`Source path not found: ${args.from}`);
       }
 
-      const content = await remixApi.fileManager.methods.readFile(args.from);
-      await remixApi.fileManager.methods.writeFile(args.to, content);
+      const content = await plugin.call('filemanager', 'readFile',args.from);
+      await plugin.call('filemanager', 'writeFile',args.to, content);
       
       const result: FileOperationResult = {
         success: true,
@@ -424,24 +424,24 @@ export class DirectoryListHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DirectoryListArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DirectoryListArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.path);
+      const exists = await plugin.call('filemanager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`Directory not found: ${args.path}`);
       }
 
-      const files = await remixApi.fileManager.methods.readdir(args.path);
+      const files = await await plugin.call('filemanager', 'readdir', args.path);
       const fileList = [];
 
       for (const file of files) {
         const fullPath = `${args.path}/${file}`;
         try {
-          const isDir = await remixApi.fileManager.methods.isDirectory(fullPath);
+          const isDir = await await plugin.call('filemanager', 'isDirectory', fullPath);
           let size = 0;
           
           if (!isDir) {
-            const content = await remixApi.fileManager.methods.readFile(fullPath);
+            const content = await plugin.call('filemanager', 'readFile',fullPath);
             size = content.length;
           }
 
@@ -454,7 +454,7 @@ export class DirectoryListHandler extends BaseToolHandler {
 
           // Recursive listing
           if (args.recursive && isDir) {
-            const subFiles = await this.execute({ path: fullPath, recursive: true }, remixApi);
+            const subFiles = await this.execute({ path: fullPath, recursive: true }, plugin);
             if (!subFiles.isError && subFiles.content[0]?.text) {
               const subResult = JSON.parse(subFiles.content[0].text);
               if (subResult.files) {
@@ -513,9 +513,9 @@ export class FileExistsHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { path: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { path: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await remixApi.fileManager.methods.exists(args.path);
+      const exists = await plugin.call('filemanager', 'exists', args.path)
       
       const result = {
         success: true,

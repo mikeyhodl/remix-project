@@ -2,8 +2,7 @@
  * Deployment and Contract Interaction Tool Handlers for Remix MCP Server
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolResult } from '../../types/mcp';
+import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
 import { 
   ToolCategory, 
@@ -14,6 +13,7 @@ import {
   DeploymentResult,
   ContractInteractionResult
 } from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Deploy Contract Tool Handler
@@ -82,11 +82,11 @@ export class DeployContractHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DeployContractArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get compilation result to find contract
       // TODO: Get actual compilation result
-      const contracts = {}; // await remixApi.solidity.getCompilationResult();
+      const contracts = {}; // await plugin.solidity.getCompilationResult();
       
       if (!contracts || Object.keys(contracts).length === 0) {
         return this.createErrorResult('No compiled contracts found. Please compile first.');
@@ -102,7 +102,7 @@ export class DeployContractHandler extends BaseToolHandler {
       }
 
       // Get current account
-      const accounts = await this.getAccounts(remixApi);
+      const accounts = await this.getAccounts(plugin);
       const deployAccount = args.account || accounts[0];
 
       if (!deployAccount) {
@@ -141,7 +141,7 @@ export class DeployContractHandler extends BaseToolHandler {
     }
   }
 
-  private async getAccounts(remixApi: ICustomRemixApi): Promise<string[]> {
+  private async getAccounts(plugin: Plugin): Promise<string[]> {
     try {
       // TODO: Get accounts from Remix API
       return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
@@ -235,7 +235,7 @@ export class CallContractHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: CallContractArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: CallContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Find the method in ABI
       const method = args.abi.find((item: any) => 
@@ -247,7 +247,7 @@ export class CallContractHandler extends BaseToolHandler {
       }
 
       // Get accounts
-      const accounts = await this.getAccounts(remixApi);
+      const accounts = await this.getAccounts(plugin);
       const callAccount = args.account || accounts[0];
 
       if (!callAccount) {
@@ -280,7 +280,7 @@ export class CallContractHandler extends BaseToolHandler {
     }
   }
 
-  private async getAccounts(remixApi: ICustomRemixApi): Promise<string[]> {
+  private async getAccounts(plugin: Plugin): Promise<string[]> {
     try {
       // TODO: Get accounts from Remix API
       return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
@@ -360,10 +360,10 @@ export class SendTransactionHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: SendTransactionArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: SendTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get accounts
-      const accounts = await this.getAccounts(remixApi);
+      const accounts = await this.getAccounts(plugin);
       const sendAccount = args.account || accounts[0];
 
       if (!sendAccount) {
@@ -388,7 +388,7 @@ export class SendTransactionHandler extends BaseToolHandler {
     }
   }
 
-  private async getAccounts(remixApi: ICustomRemixApi): Promise<string[]> {
+  private async getAccounts(plugin: Plugin): Promise<string[]> {
     try {
       // TODO: Get accounts from Remix API
       return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
@@ -418,7 +418,7 @@ export class GetDeployedContractsHandler extends BaseToolHandler {
     return ['deploy:read'];
   }
 
-  async execute(args: { network?: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { network?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get deployed contracts from Remix storage/state
       const mockDeployedContracts = [
@@ -481,7 +481,7 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { environment: string; networkUrl?: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { environment: string; networkUrl?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Set execution environment via Remix Run Tab API
       
@@ -531,7 +531,7 @@ export class GetAccountBalanceHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { account: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { account: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get account balance from current provider
       const mockBalance = (Math.random() * 10).toFixed(4);

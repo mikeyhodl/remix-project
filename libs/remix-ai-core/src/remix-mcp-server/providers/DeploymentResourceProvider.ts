@@ -2,8 +2,8 @@
  * Deployment Resource Provider - Provides access to deployment history and contract instances
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPResource, MCPResourceContent } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
 
@@ -11,8 +11,8 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
   name = 'deployment';
   description = 'Provides access to deployment history, contract instances, and transaction records';
 
-  async getResources(remixApi: ICustomRemixApi): Promise<MCPResource[]> {
-    const resources: MCPResource[] = [];
+  async getResources(plugin: Plugin): Promise<IMCPResource[]> {
+    const resources: IMCPResource[] = [];
 
     try {
       // Add deployment overview resources
@@ -23,7 +23,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Complete history of contract deployments',
           'application/json',
           { 
-            category: ResourceCategory.DEPLOYMENT,
+            category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['deployments', 'history', 'transactions'],
             priority: 9
           }
@@ -37,7 +37,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Currently active and deployed contracts',
           'application/json',
           {
-            category: ResourceCategory.DEPLOYMENT,
+            category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['active', 'deployed', 'contracts'],
             priority: 8
           }
@@ -51,7 +51,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Networks and environments where contracts are deployed',
           'application/json',
           {
-            category: ResourceCategory.DEPLOYMENT,
+            category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['networks', 'environments'],
             priority: 7
           }
@@ -65,7 +65,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Transaction details for all deployments',
           'application/json',
           {
-            category: ResourceCategory.DEPLOYMENT,
+            category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['transactions', 'gas', 'costs'],
             priority: 6
           }
@@ -79,7 +79,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Current deployment settings and environment configuration',
           'application/json',
           {
-            category: ResourceCategory.DEPLOYMENT,
+            category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['config', 'settings', 'environment'],
             priority: 5
           }
@@ -87,7 +87,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
       );
 
       // Add individual contract instance resources
-      await this.addContractInstances(remixApi, resources);
+      await this.addContractInstances(plugin, resources);
 
     } catch (error) {
       console.warn('Failed to get deployment resources:', error);
@@ -96,29 +96,29 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     return resources;
   }
 
-  async getResourceContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  async getResourceContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     if (uri === 'deployment://history') {
-      return this.getDeploymentHistory(remixApi);
+      return this.getDeploymentHistory(plugin);
     }
 
     if (uri === 'deployment://active') {
-      return this.getActiveDeployments(remixApi);
+      return this.getActiveDeployments(plugin);
     }
 
     if (uri === 'deployment://networks') {
-      return this.getDeploymentNetworks(remixApi);
+      return this.getDeploymentNetworks(plugin);
     }
 
     if (uri === 'deployment://transactions') {
-      return this.getDeploymentTransactions(remixApi);
+      return this.getDeploymentTransactions(plugin);
     }
 
     if (uri === 'deployment://config') {
-      return this.getDeploymentConfig(remixApi);
+      return this.getDeploymentConfig(plugin);
     }
 
     if (uri.startsWith('instance://')) {
-      return this.getContractInstance(uri, remixApi);
+      return this.getContractInstance(uri, plugin);
     }
 
     throw new Error(`Unsupported deployment resource URI: ${uri}`);
@@ -128,7 +128,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     return uri.startsWith('deployment://') || uri.startsWith('instance://');
   }
 
-  private async addContractInstances(remixApi: ICustomRemixApi, resources: MCPResource[]): Promise<void> {
+  private async addContractInstances(plugin: Plugin, resources: IMCPResource[]): Promise<void> {
     try {
       // TODO: Get actual deployed contract instances
       const mockInstances = [
@@ -152,7 +152,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
             `Deployed instance of ${instance.name} at ${instance.address}`,
             'application/json',
             {
-              category: ResourceCategory.DEPLOYMENT,
+              category: ResourceCategory.DEPLOYMENT_DATA,
               tags: ['instance', 'contract', instance.name.toLowerCase()],
               contractName: instance.name,
               contractAddress: instance.address,
@@ -167,7 +167,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getDeploymentHistory(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getDeploymentHistory(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // TODO: Get actual deployment history
       const deploymentHistory = {
@@ -224,7 +224,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getActiveDeployments(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getActiveDeployments(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const activeDeployments = {
         contracts: [
@@ -291,7 +291,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getDeploymentNetworks(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getDeploymentNetworks(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const networks = {
         configured: [
@@ -350,7 +350,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getDeploymentTransactions(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getDeploymentTransactions(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const transactions = {
         deployments: [
@@ -419,7 +419,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getDeploymentConfig(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getDeploymentConfig(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const config = {
         environment: {
@@ -468,7 +468,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getContractInstance(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getContractInstance(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     const contractAddress = uri.replace('instance://', '');
     
     try {

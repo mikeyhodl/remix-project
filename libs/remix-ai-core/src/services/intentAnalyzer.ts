@@ -1,4 +1,4 @@
-import { UserIntent } from '../types/mcp';
+import { IUserIntent } from '../types/mcp';
 
 /**
  * Service for analyzing user queries to extract intent and context
@@ -80,7 +80,7 @@ export class IntentAnalyzer {
   /**
    * Analyze user query to extract intent and context
    */
-  async analyzeIntent(query: string): Promise<UserIntent> {
+  async analyzeIntent(query: string): Promise<IUserIntent> {
     const normalizedQuery = query.toLowerCase().trim();
     
     // Extract intent type
@@ -128,12 +128,12 @@ export class IntentAnalyzer {
     return Array.from(expandedTerms);
   }
 
-  private extractIntentType(query: string): UserIntent['type'] {
+  private extractIntentType(query: string): IUserIntent['type'] {
     const scores = Object.entries(this.intentPatterns).map(([type, patterns]) => {
       const score = patterns.reduce((acc, pattern) => {
         return acc + (pattern.test(query) ? 1 : 0);
       }, 0);
-      return { type: type as UserIntent['type'], score };
+      return { type: type as IUserIntent['type'], score };
     });
 
     // Sort by score and return highest
@@ -141,7 +141,7 @@ export class IntentAnalyzer {
     return scores[0].score > 0 ? scores[0].type : 'explanation';
   }
 
-  private calculateConfidence(query: string, intentType: UserIntent['type']): number {
+  private calculateConfidence(query: string, intentType: IUserIntent['type']): number {
     const patterns = this.intentPatterns[intentType];
     const matchCount = patterns.filter(pattern => pattern.test(query)).length;
     const totalPatterns = patterns.length;
@@ -201,11 +201,11 @@ export class IntentAnalyzer {
     return detectedDomains;
   }
 
-  private determineComplexity(query: string): UserIntent['complexity'] {
+  private determineComplexity(query: string): IUserIntent['complexity'] {
     for (const [complexity, patterns] of Object.entries(this.complexityIndicators)) {
       const hasMatch = patterns.some(pattern => pattern.test(query));
       if (hasMatch) {
-        return complexity as UserIntent['complexity'];
+        return complexity as IUserIntent['complexity'];
       }
     }
     

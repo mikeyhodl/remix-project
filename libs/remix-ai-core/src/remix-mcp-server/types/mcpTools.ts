@@ -2,24 +2,18 @@
  * Types and interfaces for Remix IDE MCP Tools
  */
 
-import { MCPTool, MCPToolCall, MCPToolResult } from '../../types/mcp';
-import { ICustomRemixApi } from '@remix-api';
+import { IMCPTool, IMCPToolCall, IMCPToolResult } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Base interface for all Remix MCP tool handlers
  */
 export interface RemixToolHandler {
-  /** Tool name */
   name: string;
-  /** Tool description */
   description: string;
-  /** Input schema for the tool */
-  inputSchema: MCPTool['inputSchema'];
-  /** Execute the tool with given arguments */
-  execute(args: any, remixApi: ICustomRemixApi): Promise<MCPToolResult>;
-  /** Get tool permissions required */
+  inputSchema: IMCPTool['inputSchema'];
+  execute(args: any, plugin:Plugin): Promise<IMCPToolResult>;
   getPermissions?(): string[];
-  /** Validate tool arguments */
   validate?(args: any): boolean | string;
 }
 
@@ -41,19 +35,12 @@ export enum ToolCategory {
  * Tool execution context
  */
 export interface ToolExecutionContext {
-  /** User ID */
   userId?: string;
-  /** Session ID */
   sessionId?: string;
-  /** Current workspace */
   workspace?: string;
-  /** Current file */
   currentFile?: string;
-  /** User permissions */
   permissions: string[];
-  /** Request timestamp */
   timestamp: Date | number;
-  /** Request ID for tracking */
   requestId?: string;
 }
 
@@ -405,7 +392,7 @@ export interface TestResult {
 /**
  * Remix-specific tool extensions
  */
-export interface RemixToolDefinition extends MCPTool {
+export interface RemixToolDefinition extends IMCPTool {
   category: ToolCategory;
   permissions: string[];
   handler: RemixToolHandler;
@@ -419,5 +406,5 @@ export interface ToolRegistry {
   unregister(name: string): void;
   get(name: string): RemixToolDefinition | undefined;
   list(category?: ToolCategory): RemixToolDefinition[];
-  execute(call: MCPToolCall, context: ToolExecutionContext, remixApi: ICustomRemixApi): Promise<MCPToolResult>;
+  execute(call: IMCPToolCall, context: ToolExecutionContext, plugin: Plugin): Promise<IMCPToolResult>;
 }

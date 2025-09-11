@@ -3,7 +3,7 @@
  */
 
 import { ICustomRemixApi } from '@remix-api';
-import { MCPToolResult } from '../../types/mcp';
+import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
 import { 
   ToolCategory, 
@@ -19,6 +19,7 @@ import {
   BreakpointResult,
   DebugStepResult
 } from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Start Debug Session Tool Handler
@@ -79,7 +80,7 @@ export class StartDebugSessionHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugSessionArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugSessionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Integrate with Remix debugger plugin
       const sessionId = 'debug_' + Date.now();
@@ -162,10 +163,10 @@ export class SetBreakpointHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: BreakpointArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: BreakpointArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Check if source file exists
-      const exists = await remixApi.fileManager.methods.exists(args.sourceFile);
+      const exists = await plugin.call('filemanager', 'exists', args.sourceFile);
       if (!exists) {
         return this.createErrorResult(`Source file not found: ${args.sourceFile}`);
       }
@@ -236,7 +237,7 @@ export class DebugStepHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugStepArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugStepArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Execute step via Remix debugger API
       
@@ -319,7 +320,7 @@ export class DebugWatchHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugWatchArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugWatchArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Add watch via Remix debugger API
       const watchId = `watch_${Date.now()}`;
@@ -394,7 +395,7 @@ export class DebugEvaluateHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugEvaluateArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugEvaluateArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Evaluate expression via Remix debugger API
       
@@ -447,7 +448,7 @@ export class GetDebugCallStackHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugCallStackArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugCallStackArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get call stack via Remix debugger API
       
@@ -529,7 +530,7 @@ export class GetDebugVariablesHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: DebugVariablesArgs, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: DebugVariablesArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get variables via Remix debugger API
       
@@ -599,7 +600,7 @@ export class StopDebugSessionHandler extends BaseToolHandler {
     return true;
   }
 
-  async execute(args: { sessionId: string }, remixApi: ICustomRemixApi): Promise<MCPToolResult> {
+  async execute(args: { sessionId: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Stop debug session via Remix debugger API
       

@@ -2,8 +2,8 @@
  * Remix Resource Provider Registry Implementation
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPResource, MCPResourceContent } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { 
   ResourceProviderRegistry,
   RemixResourceProvider,
@@ -19,7 +19,7 @@ import {
 export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   private providers: Map<string, RemixResourceProvider> = new Map();
   private subscribers: Set<(event: ResourceUpdateEvent) => void> = new Set();
-  private resourceCache: Map<string, { resources: MCPResource[]; timestamp: Date }> = new Map();
+  private resourceCache: Map<string, { resources: IMCPResource[]; timestamp: Date }> = new Map();
   private cacheTimeout: number = 30000; // 30 seconds
 
   /**
@@ -85,20 +85,20 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    * Get resources from all providers
    */
   async getResources(query?: ResourceQuery): Promise<ResourceSearchResult> {
-    const allResources: MCPResource[] = [];
-    const remixApi = await this.getRemixApi();
+    const allResources: IMCPResource[] = [];
+    const plugin = await this.getplugin();
 
     // Collect resources from all providers
     for (const [name, provider] of this.providers) {
       try {
-        let resources: MCPResource[];
+        let resources: IMCPResource[];
         
         // Check cache first
         const cached = this.resourceCache.get(name);
         if (cached && Date.now() - cached.timestamp.getTime() < this.cacheTimeout) {
           resources = cached.resources;
         } else {
-          resources = await provider.getResources(remixApi);
+          resources = await provider.getResources(plugin);
           this.resourceCache.set(name, { resources, timestamp: new Date() });
         }
 
@@ -130,14 +130,14 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   /**
    * Get specific resource content
    */
-  async getResourceContent(uri: string): Promise<MCPResourceContent> {
-    const remixApi = await this.getRemixApi();
+  async getResourceContent(uri: string): Promise<IMCPResourceContent> {
+    const plugin = await this.getplugin();
 
     // Find provider that can handle this URI
     for (const provider of this.providers.values()) {
       if (provider.canHandle(uri)) {
         try {
-          return await provider.getResourceContent(uri, remixApi);
+          return await provider.getResourceContent(uri, plugin);
         } catch (error) {
           console.warn(`Provider ${provider.name} failed to get resource ${uri}:`, error);
         }
@@ -173,11 +173,11 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    */
   async refreshResources(): Promise<void> {
     this.resourceCache.clear();
-    const remixApi = await this.getRemixApi();
+    const plugin = await this.getplugin();
 
     for (const [name, provider] of this.providers) {
       try {
-        const resources = await provider.getResources(remixApi);
+        const resources = await provider.getResources(plugin);
         this.resourceCache.set(name, { resources, timestamp: new Date() });
       } catch (error) {
         console.warn(`Failed to refresh resources from provider ${name}:`, error);
@@ -190,11 +190,11 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    */
   async getProviderStats(): Promise<Record<string, any>> {
     const stats: Record<string, any> = {};
-    const remixApi = await this.getRemixApi();
+    const plugin = await this.getplugin();
 
     for (const [name, provider] of this.providers) {
       try {
-        const resources = await provider.getResources(remixApi);
+        const resources = await provider.getResources(plugin);
         stats[name] = {
           resourceCount: resources.length,
           lastUpdate: this.resourceCache.get(name)?.timestamp || null,
@@ -215,7 +215,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   /**
    * Search resources across all providers
    */
-  async searchResources(searchTerm: string, category?: ResourceCategory): Promise<MCPResource[]> {
+  async searchResources(searchTerm: string, category?: ResourceCategory): Promise<IMCPResource[]> {
     const searchResult = await this.getResources({
       keywords: [searchTerm],
       category,
@@ -236,7 +236,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   /**
    * Get resources by category
    */
-  async getResourcesByCategory(category: ResourceCategory): Promise<MCPResource[]> {
+  async getResourcesByCategory(category: ResourceCategory): Promise<IMCPResource[]> {
     const searchResult = await this.getResources({ category, limit: 1000 });
     return searchResult.resources;
   }
@@ -244,7 +244,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   /**
    * Apply query filters to resources
    */
-  private applyQuery(resources: MCPResource[], query: ResourceQuery): MCPResource[] {
+  private applyQuery(resources: IMCPResource[], query: ResourceQuery): IMCPResource[] {
     let filtered = resources;
 
     // Filter by category
@@ -323,10 +323,10 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    * Sort resources by specified criteria
    */
   private sortResources(
-    resources: MCPResource[], 
+    resources: IMCPResource[], 
     sortBy: 'name' | 'date' | 'size' | 'relevance', 
     order: 'asc' | 'desc'
-  ): MCPResource[] {
+  ): IMCPResource[] {
     const multiplier = order === 'desc' ? -1 : 1;
 
     return resources.sort((a, b) => {
@@ -370,11 +370,11 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   }
 
   /**
-   * Get RemixApi instance (placeholder)
+   * Get plugin instance (placeholder)
    */
-  private async getRemixApi(): Promise<ICustomRemixApi> {
-    // TODO: Get actual RemixApi instance
-    return {} as ICustomRemixApi;
+  private async getplugin(): Promise<Plugin> {
+    // TODO: Get actual plugin instance
+    return {} as Plugin;
   }
 }
 
@@ -385,8 +385,8 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
   abstract name: string;
   abstract description: string;
 
-  abstract getResources(remixApi: ICustomRemixApi): Promise<MCPResource[]>;
-  abstract getResourceContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent>;
+  abstract getResources(plugin: Plugin): Promise<IMCPResource[]>;
+  abstract getResourceContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent>;
   abstract canHandle(uri: string): boolean;
 
   getMetadata(): any {
@@ -407,7 +407,7 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
     description?: string, 
     mimeType?: string,
     metadata?: any
-  ): MCPResource {
+  ): IMCPResource {
     return {
       uri,
       name,
@@ -423,7 +423,7 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
   /**
    * Helper method to create text content
    */
-  protected createTextContent(uri: string, text: string, mimeType = 'text/plain'): MCPResourceContent {
+  protected createTextContent(uri: string, text: string, mimeType = 'text/plain'): IMCPResourceContent {
     return {
       uri,
       mimeType,
@@ -434,7 +434,7 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
   /**
    * Helper method to create JSON content
    */
-  protected createJsonContent(uri: string, data: any): MCPResourceContent {
+  protected createJsonContent(uri: string, data: any): IMCPResourceContent {
     return {
       uri,
       mimeType: 'application/json',

@@ -2,7 +2,7 @@
  * Types and interfaces for Remix IDE MCP Server
  */
 
-import { MCPServer, MCPServerCapabilities, MCPInitializeResult } from '../../types/mcp';
+import { IMCPServer, IMCPServerCapabilities, IMCPInitializeResult } from '../../types/mcp';
 import { ICustomRemixApi } from '@remix-api';
 import { ToolRegistry } from './mcpTools';
 import { ResourceProviderRegistry } from './mcpResources';
@@ -174,54 +174,37 @@ export interface PermissionCheckResult {
  * Remix MCP Server interface
  */
 export interface IRemixMCPServer extends EventEmitter {
-  /** Server configuration */
   readonly config: RemixMCPServerConfig;
-  /** Server state */
   readonly state: ServerState;
-  /** Server statistics */
   readonly stats: ServerStats;
-  /** Tool registry */
   readonly tools: ToolRegistry;
-  /** Resource registry */
   readonly resources: ResourceProviderRegistry;
-  /** Remix API instance */
-  readonly remixApi: ICustomRemixApi;
+  readonly plugin: ICustomRemixApi;
 
-  /** Initialize the server */
-  initialize(): Promise<MCPInitializeResult>;
+  initialize(): Promise<IMCPInitializeResult>;
   
-  /** Start the server */
   start(): Promise<void>;
   
-  /** Stop the server */
   stop(): Promise<void>;
   
-  /** Get server capabilities */
-  getCapabilities(): MCPServerCapabilities;
+  getCapabilities(): IMCPServerCapabilities;
   
-  /** Handle MCP protocol messages */
   handleMessage(message: any): Promise<any>;
   
-  /** Check user permissions for operation */
   checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult>;
   
-  /** Get active tool executions */
   getActiveExecutions(): ToolExecutionStatus[];
   
-  /** Get resource cache statistics */
   getCacheStats(): {
     size: number;
     hitRate: number;
     entries: ResourceCacheEntry[];
   };
   
-  /** Get audit log entries */
   getAuditLog(limit?: number): AuditLogEntry[];
   
-  /** Clear resource cache */
   clearCache(): void;
   
-  /** Refresh all resources */
   refreshResources(): Promise<void>;
 }
 
@@ -279,5 +262,5 @@ export enum MCPErrorCode {
  * Server factory interface
  */
 export interface RemixMCPServerFactory {
-  create(config: RemixMCPServerConfig, remixApi: ICustomRemixApi): IRemixMCPServer;
+  create(config: RemixMCPServerConfig, plugin: Plugin): IRemixMCPServer;
 }

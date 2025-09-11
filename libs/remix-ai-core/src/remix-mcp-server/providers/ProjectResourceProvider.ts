@@ -2,24 +2,30 @@
  * Project Resource Provider - Provides access to project files and metadata
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPResource, MCPResourceContent } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
 
 export class ProjectResourceProvider extends BaseResourceProvider {
   name = 'project';
   description = 'Provides access to project files, structure, and metadata';
+    private _plugin
 
-  async getResources(remixApi: ICustomRemixApi): Promise<MCPResource[]> {
-    const resources: MCPResource[] = [];
+  constructor (plugin){
+    super()
+    this._plugin = plugin
+  }
+
+  async getResources(plugin: Plugin): Promise<IMCPResource[]> {
+    const resources: IMCPResource[] = [];
 
     try {
       // Get workspace root
-      const workspacePath = await this.getWorkspacePath(remixApi);
+      const workspacePath = await this.getWorkspacePath(plugin);
       
       // Get project structure
-      await this.collectProjectResources(remixApi, workspacePath, resources);
+      await this.collectProjectResources(plugin, workspacePath, resources);
       
       // Add project metadata resources
       resources.push(
@@ -29,7 +35,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           'Hierarchical view of project files and folders',
           'application/json',
           { 
-            category: ResourceCategory.PROJECT,
+            category: ResourceCategory.PROJECT_FILES,
             tags: ['structure', 'files', 'folders'],
             priority: 8
           }
@@ -43,7 +49,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           'Project configuration files and settings',
           'application/json',
           {
-            category: ResourceCategory.PROJECT,
+            category: ResourceCategory.PROJECT_FILES,
             tags: ['config', 'settings'],
             priority: 7
           }
@@ -57,7 +63,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           'Package dependencies and imports',
           'application/json',
           {
-            category: ResourceCategory.PROJECT,
+            category: ResourceCategory.PROJECT_FILES,
             tags: ['dependencies', 'packages', 'imports'],
             priority: 6
           }
@@ -71,21 +77,21 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     return resources;
   }
 
-  async getResourceContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  async getResourceContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     if (uri.startsWith('project://structure')) {
-      return this.getProjectStructure(remixApi);
+      return this.getProjectStructure(plugin);
     }
 
     if (uri.startsWith('project://config')) {
-      return this.getProjectConfig(remixApi);
+      return this.getProjectConfig(plugin);
     }
 
     if (uri.startsWith('project://dependencies')) {
-      return this.getProjectDependencies(remixApi);
+      return this.getProjectDependencies(plugin);
     }
 
     if (uri.startsWith('file://')) {
-      return this.getFileContent(uri, remixApi);
+      return this.getFileContent(uri, plugin);
     }
 
     throw new Error(`Unsupported resource URI: ${uri}`);
@@ -96,9 +102,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   }
 
   private async collectProjectResources(
-    remixApi: ICustomRemixApi, 
+    plugin: Plugin, 
     path: string, 
-    resources: MCPResource[], 
+    resources: IMCPResource[], 
     visited: Set<string> = new Set()
   ): Promise<void> {
     if (visited.has(path) || path.includes('node_modules') || path.includes('.git')) {
@@ -107,17 +113,17 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     visited.add(path);
 
     try {
-      const exists = await remixApi.fileManager.exists(path);
+      const exists = await plugin.call('filemanager', 'exists', path);
       if (!exists) return;
 
-      const isDir = await remixApi.fileManager.isDirectory(path);
+      const isDir = await plugin.call('filemanager', 'isDirectory', path);
       
       if (isDir) {
         // Process directory
-        const files = await remixApi.fileManager.readdir(path);
+        const files = await plugin.call('filemanager', 'isDirectory', path);
         for (const file of files) {
           const fullPath = `${path}/${file}`;
-          await this.collectProjectResources(remixApi, fullPath, resources, visited);
+          await this.collectProjectResources(plugin, fullPath, resources, visited);
         }
       } else {
         // Process file
@@ -136,7 +142,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
                 category,
                 tags: this.getTagsForFile(path, fileExtension),
                 fileExtension,
-                size: await this.getFileSize(remixApi, path),
+                size: await this.getFileSize(plugin, path),
                 lastModified: new Date().toISOString()
               }
             )
@@ -148,10 +154,10 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getProjectStructure(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getProjectStructure(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      const workspacePath = await this.getWorkspacePath(remixApi);
-      const structure = await this.buildDirectoryTree(remixApi, workspacePath);
+      const workspacePath = await this.getWorkspacePath(plugin);
+      const structure = await this.buildDirectoryTree(plugin, workspacePath);
 
       return this.createJsonContent('project://structure', {
         root: workspacePath,
@@ -163,7 +169,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getProjectConfig(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getProjectConfig(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const configs: any = {};
       
@@ -181,9 +187,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
       for (const configFile of configFiles) {
         try {
-          const exists = await remixApi.fileManager.exists(configFile);
+          const exists = await plugin.call('filemanager', 'exists', configFile);
           if (exists) {
-            const content = await remixApi.fileManager.readFile(configFile);
+            const content = await plugin.call('filemanager', 'readFile', configFile);
             configs[configFile] = this.parseConfig(configFile, content);
           }
         } catch (error) {
@@ -200,7 +206,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getProjectDependencies(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getProjectDependencies(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const dependencies: any = {
         npm: {},
@@ -210,9 +216,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
       // Get npm dependencies from package.json
       try {
-        const packageExists = await remixApi.fileManager.exists('package.json');
+        const packageExists = await plugin.call('filemanager', 'existd', 'package.json');
         if (packageExists) {
-          const packageContent = await remixApi.fileManager.readFile('package.json');
+          const packageContent =await plugin.call('filemanager', 'readFile','package.json');
           const packageJson = JSON.parse(packageContent);
           dependencies.npm = {
             dependencies: packageJson.dependencies || {},
@@ -225,7 +231,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
       }
 
       // Scan for Solidity imports
-      await this.scanForImports(remixApi, '', dependencies);
+      await this.scanForImports(plugin, '', dependencies);
 
       return this.createJsonContent('project://dependencies', {
         ...dependencies,
@@ -236,16 +242,16 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getFileContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getFileContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     const filePath = uri.replace('file://', '');
     
     try {
-      const exists = await remixApi.fileManager.exists(filePath);
+      const exists = await plugin.call('filemanager', 'exists', filePath);
       if (!exists) {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      const content = await remixApi.fileManager.readFile(filePath);
+      const content = await plugin.call('filemanager', 'readFile', filePath);
       const extension = filePath.split('.').pop()?.toLowerCase() || '';
       const mimeType = this.getMimeTypeForFile(extension);
 
@@ -259,24 +265,24 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async buildDirectoryTree(remixApi: ICustomRemixApi, path: string, maxDepth = 10): Promise<any> {
+  private async buildDirectoryTree(plugin: Plugin, path: string, maxDepth = 10): Promise<any> {
     if (maxDepth <= 0) return { name: '...', type: 'truncated' };
 
     try {
-      const exists = await remixApi.fileManager.exists(path);
+      const exists = await plugin.call('filemanager', 'exists', path);
       if (!exists) return null;
 
       const name = path.split('/').pop() || path;
-      const isDir = await remixApi.fileManager.isDirectory(path);
+      const isDir = await plugin.call('filemanager', 'isDirectory', path);
 
       if (isDir) {
         const children = [];
         try {
-          const files = await remixApi.fileManager.readdir(path);
+          const files = await plugin.call('filemanager', 'isDirectory', path);
           for (const file of files.slice(0, 100)) { // Limit to prevent memory issues
             const fullPath = `${path}/${file}`;
             if (!file.startsWith('.') && !file.includes('node_modules')) {
-              const child = await this.buildDirectoryTree(remixApi, fullPath, maxDepth - 1);
+              const child = await this.buildDirectoryTree(plugin, fullPath, maxDepth - 1);
               if (child) children.push(child);
             }
           }
@@ -301,7 +307,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           type: 'file',
           path,
           extension,
-          size: await this.getFileSize(remixApi, path)
+          size: await this.getFileSize(plugin, path)
         };
       }
     } catch (error) {
@@ -309,23 +315,23 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async scanForImports(remixApi: ICustomRemixApi, path: string, dependencies: any): Promise<void> {
+  private async scanForImports(plugin: Plugin, path: string, dependencies: any): Promise<void> {
     try {
-      const exists = await remixApi.fileManager.exists(path || '');
+      const exists = await this._plugin.call('filemanager', 'exists', path || '') 
       if (!exists) return;
 
-      const isDir = await remixApi.fileManager.isDirectory(path || '');
+      const isDir = await this._plugin.call('filemanager', 'isDirectory', path || '') 
       
       if (isDir) {
-        const files = await remixApi.fileManager.readdir(path || '');
+        const files = await this._plugin.call('filemanager', 'readdir', path || '') 
         for (const file of files) {
           const fullPath = path ? `${path}/${file}` : file;
           if (!file.startsWith('.') && !file.includes('node_modules')) {
-            await this.scanForImports(remixApi, fullPath, dependencies);
+            await this.scanForImports(plugin, fullPath, dependencies);
           }
         }
       } else if (path.endsWith('.sol')) {
-        const content = await remixApi.fileManager.readFile(path);
+        const content = await this._plugin.call('filemanager', 'readFile', path) 
         const imports = this.extractSolidityImports(content);
         dependencies.imports.push(...imports.map(imp => ({
           file: path,
@@ -383,14 +389,14 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getWorkspacePath(remixApi: ICustomRemixApi): Promise<string> {
+  private async getWorkspacePath(plugin: Plugin): Promise<string> {
     // TODO: Get actual workspace path from Remix API
     return '';
   }
 
-  private async getFileSize(remixApi: ICustomRemixApi, path: string): Promise<number> {
+  private async getFileSize(plugin: Plugin, path: string): Promise<number> {
     try {
-      const content = await remixApi.fileManager.readFile(path);
+      const content = await this._plugin.call('filemanager', 'readFile', path)
       return content.length;
     } catch {
       return 0;
@@ -427,9 +433,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   private getCategoryForFile(extension: string): ResourceCategory {
     if (['sol'].includes(extension)) return ResourceCategory.CODE;
     if (['js', 'ts'].includes(extension)) return ResourceCategory.CODE;
-    if (['json', 'toml', 'yaml', 'yml'].includes(extension)) return ResourceCategory.PROJECT;
+    if (['json', 'toml', 'yaml', 'yml'].includes(extension)) return ResourceCategory.PROJECT_FILES;
     if (['md', 'txt'].includes(extension)) return ResourceCategory.DOCUMENTATION;
-    return ResourceCategory.PROJECT;
+    return ResourceCategory.PROJECT_FILES;
   }
 
   private getTagsForFile(path: string, extension: string): string[] {

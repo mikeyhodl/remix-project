@@ -15,7 +15,7 @@ const _paq = (window._paq = window._paq || [])
 const profile = {
   name: 'settings',
   displayName: 'Settings',
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting'],
+  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'set'],
   events: [],
   icon: 'assets/img/settings.webp',
   description: 'Remix-IDE settings',
@@ -93,6 +93,10 @@ export default class SettingsTab extends ViewPlugin {
 
   get(key) {
     return this.config.get(key)
+  }
+
+  set(key, value){
+    this.config[key] = value
   }
 
   updateCopilotChoice(isChecked) {

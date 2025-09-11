@@ -11,14 +11,6 @@ import { defaultValidationConfig } from './middleware/ValidationMiddleware';
 import type { SecurityConfig } from './middleware/SecurityMiddleware';
 import type { ValidationConfig } from './middleware/ValidationMiddleware';
 
-// API Integration
-export { 
-  RemixAPIIntegrationImpl,
-  MockRemixAPIIntegration,
-  createRemixAPIIntegration,
-  PluginIntegrationHelper
-} from './RemixAPIIntegration';
-
 // Tool Handlers
 export { createFileManagementTools } from './handlers/FileManagementHandler';
 export { createCompilationTools } from './handlers/CompilationHandler';
@@ -71,7 +63,7 @@ export * from './types/mcpResources';
  * Factory function to create and initialize a complete Remix MCP Server
  */
 export async function createRemixMCPServer(
-  remixApi: any,
+  plugin,
   options: {
     enableSecurity?: boolean;
     enableValidation?: boolean;
@@ -79,7 +71,7 @@ export async function createRemixMCPServer(
     validationConfig?: ValidationConfig;
     customTools?: any[];
     customProviders?: any[];
-  } = {}
+  } = {},
 ): Promise<RemixMCPServer> {
   const {
     enableSecurity = true,
@@ -117,7 +109,7 @@ export async function createRemixMCPServer(
     }
   };
   
-  const server = new RemixMCPServer(serverConfig, remixApi);
+  const server = new RemixMCPServer(plugin, serverConfig);
 
   // Register custom tools if provided
   if (customTools.length > 0) {
@@ -139,31 +131,6 @@ export async function createRemixMCPServer(
   await server.initialize();
 
   return server;
-}
-
-/**
- * Quick setup function for development/testing
- */
-export async function createDevMCPServer(remixApi: any): Promise<RemixMCPServer> {
-  return createRemixMCPServer(remixApi, {
-    enableSecurity: false, // Disable for easier development
-    enableValidation: true
-  });
-}
-
-/**
- * Production setup function with all security enabled
- */
-export async function createProductionMCPServer(remixApi: any): Promise<RemixMCPServer> {
-  return createRemixMCPServer(remixApi, {
-    enableSecurity: true,
-    enableValidation: true,
-    securityConfig: {
-      ...defaultSecurityConfig,
-      enableAuditLog: true,
-      requirePermissions: true
-    }
-  });
 }
 
 /**

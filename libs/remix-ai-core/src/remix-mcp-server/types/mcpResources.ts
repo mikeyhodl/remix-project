@@ -2,24 +2,18 @@
  * Types and interfaces for Remix IDE MCP Resources
  */
 
-import { MCPResource, MCPResourceContent } from '../../types/mcp';
-import { ICustomRemixApi } from '@remix-api';
+import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Base interface for all Remix MCP resource providers
  */
 export interface RemixResourceProvider {
-  /** Provider name */
   name: string;
-  /** Provider description */
   description: string;
-  /** Get all resources provided by this provider */
-  getResources(remixApi: ICustomRemixApi): Promise<MCPResource[]>;
-  /** Get specific resource content */
-  getResourceContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent>;
-  /** Check if provider can handle this URI */
+  getResources(plugin: Plugin): Promise<IMCPResource[]>;
+  getResourceContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent>;
   canHandle(uri: string): boolean;
-  /** Get provider-specific metadata */
   getMetadata?(): any;
 }
 
@@ -28,6 +22,7 @@ export interface RemixResourceProvider {
  */
 export enum ResourceCategory {
   PROJECT_FILES = 'project_files',
+  CODE = 'CODE',
   COMPILATION_RESULTS = 'compilation_results',
   DEPLOYMENT_DATA = 'deployment_data',
   DEBUG_SESSIONS = 'debug_sessions',
@@ -56,7 +51,7 @@ export interface ResourceMetadata {
 /**
  * Project file resource
  */
-export interface ProjectFileResource extends MCPResource {
+export interface ProjectFileResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.PROJECT_FILES;
     path: string;
@@ -69,7 +64,7 @@ export interface ProjectFileResource extends MCPResource {
 /**
  * Compilation result resource
  */
-export interface CompilationResultResource extends MCPResource {
+export interface CompilationResultResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.COMPILATION_RESULTS;
     contractName: string;
@@ -85,7 +80,7 @@ export interface CompilationResultResource extends MCPResource {
 /**
  * Deployment data resource
  */
-export interface DeploymentDataResource extends MCPResource {
+export interface DeploymentDataResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.DEPLOYMENT_DATA;
     contractName: string;
@@ -102,7 +97,7 @@ export interface DeploymentDataResource extends MCPResource {
 /**
  * Debug session resource
  */
-export interface DebugSessionResource extends MCPResource {
+export interface DebugSessionResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.DEBUG_SESSIONS;
     transactionHash: string;
@@ -120,7 +115,7 @@ export interface DebugSessionResource extends MCPResource {
 /**
  * Analysis report resource
  */
-export interface AnalysisReportResource extends MCPResource {
+export interface AnalysisReportResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.ANALYSIS_REPORTS;
     analyzer: string;
@@ -135,7 +130,7 @@ export interface AnalysisReportResource extends MCPResource {
 /**
  * Documentation resource
  */
-export interface DocumentationResource extends MCPResource {
+export interface DocumentationResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.DOCUMENTATION;
     topic: string;
@@ -149,7 +144,7 @@ export interface DocumentationResource extends MCPResource {
 /**
  * Template resource
  */
-export interface TemplateResource extends MCPResource {
+export interface TemplateResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.TEMPLATES;
     templateType: 'contract' | 'project' | 'script' | 'test';
@@ -163,7 +158,7 @@ export interface TemplateResource extends MCPResource {
 /**
  * Configuration resource
  */
-export interface ConfigurationResource extends MCPResource {
+export interface ConfigurationResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.CONFIGURATION;
     configType: 'compiler' | 'network' | 'workspace' | 'plugin';
@@ -175,7 +170,7 @@ export interface ConfigurationResource extends MCPResource {
 /**
  * Transaction history resource
  */
-export interface TransactionHistoryResource extends MCPResource {
+export interface TransactionHistoryResource extends IMCPResource {
   metadata: ResourceMetadata & {
     category: ResourceCategory.TRANSACTION_HISTORY;
     transactionType: 'deployment' | 'interaction' | 'transfer';
@@ -193,7 +188,7 @@ export interface TransactionHistoryResource extends MCPResource {
  */
 export interface ResourceUpdateEvent {
   type: 'created' | 'updated' | 'deleted';
-  resource: MCPResource;
+  resource: IMCPResource;
   timestamp: Date;
   provider: string;
 }
@@ -224,7 +219,7 @@ export interface ResourceQuery {
  * Resource search result
  */
 export interface ResourceSearchResult {
-  resources: MCPResource[];
+  resources: IMCPResource[];
   total: number;
   hasMore: boolean;
   query: ResourceQuery;
@@ -239,7 +234,7 @@ export interface ResourceProviderRegistry {
   get(name: string): RemixResourceProvider | undefined;
   list(): RemixResourceProvider[];
   getResources(query?: ResourceQuery): Promise<ResourceSearchResult>;
-  getResourceContent(uri: string): Promise<MCPResourceContent>;
+  getResourceContent(uri: string): Promise<IMCPResourceContent>;
   subscribe(callback: (event: ResourceUpdateEvent) => void): void;
   unsubscribe(callback: (event: ResourceUpdateEvent) => void): void;
 }

@@ -1,4 +1,4 @@
-import { MCPResource, UserIntent, ResourceScore, EnhancedMCPProviderParams } from '../types/mcp';
+import { IMCPResource, IUserIntent, IResourceScore, IEnhancedMCPProviderParams } from '../types/mcp';
 
 /**
  * Service for scoring and ranking MCP resources based on user intent
@@ -16,7 +16,7 @@ export class ResourceScoring {
     nft: 0.7
   };
 
-  private readonly intentTypeWeights: Record<UserIntent['type'], Record<string, number>> = {
+  private readonly intentTypeWeights: Record<IUserIntent['type'], Record<string, number>> = {
     coding: {
       code: 1.0,
       example: 0.9,
@@ -65,14 +65,14 @@ export class ResourceScoring {
    * Score a collection of resources against user intent
    */
   async scoreResources(
-    resources: Array<{ resource: MCPResource; serverName: string }>,
-    intent: UserIntent,
-    params: EnhancedMCPProviderParams = {}
-  ): Promise<ResourceScore[]> {
+    resources: Array<{ resource: IMCPResource; serverName: string }>,
+    intent: IUserIntent,
+    params: IEnhancedMCPProviderParams = {}
+  ): Promise<IResourceScore[]> {
     const domainWeights = { ...this.defaultDomainWeights, ...(params.domainWeights || {}) };
     const relevanceThreshold = params.relevanceThreshold || 0.1;
     
-    const scoredResources: ResourceScore[] = [];
+    const scoredResources: IResourceScore[] = [];
 
     for (const { resource, serverName } of resources) {
       const score = this.calculateResourceScore(resource, intent, domainWeights);
@@ -96,10 +96,10 @@ export class ResourceScoring {
    * Select best resources based on strategy and constraints
    */
   selectResources(
-    scoredResources: ResourceScore[],
+    scoredResources: IResourceScore[],
     maxResources: number = 10,
     strategy: 'priority' | 'semantic' | 'hybrid' = 'hybrid'
-  ): ResourceScore[] {
+  ): IResourceScore[] {
     switch (strategy) {
       case 'priority':
         return this.selectByPriority(scoredResources, maxResources);
@@ -113,10 +113,10 @@ export class ResourceScoring {
   }
 
   private calculateResourceScore(
-    resource: MCPResource,
-    intent: UserIntent,
+    resource: IMCPResource,
+    intent: IUserIntent,
     domainWeights: Record<string, number>
-  ): { score: number; components: ResourceScore['components']; reasoning: string } {
+  ): { score: number; components: IResourceScore['components']; reasoning: string } {
     const components = {
       keywordMatch: this.calculateKeywordMatch(resource, intent.keywords),
       domainRelevance: this.calculateDomainRelevance(resource, intent.domains, domainWeights),
@@ -143,7 +143,7 @@ export class ResourceScoring {
     return { score, components, reasoning };
   }
 
-  private calculateKeywordMatch(resource: MCPResource, keywords: string[]): number {
+  private calculateKeywordMatch(resource: IMCPResource, keywords: string[]): number {
     if (keywords.length === 0) return 0;
 
     const resourceText = [
@@ -160,7 +160,7 @@ export class ResourceScoring {
   }
 
   private calculateDomainRelevance(
-    resource: MCPResource, 
+    resource: IMCPResource, 
     domains: string[], 
     domainWeights: Record<string, number>
   ): number {
@@ -186,7 +186,7 @@ export class ResourceScoring {
     return matchCount > 0 ? totalRelevance / matchCount : 0;
   }
 
-  private calculateTypeRelevance(resource: MCPResource, intentType: UserIntent['type']): number {
+  private calculateTypeRelevance(resource: IMCPResource, intentType: IUserIntent['type']): number {
     const typeWeights = this.intentTypeWeights[intentType];
     if (!typeWeights) return 0.5;
 
@@ -206,7 +206,7 @@ export class ResourceScoring {
     return maxRelevance;
   }
 
-  private calculatePriorityScore(resource: MCPResource): number {
+  private calculatePriorityScore(resource: IMCPResource): number {
     const priority = resource.annotations?.priority;
     if (typeof priority === 'number') {
       // Normalize priority (assuming 1-10 scale)
@@ -215,20 +215,20 @@ export class ResourceScoring {
     return 0.5; // Default if no priority specified
   }
 
-  private calculateFreshnessScore(resource: MCPResource): number {
+  private calculateFreshnessScore(resource: IMCPResource): number {
     // This could be enhanced with actual last-modified dates
     // For now, return a neutral score
     return 0.5;
   }
 
-  private selectByPriority(resources: ResourceScore[], maxResources: number): ResourceScore[] {
+  private selectByPriority(resources: IResourceScore[], maxResources: number): IResourceScore[] {
     return [...resources]
       .sort((a, b) => b.components.priority - a.components.priority)
       .slice(0, maxResources);
   }
 
-  private selectBySemantic(resources: ResourceScore[], maxResources: number): ResourceScore[] {
-    const semanticScore = (r: ResourceScore) => 
+  private selectBySemantic(resources: IResourceScore[], maxResources: number): IResourceScore[] {
+    const semanticScore = (r: IResourceScore) => 
       (r.components.keywordMatch + r.components.domainRelevance + r.components.typeRelevance) / 3;
     
     return [...resources]
@@ -236,9 +236,9 @@ export class ResourceScoring {
       .slice(0, maxResources);
   }
 
-  private selectByHybrid(resources: ResourceScore[], maxResources: number): ResourceScore[] {
+  private selectByHybrid(resources: IResourceScore[], maxResources: number): IResourceScore[] {
     // Ensure diversity by selecting from different servers and types
-    const selected: ResourceScore[] = [];
+    const selected: IResourceScore[] = [];
     const serverCounts = new Map<string, number>();
     const typeCounts = new Map<string, number>();
 
@@ -263,7 +263,7 @@ export class ResourceScoring {
     return selected;
   }
 
-  private inferResourceType(resource: MCPResource): string {
+  private inferResourceType(resource: IMCPResource): string {
     const name = resource.name.toLowerCase();
     const uri = resource.uri.toLowerCase();
     
@@ -278,9 +278,9 @@ export class ResourceScoring {
   }
 
   private generateReasoningExplanation(
-    components: ResourceScore['components'],
-    resource: MCPResource,
-    intent: UserIntent
+    components: IResourceScore['components'],
+    resource: IMCPResource,
+    intent: IUserIntent
   ): string {
     const reasons = [];
     

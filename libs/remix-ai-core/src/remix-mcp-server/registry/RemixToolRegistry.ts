@@ -3,8 +3,7 @@
  */
 
 import EventEmitter from 'events';
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolCall, MCPToolResult } from '../../types/mcp';
+import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
 import { 
   ToolRegistry, 
   RemixToolDefinition, 
@@ -12,6 +11,7 @@ import {
   ToolExecutionContext,
   RemixToolHandler
 } from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
 
 /**
  * Registry for managing Remix MCP tools
@@ -87,10 +87,10 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
    * Execute a tool
    */
   async execute(
-    call: MCPToolCall, 
-    context: ToolExecutionContext, 
-    remixApi: ICustomRemixApi
-  ): Promise<MCPToolResult> {
+    call: IMCPToolCall, 
+    context: ToolExecutionContext,
+    plugin: Plugin
+  ): Promise<IMCPToolResult> {
     const tool = this.tools.get(call.name);
     if (!tool) {
       throw new Error(`Tool '${call.name}' not found`);
@@ -114,7 +114,7 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
 
     // Execute the tool
     try {
-      const result = await tool.handler.execute(call.arguments || {}, remixApi);
+      const result = await tool.handler.execute(call.arguments || {}, plugin);
       this.emit('tool-executed', call.name, context, result);
       return result;
     } catch (error) {
@@ -233,7 +233,7 @@ export abstract class BaseToolHandler implements RemixToolHandler {
   abstract description: string;
   abstract inputSchema: any;
 
-  abstract execute(args: any, remixApi: ICustomRemixApi): Promise<MCPToolResult>;
+  abstract execute(args: any, plugin:Plugin): Promise<IMCPToolResult>;
 
   getPermissions(): string[] {
     return [];
@@ -246,7 +246,7 @@ export abstract class BaseToolHandler implements RemixToolHandler {
   /**
    * Helper method to create success result
    */
-  protected createSuccessResult(content: any): MCPToolResult {
+  protected createSuccessResult(content: any): IMCPToolResult {
     return {
       content: [{
         type: 'text',
@@ -259,7 +259,7 @@ export abstract class BaseToolHandler implements RemixToolHandler {
   /**
    * Helper method to create error result
    */
-  protected createErrorResult(error: string | Error): MCPToolResult {
+  protected createErrorResult(error: string | Error): IMCPToolResult {
     const message = error instanceof Error ? error.message : error;
     return {
       content: [{

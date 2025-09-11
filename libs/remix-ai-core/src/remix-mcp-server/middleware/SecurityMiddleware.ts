@@ -2,8 +2,8 @@
  * Security Middleware for Remix MCP Server
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPToolCall, MCPToolResult } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
 import { ToolExecutionContext } from '../types/mcpTools';
 
 export interface SecurityConfig {
@@ -47,9 +47,9 @@ export class SecurityMiddleware {
    * Validate a tool call before execution
    */
   async validateToolCall(
-    call: MCPToolCall, 
+    call: IMCPToolCall, 
     context: ToolExecutionContext,
-    remixApi: ICustomRemixApi
+    plugin: Plugin
   ): Promise<SecurityValidationResult> {
     const startTime = Date.now();
     
@@ -69,14 +69,14 @@ export class SecurityMiddleware {
       }
 
       // Argument validation
-      const argumentResult = await this.validateArguments(call, remixApi);
+      const argumentResult = await this.validateArguments(call, plugin);
       if (!argumentResult.allowed) {
         this.logAudit(call, context, 'blocked', argumentResult.reason, startTime, argumentResult.risk || 'medium');
         return argumentResult;
       }
 
       // File operation security checks
-      const fileResult = await this.validateFileOperations(call, remixApi);
+      const fileResult = await this.validateFileOperations(call, plugin);
       if (!fileResult.allowed) {
         this.logAudit(call, context, 'blocked', fileResult.reason, startTime, fileResult.risk || 'high');
         return fileResult;
@@ -174,7 +174,7 @@ export class SecurityMiddleware {
   /**
    * Validate user permissions for tool execution
    */
-  private validatePermissions(call: MCPToolCall, context: ToolExecutionContext): SecurityValidationResult {
+  private validatePermissions(call: IMCPToolCall, context: ToolExecutionContext): SecurityValidationResult {
     if (!this.config.requirePermissions) {
       return { allowed: true, risk: 'low' };
     }
@@ -203,7 +203,7 @@ export class SecurityMiddleware {
   /**
    * Validate tool arguments for security issues
    */
-  private async validateArguments(call: MCPToolCall, remixApi: ICustomRemixApi): Promise<SecurityValidationResult> {
+  private async validateArguments(call: IMCPToolCall, plugin: Plugin): Promise<SecurityValidationResult> {
     const args = call.arguments || {};
 
     // Check for potentially dangerous patterns
@@ -247,7 +247,7 @@ export class SecurityMiddleware {
   /**
    * Validate file operations for security
    */
-  private async validateFileOperations(call: MCPToolCall, remixApi: ICustomRemixApi): Promise<SecurityValidationResult> {
+  private async validateFileOperations(call: IMCPToolCall, plugin: Plugin): Promise<SecurityValidationResult> {
     const args = call.arguments || {};
     
     // File operation tools
@@ -342,10 +342,7 @@ export class SecurityMiddleware {
     return { allowed: true, risk: 'low' };
   }
 
-  /**
-   * Validate input sanitization
-   */
-  private validateInputSanitization(call: MCPToolCall): SecurityValidationResult {
+  private validateInputSanitization(call: IMCPToolCall): SecurityValidationResult {
     const args = call.arguments || {};
 
     // Check for SQL injection patterns (even though we're not using SQL)
@@ -393,6 +390,7 @@ export class SecurityMiddleware {
    */
   private getRequiredPermissions(toolName: string): string[] {
     // This would typically come from the tool registry
+    // TODO update the tools
     const toolPermissions: Record<string, string[]> = {
       'file_write': ['file:write'],
       'file_delete': ['file:delete'],
@@ -409,7 +407,7 @@ export class SecurityMiddleware {
    * Log audit entry
    */
   private logAudit(
-    call: MCPToolCall, 
+    call: IMCPToolCall, 
     context: ToolExecutionContext, 
     result: 'success' | 'error' | 'blocked',
     reason: string,
@@ -442,66 +440,31 @@ export class SecurityMiddleware {
     }
   }
 
-  /**
-   * Get audit log entries
-   */
   getAuditLog(limit = 100): AuditLogEntry[] {
     return this.auditLog.slice(-limit);
   }
 
-  /**
-   * Clear audit log
-   */
   clearAuditLog(): void {
     this.auditLog = [];
   }
 
-  /**
-   * Get security statistics
-   */
-  getSecurityStats(): any {
-    const recentEntries = this.auditLog.slice(-100);
-    
-    return {
-      totalRequests: this.auditLog.length,
-      recentRequests: recentEntries.length,
-      blockedRequests: recentEntries.filter(e => e.result === 'blocked').length,
-      errorRequests: recentEntries.filter(e => e.result === 'error').length,
-      highRiskRequests: recentEntries.filter(e => e.riskLevel === 'high').length,
-      averageExecutionTime: recentEntries.reduce((sum, e) => sum + e.executionTime, 0) / recentEntries.length || 0,
-      activeUsers: new Set(recentEntries.map(e => e.userId).filter(Boolean)).size,
-      rateLimitHits: this.auditLog.filter(e => e.reason?.includes('Rate limit')).length
-    };
-  }
 
-  /**
-   * Block an IP address
-   */
   blockIP(ip: string): void {
     this.blockedIPs.add(ip);
   }
 
-  /**
-   * Unblock an IP address
-   */
   unblockIP(ip: string): void {
     this.blockedIPs.delete(ip);
   }
 
-  /**
-   * Check if IP is blocked
-   */
   isIPBlocked(ip: string): boolean {
     return this.blockedIPs.has(ip);
   }
 }
 
-/**
- * Default security configuration
- */
 export const defaultSecurityConfig: SecurityConfig = {
   maxRequestsPerMinute: 60,
-  maxFileSize: 1024 * 1024, // 1MB
+  maxFileSize: 1024 * 1024 * 2, // 2MB
   allowedFileTypes: ['sol', 'js', 'ts', 'json', 'md', 'txt', 'toml', 'yaml', 'yml'],
   blockedPaths: ['.env', '.git', 'node_modules', '.ssh', 'private', 'secret'],
   requirePermissions: true,

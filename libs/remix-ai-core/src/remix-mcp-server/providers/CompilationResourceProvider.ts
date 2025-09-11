@@ -2,17 +2,23 @@
  * Compilation Resource Provider - Provides access to compilation results and artifacts
  */
 
-import { ICustomRemixApi } from '@remix-api';
-import { MCPResource, MCPResourceContent } from '../../types/mcp';
+import { Plugin } from '@remixproject/engine';
+import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
+import { publicDecrypt } from 'crypto';
 
 export class CompilationResourceProvider extends BaseResourceProvider {
   name = 'compilation';
   description = 'Provides access to compilation results, artifacts, and contract metadata';
+  private _plugin
 
-  async getResources(remixApi: ICustomRemixApi): Promise<MCPResource[]> {
-    const resources: MCPResource[] = [];
+  constructor (plugin){
+    super()
+    this._plugin = plugin
+  }
+  async getResources(plugin: Plugin): Promise<IMCPResource[]> {
+    const resources: IMCPResource[] = [];
 
     try {
       // Add compilation results
@@ -23,7 +29,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Most recent compilation output with contracts and errors',
           'application/json',
           { 
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['compilation', 'latest', 'results'],
             priority: 9
           }
@@ -37,7 +43,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'All successfully compiled contracts with metadata',
           'application/json',
           {
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['contracts', 'abi', 'bytecode'],
             priority: 8
           }
@@ -51,7 +57,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Latest compilation errors and warnings',
           'application/json',
           {
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['errors', 'warnings', 'diagnostics'],
             priority: 7
           }
@@ -65,7 +71,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Compilation artifacts and build outputs',
           'application/json',
           {
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['artifacts', 'build', 'output'],
             priority: 6
           }
@@ -79,7 +85,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Contract dependencies and import graph',
           'application/json',
           {
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['dependencies', 'imports', 'graph'],
             priority: 5
           }
@@ -93,7 +99,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Current compiler settings and configuration',
           'application/json',
           {
-            category: ResourceCategory.COMPILATION,
+            category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['config', 'compiler', 'settings'],
             priority: 5
           }
@@ -101,7 +107,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
       );
 
       // Add individual contract resources if available
-      await this.addContractResources(remixApi, resources);
+      await this.addContractResources(plugin, resources);
 
     } catch (error) {
       console.warn('Failed to get compilation resources:', error);
@@ -110,33 +116,33 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     return resources;
   }
 
-  async getResourceContent(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  async getResourceContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     if (uri === 'compilation://latest') {
-      return this.getLatestCompilationResult(remixApi);
+      return this.getLatestCompilationResult(plugin);
     }
 
     if (uri === 'compilation://contracts') {
-      return this.getCompiledContracts(remixApi);
+      return this.getCompiledContracts(plugin);
     }
 
     if (uri === 'compilation://errors') {
-      return this.getCompilationErrors(remixApi);
+      return this.getCompilationErrors(plugin);
     }
 
     if (uri === 'compilation://artifacts') {
-      return this.getBuildArtifacts(remixApi);
+      return this.getBuildArtifacts(plugin);
     }
 
     if (uri === 'compilation://dependencies') {
-      return this.getCompilationDependencies(remixApi);
+      return this.getCompilationDependencies(plugin);
     }
 
     if (uri === 'compilation://config') {
-      return this.getCompilerConfig(remixApi);
+      return this.getCompilerConfig(plugin);
     }
 
     if (uri.startsWith('contract://')) {
-      return this.getContractDetails(uri, remixApi);
+      return this.getContractDetails(uri, plugin);
     }
 
     throw new Error(`Unsupported compilation resource URI: ${uri}`);
@@ -146,7 +152,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     return uri.startsWith('compilation://') || uri.startsWith('contract://');
   }
 
-  private async addContractResources(remixApi: ICustomRemixApi, resources: MCPResource[]): Promise<void> {
+  private async addContractResources(plugin: Plugin, resources: IMCPResource[]): Promise<void> {
     try {
       // TODO: Get actual compilation result from Remix API
       const mockContracts = ['MyToken', 'TokenSale', 'Ownable']; // Mock data
@@ -159,7 +165,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
             `Detailed information about ${contractName} contract`,
             'application/json',
             {
-              category: ResourceCategory.COMPILATION,
+              category: ResourceCategory.COMPILATION_RESULTS,
               tags: ['contract', contractName.toLowerCase(), 'details'],
               contractName,
               priority: 4
@@ -172,9 +178,10 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getLatestCompilationResult(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getLatestCompilationResult(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // TODO: Get actual compilation result from Remix API
+
       const compilationResult = {
         status: 'success',
         timestamp: new Date().toISOString(),
@@ -228,7 +235,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getCompiledContracts(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getCompiledContracts(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // TODO: Get contracts from actual compilation result
       const contracts = {
@@ -296,7 +303,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getCompilationErrors(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getCompilationErrors(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // TODO: Get actual compilation errors
       const errors = {
@@ -342,7 +349,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getBuildArtifacts(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getBuildArtifacts(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const artifacts = {
         buildInfo: {
@@ -384,7 +391,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getCompilationDependencies(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getCompilationDependencies(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const dependencies = {
         imports: {
@@ -423,10 +430,10 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getCompilerConfig(remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getCompilerConfig(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // Get compiler config from Remix API
-      const configString = await remixApi.config.getAppParameter('solidity-compiler');
+      const configString = await this._plugin.call('config', 'getAppParameter', 'solidity-compiler')
       let config: any;
       
       if (configString) {
@@ -465,7 +472,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     }
   }
 
-  private async getContractDetails(uri: string, remixApi: ICustomRemixApi): Promise<MCPResourceContent> {
+  private async getContractDetails(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     const contractName = uri.replace('contract://', '');
     
     try {

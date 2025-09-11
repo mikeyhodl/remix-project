@@ -145,8 +145,8 @@ const settingsSections: SettingsSection[] = [
       title: 'MCP Servers',
       options: [{
         name: 'mcp/servers/enable',
-        label: 'Enable MCP Integration',
-        description: 'Connect to Model Context Protocol servers for enhanced AI context',
+        label: 'settings.enableMCPEnhancement',
+        description: 'settings.enableMCPEnhancementDescription',
         type: 'toggle',
         footnote: {
           text: 'Learn more about MCP',
@@ -156,8 +156,8 @@ const settingsSections: SettingsSection[] = [
       },
       {
         name: 'mcp-server-management',
-        label: 'MCP Server Configuration',
-        description: 'Manage your MCP server connections',
+        label: 'settings.mcpServerConfiguration',
+        description: 'settings.mcpServerConfigurationDescription',
         type: 'custom',
         customComponent: 'mcpServerManager'
       }]

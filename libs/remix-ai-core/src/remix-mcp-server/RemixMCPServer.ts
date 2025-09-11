@@ -5,12 +5,11 @@
 import EventEmitter from 'events';
 import { ICustomRemixApi } from '@remix-api';
 import { 
-  MCPInitializeResult, 
-  MCPServerCapabilities, 
-  MCPToolCall, 
-  MCPToolResult,
-  MCPResource,
-  MCPResourceContent
+  IMCPInitializeResult, 
+  IMCPServerCapabilities, 
+  IMCPToolCall, 
+  IMCPToolResult,
+  IMCPResourceContent
 } from '../types/mcp';
 import {
   IRemixMCPServer,
@@ -40,16 +39,16 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private _stats: ServerStats;
   private _tools: ToolRegistry;
   private _resources: ResourceProviderRegistry;
-  private _remixApi: ICustomRemixApi;
+  private _plugin
   private _activeExecutions: Map<string, ToolExecutionStatus> = new Map();
   private _resourceCache: Map<string, ResourceCacheEntry> = new Map();
   private _auditLog: AuditLogEntry[] = [];
   private _startTime: Date = new Date();
 
-  constructor(config: RemixMCPServerConfig, remixApi: ICustomRemixApi) {
+  constructor(plugin, config: RemixMCPServerConfig) {
     super();
     this._config = config;
-    this._remixApi = remixApi;
+    this._plugin = plugin
     this._tools = new RemixToolRegistry();
     this._resources = new RemixResourceProviderRegistry();
     
@@ -88,14 +87,14 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     return this._resources;
   }
 
-  get remixApi(): ICustomRemixApi {
-    return this._remixApi;
+  get plugin(): any{
+    return this.plugin
   }
 
   /**
    * Initialize the MCP server
    */
-  async initialize(): Promise<MCPInitializeResult> {
+  async initialize(): Promise<IMCPInitializeResult> {
     try {
       this.setState(ServerState.STARTING);
       
@@ -108,7 +107,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Setup cleanup intervals
       this.setupCleanupIntervals();
       
-      const result: MCPInitializeResult = {
+      const result: IMCPInitializeResult = {
         protocolVersion: '2024-11-05',
         capabilities: this.getCapabilities(),
         serverInfo: {
@@ -119,12 +118,12 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       };
 
       this.setState(ServerState.RUNNING);
-      this.log('Server initialized successfully', 'info');
+      console.log('Server initialized successfully', 'info');
       
       return result;
     } catch (error) {
       this.setState(ServerState.ERROR);
-      this.log(`Server initialization failed: ${error.message}`, 'error');
+      console.log(`Server initialization failed: ${error.message}`, 'error');
       throw error;
     }
   }
@@ -160,13 +159,13 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.emit('cache-cleared');
 
     this.setState(ServerState.STOPPED);
-    this.log('Server stopped', 'info');
+    console.log('Server stopped', 'info');
   }
 
   /**
    * Get server capabilities
    */
-  getCapabilities(): MCPServerCapabilities {
+  getCapabilities(): IMCPServerCapabilities {
     return {
       resources: {
         subscribe: true,
@@ -213,7 +212,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
           return { id: message.id, result: { tools } };
 
         case 'tools/call':
-          const toolResult = await this.executeTool(message.params as MCPToolCall);
+          const toolResult = await this.executeTool(message.params as IMCPToolCall);
           return { id: message.id, result: toolResult };
 
         case 'resources/list':
@@ -241,7 +240,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       }
     } catch (error) {
       this._stats.errorCount++;
-      this.log(`Message handling error: ${error.message}`, 'error');
+      console.log(`Message handling error: ${error.message}`, 'error');
       
       return {
         id: message.id,
@@ -257,7 +256,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   /**
    * Execute a tool
    */
-  private async executeTool(call: MCPToolCall): Promise<MCPToolResult> {
+  private async executeTool(call: IMCPToolCall): Promise<IMCPToolResult> {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = new Date();
     
@@ -296,7 +295,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
         permissions: execution.context.permissions,
         timestamp: Date.now(),
         requestId: executionId
-      }, this._remixApi);
+      }, this._plugin);
 
       const result = await Promise.race([toolPromise, timeoutPromise]);
 
@@ -306,7 +305,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.totalToolCalls++;
 
       this.emit('tool-executed', execution);
-      this.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() });
+      console.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() });
 
       return result;
 
@@ -317,7 +316,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.errorCount++;
 
       this.emit('tool-executed', execution);
-      this.log(`Tool execution failed: ${call.name}`, 'error', { executionId, error: error.message });
+      console.log(`Tool execution failed: ${call.name}`, 'error', { executionId, error: error.message });
 
       throw error;
     } finally {
@@ -328,7 +327,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   /**
    * Get resource content with caching
    */
-  private async getResourceContent(uri: string): Promise<MCPResourceContent> {
+  private async getResourceContent(uri: string): Promise<IMCPResourceContent> {
     // Check cache first
     if (this._config.enableResourceCache !== false) {
       const cached = this._resourceCache.get(uri);
@@ -362,9 +361,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     return content;
   }
 
-  /**
-   * Check permissions for operation
-   */
   async checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult> {
     // TODO: Implement actual permission checking
     // For now, allow all operations
@@ -375,16 +371,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     };
   }
 
-  /**
-   * Get active tool executions
-   */
   getActiveExecutions(): ToolExecutionStatus[] {
     return Array.from(this._activeExecutions.values());
   }
 
-  /**
-   * Get cache statistics
-   */
   getCacheStats() {
     const entries = Array.from(this._resourceCache.values());
     const totalAccess = entries.reduce((sum, entry) => sum + entry.accessCount, 0);
@@ -397,32 +387,23 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     };
   }
 
-  /**
-   * Get audit log entries
-   */
   getAuditLog(limit: number = 100): AuditLogEntry[] {
     return this._auditLog.slice(-limit);
   }
 
-  /**
-   * Clear resource cache
-   */
   clearCache(): void {
     this._resourceCache.clear();
     this.emit('cache-cleared');
-    this.log('Resource cache cleared', 'info');
+    console.log('Resource cache cleared', 'info');
   }
 
-  /**
-   * Refresh all resources
-   */
   async refreshResources(): Promise<void> {
     try {
       const result = await this._resources.getResources();
       this.emit('resources-refreshed', result.resources.length);
-      this.log(`Resources refreshed: ${result.resources.length}`, 'info');
+      console.log(`Resources refreshed: ${result.resources.length}`, 'info');
     } catch (error) {
-      this.log(`Failed to refresh resources: ${error.message}`, 'error');
+      console.log(`Failed to refresh resources: ${error.message}`, 'error');
       throw error;
     }
   }
@@ -441,27 +422,24 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    */
   private setupEventHandlers(): void {
     // Tool registry events
-    this._tools.on?.('tool-registered', (toolName: string) => {
-      this.log(`Tool registered: ${toolName}`, 'info');
-    });
+    // this._tools.on?.('tool-registered', (toolName: string) => {
+    //   console.log(`Tool registered: ${toolName}`, 'info');
+    // });
 
-    this._tools.on?.('tool-unregistered', (toolName: string) => {
-      this.log(`Tool unregistered: ${toolName}`, 'info');
-    });
+    // this._tools.on?.('tool-unregistered', (toolName: string) => {
+    //   console.log(`Tool unregistered: ${toolName}`, 'info');
+    // });
 
     // Resource registry events
     this._resources.subscribe((event) => {
-      this.log(`Resource ${event.type}: ${event.resource.uri}`, 'info');
+      console.log(`Resource ${event.type}: ${event.resource.uri}`, 'info');
     });
   }
 
-  /**
-   * Initialize default tools
-   */
   private async initializeDefaultTools(): Promise<void> {
     // Tools will be registered by their respective handlers
     // This is a placeholder for tool initialization
-    this.log('Default tools initialized', 'info');
+    console.log('Default tools initialized', 'info');
   }
 
   /**
@@ -470,7 +448,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private async initializeDefaultResourceProviders(): Promise<void> {
     // Resource providers will be registered by their respective classes
     // This is a placeholder for resource provider initialization
-    this.log('Default resource providers initialized', 'info');
+    console.log('Default resource providers initialized', 'info');
   }
 
   /**
@@ -522,26 +500,26 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   /**
    * Log message with audit trail
    */
-  private log(message: string, level: 'info' | 'warning' | 'error', details?: any): void {
-    if (this._config.debug || level !== 'info') {
-      console.log(`[RemixMCPServer] ${level.toUpperCase()}: ${message}`, details || '');
-    }
+  // private log(message: string, level: 'info' | 'warning' | 'error', details?: any): void {
+  //   if (this._config.debug || level !== 'info') {
+  //     console.log(`[RemixMCPServer] ${level.toUpperCase()}: ${message}`, details || '');
+  //   }
 
-    if (this._config.security?.enableAuditLog !== false) {
-      const entry: AuditLogEntry = {
-        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date(),
-        type: level === 'error' ? 'error' : 'info',
-        user: 'system',
-        details: {
-          message,
-          ...details
-        },
-        severity: level
-      };
+  //   if (this._config.security?.enableAuditLog !== false) {
+  //     const entry: AuditLogEntry = {
+  //       id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  //       timestamp: new Date(),
+  //       type: level === 'error' ? 'error' : 'info',
+  //       user: 'system',
+  //       details: {
+  //         message,
+  //         ...details
+  //       },
+  //       severity: level
+  //     };
 
-      this._auditLog.push(entry);
-      this.emit('audit-log', entry);
-    }
-  }
+  //     this._auditLog.push(entry);
+  //     this.emit('audit-log', entry);
+  //   }
+  // }
 }

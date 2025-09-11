@@ -1,37 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ViewPlugin } from '@remixproject/engine-web'
+import { IMCPServer } from '@remix/remix-ai-core'
 
-interface MCPServer {
-  name: string
-  description?: string
-  transport: 'stdio' | 'sse' | 'websocket'
-  command?: string[]
-  args?: string[]
-  url?: string
-  env?: Record<string, string>
-  autoStart?: boolean
-  timeout?: number
-  enabled?: boolean
-}
-
-interface MCPConnectionStatus {
+interface IMCPConnectionStatus {
   status: 'disconnected' | 'connecting' | 'connected' | 'error'
   serverName: string
   error?: string
   lastAttempt?: number
 }
 
-interface MCPServerManagerProps {
+interface IMCPServerManagerProps {
   plugin: ViewPlugin
 }
 
-export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) => {
-  const [servers, setServers] = useState<MCPServer[]>([])
-  const [connectionStatuses, setConnectionStatuses] = useState<Record<string, MCPConnectionStatus>>({})
+export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) => {
+  const [servers, setServers] = useState<IMCPServer[]>([])
+  const [connectionStatuses, setConnectionStatuses] = useState<Record<string, IMCPConnectionStatus>>({})
   const [showAddForm, setShowAddForm] = useState(false)
-  const [editingServer, setEditingServer] = useState<MCPServer | null>(null)
-  const [formData, setFormData] = useState<Partial<MCPServer>>({
+  const [editingServer, setEditingServer] = useState<IMCPServer | null>(null)
+  const [formData, setFormData] = useState<Partial<IMCPServer>>({
     name: '',
     description: '',
     transport: 'stdio',
@@ -50,10 +38,26 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
 
   const loadServers = async () => {
     try {
-      const savedServers = await plugin.call('settings', 'get', 'settings/mcp/servers')
-      if (savedServers) {
-        setServers(JSON.parse(savedServers))
+      // First try to get servers from the AI plugin (which includes defaults)
+      let servers: IMCPServer[] = []
+      
+      try {
+        // Ensure the AI plugin has loaded its servers (including defaults)
+        await plugin.call('remixAI', 'loadMCPServersFromSettings')
+        // Get the servers directly from the AI plugin
+        servers = await plugin.call('remixAI', 'getIMCPServers')
+        console.log('Loaded MCP servers from AI plugin:', servers)
+      } catch (error) {
+        console.log('AI plugin not available, loading from settings directly:', error)
+        // Fallback to loading directly from settings
+        const savedServers = await plugin.call('settings', 'get', 'settings/mcp/servers')
+        if (savedServers) {
+          servers = JSON.parse(savedServers)
+          console.log('Loaded MCP servers from settings:', servers)
+        }
       }
+      
+      setServers(servers)
     } catch (error) {
       console.warn('Failed to load MCP servers:', error)
     }
@@ -62,8 +66,8 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
   const loadConnectionStatuses = async () => {
     try {
       const statuses = await plugin.call('remixAI', 'getMCPConnectionStatus')
-      const statusMap: Record<string, MCPConnectionStatus> = {}
-      statuses.forEach((status: MCPConnectionStatus) => {
+      const statusMap: Record<string, IMCPConnectionStatus> = {}
+      statuses.forEach((status: IMCPConnectionStatus) => {
         statusMap[status.serverName] = status
       })
       setConnectionStatuses(statusMap)
@@ -74,7 +78,7 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
 
   const saveServer = async () => {
     try {
-      const server: MCPServer = {
+      const server: IMCPServer = {
         name: formData.name!,
         description: formData.description,
         transport: formData.transport!,
@@ -87,7 +91,7 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
         timeout: formData.timeout
       }
 
-      let newServers: MCPServer[]
+      let newServers: IMCPServer[]
       if (editingServer) {
         // Update existing server
         newServers = servers.map(s => s.name === editingServer.name ? server : s)
@@ -122,7 +126,7 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
     }
   }
 
-  const toggleServer = async (server: MCPServer) => {
+  const toggleServer = async (server: IMCPServer) => {
     try {
       const updatedServer = { ...server, enabled: !server.enabled }
       const newServers = servers.map(s => s.name === server.name ? updatedServer : s)
@@ -156,13 +160,13 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
     setEditingServer(null)
   }
 
-  const editServer = (server: MCPServer) => {
+  const editServer = (server: IMCPServer) => {
     setFormData(server)
     setEditingServer(server)
     setShowAddForm(true)
   }
 
-  const getStatusIcon = (status?: MCPConnectionStatus) => {
+  const getStatusIcon = (status?: IMCPConnectionStatus) => {
     if (!status) return <span className="text-muted">○</span>
 
     switch (status.status) {
@@ -173,7 +177,7 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
     }
   }
 
-  const getStatusText = (status?: MCPConnectionStatus) => {
+  const getStatusText = (status?: IMCPConnectionStatus) => {
     if (!status) return 'Not initialized'
     return status.status.charAt(0).toUpperCase() + status.status.slice(1)
   }
@@ -222,15 +226,20 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
               <select
                 className="form-control form-control-sm"
                 value={formData.transport}
-                onChange={(e) => setFormData({ ...formData, transport: e.target.value as 'stdio' | 'sse' | 'websocket' })}
+                onChange={(e) => setFormData({ ...formData, transport: e.target.value as 'stdio' | 'sse' | 'websocket' | 'internal' })}
               >
                 <option value="stdio">Standard I/O</option>
                 <option value="sse">Server-Sent Events</option>
                 <option value="websocket">WebSocket</option>
+                <option value="internal">Internal (Built-in)</option>
               </select>
             </div>
 
-            {formData.transport === 'stdio' ? (
+            {formData.transport === 'internal' ? (
+              <div className="alert alert-info">
+                <small>Internal servers are built into Remix IDE and don't require additional configuration.</small>
+              </div>
+            ) : formData.transport === 'stdio' ? (
               <>
                 <div className="form-group mb-2">
                   <label className="form-label">Command *</label>
@@ -316,13 +325,16 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
                       {getStatusIcon(connectionStatuses[server.name])}
                       <strong className="ms-2">{server.name}</strong>
                       {!server.enabled && <span className="badge bg-secondary ms-2">Disabled</span>}
+                      {server.isBuiltIn && <span className="badge bg-primary ms-2">Built-in</span>}
                     </div>
                     {server.description && (
                       <p className="text-muted small mb-1">{server.description}</p>
                     )}
                     <div className="small text-muted">
-                      <div>Transport: {server.transport}</div>
-                      {server.transport === 'stdio' ? (
+                      <div>Transport: {server.transport === 'internal' ? 'Internal (Built-in)' : server.transport}</div>
+                      {server.transport === 'internal' ? (
+                        <div>Type: Built-in Remix IDE server</div>
+                      ) : server.transport === 'stdio' ? (
                         <div>Command: {server.command?.join(' ')}</div>
                       ) : (
                         <div>URL: {server.url}</div>
@@ -340,22 +352,29 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
                     >
                       {server.enabled ? 'Disable' : 'Enable'}
                     </button>
-                    <button
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => editServer(server)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => {
-                        if (confirm(`Delete server "${server.name}"?`)) {
-                          deleteServer(server.name)
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {!server.isBuiltIn && (
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => editServer(server)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {!server.isBuiltIn && (
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => {
+                          if (confirm(`Delete server "${server.name}"?`)) {
+                            deleteServer(server.name)
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    {server.isBuiltIn && (
+                      <small className="text-muted">Built-in server cannot be edited or deleted</small>
+                    )}
                   </div>
                 </div>
               </div>
@@ -376,6 +395,7 @@ export const MCPServerManager: React.FC<MCPServerManagerProps> = ({ plugin }) =>
       <div className="mt-3 small text-muted">
         <p><strong>Transport Types:</strong></p>
         <ul>
+          <li><strong>Internal (Built-in):</strong> Built-in Remix IDE MCP servers</li>
           <li><strong>Standard I/O:</strong> Run MCP server as subprocess</li>
           <li><strong>Server-Sent Events:</strong> Connect via HTTP SSE</li>
           <li><strong>WebSocket:</strong> Connect via WebSocket protocol</li>
