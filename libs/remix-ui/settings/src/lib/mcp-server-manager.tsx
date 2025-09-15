@@ -225,11 +225,12 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
               <select
                 className="form-control form-control-sm"
                 value={formData.transport}
-                onChange={(e) => setFormData({ ...formData, transport: e.target.value as 'stdio' | 'sse' | 'websocket' | 'internal' })}
+                onChange={(e) => setFormData({ ...formData, transport: e.target.value as 'stdio' | 'sse' | 'websocket' | 'http' | 'internal' })}
               >
-                <option value="stdio">Standard I/O</option>
+                <option value="stdio" disabled>Standard I/O</option>
                 <option value="sse">Server-Sent Events</option>
                 <option value="websocket">WebSocket</option>
+                <option value="http">HTTP (REST)</option>
                 <option value="internal">Internal (Built-in)</option>
               </select>
             </div>
@@ -269,7 +270,11 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                   className="form-control form-control-sm"
                   value={formData.url || ''}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder={formData.transport === 'sse' ? 'http://localhost:8080/sse' : 'ws://localhost:8080/ws'}
+                  placeholder={
+                    formData.transport === 'sse' ? 'http://localhost:8080/sse' :
+                    formData.transport === 'http' ? 'http://localhost:8080/mcp' :
+                    'ws://localhost:8080/ws'
+                  }
                 />
               </div>
             )}
@@ -396,8 +401,9 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
         <ul>
           <li><strong>Internal (Built-in):</strong> Built-in Remix IDE MCP servers</li>
           <li><strong>Standard I/O:</strong> Run MCP server as subprocess</li>
-          <li><strong>Server-Sent Events:</strong> Connect via HTTP SSE</li>
-          <li><strong>WebSocket:</strong> Connect via WebSocket protocol</li>
+          <li><strong>Server-Sent Events:</strong> Connect via HTTP SSE (browser-compatible)</li>
+          <li><strong>WebSocket:</strong> Connect via WebSocket protocol (browser-compatible)</li>
+          <li><strong>HTTP (REST):</strong> Connect via HTTP requests (browser-compatible)</li>
         </ul>
         <p><strong>Status Indicators:</strong>
           <span className="text-success ms-1">●</span> Connected

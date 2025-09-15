@@ -107,22 +107,30 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     resources: IMCPResource[], 
     visited: Set<string> = new Set()
   ): Promise<void> {
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+
     if (visited.has(path) || path.includes('node_modules') || path.includes('.git')) {
       return;
     }
     visited.add(path);
 
     try {
-      const exists = await plugin.call('filemanager', 'exists', path);
+      const exists = await plugin.call('fileManager', 'exists', path);
       if (!exists) return;
 
-      const isDir = await plugin.call('filemanager', 'isDirectory', path);
+      const isDir = await plugin.call('fileManager', 'isDirectory', path);
       
       if (isDir) {
         // Process directory
-        const files = await plugin.call('filemanager', 'isDirectory', path);
-        for (const file of files) {
-          const fullPath = `${path}/${file}`;
+        const files = await plugin.call('fileManager', 'readdir', path);
+
+        // Handle case where files is an object with file/folder names as keys
+        const fileList = Array.isArray(files) ? files : Object.keys(files);
+
+        for (const file of fileList) {
+          const fullPath = file;
           await this.collectProjectResources(plugin, fullPath, resources, visited);
         }
       } else {
@@ -187,9 +195,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
       for (const configFile of configFiles) {
         try {
-          const exists = await plugin.call('filemanager', 'exists', configFile);
+          const exists = await plugin.call('fileManager', 'exists', configFile);
           if (exists) {
-            const content = await plugin.call('filemanager', 'readFile', configFile);
+            const content = await plugin.call('fileManager', 'readFile', configFile);
             configs[configFile] = this.parseConfig(configFile, content);
           }
         } catch (error) {
@@ -216,9 +224,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
       // Get npm dependencies from package.json
       try {
-        const packageExists = await plugin.call('filemanager', 'existd', 'package.json');
+        const packageExists = await plugin.call('fileManager', 'exists', 'package.json');
         if (packageExists) {
-          const packageContent =await plugin.call('filemanager', 'readFile','package.json');
+          const packageContent =await plugin.call('fileManager', 'readFile','package.json');
           const packageJson = JSON.parse(packageContent);
           dependencies.npm = {
             dependencies: packageJson.dependencies || {},
@@ -246,12 +254,12 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     const filePath = uri.replace('file://', '');
     
     try {
-      const exists = await plugin.call('filemanager', 'exists', filePath);
+      const exists = await plugin.call('fileManager', 'exists', filePath);
       if (!exists) {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      const content = await plugin.call('filemanager', 'readFile', filePath);
+      const content = await plugin.call('fileManager', 'readFile', filePath);
       const extension = filePath.split('.').pop()?.toLowerCase() || '';
       const mimeType = this.getMimeTypeForFile(extension);
 
@@ -269,18 +277,22 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     if (maxDepth <= 0) return { name: '...', type: 'truncated' };
 
     try {
-      const exists = await plugin.call('filemanager', 'exists', path);
+      const exists = await plugin.call('fileManager', 'exists', path);
       if (!exists) return null;
 
       const name = path.split('/').pop() || path;
-      const isDir = await plugin.call('filemanager', 'isDirectory', path);
+      const isDir = await plugin.call('fileManager', 'isDirectory', path);
 
       if (isDir) {
         const children = [];
         try {
-          const files = await plugin.call('filemanager', 'isDirectory', path);
-          for (const file of files.slice(0, 100)) { // Limit to prevent memory issues
-            const fullPath = `${path}/${file}`;
+          const files = await plugin.call('fileManager', 'readdir', path);
+
+          // Handle case where files is an object with file/folder names as keys
+          const fileList = Array.isArray(files) ? files : Object.keys(files);
+
+          for (const file of fileList.slice(0, 100)) { // Limit to prevent memory issues
+            const fullPath = file;
             if (!file.startsWith('.') && !file.includes('node_modules')) {
               const child = await this.buildDirectoryTree(plugin, fullPath, maxDepth - 1);
               if (child) children.push(child);
@@ -317,21 +329,25 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
   private async scanForImports(plugin: Plugin, path: string, dependencies: any): Promise<void> {
     try {
-      const exists = await this._plugin.call('filemanager', 'exists', path || '') 
+      const exists = await this._plugin.call('fileManager', 'exists', path || '') 
       if (!exists) return;
 
-      const isDir = await this._plugin.call('filemanager', 'isDirectory', path || '') 
+      const isDir = await this._plugin.call('fileManager', 'isDirectory', path || '') 
       
       if (isDir) {
-        const files = await this._plugin.call('filemanager', 'readdir', path || '') 
-        for (const file of files) {
-          const fullPath = path ? `${path}/${file}` : file;
+        const files = await this._plugin.call('fileManager', 'readdir', path || '')
+
+        // Handle case where files is an object with file/folder names as keys
+        const fileList = Array.isArray(files) ? files : Object.keys(files);
+
+        for (const file of fileList) {
+          const fullPath = file;
           if (!file.startsWith('.') && !file.includes('node_modules')) {
             await this.scanForImports(plugin, fullPath, dependencies);
           }
         }
       } else if (path.endsWith('.sol')) {
-        const content = await this._plugin.call('filemanager', 'readFile', path) 
+        const content = await this._plugin.call('fileManager', 'readFile', path) 
         const imports = this.extractSolidityImports(content);
         dependencies.imports.push(...imports.map(imp => ({
           file: path,
@@ -396,7 +412,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
   private async getFileSize(plugin: Plugin, path: string): Promise<number> {
     try {
-      const content = await this._plugin.call('filemanager', 'readFile', path)
+      const content = await this._plugin.call('fileManager', 'readFile', path)
       return content.length;
     } catch {
       return 0;

@@ -5,7 +5,7 @@
 export interface IMCPServer {
   name: string
   description?: string
-  transport: 'stdio' | 'sse' | 'websocket' | 'internal'
+  transport: 'stdio' | 'sse' | 'websocket' | 'http' | 'internal'
   command?: string[]
   args?: string[]
   url?: string

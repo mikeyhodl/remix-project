@@ -6,7 +6,6 @@ import { Plugin } from '@remixproject/engine';
 import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
-import { publicDecrypt } from 'crypto';
 
 export class CompilationResourceProvider extends BaseResourceProvider {
   name = 'compilation';

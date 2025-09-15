@@ -121,12 +121,13 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
-    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
 
     if (this.isOnDesktop && !this.useRemoteInferencer) {
-      return await this.call(this.remixDesktopPluginName, 'code_generation', enrichedPrompt, params)
+      return await this.call(this.remixDesktopPluginName, 'code_generation', prompt, params)
+    } else if (this.mcpEnabled && this.mcpInferencer){
+      return this.mcpInferencer.code_generation(prompt, params)
     } else {
-      return await this.remoteInferencer.code_generation(enrichedPrompt, params)
+      return await this.remoteInferencer.code_generation(prompt, params)
     }
   }
 
@@ -143,15 +144,16 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
-    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
 
-    let newPrompt = await this.codeExpAgent.chatCommand(enrichedPrompt)
+    let newPrompt = await this.codeExpAgent.chatCommand(prompt)
     // add workspace context
     newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
 
     let result
     if (this.isOnDesktop && !this.useRemoteInferencer) {
       result = await this.call(this.remixDesktopPluginName, 'answer', newPrompt)
+    } else if (this.mcpEnabled && this.mcpInferencer){
+      return this.mcpInferencer.answer(prompt, params)
     } else {
       result = await this.remoteInferencer.answer(newPrompt)
     }
@@ -160,13 +162,13 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
-    const enrichedPrompt = await this.enrichWithMCPContext(prompt, params);
     let result
     if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'code_explaining', enrichedPrompt, context, params)
-
+      result = await this.call(this.remixDesktopPluginName, 'code_explaining', prompt, context, params)
+    } else if (this.mcpEnabled && this.mcpInferencer){
+      return this.mcpInferencer.code_explaining(prompt, context, params)
     } else {
-      result = await this.remoteInferencer.code_explaining(enrichedPrompt, context, params)
+      result = await this.remoteInferencer.code_explaining(prompt, context, params)
     }
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
@@ -366,6 +368,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async setAssistantProvider(provider: string) {
+    console.log('switching assistant to', provider)
     if (provider === 'openai' || provider === 'mistralai' || provider === 'anthropic') {
       GenerationParams.provider = provider
       CompletionParams.provider = provider
@@ -639,7 +642,7 @@ export class RemixAIPlugin extends Plugin {
           {
             name: 'OpenZeppelin Contracts',
             description: 'OpenZeppelin smart contract library and security tools',
-            transport: 'sse',
+            transport: 'http',
             url: 'https://mcp.openzeppelin.com/contracts/solidity/mcp',
             autoStart: true,
             enabled: true,
@@ -703,57 +706,57 @@ export class RemixAIPlugin extends Plugin {
     return this.mcpServers;
   }
 
-  private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {
-    if (!this.mcpEnabled || !this.mcpInferencer) {
-      console.log(`[RemixAI Plugin] MCP context enrichment skipped (enabled: ${this.mcpEnabled}, inferencer: ${!!this.mcpInferencer})`);
-      return prompt;
-    }
+  // private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {
+  //   if (!this.mcpEnabled || !this.mcpInferencer) {
+  //     console.log(`[RemixAI Plugin] MCP context enrichment skipped (enabled: ${this.mcpEnabled}, inferencer: ${!!this.mcpInferencer})`);
+  //     return prompt;
+  //   }
 
-    try {
-      console.log(`[RemixAI Plugin] Enriching prompt with MCP context...`);
-      // Get MCP resources and tools context
-      const resources = await this.mcpInferencer.getAllResources();
-      const tools = await this.mcpInferencer.getAllTools();
+  //   try {
+  //     console.log(`[RemixAI Plugin] Enriching prompt with MCP context...`);
+  //     // Get MCP resources and tools context
+  //     const resources = await this.mcpInferencer.getAllResources();
+  //     const tools = await this.mcpInferencer.getAllTools();
 
-      let mcpContext = '';
+  //     let mcpContext = '';
 
-      // Add available resources context
-      if (Object.keys(resources).length > 0) {
-        console.log(`[RemixAI Plugin] Adding resources from ${Object.keys(resources).length} servers to context`);
-        mcpContext += '\n--- Available MCP Resources ---\n';
-        for (const [serverName, serverResources] of Object.entries(resources)) {
-          if (serverResources.length > 0) {
-            mcpContext += `Server: ${serverName}\n`;
-            for (const resource of serverResources.slice(0, 3)) { // Limit to first 3
-              mcpContext += `- ${resource.name}: ${resource.description || resource.uri}\n`;
-            }
-          }
-        }
-        mcpContext += '--- End Resources ---\n';
-      }
+  //     // Add available resources context
+  //     if (Object.keys(resources).length > 0) {
+  //       console.log(`[RemixAI Plugin] Adding resources from ${Object.keys(resources).length} servers to context`);
+  //       mcpContext += '\n--- Available MCP Resources ---\n';
+  //       for (const [serverName, serverResources] of Object.entries(resources)) {
+  //         if (serverResources.length > 0) {
+  //           mcpContext += `Server: ${serverName}\n`;
+  //           for (const resource of serverResources.slice(0, 3)) { // Limit to first 3
+  //             mcpContext += `- ${resource.name}: ${resource.description || resource.uri}\n`;
+  //           }
+  //         }
+  //       }
+  //       mcpContext += '--- End Resources ---\n';
+  //     }
 
-      // Add available tools context
-      if (Object.keys(tools).length > 0) {
-        console.log(`[RemixAI Plugin] Adding tools from ${Object.keys(tools).length} servers to context`);
-        mcpContext += '\n--- Available MCP Tools ---\n';
-        for (const [serverName, serverTools] of Object.entries(tools)) {
-          if (serverTools.length > 0) {
-            mcpContext += `Server: ${serverName}\n`;
-            for (const tool of serverTools) {
-              mcpContext += `- ${tool.name}: ${tool.description || 'No description'}\n`;
-            }
-          }
-        }
-        mcpContext += '--- End Tools ---\n';
-      }
+  //     // Add available tools context
+  //     if (Object.keys(tools).length > 0) {
+  //       console.log(`[RemixAI Plugin] Adding tools from ${Object.keys(tools).length} servers to context`);
+  //       mcpContext += '\n--- Available MCP Tools ---\n';
+  //       for (const [serverName, serverTools] of Object.entries(tools)) {
+  //         if (serverTools.length > 0) {
+  //           mcpContext += `Server: ${serverName}\n`;
+  //           for (const tool of serverTools) {
+  //             mcpContext += `- ${tool.name}: ${tool.description || 'No description'}\n`;
+  //           }
+  //         }
+  //       }
+  //       mcpContext += '--- End Tools ---\n';
+  //     }
 
-      const enrichedPrompt = mcpContext ? `${mcpContext}\n${prompt}` : prompt;
-      console.log(`[RemixAI Plugin] MCP context enrichment completed (added ${mcpContext.length} characters)`);
-      return enrichedPrompt;
-    } catch (error) {
-      console.warn(`[RemixAI Plugin] Failed to enrich with MCP context:`, error);
-      return prompt;
-    }
-  }
+  //     const enrichedPrompt = mcpContext ? `${mcpContext}\n${prompt}` : prompt;
+  //     console.log(`[RemixAI Plugin] MCP context enrichment completed (added ${mcpContext.length} characters)`);
+  //     return enrichedPrompt;
+  //   } catch (error) {
+  //     console.warn(`[RemixAI Plugin] Failed to enrich with MCP context:`, error);
+  //     return prompt;
+  //   }
+  // }
 
 }

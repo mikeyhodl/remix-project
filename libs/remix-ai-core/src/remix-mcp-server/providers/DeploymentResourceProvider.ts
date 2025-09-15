@@ -293,6 +293,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
 
   private async getDeploymentNetworks(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
+      // moked up
       const networks = {
         configured: [
           {

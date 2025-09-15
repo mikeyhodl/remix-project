@@ -30,6 +30,17 @@ import { ResourceProviderRegistry } from './types/mcpResources';
 import { RemixToolRegistry } from './registry/RemixToolRegistry';
 import { RemixResourceProviderRegistry } from './registry/RemixResourceProviderRegistry';
 
+// Import tool handlers
+import { createCompilationTools } from './handlers/CompilationHandler';
+import { createFileManagementTools } from './handlers/FileManagementHandler';
+import { createDeploymentTools } from './handlers/DeploymentHandler';
+import { createDebuggingTools } from './handlers/DebuggingHandler';
+
+// Import resource providers
+import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
+import { CompilationResourceProvider } from './providers/CompilationResourceProvider';
+import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
+
 /**
  * Main Remix MCP Server implementation
  */
@@ -50,7 +61,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this._config = config;
     this._plugin = plugin
     this._tools = new RemixToolRegistry();
-    this._resources = new RemixResourceProviderRegistry();
+    this._resources = new RemixResourceProviderRegistry(plugin);
     
     this._stats = {
       uptime: 0,
@@ -98,13 +109,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     try {
       this.setState(ServerState.STARTING);
       
-      // Initialize tool registry with default tools
       await this.initializeDefaultTools();
       
-      // Initialize resource providers
       await this.initializeDefaultResourceProviders();
       
-      // Setup cleanup intervals
       this.setupCleanupIntervals();
       
       const result: IMCPInitializeResult = {
@@ -128,9 +136,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }
   }
 
-  /**
-   * Start the server
-   */
   async start(): Promise<void> {
     if (this._state !== ServerState.STOPPED) {
       throw new Error(`Cannot start server in state: ${this._state}`);
@@ -217,6 +222,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
         case 'resources/list':
           const resources = await this._resources.getResources();
+          console.log('listing resources', resources)
           return { id: message.id, result: { resources: resources.resources } };
 
         case 'resources/read':
@@ -437,18 +443,69 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   }
 
   private async initializeDefaultTools(): Promise<void> {
-    // Tools will be registered by their respective handlers
-    // This is a placeholder for tool initialization
-    console.log('Default tools initialized', 'info');
+    if (this._tools.list().length > 0) return
+    try {
+      console.log('Initializing default tools...', 'info');
+
+      // Register compilation tools
+      const compilationTools = createCompilationTools();
+      this._tools.registerBatch(compilationTools);
+      console.log(`Registered ${compilationTools.length} compilation tools`, 'info');
+
+      // Register file management tools
+      const fileManagementTools = createFileManagementTools();
+      this._tools.registerBatch(fileManagementTools);
+      console.log(`Registered ${fileManagementTools.length} file management tools`, 'info');
+
+      // Register deployment tools
+      const deploymentTools = createDeploymentTools();
+      this._tools.registerBatch(deploymentTools);
+      console.log(`Registered ${deploymentTools.length} deployment tools`, 'info');
+
+      // Register debugging tools
+      const debuggingTools = createDebuggingTools();
+      this._tools.registerBatch(debuggingTools);
+      console.log(`Registered ${debuggingTools.length} debugging tools`, 'info');
+
+      const totalTools = this._tools.list().length;
+      console.log(`Total tools registered: ${totalTools}`, 'info');
+
+    } catch (error) {
+      console.log(`Failed to initialize default tools: ${error.message}`, 'error');
+      throw error;
+    }
   }
 
   /**
    * Initialize default resource providers
    */
   private async initializeDefaultResourceProviders(): Promise<void> {
-    // Resource providers will be registered by their respective classes
-    // This is a placeholder for resource provider initialization
-    console.log('Default resource providers initialized', 'info');
+    if (this._resources.list().length > 0) return
+    try {
+      console.log('Initializing default resource providers...', 'info');
+
+      // Register project resource provider
+      const projectProvider = new ProjectResourceProvider(this._plugin);
+      this._resources.register(projectProvider);
+      console.log(`Registered project resource provider: ${projectProvider.name}`, 'info');
+
+      // Register compilation resource provider
+      const compilationProvider = new CompilationResourceProvider(this._plugin);
+      this._resources.register(compilationProvider);
+      console.log(`Registered compilation resource provider: ${compilationProvider.name}`, 'info');
+
+      // Register deployment resource provider
+      const deploymentProvider = new DeploymentResourceProvider();
+      this._resources.register(deploymentProvider);
+      console.log(`Registered deployment resource provider: ${deploymentProvider.name}`, 'info');
+
+      const totalProviders = this._resources.list().length;
+      console.log(`Total resource providers registered: ${totalProviders}`, 'info');
+
+    } catch (error) {
+      console.log(`Failed to initialize default resource providers: ${error.message}`, 'error');
+      throw error;
+    }
   }
 
   /**
@@ -463,14 +520,13 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
           this._resourceCache.delete(uri);
         }
       }
-    }, 60000); // Clean every minute
+    }, 60000);
 
-    // Truncate audit log
     setInterval(() => {
       if (this._auditLog.length > 1000) {
         this._auditLog = this._auditLog.slice(-500);
       }
-    }, 300000); // Clean every 5 minutes
+    }, 300000);
   }
 
   /**

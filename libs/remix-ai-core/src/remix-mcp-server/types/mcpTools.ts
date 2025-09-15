@@ -407,4 +407,12 @@ export interface ToolRegistry {
   get(name: string): RemixToolDefinition | undefined;
   list(category?: ToolCategory): RemixToolDefinition[];
   execute(call: IMCPToolCall, context: ToolExecutionContext, plugin: Plugin): Promise<IMCPToolResult>;
+  registerBatch(tools: RemixToolDefinition[]): void;
+  has(name: string): boolean;
+  clear(): void;
+  getByCategory(category: ToolCategory): RemixToolDefinition[];
+  getCategories(): ToolCategory[];
+  getCategoryStats(): Record<ToolCategory, number>;
+  getToolMetadata(name: string): any;
+  search(query: string): RemixToolDefinition[];
 }

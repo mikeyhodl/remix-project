@@ -5143,10 +5143,10 @@
     react-lifecycles-compat "~3.0.4"
     react-textarea-autosize "~8.3.2"
 
-"@modelcontextprotocol/sdk@^1.0.0":
-  version "1.17.5"
-  resolved "https://registry.yarnpkg.com/@modelcontextprotocol/sdk/-/sdk-1.17.5.tgz#7eab1c9249532b16b7e181d9af0aec5f696c1a55"
-  integrity sha512-QakrKIGniGuRVfWBdMsDea/dx1PNE739QJ7gCM41s9q+qaCYTHCdsIBXQVVXry3mfWAiaM9kT22Hyz53Uw8mfg==
+"@modelcontextprotocol/sdk@^1.18.0":
+  version "1.18.0"
+  resolved "https://registry.yarnpkg.com/@modelcontextprotocol/sdk/-/sdk-1.18.0.tgz#53489f88b739d2df489ed552c025868f401a095e"
+  integrity sha512-JvKyB6YwS3quM+88JPR0axeRgvdDu3Pv6mdZUy+w4qVkCzGgumb9bXG/TmtDRQv+671yaofVfXSQmFLlWU5qPQ==
   dependencies:
     ajv "^6.12.6"
     content-type "^1.0.5"

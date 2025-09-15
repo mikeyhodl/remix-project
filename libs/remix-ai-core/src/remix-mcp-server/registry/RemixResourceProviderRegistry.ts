@@ -21,7 +21,11 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
   private subscribers: Set<(event: ResourceUpdateEvent) => void> = new Set();
   private resourceCache: Map<string, { resources: IMCPResource[]; timestamp: Date }> = new Map();
   private cacheTimeout: number = 30000; // 30 seconds
+  private plugin
 
+  constructor(props){
+    this.plugin = props
+  }
   /**
    * Register a resource provider
    */
@@ -86,7 +90,6 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    */
   async getResources(query?: ResourceQuery): Promise<ResourceSearchResult> {
     const allResources: IMCPResource[] = [];
-    const plugin = await this.getplugin();
 
     // Collect resources from all providers
     for (const [name, provider] of this.providers) {
@@ -98,7 +101,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
         if (cached && Date.now() - cached.timestamp.getTime() < this.cacheTimeout) {
           resources = cached.resources;
         } else {
-          resources = await provider.getResources(plugin);
+          resources = await provider.getResources(this.plugin);
           this.resourceCache.set(name, { resources, timestamp: new Date() });
         }
 
@@ -131,13 +134,12 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    * Get specific resource content
    */
   async getResourceContent(uri: string): Promise<IMCPResourceContent> {
-    const plugin = await this.getplugin();
 
     // Find provider that can handle this URI
     for (const provider of this.providers.values()) {
       if (provider.canHandle(uri)) {
         try {
-          return await provider.getResourceContent(uri, plugin);
+          return await provider.getResourceContent(uri, this.plugin);
         } catch (error) {
           console.warn(`Provider ${provider.name} failed to get resource ${uri}:`, error);
         }
@@ -173,11 +175,10 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    */
   async refreshResources(): Promise<void> {
     this.resourceCache.clear();
-    const plugin = await this.getplugin();
 
     for (const [name, provider] of this.providers) {
       try {
-        const resources = await provider.getResources(plugin);
+        const resources = await provider.getResources(this.plugin);
         this.resourceCache.set(name, { resources, timestamp: new Date() });
       } catch (error) {
         console.warn(`Failed to refresh resources from provider ${name}:`, error);
@@ -190,11 +191,10 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    */
   async getProviderStats(): Promise<Record<string, any>> {
     const stats: Record<string, any> = {};
-    const plugin = await this.getplugin();
 
     for (const [name, provider] of this.providers) {
       try {
-        const resources = await provider.getResources(plugin);
+        const resources = await provider.getResources(this.plugin);
         stats[name] = {
           resourceCount: resources.length,
           lastUpdate: this.resourceCache.get(name)?.timestamp || null,
@@ -367,14 +367,6 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
         console.warn('Resource event subscriber error:', error);
       }
     }
-  }
-
-  /**
-   * Get plugin instance (placeholder)
-   */
-  private async getplugin(): Promise<Plugin> {
-    // TODO: Get actual plugin instance
-    return {} as Plugin;
   }
 }
 
