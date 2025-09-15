@@ -25,9 +25,6 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
     this.initializeCategories();
   }
 
-  /**
-   * Register a tool
-   */
   register(tool: RemixToolDefinition): void {
     if (this.tools.has(tool.name)) {
       throw new Error(`Tool '${tool.name}' is already registered`);

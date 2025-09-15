@@ -428,13 +428,20 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    */
   private setupEventHandlers(): void {
     // Tool registry events
-    // this._tools.on?.('tool-registered', (toolName: string) => {
-    //   console.log(`Tool registered: ${toolName}`, 'info');
-    // });
+    this._tools.on('tool-registered', (toolName: string) => {
+      console.log(`Tool registered: ${toolName}`, 'info');
+    });
 
-    // this._tools.on?.('tool-unregistered', (toolName: string) => {
-    //   console.log(`Tool unregistered: ${toolName}`, 'info');
-    // });
+    this._tools.on('tool-unregistered', (toolName: string) => {
+      console.log(`Tool unregistered: ${toolName}`, 'info');
+    });
+
+    this._tools.on('batch-registered', (registered: string[], failed: Array<{ tool: any; error: Error }>) => {
+      console.log(`Batch registration completed: ${registered.length} successful, ${failed.length} failed`, 'info');
+      if (failed.length > 0) {
+        console.log(`Failed tools: ${failed.map(f => f.tool.name).join(', ')}`, 'warning');
+      }
+    });
 
     // Resource registry events
     this._resources.subscribe((event) => {

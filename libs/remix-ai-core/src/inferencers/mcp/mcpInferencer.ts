@@ -592,11 +592,9 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             continue;
           }
 
-          // Try to get from cache first
           let content = this.resourceCache.get(resource.uri);
           if (!content) {
             content = await client.readResource(resource.uri);
-            // Cache with TTL
             this.resourceCache.set(resource.uri, content);
             setTimeout(() => {
               this.resourceCache.delete(resource.uri);

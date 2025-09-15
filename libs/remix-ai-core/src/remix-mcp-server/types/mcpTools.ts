@@ -415,4 +415,9 @@ export interface ToolRegistry {
   getCategoryStats(): Record<ToolCategory, number>;
   getToolMetadata(name: string): any;
   search(query: string): RemixToolDefinition[];
+
+  // Event handling methods
+  on(event: string, listener: (...args: any[]) => void): void;
+  off(event: string, listener: (...args: any[]) => void): void;
+  emit(event: string, ...args: any[]): boolean;
 }
