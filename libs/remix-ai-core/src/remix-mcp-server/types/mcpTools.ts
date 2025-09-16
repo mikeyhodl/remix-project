@@ -17,9 +17,6 @@ export interface RemixToolHandler {
   validate?(args: any): boolean | string;
 }
 
-/**
- * Categories of Remix tools
- */
 export enum ToolCategory {
   FILE_MANAGEMENT = 'file_management',
   COMPILATION = 'compilation',
@@ -82,9 +79,6 @@ export interface DirectoryListArgs {
   recursive?: boolean;
 }
 
-/**
- * Compilation tool argument types
- */
 export interface SolidityCompileArgs {
   file?: string;
   version?: string;
@@ -101,9 +95,6 @@ export interface CompilerConfigArgs {
   language: string;
 }
 
-/**
- * Deployment tool argument types
- */
 export interface DeployContractArgs {
   contractName: string;
   constructorArgs?: any[];
@@ -133,9 +124,6 @@ export interface SendTransactionArgs {
   account?: string;
 }
 
-/**
- * Debugging tool argument types
- */
 export interface DebugSessionArgs {
   contractAddress: string;
   transactionHash?: string;
@@ -389,9 +377,6 @@ export interface TestResult {
   };
 }
 
-/**
- * Remix-specific tool extensions
- */
 export interface RemixToolDefinition extends IMCPTool {
   category: ToolCategory;
   permissions: string[];

@@ -31,7 +31,7 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
     }
 
     this.tools.set(tool.name, tool);
-    
+
     // Add to category
     if (!this.categories.has(tool.category)) {
       this.categories.set(tool.category, new Set());
@@ -84,7 +84,7 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
    * Execute a tool
    */
   async execute(
-    call: IMCPToolCall, 
+    call: IMCPToolCall,
     context: ToolExecutionContext,
     plugin: Plugin
   ): Promise<IMCPToolResult> {

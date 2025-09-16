@@ -36,7 +36,7 @@ export interface IMCPResourceContent {
 
 export interface IMCPTool {
   name: string;
-  description?: string;
+  description: string;
   inputSchema: {
     type: string;
     properties?: Record<string, any>;

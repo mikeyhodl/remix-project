@@ -274,7 +274,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       context: {
         workspace: await this.getCurrentWorkspace(),
         user: 'default', // TODO: Get actual user
-        permissions: [] // TODO: Get actual permissions
+        permissions: ["*"] // TODO: Get actual permissions
       }
     };
 

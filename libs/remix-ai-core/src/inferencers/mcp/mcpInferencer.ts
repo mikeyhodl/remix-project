@@ -222,7 +222,7 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
-    
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       // Use internal RemixMCPServer
       const response = await this.remixMCPServer.handleMessage({
@@ -230,11 +230,11 @@ export class MCPClient {
         method: 'tools/call',
         params: toolCall
       });
-      
+
       if (response.error) {
         throw new Error(`Failed to call tool: ${response.error.message}`);
       }
-      
+
       console.log(`[MCP] Tool ${toolCall.name} executed successfully on internal server`);
       return response.result;
 
@@ -292,12 +292,11 @@ export class MCPClient {
   }
 
   /**
-   * Get next request ID
+   * Utility methods for future use
    */
   private getNextRequestId(): number {
     return this.requestId++;
   }
-
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -622,14 +621,132 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
-    return super.answer(enrichedPrompt, options);
+    // Add available tools to the request in LLM format
+    const llmFormattedTools = await this.getToolsForLLMRequest();
+    options.stream_result = false
+    const enhancedOptions = {
+      ...options,
+      tools: llmFormattedTools.length > 0 ? llmFormattedTools : undefined,
+      tool_choice: llmFormattedTools.length > 0 ? "auto" : undefined
+    };
+
+    console.log(`[MCP Inferencer] Sending request with ${llmFormattedTools.length} available tools in LLM format`);
+
+    try {
+      const response = await super.answer(enrichedPrompt, enhancedOptions);
+      console.log('got tool request answer', response)
+      enhancedOptions.stream_result = true
+
+      // Handle tool calls in the response
+      if (response?.tool_calls && response.tool_calls.length > 0) {
+        console.log(`[MCP Inferencer] LLM requested ${response.tool_calls.length} tool calls`);
+        const toolResults = [];
+
+        for (const llmToolCall of response.tool_calls) {
+          try {
+            // Convert LLM tool call to internal MCP format
+            const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
+            const result = await this.executeToolForLLM(mcpToolCall);
+
+            toolResults.push({
+              role: 'tool',
+              name: llmToolCall.function.name,
+              tool_call_id: llmToolCall.id,
+              content: result.content[0]?.text || JSON.stringify(result)
+            });
+          } catch (error) {
+            console.error(`[MCP Inferencer] Tool execution failed:`, error);
+            toolResults.push({
+              tool_call_id: llmToolCall.id,
+              content: `Error: ${error.message}`
+            });
+          }
+        }
+
+        // Send tool results back to LLM for final response
+        if (toolResults.length > 0) {
+          const followUpOptions = {
+            ...enhancedOptions,
+            toolsMessages: toolResults
+          };
+
+          console.log('finalizing tool request')
+          return super.answer("", followUpOptions);
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.error(`[MCP Inferencer] Error in enhanced answer:`, error);
+      return super.answer(enrichedPrompt, options);
+    }
   }
 
   async code_explaining(prompt: string, context: string = "", options: IParams = GenerationParams): Promise<any> {
     const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
-    return super.code_explaining(prompt, enrichedContext, options);
+    // Add available tools to the request in LLM format
+    const llmFormattedTools = await this.getToolsForLLMRequest();
+    options.stream_result = false
+    const enhancedOptions = {
+      ...options,
+      tools: llmFormattedTools.length > 0 ? llmFormattedTools : undefined,
+      tool_choice: llmFormattedTools.length > 0 ? "auto" : undefined
+    };
+
+    console.log(`[MCP Inferencer] Code explaining with ${llmFormattedTools.length} available tools in LLM format`);
+
+    try {
+      const response = await super.code_explaining(prompt, enrichedContext, enhancedOptions);
+
+      // Handle tool calls in the response
+      if (response?.tool_calls && response.tool_calls.length > 0) {
+        console.log(`[MCP Inferencer] LLM requested ${response.tool_calls.length} tool calls during code explanation`);
+        const toolResults = [];
+
+        for (const llmToolCall of response.tool_calls) {
+          try {
+            // Convert LLM tool call to internal MCP format
+            const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
+            const result = await this.executeToolForLLM(mcpToolCall);
+
+            toolResults.push({
+              tool_call_id: llmToolCall.id,
+              content: result.content[0]?.text || JSON.stringify(result)
+            });
+          } catch (error) {
+            console.error(`[MCP Inferencer] Tool execution failed:`, error);
+            toolResults.push({
+              tool_call_id: llmToolCall.id,
+              content: `Error: ${error.message}`
+            });
+          }
+        }
+
+        // Send tool results back to LLM for final response
+        if (toolResults.length > 0) {
+          const followUpOptions = {
+            ...enhancedOptions,
+            messages: [
+              ...(prompt || []),
+              response,
+              {
+                role: "tool",
+                tool_calls: toolResults
+              }
+            ]
+          };
+
+          return super.code_explaining("", "", followUpOptions);
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.error(`[MCP Inferencer] Error in enhanced code_explaining:`, error);
+      return super.code_explaining(prompt, enrichedContext, options);
+    }
   }
 
   // MCP-specific methods
@@ -688,5 +805,90 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
 
     return client.callTool(toolCall);
+  }
+
+  /**
+   * Get available tools for LLM integration
+   */
+  async getAvailableToolsForLLM(): Promise<IMCPTool[]> {
+    const allTools: IMCPTool[] = [];
+    const toolsFromServers = await this.getAllTools();
+
+    for (const [serverName, tools] of Object.entries(toolsFromServers)) {
+      for (const tool of tools) {
+        // Add server context to tool for execution routing
+        const enhancedTool: IMCPTool & { _mcpServer?: string } = {
+          ...tool,
+          _mcpServer: serverName
+        };
+        allTools.push(enhancedTool);
+      }
+    }
+
+    console.log(`[MCP Inferencer] Available tools for LLM: ${allTools.length} total from ${Object.keys(toolsFromServers).length} servers`);
+    return allTools;
+  }
+
+  async getToolsForLLMRequest(): Promise<any[]> {
+    const mcpTools = await this.getAvailableToolsForLLM();
+
+    const convertedTools = mcpTools.map(tool => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema
+      }
+    }));
+
+    console.log(`[MCP Inferencer] Converted ${convertedTools.length} tools to LLM request format`);
+    return convertedTools;
+  }
+
+  convertLLMToolCallToMCP(llmToolCall: any): IMCPToolCall {
+    return {
+      name: llmToolCall.function.name,
+      arguments: typeof llmToolCall.function.arguments === 'string'
+        ? JSON.parse(llmToolCall.function.arguments)
+        : llmToolCall.function.arguments
+    };
+  }
+
+  /**
+   * Execute a tool call from the LLM
+   */
+  async executeToolForLLM(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
+    console.log(`[MCP Inferencer] Executing tool for LLM: ${toolCall.name}`);
+
+    // Find which server has this tool
+    const toolsFromServers = await this.getAllTools();
+    let targetServer: string | undefined;
+
+    for (const [serverName, tools] of Object.entries(toolsFromServers)) {
+      if (tools.some(tool => tool.name === toolCall.name)) {
+        targetServer = serverName;
+        break;
+      }
+    }
+
+    if (!targetServer) {
+      throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
+    }
+
+    console.log(`[MCP Inferencer] Routing tool '${toolCall.name}' to server '${targetServer}'`);
+    return this.executeTool(targetServer, toolCall);
+  }
+
+  /**
+   * Check if tools are available for LLM integration
+   */
+  async hasAvailableTools(): Promise<boolean> {
+    try {
+      const tools = await this.getAvailableToolsForLLM();
+      return tools.length > 0;
+    } catch (error) {
+      console.warn(`[MCP Inferencer] Error checking available tools:`, error);
+      return false;
+    }
   }
 }
