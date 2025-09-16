@@ -15,7 +15,7 @@ import { appReducer } from './reducer/app'
 import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
-import { RemixUiGenericModal } from 'libs/remix-ui/generic-modal/src/lib/remix-ui-generic-modal'
+import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 
 interface IRemixAppUi {
   app: any
@@ -225,7 +225,7 @@ const RemixApp = (props: IRemixAppUi) => {
             </div>
             <AppDialogs></AppDialogs>
             <DialogViewPlugin></DialogViewPlugin>
-            {appState.genericModalState.showModal && <RemixUiGenericModal appState={appState} dispatch={appStateDispatch} plugin={props.app.templateExplorerModal}></RemixUiGenericModal>}
+            {appState.genericModalState.showModal && <RemixUiTemplateExplorerModal appState={appState} dispatch={appStateDispatch} plugin={props.app.templateExplorerModal}></RemixUiTemplateExplorerModal>}
           </AppProvider>
         </onLineContext.Provider>
       </platformContext.Provider>

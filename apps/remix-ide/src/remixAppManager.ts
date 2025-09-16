@@ -94,7 +94,7 @@ let requiredModules = [
   'remixAID',
   'remixaiassistant',
   'topbar',
-  'remix-generic-modal',
+  'remix-template-explorer-modal',
   'githubAuthHandler',
   'desktopClient'
 ]
@@ -163,7 +163,7 @@ export function isNative(name) {
     'LearnEth',
     'noir-compiler',
     'remixaiassistant',
-    'remix-generic-modal'
+    'remix-template-explorer-modal'
   ]
   return nativePlugins.includes(name) || requiredModules.includes(name) || isInjectedProvider(name) || isVM(name) || isScriptRunner(name)
 }
