@@ -1,5 +1,5 @@
 import { ChatHistory } from '../prompts/chat';
-import { JsonStreamParser } from '../types/types';
+import { JsonStreamParser, IAIStreamResponse } from '../types/types';
 
 export const HandleSimpleResponse = async (response, cb?: (streamText: string) => void) => {
   let resultText = '';
@@ -118,7 +118,10 @@ export const HandleOpenAIResponse = async (streamResponse, cb: (streamText: stri
   }
 }
 
-export const HandleMistralAIResponse = async (streamResponse, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+  console.log('handling stream response', aiResponse)
+  const streamResponse = aiResponse.streamResponse
+  const tool_callback = aiResponse?.callback
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
@@ -137,9 +140,11 @@ export const HandleMistralAIResponse = async (streamResponse, cb: (streamText: s
     if (done) break;
 
     buffer = decoder.decode(value, { stream: true });
+    console.log('processing buffer', buffer)
 
     const lines = buffer.split("\n");
     for (const line of lines) {
+      console.log('processing line', line)
       if (line.startsWith("data: ")) {
         const jsonStr = line.replace(/^data: /, "").trim();
         if (jsonStr === "[DONE]") {
@@ -150,10 +155,19 @@ export const HandleMistralAIResponse = async (streamResponse, cb: (streamText: s
         try {
           const json = JSON.parse(jsonStr);
           threadId = json?.id || threadId;
+          if (json.choices[0].delta.tool_calls && tool_callback){
+            console.log('calling tools in stream')
+            const response = await tool_callback(json.choices[0].delta.tool_calls)
+            HandleMistralAIResponse(response, cb, done_cb)
 
-          const content = json.choices[0].delta.content
-          cb(content);
-          resultText += content;
+          } else if (json.choices[0].delta.content){
+            const content = json.choices[0].delta.content
+            cb(content);
+            resultText += content;
+          } else {
+            console.log('mistralai stream data not processed!', json.choices[0])
+            continue
+          }
         } catch (e) {
           console.error("⚠️ MistralAI Stream parse error:", e);
         }

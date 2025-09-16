@@ -54,7 +54,7 @@ export class RemixAIPlugin extends Plugin {
   completionAgent: CodeCompletionAgent
   mcpServers: IMCPServer[] = []
   mcpInferencer: MCPInferencer | null = null
-  mcpEnabled: boolean = false
+  mcpEnabled: boolean = true
   remixMCPServer: RemixMCPServer | null = null
   baseInferencer: any = null
 

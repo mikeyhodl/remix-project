@@ -109,6 +109,11 @@ export interface IParams {
   version: string;
 }
 
+export interface IAIStreamResponse{
+  streamResponse: any, 
+  callback?: any
+}
+
 export enum AIRequestType {
   COMPLETION,
   GENERAL
