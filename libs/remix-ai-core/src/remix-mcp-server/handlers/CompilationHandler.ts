@@ -12,6 +12,7 @@ import {
   CompilationResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
+import { compilecontracts, compilationParams } from "../../helpers/compile";
 
 /**
  * Solidity Compile Tool Handler
@@ -28,7 +29,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       },
       version: {
         type: 'string',
-        description: 'Solidity compiler version (e.g., 0.8.19)',
+        description: 'Solidity compiler version (e.g., 0.8.30)',
         default: 'latest'
       },
       optimize: {
@@ -73,14 +74,6 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
   async execute(args: SolidityCompileArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const resultat: CompilationResult = {
-        success: true,
-        contracts: {},
-        errors: [],
-        warnings: [],
-        sources: {}
-      };
-      return this.createSuccessResult(resultat)
       // Get current compiler configuration or create new one
       let compilerConfig: any = {};
       
@@ -113,12 +106,15 @@ export class SolidityCompileHandler extends BaseToolHandler {
       // Trigger compilation
       let compilationResult: any;
       if (args.file) {
+        console.log('[TOOL] compiling ', args.file)
         // Compile specific file - need to use plugin API or direct compilation
         const content = await plugin.call('fileManager', 'readFile', args.file);
-        // TODO: Implement direct compilation with solc
-        compilationResult = { success: false, message: 'Direct file compilation not yet implemented' };
+        let contract = {}
+        contract[args.file] = content
+
+        const compileResults = await compilecontracts(contract, plugin)
+        compilationResult = { success: compileResults.compilationSucceeded, message: 'Direct file compilation not yet implemented' };
       } else {
-        // Compile current workspace - placeholder for actual compilation
         compilationResult = { success: false, message: 'Workspace compilation not yet implemented' };
       }
 
@@ -361,7 +357,7 @@ export class CompileWithHardhatHandler extends BaseToolHandler {
       const configPath = args.configPath || 'hardhat.config.js';
       
       // Check if hardhat config exists
-      const exists = await plugin.call('filemanager', 'exists', configPath);
+      const exists = await plugin.call('fileManager', 'exists', configPath);
       if (!exists) {
         return this.createErrorResult(`Hardhat config file not found: ${configPath}`);
       }
@@ -413,7 +409,7 @@ export class CompileWithTruffleHandler extends BaseToolHandler {
       const configPath = args.configPath || 'truffle.config.js';
       
       // Check if truffle config exists
-      const exists = await plugin.call('filemanager', 'exists', configPath);
+      const exists = await plugin.call('fileManager', 'exists', configPath);
       if (!exists) {
         return this.createErrorResult(`Truffle config file not found: ${configPath}`);
       }

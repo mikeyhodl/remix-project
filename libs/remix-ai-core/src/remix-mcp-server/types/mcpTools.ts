@@ -264,11 +264,11 @@ export interface FileOperationResult {
 export interface CompilationResult {
   success: boolean;
   contracts: Record<string, {
-    abi: any[];
-    bytecode: string;
-    deployedBytecode: string;
-    metadata: any;
-    gasEstimates: any;
+    abi?: any[];
+    bytecode?: string;
+    deployedBytecode?: string;
+    metadata?: any;
+    gasEstimates?: any;
   }>;
   errors: any[];
   warnings: any[];
