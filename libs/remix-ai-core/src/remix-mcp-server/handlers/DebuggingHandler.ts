@@ -166,7 +166,7 @@ export class SetBreakpointHandler extends BaseToolHandler {
   async execute(args: BreakpointArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Check if source file exists
-      const exists = await plugin.call('filemanager', 'exists', args.sourceFile);
+      const exists = await plugin.call('fileManager', 'exists', args.sourceFile);
       if (!exists) {
         return this.createErrorResult(`Source file not found: ${args.sourceFile}`);
       }

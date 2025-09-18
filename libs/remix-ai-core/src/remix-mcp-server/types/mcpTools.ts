@@ -271,6 +271,7 @@ export interface CompilationResult {
     gasEstimates?: any;
   }>;
   errors: any[];
+  errorFiles?: any[];
   warnings: any[];
   sources: Record<string, any>;
 }

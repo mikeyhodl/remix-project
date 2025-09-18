@@ -51,12 +51,12 @@ export class FileReadHandler extends BaseToolHandler {
 
   async execute(args: FileReadArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.path)
+      const exists = await plugin.call('fileManager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`File not found: ${args.path}`);
       }
 
-      const content = await plugin.call('filemanager', 'readFile', args.path)
+      const content = await plugin.call('fileManager', 'readFile', args.path)
       
       const result: FileOperationResult = {
         success: true,
@@ -118,7 +118,7 @@ export class FileWriteHandler extends BaseToolHandler {
 
   async execute(args: FileWriteArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      await plugin.call('filemanager', 'writeFile', args.path, args.content);
+      await plugin.call('fileManager', 'writeFile', args.path, args.content);
       
       const result: FileOperationResult = {
         success: true,
@@ -187,15 +187,15 @@ export class FileCreateHandler extends BaseToolHandler {
 
   async execute(args: FileCreateArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.path)
+      const exists = await plugin.call('fileManager', 'exists', args.path)
       if (exists) {
         return this.createErrorResult(`Path already exists: ${args.path}`);
       }
 
       if (args.type === 'directory') {
-        await plugin.call('filemanager', 'mkdir', args.path);
+        await plugin.call('fileManager', 'mkdir', args.path);
       } else {
-        await plugin.call('filemanager', 'writeFile', args.path, args.content || '');
+        await plugin.call('fileManager', 'writeFile', args.path, args.content || '');
       }
       
       const result: FileOperationResult = {
@@ -245,12 +245,12 @@ export class FileDeleteHandler extends BaseToolHandler {
 
   async execute(args: FileDeleteArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.path)
+      const exists = await plugin.call('fileManager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`Path not found: ${args.path}`);
       }
 
-      await plugin.call('filemanager', 'remove', args.path);
+      await plugin.call('fileManager', 'remove', args.path);
       
       const result: FileOperationResult = {
         success: true,
@@ -302,17 +302,17 @@ export class FileMoveHandler extends BaseToolHandler {
 
   async execute(args: FileMoveArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.from);
+      const exists = await plugin.call('fileManager', 'exists', args.from);
       if (!exists) {
         return this.createErrorResult(`Source path not found: ${args.from}`);
       }
 
-      const destExists = await plugin.call('filemanager', 'exists', args.to);
+      const destExists = await plugin.call('fileManager', 'exists', args.to);
       if (destExists) {
         return this.createErrorResult(`Destination path already exists: ${args.to}`);
       }
 
-      await await plugin.call('filemanager', 'rename', args.from, args.to);
+      await await plugin.call('fileManager', 'rename', args.from, args.to);
       
       const result: FileOperationResult = {
         success: true,
@@ -365,13 +365,13 @@ export class FileCopyHandler extends BaseToolHandler {
 
   async execute(args: FileCopyArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.from);
+      const exists = await plugin.call('fileManager', 'exists', args.from);
       if (!exists) {
         return this.createErrorResult(`Source path not found: ${args.from}`);
       }
 
-      const content = await plugin.call('filemanager', 'readFile',args.from);
-      await plugin.call('filemanager', 'writeFile',args.to, content);
+      const content = await plugin.call('fileManager', 'readFile',args.from);
+      await plugin.call('fileManager', 'writeFile',args.to, content);
       
       const result: FileOperationResult = {
         success: true,
@@ -426,22 +426,22 @@ export class DirectoryListHandler extends BaseToolHandler {
 
   async execute(args: DirectoryListArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.path)
+      const exists = await plugin.call('fileManager', 'exists', args.path)
       if (!exists) {
         return this.createErrorResult(`Directory not found: ${args.path}`);
       }
 
-      const files = await await plugin.call('filemanager', 'readdir', args.path);
+      const files = await await plugin.call('fileManager', 'readdir', args.path);
       const fileList = [];
 
       for (const file of files) {
         const fullPath = `${args.path}/${file}`;
         try {
-          const isDir = await await plugin.call('filemanager', 'isDirectory', fullPath);
+          const isDir = await await plugin.call('fileManager', 'isDirectory', fullPath);
           let size = 0;
           
           if (!isDir) {
-            const content = await plugin.call('filemanager', 'readFile',fullPath);
+            const content = await plugin.call('fileManager', 'readFile',fullPath);
             size = content.length;
           }
 
@@ -515,7 +515,7 @@ export class FileExistsHandler extends BaseToolHandler {
 
   async execute(args: { path: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const exists = await plugin.call('filemanager', 'exists', args.path)
+      const exists = await plugin.call('fileManager', 'exists', args.path)
       
       const result = {
         success: true,

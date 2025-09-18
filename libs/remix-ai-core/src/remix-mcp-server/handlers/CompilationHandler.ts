@@ -12,7 +12,6 @@ import {
   CompilationResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
-import { compilecontracts, compilationParams } from "../../helpers/compile";
 
 /**
  * Solidity Compile Tool Handler
@@ -74,17 +73,12 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
   async execute(args: SolidityCompileArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // Get current compiler configuration or create new one
       let compilerConfig: any = {};
       
       try {
         // Try to get existing compiler config
-        const currentConfig = await plugin.call('config', 'getAppParameter', 'solidity-compiler');
-        if (currentConfig) {
-          compilerConfig = JSON.parse(currentConfig);
-        }
+        compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
       } catch (error) {
-        // Use default config if none exists
         compilerConfig = {
           version: args.version || 'latest',
           optimize: args.optimize !== undefined ? args.optimize : true,
@@ -94,16 +88,13 @@ export class SolidityCompileHandler extends BaseToolHandler {
         };
       }
 
-      // Update config with provided arguments
       if (args.version) compilerConfig.version = args.version;
       if (args.optimize !== undefined) compilerConfig.optimize = args.optimize;
       if (args.runs) compilerConfig.runs = args.runs;
       if (args.evmVersion) compilerConfig.evmVersion = args.evmVersion;
 
-      // Set compiler configuration
-      await plugin.call('config', 'setAppParameter', 'solidity-compiler', JSON.stringify(compilerConfig));
+      // await plugin.call('solidity' as any, 'setCompilerConfig', JSON.stringify(compilerConfig));
 
-      // Trigger compilation
       let compilationResult: any;
       if (args.file) {
         console.log('[TOOL] compiling ', args.file)
@@ -112,23 +103,24 @@ export class SolidityCompileHandler extends BaseToolHandler {
         let contract = {}
         contract[args.file] = content
 
-        const compileResults = await compilecontracts(contract, plugin)
-        compilationResult = { success: compileResults.compilationSucceeded, message: 'Direct file compilation not yet implemented' };
+        const compilerPayload = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
+        compilationResult = compilerPayload
       } else {
         compilationResult = { success: false, message: 'Workspace compilation not yet implemented' };
       }
 
       // Process compilation result
       const result: CompilationResult = {
-        success: !compilationResult.errors || compilationResult.errors.length === 0,
+        success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
         errors: compilationResult.errors || [],
-        warnings: compilationResult.warnings || [],
-        sources: compilationResult.sources || {}
+        errorFiles: compilationResult.errFiles || [],
+        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        sources: compilationResult?.source || {}
       };
 
       // Extract contract data
-      if (compilationResult.contracts) {
+      if (compilationResult.data.contracts) {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
@@ -167,23 +159,22 @@ export class GetCompilationResultHandler extends BaseToolHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Implement getting compilation result from Remix API
-      const compilationResult: any = null; // await plugin.call.solidity.getCompilationResult();
-      
+      const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
       if (!compilationResult) {
         return this.createErrorResult('No compilation result available');
       }
 
       const result: CompilationResult = {
-        success: !compilationResult.errors || compilationResult.errors.length === 0,
+        success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
         errors: compilationResult.errors || [],
-        warnings: compilationResult.warnings || [],
-        sources: compilationResult.sources || {}
+        errorFiles: compilationResult.errFiles || [],
+        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        sources: compilationResult?.source || {}
       };
 
       // Process contracts
-      if (compilationResult.contracts) {
+      if (compilationResult.data.contracts) {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
@@ -269,7 +260,7 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
         language: args.language || 'Solidity'
       };
 
-      await plugin.call('config', 'setAppParameter', 'solidity-compiler', JSON.stringify(config));
+      await plugin.call('solidity' as any, 'setCompilerConfig', JSON.stringify(config));
 
       return this.createSuccessResult({
         success: true,
@@ -299,12 +290,9 @@ export class GetCompilerConfigHandler extends BaseToolHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const configString = await plugin.call('config', 'getAppParameter', 'solidity-compiler');
+      let config = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
       
-      let config: any;
-      if (configString) {
-        config = JSON.parse(configString);
-      } else {
+      if (!config) {
         config = {
           version: 'latest',
           optimize: true,
@@ -362,9 +350,8 @@ export class CompileWithHardhatHandler extends BaseToolHandler {
         return this.createErrorResult(`Hardhat config file not found: ${configPath}`);
       }
 
-      // TODO: Compile with Hardhat - implement plugin integration
-      const result = { success: false, message: 'Hardhat compilation not yet implemented' };
-      
+      const result = await plugin.call('solidity' as any , 'compileWithHardhat', configPath);
+
       return this.createSuccessResult({
         success: true,
         message: 'Compiled with Hardhat successfully',
@@ -414,8 +401,7 @@ export class CompileWithTruffleHandler extends BaseToolHandler {
         return this.createErrorResult(`Truffle config file not found: ${configPath}`);
       }
 
-      // TODO: Compile with Truffle - implement plugin integration
-      const result = { success: false, message: 'Truffle compilation not yet implemented' };
+      const result = await plugin.call('solidity' as any , 'compileWithTruffle', configPath);
       
       return this.createSuccessResult({
         success: true,
@@ -446,7 +432,9 @@ export class GetCompilerVersionsHandler extends BaseToolHandler {
   async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get available compiler versions from Remix API
-      const versions = ['0.8.19', '0.8.18', '0.8.17', '0.8.16', '0.8.15']; // Mock data
+      const compilerList = await  plugin.call('compilerloader', 'listCompilers')
+      //const solJson = await  plugin.call('compilerloader', 'getJsonBinData')
+      const versions = ['0.8.20', '0.8.25', '0.8.26', '0.8.28', '0.8.30']; // Mock data
       
       return this.createSuccessResult({
         success: true,

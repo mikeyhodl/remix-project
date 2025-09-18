@@ -212,9 +212,6 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
     );
   }
 
-  /**
-   * Initialize category sets
-   */
   private initializeCategories(): void {
     for (const category of Object.values(ToolCategory)) {
       this.categories.set(category, new Set());
@@ -240,9 +237,6 @@ export abstract class BaseToolHandler implements RemixToolHandler {
     return true;
   }
 
-  /**
-   * Helper method to create success result
-   */
   protected createSuccessResult(content: any): IMCPToolResult {
     return {
       content: [{
@@ -253,9 +247,6 @@ export abstract class BaseToolHandler implements RemixToolHandler {
     };
   }
 
-  /**
-   * Helper method to create error result
-   */
   protected createErrorResult(error: string | Error): IMCPToolResult {
     const message = error instanceof Error ? error.message : error;
     return {
@@ -267,9 +258,6 @@ export abstract class BaseToolHandler implements RemixToolHandler {
     };
   }
 
-  /**
-   * Helper method to validate required arguments
-   */
   protected validateRequired(args: any, required: string[]): boolean | string {
     for (const field of required) {
       if (!(field in args) || args[field] === null || args[field] === undefined) {
@@ -279,9 +267,6 @@ export abstract class BaseToolHandler implements RemixToolHandler {
     return true;
   }
 
-  /**
-   * Helper method to validate argument types
-   */
   protected validateTypes(args: any, types: Record<string, string>): boolean | string {
     for (const [field, expectedType] of Object.entries(types)) {
       if (field in args && typeof args[field] !== expectedType) {
