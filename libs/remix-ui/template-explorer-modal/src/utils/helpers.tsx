@@ -5,26 +5,20 @@ export const templatesRepository = [
     name: "Generic",
     items: [
       { value: "remixDefault", tagList: ["Solidity"],
-        // displayName: intl.formatMessage({ id: 'filePanel.basic' }),
+        displayName: 'Basic',
         description: 'The default project',
-        // templateType: TEMPLATE_METADATA['remixDefault']
       },
       { value: "blank",
-        // displayName: intl.formatMessage({ id: 'filePanel.blank' }),
+        displayName: 'Blank',
         IsArtefact: true, description: 'A blank project',
-        // templateType: TEMPLATE_METADATA['blank']
       },
       { value: "simpleEip7702", displayName: 'Simple EIP 7702', IsArtefact: true, description: 'Pectra upgrade allowing externally owned accounts (EOAs) to run contract code.',
-        // templateType: TEMPLATE_METADATA['simpleEip7702']
       },
       { value: "accountAbstraction", displayName: 'Account Abstraction', IsArtefact: true, description: 'A repo about ERC-4337 and EIP-7702',
-        // templateType: TEMPLATE_METADATA['accountAbstraction']
       },
       { value: 'remixAiTemplate', tagList: ['AI'], displayName: 'RemixAI Template Generation', IsArtefact: true, description: 'AI generated workspace. Workspace gets generated with a user prompt.',
-        // templateType: TEMPLATE_METADATA['remixAiTemplate']
       },
       { value: "introToEIP7702", displayName: 'Intro to EIP-7702', IsArtefact: true, description: 'A contract for demoing EIP-7702',
-        // templateType: TEMPLATE_METADATA['introToEIP7702']
       },
     ]
   },
@@ -37,7 +31,6 @@ export const templatesRepository = [
         displayName: "ERC20",
         tagList: ["ERC20", "Solidity"],
         description: 'A customizable fungible token contract',
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -47,7 +40,6 @@ export const templatesRepository = [
         opts: {
           mintable: true
         },
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -58,7 +50,6 @@ export const templatesRepository = [
           mintable: true,
           burnable: true
         },
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -69,14 +60,12 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC20", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc721",
         displayName: "ERC721 (NFT)",
         tagList: ["ERC721", "Solidity"],
         description: 'A customizable non-fungible token (NFT) contract',
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -86,7 +75,6 @@ export const templatesRepository = [
         opts: {
           mintable: true
         },
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -97,7 +85,6 @@ export const templatesRepository = [
           burnable: true
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -108,14 +95,12 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc1155",
         tagList: ["Solidity"],
         displayName: "ERC1155",
         description: 'A customizable multi token contract',
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -125,7 +110,6 @@ export const templatesRepository = [
         opts: {
           mintable: true
         },
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -136,7 +120,6 @@ export const templatesRepository = [
           burnable: true
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -147,7 +130,6 @@ export const templatesRepository = [
           mintable: true,
           pausable: true
         },
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       }
     ]
   },
@@ -162,7 +144,6 @@ export const templatesRepository = [
           upgradeable: 'uups'
         },
         tagList: ["ERC20", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -173,7 +154,6 @@ export const templatesRepository = [
           mintable: true
         },
         tagList: ["ERC20", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -185,7 +165,6 @@ export const templatesRepository = [
           burnable: true
         },
         tagList: ["ERC20", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc20",
@@ -197,7 +176,6 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC20", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc20']
       },
       {
         value: "ozerc721",
@@ -207,7 +185,6 @@ export const templatesRepository = [
           upgradeable: 'uups'
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -218,7 +195,6 @@ export const templatesRepository = [
           mintable: true
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -230,7 +206,6 @@ export const templatesRepository = [
           burnable: true
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc721",
@@ -242,7 +217,6 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC721", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc721']
       },
       {
         value: "ozerc1155",
@@ -252,7 +226,6 @@ export const templatesRepository = [
           upgradeable: 'uups'
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -263,7 +236,6 @@ export const templatesRepository = [
           mintable: true
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -275,7 +247,6 @@ export const templatesRepository = [
           burnable: true
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -287,7 +258,6 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       },
       {
         value: "ozerc1155",
@@ -300,7 +270,6 @@ export const templatesRepository = [
           pausable: true
         },
         tagList: ["ERC1155", "Solidity"],
-        // templateType: TEMPLATE_METADATA['ozerc1155']
       }
     ]
   },
@@ -367,45 +336,43 @@ export const templatesRepository = [
     name: "0xProject",
     items: [
       { value: "zeroxErc20", displayName: "ERC20", tagList: ["ERC20", "Solidity"], description: "A fungible token contract by 0xProject",
-        // templateType: TEMPLATE_METADATA['zeroxErc20']
       }
     ]
   },
   {
     name: "Gnosis Safe",
     items: [
-      { value: "gnosisSafeMultisig", tagList: ["Solidity"], // displayName: intl.formatMessage({ id: 'filePanel.multiSigWallet' }),
+      { value: "gnosisSafeMultisig", tagList: ["Solidity"],
+        displayName: 'MultiSig Wallet',
         description: 'Deploy or customize the Gnosis Safe MultiSig Wallet',
-        // templateType: TEMPLATE_METADATA['gnosisSafeMultisig']
       }
     ]
   },
   {
     name: "Circom ZKP",
     items: [
-      { value: "semaphore", tagList: ["ZKP", "Circom"], // displayName: intl.formatMessage({ id: 'filePanel.semaphore' }),
+      { value: "semaphore", tagList: ["ZKP", "Circom"],
+        displayName: 'Semaphore',
         description: 'Semaphore protocol for casting a message as a provable group member',
-        // templateType: TEMPLATE_METADATA['semaphore']
       },
-      { value: "hashchecker", tagList: ["ZKP", "Circom"], // displayName: intl.formatMessage({ id: 'filePanel.hashchecker' }),
+      { value: "hashchecker", tagList: ["ZKP", "Circom"],
+        displayName: 'Hash Checker',
         description: 'Hash checker Circom circuit',
-        // templateType: TEMPLATE_METADATA['hashchecker']
       },
       { value: "rln", tagList: ["ZKP", "Circom"],
-        //displayName: intl.formatMessage({ id: 'filePanel.rln' }),
+        displayName: 'Rate-Limiting Nullifier',
         description: 'Rate Limiting Nullifier Circom circuit',
-        // templateType: TEMPLATE_METADATA['rln']
       }
     ]
   },
   {
     name: "Noir ZKP",
     items: [
-      { value: "multNr", tagList: ["ZKP", "Noir"], // displayName: intl.formatMessage({ id: 'filePanel.multNr' }),
+      { value: "multNr", tagList: ["ZKP", "Noir"],
+        displayName: 'Simple Multiplier',
         description: 'A simple multiplier circuit',
-        // templateType: TEMPLATE_METADATA['multNr']
-      }
-      // { value: "stealthDropNr", tagList: ["ZKP", "Noir"], displayName: intl.formatMessage({ id: 'filePanel.stealthDropNr' }),}
+      },
+      { value: "stealthDropNr", tagList: ["ZKP", "Noir"], displayName: 'Stealth Drop',}
     ]
   },
   {
@@ -414,9 +381,9 @@ export const templatesRepository = [
       {
         value: "sindriScripts",
         tagList: ["ZKP"],
-        // displayName: intl.formatMessage({ id: 'filePanel.addscriptsindri' }),
+        displayName: 'Add Sindri ZK scripts',
         description: 'Use the Sindri API to compile and generate proofs',
-        // templateType: TEMPLATE_METADATA['sindriScripts']
+
       },
     ],
   },
@@ -424,21 +391,18 @@ export const templatesRepository = [
     name: "Uniswap V4",
     items: [
       { value: "uniswapV4Template",
-        // displayName: intl.formatMessage({ id: 'filePanel.uniswapV4Template' }),
+        displayName: 'Uniswap v4 Template',
         description: 'Use a Uniswap hook',
-        // templateType: TEMPLATE_METADATA['uniswapV4Template']
       },
       {
         value: "breakthroughLabsUniswapv4Hooks",
-        // displayName: intl.formatMessage({ id: 'filePanel.breakthroughLabsUniswapv4Hooks' }),
+        displayName: 'Breakthrough-Labs Hooks',
         description: 'Use a Uniswap hook developed by Breakthrough Labs',
-        // templateType: TEMPLATE_METADATA['breakthroughLabsUniswapv4Hooks']
       },
       {
         value: "uniswapV4HookBookMultiSigSwapHook",
-        // displayName: intl.formatMessage({ id: 'filePanel.uniswapV4HookBookMultiSigSwapHook' }),
+        displayName: 'HookBook MultiSigSwapHook',
         description: 'Use a MultiSigSwapHook developed by Breakthrough Labs',
-        // templateType: TEMPLATE_METADATA['uniswapV4HookBookMultiSigSwapHook']
       }
     ]
   },
@@ -448,15 +412,13 @@ export const templatesRepository = [
       {
         value: "contractCreate2Factory",
         tagList: ["Solidity"],
-        // displayName: intl.formatMessage({ id: 'filePanel.addcreate2solidityfactory' }),
+        displayName: 'Add Create2 Solidity factory',
         description: 'Factory for deploying a contract using the CREATE2 opcode',
-        // templateType: TEMPLATE_METADATA['contractCreate2Factory']
       },
       {
         value: "contractDeployerScripts",
-        // displayName: intl.formatMessage({ id: 'filePanel.addscriptdeployer' }),
+        displayName: 'Add contract deployer scripts',
         description: 'Script for deploying a contract using the CREATE2 opcode',
-        // templateType: TEMPLATE_METADATA['contractDeployerScripts']
       }
     ]
   },
@@ -465,9 +427,8 @@ export const templatesRepository = [
     items: [
       {
         value: "etherscanScripts",
-        // displayName: intl.formatMessage({ id: 'filePanel.addscriptetherscan' }),
+        displayName: 'Add Etherscan scripts',
         description: 'Script for verifying a Contract in Etherscan',
-        // templateType: TEMPLATE_METADATA['etherscanScripts']
       },
     ],
   },
@@ -475,20 +436,17 @@ export const templatesRepository = [
     name: 'GitHub Actions',
     items: [
       { value: "runJsTestAction",
-        // displayName: intl.formatMessage({ id: 'filePanel.tssoltestghaction' }),
+        displayName: 'Mocha Chai Test Workflow',
         description: 'A Mocha Chai test workflow in a GitHub CI',
-        // templateType: TEMPLATE_METADATA['runJsTestAction']
       },
       { value: "runSolidityUnittestingAction",
-        // displayName: intl.formatMessage({ id: 'filePanel.solghaction' }),
+        displayName: 'Solidity Test Workflow',
         description: 'Run a Solidity unit test workflow in a GitHub CI',
-        // templateType: TEMPLATE_METADATA['runSolidityUnittestingAction']
       },
       {
         value: "runSlitherAction",
-        // displayName: intl.formatMessage({ id: 'filePanel.slitherghaction' }),
+        displayName: 'Slither Workflow',
         description: 'Run a Slither security analysis in a GitHub CI',
-        // templateType: TEMPLATE_METADATA['runSlitherAction']
       }
     ],
     IsArtefact: true

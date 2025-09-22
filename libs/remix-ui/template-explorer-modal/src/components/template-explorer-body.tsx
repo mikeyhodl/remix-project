@@ -1,6 +1,8 @@
 import React from 'react'
-import { TopCard, TopCardProps } from './topCard'
+import { TopCard } from './topCard'
+import { TopCardProps } from '../../types/template-explorer-types'
 import { TemplateExplorer } from './template-explorer'
+import { TopCards } from './topCards'
 
 export interface TemplateExplorerBodyProps {
   topCards: TopCardProps[]
@@ -10,15 +12,9 @@ export interface TemplateExplorerBodyProps {
 export function TemplateExplorerBody({ topCards, plugin }: TemplateExplorerBodyProps) {
   return (
     <section>
-      <div className="title">
-        {/* {props.appState.genericModalState.title && props.appState.genericModalState.title} {props.appState.genericModalState.title} */}
-        <div className="d-flex flex-row gap-3 mx-auto">
-          {topCards.map((card) => (
-            <TopCard key={card.title} {...card} />
-          ))}
-        </div>
-      </div>
-      <div className="body">
+      <TopCards />
+      <div className="body overflow-y-hidden">
+        <label className="text-dark fs-5">Workspace Templates</label>
         <TemplateExplorer plugin={plugin} />
       </div>
     </section>

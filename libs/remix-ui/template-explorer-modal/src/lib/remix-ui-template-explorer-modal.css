@@ -59,6 +59,13 @@
   background-color: transparent;
 }
 
+.template-explorer-modal-search-input {
+  background-image: url('search-icon.svg');
+  background-position: 10px 8px;
+  background-repeat: no-repeat;
+  color: var(--bs-light);
+}
+
 .explora-topcard {
   cursor: pointer;
 }
