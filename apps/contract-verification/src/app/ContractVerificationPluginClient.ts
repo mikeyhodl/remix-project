@@ -92,6 +92,14 @@ export class ContractVerificationPluginClient extends PluginClient {
         await this._verifyWithProvider('Sourcify', submittedContract, compilerAbstract, chainId, chainSettings)
       }
 
+      if (currentChain.explorers && currentChain.explorers.some(explorer => explorer.name.toLowerCase().includes('routescan'))) {
+        await this._verifyWithProvider('Routescan', submittedContract, compilerAbstract, chainId, chainSettings)
+      }
+
+      if (currentChain.explorers && currentChain.explorers.some(explorer => explorer.name.toLowerCase().includes('blockscout'))) {
+        await this._verifyWithProvider('Blockscout', submittedContract, compilerAbstract, chainId, chainSettings)
+      }
+
       if (currentChain.explorers && currentChain.explorers.some(explorer => explorer.name.includes('etherscan'))) {
         if (etherscanApiKey) {
           if (!chainSettings.verifiers.Etherscan) chainSettings.verifiers.Etherscan = {}
@@ -100,14 +108,6 @@ export class ContractVerificationPluginClient extends PluginClient {
         } else {
           await this.call('terminal', 'log', { type: 'warn', value: 'Etherscan verification skipped: API key not found in global Settings.' })
         }
-      }
-
-      if (currentChain.explorers && currentChain.explorers.some(explorer => explorer.name.toLowerCase().includes('routescan'))) {
-        await this._verifyWithProvider('Routescan', submittedContract, compilerAbstract, chainId, chainSettings)
-      }
-
-      if (currentChain.explorers && currentChain.explorers.some(explorer => explorer.name.includes('blockscout'))) {
-        await this._verifyWithProvider('Blockscout', submittedContract, compilerAbstract, chainId, chainSettings)
       }
       
     } catch (error) {
@@ -124,7 +124,7 @@ export class ContractVerificationPluginClient extends PluginClient {
   ): Promise<void> => {
     try {
       if (validConfiguration(chainSettings, providerName)) {
-        await this.call('terminal', 'log', { type: 'info', value: `Verifying with ${providerName}...` })
+        await this.call('terminal', 'log', { type: 'log', value: `Verifying with ${providerName}...` })
         
         const verifierSettings = chainSettings.verifiers[providerName]
         const verifier = getVerifier(providerName, verifierSettings)
@@ -132,12 +132,11 @@ export class ContractVerificationPluginClient extends PluginClient {
         if (verifier && typeof verifier.verify === 'function') {
             const result = await verifier.verify(submittedContract, compilerAbstract)
             
-            let successMessage = `${providerName} verification successful! Status: ${result.status}`
-            if (result.receiptId) successMessage += `, Receipt ID: ${result.receiptId}`
+            let successMessage = `${providerName} verification successful.`
             await this.call('terminal', 'log', { type: 'info', value: successMessage })
             
             if (result.lookupUrl) {
-                await this.call('terminal', 'log', { type: 'html', value: `Check status: <a href="${result.lookupUrl}" target="_blank">${providerName} Link</a>` })
+              await this.call('terminal', 'log', { type: 'info', value: result.lookupUrl })
             }
         } else {
             await this.call('terminal', 'log', { type: 'warn', value: `${providerName} verifier is not properly configured or does not support direct verification.` })

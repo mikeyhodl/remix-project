@@ -192,10 +192,6 @@ export const createInstance = async (
         terminalLogger(plugin, errorLog)
       }
 
-      const msg = `Contract deployed successfully at ${addressToString(address)}. Starting verification process...`
-      const log = logBuilder(msg)
-      terminalLogger(plugin, log)
-
       try {
         const status = plugin.blockchain.getCurrentNetworkStatus()
         if (status.error || !status.network) {
@@ -226,8 +222,10 @@ export const createInstance = async (
           constructorArgs: args,
           etherscanApiKey: etherscanApiKey
         }
-
-        await plugin.call('contract-verification', 'verifyOnDeploy', verificationData)
+        
+        setTimeout(async () => {
+          await plugin.call('contract-verification', 'verifyOnDeploy', verificationData)
+        }, 1000)
 
       } catch (e) {
         const errorMsg = `Verification setup failed: ${e.message}`
