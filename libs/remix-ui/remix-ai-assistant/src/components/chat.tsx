@@ -3,22 +3,11 @@ import remarkGfm from "remark-gfm"
 import copy from "copy-to-clipboard"
 import { ChatMessage, assistantAvatar } from "../lib/types"
 import React, { useState, useEffect } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { CustomTooltip } from "@remix-ui/helper"
-<<<<<<< HEAD
-
-const DEFAULT_SUGGESTIONS = [
-  'What is a modifier?',
-  'What is a Uniswap hook?',
-  'What is a ZKP?'
-]
-=======
-import { 
-  sampleConversationStarters, 
-  type ConversationStarter 
+import {
+  sampleConversationStarters,
+  type ConversationStarter
 } from "../lib/conversationStarters"
->>>>>>> f3c92312c9 (dynamic conversation starters)
 
 // ChatHistory component
 export interface ChatHistoryComponentProps {
@@ -55,15 +44,9 @@ const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt }) => {
         RemixAI provides you personalized guidance as you build. It can break down concepts,
         answer questions about blockchain technology and assist you with your smart contracts.
       </p>
-<<<<<<< HEAD
-      <div className="d-flex flex-column mt-3">
-        {DEFAULT_SUGGESTIONS.map((s, index) => (
-=======
-
       {/* Dynamic Conversation Starters */}
       <div className="d-flex flex-column mt-3" style={{ maxWidth: '400px' }}>
         {conversationStarters.map((starter, index) => (
->>>>>>> f3c92312c9 (dynamic conversation starters)
           <button
             key={`${starter.level}-${index}`}
             data-id={`remix-ai-assistant-starter-${starter.level}-${index}`}
