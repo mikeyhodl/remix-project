@@ -179,56 +179,37 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getLatestCompilationResult(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      // TODO: Get actual compilation result from Remix API
+      const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
+      if (!compilationResult) {
+        return this.createTextContent('compilation://latest', `Error getting compilation result`);
+      }
 
-      const compilationResult = {
-        status: 'success',
+      const result = {
+        success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         timestamp: new Date().toISOString(),
-        compiler: {
-          version: '0.8.19',
-          settings: {
-            optimizer: {
-              enabled: true,
-              runs: 200
-            },
-            evmVersion: 'london'
-          }
-        },
-        contracts: {
-          'contracts/MyToken.sol:MyToken': {
-            abi: [
-              {
-                inputs: [],
-                name: 'totalSupply',
-                outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-                stateMutability: 'view',
-                type: 'function'
-              }
-            ],
-            bytecode: '0x608060405234801561001057600080fd5b50...',
-            deployedBytecode: '0x608060405234801561001057600080fd5b50...',
-            metadata: {
-              compiler: { version: '0.8.19+commit.7dd6d404' },
-              language: 'Solidity',
-              output: {
-                abi: [],
-                devdoc: { kind: 'dev', methods: {}, version: 1 },
-                userdoc: { kind: 'user', methods: {}, version: 1 }
-              }
-            }
-          }
-        },
-        sources: {
-          'contracts/MyToken.sol': {
-            id: 0,
-            ast: {}
-          }
-        },
-        errors: [],
-        warnings: []
+        contracts: {},
+        errors: compilationResult.data.errors || [],
+        errorFiles: compilationResult.errFiles || [],
+        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        sources: compilationResult?.source || {}
       };
 
-      return this.createJsonContent('compilation://latest', compilationResult);
+      // Process contracts
+      if (compilationResult.data.contracts) {
+        for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
+          for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
+            const contract = contractData as any;
+            result.contracts[`${fileName}:${contractName}`] = {
+              abi: contract.abi || [],
+              bytecode: contract.evm?.bytecode?.object || '',
+              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+              gasEstimates: contract.evm?.gasEstimates || {}
+            };
+          }
+        }
+      }
+      return this.createJsonContent('compilation://latest', result);
     } catch (error) {
       return this.createTextContent('compilation://latest', `Error getting compilation result: ${error.message}`);
     }
@@ -236,65 +217,11 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getCompiledContracts(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      // TODO: Get contracts from actual compilation result
-      const contracts = {
-        'MyToken': {
-          name: 'MyToken',
-          sourcePath: 'contracts/MyToken.sol',
-          abi: [
-            {
-              inputs: [],
-              name: 'totalSupply',
-              outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-              stateMutability: 'view',
-              type: 'function'
-            },
-            {
-              inputs: [
-                { internalType: 'address', name: 'to', type: 'address' },
-                { internalType: 'uint256', name: 'amount', type: 'uint256' }
-              ],
-              name: 'transfer',
-              outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-              stateMutability: 'nonpayable',
-              type: 'function'
-            }
-          ],
-          bytecode: {
-            object: '0x608060405234801561001057600080fd5b50...',
-            linkReferences: {},
-            sourceMap: '58:2470:0:-:0;;;;;;;;;;;;;;;;;;'
-          },
-          deployedBytecode: {
-            object: '0x608060405234801561001057600080fd5b50...',
-            linkReferences: {},
-            sourceMap: '58:2470:0:-:0;;;;;;;;;;;;;;;;;;'
-          },
-          gasEstimates: {
-            creation: {
-              codeDepositCost: '648600',
-              executionCost: '674',
-              totalCost: '649274'
-            },
-            external: {
-              'totalSupply()': '2407',
-              'transfer(address,uint256)': '46509'
-            }
-          },
-          metadata: {
-            compiler: { version: '0.8.19+commit.7dd6d404' },
-            language: 'Solidity',
-            settings: {
-              optimizer: { enabled: true, runs: 200 },
-              evmVersion: 'london'
-            }
-          }
-        }
-      };
+      const compiledContracts = await plugin.call('compilerArtefacts', 'getAllContractDatas')
 
       return this.createJsonContent('compilation://contracts', {
-        contracts,
-        count: Object.keys(contracts).length,
+        compiledContracts,
+        count: Object.keys(compiledContracts).length,
         generatedAt: new Date().toISOString()
       });
     } catch (error) {
@@ -304,44 +231,12 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getCompilationErrors(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      // TODO: Get actual compilation errors
-      const errors = {
-        errors: [
-          {
-            severity: 'error',
-            type: 'TypeError',
-            component: 'general',
-            errorCode: '2314',
-            message: 'Wrong argument count for function call: expected 2, provided 1.',
-            sourceLocation: {
-              file: 'contracts/MyToken.sol',
-              start: 442,
-              end: 461
-            },
-            secondarySourceLocations: []
-          }
-        ],
-        warnings: [
-          {
-            severity: 'warning',
-            type: 'Warning',
-            component: 'general',
-            errorCode: '2018',
-            message: 'Function state mutability can be restricted to pure',
-            sourceLocation: {
-              file: 'contracts/MyToken.sol',
-              start: 234,
-              end: 298
-            }
-          }
-        ],
-        summary: {
-          errorCount: 1,
-          warningCount: 1,
-          lastCompilation: new Date().toISOString()
-        }
-      };
+      const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
+      if (!compilationResult) {
+        return this.createTextContent('compilation://errors', `Error getting compilation errors`);
+      }
 
+      const errors = compilationResult.data.errors || []
       return this.createJsonContent('compilation://errors', errors);
     } catch (error) {
       return this.createTextContent('compilation://errors', `Error getting compilation errors: ${error.message}`);
@@ -350,40 +245,20 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getBuildArtifacts(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      const artifacts = {
-        buildInfo: {
-          compiler: '0.8.19+commit.7dd6d404',
-          compilationTarget: {
-            'contracts/MyToken.sol': 'MyToken'
-          },
-          settings: {
-            optimizer: { enabled: true, runs: 200 },
-            evmVersion: 'london',
-            libraries: {}
-          },
-          sources: ['contracts/MyToken.sol'],
-          version: 1
-        },
-        artifacts: [
-          {
-            name: 'MyToken',
-            file: 'contracts/MyToken.sol',
-            size: {
-              bytecode: 1234,
-              deployedBytecode: 890
-            },
-            created: new Date().toISOString()
-          }
-        ],
-        cache: {
-          lastUpdate: new Date().toISOString(),
-          files: ['contracts/MyToken.sol'],
-          checksums: {
-            'contracts/MyToken.sol': 'abc123def456'
-          }
-        }
-      };
+      const artifacts_path = 'artifacts/build-info'
+      const artifacts = []
+      const artifacts_exists = await plugin.call('fileManager', 'exists', artifacts_path)
+      if (!artifacts_exists) {
+        return this.createTextContent('compilation://errors', `Error getting build artifacts. No contract has been compiled or the folder might not exist yet`);
+      }
 
+      const buildFileList = await plugin.call('fileManager', 'fileList', artifacts_path)
+      for (const buildFile of buildFileList) {
+        let content = await plugin.call('fileManager', 'readFile', buildFile)
+        if (content) content = JSON.parse(content)
+        if (content) artifacts.push(content)
+      }
+      
       return this.createJsonContent('compilation://artifacts', artifacts);
     } catch (error) {
       return this.createTextContent('compilation://artifacts', `Error getting build artifacts: ${error.message}`);
@@ -392,38 +267,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getCompilationDependencies(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      const dependencies = {
-        imports: {
-          'contracts/MyToken.sol': [
-            '@openzeppelin/contracts/token/ERC20/ERC20.sol',
-            '@openzeppelin/contracts/access/Ownable.sol'
-          ]
-        },
-        dependencyGraph: {
-          'contracts/MyToken.sol': {
-            dependencies: ['@openzeppelin/contracts/token/ERC20/ERC20.sol'],
-            dependents: []
-          }
-        },
-        external: {
-          '@openzeppelin/contracts': {
-            version: '^4.8.0',
-            resolved: true,
-            files: [
-              'token/ERC20/ERC20.sol',
-              'access/Ownable.sol'
-            ]
-          }
-        },
-        analysis: {
-          totalFiles: 3,
-          externalDependencies: 1,
-          circularDependencies: [],
-          unusedImports: []
-        }
-      };
-
-      return this.createJsonContent('compilation://dependencies', dependencies);
+      return this.createTextContent('compilation://dependencies', "Dependencies resolvance not implemented yet!");
     } catch (error) {
       return this.createTextContent('compilation://dependencies', `Error getting dependencies: ${error.message}`);
     }
@@ -431,12 +275,11 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getCompilerConfig(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      // Get compiler config from Remix API
-      const configString = await this._plugin.call('config', 'getAppParameter', 'solidity-compiler')
+      const compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
       let config: any;
       
-      if (configString) {
-        config = JSON.parse(configString);
+      if (compilerConfig) {
+        config = JSON.parse(compilerConfig);
       } else {
         config = {
           version: 'latest',
@@ -446,26 +289,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           language: 'Solidity'
         };
       }
-
-      const fullConfig = {
-        current: config,
-        available: {
-          versions: ['0.8.19', '0.8.18', '0.8.17', '0.8.16'],
-          evmVersions: ['london', 'berlin', 'istanbul', 'petersburg'],
-          languages: ['Solidity', 'Yul']
-        },
-        recommendations: {
-          version: '0.8.19',
-          evmVersion: 'london',
-          optimizer: {
-            enabled: true,
-            runs: 200
-          }
-        },
-        lastUpdated: new Date().toISOString()
-      };
-
-      return this.createJsonContent('compilation://config', fullConfig);
+      return this.createJsonContent('compilation://config', config);
     } catch (error) {
       return this.createTextContent('compilation://config', `Error getting compiler config: ${error.message}`);
     }
@@ -475,52 +299,15 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     const contractName = uri.replace('contract://', '');
     
     try {
-      // TODO: Get actual contract details from compilation result
-      const contractDetails = {
-        name: contractName,
-        source: {
-          file: `contracts/${contractName}.sol`,
-          content: '// Contract source would be here...'
-        },
-        compilation: {
-          compiler: '0.8.19',
-          settings: { optimizer: { enabled: true, runs: 200 } }
-        },
-        abi: [
-          {
-            inputs: [],
-            name: 'totalSupply',
-            outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-            stateMutability: 'view',
-            type: 'function'
-          }
-        ],
-        bytecode: {
-          object: '0x608060405234801561001057600080fd5b50...',
-          sourceMap: '58:2470:0:-:0;;;;;;;;;;;;;;;;;;',
-          linkReferences: {}
-        },
-        deployedBytecode: {
-          object: '0x608060405234801561001057600080fd5b50...',
-          sourceMap: '58:2470:0:-:0;;;;;;;;;;;;;;;;;;',
-          linkReferences: {}
-        },
-        gasEstimates: {
-          creation: { codeDepositCost: '648600', executionCost: '674' },
-          external: { 'totalSupply()': '2407' }
-        },
-        analysis: {
-          securityIssues: [],
-          optimizationSuggestions: [],
-          gasOptimizations: []
-        },
-        metadata: {
-          compiler: { version: '0.8.19+commit.7dd6d404' },
-          language: 'Solidity',
-          createdAt: new Date().toISOString()
-        }
-      };
+      const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
+      if (!compilationResult) {
+        return this.createTextContent(uri, 'No compilation result available');
+      }
 
+      let contractDetails = {}
+      for (const contractFileObj of compilationResult.data.contracts) {
+        if (Object.keys(contractFileObj).includes(contractName)) contractDetails = contractFileObj
+      }
       return this.createJsonContent(uri, contractDetails);
     } catch (error) {
       return this.createTextContent(uri, `Error getting contract details: ${error.message}`);

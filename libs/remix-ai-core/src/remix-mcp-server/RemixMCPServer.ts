@@ -1,9 +1,4 @@
-/**
- * Remix IDE MCP Server Implementation
- */
-
 import EventEmitter from 'events';
-import { ICustomRemixApi } from '@remix-api';
 import { 
   IMCPInitializeResult, 
   IMCPServerCapabilities, 
@@ -23,7 +18,6 @@ import {
   MCPMessage,
   MCPResponse,
   MCPErrorCode,
-  ServerEvents
 } from './types/mcpServer';
 import { ToolRegistry } from './types/mcpTools';
 import { ResourceProviderRegistry } from './types/mcpResources';

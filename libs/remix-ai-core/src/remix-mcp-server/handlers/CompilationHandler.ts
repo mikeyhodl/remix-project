@@ -113,7 +113,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
-        errors: compilationResult.errors || [],
+        errors: compilationResult.data.errors || [],
         errorFiles: compilationResult.errFiles || [],
         warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
@@ -167,7 +167,7 @@ export class GetCompilationResultHandler extends BaseToolHandler {
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
-        errors: compilationResult.errors || [],
+        errors: compilationResult.data.errors || [],
         errorFiles: compilationResult.errFiles || [],
         warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
