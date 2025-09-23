@@ -1,24 +1,35 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { createContext, useContext, useEffect, useMemo, useReducer, useState } from 'react'
 import { TemplateCategory, TemplateExplorerContextType, TemplateExplorerWizardAction, TemplateItem } from '../types/template-explorer-types'
 import { initialState, templateExplorerReducer } from '../reducers/template-explorer-reducer'
 import { metadata, templatesRepository } from '../src/utils/helpers'
 import { AppContext } from '@remix-ui/app'
+import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
+import { RemixUiTemplateExplorerModal } from '@remix-ui/template-explorer-modal'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
-export const TemplateExplorerProvider = ({ children }: { children: React.ReactNode }) => {
+export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin }) => {
   // const [templateRepository, setTemplateRepository] = useState<TemplateCategory[]>([])
   // const [metadata, setMetadata] = useState<any[]>([])
   // const [selectedTag, setSelectedTag] = useState<string | null>(null)
   // const [recentBump, setRecentBump] = useState<number>(0)
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const appContext = useContext(AppContext)
+  const { plugin } = props
+
+  useEffect(() => {
+    dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
+  }, [])
 
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
-    dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
-
   }, [])
+
+  const setSearchTerm = (term: string) => {
+    console.log('setSearchTerm', { term, state })
+    dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
+  }
 
   const allTags = useMemo((): string[] => {
     const tags: string[] = []
@@ -42,7 +53,6 @@ export const TemplateExplorerProvider = ({ children }: { children: React.ReactNo
     return tags.sort()
   }, [])
 
-  // Recent templates (before filteredTemplates so it can be referenced later)
   const recentTemplates = useMemo((): TemplateItem[] => {
     try {
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem(RECENT_KEY) : null
@@ -71,21 +81,33 @@ export const TemplateExplorerProvider = ({ children }: { children: React.ReactNo
     }
   }, [state.selectedTag, state.recentBump])
 
-  // Filter templates based on selected tag
   const filteredTemplates = useMemo((): TemplateCategory[] => {
-    if (!state.selectedTag || !state.templateRepository || !Array.isArray(state.templateRepository)) {
-      return state.templateRepository as TemplateCategory[] || []
-    }
+    const repo = (state.templateRepository as TemplateCategory[]) || []
+    if (!Array.isArray(repo)) return []
 
-    return (state.templateRepository as TemplateCategory[]).map((template: any) => ({
-      ...template,
-      items: template.items.filter((item: any) =>
-        item && item.tagList && Array.isArray(item.tagList) && item.tagList.includes(state.selectedTag)
+    const searchTerm = (state.searchTerm || '').trim().toLowerCase()
+    const selectedTag = state.selectedTag
+
+    return repo
+      .map((template: TemplateCategory) => ({
+        ...template,
+        items: (template.items || []).filter((item: TemplateItem) => {
+          // Filter by search term
+          const matchesSearch = !searchTerm ||
+            (item.displayName || item.value || '').toLowerCase().includes(searchTerm)
+
+          // Filter by selected tag
+          const matchesTag = !selectedTag ||
+            (item.tagList && item.tagList.includes(selectedTag))
+
+          return matchesSearch && matchesTag
+        })
+      }))
+      .filter((template: TemplateCategory) =>
+        template && template.items && template.items.length > 0
       )
-    })).filter((template: any) => template && template.items && template.items.length > 0)
-  }, [state.selectedTag])
+  }, [state.selectedTag, state.searchTerm, state.templateRepository])
 
-  // Dedupe templates across the whole page and avoid showing ones already in recents
   const dedupedTemplates = useMemo((): TemplateCategory[] => {
     const recentSet = new Set<string>((recentTemplates || []).map((t: any) => t && t.value))
     const seen = new Set<string>()
@@ -131,9 +153,15 @@ export const TemplateExplorerProvider = ({ children }: { children: React.ReactNo
     }
   }
 
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm }
+
   return (
-    <TemplateExplorerContext.Provider value={{ templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags }}>
-      {children}
+    <TemplateExplorerContext.Provider value={contextValue}>
+      <RemixUiTemplateExplorerModal
+        appState={appContext.appState}
+        dispatch={appContext.appStateDispatch}
+        plugin={plugin}
+      />
     </TemplateExplorerContext.Provider>
   )
 }

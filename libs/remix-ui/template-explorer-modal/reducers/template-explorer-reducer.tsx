@@ -1,9 +1,8 @@
 import React from 'react'
-import { MetadataType, TemplateExplorerWizardAction, TemplateExplorerWizardState, TemplateExplorerWizardSteps } from '../types/template-explorer-types'
+import { MetadataType, TemplateExplorerWizardAction, TemplateExplorerWizardState, TemplateRepository } from '../types/template-explorer-types'
 import { metadata, templatesRepository } from '../src/utils/helpers'
 
 export const initialState: TemplateExplorerWizardState = {
-  steps: TemplateExplorerWizardSteps.SELECT_TEMPLATE,
   workspaceTemplateChosen: '',
   workspaceTemplateGroupChosen: '',
   workspaceName: '',
@@ -13,15 +12,18 @@ export const initialState: TemplateExplorerWizardState = {
   workspaceGeneratedWithAi: false,
   searchTerm: '',
   metadata: metadata as MetadataType,
-  templateRepository: templatesRepository,
-  selectedTag: null
+  templateRepository: templatesRepository as TemplateRepository || [],
+  selectedTag: null,
+  setSearchTerm: (term: string) => {}
 }
 
 export const templateExplorerReducer = (state: TemplateExplorerWizardState, action: any) => {
   switch (action.type) {
-  case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE:
-    return action.payload
-  case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_WIZARD_STEP:
+  case TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY:
+    return { ...state, templateRepository: action.payload }
+  case TemplateExplorerWizardAction.SET_METADATA:
+    return { ...state, metadata: action.payload }
+  case TemplateExplorerWizardAction.SELECT_TEMPLATE:
     return action.payload
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP:
     return action.payload
@@ -43,7 +45,19 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   case TemplateExplorerWizardAction.CLEAR_SELECTED_TAG: {
     return { ...state, selectedTag: null }
   }
+  case TemplateExplorerWizardAction.SET_SEARCH_TERM: {
+    return { ...state, searchTerm: action.payload }
+  }
   default:
     return state
   }
+}
+
+function doTemplateSearch (searchTerm: string, repo: TemplateRepository) {
+  if (!searchTerm) return repo
+  return repo.filter(template => template.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .map(template => ({
+      ...template,
+      items: template.items.filter(item => item.displayName.toLowerCase().includes(searchTerm.toLowerCase()))
+    }))
 }

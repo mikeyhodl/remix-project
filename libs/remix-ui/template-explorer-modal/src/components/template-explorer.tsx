@@ -1,11 +1,11 @@
 import isElectron from 'is-electron'
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { TemplateCategory, TemplateExplorerProps, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 
-export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
+export function TemplateExplorer() {
 
-  const { metadata, selectedTag, recentTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, allTags } = useContext(TemplateExplorerContext)
+  const { metadata, recentTemplates, dedupedTemplates, addRecentTemplate, plugin } = useContext(TemplateExplorerContext)
 
   // console.log('metadata', metadata)
   // console.log('templatesRepository', templatesRepository)
@@ -122,38 +122,11 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
   //   }
   // }
 
-  const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
-
   return (
-    <div className="template-explorer-container" style={{ height: '400px', overflowY: 'auto', padding: '1rem' }}>
-      {/* Tag Filter Row */}
-      <div className="mb-4">
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-
-          {allTags.filter(filterTheseTags).reverse().map((tag: any) => (
-            <span
-              key={tag as any}
-              className={`badge rounded-pill p-2 fw-light ${selectedTag === tag ? 'badge rounded-pill text-info p-2 fw-light' : 'badge rounded-pill text-bg-light p-2 fw-light'}`}
-              onClick={() => handleTagClick(tag as any)}
-            >
-              {tag as any}
-            </span>
-          ))}
-          {selectedTag && (
-            <small>
-              <span
-                className="p-0 ms-2 text-warning fw-light"
-                onClick={clearFilter}
-              >
-                Clear filter
-              </span>
-            </small>
-          )}
-        </div>
-      </div>
+    <div className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
 
       {/* Recently Used Section */}
-      {recentTemplates && recentTemplates.length > 0 && (
+      {/* {recentTemplates && recentTemplates?.length > 0 && (
         <div className="template-category mb-4">
           <h4 className="category-title mb-3 text-white" style={{
             color: '#333',
@@ -164,7 +137,7 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
             Recently used
           </h4>
           <div className="template-items-container d-flex flex-wrap gap-3 mb-2">
-            {recentTemplates.map((item: TemplateItem, itemIndex) => {
+            {recentTemplates?.map((item: TemplateItem, itemIndex) => {
               item.templateType = metadata[item.value]
               if (item.templateType && item.templateType.disabled === true) return null
               if (item.templateType && item.templateType.desktopCompatible === false && isElectron()) return null
@@ -201,7 +174,7 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
                       fontWeight: '600',
                       margin: 0,
                       lineHeight: '1.2',
-                      color: '#1B1D24'
+                      color: plugin?.theme?.currentTheme().name === 'Light' ? '#1B1D24' : '#FFF'
                     }}>
                       {item.displayName || item.value}
                     </h6>
@@ -288,21 +261,21 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
             })}
           </div>
         </div>
-      )}
+      )} */}
 
-      {dedupedTemplates.map((template: TemplateCategory, templateIndex) => (
+      {dedupedTemplates?.map((template: TemplateCategory, templateIndex) => (
         <div key={template.name} className="template-category mb-4">
-          <h4 className="category-title mb-3 text-white" style={{
+          <h4 className="category-title mb-3 text-dark" style={{
             color: '#333',
             paddingBottom: '0.5rem',
             fontSize: '1.2rem',
-            fontWeight: '600'
+            fontWeight: '400'
           }}>
             {template.name.toUpperCase()}
           </h4>
 
           {template.description && (
-            <p className="category-description mb-3" style={{ color: '#666', fontSize: '0.9rem' }}>
+            <p className="category-description mb-2 text-danger" style={{ color: '#666', fontSize: '0.9rem' }}>
               {template.description}
             </p>
           )}
@@ -346,26 +319,25 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
-                  <div className="card-header mb-1 border">
+                  <div className="card-header mb-1">
                     <h6 className="card-title mb-1" style={{
                       fontSize: '0.85rem',
                       fontWeight: '600',
                       margin: 0,
                       lineHeight: '1.2',
-                      color: '#1B1D24'
+                      color: plugin?.theme?.currentTheme().name === 'Light' ? '#1B1D24' : '#FFF'
                     }}>
                       {item.displayName || item.value}
                     </h6>
 
                   </div>
-                  <div className="card-body d-flex flex-column justify-content-between overflow-y-auto border border-warning" style={{
+                  <div className="card-body d-flex flex-column justify-content-between overflow-y-auto" style={{
                     flex: 1,
                   }}>
                     {item.description && (
-                      <p className="card-description mb-1 text-dark text-wrap text-truncate border border-info" style={{
+                      <p className="card-description mb-1 text-dark text-wrap text-truncate overflow-hidden" style={{
                         fontSize: '0.7rem',
                         margin: 0,
-                        overflow: 'hidden',
                       }}>
                         {item.description}
                       </p>
@@ -415,12 +387,12 @@ export function TemplateExplorer({ plugin }: TemplateExplorerProps) {
                     )}
 
                     {item.tagList && item.tagList.length > 0 && (
-                      <div className="tag-list d-flex flex-wrap gap-1 align-items-end border border-success">
+                      <div className="tag-list d-flex flex-wrap gap-1 align-items-end">
                         {item.tagList.map((tag, tagIndex) => (
-                          <span key={tagIndex} className="badge text-primary" style={{
+                          <span key={tagIndex} className="badge" style={{
                             fontSize: '0.55rem',
                             padding: '0.1rem 0.25rem',
-                            borderRadius: '2px',
+                            borderRadius: '3px',
                             backgroundColor: '#64C4FF14',
                             color: '#64C4FF'
                           }}>

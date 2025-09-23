@@ -372,7 +372,7 @@ export const templatesRepository = [
         displayName: 'Simple Multiplier',
         description: 'A simple multiplier circuit',
       },
-      { value: "stealthDropNr", tagList: ["ZKP", "Noir"], displayName: 'Stealth Drop',}
+      { value: "stealthDropNr", tagList: ["ZKP", "Noir"], displayName: 'Stealth Drop' }
     ]
   },
   {

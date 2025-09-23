@@ -1,21 +1,49 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { TopCard } from './topCard'
 import { TopCardProps } from '../../types/template-explorer-types'
 import { TemplateExplorer } from './template-explorer'
 import { TopCards } from './topCards'
+import { TemplateExplorerContext } from '../../context/template-explorer-context'
 
 export interface TemplateExplorerBodyProps {
-  topCards: TopCardProps[]
   plugin: any
 }
 
-export function TemplateExplorerBody({ topCards, plugin }: TemplateExplorerBodyProps) {
+export function TemplateExplorerBody({ plugin }: TemplateExplorerBodyProps) {
+  const { selectedTag, allTags, handleTagClick, clearFilter } = useContext(TemplateExplorerContext)
+
+  const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
   return (
     <section>
       <TopCards />
       <div className="body overflow-y-hidden">
         <label className="text-dark fs-5">Workspace Templates</label>
-        <TemplateExplorer plugin={plugin} />
+        {/* Tag Filter Row */}
+        <div className="">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+
+            {allTags?.filter(filterTheseTags)?.reverse()?.map((tag: any) => (
+              <span
+                key={tag as any}
+                className={`badge rounded-pill p-2 fw-light ${selectedTag === tag ? 'badge rounded-pill text-info p-2 fw-light' : 'badge rounded-pill text-bg-light p-2 fw-light'}`}
+                onClick={() => handleTagClick(tag as any)}
+              >
+                {tag as any}
+              </span>
+            ))}
+            {selectedTag && (
+              <small>
+                <span
+                  className="p-0 ms-2 text-warning fw-light"
+                  onClick={clearFilter}
+                >
+                Clear filter
+                </span>
+              </small>
+            )}
+          </div>
+        </div>
+        <TemplateExplorer />
       </div>
     </section>
   )

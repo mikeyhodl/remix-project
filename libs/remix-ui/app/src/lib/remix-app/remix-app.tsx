@@ -16,6 +16,7 @@ import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
 import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
+import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 
 interface IRemixAppUi {
   app: any
@@ -226,7 +227,9 @@ const RemixApp = (props: IRemixAppUi) => {
             </div>
             <AppDialogs></AppDialogs>
             <DialogViewPlugin></DialogViewPlugin>
-            {appState.genericModalState.showModal && <RemixUiTemplateExplorerModal appState={appState} dispatch={appStateDispatch} plugin={props.app.templateExplorerModal}></RemixUiTemplateExplorerModal>}
+            {appState.genericModalState.showModal &&
+              <TemplateExplorerProvider plugin={props.app.templateExplorerModal}></TemplateExplorerProvider>
+            }
           </AppProvider>
         </onLineContext.Provider>
       </platformContext.Provider>

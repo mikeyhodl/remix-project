@@ -269,6 +269,7 @@ class AppComponent {
     this.gistHandler = new GistHandler()
     // ----------------- theme service ---------------------------------
     this.themeModule = new ThemeModule()
+    this.templateExplorerModal = new TemplateExplorerModalPlugin(this.themeModule)
     // ----------------- locale service ---------------------------------
     this.localeModule = new LocaleModule()
     Registry.getInstance().put({ api: this.themeModule, name: 'themeModule' })
@@ -403,7 +404,7 @@ class AppComponent {
 
     const templateSelection = new TemplatesSelectionPlugin()
 
-    const templateExplorerModal = new TemplateExplorerModalPlugin()
+    const templateExplorerModal = this.templateExplorerModal
 
     const walletConnect = new WalletConnect()
 
@@ -460,10 +461,10 @@ class AppComponent {
       pluginStateLogger,
       matomo,
       templateSelection,
-      templateExplorerModal,
       scriptRunnerUI,
       remixAI,
       remixAiAssistant,
+      templateExplorerModal,
       walletConnect
     ])
 
@@ -616,6 +617,7 @@ class AppComponent {
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
     await this.appManager.activatePlugin(['topbar'])
     await this.appManager.activatePlugin(['statusBar'])
+    // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])
     await this.appManager.activatePlugin(['sidePanel']) // activating  host plugin separately
     await this.appManager.activatePlugin(['pinnedPanel'])

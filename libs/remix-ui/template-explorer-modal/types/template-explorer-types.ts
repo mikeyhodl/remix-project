@@ -1,6 +1,5 @@
 
 export interface TemplateExplorerWizardState {
-  steps: TemplateExplorerWizardSteps
   workspaceTemplateChosen: string
   workspaceTemplateGroupChosen: string
   workspaceName: string
@@ -12,31 +11,23 @@ export interface TemplateExplorerWizardState {
   metadata: MetadataType
   templateRepository: TemplateCategory[]
   selectedTag: string | null
+  setSearchTerm: (term: string) => void
 }
 
 export interface TemplateExplorerContextType {
+  plugin: any
   templateRepository: TemplateCategory[]
   metadata: any[]
   selectedTag: string | null
   recentTemplates: TemplateItem[]
   filteredTemplates: TemplateCategory[]
   dedupedTemplates: TemplateCategory[]
+  setSearchTerm: (term: string) => void
   handleTagClick: (tag: string) => void
   clearFilter: () => void
   addRecentTemplate: (template: TemplateItem) => void
   RECENT_KEY: string
   allTags: string[]
-}
-
-export enum TemplateExplorerWizardSteps {
-  SELECT_TEMPLATE = 'SELECT_TEMPLATE',
-  GENERATE_TEMPLATE = 'GENERATE_TEMPLATE',
-  MODIFY_WORKSPACE = 'MODIFY_WORKSPACE',
-  REVIEW_WORKSPACE = 'REVIEW_WORKSPACE',
-  IMPORT_WORKSPACE = 'IMPORT_WORKSPACE',
-  FINALIZE_WORKSPACE_CREATION = 'FINALIZE_WORKSPACE_CREATION',
-  ABORT_WORKSPACE_CREATION = 'ABORT_WORKSPACE_CREATION',
-  BACK_ONE_STEP = 'BACK_ONE_STEP'
 }
 
 export enum TemplateExplorerWizardAction {
@@ -53,7 +44,16 @@ export enum TemplateExplorerWizardAction {
   SET_SELECTED_TAG = 'SET_SELECTED_TAG',
   CLEAR_SELECTED_TAG = 'CLEAR_SELECTED_TAG',
   SET_METADATA = 'SET_METADATA',
-  SET_TEMPLATE_REPOSITORY = 'SET_TEMPLATE_REPOSITORY'
+  SET_TEMPLATE_REPOSITORY = 'SET_TEMPLATE_REPOSITORY',
+  SELECT_TEMPLATE = 'SELECT_TEMPLATE',
+  GENERATE_TEMPLATE = 'GENERATE_TEMPLATE',
+  MODIFY_WORKSPACE = 'MODIFY_WORKSPACE',
+  REVIEW_WORKSPACE = 'REVIEW_WORKSPACE',
+  IMPORT_WORKSPACE = 'IMPORT_WORKSPACE',
+  FINALIZE_WORKSPACE_CREATION = 'FINALIZE_WORKSPACE_CREATION',
+  ABORT_WORKSPACE_CREATION = 'ABORT_WORKSPACE_CREATION',
+  BACK_ONE_STEP = 'BACK_ONE_STEP',
+  SET_SEARCH_TERM = 'SET_SEARCH_TERM'
 }
 
 export interface TemplateItem {
@@ -82,6 +82,8 @@ export interface TemplateCategory {
   items: TemplateItem[]
 }
 
+export type TemplateRepository = TemplateCategory[]
+
 export type MetadataType = Record<string, MetadataItem>
 
 export type MetadataItem =
@@ -102,7 +104,7 @@ export type MetadataItem =
   }
 
 export interface TemplateExplorerProps {
-  plugin: any
+  plugin?: any
 }
 
 export interface TopCardProps {

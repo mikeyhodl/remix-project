@@ -4,7 +4,8 @@ import { AppAction, AppState } from '@remix-ui/app'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
-import { RemixUiTemplateExplorerModal, RemixUiTemplateExplorerModalProps } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
+import { ThemeModule } from '../tabs/theme-module'
+import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 
 const pluginProfile = {
   name: 'remix-template-explorer-modal',
@@ -18,16 +19,20 @@ export class TemplateExplorerModalPlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   event: any
   appStateDispatch: any
-  constructor() {
+  theme: any = null
+  constructor(theme: ThemeModule) {
     super(pluginProfile)
     this.element = document.createElement('div')
-    this.element.setAttribute('id', 'remix-template-explorer-modal')
+    this.element.setAttribute('id', 'template-explorer-modal')
     this.dispatch = () => { }
     this.event = new EventEmitter()
+    this.theme = theme
   }
 
   async onActivation(): Promise<void> {
-
+    this.on('theme', 'themeChanged', (theme: any) => {
+      this.theme = theme
+    })
   }
 
   onDeactivation(): void {
@@ -53,17 +58,13 @@ export class TemplateExplorerModalPlugin extends Plugin {
 
   renderComponent(): void {
     this.dispatch({
-      element: this.element,
+      plugins: this,
     })
   }
 
-  updateComponent(state: RemixUiTemplateExplorerModalProps, appState: AppState) {
+  updateComponent() {
     return (
-      <RemixUiTemplateExplorerModal
-        appState={appState}
-        dispatch={this.dispatch}
-        plugin={this}
-      />
+      <TemplateExplorerProvider plugin={this} />
     )
   }
 }
