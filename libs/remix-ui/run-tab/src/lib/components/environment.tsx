@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvironmentProps } from '../types'
 import { Dropdown } from 'react-bootstrap'
@@ -12,6 +12,24 @@ const _paq = (window._paq = window._paq || [])
 export function EnvironmentUI(props: EnvironmentProps) {
   const vmStateName = useRef('')
   const providers = props.providers.providerList
+  const [isSwitching, setIsSwitching] = useState(false)
+
+  const switchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (switchTimeoutRef.current) {
+      clearTimeout(switchTimeoutRef.current)
+    }
+    setIsSwitching(false)
+  }, [props.selectedEnv])
+
+  useEffect(() => {
+    return () => {
+      if (switchTimeoutRef.current) {
+        clearTimeout(switchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const remixVMs = providers.filter(p => p.config.isVM)
   const injectedProviders = providers.filter(p => p.config.isInjected)
@@ -24,6 +42,18 @@ export function EnvironmentUI(props: EnvironmentProps) {
   const httpProvider = providers.find(p => p.name === 'basic-http-provider' || p.name === 'web3Provider' || p.name === 'basicHttpProvider')
 
   const handleChangeExEnv = (env: string) => {
+    if (props.selectedEnv === env || isSwitching) return
+
+    if (switchTimeoutRef.current) {
+      clearTimeout(switchTimeoutRef.current)
+    }
+
+    setIsSwitching(true)
+
+    switchTimeoutRef.current = setTimeout(() => {
+      setIsSwitching(false)
+    }, 8000)
+
     const provider = props.providers.providerList.find((exEnv) => exEnv.name === env)
     const context = provider.name
     props.setExecutionContext({ context })
@@ -165,6 +195,8 @@ export function EnvironmentUI(props: EnvironmentProps) {
             <span className="ms-1" style = {{ textTransform: 'none', fontSize: '13px' }}>Reset State</span>
           </span>
         </CustomTooltip> }
+        {isSwitching && <i className="fa fa-spinner fa-pulse ms-2" aria-hidden="true"></i>}
+
       </label>
       <div className="" data-id={`selected-provider-${currentProvider && currentProvider.name}`}>
         <Dropdown

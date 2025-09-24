@@ -796,7 +796,6 @@ export class Blockchain extends Plugin {
 
     const logTransaction = (txhash, origin) => {
       this.detectNetwork((error, network) => {
-        console.log(`transaction sent: ${txhash}`, network)
         if (network && network.id) {
           _paq.push(['trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-${network.id}`])
         } else {
@@ -1132,6 +1131,10 @@ export class Blockchain extends Plugin {
       if (error.innerError) {
         errorMessage = error.innerError.message
         errorData = error.innerError.data
+        cb((await buildError(errorMessage, errorData)).message)
+      } else if (error.error) {
+        errorMessage = error.error.message
+        errorData = error.error.code
         cb((await buildError(errorMessage, errorData)).message)
       } else if (error.message || error.data) {
         errorMessage = error.message
