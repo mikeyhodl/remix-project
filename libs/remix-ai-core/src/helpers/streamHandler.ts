@@ -140,11 +140,9 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse, cb:
     if (done) break;
 
     buffer = decoder.decode(value, { stream: true });
-    console.log('processing buffer', buffer)
 
     const lines = buffer.split("\n");
     for (const line of lines) {
-      console.log('processing line', line)
       if (line.startsWith("data: ")) {
         const jsonStr = line.replace(/^data: /, "").trim();
         if (jsonStr === "[DONE]") {
@@ -156,8 +154,9 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse, cb:
           const json = JSON.parse(jsonStr);
           threadId = json?.id || threadId;
           if (json.choices[0].delta.tool_calls && tool_callback){
-            console.log('calling tools in stream')
+            console.log('calling tools in stream:', json.choices[0].delta.tool_calls)
             const response = await tool_callback(json.choices[0].delta.tool_calls)
+            cb("\n\n");
             HandleMistralAIResponse(response, cb, done_cb)
 
           } else if (json.choices[0].delta.content){

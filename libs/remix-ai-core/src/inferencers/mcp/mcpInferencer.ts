@@ -497,6 +497,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       }
 
       if (allResources.length === 0) {
+        console.log('no resource to be used')
         return "";
       }
 
@@ -529,6 +530,36 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         }))
       });
 
+      const workspaceResource: IMCPResource = {
+        uri: 'project://structure',
+        name: 'Project Structure',
+        description: 'Hierarchical view of project files and folders',
+        mimeType: 'application/json',
+      };
+
+      // Always add project structure for internal remix MCP server
+      const hasInternalServer = this.mcpClients.has('Remix IDE Server')
+      console.log('hasInternalServer project structure:', hasInternalServer)
+      console.log('hasInternalServer project structure:', this.mcpClients)
+
+      if (hasInternalServer) {
+        console.log('adding project structure')
+        const existingProjectStructure = selectedResources.find(r => r.resource.uri === 'project://structure');
+        console.log('existingProjectStructure project structure', existingProjectStructure)
+        if (existingProjectStructure === undefined) {
+          console.log('pushing project stucture')
+          selectedResources.push({
+            resource: workspaceResource,
+            serverName: 'Remix IDE Server',
+            score: 1.0, // High score to ensure it's included
+            components: { keywordMatch: 1.0, domainRelevance: 1.0, typeRelevance:1, priority:1, freshness:1 },
+            reasoning: 'Project structure always included for internal remix MCP server'
+          });
+        }
+      }
+
+      console.log(selectedResources)
+
       // Build context from selected resources
       let mcpContext = "";
       for (const scoredResource of selectedResources) {
@@ -541,6 +572,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             const client = this.mcpClients.get(serverName);
             if (client) {
               content = await client.readResource(resource.uri);
+              console.log('read resource', resource.uri, content)
               // Cache with TTL
               this.resourceCache.set(resource.uri, content);
               setTimeout(() => {
@@ -560,6 +592,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         }
       }
 
+      console.log('MCP INFERENCER: new context', mcpContext )
       return mcpContext;
     } catch (error) {
       console.error('Error in intelligent resource selection:', error);

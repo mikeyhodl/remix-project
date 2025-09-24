@@ -88,52 +88,52 @@ export class SolidityCompileHandler extends BaseToolHandler {
         };
       }
 
-      if (args.version) compilerConfig.version = args.version;
-      if (args.optimize !== undefined) compilerConfig.optimize = args.optimize;
-      if (args.runs) compilerConfig.runs = args.runs;
-      if (args.evmVersion) compilerConfig.evmVersion = args.evmVersion;
+      // if (args.version) compilerConfig.version = args.version;
+      // if (args.optimize !== undefined) compilerConfig.optimize = args.optimize;
+      // if (args.runs) compilerConfig.runs = args.runs;
+      // if (args.evmVersion) compilerConfig.evmVersion = args.evmVersion;
 
       // await plugin.call('solidity' as any, 'setCompilerConfig', JSON.stringify(compilerConfig));
 
       let compilationResult: any;
       if (args.file) {
-        console.log('[TOOL] compiling ', args.file)
+        console.log('[TOOL] compiling ', args.file, compilerConfig)
         // Compile specific file - need to use plugin API or direct compilation
         const content = await plugin.call('fileManager', 'readFile', args.file);
         let contract = {}
-        contract[args.file] = content
+        contract[args.file] = { content: content }
 
         const compilerPayload = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
         compilationResult = compilerPayload
       } else {
         compilationResult = { success: false, message: 'Workspace compilation not yet implemented' };
       }
-
+      console.log('compilation result', compilationResult)
       // Process compilation result
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
         errors: compilationResult.data.errors || [],
-        errorFiles: compilationResult.errFiles || [],
-        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        errorFiles: compilationResult?.errFiles || [],
+        warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
       };
 
       // Extract contract data
-      if (compilationResult.data.contracts) {
-        for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
-          for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
-            const contract = contractData as any;
-            result.contracts[`${fileName}:${contractName}`] = {
-              abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
-              gasEstimates: contract.evm?.gasEstimates || {}
-            };
-          }
-        }
-      }
+      // if (compilationResult.data.contracts) {
+      //   for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
+      //     for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
+      //       const contract = contractData as any;
+      //       result.contracts[`${fileName}:${contractName}`] = {
+      //         abi: contract.abi || [],
+      //         bytecode: contract.evm?.bytecode?.object || '',
+      //         deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+      //         metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+      //         gasEstimates: contract.evm?.gasEstimates || {}
+      //       };
+      //     }
+      //   }
+      // }
 
       return this.createSuccessResult(result);
     } catch (error) {
@@ -168,8 +168,8 @@ export class GetCompilationResultHandler extends BaseToolHandler {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: {},
         errors: compilationResult.data.errors || [],
-        errorFiles: compilationResult.errFiles || [],
-        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        errorFiles: compilationResult?.errFiles || [],
+        warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
       };
 
@@ -291,7 +291,6 @@ export class GetCompilerConfigHandler extends BaseToolHandler {
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       let config = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
-      
       if (!config) {
         config = {
           version: 'latest',

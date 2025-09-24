@@ -305,7 +305,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.totalToolCalls++;
 
       this.emit('tool-executed', execution);
-      console.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() });
+      console.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() }, 'result:', result);
 
       return result;
 
@@ -459,9 +459,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       console.log(`Registered ${fileManagementTools.length} file management tools`, 'info');
 
       // Register deployment tools
-      const deploymentTools = createDeploymentTools();
-      this._tools.registerBatch(deploymentTools);
-      console.log(`Registered ${deploymentTools.length} deployment tools`, 'info');
+      // const deploymentTools = createDeploymentTools();
+      // this._tools.registerBatch(deploymentTools);
+      // console.log(`Registered ${deploymentTools.length} deployment tools`, 'info');
 
       // Register debugging tools
       const debuggingTools = createDebuggingTools();
@@ -495,10 +495,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._resources.register(compilationProvider);
       console.log(`Registered compilation resource provider: ${compilationProvider.name}`, 'info');
 
-      // Register deployment resource provider
-      const deploymentProvider = new DeploymentResourceProvider();
-      this._resources.register(deploymentProvider);
-      console.log(`Registered deployment resource provider: ${deploymentProvider.name}`, 'info');
+      // // Register deployment resource provider
+      // const deploymentProvider = new DeploymentResourceProvider();
+      // this._resources.register(deploymentProvider);
+      // console.log(`Registered deployment resource provider: ${deploymentProvider.name}`, 'info');
 
       const totalProviders = this._resources.list().length;
       console.log(`Total resource providers registered: ${totalProviders}`, 'info');

@@ -21,13 +21,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     const resources: IMCPResource[] = [];
 
     try {
-      // Get workspace root
       const workspacePath = await this.getWorkspacePath(plugin);
-      
-      // Get project structure
       await this.collectProjectResources(plugin, workspacePath, resources);
       
-      // Add project metadata resources
       resources.push(
         this.createResource(
           'project://structure',
@@ -111,7 +107,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
       path = path.substring(1);
     }
 
-    if (visited.has(path) || path.includes('node_modules') || path.includes('.git')) {
+    if (visited.has(path) || path.includes('node_modules') || path.includes('.git') || path.includes('.deps')) {
       return;
     }
     visited.add(path);
@@ -199,6 +195,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           if (exists) {
             const content = await plugin.call('fileManager', 'readFile', configFile);
             configs[configFile] = this.parseConfig(configFile, content);
+            break;
           }
         } catch (error) {
           configs[configFile] = { error: error.message };
@@ -406,8 +403,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   }
 
   private async getWorkspacePath(plugin: Plugin): Promise<string> {
-    // TODO: Get actual workspace path from Remix API
-    return '';
+    return '/';
   }
 
   private async getFileSize(plugin: Plugin, path: string): Promise<number> {

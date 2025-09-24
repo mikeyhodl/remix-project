@@ -42,9 +42,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
       let servers: IMCPServer[] = []
       
       try {
-        // Ensure the AI plugin has loaded its servers (including defaults)
         await plugin.call('remixAI', 'loadMCPServersFromSettings')
-        // Get the servers directly from the AI plugin
         servers = await plugin.call('remixAI', 'getIMCPServers')
         console.log('Loaded MCP servers from AI plugin:', servers)
       } catch (error) {
