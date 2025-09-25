@@ -370,7 +370,7 @@ export class SendTransactionHandler extends BaseToolHandler {
         return this.createErrorResult('No account available for sending transaction');
       }
 
-      // TODO: Send transaction via Remix Run Tab API
+      // TODO: Send a real transaction via Remix Run Tab API
       const mockResult = {
         success: true,
         transactionHash: '0x' + Math.random().toString(16).substr(2, 64),

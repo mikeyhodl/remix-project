@@ -119,7 +119,7 @@ export class FileWriteHandler extends BaseToolHandler {
   async execute(args: FileWriteArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       await plugin.call('fileManager', 'writeFile', args.path, args.content);
-      
+      // TODO - Add diff here to signalize users about the changes
       const result: FileOperationResult = {
         success: true,
         path: args.path,
