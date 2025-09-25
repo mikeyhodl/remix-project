@@ -15,8 +15,7 @@ const _paq = (window._paq = window._paq || [])
 const profile = {
   name: 'settings',
   displayName: 'Settings',
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'set'],
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice'],
+  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'set', 'updateMatomoPerfAnalyticsChoice'],
   events: [],
   icon: 'assets/img/settings.webp',
   description: 'Remix-IDE settings',
