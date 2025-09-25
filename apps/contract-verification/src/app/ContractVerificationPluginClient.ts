@@ -141,6 +141,11 @@ export class ContractVerificationPluginClient extends PluginClient {
 
     try {
       if (validConfiguration(chainSettings, providerName)) {
+
+        if (providerName === 'Etherscan') {
+          await new Promise(resolve => setTimeout(resolve, 3000))
+        }
+
         await this.call('terminal', 'log', { type: 'log', value: `Verifying with ${providerName}...` })
 
         if (verifier && typeof verifier.verify === 'function') {
