@@ -75,6 +75,29 @@ export class ContractVerificationPluginClient extends PluginClient {
         return
       }
 
+      const userSettings = this.getUserSettingsFromLocalStorage()
+
+      if (etherscanApiKey) {
+        if (!userSettings.chains[chainId]) {
+          userSettings.chains[chainId] = { verifiers: {} }
+        }
+
+        if (!userSettings.chains[chainId].verifiers.Etherscan) {
+          userSettings.chains[chainId].verifiers.Etherscan = {}
+        }
+        userSettings.chains[chainId].verifiers.Etherscan.apiKey = etherscanApiKey
+
+        if (!userSettings.chains[chainId].verifiers.Routescan) {
+          userSettings.chains[chainId].verifiers.Routescan = {}
+        }
+        if (!userSettings.chains[chainId].verifiers.Routescan.apiKey){
+          userSettings.chains[chainId].verifiers.Routescan.apiKey = "placeholder"
+        }
+
+        window.localStorage.setItem("contract-verification:settings", JSON.stringify(userSettings))
+
+      }
+
       const submittedContracts: SubmittedContracts = JSON.parse(window.localStorage.getItem('contract-verification:submitted-contracts') || '{}')
 
       const filePath = Object.keys(compilationResult.data.contracts).find(path =>
@@ -94,7 +117,6 @@ export class ContractVerificationPluginClient extends PluginClient {
       }
 
       const compilerAbstract: CompilerAbstract = compilationResult
-      const userSettings = this.getUserSettingsFromLocalStorage()
       const chainSettings = mergeChainSettingsWithDefaults(chainId, userSettings)
 
       if (validConfiguration(chainSettings, 'Sourcify')) {
@@ -142,11 +164,11 @@ export class ContractVerificationPluginClient extends PluginClient {
     try {
       if (validConfiguration(chainSettings, providerName)) {
 
-        if (providerName === 'Etherscan') {
-          await new Promise(resolve => setTimeout(resolve, 3000))
-        }
-
         await this.call('terminal', 'log', { type: 'log', value: `Verifying with ${providerName}...` })
+
+        if (providerName === 'Etherscan' || providerName === 'Routescan' || providerName === 'Blockscout') {
+          await new Promise(resolve => setTimeout(resolve, 10000))
+        }
 
         if (verifier && typeof verifier.verify === 'function') {
           const result = await verifier.verify(submittedContract, compilerAbstract)
