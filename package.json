@@ -1,6 +1,6 @@
 {
   "name": "remix-project",
-  "version": "0.71.0-dev",
+  "version": "1.0.0-dev",
   "license": "MIT",
   "description": "Remix Project Monorepo",
   "main": "index.js",
@@ -12,13 +12,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ethereum/remix-project.git"
+    "url": "git+https://github.com/remix-project-org/remix-project.git"
   },
   "author": "@yann300",
   "bugs": {
-    "url": "https://github.com/ethereum/remix-project/issues"
+    "url": "https://github.com/remix-project-org/remix-project/issues"
   },
-  "homepage": "https://github.com/ethereum/remix-project#readme",
+  "homepage": "https://github.com/remix-project-org/remix-project#readme",
   "bin": {
     "remix-ide": "./apps/remix-ide/bin/remix-ide"
   },
@@ -182,8 +182,8 @@
     "octokit": "^3.1.2",
     "path-browserify": "^1.0.1",
     "permissionless": "0.2.25",
-    "prettier": "^2.8.4",
-    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "prettier": "^3.6.2",
+    "prettier-plugin-solidity": "^2.1.0",
     "ra-data-graphql": "^4.16.11",
     "raw-loader": "^4.0.2",
     "react": "^18.2.0",
@@ -216,6 +216,7 @@
     "signale": "^1.4.0",
     "snarkjs": "^0.7.0",
     "sol2uml": "^2.4.3",
+    "solidity-comments-extractor": "^0.0.8",
     "string-similarity": "^4.0.4",
     "svg2pdf.js": "^2.2.1",
     "text-encoding": "^0.7.0",

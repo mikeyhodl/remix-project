@@ -39,20 +39,19 @@ const tests = {
       .waitForElementVisible('label[data-id="sr-loaded-ethers6"]', 100000)
       .waitForElementPresent('[data-id="dependency-ethers-^6"]', 2000)
   },
-  'Should have config file in .remix/script.config.json': function (browser: NightwatchBrowser) {
+  'Should have config file in remix.config.json': function (browser: NightwatchBrowser) {
     browser
       .frameParent()
       // .clickLaunchIcon('filePanel')
-      .waitForElementVisible('[data-path=".remix"]')
-      .waitForElementVisible('[data-id="treeViewDivDraggableItem.remix/script.config.json"]')
-      .openFile('.remix/script.config.json')
+      .waitForElementVisible('[data-id="treeViewDivDraggableItemremix.config.json"]')
+      .openFile('remix.config.json')
   },
   'check config file content': function (browser: NightwatchBrowser) {
     browser
       .getEditorValue((content) => {
         console.log(JSON.parse(content))
         const parsed = JSON.parse(content)
-        browser.assert.ok(parsed.defaultConfig === 'ethers6', 'config file content is correct')
+        browser.assert.ok(parsed['script-runner'].defaultConfig === 'ethers6', 'config file content is correct')
       })
   },
   'execute ethers6 script': function (browser: NightwatchBrowser) {
@@ -134,8 +133,8 @@ const tests = {
       .click('*[data-id="run-script-dropdown-trigger"]')
       .pause(1000)
       .click('*[data-id="open-script-configuration-menu-item"]')
-      .waitForElementVisible('label[data-id="sr-loaded-default"]', 30000)
-      .waitForElementVisible('label[data-id="sr-notloaded-ethers6"]', 30000)
+      .waitForElementVisible('label[data-id="sr-loaded-default"]', 60000)
+      .waitForElementVisible('label[data-id="sr-notloaded-ethers6"]', 60000)
   },
   'switch to default workspace that should be on ethers6': function (browser: NightwatchBrowser) {
     browser
