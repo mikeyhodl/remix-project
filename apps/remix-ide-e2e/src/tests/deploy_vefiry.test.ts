@@ -12,7 +12,7 @@ module.exports = {
     init(browser, done, null)
   },
 
-  'Should show warning for unsupported network when deploying with "Verify" on Remix VM #group1 #pr': function (browser: NightwatchBrowser) {
+  'Should show warning for unsupported network when deploying with "Verify" on Remix VM #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]')
       .clickLaunchIcon('filePanel')
