@@ -176,14 +176,14 @@ export const createInstance = async (
       const log = logBuilder(error)
       return terminalLogger(plugin, log)
     }
-    
+
     addInstance(dispatch, { contractData: contractObject, address, name: contractObject.name })
     const data = await plugin.compilersArtefacts.getCompilerAbstract(contractObject.contract.file)
     plugin.compilersArtefacts.addResolvedContract(addressToString(address), data)
 
     if (isVerifyChecked) {
       _paq.push(['trackEvent', 'udapp', 'DeployAndVerify', plugin.REACT_API.networkName])
-      
+
       try {
         await publishToStorage('ipfs', selectedContract)
       } catch (e) {
@@ -222,7 +222,7 @@ export const createInstance = async (
           constructorArgs: args,
           etherscanApiKey: etherscanApiKey
         }
-        
+
         setTimeout(async () => {
           await plugin.call('contract-verification', 'verifyOnDeploy', verificationData)
         }, 1000)

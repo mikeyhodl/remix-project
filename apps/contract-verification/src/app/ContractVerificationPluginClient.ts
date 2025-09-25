@@ -69,7 +69,7 @@ export class ContractVerificationPluginClient extends PluginClient {
       await this.call('terminal', 'log', { type: 'log', value: 'Verification process started...' })
 
       const { chainId, currentChain, contractAddress, contractName, compilationResult, constructorArgs, etherscanApiKey } = data
-      
+
       if (!currentChain) {
         await this.call('terminal', 'log', { type: 'error', value: 'Chain data was not provided for verification.' })
         return
@@ -77,13 +77,13 @@ export class ContractVerificationPluginClient extends PluginClient {
 
       const submittedContracts: SubmittedContracts = JSON.parse(window.localStorage.getItem('contract-verification:submitted-contracts') || '{}')
 
-      const filePath = Object.keys(compilationResult.data.contracts).find(path => 
+      const filePath = Object.keys(compilationResult.data.contracts).find(path =>
         compilationResult.data.contracts[path][contractName]
       )
       if (!filePath) throw new Error(`Could not find file path for contract ${contractName}`)
 
       const submittedContract: SubmittedContract = {
-        id: `${chainId}-${contractAddress}`, 
+        id: `${chainId}-${contractAddress}`,
         address: contractAddress,
         chainId: chainId,
         filePath: filePath,
@@ -118,7 +118,7 @@ export class ContractVerificationPluginClient extends PluginClient {
           await this.call('terminal', 'log', { type: 'warn', value: 'Etherscan verification skipped: API key not found in global Settings.' })
         }
       }
-      
+
       submittedContracts[submittedContract.id] = submittedContract
 
       window.localStorage.setItem('contract-verification:submitted-contracts', JSON.stringify(submittedContracts))
@@ -129,10 +129,10 @@ export class ContractVerificationPluginClient extends PluginClient {
   }
 
   private _verifyWithProvider = async (
-    providerName: VerifierIdentifier, 
+    providerName: VerifierIdentifier,
     submittedContract: SubmittedContract,
-    compilerAbstract: CompilerAbstract, 
-    chainId: string, 
+    compilerAbstract: CompilerAbstract,
+    chainId: string,
     chainSettings: ChainSettings
   ): Promise<void> => {
     let receipt: VerificationReceipt
@@ -142,30 +142,30 @@ export class ContractVerificationPluginClient extends PluginClient {
     try {
       if (validConfiguration(chainSettings, providerName)) {
         await this.call('terminal', 'log', { type: 'log', value: `Verifying with ${providerName}...` })
-        
+
         if (verifier && typeof verifier.verify === 'function') {
-            const result = await verifier.verify(submittedContract, compilerAbstract)
-            
-            receipt = {
-              receiptId: result.receiptId || undefined,
-              verifierInfo: { name: providerName, apiUrl: verifier.apiUrl },
-              status: result.status,
-              message: result.message,
-              lookupUrl: result.lookupUrl,
-              contractId: submittedContract.id,
-              isProxyReceipt: false,
-              failedChecks: 0
-            }
-            
-            let successMessage = `${providerName} verification successful.`
-            await this.call('terminal', 'log', { type: 'info', value: successMessage })
-            
-            if (result.lookupUrl) {
-              const textMessage = `${result.lookupUrl}`
-              await this.call('terminal', 'log', { type: 'info', value: textMessage })
-            }
+          const result = await verifier.verify(submittedContract, compilerAbstract)
+
+          receipt = {
+            receiptId: result.receiptId || undefined,
+            verifierInfo: { name: providerName, apiUrl: verifier.apiUrl },
+            status: result.status,
+            message: result.message,
+            lookupUrl: result.lookupUrl,
+            contractId: submittedContract.id,
+            isProxyReceipt: false,
+            failedChecks: 0
+          }
+
+          const successMessage = `${providerName} verification successful.`
+          await this.call('terminal', 'log', { type: 'info', value: successMessage })
+
+          if (result.lookupUrl) {
+            const textMessage = `${result.lookupUrl}`
+            await this.call('terminal', 'log', { type: 'info', value: textMessage })
+          }
         } else {
-            throw new Error(`${providerName} verifier is not properly configured or does not support direct verification.`)
+          throw new Error(`${providerName} verifier is not properly configured or does not support direct verification.`)
         }
       }
     } catch (e) {

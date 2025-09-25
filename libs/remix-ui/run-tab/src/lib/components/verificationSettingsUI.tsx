@@ -28,9 +28,9 @@ export function VerificationSettingsUI(props: VerificationSettingsProps) {
           tooltipId="remixVerifyContractTooltip"
           tooltipText={
             <span className="text-start">
-              <FormattedMessage 
-                id="udapp.remixVerifyContractTooltip" 
-                defaultMessage="Automatically verify contract on multiple explorers after deployment. Etherscan API Key can be set in the global Settings panel." 
+              <FormattedMessage
+                id="udapp.remixVerifyContractTooltip"
+                defaultMessage="Automatically verify contract on multiple explorers after deployment. Etherscan API Key can be set in the global Settings panel."
               />
             </span>
           }

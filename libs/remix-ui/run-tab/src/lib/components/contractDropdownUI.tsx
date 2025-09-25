@@ -42,7 +42,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const atAddressValue = useRef<HTMLInputElement>(null)
   const { contractList, loadType, currentFile, compilationSource, currentContract, compilationCount, deployOptions } = props.contracts
   const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
-  
+
   useEffect(() => {
     enableContractNames(Object.keys(props.contracts.contractList).length > 0)
   }, [Object.keys(props.contracts.contractList).length])
