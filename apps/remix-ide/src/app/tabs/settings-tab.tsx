@@ -15,7 +15,8 @@ const _paq = (window._paq = window._paq || [])
 const profile = {
   name: 'settings',
   displayName: 'Settings',
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice'],
+  // updateMatomoAnalyticsMode deprecated: tracking mode now derived purely from perf toggle (Option B)
+  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice', 'updateMatomoAnalyticsMode'],
   events: [],
   icon: 'assets/img/settings.webp',
   description: 'Remix-IDE settings',
@@ -104,38 +105,53 @@ export default class SettingsTab extends ViewPlugin {
     return this.get('settings/copilot/suggest/activate')
   }
 
-  updateMatomoAnalyticsChoice(isChecked) {
-    this.config.set('settings/matomo-analytics', isChecked)
-    // set timestamp to local storage to track when the user has given consent
-    localStorage.setItem('matomo-analytics-consent', Date.now().toString())
-    this.useMatomoAnalytics = isChecked
-    if (!isChecked) {
-      // revoke tracking consent
-      _paq.push(['forgetConsentGiven']);
-    } else {
-      // user has given consent to process their data
-      _paq.push(['setConsentGiven']);
+  updateMatomoAnalyticsChoice(_isChecked) {
+    // Deprecated legacy toggle (disabled in UI). Mode now derives from performance analytics only.
+    // Intentionally no-op to avoid user confusion; kept for backward compat if invoked programmatically.
+  }
+
+  // Deprecated public method: retained for backward compatibility (external plugins or old code calling it).
+  // It now simply forwards to performance-based derivation by toggling perf flag if needed.
+  updateMatomoAnalyticsMode(_mode: 'cookie' | 'anon') {
+    if (window.localStorage.getItem('matomo-debug') === 'true') {
+      console.debug('[Matomo][settings] DEPRECATED updateMatomoAnalyticsMode call ignored; mode derived from perf toggle')
     }
-    this.dispatch({
-      ...this
-    })
   }
 
   updateMatomoPerfAnalyticsChoice(isChecked) {
     this.config.set('settings/matomo-perf-analytics', isChecked)
-    // set timestamp to local storage to track when the user has given consent
+    // Timestamp consent indicator (we treat enabling perf as granting cookie consent; disabling as revoking)
     localStorage.setItem('matomo-analytics-consent', Date.now().toString())
     this.useMatomoPerfAnalytics = isChecked
     this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked)
-    if (!isChecked) {
-      // revoke tracking consent for performance data
-      _paq.push(['disableCookies'])
+
+  const MATOMO_TRACKING_MODE_DIMENSION_ID = 1 // only remaining custom dimension (tracking mode)
+    const mode = isChecked ? 'cookie' : 'anon'
+
+    // Always re-assert cookie consent boundary so runtime flip is clean
+    _paq.push(['requireCookieConsent'])
+    _paq.push(['setConsentGiven']) // Always allow events; anon mode prunes cookies immediately below.
+    if (mode === 'cookie') {
+      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
+      _paq.push(['trackEvent', 'tracking_mode_change', 'cookie'])
     } else {
-      // user has given consent to process their performance data
-      _paq.push(['setCookieConsentGiven'])
+      _paq.push(['deleteCookies'])
+      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
+      _paq.push(['trackEvent', 'tracking_mode_change', 'anon'])
+      if (window.localStorage.getItem('matomo-debug') === 'true') {
+        _paq.push(['trackEvent', 'debug', 'anon_mode_active_toggle'])
+      }
     }
-    this.dispatch({
-      ...this
-    })
+  // Performance dimension removed: mode alone now encodes cookie vs anon. Keep event for analytics toggle if useful.
+  _paq.push(['trackEvent', 'perf_analytics_toggle', isChecked ? 'on' : 'off'])
+    if (window.localStorage.getItem('matomo-debug') === 'true') {
+      console.debug('[Matomo][settings] perf toggle -> mode derived', { perf: isChecked, mode })
+    }
+    // Persist deprecated mode key for backward compatibility (other code might read it)
+    this.config.set('settings/matomo-analytics-mode', mode)
+    this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
+    this.useMatomoAnalytics = true
+
+    this.dispatch({ ...this })
   }
 }

@@ -223,16 +223,13 @@ class AppComponent {
     this.engine = new RemixEngine()
     this.engine.register(appManager)
 
-    const matomoDomains = {
-      'alpha.remix.live': 27,
-      'beta.remix.live': 25,
-      'remix.ethereum.org': 23,
-      '6fd22d6fe5549ad4c4d8fd3ca0b7816b.mod': 35 // remix desktop
-    }
+    // Matomo site id mapping is initialized in loader.js and exposed as window.__MATOMO_SITE_IDS__ (on-prem only).
+    // Fallback to empty object if loader has not executed yet (should normally be present before app bootstrap).
+    const matomoDomains: Record<string, number> = (window as any).__MATOMO_SITE_IDS__ || {}
 
     // _paq.push(['trackEvent', 'App', 'load']);
-    this.matomoConfAlreadySet = Registry.getInstance().get('config').api.exists('settings/matomo-perf-analytics')
-    this.matomoCurrentSetting = Registry.getInstance().get('config').api.get('settings/matomo-perf-analytics')
+  this.matomoConfAlreadySet = Registry.getInstance().get('config').api.exists('settings/matomo-perf-analytics')
+  this.matomoCurrentSetting = Registry.getInstance().get('config').api.get('settings/matomo-perf-analytics')
 
     const electronTracking = (window as any).electronAPI ? await (window as any).electronAPI.canTrackMatomo() : false
 
@@ -240,11 +237,30 @@ class AppComponent {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const e2eforceMatomoToShow = window.localStorage.getItem('showMatomo') && window.localStorage.getItem('showMatomo') === 'true'
-    const contextShouldShowMatomo = matomoDomains[window.location.hostname] || e2eforceMatomoToShow || electronTracking
-    const shouldRenewConsent = this.matomoCurrentSetting === false && (!lastMatomoCheck || new Date(Number(lastMatomoCheck)) < sixMonthsAgo) // it is set to false for more than 6 months.
-    this.showMatomo = contextShouldShowMatomo && (!this.matomoConfAlreadySet || shouldRenewConsent)
+  const params = new URLSearchParams(window.location.search)
+  const hashFrag = window.location.hash || ''
+  const debugMatatomo = params.get('debug_matatomo') === '1' || /debug_matatomo=1/.test(hashFrag)
+  const e2eforceMatomoToShow = (window.localStorage.getItem('showMatomo') === 'true') || debugMatatomo
+  const contextShouldShowMatomo = matomoDomains[window.location.hostname] || e2eforceMatomoToShow || electronTracking
+    const consentMissing = !lastMatomoCheck
+    const consentExpired = lastMatomoCheck && new Date(Number(lastMatomoCheck)) < sixMonthsAgo
+    // Renew only if user explicitly disabled perf analytics > 6 months ago or consent timestamp expired.
+    const shouldRenewConsent = (this.matomoCurrentSetting === false && consentExpired)
+    // Show dialog if in a Matomo-enabled context AND (no prior consent record OR renewal needed).
+    this.showMatomo = contextShouldShowMatomo && (consentMissing || shouldRenewConsent)
+    //if (window.localStorage.getItem('matomo-debug') === 'true') {
+      console.debug('[Matomo][dialog-gate]', {
+        contextShouldShowMatomo,
+        consentMissing,
+        consentExpired,
+        matomoCurrentSetting: this.matomoCurrentSetting,
+        shouldRenewConsent,
+        showMatomo: this.showMatomo
+      })
+    //}
 
+  if (debugMatatomo) console.log('[Matomo][debug_matatomo] forcing dialog/show diagnostics')
+  console.log('Matomo analytics is ' + (this.showMatomo ? 'enabled' : 'disabled'))
     if (this.showMatomo && shouldRenewConsent) {
       _paq.push(['trackEvent', 'Matomo', 'refreshMatomoPermissions']);
     }
