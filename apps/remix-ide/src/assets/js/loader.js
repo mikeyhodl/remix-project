@@ -87,17 +87,20 @@ function baseMatomoConfig (_paq) {
 }
 
 function applyTrackingMode (_paq, mode) {
-  // We use cookie consent gating to control cookie persistence but we ALWAYS allow tracking events.
-  // Problem previously: using forgetConsentGiven after requireCookieConsent suppressed all hits in anon mode.
-  // Fix: always grant consent for tracking; for anon we immediately delete cookies to remain stateless.
-  _paq.push(['requireCookieConsent']);
-  _paq.push(['setConsentGiven']); // ensure events are sent
   if (mode === 'cookie') {
-    _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie']);
-  } else { // anon cookie-less: wipe any cookies after granting consent so visits remain ephemeral
-    _paq.push(['deleteCookies']);
-    _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon']);
-    if (matomoDebugEnabled()) _paq.push(['trackEvent', 'debug', 'anon_mode_active']);
+    // Cookie (full) mode: allow cookies via consent gating
+    _paq.push(['requireCookieConsent'])
+    _paq.push(['setConsentGiven'])
+    _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
+  } else {
+    // Anonymous mode:
+    //  - Prevent any Matomo cookies from being created (disableCookies)
+    //  - Do NOT call consent APIs (keeps semantics clear: no cookie consent granted)
+    //  - Hits are still sent; visits will be per reload unless SPA navigation adds more actions
+    _paq.push(['disableCookies'])
+    _paq.push(['disableBrowserFeatureDetection']);
+    _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
+    if (matomoDebugEnabled()) _paq.push(['trackEvent', 'debug', 'anon_mode_active'])
   }
 }
 
