@@ -27,7 +27,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   }, [])
 
   const setSearchTerm = (term: string) => {
-    console.log('setSearchTerm', { term, state })
+    console.log('check status', { term, dedupedTemplates, state })
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
   }
 

@@ -3,6 +3,8 @@ import './remix-ui-template-explorer-modal.css'
 import { appActionTypes, AppState } from '@remix-ui/app'
 import { TemplateExplorerBody } from '../components/template-explorer-body'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import { WizardComponent } from '../components/wizard-component'
+import { ContractWizard } from '../components/contract-wizard'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
@@ -32,7 +34,9 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
               <i className="fa-solid fa-xmark text-dark"></i>
             </button>
           </div>
-          <TemplateExplorerBody plugin={props.plugin} />
+          {/* <TemplateExplorerBody plugin={props.plugin} /> */}
+          {/* <WizardComponent /> */}
+          <ContractWizard />
           <div className="footer">
             {props.appState.genericModalState.footer && props.appState.genericModalState.footer}
           </div>

@@ -114,3 +114,37 @@ export interface TopCardProps {
   onClick: () => void
   importWorkspace: boolean
 }
+
+export enum ContractWizardAction {
+  CONTRACT_TYPE_UPDATED = 'CONTRACT_TYPE_UPDATED',
+  CONTRACT_OPTIONS_UPDATE = 'CONTRACT_OPTIONS_UPDATE',
+  CONTRACT_ACCESS_CONTROL_UPDATE = 'CONTRACT_ACCESS_CONTROL_UPDATE',
+  CONTRACT_UPGRADABILITY_UPDATE = 'CONTRACT_UPGRADABILITY_UPDATE',
+  CONTRACT_CODE_UPDATE = 'CONTRACT_CODE_UPDATE',
+  CONTRACT_IMPORT_UPDATE = 'CONTRACT_IMPORT_UPDATE',
+  INITIALIZE_AS_GIT_REPO_UPDATE = 'INITIALIZE_AS_GIT_REPO_UPDATE',
+  TOKEN_NAME_UPDATE = 'TOKEN_NAME_UPDATE',
+  CONTRACT_NAME_UPDATE = 'CONTRACT_NAME_UPDATE'
+}
+
+export interface ContractTypeStrategy {
+  contractType: ContractType
+  contractOptions: {
+    mintable?: boolean
+    burnable?: boolean
+    pausable?: boolean
+  }
+  contractAccessControl: AccessControlType
+  contractUpgradability: {
+    uups?: boolean
+    transparent?: boolean
+  }
+  contractCode: string
+  contractImport?: string
+  initializeAsGitRepo: boolean
+  contractName?: string
+  tokenName?: string
+}
+
+export type AccessControlType = 'ownable' | 'roles' | 'managed' | ''
+export type ContractType = 'erc20' | 'erc721' | 'erc1155' | 'custom'

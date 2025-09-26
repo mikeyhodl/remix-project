@@ -53,7 +53,7 @@ const RemixApp = (props: IRemixAppUi) => {
       okFn: () => { },
       cancelLabel: 'Default Cancel Label',
       cancelFn: () => { },
-      width: '640px',
+      width: '720px',
       height: '720px',
       showModal: true
     }
