@@ -143,13 +143,34 @@ if (window.electronAPI) {
       console.log('Matomo tracking is disabled on Dev mode');
       return;
     }
+    // Sync initial tracking mode with desktop main process (which defaulted to anon).
+    if (typeof window.electronAPI.setTrackingMode === 'function') {
+      try {
+        window.electronAPI.setTrackingMode(trackingMode);
+        if (matomoDebugEnabled()) console.debug('[Matomo][electron] initial setTrackingMode sent', trackingMode);
+      } catch (e) {
+        console.warn('[Matomo][electron] failed to send initial setTrackingMode', e);
+      }
+    }
     // We emulate _paq queue and forward each push to the electron layer.
     const queue = [];
     window._paq = {
-      push: function (...data) {
-        queue.push(data);
-        // Only forward events after initialization phase if electron layer expects raw events.
-        window.electronAPI.trackEvent(...data);
+      // Accept either style:
+      //   _paq.push(['trackEvent', cat, act, name, value])  (classic Matomo array tuple)
+      //   _paq.push('trackEvent', cat, act, name, value)    (varargs – we normalize it)
+      push: function (...args) {
+        const tuple = (args.length === 1 && Array.isArray(args[0])) ? args[0] : args;
+        queue.push(tuple);
+        const isEvent = tuple[0] === 'trackEvent';
+        if (matomoDebugEnabled()) console.log('[Matomo][electron] queue', tuple, queue.length, isEvent);
+        try {
+          if (isEvent && window.electronAPI.trackDesktopEvent) {
+            window.electronAPI.trackDesktopEvent(tuple[1], tuple[2], tuple[3], tuple[4]);
+            if (matomoDebugEnabled()) console.debug('[Matomo][electron] forwarded', { tuple, queueLength: queue.length, ts: Date.now() });
+          }
+        } catch (e) {
+            console.warn('[Matomo][electron] failed to forward event', tuple, e);
+        }
       }
     };
     // We perform a reduced configuration. Electron side can interpret commands similarly to Matomo's JS if needed.

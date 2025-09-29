@@ -147,6 +147,19 @@ export default class SettingsTab extends ViewPlugin {
     if (window.localStorage.getItem('matomo-debug') === 'true') {
       console.debug('[Matomo][settings] perf toggle -> mode derived', { perf: isChecked, mode })
     }
+
+    // If running inside Electron, propagate mode to desktop tracker & emit desktop-specific event.
+    if ((window as any).electronAPI) {
+      try {
+        (window as any).electronAPI.setTrackingMode(mode)
+        // Also send an explicit desktop event (uses new API if available)
+        if ((window as any).electronAPI.trackDesktopEvent) {
+          (window as any).electronAPI.trackDesktopEvent('tracking_mode_change', mode, isChecked ? 'on' : 'off')
+        }
+      } catch (e) {
+        console.warn('[Matomo][desktop-sync] failed to set tracking mode in electron layer', e)
+      }
+    }
     // Persist deprecated mode key for backward compatibility (other code might read it)
     this.config.set('settings/matomo-analytics-mode', mode)
     this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
