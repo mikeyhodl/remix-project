@@ -185,14 +185,6 @@ export const createInstance = async (
       _paq.push(['trackEvent', 'udapp', 'DeployAndVerify', plugin.REACT_API.networkName])
 
       try {
-        await publishToStorage('ipfs', selectedContract)
-      } catch (e) {
-        const errorMsg = `Could not publish contract metadata to IPFS. Continuing with verification... (Error: ${e.message})`
-        const errorLog = logBuilder(errorMsg)
-        terminalLogger(plugin, errorLog)
-      }
-
-      try {
         const status = plugin.blockchain.getCurrentNetworkStatus()
         if (status.error || !status.network) {
           throw new Error(`Could not get network status: ${status.error || 'Unknown error'}`)

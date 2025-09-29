@@ -7,6 +7,7 @@ import * as ethJSUtil from '@ethereumjs/util'
 import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
 import { VerificationSettingsUI } from './verificationSettingsUI'
+
 const _paq = (window._paq = window._paq || [])
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
@@ -41,7 +42,22 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const contractsRef = useRef<HTMLSelectElement>(null)
   const atAddressValue = useRef<HTMLInputElement>(null)
   const { contractList, loadType, currentFile, compilationSource, currentContract, compilationCount, deployOptions } = props.contracts
-  const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
+  const [isVerifyChecked, setVerifyChecked] = useState<boolean>(() => {
+    const saved = window.localStorage.getItem('deploy-verify-contract-checked')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+
+  const [isNetworkSupported, setNetworkSupported] = useState<boolean>(false)
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      if (props.plugin) {
+        const supportedChain = await getSupportedChain(props.plugin)
+        setNetworkSupported(!!supportedChain)
+      }
+    }
+    checkSupport()
+  }, [props.networkName])
 
   useEffect(() => {
     enableContractNames(Object.keys(props.contracts.contractList).length > 0)
@@ -281,7 +297,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
 
   const handleVerifyCheckedChange = (isChecked: boolean) => {
     setVerifyChecked(isChecked)
-    window.localStorage.setItem('deploy-verify-contract-checked', isChecked.toString())
+    window.localStorage.setItem('deploy-verify-contract-checked', JSON.stringify(isChecked))
   }
 
   const updateCompilerName = () => {
@@ -313,6 +329,23 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const isValidProxyUpgrade = (proxyAddress: string) => {
     const solcVersion = loadedContractData.metadata ? JSON.parse(loadedContractData.metadata).compiler.version : ''
     return props.isValidProxyUpgrade(proxyAddress, loadedContractData.contractName || loadedContractData.name, loadedContractData.compiler.source, loadedContractData.compiler.data, solcVersion)
+  }
+
+  const getSupportedChain = async (plugin: any): Promise<any> => {
+    try {
+      const response = await fetch('https://chainid.network/chains.json')
+      if (!response.ok) return null
+      const allChains = await response.json()
+
+      const status = plugin.blockchain.getCurrentNetworkStatus()
+      if (status.error || !status.network) return null
+
+      const currentChainId = parseInt(status.network.id)
+      return allChains.find(chain => chain.chainId === currentChainId) || null
+    } catch (e) {
+      console.error(e)
+      return null
+    }
   }
 
   const checkSumWarning = () => {
@@ -489,10 +522,12 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
                 plugin={props.plugin}
                 runTabState={props.runTabState}
               />
-              <VerificationSettingsUI
-                isVerifyChecked={isVerifyChecked}
-                onVerifyCheckedChange={setVerifyChecked}
-              />
+              {isNetworkSupported && (
+                <VerificationSettingsUI
+                  isVerifyChecked={isVerifyChecked}
+                  onVerifyCheckedChange={handleVerifyCheckedChange}
+                />
+              )}
             </div>
           )}
         </div>
