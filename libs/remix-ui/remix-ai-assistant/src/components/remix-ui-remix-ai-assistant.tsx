@@ -667,7 +667,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   const maximizePanel = async () => {
     await props.plugin.call('layout', 'maximisePinnedPanel')
-    setIsMaximized(true)
+    setIsMaximized(true) // ensured that expansion of the panel is stateful
   }
 
   return (
