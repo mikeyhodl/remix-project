@@ -148,3 +148,18 @@ export interface ContractTypeStrategy {
 
 export type AccessControlType = 'ownable' | 'roles' | 'managed' | ''
 export type ContractType = 'erc20' | 'erc721' | 'erc1155' | 'custom'
+
+export interface ContractOptions {mintable: boolean, burnable: boolean, pausable: boolean}
+export interface ContractUpgradability {uups: boolean, transparent: boolean}
+
+export interface ModifyContractProps {
+  tokenName: string
+  updateTokenName: (tokenName: string) => void
+  strategy: ContractTypeStrategy & {contractOptions: ContractOptions, contractUpgradability: ContractUpgradability}
+  toggleContractOption: (key: keyof ContractOptions) => void
+  switchAccessControl: (accessControl: AccessControlType) => void
+  checkBoxDispatch: (value: {
+    type: ContractWizardAction;
+    payload: any;
+}) => void
+}

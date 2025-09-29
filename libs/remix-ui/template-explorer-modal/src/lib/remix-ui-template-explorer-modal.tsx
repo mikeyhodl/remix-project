@@ -1,10 +1,10 @@
-import React, { useContext } from 'react'
+import React, { useContext, useReducer } from 'react'
 import './remix-ui-template-explorer-modal.css'
 import { appActionTypes, AppState } from '@remix-ui/app'
-import { TemplateExplorerBody } from '../components/template-explorer-body'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { WizardComponent } from '../components/wizard-component'
 import { ContractWizard } from '../components/contract-wizard'
+import { WorkspaceDetails } from '../components/workspaceDetails'
+import { initialState, templateExplorerReducer } from '../../reducers/template-explorer-reducer'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
@@ -15,6 +15,7 @@ export interface RemixUiTemplateExplorerModalProps {
 export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModalProps) {
 
   const { plugin, setSearchTerm } = useContext(TemplateExplorerContext)
+  const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
 
   return (
     <section>
@@ -36,10 +37,11 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
           </div>
           {/* <TemplateExplorerBody plugin={props.plugin} /> */}
           {/* <WizardComponent /> */}
-          <ContractWizard />
-          <div className="footer">
+          {/* <ContractWizard /> */}
+          <WorkspaceDetails strategy={state.strategy} />
+          {/* <div className="footer">
             {props.appState.genericModalState.footer && props.appState.genericModalState.footer}
-          </div>
+          </div> */}
         </div>
       </section>
     </section>
