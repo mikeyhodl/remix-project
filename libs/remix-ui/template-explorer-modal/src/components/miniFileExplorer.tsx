@@ -75,12 +75,12 @@ export function MiniFileExplorer() {
             <span className="ms-1">{value.name}</span>
           </div>
           {value.child.map((child) => (
-            <li key={child.name} className="list-unstyled d-flex flex-column ps-3">
+            <span key={child.name} className="list-unstyled d-flex flex-column ps-3">
               <div>
                 <i className={`fas fa-${child.type === 'folder' ? 'folder' : 'file'}`}></i>
                 <span className="ms-1">{child.name}</span>
               </div>
-            </li>
+            </span>
           ))}
         </li>
       ))}
