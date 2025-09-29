@@ -88,9 +88,9 @@ function baseMatomoConfig (_paq) {
 
 function applyTrackingMode (_paq, mode) {
   if (mode === 'cookie') {
-    // Cookie (full) mode: allow cookies via consent gating
+    // Cookie (full) mode: properly set up cookie consent
     _paq.push(['requireCookieConsent'])
-    _paq.push(['setConsentGiven'])
+    _paq.push(['rememberCookieConsentGiven']) // Give AND remember cookie consent
     _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
   } else {
     // Anonymous mode:

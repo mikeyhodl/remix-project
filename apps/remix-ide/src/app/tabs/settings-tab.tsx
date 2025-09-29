@@ -123,27 +123,35 @@ export default class SettingsTab extends ViewPlugin {
     // Timestamp consent indicator (we treat enabling perf as granting cookie consent; disabling as revoking)
     localStorage.setItem('matomo-analytics-consent', Date.now().toString())
     this.useMatomoPerfAnalytics = isChecked
-    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked)
 
-  const MATOMO_TRACKING_MODE_DIMENSION_ID = 1 // only remaining custom dimension (tracking mode)
+    const MATOMO_TRACKING_MODE_DIMENSION_ID = 1 // only remaining custom dimension (tracking mode)
     const mode = isChecked ? 'cookie' : 'anon'
 
     // Always re-assert cookie consent boundary so runtime flip is clean
     _paq.push(['requireCookieConsent'])
-    _paq.push(['setConsentGiven']) // Always allow events; anon mode prunes cookies immediately below.
+    
     if (mode === 'cookie') {
+      // Cookie mode: give cookie consent and remember it
+      _paq.push(['rememberCookieConsentGiven']) // This gives AND remembers cookie consent
       _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
       _paq.push(['trackEvent', 'tracking_mode_change', 'cookie'])
     } else {
-      _paq.push(['deleteCookies'])
+      // Anonymous mode: revoke cookie consent completely
+      _paq.push(['forgetCookieConsentGiven']) // This removes cookie consent and deletes cookies
+      _paq.push(['disableCookies']) // Extra safety - prevent any new cookies
+      
+      // Manual cookie deletion as backup (Matomo cookies typically start with _pk_)
+      this.deleteMatomoCookies()
+      
       _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
       _paq.push(['trackEvent', 'tracking_mode_change', 'anon'])
       if (window.localStorage.getItem('matomo-debug') === 'true') {
         _paq.push(['trackEvent', 'debug', 'anon_mode_active_toggle'])
       }
     }
-  // Performance dimension removed: mode alone now encodes cookie vs anon. Keep event for analytics toggle if useful.
-  _paq.push(['trackEvent', 'perf_analytics_toggle', isChecked ? 'on' : 'off'])
+    
+    // Performance dimension removed: mode alone now encodes cookie vs anon. Keep event for analytics toggle if useful.
+    _paq.push(['trackEvent', 'perf_analytics_toggle', isChecked ? 'on' : 'off'])
     if (window.localStorage.getItem('matomo-debug') === 'true') {
       console.debug('[Matomo][settings] perf toggle -> mode derived', { perf: isChecked, mode })
     }
@@ -165,6 +173,34 @@ export default class SettingsTab extends ViewPlugin {
     this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
     this.useMatomoAnalytics = true
 
+    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked)
     this.dispatch({ ...this })
+  }
+
+  // Helper method to manually delete Matomo cookies
+  private deleteMatomoCookies() {
+    try {
+      // Get all cookies
+      const cookies = document.cookie.split(';')
+      
+      for (let cookie of cookies) {
+        const eqPos = cookie.indexOf('=')
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+        
+        // Delete Matomo cookies (typically start with _pk_)
+        if (name.startsWith('_pk_')) {
+          // Delete for current domain and path
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`
+          
+          if (window.localStorage.getItem('matomo-debug') === 'true') {
+            console.debug('[Matomo][cookie-cleanup] Deleted cookie:', name)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Matomo][cookie-cleanup] Failed to delete cookies:', e)
+    }
   }
 }
