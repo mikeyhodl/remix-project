@@ -70,14 +70,14 @@ export function MiniFileExplorer() {
     <ul>
       {Object.entries(structure).map(([key, value]) => (
         <li key={key} className="list-unstyled d-flex flex-column">
-          <div>
+          <div className="p-1">
             <i className={`fas fa-${value.type === 'folder' ? 'folder' : 'file'}`}></i>
             <span className="ms-1">{value.name}</span>
           </div>
           {value.child.map((child) => (
             <span key={child.name} className="list-unstyled d-flex flex-column ps-3">
               <div>
-                <i className={`fas fa-${child.type === 'folder' ? 'folder' : 'file'}`}></i>
+                <i className={`fas fa-${child.type === 'folder' ? child.isOpen ? 'folder-open' : 'folder' : 'file'}`}></i>
                 <span className="ms-1">{child.name}</span>
               </div>
             </span>
