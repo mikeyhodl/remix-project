@@ -15,22 +15,6 @@ function isDebugEnabled() {
   return true;
 }
 
-  function init() {
-    // Expose a tiny API on window.Matomo.DebugPipe
-    window.Matomo = window.Matomo || {};
-
-
-    // Decorate any trackers created now or later
-    Matomo.on('TrackerAdded', function (tracker) {
-      decorateTracker(tracker);
-    });
-
-    // If trackers already exist (e.g. _paq initialized before us), decorate them too
-    var existing = Matomo.getAsyncTrackers ? Matomo.getAsyncTrackers() : [];
-    for (var i = 0; i < existing.length; i++) {
-      decorateTracker(existing[i]);
-    }
-  }
 
 // Main plugin initialization function
 function initMatomoDebugPlugin() {
@@ -658,7 +642,7 @@ function initMatomoDebugPlugin() {
   }
 
   // Start registration attempts
-  tryRegister();
+  //tryRegister();
   
 
   // Also register for standard callback
@@ -666,6 +650,7 @@ function initMatomoDebugPlugin() {
     window.matomoPluginAsyncInit = [];
   }
   window.matomoPluginAsyncInit.push(registerPlugin);
+ 
   
   console.log('[MatomoDebugPlugin] === INITIALIZATION COMPLETE ===');
 }
