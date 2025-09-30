@@ -176,18 +176,19 @@ export class GetCompilationResultHandler extends BaseToolHandler {
         return this.createErrorResult('No compilation result available');
       }
 
+      console.log('Got latest compilation result', compilationResult)
+
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
-        contracts: {},
-        errors: compilationResult.data.errors || [],
+        contracts: {'target': compilationResult.source?.target},
+        errors: compilationResult?.data?.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
       };
 
-      // Process contracts
-      if (compilationResult.data.contracts) {
-        for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
+      if (compilationResult.data?.contracts) {
+        for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
             result.contracts[`${fileName}:${contractName}`] = {

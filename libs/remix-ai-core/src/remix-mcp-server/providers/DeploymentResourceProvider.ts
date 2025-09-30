@@ -434,7 +434,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           {
             address: '0x9876543210987654321098765432109876543210',
             balance: '99.95 ETH',
-            privateKey: '0x...',
+            privateKey: '0x...', // haha
             isDefault: true
           }
         ],
