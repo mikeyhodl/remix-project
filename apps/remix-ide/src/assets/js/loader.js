@@ -109,6 +109,23 @@ function loadMatomoScript (u) {
   g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
 }
 
+function loadMatomoDebugPlugin() {
+  // Load the debug plugin script
+  const d = document; 
+  const g = d.createElement('script'); 
+  const s = d.getElementsByTagName('script')[0];
+  g.async = true; 
+  g.src = 'assets/js/matomo-debug-plugin.js';
+  g.onload = function() {
+    // Initialize the plugin once loaded
+    if (typeof window.initMatomoDebugPlugin === 'function') {
+      window.initMatomoDebugPlugin();
+    }
+  };
+  s.parentNode.insertBefore(g, s);
+}
+
+
 function trackDomain (domainToTrack, u, paqName, mode) {
   const _paq = initMatomoArray(paqName);
   // Must set tracker url & site id early but after mode-specific cookie disabling
@@ -123,6 +140,10 @@ function trackDomain (domainToTrack, u, paqName, mode) {
   baseMatomoConfig(_paq);
   // Page view AFTER all config (consent / custom dimensions)
   _paq.push(['trackPageView']);
+  
+  // Load debug plugin (conditional based on localStorage flags)
+  loadMatomoDebugPlugin();
+
   loadMatomoScript(u);
 }
 
