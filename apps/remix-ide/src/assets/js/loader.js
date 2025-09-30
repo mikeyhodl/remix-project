@@ -43,6 +43,7 @@ const LOCALHOST_WEB_DEV_SITE_ID = 5;
 // Debug flag: enable verbose Matomo instrumentation logs.
 // Activate by setting localStorage.setItem('matomo-debug','true') (auto-on for localhost if flag present).
 function matomoDebugEnabled () {
+  return true
   try {
     // Allow enabling via localStorage OR debug_matatomo=1 query param for quick inspection.
     const qp = new URLSearchParams(window.location.search)
@@ -59,11 +60,11 @@ let domainOnPremToTrack = domainsOnPrem[window.location.hostname];
 function deriveTrackingModeFromPerf () {
   try {
     const raw = window.localStorage.getItem(TRACKING_CONFIG_KEY);
-    if (!raw) return 'anon';
+    if (!raw) return 'none';
     const parsed = JSON.parse(raw);
     const perf = !!parsed['settings/matomo-perf-analytics'];
     return perf ? 'cookie' : 'anon';
-  } catch (e) { return 'anon'; }
+  } catch (e) { return 'none'; }
 }
 
 
@@ -72,7 +73,10 @@ function initMatomoArray (paqName) {
   if (existing) return existing;
   const arr = [];
   // Wrap push for debug visibility.
-  arr.push = function (...args) { Array.prototype.push.apply(this, args); if (matomoDebugEnabled()) console.debug('[Matomo][queue]', ...args); return this.length }
+  arr.push = function (...args) { 
+    Array.prototype.push.apply(this, args); 
+    if (matomoDebugEnabled()) console.debug('[Matomo][queue]', ...args); return this.length 
+  }
   window[paqName] = arr;
   return arr;
 }
@@ -87,20 +91,27 @@ function baseMatomoConfig (_paq) {
 }
 
 function applyTrackingMode (_paq, mode) {
+  console.log('applyTrackingMode', mode);
+  _paq.push(['requireConsent']); 
   if (mode === 'cookie') {
     // Cookie (full) mode: properly set up cookie consent
-    _paq.push(['requireCookieConsent'])
-    _paq.push(['rememberCookieConsentGiven']) // Give AND remember cookie consent
+    _paq.push(['rememberConsentGiven'])
     _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
-  } else {
+  } else if (mode === 'anon') {
     // Anonymous mode:
     //  - Prevent any Matomo cookies from being created (disableCookies)
     //  - Do NOT call consent APIs (keeps semantics clear: no cookie consent granted)
     //  - Hits are still sent; visits will be per reload unless SPA navigation adds more actions
+    _paq.push(['setConsentGiven']); 
     _paq.push(['disableCookies'])
     _paq.push(['disableBrowserFeatureDetection']);
     _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
     if (matomoDebugEnabled()) _paq.push(['trackEvent', 'debug', 'anon_mode_active'])
+  } else {
+    if (matomoDebugEnabled()) console.debug('[Matomo] tracking mode is none; no tracking will occur');
+    _paq.push(['requireConsent']);
+    _paq.push(['disableCookies'])
+    _paq.push(['disableBrowserFeatureDetection']);
   }
 }
 
@@ -211,6 +222,7 @@ if (window.electronAPI) {
   const hash = window.location.hash || ''
   const debugMatatomo = qp.get('debug_matatomo') === '1' || /debug_matatomo=1/.test(hash)
   const localhostEnabled = (() => {
+    return true
     try { return window.localStorage.getItem('matomo-localhost-enabled') === 'true' } catch (e) { return false }
   })();
   if (window.location.hostname === 'localhost') {

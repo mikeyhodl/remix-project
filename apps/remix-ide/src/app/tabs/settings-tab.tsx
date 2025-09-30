@@ -132,11 +132,13 @@ export default class SettingsTab extends ViewPlugin {
     
     if (mode === 'cookie') {
       // Cookie mode: give cookie consent and remember it
-      _paq.push(['rememberCookieConsentGiven']) // This gives AND remembers cookie consent
+      _paq.push(['rememberConsentGiven']);
+      _paq.push(['enableBrowserFeatureDetection']); 
       _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
       _paq.push(['trackEvent', 'tracking_mode_change', 'cookie'])
     } else {
       // Anonymous mode: revoke cookie consent completely
+      _paq.push(['setConsentGiven']); 
       _paq.push(['forgetCookieConsentGiven']) // This removes cookie consent and deletes cookies
       _paq.push(['disableCookies']) // Extra safety - prevent any new cookies
       
