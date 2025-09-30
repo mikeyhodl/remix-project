@@ -23,7 +23,7 @@ const profile = {
     'resetChatRequestBuffer', 'setAssistantThrId',
     'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel',
     'addMCPServer', 'removeMCPServer', 'getMCPConnectionStatus', 'getMCPResources', 'getMCPTools', 'executeMCPTool',
-    'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers', 'loadMCPServersFromSettings',
+    'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers',
     'loadMCPServersFromSettings'
   ],
   events: [],
@@ -117,6 +117,7 @@ export class RemixAIPlugin extends Plugin {
 
     // initialize the remix MCP server 
     this.remixMCPServer = await createRemixMCPServer(this)
+    console.log(this)
     return true
   }
 

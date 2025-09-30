@@ -104,6 +104,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         contract[args.file] = { content: content }
 
         const compilerPayload = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
+        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI 
         compilationResult = compilerPayload
       } else {
         compilationResult = { success: false, message: 'Workspace compilation not yet implemented' };
@@ -118,6 +119,17 @@ export class SolidityCompileHandler extends BaseToolHandler {
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
       };
+
+      console.log('emitting compilationFinished event with proper UI trigger')
+      // Emit compilationFinished event with correct parameters to trigger UI effects
+      plugin.emit('compilationFinished',
+        args.file,  // source target
+        { sources: compilationResult?.source || {} }, // source files
+        'soljson', // compiler type
+        compilationResult.data, // compilation data
+        { sources: compilationResult?.source || {} }, // input
+        compilerConfig.version || 'latest' // version
+      )
 
       // Extract contract data
       // if (compilationResult.data.contracts) {

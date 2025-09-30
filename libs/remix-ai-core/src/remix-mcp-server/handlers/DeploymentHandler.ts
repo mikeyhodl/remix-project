@@ -4,13 +4,14 @@
 
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
-import { 
-  ToolCategory, 
+import {
+  ToolCategory,
   RemixToolDefinition,
   DeployContractArgs,
   CallContractArgs,
   SendTransactionArgs,
   DeploymentResult,
+  AccountInfo,
   ContractInteractionResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
@@ -550,6 +551,208 @@ export class GetAccountBalanceHandler extends BaseToolHandler {
 }
 
 /**
+ * Get User Accounts Tool Handler
+ */
+export class GetUserAccountsHandler extends BaseToolHandler {
+  name = 'get_user_accounts';
+  description = 'Get user accounts from the current execution environment';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      includeBalances: {
+        type: 'boolean',
+        description: 'Whether to include account balances',
+        default: true
+      }
+    }
+  };
+
+  getPermissions(): string[] {
+    return ['accounts:read'];
+  }
+
+  validate(args: { includeBalances?: boolean }): boolean | string {
+    const types = this.validateTypes(args, { includeBalances: 'boolean' });
+    if (types !== true) return types;
+    return true;
+  }
+
+  async execute(args: { includeBalances?: boolean }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Get accounts from the run-tab plugin (udapp)
+      const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI');
+      console.log('geetting accounts returned', runTabApi)
+
+      if (!runTabApi || !runTabApi.accounts) {
+        return this.createErrorResult('Could not retrieve accounts from execution environment');
+      }
+
+      const accounts: AccountInfo[] = [];
+      const loadedAccounts = runTabApi.accounts.loadedAccounts || {};
+      const selectedAccount = runTabApi.accounts.selectedAccount;
+      console.log('loadedAccounts', loadedAccounts)
+      console.log('selected account', selectedAccount)
+
+      for (const [address, displayName] of Object.entries(loadedAccounts)) {
+        const account: AccountInfo = {
+          address: address,
+          displayName: displayName as string,
+          isSmartAccount: (displayName as string)?.includes('[SMART]') || false
+        };
+
+        // Get balance if requested
+        if (args.includeBalances !== false) {
+          try {
+            const balance = await plugin.call('blockchain' as any, 'getBalanceInEther', address);
+            account.balance = balance || '0';
+          } catch (error) {
+            console.warn(`Could not get balance for account ${address}:`, error);
+            account.balance = 'unknown';
+          }
+        }
+
+        accounts.push(account);
+      }
+
+      const result = {
+        success: true,
+        accounts: accounts,
+        selectedAccount: selectedAccount,
+        totalAccounts: accounts.length,
+        environment: await this.getCurrentEnvironment(plugin)
+      };
+
+      return this.createSuccessResult(result);
+    } catch (error) {
+      return this.createErrorResult(`Failed to get user accounts: ${error.message}`);
+    }
+  }
+
+  private async getCurrentEnvironment(plugin: Plugin): Promise<string> {
+    try {
+      const provider = await plugin.call('blockchain' as any, 'getCurrentProvider');
+      return provider?.displayName || provider?.name || 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+}
+
+/**
+ * Set Selected Account Tool Handler
+ */
+export class SetSelectedAccountHandler extends BaseToolHandler {
+  name = 'set_selected_account';
+  description = 'Set the currently selected account in the execution environment';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        description: 'The account address to select'
+      }
+    },
+    required: ['address']
+  };
+
+  getPermissions(): string[] {
+    return ['accounts:write'];
+  }
+
+  validate(args: { address: string }): boolean | string {
+    const required = this.validateRequired(args, ['address']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, { address: 'string' });
+    if (types !== true) return types;
+
+    // Basic address validation
+    if (!/^0x[a-fA-F0-9]{40}$/.test(args.address)) {
+      return 'Invalid Ethereum address format';
+    }
+
+    return true;
+  }
+
+  async execute(args: { address: string }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Set the selected account through the udapp plugin
+      await plugin.call('udapp' as any, 'setAccount', args.address);
+
+      // Verify the account was set
+      const runTabApi = await plugin.call('udapp' as any, 'getAccounts');
+      const currentSelected = runTabApi?.accounts?.selectedAccount;
+
+      if (currentSelected !== args.address) {
+        return this.createErrorResult(`Failed to set account. Current selected: ${currentSelected}`);
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        selectedAccount: args.address,
+        message: `Successfully set account ${args.address} as selected`
+      });
+    } catch (error) {
+      return this.createErrorResult(`Failed to set selected account: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Get Current Environment Tool Handler
+ */
+export class GetCurrentEnvironmentHandler extends BaseToolHandler {
+  name = 'get_current_environment';
+  description = 'Get information about the current execution environment';
+  inputSchema = {
+    type: 'object',
+    properties: {}
+  };
+
+  getPermissions(): string[] {
+    return ['environment:read'];
+  }
+
+  async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Get environment information
+      const provider = await plugin.call('blockchain' as any, 'getCurrentProvider');
+      const networkName = await plugin.call('blockchain' as any, 'getNetworkName').catch(() => 'unknown');
+      const chainId = await plugin.call('blockchain' as any, 'getChainId').catch(() => 'unknown');
+
+      // Get accounts info
+      const runTabApi = await plugin.call('udapp' as any, 'getAccounts');
+      const accountsCount = runTabApi?.accounts?.loadedAccounts
+        ? Object.keys(runTabApi.accounts.loadedAccounts).length
+        : 0;
+
+      const result = {
+        success: true,
+        environment: {
+          provider: {
+            name: provider?.name || 'unknown',
+            displayName: provider?.displayName || provider?.name || 'unknown',
+            kind: provider?.kind || 'unknown'
+          },
+          network: {
+            name: networkName,
+            chainId: chainId
+          },
+          accounts: {
+            total: accountsCount,
+            selected: runTabApi?.accounts?.selectedAccount || null
+          }
+        }
+      };
+
+      return this.createSuccessResult(result);
+    } catch (error) {
+      return this.createErrorResult(`Failed to get environment information: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create deployment and interaction tool definitions
  */
 export function createDeploymentTools(): RemixToolDefinition[] {
@@ -601,6 +804,30 @@ export function createDeploymentTools(): RemixToolDefinition[] {
       category: ToolCategory.DEPLOYMENT,
       permissions: ['account:read'],
       handler: new GetAccountBalanceHandler()
+    },
+    {
+      name: 'get_user_accounts',
+      description: 'Get user accounts from the current execution environment',
+      inputSchema: new GetUserAccountsHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['accounts:read'],
+      handler: new GetUserAccountsHandler()
+    },
+    {
+      name: 'set_selected_account',
+      description: 'Set the currently selected account in the execution environment',
+      inputSchema: new SetSelectedAccountHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['accounts:write'],
+      handler: new SetSelectedAccountHandler()
+    },
+    {
+      name: 'get_current_environment',
+      description: 'Get information about the current execution environment',
+      inputSchema: new GetCurrentEnvironmentHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['environment:read'],
+      handler: new GetCurrentEnvironmentHandler()
     }
   ];
 }

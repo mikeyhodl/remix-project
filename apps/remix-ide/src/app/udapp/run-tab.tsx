@@ -54,7 +54,8 @@ const profile = {
     'clearAllInstances',
     'addInstance',
     'resolveContractAndAddInstance',
-    'showPluginDetails'
+    'showPluginDetails',
+    'getRunTabAPI'
   ]
 }
 
@@ -137,6 +138,10 @@ export class RunTab extends ViewPlugin {
 
   getAccounts(cb) {
     return this.blockchain.getAccounts(cb)
+  }
+
+  getRunTabAPI(){
+    return this.REACT_API;
   }
 
   pendingTransactionsCount() {

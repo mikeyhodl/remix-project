@@ -23,7 +23,7 @@ const profile = {
   documentation: 'https://remix-ide.readthedocs.io/en/latest/compile.html',
   version: packageJson.version,
   maintainedBy: 'Remix',
-  methods: ['getCompilationResult', 'compile', 'compileWithParameters', 'setCompilerConfig', 'compileFile', 'getCompilerState', 'getCompilerConfig', 'getCompilerQueryParameters', 'getCompiler', 'getCurrentCompilerConfig']
+  methods: ['getCompilationResult', 'compile', 'compileWithParameters', 'setCompilerConfig', 'compileFile', 'getCompilerState', 'getCompilerConfig', 'getCompilerQueryParameters', 'getCompiler', 'getCurrentCompilerConfig', 'compile']
 }
 
 // EditorApi:

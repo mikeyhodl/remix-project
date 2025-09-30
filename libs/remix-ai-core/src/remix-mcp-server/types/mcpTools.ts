@@ -28,6 +28,13 @@ export enum ToolCategory {
   GIT = 'git'
 }
 
+export interface AccountInfo {
+  address: string;
+  balance?: string;
+  displayName?: string;
+  isSmartAccount?: boolean;
+}
+
 /**
  * Tool execution context
  */
@@ -214,39 +221,6 @@ export interface ImportProjectArgs {
   source: 'github' | 'ipfs' | 'url';
   path: string;
   workspace?: string;
-}
-
-/**
- * Testing tool argument types
- */
-export interface RunTestsArgs {
-  file?: string;
-  testName?: string;
-  framework?: 'mocha' | 'jest' | 'hardhat';
-}
-
-export interface GenerateTestArgs {
-  contractName: string;
-  methods?: string[];
-  framework?: 'mocha' | 'jest' | 'hardhat';
-}
-
-/**
- * Git tool argument types
- */
-export interface GitCommitArgs {
-  message: string;
-  files?: string[];
-}
-
-export interface GitPushArgs {
-  remote?: string;
-  branch?: string;
-}
-
-export interface GitPullArgs {
-  remote?: string;
-  branch?: string;
 }
 
 /**
