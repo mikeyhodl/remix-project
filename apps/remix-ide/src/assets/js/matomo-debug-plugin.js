@@ -574,78 +574,7 @@ function initMatomoDebugPlugin() {
     }
   }
 
-  // Try to register immediately, or wait for Matomo
-  let initAttempts = 0;
-  const maxInitAttempts = 50;
-  
-  function tryRegister() {
-    initAttempts++;
-    console.log('[MatomoDebugPlugin] Registration attempt #', initAttempts);
-    
-    // Try official plugin API first
-    if (registerPlugin()) {
-      console.log('[MatomoDebugPlugin] Plugin registration successful!');
-      return;
-    }
-    
-    // Fallback: Hook directly into _paq if Matomo plugin API isn't ready
-    if (window._paq && initAttempts > 10) {
-      console.log('[MatomoDebugPlugin] Using _paq fallback approach after', initAttempts, 'attempts');
-      
-      const originalPush = window._paq.push;
-      window._paq.push = function(...args) {
-        console.log('[MatomoDebugPlugin] _paq.push intercepted:', args);
-        const data = window.__matomoDebugData;
-        const command = args[0];
-        
-        if (Array.isArray(command)) {
-          const [method, ...params] = command;
-          
-          console.log('[MatomoDebugPlugin] _paq command intercepted:', method, params);
-          
-          if (method === 'trackPageView') {
-            data.pageViews.push({
-              title: document.title,
-              url: window.location.href,
-              timestamp: Date.now()
-            });
-            console.log('[MatomoDebugPlugin] Page view captured via _paq');
-          } else if (method === 'trackEvent') {
-            data.events.push({
-              category: params[0] || 'unknown',
-              action: params[1] || 'unknown',
-              name: params[2],
-              value: params[3],
-              timestamp: Date.now()
-            });
-            console.log('[MatomoDebugPlugin] Event captured via _paq:', params);
-          } else if (method === 'setCustomDimension') {
-            const [dimId, dimValue] = params;
-            data.dimensions[`dimension${dimId}`] = dimValue;
-            
-            console.log('[MatomoDebugPlugin] Dimension set via _paq:', `dimension${dimId}`, '=', dimValue);
-          }
-        }
-        
-        return originalPush.apply(this, args);
-      };
-      
-      console.log('[MatomoDebugPlugin] _paq fallback hook installed');
-      return;
-    }
-    
-    if (initAttempts < maxInitAttempts) {
-      setTimeout(tryRegister, 100);
-    } else {
-      console.warn('[MatomoDebugPlugin] Max registration attempts reached - neither Matomo plugin API nor _paq fallback worked');
-    }
-  }
-
-  // Start registration attempts
-  //tryRegister();
-  
-
-  // Also register for standard callback
+  // Register for Matomo's async plugin initialization
   if (typeof window.matomoPluginAsyncInit === 'undefined') {
     window.matomoPluginAsyncInit = [];
   }
