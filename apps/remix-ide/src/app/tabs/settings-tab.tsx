@@ -5,6 +5,7 @@ import * as packageJson from '../../../../../package.json'
 import {RemixUiSettings} from '@remix-ui/settings' //eslint-disable-line
 import { Registry } from '@remix-project/remix-lib'
 import { PluginViewWrapper } from '@remix-ui/helper'
+
 declare global {
   interface Window {
     _paq: any
@@ -119,6 +120,7 @@ export default class SettingsTab extends ViewPlugin {
   }
 
   updateMatomoPerfAnalyticsChoice(isChecked) {
+    console.log('[Matomo][settings] updateMatomoPerfAnalyticsChoice called with', isChecked)
     this.config.set('settings/matomo-perf-analytics', isChecked)
     // Timestamp consent indicator (we treat enabling perf as granting cookie consent; disabling as revoking)
     localStorage.setItem('matomo-analytics-consent', Date.now().toString())
@@ -134,13 +136,16 @@ export default class SettingsTab extends ViewPlugin {
       // Cookie mode: give cookie consent and remember it
       _paq.push(['rememberConsentGiven']);
       _paq.push(['enableBrowserFeatureDetection']); 
-      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
-      _paq.push(['trackEvent', 'tracking_mode_change', 'cookie'])
+      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie']);
+      _paq.push(['trackEvent', 'tracking_mode_change', 'cookie']);
+      console.log('Granting cookie consent for Matomo (switching to cookie mode)');
+      (window as any).__initMatomoTracking('cookie');
     } else {
       // Anonymous mode: revoke cookie consent completely
-      _paq.push(['setConsentGiven']); 
-      _paq.push(['forgetCookieConsentGiven']) // This removes cookie consent and deletes cookies
-      _paq.push(['disableCookies']) // Extra safety - prevent any new cookies
+      //_paq.push(['setConsentGiven']); 
+      console.log('Revoking cookie consent for Matomo (switching to anon mode)')
+      //_paq.push(['forgetCookieConsentGiven']) // This removes cookie consent and deletes cookies
+      //_paq.push(['disableCookies']) // Extra safety - prevent any new cookies
       
       // Manual cookie deletion as backup (Matomo cookies typically start with _pk_)
       this.deleteMatomoCookies()
@@ -150,6 +155,7 @@ export default class SettingsTab extends ViewPlugin {
       if (window.localStorage.getItem('matomo-debug') === 'true') {
         _paq.push(['trackEvent', 'debug', 'anon_mode_active_toggle'])
       }
+      (window as any).__initMatomoTracking('anon');
     }
     
     // Performance dimension removed: mode alone now encodes cookie vs anon. Keep event for analytics toggle if useful.
@@ -175,7 +181,12 @@ export default class SettingsTab extends ViewPlugin {
     this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
     this.useMatomoAnalytics = true
 
-    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked)
+    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked);
+    
+    const buffer = (window as any).__drainMatomoQueue();
+    (window as any).__loadMatomoScript();
+    (window as any).__restoreMatomoQueue(buffer);
+
     this.dispatch({ ...this })
   }
 

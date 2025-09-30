@@ -42,7 +42,7 @@ const LOCALHOST_WEB_DEV_SITE_ID = 5;
 
 // Debug flag: enable verbose Matomo instrumentation logs.
 // Activate by setting localStorage.setItem('matomo-debug','true') (auto-on for localhost if flag present).
-function matomoDebugEnabled () {
+function matomoDebugEnabled() {
   return true
   try {
     // Allow enabling via localStorage OR debug_matatomo=1 query param for quick inspection.
@@ -57,7 +57,7 @@ function matomoDebugEnabled () {
 let domainOnPremToTrack = domainsOnPrem[window.location.hostname];
 
 // Derived mode helper: cookie if performance analytics enabled, else anon.
-function deriveTrackingModeFromPerf () {
+function deriveTrackingModeFromPerf() {
   try {
     const raw = window.localStorage.getItem(TRACKING_CONFIG_KEY);
     if (!raw) return 'none';
@@ -68,20 +68,20 @@ function deriveTrackingModeFromPerf () {
 }
 
 
-function initMatomoArray (paqName) {
+function initMatomoArray(paqName) {
   const existing = window[paqName];
   if (existing) return existing;
   const arr = [];
   // Wrap push for debug visibility.
-  arr.push = function (...args) { 
-    Array.prototype.push.apply(this, args); 
-    if (matomoDebugEnabled()) console.debug('[Matomo][queue]', ...args); return this.length 
+  arr.push = function (...args) {
+    Array.prototype.push.apply(this, args);
+    if (matomoDebugEnabled()) console.debug('[Matomo][queue]', ...args); return this.length
   }
   window[paqName] = arr;
   return arr;
 }
 
-function baseMatomoConfig (_paq) {
+function baseMatomoConfig(_paq) {
   _paq.push(['setExcludedQueryParams', ['code', 'gist']]);
   _paq.push(['setExcludedReferrers', ['etherscan.io']]);
   _paq.push(['enableJSErrorTracking']);
@@ -90,44 +90,39 @@ function baseMatomoConfig (_paq) {
   _paq.push(['trackEvent', 'loader', 'load']);
 }
 
-function applyTrackingMode (_paq, mode) {
+function applyTrackingMode(_paq, mode) {
   console.log('applyTrackingMode', mode);
-  _paq.push(['requireConsent']); 
   if (mode === 'cookie') {
     // Cookie (full) mode: properly set up cookie consent
+    _paq.push(['requireConsent']);
     _paq.push(['rememberConsentGiven'])
     _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie'])
   } else if (mode === 'anon') {
-    // Anonymous mode:
-    //  - Prevent any Matomo cookies from being created (disableCookies)
-    //  - Do NOT call consent APIs (keeps semantics clear: no cookie consent granted)
-    //  - Hits are still sent; visits will be per reload unless SPA navigation adds more actions
-    _paq.push(['setConsentGiven']); 
+    // Anonymous mode: NO consent APIs, just disable cookies completely
     _paq.push(['disableCookies'])
     _paq.push(['disableBrowserFeatureDetection']);
     _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
+    // DO NOT call setConsentGiven or requireConsent - this enables cookies!
     if (matomoDebugEnabled()) _paq.push(['trackEvent', 'debug', 'anon_mode_active'])
   } else {
+    // No tracking mode
+    _paq.push(['requireConsent']); // Require consent but don't give it
     if (matomoDebugEnabled()) console.debug('[Matomo] tracking mode is none; no tracking will occur');
-    _paq.push(['requireConsent']);
-    _paq.push(['disableCookies'])
-    _paq.push(['disableBrowserFeatureDetection']);
   }
 }
 
-function loadMatomoScript (u) {
-  const d = document; const g = d.createElement('script'); const s = d.getElementsByTagName('script')[0];
-  g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+function loadMatomoScript(u) {
+
 }
 
 function loadMatomoDebugPlugin() {
   // Load the debug plugin script
-  const d = document; 
-  const g = d.createElement('script'); 
+  const d = document;
+  const g = d.createElement('script');
   const s = d.getElementsByTagName('script')[0];
-  g.async = true; 
+  g.async = true;
   g.src = 'assets/js/matomo-debug-plugin.js';
-  g.onload = function() {
+  g.onload = function () {
     // Initialize the plugin once loaded
     if (typeof window.initMatomoDebugPlugin === 'function') {
       window.initMatomoDebugPlugin();
@@ -137,7 +132,10 @@ function loadMatomoDebugPlugin() {
 }
 
 
-function trackDomain (domainToTrack, u, paqName, mode) {
+function trackDomain(domainToTrack, u, paqName, mode) {
+  // Store URL globally so __loadMatomoScript can access it
+  window.__MATOMO_URL__ = u;
+
   const _paq = initMatomoArray(paqName);
   // Must set tracker url & site id early but after mode-specific cookie disabling
   applyTrackingMode(_paq, mode);
@@ -151,11 +149,64 @@ function trackDomain (domainToTrack, u, paqName, mode) {
   baseMatomoConfig(_paq);
   // Page view AFTER all config (consent / custom dimensions)
   _paq.push(['trackPageView']);
-  
+
   // Load debug plugin (conditional based on localStorage flags)
   loadMatomoDebugPlugin();
 
-  loadMatomoScript(u);
+  // Helper function to drain only trackEvent and trackPageView from _paq array into temporary buffer
+  window.__drainMatomoQueue = function () {
+    if (window._paq && Array.isArray(window._paq)) {
+      const tempBuffer = [];
+      const remainingEvents = [];
+
+      window._paq.forEach(event => {
+        if (Array.isArray(event) && (event[0] === 'trackEvent' || event[0] === 'trackPageView')) {
+          tempBuffer.push(event);
+        } else {
+          remainingEvents.push(event);
+        }
+      });
+
+      // Replace _paq with only the non-tracking events (configuration events remain)
+      window._paq.length = 0;
+      window._paq.push(...remainingEvents);
+
+      if (matomoDebugEnabled()) console.debug('[Matomo] drained', tempBuffer.length, '_paq:', window._paq);
+      return tempBuffer;
+    }
+    if (matomoDebugEnabled()) console.debug('[Matomo] _paq is not an array, nothing to drain');
+    return [];
+  };
+
+  // Helper function to re-add temporary events back to _paq queue
+  window.__restoreMatomoQueue = function (tempBuffer) {
+    if (!tempBuffer || !Array.isArray(tempBuffer)) {
+      if (matomoDebugEnabled()) console.debug('[Matomo] no valid temp buffer to restore');
+      return 0;
+    }
+
+    if (!window._paq) {
+      if (matomoDebugEnabled()) console.debug('[Matomo] no _paq available to restore events to');
+      return 0;
+    }
+
+    let restoredCount = 0;
+    tempBuffer.forEach(event => {
+      if (Array.isArray(window._paq)) {
+        // _paq is still an array - push directly
+        window._paq.push(event);
+      } else if (typeof window._paq.push === 'function') {
+        // _paq is Matomo object - use push method
+        window._paq.push(event);
+      }
+      restoredCount++;
+    });
+
+    if (matomoDebugEnabled()) console.debug('[Matomo] restored', restoredCount, 'events to _paq queue');
+    return restoredCount;
+  };
+
+  // __loadMatomoScript is now defined globally above, no need to redefine here
 }
 
 const trackingMode = deriveTrackingModeFromPerf();
@@ -201,7 +252,7 @@ if (window.electronAPI) {
             if (matomoDebugEnabled()) console.debug('[Matomo][electron] forwarded', { tuple, queueLength: queue.length, ts: Date.now() });
           }
         } catch (e) {
-            console.warn('[Matomo][electron] failed to forward event', tuple, e);
+          console.warn('[Matomo][electron] failed to forward event', tuple, e);
         }
       }
     };
@@ -225,17 +276,39 @@ if (window.electronAPI) {
     return true
     try { return window.localStorage.getItem('matomo-localhost-enabled') === 'true' } catch (e) { return false }
   })();
-  if (window.location.hostname === 'localhost') {
-    // If debug_matatomo=1, force enable localhost tracking temporarily without requiring localStorage toggle.
-    if (localhostEnabled || debugMatatomo) {
-      console.log('[Matomo] Localhost tracking enabled (' + (debugMatatomo ? 'query param' : 'localStorage flag') + ') site id ' + LOCALHOST_WEB_DEV_SITE_ID)
-      trackDomain(LOCALHOST_WEB_DEV_SITE_ID, 'https://matomo.remix.live/matomo/', '_paq', trackingMode);
-    } else {
-      console.log('[Matomo] Localhost tracking disabled (use ?debug_matatomo=1 or set matomo-localhost-enabled=true to enable).')
+  // Define __loadMatomoScript globally (before trackDomain is called)
+  window.__loadMatomoScript = function () {
+    const matomoUrl = window.__MATOMO_URL__;
+    if (!matomoUrl) {
+      console.error('[Matomo] No Matomo URL available. Call __initMatomoTracking() first.');
+      return;
     }
-  } else if (domainOnPremToTrack) {
-    trackDomain(domainOnPremToTrack, 'https://matomo.remix.live/matomo/', '_paq', trackingMode);
-  }
+    console.log('Loading Matomo script')
+    console.log('Loading Matomo script', window.__MATOMO_URL__)
+    console.log(JSON.stringify(window._paq))
+    const d = document; const g = d.createElement('script'); const s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = window.__MATOMO_URL__ + 'matomo.js'; s.parentNode.insertBefore(g, s);
+    //if (matomoDebugEnabled()) console.debug('[Matomo] script loaded via __loadMatomoScript', matomoUrl);
+  };
+
+  // Expose function to initialize Matomo tracking manually
+  window.__initMatomoTracking = function (mode) {
+    const trackingModeToUse = mode || trackingMode;
+
+    if (window.location.hostname === 'localhost') {
+      // If debug_matatomo=1, force enable localhost tracking temporarily without requiring localStorage toggle.
+      if (localhostEnabled || debugMatatomo) {
+        console.log('[Matomo] Localhost tracking enabled (' + (debugMatatomo ? 'query param' : 'localStorage flag') + ') site id ' + LOCALHOST_WEB_DEV_SITE_ID)
+        trackDomain(LOCALHOST_WEB_DEV_SITE_ID, 'https://matomo.remix.live/matomo/', '_paq', trackingModeToUse);
+      } else {
+        console.log('[Matomo] Localhost tracking disabled (use ?debug_matatomo=1 or set matomo-localhost-enabled=true to enable).')
+      }
+    } else if (domainOnPremToTrack) {
+      trackDomain(domainOnPremToTrack, 'https://matomo.remix.live/matomo/', '_paq', trackingModeToUse);
+    }
+
+    if (matomoDebugEnabled()) console.debug('[Matomo] tracking initialized via __initMatomoTracking with mode:', trackingModeToUse);
+  };
 }
 function isElectron() {
   // Renderer process
