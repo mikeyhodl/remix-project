@@ -1,11 +1,10 @@
 /**
- * Matomo Debug & Filter Plugin
+ * Matomo Debug Plugin
  * 
- * Always available debugging and filtering plugin for Matomo tracking.
+ * Always available debugging plugin for Matomo tracking.
  * Activated via localStorage flags:
  * - 'matomo-debug': Enable debug logging
  * - 'matomo-test-mode': Enable test data capture
- * - 'matomo-filter-mode': Enable request filtering (defaults to true)
  */
 
 // Check if matomoDebugEnabled is available globally, otherwise define it
@@ -23,9 +22,8 @@ function initMatomoDebugPlugin() {
   // Check activation flags
   const debugEnabled = isDebugEnabled();
   const testModeEnabled = window.localStorage.getItem('matomo-test-mode') === 'true';
-  const filterModeEnabled = window.localStorage.getItem('matomo-filter-mode') !== 'false'; // Default to true unless explicitly disabled
   
-  console.log('[MatomoDebugPlugin] Flags - debug:', debugEnabled, 'test:', testModeEnabled, 'filter:', filterModeEnabled);
+  console.log('[MatomoDebugPlugin] Flags - debug:', debugEnabled, 'test:', testModeEnabled);
 
   // Initialize data storage
   if (!window.__matomoDebugData) {
@@ -34,16 +32,11 @@ function initMatomoDebugPlugin() {
       events: [],
       pageViews: [],
       dimensions: {},
-      visitorIds: [],
-      filters: {
-        enabledFilters: [],
-        blockedRequests: 0,
-        allowedRequests: 0
-      }
+      visitorIds: []
     };
   }
 
-  console.log('[MatomoDebugPlugin] Initializing with debug:', debugEnabled, 'test:', testModeEnabled, 'filter:', filterModeEnabled);
+  console.log('[MatomoDebugPlugin] Initializing with debug:', debugEnabled, 'test:', testModeEnabled);
 
   // Helper functions - always available globally
   window.__getMatomoDebugData = function() {
@@ -52,8 +45,7 @@ function initMatomoDebugPlugin() {
       events: [],
       pageViews: [],
       dimensions: {},
-      visitorIds: [],
-      filters: { enabledFilters: [], blockedRequests: 0, allowedRequests: 0 }
+      visitorIds: []
     };
   };
 
@@ -80,38 +72,12 @@ function initMatomoDebugPlugin() {
       events: [],
       pageViews: [],
       dimensions: {},
-      visitorIds: [],
-      filters: {
-        enabledFilters: [],
-        blockedRequests: 0,
-        allowedRequests: 0
-      }
+      visitorIds: []
     };
     console.log('[MatomoDebugPlugin] Data cleared');
   };
 
-  // Filtering functions
-  window.__enableMatomoFilter = function(filterType) {
-    const data = window.__matomoDebugData;
-    if (!data.filters.enabledFilters.includes(filterType)) {
-      data.filters.enabledFilters.push(filterType);
-      console.log('[MatomoDebugPlugin] Filter enabled:', filterType);
-    }
-  };
 
-  window.__disableMatomoFilter = function(filterType) {
-    const data = window.__matomoDebugData;
-    const index = data.filters.enabledFilters.indexOf(filterType);
-    if (index > -1) {
-      data.filters.enabledFilters.splice(index, 1);
-      console.log('[MatomoDebugPlugin] Filter disabled:', filterType);
-    }
-  };
-
-  window.__getMatomoFilterStats = function() {
-    const data = window.__matomoDebugData;
-    return data.filters;
-  };
 
   // Helper functions to get parsed data
   window.__getMatomoEvents = function() {
@@ -254,7 +220,7 @@ function initMatomoDebugPlugin() {
     try {
       console.log('[MatomoDebugPlugin] Registering plugin with Matomo...');
       
-      window.Matomo.addPlugin('DebugAndFilterPlugin', {
+      window.Matomo.addPlugin('DebugPlugin', {
         log: function () {
           console.log('[MatomoDebugPlugin] Plugin log() method called');
           const data = window.__matomoDebugData;
@@ -390,38 +356,6 @@ function initMatomoDebugPlugin() {
             console.log('[MatomoDebugPlugin] Callback:', callback);
             
             const data = window.__matomoDebugData;
-            
-            // Apply filters if enabled
-            const filters = data.filters.enabledFilters;
-            let shouldBlock = false;
-            
-            for (const filter of filters) {
-              if (filter === 'block-anonymous' && request && request.includes('dimension1=anon')) {
-                shouldBlock = true;
-                break;
-              }
-              if (filter === 'block-cookie' && request && request.includes('dimension1=cookie')) {
-                shouldBlock = true;
-                break;
-              }
-              if (filter === 'block-events' && request && request.includes('e_c=')) {
-                shouldBlock = true;
-                break;
-              }
-              if (filter === 'block-pageviews' && request && request.includes('action_name=')) {
-                shouldBlock = true;
-                break;
-              }
-            }
-
-            if (shouldBlock) {
-              data.filters.blockedRequests++;
-              console.log('[MatomoDebugPlugin] Request blocked by filter:', request);
-              // Don't call original method - effectively blocks the request
-              return;
-            }
-
-            data.filters.allowedRequests++;
 
             // Capture the complete request
             const fullUrl = this.getTrackerUrl() + (request ? '?' + request : '');
@@ -487,8 +421,7 @@ function initMatomoDebugPlugin() {
               visitorIdValue: request && request.includes('_id=') ? 
                 (request.match(/[?&]_id=([^&]*)/) || [])[1] : 'none',
               dimensionCount: dimensionMatches.length,
-              url: fullUrl,
-              blocked: false
+              url: fullUrl
             });
 
             console.log('[MatomoDebugPlugin] Calling original trackRequest...');
