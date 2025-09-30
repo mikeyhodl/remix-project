@@ -88,15 +88,16 @@ function StepDetailPage() {
         <iframe width="560" height="315" src="https://www.youtube.com/embed/Eh1qgOurDxU?si=lz1JypmIJZ15OY4g" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       */
       return (
-        <iframe
-          /*width="560"
-          height="315"*/
-          src={src}
-          title="YouTube video player"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+        <div className="position-relative overflow-hidden" style={{ paddingBottom: '56.25%', maxWidth: '100%', height: '0' }}>
+          <iframe
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+            src={src}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
       );
     }
     if (alt === 'video') {
@@ -137,9 +138,7 @@ function StepDetailPage() {
         </>
       )}
       <div className="container-fluid">
-        <Markdown components={{
-        img: VideoRenderer
-      }} rehypePlugins={[rehypeRaw]}>{clonedStep.markdown?.content}</Markdown>
+        <Markdown components={{ img:VideoRenderer }} rehypePlugins={[rehypeRaw]}>{clonedStep.markdown?.content}</Markdown>
       </div>
       {clonedStep.test?.content ? (
         <>
