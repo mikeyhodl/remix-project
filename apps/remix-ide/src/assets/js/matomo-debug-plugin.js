@@ -1,29 +1,15 @@
 /**
  * Matomo Debug Plugin
  * 
- * Always available debugging plugin for Matomo tracking.
- * Activated via localStorage flags:
- * - 'matomo-debug': Enable debug logging
- * - 'matomo-test-mode': Enable test data capture
+ * Debugging plugin for Matomo tracking data capture and analysis.
  */
-
-// Check if matomoDebugEnabled is available globally, otherwise define it
-function isDebugEnabled() {
-  // ALWAYS ENABLE DEBUG FOR TESTING
-  console.log('[MatomoDebugPlugin] Debug is ALWAYS enabled for testing');
-  return true;
-}
 
 
 // Main plugin initialization function
 function initMatomoDebugPlugin() {
   console.log('[MatomoDebugPlugin] === INITIALIZATION STARTING ===');
   
-  // Check activation flags
-  const debugEnabled = isDebugEnabled();
-  const testModeEnabled = window.localStorage.getItem('matomo-test-mode') === 'true';
-  
-  console.log('[MatomoDebugPlugin] Flags - debug:', debugEnabled, 'test:', testModeEnabled);
+
 
   // Initialize data storage
   if (!window.__matomoDebugData) {
@@ -36,7 +22,7 @@ function initMatomoDebugPlugin() {
     };
   }
 
-  console.log('[MatomoDebugPlugin] Initializing with debug:', debugEnabled, 'test:', testModeEnabled);
+
 
   // Helper functions - always available globally
   window.__getMatomoDebugData = function() {
@@ -74,17 +60,12 @@ function initMatomoDebugPlugin() {
       dimensions: {},
       visitorIds: []
     };
-    console.log('[MatomoDebugPlugin] Data cleared');
   };
-
-
 
   // Helper functions to get parsed data
   window.__getMatomoEvents = function() {
     const data = window.__matomoDebugData;
-    const events = data ? data.events : [];
-    console.log('[MatomoDebugPlugin] __getMatomoEvents called, returning', events.length, 'events:', events);
-    return events;
+    return data ? data.events : [];
   };
 
   window.__getMatomoPageViews = function() {
@@ -93,11 +74,8 @@ function initMatomoDebugPlugin() {
   };
 
   window.__getLatestMatomoEvent = function() {
-    console.log('[MatomoDebugPlugin] __getLatestMatomoEvent called');
     const events = window.__getMatomoEvents();
-    const latest = events.length > 0 ? events[events.length - 1] : null;
-    console.log('[MatomoDebugPlugin] __getLatestMatomoEvent returning:', latest);
-    return latest;
+    return events.length > 0 ? events[events.length - 1] : null;
   };
 
   window.__getMatomoEventsByCategory = function(category) {
@@ -114,19 +92,9 @@ function initMatomoDebugPlugin() {
   function parseVisitorId(request) {
     if (!request) return null;
     
-    // Try to extract visitor ID from various possible parameters
-    const patterns = [
-      /_id=([^&]+)/,      // Standard visitor ID
-      /uid=([^&]+)/,      // User ID
-      /cid=([^&]+)/,      // Custom ID
-      /vid=([^&]+)/       // Visitor ID variant
-    ];
-    
-    for (const pattern of patterns) {
-      const match = request.match(pattern);
-      if (match && match[1] && match[1] !== 'null' && match[1] !== 'undefined') {
-        return decodeURIComponent(match[1]);
-      }
+    const match = request.match(/_id=([^&]+)/);
+    if (match && match[1] && match[1] !== 'null' && match[1] !== 'undefined') {
+      return decodeURIComponent(match[1]);
     }
     
     return null;
@@ -134,24 +102,14 @@ function initMatomoDebugPlugin() {
 
   // Helper function to parse event data from request string
   function parseEventData(request) {
-    console.log('[MatomoDebugPlugin] parseEventData called with:', request);
-    if (!request) {
-      console.log('[MatomoDebugPlugin] parseEventData: No request provided');
-      return null;
-    }
+    if (!request) return null;
     
     try {
       const params = new URLSearchParams(request);
-      console.log('[MatomoDebugPlugin] parseEventData: URLSearchParams entries:', Array.from(params.entries()));
       
       // Check if this is an event (has e_c parameter)
       const eventCategory = params.get('e_c');
-      if (!eventCategory) {
-        console.log('[MatomoDebugPlugin] parseEventData: Not an event (no e_c parameter)');
-        return null;
-      }
-      
-      console.log('[MatomoDebugPlugin] parseEventData: Event detected with category:', eventCategory);
+      if (!eventCategory) return null;
       
       const eventData = {
         category: decodeURIComponent(eventCategory || ''),
@@ -168,12 +126,11 @@ function initMatomoDebugPlugin() {
         referrer: params.get('urlref') ? decodeURIComponent(params.get('urlref')) : null,
         timestamp: Date.now()
       };
-      
-      console.log('[MatomoDebugPlugin] parseEventData: Parsed event data:', eventData);
+
       return eventData;
       
     } catch (e) {
-      console.error('[MatomoDebugPlugin] parseEventData: Failed to parse event data:', e);
+      console.error('[MatomoDebugPlugin] Failed to parse event data:', e);
       return null;
     }
   }
@@ -208,21 +165,14 @@ function initMatomoDebugPlugin() {
 
   // Plugin registration function
   function registerPlugin() {
-    console.log('[MatomoDebugPlugin] registerPlugin called - checking if Matomo is ready...');
-    console.log('[MatomoDebugPlugin] window.Matomo exists:', !!window.Matomo);
-    console.log('[MatomoDebugPlugin] window.Matomo.addPlugin exists:', !!(window.Matomo && window.Matomo.addPlugin));
-    
     if (!window.Matomo || typeof window.Matomo.addPlugin !== 'function') {
-      console.log('[MatomoDebugPlugin] Matomo not ready, will retry...');
       return false;
     }
 
     try {
-      console.log('[MatomoDebugPlugin] Registering plugin with Matomo...');
       
       window.Matomo.addPlugin('DebugPlugin', {
         log: function () {
-          console.log('[MatomoDebugPlugin] Plugin log() method called');
           const data = window.__matomoDebugData;
           data.pageViews.push({
             title: document.title,
@@ -230,19 +180,12 @@ function initMatomoDebugPlugin() {
             timestamp: Date.now()
           });
 
-          console.log('[MatomoDebugPlugin] Page view captured via log()');
           return '';
         },
         
         // This event function is called by Matomo when events are tracked
         event: function () {
-          console.log('[MatomoDebugPlugin] *** Plugin event() method called! ***');
-          console.log('[MatomoDebugPlugin] event() arguments:', arguments);
-          console.log('[MatomoDebugPlugin] event() arguments length:', arguments.length);
-          
-          // Try to extract meaningful data from arguments
           const args = Array.from(arguments);
-          console.log('[MatomoDebugPlugin] event() parsed args:', args);
           
           const data = window.__matomoDebugData;
           
@@ -250,8 +193,6 @@ function initMatomoDebugPlugin() {
           let requestString = null;
           if (args[0] && typeof args[0] === 'object' && args[0].request) {
             requestString = args[0].request;
-            console.log('[MatomoDebugPlugin] event() found request string:', requestString);
-            
             // Store the raw request for debugging
             data.requests.push({
               request: requestString,
@@ -260,38 +201,29 @@ function initMatomoDebugPlugin() {
               url: requestString
             });
             
-            console.log('[MatomoDebugPlugin] event() stored request. Total requests:', data.requests.length);
-            
             // Parse event data from the request string  
             const eventData = parseEventData(requestString);
             if (eventData) {
               data.events.push(eventData);
-              console.log('[MatomoDebugPlugin] event() parsed and stored event! Total events now:', data.events.length);
-              console.log('[MatomoDebugPlugin] event() parsed event:', eventData);
-            } else {
-              console.log('[MatomoDebugPlugin] event() no event data found in request');
             }
             
             // Parse page view data
             const pageViewData = parsePageViewData(requestString);
             if (pageViewData) {
               data.pageViews.push(pageViewData);
-              console.log('[MatomoDebugPlugin] event() parsed page view:', pageViewData);
             }
             
             // Parse visitor ID
-            const parsedVisitorId = parseVisitorId(requestString);
-            if (parsedVisitorId || (requestString && requestString.includes('_id='))) {
+            const visitorId = parseVisitorId(requestString);
+            if (visitorId || (requestString && requestString.includes('_id='))) {
               const match = requestString ? requestString.match(/[?&]_id=([^&]*)/) : null;
-              const visitorId = match ? decodeURIComponent(match[1]) : null;
+              const actualVisitorId = match ? decodeURIComponent(match[1]) : null;
               
               data.visitorIds.push({
-                visitorId: visitorId,
-                isNull: !visitorId || visitorId === 'null' || visitorId === '',
+                visitorId: actualVisitorId,
+                isNull: !actualVisitorId || actualVisitorId === 'null' || actualVisitorId === '',
                 timestamp: Date.now()
               });
-              
-              console.log('[MatomoDebugPlugin] event() captured visitor ID:', visitorId);
             }
             
             // Parse dimensions
@@ -300,13 +232,10 @@ function initMatomoDebugPlugin() {
               dimensionMatches.forEach(match => {
                 const [, dimNum, dimValue] = match.match(/dimension(\d+)=([^&]*)/);
                 data.dimensions['dimension' + dimNum] = decodeURIComponent(dimValue);
-                console.log('[MatomoDebugPlugin] event() captured dimension:', 'dimension' + dimNum, '=', decodeURIComponent(dimValue));
               });
             }
             
           } else {
-            console.log('[MatomoDebugPlugin] event() no request string found in arguments');
-            
             // Store raw event data as fallback
             data.events.push({
               timestamp: Date.now(),
@@ -318,15 +247,10 @@ function initMatomoDebugPlugin() {
             });
           }
           
-          console.log('[MatomoDebugPlugin] event() processing complete. Total events:', data.events.length);
-          
           return '';
         }
       });
 
-
-
-      console.log('[MatomoDebugPlugin] Plugin registered successfully');
       return true;
     } catch (e) {
       console.error('[MatomoDebugPlugin] Failed to register plugin:', e);
@@ -339,9 +263,6 @@ function initMatomoDebugPlugin() {
     window.matomoPluginAsyncInit = [];
   }
   window.matomoPluginAsyncInit.push(registerPlugin);
- 
-  
-  console.log('[MatomoDebugPlugin] === INITIALIZATION COMPLETE ===');
 }
 
 // Export for use in loader
