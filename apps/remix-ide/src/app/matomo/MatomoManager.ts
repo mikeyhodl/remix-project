@@ -25,13 +25,14 @@
 
 export interface MatomoConfig {
   trackerUrl: string;
-  siteId: number;
+  siteId?: number;
   debug?: boolean;
   customDimensions?: Record<number, string>;
   onStateChange?: StateChangeHandler | null;
   logPrefix?: string;
   scriptTimeout?: number;
   retryAttempts?: number;
+  matomoDomains?: Record<string, number>;
 }
 
 export interface MatomoState {
@@ -147,6 +148,9 @@ export interface IMatomoManager {
   getMatomoCookies(): string[];
   deleteMatomoCookies(): Promise<void>;
   
+  // Consent dialog logic
+  shouldShowConsentDialog(configApi?: any): boolean;
+  
   // Script loading
   loadScript(): Promise<void>;
   waitForLoad(timeout?: number): Promise<void>;
@@ -187,6 +191,8 @@ export class MatomoManager implements IMatomoManager {
       logPrefix: '[MATOMO]',
       scriptTimeout: 10000,
       retryAttempts: 3,
+      matomoDomains: {},
+      siteId: 0, // Default fallback, will be derived if not explicitly set
       ...config
     };
     
@@ -202,8 +208,41 @@ export class MatomoManager implements IMatomoManager {
     this.eventQueue = [];
     this.listeners = new Map();
     
+    // Derive siteId from matomoDomains if not explicitly provided or is default
+    // (moved after listeners initialization so logging works)
+    if (!config.siteId || config.siteId === 0) {
+      this.config.siteId = this.deriveSiteId();
+    }
+    
     this.setupPaqInterception();
     this.log('MatomoManager initialized', this.config);
+  }
+
+  // ================== SITE ID DERIVATION ==================
+
+  /**
+   * Derive siteId from matomoDomains based on current hostname
+   * Falls back to electron detection or returns 0 if no match
+   */
+  private deriveSiteId(): number {
+    const hostname = window.location.hostname;
+    const domains = this.config.matomoDomains || {};
+    
+    // Check if current hostname has a matching site ID
+    if (domains[hostname]) {
+      this.log(`Derived siteId ${domains[hostname]} from hostname: ${hostname}`);
+      return domains[hostname];
+    }
+    
+    // Check for electron environment
+    const isElectron = (window as any).electronAPI !== undefined;
+    if (isElectron && domains['localhost']) {
+      this.log(`Derived siteId ${domains['localhost']} for electron environment`);
+      return domains['localhost'];
+    }
+    
+    this.log(`No siteId found for hostname: ${hostname}, using fallback: 0`);
+    return 0;
   }
 
   // ================== LOGGING & DEBUGGING ==================
@@ -855,6 +894,56 @@ export class MatomoManager implements IMatomoManager {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 100) : 'N/A',
       timestamp: new Date().toISOString()
     };
+  }
+
+  /**
+   * Determines whether the Matomo consent dialog should be shown
+   * Based on existing configuration and consent expiration
+   */
+  shouldShowConsentDialog(configApi?: any): boolean {
+    try {
+      // Use domains from constructor config or fallback to empty object
+      const matomoDomains = this.config.matomoDomains || {};
+      
+      const isElectron = (window as any).electronAPI !== undefined;
+      const isSupported = matomoDomains[window.location.hostname] || isElectron;
+      
+      if (!isSupported) {
+        return false;
+      }
+      
+      // Check current configuration
+      if (!configApi) {
+        return true; // No config API means we need to show dialog
+      }
+      
+      const hasExistingConfig = configApi.exists('settings/matomo-perf-analytics');
+      const currentSetting = configApi.get('settings/matomo-perf-analytics');
+      
+      // If no existing config, show dialog
+      if (!hasExistingConfig) {
+        return true;
+      }
+      
+      // Check if consent has expired (6 months)
+      const lastConsentCheck = window.localStorage.getItem('matomo-analytics-consent');
+      if (!lastConsentCheck) {
+        return true; // No consent timestamp means we need to ask
+      }
+      
+      const consentDate = new Date(Number(lastConsentCheck));
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      const consentExpired = consentDate < sixMonthsAgo;
+      
+      // Only renew consent if user had disabled analytics and consent has expired
+      return currentSetting === false && consentExpired;
+      
+    } catch (error) {
+      this.log('Error in shouldShowConsentDialog:', error);
+      return false; // Fail safely
+    }
   }
 
   /**

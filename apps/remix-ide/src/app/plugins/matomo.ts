@@ -11,7 +11,8 @@ const profile = {
     'isMatomoLoaded', 'getMatomoCookies', 'deleteMatomoCookies', 'loadScript',
     'waitForLoad', 'getPreInitQueue', 'getQueueStatus', 'processPreInitQueue',
     'clearPreInitQueue', 'testConsentBehavior', 'getDiagnostics', 'inspectPaqArray',
-    'batch', 'reset', 'addMatomoListener', 'removeMatomoListener', 'getMatomoManager'
+    'batch', 'reset', 'addMatomoListener', 'removeMatomoListener', 'getMatomoManager',
+    'shouldShowConsentDialog'
   ],
   events: ['matomo-initialized', 'matomo-consent-changed', 'matomo-mode-switched'],
   version: '1.0.0'
@@ -163,6 +164,13 @@ export class Matomo extends Plugin {
    */
   getMatomoManager(): MatomoManager {
     return matomoManager
+  }
+
+  /**
+   * Check whether the Matomo consent dialog should be shown
+   */
+  shouldShowConsentDialog(configApi?: any): boolean {
+    return matomoManager.shouldShowConsentDialog(configApi)
   }
 
   async track(data: string[]) {

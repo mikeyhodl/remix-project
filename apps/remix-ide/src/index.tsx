@@ -14,11 +14,20 @@ import { MatomoConfig, MatomoManager } from './app/matomo/MatomoManager'
 import { TrackingProvider } from './app/contexts/TrackingContext'
 
   ; (async function () {
+    // Single source of truth for Matomo site ids (matches loader.js.txt)
+    const matomoDomains = {
+      'alpha.remix.live': 1,
+      'beta.remix.live': 2,
+      'remix.ethereum.org': 3,
+      'localhost': 5,
+      '127.0.0.1': 5
+    };
+    
     const matomoConfig: MatomoConfig = {
       trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
-      siteId: 5,
+      // siteId will be auto-derived from matomoDomains based on current hostname
       debug: true,
-
+      matomoDomains,
       scriptTimeout: 10000,
 
       onStateChange: (event, data, state) => {
