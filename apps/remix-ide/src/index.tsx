@@ -1,84 +1,31 @@
 // eslint-disable-next-line no-use-before-define
 import React from 'react'
 import './index.css'
-import { ThemeModule } from './app/tabs/theme-module'
-import { LocaleModule } from './app/tabs/locale-module'
-import { Preload } from './app/components/preload'
-import { GitHubPopupCallback } from './app/pages/GitHubPopupCallback'
-import Config from './config'
-import { Registry } from '@remix-project/remix-lib'
-import { Storage } from '@remix-project/remix-lib'
-
-import { createRoot } from 'react-dom/client'
-import { MatomoConfig, MatomoManager } from './app/matomo/MatomoManager'
-import { TrackingProvider } from './app/contexts/TrackingContext'
+import { MatomoManager } from './app/matomo/MatomoManager'
+import { autoInitializeMatomo } from './app/matomo/MatomoAutoInit'
+import { createMatomoConfig } from './app/matomo/MatomoConfig'
+import { createTrackingFunction } from './app/utils/TrackingFunction'
+import { setupThemeAndLocale } from './app/utils/AppSetup'
+import { renderApp } from './app/utils/AppRenderer'
 
   ; (async function () {
-    // Single source of truth for Matomo site ids (matches loader.js.txt)
-    const matomoDomains = {
-      'alpha.remix.live': 1,
-      'beta.remix.live': 2,
-      'remix.ethereum.org': 3,
-      'localhost': 5,
-      '127.0.0.1': 5
-    };
-    
-    const matomoConfig: MatomoConfig = {
-      trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
-      // siteId will be auto-derived from matomoDomains based on current hostname
-      debug: true,
-      matomoDomains,
-      scriptTimeout: 10000,
-
-      onStateChange: (event, data, state) => {
-        console.log(`STATE CHANGE: ${event}`, data);
-      }
-    }
-    const matomoManager = new MatomoManager(matomoConfig)
+    // Create Matomo configuration
+    const matomoConfig = createMatomoConfig();
+    const matomoManager = new MatomoManager(matomoConfig);
     window._matomoManagerInstance = matomoManager; 
-    ///matomoManager.initialize('anonymous')
 
+    // Setup config and auto-initialize Matomo if we have existing settings
+    await autoInitializeMatomo({
+      matomoManager,
+      debug: true
+    });
 
-    try {
-      const configStorage = new Storage('config-v0.8:')
-      const config = new Config(configStorage)
-      Registry.getInstance().put({ api: config, name: 'config' })
-    } catch (e) { }
-    const theme = new ThemeModule()
-    theme.initTheme()
-    const locale = new LocaleModule()
-    const settingsConfig = { themes: theme.getThemes(), locales: locale.getLocales() }
+    // Setup theme and locale
+    setupThemeAndLocale();
 
-    Registry.getInstance().put({ api: settingsConfig, name: 'settingsConfig' })
+    // Create tracking function
+    const trackingFunction = createTrackingFunction(matomoManager);
 
-    const container = document.getElementById('root');
-    const root = createRoot(container)
-    if (container) {
-      const trackingFunction = (category: string, action: string, name?: string, value?: string | number) => {
-        let numericValue: number | undefined = undefined
-        if (value !== undefined) {
-          if (typeof value === 'number') {
-            numericValue = value
-          } else if (typeof value === 'string') {
-            const parsed = parseFloat(value)
-            numericValue = isNaN(parsed) ? undefined : parsed
-          }
-        }
-        matomoManager.trackEvent?.(category, action, name, numericValue)
-      }
-      
-      if (window.location.hash.includes('source=github')) {
-        root.render(
-          <TrackingProvider trackingFunction={trackingFunction}>
-            <GitHubPopupCallback />
-          </TrackingProvider>
-        )
-      } else {
-        root.render(
-          <TrackingProvider trackingFunction={trackingFunction}>
-            <Preload root={root} />
-          </TrackingProvider>
-        )
-      }
-    }
+    // Render the app
+    renderApp({ trackingFunction });
   })()
