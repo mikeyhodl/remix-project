@@ -6,8 +6,6 @@ import { Registry } from '@remix-project/remix-lib'
 import { RemixNavigator } from './types'
 import { Profile } from '@remixproject/plugin-utils'
 
-const _paq = (window._paq = window._paq || [])
-
 // requiredModule removes the plugin from the plugin manager list on UI
 let requiredModules = [
   // services + layout views + system views
@@ -261,7 +259,7 @@ export class RemixAppManager extends BaseRemixAppManager {
     )
     this.event.emit('activate', plugin)
     this.emit('activate', plugin)
-    if (!this.isRequired(plugin.name)) _paq.push(['trackEvent', 'pluginManager', 'activate', plugin.name])
+    if (!this.isRequired(plugin.name)) this.call('matomo', 'trackEvent', 'pluginManager', 'activate', plugin.name)
   }
 
   getAll() {
@@ -280,7 +278,7 @@ export class RemixAppManager extends BaseRemixAppManager {
       this.actives.filter((plugin) => !this.isDependent(plugin))
     )
     this.event.emit('deactivate', plugin)
-    _paq.push(['trackEvent', 'pluginManager', 'deactivate', plugin.name])
+    this.call('matomo', 'trackEvent', 'pluginManager', 'deactivate', plugin.name)
   }
 
   isDependent(name: string): boolean {

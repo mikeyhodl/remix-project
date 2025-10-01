@@ -3,8 +3,6 @@ import React from 'react'
 import { Plugin } from '@remixproject/engine'
 import { ElectronPlugin } from '@remixproject/engine-electron'
 
-const _paq = (window._paq = window._paq || [])
-
 const profile = {
   name: 'desktopHost',
   displayName: '',
@@ -23,7 +21,7 @@ export class DesktopHost extends ElectronPlugin {
 
   onActivation() {
     console.log('DesktopHost activated')
-    _paq.push(['trackEvent', 'plugin', 'activated', 'DesktopHost'])
+    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'DesktopHost')
   }
 
 }

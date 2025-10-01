@@ -3,7 +3,6 @@ import { format } from 'util'
 import { Plugin } from '@remixproject/engine'
 import { compile, CompilerSettings } from '@remix-project/remix-solidity'
 import { Transaction } from 'web3-types'
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
 
 const profile = {
   name: 'solidity-script',
@@ -18,7 +17,7 @@ export class SolidityScript extends Plugin {
   }
 
   async execute(path: string, functionName: string = 'run') {
-    _paq.push(['trackEvent', 'SolidityScript', 'execute', 'script'])
+    this.call('matomo', 'trackEvent', 'SolidityScript', 'execute', 'script')
     this.call('terminal', 'log', `Running free function '${functionName}' from ${path}...`)
     let content = await this.call('fileManager', 'readFile', path)
     const params = await this.call('solidity', 'getCompilerQueryParameters')
@@ -131,7 +130,7 @@ export class SolidityScript extends Plugin {
           })}
         </div>
       )
-      _paq.push(['trackEvent', 'udapp', 'hardhat', 'console.log'])
+      this.call('matomo', 'trackEvent', 'udapp', 'hardhat', 'console.log')
       this.call('terminal', 'logHtml', finalLogs)
     }
   }

@@ -12,7 +12,11 @@ import { CompileDropdown, RunScriptDropdown } from '@remix-ui/tabs'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import TabProxy from 'apps/remix-ide/src/app/panels/tab-proxy'
 
-const _paq = (window._paq = window._paq || [])
+// Initialize window._paq if it doesn't exist
+window._paq = window._paq || []
+
+// Helper function to always get current _paq reference
+const getPaq = () => window._paq
 
 /* eslint-disable-next-line */
 export interface TabsUIProps {
@@ -259,7 +263,7 @@ export const TabsUI = (props: TabsUIProps) => {
     await props.plugin.call('menuicons', 'select', 'solidity')
     try {
       await props.plugin.call('solidity', 'compile', active().substr(active().indexOf('/') + 1, active().length))
-      _paq.push(['trackEvent', 'editor', 'publishFromEditor', storageType])
+      getPaq().push(['trackEvent', 'editor', 'publishFromEditor', storageType])
 
       setTimeout(async () => {
         let buttonId
@@ -316,7 +320,7 @@ export const TabsUI = (props: TabsUIProps) => {
 })()`
 
         await props.plugin.call('fileManager', 'writeFile', newScriptPath, boilerplateContent)
-        _paq.push(['trackEvent', 'editor', 'runScript', 'new_script'])
+        getPaq().push(['trackEvent', 'editor', 'runScript', 'new_script'])
       } catch (e) {
         console.error(e)
         props.plugin.call('notification', 'toast', `Error creating new script: ${e.message}`)
@@ -346,7 +350,7 @@ export const TabsUI = (props: TabsUIProps) => {
       await props.plugin.call('scriptRunnerBridge', 'execute', content, path)
 
       setCompileState('compiled')
-      _paq.push(['trackEvent', 'editor', 'runScriptWithEnv', runnerKey])
+      getPaq().push(['trackEvent', 'editor', 'runScriptWithEnv', runnerKey])
     } catch (e) {
       console.error(e)
       props.plugin.call('notification', 'toast', `Error running script: ${e.message}`)
@@ -426,7 +430,9 @@ export const TabsUI = (props: TabsUIProps) => {
 
   const handleCompileClick = async () => {
     setCompileState('compiling')
-    _paq.push(['trackEvent', 'editor', 'clickRunFromEditor', tabsState.currentExt])
+    console.log('Compiling from editor')
+    console.log('Current _paq:', getPaq())
+    getPaq().push(['trackEvent', 'editor', 'clickRunFromEditor', tabsState.currentExt])
 
     try {
       const activePathRaw = active()

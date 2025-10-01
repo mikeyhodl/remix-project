@@ -14,7 +14,6 @@ import type { CompilerArtefacts } from '@remix-project/core-plugin'
 import { ForkedVMStateProvider } from '../providers/vm-provider'
 import { Recorder } from '../tabs/runTab/model/recorder'
 import { EnvDropdownLabelStateType } from 'libs/remix-ui/run-tab/src/lib/types'
-const _paq = (window._paq = window._paq || [])
 
 export const providerLogos = {
   'injected-metamask-optimism': ['assets/img/optimism-ethereum-op-logo.png', 'assets/img/metamask.png'],
@@ -131,7 +130,7 @@ export class RunTab extends ViewPlugin {
   }
 
   sendTransaction(tx) {
-    _paq.push(['trackEvent', 'udapp', 'sendTx', 'udappTransaction'])
+    this.call('matomo', 'trackEvent', 'udapp', 'sendTx', 'udappTransaction')
     return this.blockchain.sendTransaction(tx)
   }
 

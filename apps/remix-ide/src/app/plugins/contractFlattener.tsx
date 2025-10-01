@@ -5,8 +5,6 @@ import { customAction } from '@remixproject/plugin-api'
 import { concatSourceFiles, getDependencyGraph, normalizeContractPath } from '@remix-ui/solidity-compiler'
 import type { CompilerInput, CompilationSource } from '@remix-project/remix-solidity'
 
-const _paq = (window._paq = window._paq || [])
-
 const profile = {
   name: 'contractflattener',
   displayName: 'Contract Flattener',
@@ -31,7 +29,7 @@ export class ContractFlattener extends Plugin {
         }
       }
     })
-    _paq.push(['trackEvent', 'plugin', 'activated', 'contractFlattener'])
+    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'contractFlattener')
   }
 
   onDeactivation(): void {
@@ -68,7 +66,7 @@ export class ContractFlattener extends Plugin {
       console.warn(err)
     }
     await this.call('fileManager', 'writeFile', path, result)
-    _paq.push(['trackEvent', 'plugin', 'contractFlattener', 'flattenAContract'])
+    this.call('matomo', 'trackEvent', 'plugin', 'contractFlattener', 'flattenAContract')
     // clean up memory references & return result
     sorted = null
     sources = null

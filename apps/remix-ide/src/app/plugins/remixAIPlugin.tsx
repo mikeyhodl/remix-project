@@ -4,7 +4,6 @@ import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, Assi
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-const _paq = (window._paq = window._paq || [])
 
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
@@ -195,7 +194,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
     useRag = false
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'GenerateNewAIWorkspace'])
+    this.call('matomo', 'trackEvent', 'ai', 'remixAI', 'GenerateNewAIWorkspace')
     let userPrompt = ''
 
     if (useRag) {
@@ -239,7 +238,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = this.assistantProvider
     useRag = false
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'WorkspaceAgentEdit'])
+    this.call('matomo', 'trackEvent', 'ai', 'remixAI', 'WorkspaceAgentEdit')
 
     await statusCallback?.('Performing workspace request...')
     if (useRag) {
@@ -310,7 +309,7 @@ export class RemixAIPlugin extends Plugin {
     else {
       console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'remixAI_chat'])
+    this.call('matomo', 'trackEvent', 'ai', 'remixAI', 'remixAI_chat')
   }
 
   async ProcessChatRequestBuffer(params:IParams=GenerationParams){

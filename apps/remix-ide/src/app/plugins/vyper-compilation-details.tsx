@@ -5,7 +5,7 @@ import { RemixAppManager } from '../../remixAppManager'
 import { RemixUiVyperCompileDetails } from '@remix-ui/vyper-compile-details'
 import { ThemeKeys, ThemeObject } from '@microlink/react-json-view'
 //@ts-ignore
-const _paq = (window._paq = window._paq || [])
+import * as packageJson from '../../../../../package.json'
 
 const profile = {
   name: 'vyperCompilationDetails',
@@ -41,7 +41,7 @@ export class VyperCompilationDetailsPlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'vyperCompilationDetails')
     this.renderComponent()
-    _paq.push(['trackEvent', 'plugin', 'activated', 'vyperCompilationDetails'])
+    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'vyperCompilationDetails')
   }
 
   onDeactivation(): void {

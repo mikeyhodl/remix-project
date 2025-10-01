@@ -47,7 +47,7 @@ export class RemixGuidePlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'remixGuide')
     this.renderComponent()
-    _paq.push(['trackEvent', 'plugin', 'activated', 'remixGuide'])
+    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'remixGuide')
     // Read the data
     this.payload.data = Data
     this.handleKeyDown = (event) => {
@@ -135,7 +135,7 @@ export class RemixGuidePlugin extends ViewPlugin {
                     this.showVideo = true
                     this.videoID = cell.expandViewElement.videoID
                     this.renderComponent()
-                    _paq.push(['trackEvent', 'remixGuide', 'playGuide', cell.title])
+                    this.call('matomo', 'trackEvent', 'remixGuide', 'playGuide', cell.title)
                   }}
                 >
                   <img

@@ -138,13 +138,13 @@ export class Blockchain extends Plugin {
       this.emit('shouldAddProvidertoUdapp', name, provider)
       this.pinnedProviders.push(name)
       this.call('config', 'setAppParameter', 'settings/pinned-providers', JSON.stringify(this.pinnedProviders))
-      _paq.push(['trackEvent', 'blockchain', 'providerPinned', name])
+      this.call('matomo', 'trackEvent', 'blockchain', 'providerPinned', name)
       this.emit('providersChanged')
     })
     // used to pin and select newly created forked state provider
     this.on('udapp', 'forkStateProviderAdded', (providerName) => {
       const name = `vm-fs-${providerName}`
-      _paq.push(['trackEvent', 'blockchain', 'providerPinned', name])
+      this.call('matomo', 'trackEvent', 'blockchain', 'providerPinned', name)
       this.emit('providersChanged')
       this.changeExecutionContext({ context: name }, null, null, null)
       this.call('notification', 'toast', `New environment '${providerName}' created with forked state.`)
@@ -155,7 +155,7 @@ export class Blockchain extends Plugin {
       const index = this.pinnedProviders.indexOf(name)
       this.pinnedProviders.splice(index, 1)
       this.call('config', 'setAppParameter', 'settings/pinned-providers', JSON.stringify(this.pinnedProviders))
-      _paq.push(['trackEvent', 'blockchain', 'providerUnpinned', name])
+      this.call('matomo', 'trackEvent', 'blockchain', 'providerUnpinned', name)
       this.emit('providersChanged')
     })
 
@@ -348,11 +348,11 @@ export class Blockchain extends Plugin {
       cancelLabel: 'Cancel',
       okFn: () => {
         this.runProxyTx(proxyData, implementationContractObject)
-        _paq.push(['trackEvent', 'blockchain', 'Deploy With Proxy', 'modal ok confirmation'])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Deploy With Proxy', 'modal ok confirmation')
       },
       cancelFn: () => {
         this.call('notification', 'toast', cancelProxyMsg())
-        _paq.push(['trackEvent', 'blockchain', 'Deploy With Proxy', 'cancel proxy deployment'])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Deploy With Proxy', 'cancel proxy deployment')
       },
       hideFn: () => null
     }
@@ -377,12 +377,12 @@ export class Blockchain extends Plugin {
       if (error) {
         const log = logBuilder(error)
 
-        _paq.push(['trackEvent', 'blockchain', 'Deploy With Proxy', 'Proxy deployment failed: ' + error])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Deploy With Proxy', 'Proxy deployment failed: ' + error)
         return this.call('terminal', 'logHtml', log)
       }
       await this.saveDeployedContractStorageLayout(implementationContractObject, address, networkInfo)
       this.events.emit('newProxyDeployment', address, new Date().toISOString(), implementationContractObject.contractName)
-      _paq.push(['trackEvent', 'blockchain', 'Deploy With Proxy', 'Proxy deployment successful'])
+      this.call('matomo', 'trackEvent', 'blockchain', 'Deploy With Proxy', 'Proxy deployment successful')
       this.call('udapp', 'addInstance', addressToString(address), implementationContractObject.abi, implementationContractObject.name, implementationContractObject)
     }
 
@@ -399,11 +399,11 @@ export class Blockchain extends Plugin {
       cancelLabel: 'Cancel',
       okFn: () => {
         this.runUpgradeTx(proxyAddress, data, newImplementationContractObject)
-        _paq.push(['trackEvent', 'blockchain', 'Upgrade With Proxy', 'proxy upgrade confirmation click'])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Upgrade With Proxy', 'proxy upgrade confirmation click')
       },
       cancelFn: () => {
         this.call('notification', 'toast', cancelUpgradeMsg())
-        _paq.push(['trackEvent', 'blockchain', 'Upgrade With Proxy', 'proxy upgrade cancel click'])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Upgrade With Proxy', 'proxy upgrade cancel click')
       },
       hideFn: () => null
     }
@@ -428,11 +428,11 @@ export class Blockchain extends Plugin {
       if (error) {
         const log = logBuilder(error)
 
-        _paq.push(['trackEvent', 'blockchain', 'Upgrade With Proxy', 'Upgrade failed'])
+        this.call('matomo', 'trackEvent', 'blockchain', 'Upgrade With Proxy', 'Upgrade failed')
         return this.call('terminal', 'logHtml', log)
       }
       await this.saveDeployedContractStorageLayout(newImplementationContractObject, proxyAddress, networkInfo)
-      _paq.push(['trackEvent', 'blockchain', 'Upgrade With Proxy', 'Upgrade Successful'])
+      this.call('matomo', 'trackEvent', 'blockchain', 'Upgrade With Proxy', 'Upgrade Successful')
       this.call('udapp', 'addInstance', addressToString(proxyAddress), newImplementationContractObject.abi, newImplementationContractObject.name, newImplementationContractObject)
     }
     this.runTx(args, confirmationCb, continueCb, promptCb, finalCb)
@@ -797,13 +797,13 @@ export class Blockchain extends Plugin {
     const logTransaction = (txhash, origin) => {
       this.detectNetwork((error, network) => {
         if (network && network.id) {
-          _paq.push(['trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-${network.id}`])
+          this.call('matomo', 'trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-${network.id}`)
         } else {
           try {
             const networkString = JSON.stringify(network)
-            _paq.push(['trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-${networkString}`])
+            this.call('matomo', 'trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-${networkString}`)
           } catch (e) {
-            _paq.push(['trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-unknownnetwork`])
+            this.call('matomo', 'trackEvent', 'udapp', `sendTransaction-from-${origin}`, `${txhash}-unknownnetwork`)
           }
         }
       })
@@ -814,7 +814,7 @@ export class Blockchain extends Plugin {
     })
 
     web3Runner.event.register('transactionBroadcasted', (txhash, isUserOp) => {
-      if (isUserOp) _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', `txBroadcastedFromSmartAccount`])
+      if (isUserOp) this.call('matomo', 'trackEvent', 'udapp', 'safeSmartAccount', `txBroadcastedFromSmartAccount`)
       logTransaction(txhash, 'gui')
       this.executionContext.detectNetwork(async (error, network) => {
         if (error || !network) return
@@ -1024,7 +1024,7 @@ export class Blockchain extends Plugin {
         if (!tx.timestamp) tx.timestamp = Date.now()
         const timestamp = tx.timestamp
         this._triggerEvent('initiatingTransaction', [timestamp, tx, payLoad])
-        if (fromSmartAccount) _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', `txInitiatedFromSmartAccount`])
+        if (fromSmartAccount) this.call('matomo', 'trackEvent', 'udapp', 'safeSmartAccount', `txInitiatedFromSmartAccount`)
         try {
           this.txRunner.rawRun(tx, confirmationCb, continueCb, promptCb, async (error, result) => {
             if (error) {
@@ -1088,7 +1088,7 @@ export class Blockchain extends Plugin {
               })}
             </div>
           )
-          _paq.push(['trackEvent', 'udapp', 'hardhat', 'console.log'])
+          this.call('matomo', 'trackEvent', 'udapp', 'hardhat', 'console.log')
           this.call('terminal', 'logHtml', finalLogs)
         }
       }
