@@ -1,6 +1,7 @@
 import { RemixApp } from '@remix-ui/app'
 import axios from 'axios'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import { AppContext } from '@remix-ui/app'
 import * as packageJson from '../../../../../package.json'
 import { fileSystem, fileSystems } from '../files/fileSystem'
 import { indexedDBFileSystem } from '../files/filesystems/indexedDB'
@@ -8,11 +9,12 @@ import { localStorageFS } from '../files/filesystems/localStorage'
 import { fileSystemUtility, migrationTestData } from '../files/filesystems/fileSystemUtility'
 import './styles/preload.css'
 import isElectron from 'is-electron'
-const _paq = (window._paq = window._paq || [])
 
 // _paq.push(['trackEvent', 'App', 'Preload', 'start'])
 
 export const Preload = (props: any) => {
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const [tip, setTip] = useState<string>('')
   const [supported, setSupported] = useState<boolean>(true)
   const [error, setError] = useState<boolean>(false)
@@ -40,7 +42,7 @@ export const Preload = (props: any) => {
         })
       })
       .catch((err) => {
-        _paq.push(['trackEvent', 'App', 'PreloadError', err && err.message])
+        track?.('App', 'PreloadError', err && err.message)
         console.error('Error loading Remix:', err)
         setError(true)
       })
@@ -57,7 +59,7 @@ export const Preload = (props: any) => {
     setShowDownloader(false)
     const fsUtility = new fileSystemUtility()
     const migrationResult = await fsUtility.migrate(localStorageFileSystem.current, remixIndexedDB.current)
-    _paq.push(['trackEvent', 'Migrate', 'result', migrationResult ? 'success' : 'fail'])
+    track?.('Migrate', 'result', migrationResult ? 'success' : 'fail')
     await setFileSystems()
   }
 
@@ -68,10 +70,10 @@ export const Preload = (props: any) => {
     ])
     if (fsLoaded) {
       console.log(fsLoaded.name + ' activated')
-      _paq.push(['trackEvent', 'Storage', 'activate', fsLoaded.name])
+      track?.('Storage', 'activate', fsLoaded.name)
       loadAppComponent()
     } else {
-      _paq.push(['trackEvent', 'Storage', 'error', 'no supported storage'])
+      track?.('Storage', 'error', 'no supported storage')
       setSupported(false)
     }
   }
@@ -89,8 +91,8 @@ export const Preload = (props: any) => {
       return
     }
     async function loadStorage() {
-      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || _paq.push(['trackEvent', 'Storage', 'error', 'indexedDB not supported'])
-      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || _paq.push(['trackEvent', 'Storage', 'error', 'localstorage not supported'])
+      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || track?.('Storage', 'error', 'indexedDB not supported')
+      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || track?.('Storage', 'error', 'localstorage not supported')
       await testmigration()
       remixIndexedDB.current.loaded && (await remixIndexedDB.current.checkWorkspaces())
       localStorageFileSystem.current.loaded && (await localStorageFileSystem.current.checkWorkspaces())

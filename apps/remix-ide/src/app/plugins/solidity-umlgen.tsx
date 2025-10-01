@@ -14,8 +14,6 @@ import { ClassOptions } from 'sol2uml/lib/converterClass2Dot'
 import type { CompilerInput } from '@remix-project/remix-solidity'
 const parser = (window as any).SolidityParser
 
-const _paq = (window._paq = window._paq || [])
-
 const profile = {
   name: 'solidityumlgen',
   displayName: 'Solidity UML Generator',
@@ -89,7 +87,7 @@ export class SolidityUmlGen extends ViewPlugin implements ISolidityUmlGen {
         })
         const payload = vizRenderStringSync(umlDot)
         this.updatedSvg = payload
-        _paq.push(['trackEvent', 'solidityumlgen', 'umlgenerated'])
+        this.call('matomo', 'trackEvent', 'solidityumlgen', 'umlgenerated')
         this.renderComponent()
         await this.call('tabs', 'focus', 'solidityumlgen')
       } catch (error) {
@@ -126,7 +124,7 @@ export class SolidityUmlGen extends ViewPlugin implements ISolidityUmlGen {
   generateCustomAction = async (action: customAction) => {
     this.triggerGenerateUml = true
     this.updatedSvg = this.updatedSvg.startsWith('<?xml') ? '' : this.updatedSvg
-    _paq.push(['trackEvent', 'solidityumlgen', 'activated'])
+    this.call('matomo', 'trackEvent', 'solidityumlgen', 'activated')
     await this.generateUml(action.path[0])
   }
 

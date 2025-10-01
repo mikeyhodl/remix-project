@@ -12,8 +12,6 @@ import DesktopClientUI from '../components/DesktopClientUI' // Import the UI com
 import JSONbig from 'json-bigint'
 import { Provider } from '@remix-ui/environment-explorer'
 
-const _paq = (window._paq = window._paq || [])
-
 const profile = {
   name: 'desktopClient',
   displayName: 'desktopClient',
@@ -56,7 +54,7 @@ export class DesktopClient extends ViewPlugin {
 
   onActivation() {
     console.log('DesktopClient activated')
-    _paq.push(['trackEvent', 'plugin', 'activated', 'DesktopClient'])
+    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'DesktopClient')
 
     this.connectToWebSocket()
 

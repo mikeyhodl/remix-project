@@ -6,7 +6,6 @@ import { PluginViewWrapper } from '@remix-ui/helper'
 import { Profile } from '@remixproject/plugin-utils'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixEngine } from '../../remixEngine'
-const _paq = window._paq = window._paq || []
 
 const profile = {
   name: 'pluginManager',
@@ -43,7 +42,6 @@ export class PluginManagerComponent extends ViewPlugin {
     this.activePlugins = []
     this.inactivePlugins = []
     this.activeProfiles = this.appManager.actives
-    this._paq = _paq
     this.dispatch = null
     this.listenOnEvent()
   }
@@ -65,7 +63,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   activateP = (name) => {
     this.appManager.activatePlugin(name)
-    _paq.push(['trackEvent', 'manager', 'activate', name])
+    this.call('matomo', 'trackEvent', 'manager', 'activate', name)
   }
 
   /**
@@ -91,7 +89,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   deactivateP = (name) => {
     this.call('manager', 'deactivatePlugin', name)
-    _paq.push(['trackEvent', 'manager', 'deactivate', name])
+    this.call('matomo', 'trackEvent', 'manager', 'deactivate', name)
   }
 
   setDispatch (dispatch) {

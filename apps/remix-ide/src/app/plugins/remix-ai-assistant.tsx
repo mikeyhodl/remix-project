@@ -19,7 +19,7 @@ const profile = {
   events: [],
   methods: ['chatPipe']
 }
-const _paq = (window._paq = window._paq || [])
+
 export class RemixAIAssistant extends ViewPlugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
