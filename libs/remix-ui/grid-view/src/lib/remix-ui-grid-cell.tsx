@@ -5,12 +5,7 @@ import FiltersContext from "./filtersContext"
 import { CustomTooltip } from '@remix-ui/helper'
 import { ChildCallbackContext } from './remix-ui-grid-section'
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = window._paq = window._paq || []
+
 
 interface RemixUIGridCellProps {
   plugin: any

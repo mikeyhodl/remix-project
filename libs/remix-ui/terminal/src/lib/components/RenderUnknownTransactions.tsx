@@ -1,12 +1,13 @@
-import React, {useState} from 'react' // eslint-disable-line
+import React, {useState, useContext} from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import CheckTxStatus from './ChechTxStatus' // eslint-disable-line
 import Context from './Context' // eslint-disable-line
 import showTable from './Table'
-const _paq = window._paq = window._paq || []
+import { AppContext } from '@remix-ui/app'
 
 const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, txDetails, modal, provider }) => {
-
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const intl = useIntl()
   const debug = (event, tx) => {
     event.stopPropagation()
@@ -28,7 +29,7 @@ const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, 
   let to = tx.to
 
   if (tx.isUserOp) {
-    _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'txExecutedSuccessfully'])
+    track?.('udapp', 'safeSmartAccount', 'txExecutedSuccessfully')
     // Track event with signature: ExecutionFromModuleSuccess (index_topic_1 address module)
     // to get sender smart account address
     const fromAddrLog = receipt.logs.find(e => e.topics[0] === "0x6895c13664aa4f67288b25d7a21d7aaa34916e355fb9b6fae0a139a9085becb8")

@@ -3,12 +3,8 @@ import { getValidLanguage, Compiler } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 import { configFileContent } from '../compilerConfiguration'
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = window._paq = window._paq || []  //eslint-disable-line
+
+
 
 export class CompileTabLogic {
   public compiler

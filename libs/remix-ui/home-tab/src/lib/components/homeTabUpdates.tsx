@@ -5,11 +5,7 @@ import axios from 'axios'
 import { HOME_TAB_BASE_URL, HOME_TAB_NEW_UPDATES } from './constant'
 import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
+
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabUpdatesProps {
   plugin: any

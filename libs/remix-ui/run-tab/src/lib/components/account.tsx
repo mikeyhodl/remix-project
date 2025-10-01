@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { AccountProps } from '../types'
@@ -7,12 +7,14 @@ import { PassphrasePrompt } from './passphrase'
 import { shortenAddress, CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { eip7702Constants } from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
-const _paq = window._paq = window._paq || []
+import { AppContext } from '@remix-ui/app'
 
 export function AccountUI(props: AccountProps) {
   const { selectedAccount, loadedAccounts } = props.accounts
   const { selectExEnv, personalMode, networkName } = props
   const accounts = Object.keys(loadedAccounts)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const [plusOpt, setPlusOpt] = useState({
     classList: '',
     title: ''
@@ -189,7 +191,7 @@ export function AccountUI(props: AccountProps) {
             href="https://docs.safe.global/advanced/smart-account-overview#safe-smart-account"
             target="_blank"
             rel="noreferrer noopener"
-            onClick={() => _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'learnMore'])}
+            onClick={() => track?.('udapp', 'safeSmartAccount', 'learnMore')}
             className="mb-3 d-inline-block link-primary"
           >
             Learn more
@@ -227,12 +229,12 @@ export function AccountUI(props: AccountProps) {
       ),
       intl.formatMessage({ id: 'udapp.continue' }),
       () => {
-        _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'createClicked'])
+        track?.('udapp', 'safeSmartAccount', 'createClicked')
         props.createNewSmartAccount()
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {
-        _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'cancelClicked'])
+        track?.('udapp', 'safeSmartAccount', 'cancelClicked')
       }
     )
   }
@@ -262,7 +264,7 @@ export function AccountUI(props: AccountProps) {
         try {
           await props.delegationAuthorization(delegationAuthorizationAddressRef.current)
           setContractHasDelegation(true)
-          _paq.push(['trackEvent', 'udapp', 'contractDelegation', 'create'])
+          track?.('udapp', 'contractDelegation', 'create')
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -288,7 +290,7 @@ export function AccountUI(props: AccountProps) {
           await props.delegationAuthorization('0x0000000000000000000000000000000000000000')
           delegationAuthorizationAddressRef.current = ''
           setContractHasDelegation(false)
-          _paq.push(['trackEvent', 'udapp', 'contractDelegation', 'remove'])
+          track?.('udapp', 'contractDelegation', 'remove')
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -303,7 +305,7 @@ export function AccountUI(props: AccountProps) {
   }
 
   const signMessage = () => {
-    _paq.push(['trackEvent', 'udapp', 'signUsingAccount', `selectExEnv: ${selectExEnv}`])
+    track?.('udapp', 'signUsingAccount', `selectExEnv: ${selectExEnv}`)
     if (!accounts[0]) {
       return props.tooltip(intl.formatMessage({ id: 'udapp.tooltipText1' }))
     }

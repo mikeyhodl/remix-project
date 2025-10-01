@@ -3,12 +3,7 @@ import React, { useEffect, useState, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext } from '../themeContext'
 import { CustomTooltip } from '@remix-ui/helper'
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
+import { AppContext } from '@remix-ui/app'
 
 enum VisibleTutorial {
   Basics,
@@ -27,12 +22,14 @@ function HomeTabLearn({ plugin }: HomeTabLearnProps) {
   })
 
   const themeFilter = useContext(ThemeContext)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   const startLearnEthTutorial = async (tutorial: 'basics' | 'soliditybeginner' | 'deploylibraries') => {
     await plugin.appManager.activatePlugin(['solidity', 'LearnEth', 'solidityUnitTesting'])
     plugin.verticalIcons.select('LearnEth')
     plugin.call('LearnEth', 'startTutorial', 'remix-project-org/remix-workshops', 'master', tutorial)
-    _paq.push(['trackEvent', 'hometab', 'startLearnEthTutorial', tutorial])
+    track?.('hometab', 'startLearnEthTutorial', tutorial)
   }
 
   const goToLearnEthHome = async () => {

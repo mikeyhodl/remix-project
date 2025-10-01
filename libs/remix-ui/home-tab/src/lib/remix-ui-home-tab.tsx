@@ -12,11 +12,7 @@ import { FormattedMessage } from 'react-intl'
 // import { desktopConnectionType } from '@remix-api'
 import { desktopConnectionType } from '@remix-api'
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
+
 
 export interface RemixUiHomeTabProps {
   plugin: any

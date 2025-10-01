@@ -7,11 +7,7 @@ import { FormattedMessage } from 'react-intl'
 import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
+
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabFeaturedPluginsProps {
   plugin: any

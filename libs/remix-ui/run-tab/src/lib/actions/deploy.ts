@@ -11,13 +11,9 @@ import { addInstance } from "./actions"
 import { addressToString, logBuilder } from "@remix-ui/helper"
 import { Web3 } from "web3"
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
 
-const _paq = window._paq = window._paq || []  //eslint-disable-line
+
+
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
 

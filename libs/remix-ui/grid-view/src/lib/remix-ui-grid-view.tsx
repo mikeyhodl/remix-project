@@ -3,13 +3,10 @@ import React, {useState, useEffect, useContext, useRef, ReactNode} from 'react' 
 import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
+import { AppContext } from '@remix-ui/app'
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = window._paq = window._paq || []
+
+
 
 interface RemixUIGridViewProps {
   plugin: any
@@ -30,6 +27,8 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
   const [filter, setFilter] = useState("")
   const showUntagged = props.showUntagged || false
   const showPin = props.showPin || false
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const updateValue = (key: string, enabled: boolean, color?: string) => {
     if (!color || color === '') color = setKeyValueMap[key].color
     setKeyValueMap((prevMap) => ({
@@ -112,7 +111,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
                     className="remixui_grid_view_btn text-secondary form-control bg-light border d-flex align-items-center p-2 justify-content-center fas fa-filter bg-light"
                     onClick={(e) => {
                       setFilter(searchInputRef.current.value)
-                      _paq.push(['trackEvent', 'GridView' + props.title ? props.title : '', 'filter', searchInputRef.current.value])
+                      track?.('GridView' + (props.title ? props.title : ''), 'filter', searchInputRef.current.value)
                     }}
                   ></button>
                   <input

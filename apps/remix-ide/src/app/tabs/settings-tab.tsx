@@ -12,7 +12,6 @@ declare global {
     _paq: any
   }
 }
-const _paq = (window._paq = window._paq || [])
 
 const profile = {
   name: 'settings',
