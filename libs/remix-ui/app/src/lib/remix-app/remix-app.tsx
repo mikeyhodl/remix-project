@@ -152,7 +152,12 @@ const RemixApp = (props: IRemixAppUi) => {
     showEnter: props.app.showEnter,
     modal: props.app.notification,
     appState: appState,
-    appStateDispatch: appStateDispatch
+    appStateDispatch: appStateDispatch,
+    track: (category: string, action: string, name?: string, value?: number) => {
+      if (window._matomoManagerInstance) {
+        window._matomoManagerInstance.trackEvent(category, action, name, value)
+      }
+    }
   }
 
   return (

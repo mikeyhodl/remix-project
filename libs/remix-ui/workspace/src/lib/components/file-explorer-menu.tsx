@@ -4,12 +4,12 @@ import { FormattedMessage } from 'react-intl'
 import { Placement } from 'react-bootstrap/esm/types'
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
-const _paq = (window._paq = window._paq || [])
+import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
   const platform = useContext(platformContext)
+  const { track } = useContext(AppContext)
   const [state, setState] = useState({
     menuItems: [
       {
@@ -102,7 +102,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        track?.('fileExplorer', 'fileAction', action)
                         props.uploadFile(e.target)
                         e.target.value = null
                       }}
@@ -133,7 +133,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        track?.('fileExplorer', 'fileAction', action)
                         props.uploadFolder(e.target)
                         e.target.value = null
                       }}
@@ -159,7 +159,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     className={icon + ' mx-1 remixui_menuItem'}
                     key={`index-${action}-${placement}-${icon}`}
                     onClick={() => {
-                      _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                      track?.('fileExplorer', 'fileAction', action)
                       props.handleGitInit()
                     }}
                   >
@@ -181,7 +181,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     data-id={'fileExplorerNewFile' + action}
                     onClick={(e) => {
                       e.stopPropagation()
-                      _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                      track?.('fileExplorer', 'fileAction', action)
                       if (action === 'createNewFile') {
                         props.createNewFile()
                       } else if (action === 'createNewFolder') {
@@ -189,10 +189,10 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       } else if (action === 'publishToGist' || action == 'updateGist') {
                         props.publishToGist()
                       } else if (action === 'importFromIpfs') {
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        track?.('fileExplorer', 'fileAction', action)
                         props.importFromIpfs('Ipfs', 'ipfs hash', ['ipfs://QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH'], 'ipfs://')
                       } else if (action === 'importFromHttps') {
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        track?.('fileExplorer', 'fileAction', action)
                         props.importFromHttps('Https', 'http/https raw content', ['https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/token/ERC20/ERC20.sol'])
                       } else {
                         state.actions[action]()

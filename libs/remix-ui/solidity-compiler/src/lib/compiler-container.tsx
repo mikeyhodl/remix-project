@@ -10,25 +10,18 @@ import { listenToEvents } from './actions/compiler'
 import { getValidLanguage } from '@remix-project/remix-solidity'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
-import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
+import { appPlatformTypes, platformContext, onLineContext, AppContext } from '@remix-ui/app'
 import * as packageJson from '../../../../../package.json'
 
 import './css/style.css'
 
 import { CompilerDropdown } from './components/compiler-dropdown'
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _paq: any
-  }
-}
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
 const remixConfigPath = 'remix.config.json'
 
 export const CompilerContainer = (props: CompilerContainerProps) => {
   const online = useContext(onLineContext)
   const platform = useContext(platformContext)
+  const { track } = useContext(AppContext)
   const {
     api,
     compileTabLogic,
@@ -404,9 +397,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     compileIcon.current.classList.remove('remixui_spinningIcon')
     compileIcon.current.classList.remove('remixui_bouncingIcon')
     if (!state.autoCompile || (state.autoCompile && state.matomoAutocompileOnce)) {
-      // _paq.push(['trackEvent', 'compiler', 'compiled', 'solCompilationFinishedTriggeredByUser'])
-      _paq.push(['trackEvent', 'compiler', 'compiled', 'with_config_file_' + state.useFileConfiguration])
-      _paq.push(['trackEvent', 'compiler', 'compiled', 'with_version_' + _retrieveVersion()])
+      // track?.('compiler', 'compiled', 'solCompilationFinishedTriggeredByUser')
+      track?.('compiler', 'compiled', 'with_config_file_' + state.useFileConfiguration)
+      track?.('compiler', 'compiled', 'with_version_' + _retrieveVersion())
       if (state.autoCompile && state.matomoAutocompileOnce) {
         setState((prevState) => {
           return { ...prevState, matomoAutocompileOnce: false }

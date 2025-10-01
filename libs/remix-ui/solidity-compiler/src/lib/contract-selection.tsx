@@ -1,21 +1,20 @@
-import React, {useState, useEffect} from 'react' // eslint-disable-line
+import React, {useState, useEffect, useContext} from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import { ContractPropertyName, ContractSelectionProps } from './types'
 import {PublishToStorage} from '@remix-ui/publish-to-storage' // eslint-disable-line
 import {TreeView, TreeViewItem} from '@remix-ui/tree-view' // eslint-disable-line
 import {CopyToClipboard} from '@remix-ui/clipboard' // eslint-disable-line
 import { saveAs } from 'file-saver'
-import { AppModal } from '@remix-ui/app'
+import { AppModal, AppContext } from '@remix-ui/app'
 
 import './css/style.css'
 import { CustomTooltip, handleSolidityScan } from '@remix-ui/helper'
-
-const _paq = (window._paq = window._paq || [])
 
 export const ContractSelection = (props: ContractSelectionProps) => {
   const { api, compiledFileName, contractsDetails, contractList, compilerInput, modal } = props
   const [selectedContract, setSelectedContract] = useState('')
   const [storage, setStorage] = useState(null)
+  const { track } = useContext(AppContext)
 
   const intl = useIntl()
 
@@ -61,9 +60,8 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const getContractProperty = (property) => {
-    if (!selectedContract) throw new Error('No contract compiled yet')
+    if (!selectedContract) return
     const contractProperties = contractsDetails[selectedContract]
-
     if (contractProperties && contractProperties[property]) return contractProperties[property]
     return null
   }
@@ -167,7 +165,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const details = () => {
-    _paq.push(['trackEvent', 'compiler', 'compilerDetails', 'display'])
+    track?.('compiler', 'compilerDetails', 'display')
     if (!selectedContract) throw new Error('No contract compiled yet')
 
     const help = {
@@ -236,7 +234,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       </div>
     )
     const downloadFn = () => {
-      _paq.push(['trackEvent', 'compiler', 'compilerDetails', 'download'])
+      track?.('compiler', 'compilerDetails', 'download')
       saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
     }
     // modal(selectedContract, log, intl.formatMessage({id: 'solidity.download'}), downloadFn, true, intl.formatMessage({id: 'solidity.close'}), null)
@@ -248,7 +246,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runStaticAnalysis = async () => {
-    _paq.push(['trackEvent', 'solidityCompiler', 'runStaticAnalysis', 'initiate'])
+    track?.('solidityCompiler', 'runStaticAnalysis', 'initiate')
     const plugin = api as any
     const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
     if (!isStaticAnalyzersActive) {
@@ -262,15 +260,15 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runSolidityScan = async () => {
-    _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'askPermissionToScan'])
-    const modal: AppModal = {
+    track?.('solidityCompiler', 'solidityScan', 'askPermissionToScan')
+    const modalStruct: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
       message: <div className='d-flex flex-column'>
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'learnMore'])}>
+            onClick={() => track?.('solidityCompiler', 'solidityScan', 'learnMore')}>
               Learn more
           </a>
         </span>
@@ -280,7 +278,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       okLabel: <FormattedMessage id="solidity.solScan.modalOkLabel" />,
       okFn: handleScanContinue,
       cancelLabel: <FormattedMessage id="solidity.solScan.modalCancelLabel" />,
-      cancelFn:() => { _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'cancelClicked'])}
+      cancelFn:() => { track?.('solidityCompiler', 'solidityScan', 'cancelClicked')}
     }
     await (api as any).call('notification', 'modal', modal)
   }

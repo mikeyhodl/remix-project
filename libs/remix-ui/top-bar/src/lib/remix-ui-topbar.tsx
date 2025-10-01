@@ -15,14 +15,14 @@ import { GitHubUser } from 'libs/remix-api/src/lib/types/git'
 import { GitHubCallback } from '../topbarUtils/gitOauthHandler'
 import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
-
-const _paq = window._paq || []
+import { AppContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
   const [showDropdown, setShowDropdown] = useState(false)
   const platform = useContext(platformContext)
   const global = useContext(TopbarContext)
+  const { track } = useContext(AppContext)
   const plugin = global.plugin
   const LOCALHOST = ' - connect to localhost - '
   const NO_WORKSPACE = ' - none - '
@@ -288,13 +288,13 @@ export function RemixUiTopbar() {
 
   const loginWithGitHub = async () => {
     global.plugin.call('dgit', 'login')
-    _paq.push(['trackEvent', 'topbar', 'GIT', 'login'])
+    track?.('topbar', 'GIT', 'login')
   }
 
   const logOutOfGithub = async () => {
     global.plugin.call('dgit', 'logOut')
 
-    _paq.push(['trackEvent', 'topbar', 'GIT', 'logout'])
+    track?.('topbar', 'GIT', 'logout')
   }
 
   const handleTypingUrl = () => {
@@ -386,7 +386,7 @@ export function RemixUiTopbar() {
     try {
       await switchToWorkspace(name)
       handleExpandPath([])
-      _paq.push(['trackEvent', 'Workspace', 'switchWorkspace', name])
+      track?.('Workspace', 'switchWorkspace', name)
     } catch (e) {
       global.modal(
         intl.formatMessage({ id: 'filePanel.workspace.switch' }),
@@ -464,7 +464,7 @@ export function RemixUiTopbar() {
             className="d-flex align-items-center justify-content-between me-3 cursor-pointer"
             onClick={async () => {
               await plugin.call('tabs', 'focus', 'home')
-              _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+              track?.('topbar', 'header', 'Home')
             }}
             data-id="verticalIconsHomeIcon"
           >
@@ -474,7 +474,7 @@ export function RemixUiTopbar() {
               className="remixui_homeIcon"
               onClick={async () => {
                 await plugin.call('tabs', 'focus', 'home')
-                _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+                track?.('topbar', 'header', 'Home')
               }}
             >
               <BasicLogo />
@@ -484,7 +484,7 @@ export function RemixUiTopbar() {
               style={{ fontSize: '1.2rem' }}
               onClick={async () => {
                 await plugin.call('tabs', 'focus', 'home')
-                _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+                track?.('topbar', 'header', 'Home')
               }}
             >
               Remix
@@ -607,7 +607,7 @@ export function RemixUiTopbar() {
               const isActive = await plugin.call('manager', 'isActive', 'settings')
               if (!isActive) await plugin.call('manager', 'activatePlugin', 'settings')
               await plugin.call('tabs', 'focus', 'settings')
-              _paq.push(['trackEvent', 'topbar', 'header', 'Settings'])
+              track?.('topbar', 'header', 'Settings')
             }}
             data-id="topbar-settingsIcon"
           >

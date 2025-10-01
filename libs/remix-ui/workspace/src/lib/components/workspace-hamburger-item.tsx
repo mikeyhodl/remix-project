@@ -2,8 +2,7 @@ import React, { useContext } from 'react'
 import { CustomTooltip, CustomMenu, CustomIconsToggle } from '@remix-ui/helper'
 import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
-const _paq = (window._paq = window._paq || [])
+import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 
 export interface HamburgerMenuItemProps {
   hideOption: boolean
@@ -16,6 +15,7 @@ export interface HamburgerMenuItemProps {
 export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
   const platform = useContext(platformContext)
+  const { track } = useContext(AppContext)
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -27,7 +27,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
               key={uid + '-fe-ws'}
               onClick={() => {
                 props.actionOnClick()
-                _paq.push(['trackEvent', 'fileExplorer', 'workspaceMenu', uid])
+                track?.('fileExplorer', 'workspaceMenu', uid)
               }}
             >
               <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>
@@ -44,6 +44,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
 // keeping the following for a later use:
 export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
+  const { track } = useContext(AppContext)
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -54,7 +55,7 @@ export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
             key={uid + '-fe-ws'}
             onClick={() => {
               props.actionOnClick()
-              _paq.push(['trackEvent', 'fileExplorer', 'workspaceMenu', uid])
+              track?.('fileExplorer', 'workspaceMenu', uid)
             }}
           >
             <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>

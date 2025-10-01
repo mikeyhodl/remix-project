@@ -11,6 +11,7 @@ export type appProviderContextType = {
   modal: any
   appState: AppState
   appStateDispatch: React.Dispatch<AppAction>
+  track?: (category: string, action: string, name?: string, value?: number) => void
 }
 
 export enum appPlatformTypes {

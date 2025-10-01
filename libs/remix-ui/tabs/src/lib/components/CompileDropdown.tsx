@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import DropdownMenu, { MenuItem } from './DropdownMenu'
 import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
 import { handleSolidityScan } from '@remix-ui/helper'
+import { AppContext } from '@remix-ui/app'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
-
-const _paq = (window._paq = window._paq || [])
 
 interface CompileDropdownProps {
   tabPath?: string
@@ -19,6 +18,7 @@ interface CompileDropdownProps {
 }
 
 export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugin, disabled, onOpen, onRequestCompileAndPublish, compiledFileName, setCompileState }) => {
+  const { track } = useContext(AppContext)
   const [scriptFiles, setScriptFiles] = useState<string[]>([])
 
   const compileThen = async (nextAction: () => void, actionName: string) => {
@@ -137,7 +137,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runRemixAnalysis = async () => {
-    _paq.push(['trackEvent', 'solidityCompiler', 'staticAnalysis', 'initiate'])
+    track?.('solidityCompiler', 'staticAnalysis', 'initiate')
     await compileThen(async () => {
       const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
       if (!isStaticAnalyzersActive) {
@@ -156,7 +156,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runSolidityScan = async () => {
-    _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'askPermissionToScan'])
+    track?.('solidityCompiler', 'solidityScan', 'askPermissionToScan')
     const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -164,7 +164,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'learnMore'])}>
+            onClick={() => track?.('solidityCompiler', 'solidityScan', 'learnMore')}>
               Learn more
           </a>
         </span><br/>
@@ -178,7 +178,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const openConfiguration = async () => {
-    _paq.push(['trackEvent', 'solidityCompiler', 'initiate'])
+    track?.('solidityCompiler', 'initiate')
     const isSolidityCompilerActive = await plugin.call('manager', 'isActive', 'solidity')
     if (!isSolidityCompilerActive) {
       await plugin.call('manager', 'activatePlugin', 'solidity')
