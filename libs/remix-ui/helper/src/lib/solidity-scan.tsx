@@ -6,11 +6,10 @@ import { ScanReport, SolScanTable } from '@remix-ui/helper'
 
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { CustomTooltip } from './components/custom-tooltip'
-const _paq = (window._paq = window._paq || [])
 
 export const handleSolidityScan = async (api: any, compiledFileName: string) => {
   await api.call('notification', 'toast', 'Processing data to scan...')
-  _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'initiateScan'])
+  await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'initiateScan')
 
   const workspace = await api.call('filePanel', 'getCurrentWorkspace')
   const fileName = `${workspace.name}/${compiledFileName}`
@@ -43,7 +42,7 @@ export const handleSolidityScan = async (api: any, compiledFileName: string) => 
             }
           }))
         } else if (data.type === "scan_status" && data.payload.scan_status === "download_failed") {
-          _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'scanFailed'])
+          await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'scanFailed')
           await api.call('notification', 'modal', {
             id: 'SolidityScanError',
             title: <FormattedMessage id="solidity.solScan.errModalTitle" />,
@@ -52,7 +51,7 @@ export const handleSolidityScan = async (api: any, compiledFileName: string) => 
           })
           ws.close()
         } else if (data.type === "scan_status" && data.payload.scan_status === "scan_done") {
-          _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'scanSuccess'])
+          await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'scanSuccess')
           const { data: scanData } = await axios.post(`${endpointUrls.solidityScan}/downloadResult`, { url: data.payload.scan_details.link })
           const scanReport: ScanReport = scanData.scan_report
 

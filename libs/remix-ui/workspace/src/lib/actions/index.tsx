@@ -18,7 +18,6 @@ export * from './events'
 export * from './workspace'
 
 const queryParams = new QueryParams()
-const _paq = window._paq = window._paq || []
 
 let plugin, dispatch: React.Dispatch<Actions>
 
@@ -200,7 +199,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-        _paq.push(['trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`])
+       plugin.call('matomo', 'trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`)
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {
@@ -367,7 +366,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-        _paq.push(['trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`])
+        plugin.call('matomo', 'trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`)
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {
@@ -732,9 +731,9 @@ export const handleDownloadFiles = async () => {
       const time = today.getHours() + 'h' + today.getMinutes() + 'min'
 
       saveAs(blob, `remix-backup-at-${time}-${date}.zip`)
-      _paq.push(['trackEvent', 'Backup', 'download', 'home'])
+      plugin.call('matomo', 'trackEvent', 'Backup', 'download', 'home')
     }).catch((e) => {
-      _paq.push(['trackEvent', 'Backup', 'error', e.message])
+      plugin.call('matomo', 'trackEvent', 'Backup', 'error', e.message)
       plugin.call('notification', 'toast', e.message)
     })
   } catch (e) {
@@ -760,7 +759,7 @@ export const handleDownloadWorkspace = async () => {
 export const restoreBackupZip = async () => {
   await plugin.appManager.activatePlugin(['restorebackupzip'])
   await plugin.call('mainPanel', 'showContent', 'restorebackupzip')
-  _paq.push(['trackEvent', 'Backup', 'userActivate', 'restorebackupzip'])
+  await plugin.call('matomo', 'trackEvent', 'Backup', 'userActivate', 'restorebackupzip')
 }
 
 const packageGistFiles = async (directory) => {

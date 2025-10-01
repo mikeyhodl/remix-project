@@ -27,11 +27,11 @@ const loadContractFromAddress = (plugin: RunTab, address, confirmCb, cb) => {
       } catch (e) {
         return cb('Failed to parse the current file as JSON ABI.')
       }
-      _paq.push(['trackEvent', 'udapp', 'useAtAddress' , 'AtAddressLoadWithABI'])
+      plugin.call('matomo', 'trackEvent', 'udapp', 'useAtAddress', 'AtAddressLoadWithABI')
       cb(null, 'abi', abi)
     })
   } else {
-    _paq.push(['trackEvent', 'udapp', 'useAtAddress', 'AtAddressLoadWithArtifacts'])
+    plugin.call('matomo', 'trackEvent', 'udapp', 'useAtAddress', 'AtAddressLoadWithArtifacts')
     cb(null, 'instance')
   }
 }
@@ -177,10 +177,10 @@ export const createInstance = async (
 
     plugin.compilersArtefacts.addResolvedContract(addressToString(address), data)
     if (plugin.REACT_API.ipfsChecked) {
-      _paq.push(['trackEvent', 'udapp', 'DeployAndPublish', plugin.REACT_API.networkName])
+      plugin.call('matomo', 'trackEvent', 'udapp', 'DeployAndPublish', plugin.REACT_API.networkName)
       publishToStorage('ipfs', selectedContract)
     } else {
-      _paq.push(['trackEvent', 'udapp', 'DeployOnly', plugin.REACT_API.networkName])
+      plugin.call('matomo', 'trackEvent', 'udapp', 'DeployOnly', plugin.REACT_API.networkName)
     }
     if (isProxyDeployment) {
       const initABI = contractObject.abi.find(abi => abi.name === 'initialize')
@@ -239,7 +239,7 @@ export const createInstance = async (
 }
 
 const deployContract = (plugin: RunTab, selectedContract, args, contractMetadata, compilerContracts, callbacks, confirmationCb) => {
-  _paq.push(['trackEvent', 'udapp', 'DeployContractTo', plugin.REACT_API.networkName])
+  plugin.call('matomo', 'trackEvent', 'udapp', 'DeployContractTo', plugin.REACT_API.networkName)
   const { statusCb } = callbacks
 
   if (!contractMetadata || (contractMetadata && contractMetadata.autoDeployLib)) {
@@ -307,7 +307,7 @@ export const runTransactions = (
   if (lookupOnly) callinfo = 'call'
   else if (funcABI.type === 'fallback' || funcABI.type === 'receive') callinfo = 'lowLevelinteractions'
   else callinfo = 'transact'
-  _paq.push(['trackEvent', 'udapp', callinfo, plugin.REACT_API.networkName])
+  plugin.call('matomo', 'trackEvent', 'udapp', callinfo, plugin.REACT_API.networkName)
 
   const params = funcABI.type !== 'fallback' ? inputsValues : ''
   plugin.blockchain.runOrCallContractMethod(

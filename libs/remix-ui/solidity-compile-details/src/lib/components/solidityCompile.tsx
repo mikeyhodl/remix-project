@@ -1,15 +1,16 @@
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ContractPropertyName } from '@remix-ui/solidity-compiler'
-import React from 'react'
+import React, { useContext } from 'react'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { useIntl } from 'react-intl'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 export default function SolidityCompile({ contractProperties, selectedContract, help, insertValue, saveAs, plugin }: any) {
   const intl = useIntl()
+  const { track } = useContext(AppContext)
   const downloadFn = () => {
-    _paq.push(['trackEvent', 'compiler', 'compilerDetails', 'download'])
+    track?.('compiler', 'compilerDetails', 'download')
     saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
   }
   return (

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react' // eslint-disable-line
+import React, {useState, useEffect, useRef, useContext} from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import TxBrowser from './tx-browser/tx-browser' // eslint-disable-line
 import StepManager from './step-manager/step-manager' // eslint-disable-line
@@ -8,12 +8,13 @@ import {TransactionDebugger as Debugger} from '@remix-project/remix-debug' // es
 import {DebuggerUIProps} from './idebugger-api' // eslint-disable-line
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip, isValidHash } from '@remix-ui/helper'
+import { AppContext } from '@remix-ui/app'
 /* eslint-disable-next-line */
 import './debugger-ui.css'
-const _paq = ((window as any)._paq = (window as any)._paq || [])
 
 export const DebuggerUI = (props: DebuggerUIProps) => {
   const intl = useIntl()
+  const { track } = useContext(AppContext)
   const debuggerModule = props.debuggerAPI
   const [state, setState] = useState({
     isActive: false,
@@ -259,7 +260,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     const web3 = optWeb3 || (state.opt.debugWithLocalNode ? await debuggerModule.web3() : await debuggerModule.getDebugWeb3())
     try {
       const networkId = await web3.eth.net.getId()
-      _paq.push(['trackEvent', 'debugger', 'startDebugging', networkId])
+      track?.('debugger', 'startDebugging', networkId)
       if (networkId === 42) {
         setState((prevState) => {
           return {

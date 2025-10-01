@@ -19,8 +19,6 @@ const { txResultHelper } = helpers
 const { resultToRemixTx } = txResultHelper
 import * as packageJson from '../../../../package.json'
 
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
-
 const profile = {
   name: 'blockchain',
   displayName: 'Blockchain',
