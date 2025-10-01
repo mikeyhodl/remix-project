@@ -112,7 +112,7 @@ import TabProxy from './app/panels/tab-proxy.js'
 import { Plugin } from '@remixproject/engine'
 import BottomBarPanel from './app/components/bottom-bar-panel'
 
-const _paq = (window._paq = window._paq || [])
+// Tracking now handled by this.track() method using MatomoManager
 
 export class platformApi {
   get name() {
@@ -160,6 +160,18 @@ class AppComponent {
   settings: SettingsTab
   params: any
   desktopClientMode: boolean
+
+  // Tracking method that uses the global MatomoManager instance
+  track(category: string, action: string, name?: string, value?: number) {
+    try {
+      const matomoManager = (window as any)._matomoManagerInstance
+      if (matomoManager && matomoManager.trackEvent) {
+        matomoManager.trackEvent(category, action, name, value)
+      }
+    } catch (error) {
+      console.debug('Tracking error:', error)
+    }
+  }
   constructor() {
     const PlatFormAPi = new platformApi()
     Registry.getInstance().put({
@@ -217,7 +229,7 @@ class AppComponent {
     this.workspace = pluginLoader.get()
     if (pluginLoader.current === 'queryParams') {
       this.workspace.map((workspace) => {
-        _paq.push(['trackEvent', 'App', 'queryParams-activated', workspace])
+        this.track('App', 'queryParams-activated', workspace)
       })
     }
     this.engine = new RemixEngine()
@@ -262,7 +274,7 @@ class AppComponent {
   if (debugMatatomo) console.log('[Matomo][debug_matatomo] forcing dialog/show diagnostics')
   console.log('Matomo analytics is ' + (this.showMatomo ? 'enabled' : 'disabled'))
     if (this.showMatomo && shouldRenewConsent) {
-      _paq.push(['trackEvent', 'Matomo', 'refreshMatomoPermissions']);
+      this.track('Matomo', 'refreshMatomoPermissions')
     }
 
     this.walkthroughService = new WalkthroughService(appManager)
@@ -701,7 +713,7 @@ class AppComponent {
               if (callDetails.length > 1) {
                 this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
                 // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                _paq.push(['trackEvent', 'App', 'queryParams-calls', this.params.call])
+                this.track('App', 'queryParams-calls', this.params.call)
                 //@ts-ignore
                 await this.appManager.call(...callDetails).catch(console.error)
               }
@@ -712,7 +724,7 @@ class AppComponent {
 
               // call all functions in the list, one after the other
               for (const call of calls) {
-                _paq.push(['trackEvent', 'App', 'queryParams-calls', call])
+                this.track('App', 'queryParams-calls', call)
                 const callDetails = call.split('//')
                 if (callDetails.length > 1) {
                   this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)

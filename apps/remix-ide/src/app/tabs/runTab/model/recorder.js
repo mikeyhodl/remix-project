@@ -9,8 +9,6 @@ var format = remixLib.execution.txFormat
 var txHelper = remixLib.execution.txHelper
 import { addressToString } from '@remix-ui/helper'
 
-const _paq = window._paq = window._paq || []  //eslint-disable-line
-
 const profile = {
   name: 'recorder',
   displayName: 'Recorder',
@@ -291,9 +289,9 @@ export class Recorder extends Plugin {
   }
 
   runScenario (liveMode, json, continueCb, promptCb, alertCb, confirmationCb, logCallBack, cb) {
-    _paq.push(['trackEvent', 'run', 'recorder', 'start'])
+    this.call('matomo', 'trackEvent', 'run', 'recorder', 'start')
     if (!json) {
-      _paq.push(['trackEvent', 'run', 'recorder', 'wrong-json'])
+      this.call('matomo', 'trackEvent', 'run', 'recorder', 'wrong-json')
       return cb('a json content must be provided')
     }
     if (typeof json === 'string') {

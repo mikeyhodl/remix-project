@@ -10,7 +10,6 @@ import frJson from './locales/fr'
 import itJson from './locales/it'
 import koJson from './locales/ko'
 import ruJson from './locales/ru'
-const _paq = window._paq = window._paq || []
 
 const locales = [
   { code: 'zh', name: 'Chinese Simplified', localeName: '简体中文', messages: zhJson },
@@ -41,7 +40,7 @@ export class LocaleModule extends Plugin {
     locales.forEach((locale) => {
       this.locales[locale.code.toLocaleLowerCase()] = locale
     })
-    this._paq = _paq
+    // Tracking now handled via plugin API
     this.queryParams = new QueryParams()
     let queryLocale = this.queryParams.get().lang
     queryLocale = queryLocale && queryLocale.toLocaleLowerCase()
@@ -76,7 +75,7 @@ export class LocaleModule extends Plugin {
     }
     const next = localeCode || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    _paq.push(['trackEvent', 'localeModule', 'switchTo', next])
+    this.call('matomo', 'trackEvent', 'localeModule', 'switchTo', next)
     
     const nextLocale = this.locales[next] // Locale
     if (!this.forced) this._deps.config.set('settings/locale', next)

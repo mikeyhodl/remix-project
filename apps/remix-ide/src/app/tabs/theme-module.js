@@ -4,7 +4,6 @@ import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
 import {Registry} from '@remix-project/remix-lib'
 const isElectron = require('is-electron')
-const _paq = window._paq = window._paq || []
 
 //sol2uml dot files cannot work with css variables so hex values for colors are used
 const themes = [
@@ -40,7 +39,7 @@ export class ThemeModule extends Plugin {
             : window.location.origin + (window.location.pathname.startsWith('/address/') || window.location.pathname.endsWith('.sol') ? '/' : window.location.pathname) + theme.url
       }
     })
-    this._paq = _paq
+    // Tracking now handled via plugin API
     let queryTheme = (new QueryParams()).get().theme
     queryTheme = queryTheme && queryTheme.toLocaleLowerCase()
     queryTheme = this.themes[queryTheme] ? queryTheme : null
@@ -101,7 +100,7 @@ export class ThemeModule extends Plugin {
     }
     const next = themeName || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    _paq.push(['trackEvent', 'themeModule', 'switchThemeTo', next])
+    this.call('matomo', 'trackEvent', 'themeModule', 'switchThemeTo', next)
     const nextTheme = this.themes[next] // Theme
     if (!this.forced) this._deps.config.set('settings/theme', next)
     document.getElementById('theme-link') ? document.getElementById('theme-link').remove() : null
