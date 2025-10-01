@@ -1,7 +1,7 @@
 /* global describe, before, it */
 import { Provider } from '../src/index'
 import * as assert from 'assert'
-import { ethers, BrowserProvider } from "ethers";
+import { ethers, BrowserProvider } from "ethers"
 
 describe('Accounts', () => {
   let ethersProvider: BrowserProvider

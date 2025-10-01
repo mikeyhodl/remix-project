@@ -3,38 +3,42 @@ import { Web3 } from 'web3'
 import { Provider } from '../src/index'
 const web3 = new Web3()
 import * as assert from 'assert'
+import { ethers, BrowserProvider } from "ethers"
 
 describe('blocks', () => {
+    let ethersProvider: BrowserProvider
+  
   before(async () => {
     const provider = new Provider({
       coinbase: '0x0000000000000000000000000000000000000001'
     })
     await provider.init()
     web3.setProvider(provider as any)
+    ethersProvider = new ethers.BrowserProvider(provider as any)
   })
 
   describe('eth_getBlockByNumber', () => {
     it('should get block given its number', async () => {
-      const block = await web3.eth.getBlock(0)
-
+      const block = await ethersProvider.send( 'eth_getBlockByNumber', [0])
       const expectedBlock = {
-        baseFeePerGas: '1',
-        difficulty: '0',
-        extraData: '0x00',
-        gasLimit: '8000000',
-        gasUsed: '0',
+        baseFeePerGas: '0x01',
+        number: '0x0',
         hash: block.hash.toString(),
-        logsBloom: '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331',
-        miner: '0x0000000000000000000000000000000000000001',
-        nonce: '0',
-        number: '0',
         parentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        nonce: '0x0000000000000000',
         sha3Uncles: '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-        size: '163591',
-        stateRoot: '0x0000000000000000000000000000000000000000000000000000000000000000',
-        timestamp: block.timestamp,
-        totalDifficulty: '0',
+        logsBloom: '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331',
         transactionsRoot: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+        stateRoot: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        miner: '0x0000000000000000000000000000000000000001',
+        difficulty: '0x0',
+        totalDifficulty: '0x0',
+        extraData: '0x00',
+        size: '0x027f07',
+        gasLimit: '0x7a1200',
+        gasUsed: '0x0',
+        timestamp: block.timestamp,
+        transactions: [],
         uncles: []
       }
 
@@ -44,82 +48,73 @@ describe('blocks', () => {
 
   describe('eth_getGasPrice', () => {
     it('should get gas price', async () => {
-      const gasPrice = await web3.eth.getGasPrice()
+      const { gasPrice } = await ethersProvider.getFeeData()
       assert.equal(gasPrice, 1)
     })
   })
 
   describe('eth_coinbase', () => {
     it('should get coinbase', async () => {
-      const coinbase = await web3.eth.getCoinbase()
+      const coinbase = await ethersProvider.send("eth_coinbase", [])
       assert.equal(coinbase, '0x0000000000000000000000000000000000000001')
     })
   })
 
   describe('eth_blockNumber', () => {
     it('should get current block number', async () => {
-      const number = await web3.eth.getBlockNumber()
+      const number = await ethersProvider.getBlockNumber()
       assert.equal(number, 0)
     })
   })
 
   describe('evm_mine', () => {
     it('should mine empty block using evm_mine', async function () {
-      await web3.provider.request({
-        method: 'evm_mine',
-        params: [{ blocks: 3 }],
-      })
-      const number = await web3.eth.getBlockNumber()
+      await ethersProvider.send( 'evm_mine', [{ blocks: 3 }])
+      const number = await ethersProvider.send( 'eth_blockNumber', [])
       assert.equal(number, 3)
     })
   })
 
   describe('eth_getBlockByHash', () => {
     it('should get block given its hash', async () => {
-      const correctBlock = await web3.eth.getBlock(0)
-      const block = await web3.eth.getBlock(correctBlock.hash)
+      const correctBlock = await ethersProvider.getBlock(0)
+      const block = await ethersProvider.getBlock(correctBlock.hash)
 
       assert.deepEqual(block, correctBlock)
     })
   })
 
   describe('eth_getBlockTransactionCountByHash', () => {
-    it('should get block given its hash', async () => {
-      const correctBlock = await web3.eth.getBlock(0)
-      const numberTransactions = await web3.eth.getBlockTransactionCount(correctBlock.hash)
+    it('should get block transactions count given block hash', async () => {
+      const correctBlock = await ethersProvider.getBlock(0)
+      const numberTransactions = await ethersProvider.send( 'eth_getBlockTransactionCountByHash', [correctBlock.hash])
 
       assert.deepEqual(numberTransactions, 0)
     })
   })
 
   describe('eth_getBlockTransactionCountByNumber', () => {
-    it('should get block given its hash', async () => {
-      const numberTransactions = await web3.eth.getBlockTransactionCount(0)
+    it('should get block transactions count given block number', async () => {
+      const numberTransactions = await ethersProvider.send( 'eth_getBlockTransactionCountByNumber', ['0x0'])
 
       assert.deepEqual(numberTransactions, 0)
     })
   })
 
   describe('eth_getUncleCountByBlockHash', () => {
-    it('should get block given its hash', async () => {
-      const correctBlock = await web3.eth.getBlock(0)
-      const numberTransactions = await (new Promise((resolve, reject) => {
-        web3['_requestManager'].send({ method: 'eth_getUncleCountByBlockHash', params: [correctBlock.hash]})
-          .then(numberTransactions => resolve(numberTransactions))
-          .catch(err => reject(err))
-      }))
+    it('should get block uncles count given its hash', async () => {
+      const correctBlock = await ethersProvider.send( 'eth_getBlockByNumber', [0])
+      const numberTransactions = await ethersProvider.send('eth_getUncleCountByBlockHash', [correctBlock.hash])
+
       assert.deepEqual(numberTransactions, correctBlock.uncles.length)
     })
   })
 
   describe('eth_getUncleCountByBlockNumber', () => {
-    it('should get block given its number', async () => {
-      const correctBlock = await web3.eth.getBlock(0)
-      const numberTransactions = await (new Promise((resolve, reject) => {
-        web3['_requestManager'].send({ method: 'eth_getUncleCountByBlockHash', params: [0]})
-          .then(numberTransactions => resolve(numberTransactions))
-          .catch(err => reject(err))
-      }))
+    it('should get block uncles count given its number', async () => {
+      const correctBlock = await ethersProvider.send( 'eth_getBlockByNumber', [0])
+      const numberTransactions = await ethersProvider.send('eth_getUncleCountByBlockNumber', [0])
+
       assert.deepEqual(numberTransactions, correctBlock.uncles.length)
     })
   })
