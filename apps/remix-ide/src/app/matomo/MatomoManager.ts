@@ -1,0 +1,1011 @@
+/**
+ * MatomoManager - A comprehensive Matomo Analytics management class
+ * TypeScript version with async/await patterns and strong typing
+ * 
+ * Features:
+ * - Multiple initialization patterns (consent-based, anonymous, immediate)
+ * - Detailed logging and debugging capabilities
+ * - Mode switching with proper state management
+ * - Cookie and consent lifecycle management
+ * - Event interception and monitoring
+ * 
+ * Usage:
+ *   const matomo = new MatomoManager({
+ *     trackerUrl: 'https://your-matomo.com/matomo.php',
+ *     siteId: 1,
+ *     debug: true
+ *   });
+ *   
+ *   await matomo.initialize('cookie-consent');
+ *   await matomo.switchMode('anonymous');
+ *   matomo.trackEvent('test', 'action', 'label');
+ */
+
+// ================== TYPE DEFINITIONS ==================
+
+export interface MatomoConfig {
+  trackerUrl: string;
+  siteId: number;
+  debug?: boolean;
+  customDimensions?: Record<number, string>;
+  onStateChange?: StateChangeHandler | null;
+  logPrefix?: string;
+  scriptTimeout?: number;
+  retryAttempts?: number;
+}
+
+export interface MatomoState {
+  initialized: boolean;
+  scriptLoaded: boolean;
+  currentMode: InitializationPattern | null;
+  consentGiven: boolean;
+  lastEventId: number;
+  loadingPromise: Promise<void> | null;
+}
+
+export interface MatomoStatus {
+  matomoLoaded: boolean;
+  paqLength: number;
+  paqType: 'array' | 'object' | 'undefined';
+  cookieCount: number;
+  cookies: string[];
+}
+
+export interface MatomoTracker {
+  getTrackerUrl(): string;
+  getSiteId(): number | string;
+  trackEvent(category: string, action: string, name?: string, value?: number): void;
+  trackPageView(title?: string): void;
+  trackSiteSearch(keyword: string, category?: string, count?: number): void;
+  trackGoal(goalId: number, value?: number): void;
+  trackLink(url: string, linkType: string): void;
+  trackDownload(url: string): void;
+  [key: string]: any; // Allow dynamic method calls
+}
+
+export interface MatomoDiagnostics {
+  config: MatomoConfig;
+  state: MatomoState;
+  status: MatomoStatus;
+  tracker: {
+    url: string;
+    siteId: number | string;
+  } | null;
+  userAgent: string;
+  timestamp: string;
+}
+
+export type InitializationPattern = 'cookie-consent' | 'anonymous' | 'immediate' | 'no-consent';
+export type TrackingMode = 'cookie' | 'anonymous';
+export type MatomoCommand = [string, ...any[]];
+export type LogLevel = 'log' | 'debug' | 'warn' | 'error';
+
+export interface InitializationOptions {
+  trackingMode?: boolean;
+  timeout?: number;
+  [key: string]: any;
+}
+
+export interface ModeSwitchOptions {
+  forgetConsent?: boolean;
+  deleteCookies?: boolean;
+  setDimension?: boolean;
+  [key: string]: any;
+}
+
+export interface EventData {
+  eventId: number;
+  category: string;
+  action: string;
+  name?: string;
+  value?: number;
+}
+
+export interface LogData {
+  message: string;
+  data?: any;
+  timestamp: string;
+}
+
+export type StateChangeHandler = (event: string, data: any, state: MatomoState & MatomoStatus) => void;
+export type EventListener<T = any> = (data: T) => void;
+
+// Global _paq interface
+declare global {
+  interface Window {
+    _paq: any;
+    _matomoManagerInstance?: MatomoManager;
+    Matomo?: {
+      getTracker(): MatomoTracker;
+    };
+    Piwik?: {
+      getTracker(): MatomoTracker;
+    };
+  }
+}
+
+// ================== MATOMO MANAGER INTERFACE ==================
+
+export interface IMatomoManager {
+  // Initialization methods
+  initialize(pattern?: InitializationPattern, options?: InitializationOptions): Promise<void>;
+  
+  // Mode switching and consent management
+  switchMode(mode: TrackingMode, options?: ModeSwitchOptions & { processQueue?: boolean }): Promise<void>;
+  giveConsent(options?: { processQueue?: boolean }): Promise<void>;
+  revokeConsent(): Promise<void>;
+  
+  // Tracking methods
+  trackEvent(category: string, action: string, name?: string, value?: number): number;
+  trackPageView(title?: string): void;
+  setCustomDimension(id: number, value: string): void;
+  
+  // State and status methods
+  getState(): MatomoState & MatomoStatus;
+  getStatus(): MatomoStatus;
+  isMatomoLoaded(): boolean;
+  getMatomoCookies(): string[];
+  deleteMatomoCookies(): Promise<void>;
+  
+  // Script loading
+  loadScript(): Promise<void>;
+  waitForLoad(timeout?: number): Promise<void>;
+  
+  // Queue management
+  getPreInitQueue(): MatomoCommand[];
+  getQueueStatus(): { queueLength: number; initialized: boolean; commands: MatomoCommand[] };
+  processPreInitQueue(): Promise<void>;
+  clearPreInitQueue(): number;
+  
+  // Utility and diagnostic methods
+  testConsentBehavior(): Promise<void>;
+  getDiagnostics(): MatomoDiagnostics;
+  inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] };
+  batch(commands: MatomoCommand[]): void;
+  reset(): Promise<void>;
+  
+  // Event system
+  on<T = any>(event: string, callback: EventListener<T>): void;
+  off<T = any>(event: string, callback: EventListener<T>): void;
+}
+
+// ================== MAIN CLASS ==================
+
+export class MatomoManager implements IMatomoManager {
+  private readonly config: Required<MatomoConfig>;
+  private state: MatomoState;
+  private readonly eventQueue: MatomoCommand[];
+  private readonly listeners: Map<string, EventListener[]>;
+  private readonly preInitQueue: MatomoCommand[] = [];
+  private originalPaqPush: Function | null = null;
+
+  constructor(config: MatomoConfig) {
+    this.config = {
+      debug: false,
+      customDimensions: {},
+      onStateChange: null,
+      logPrefix: '[MATOMO]',
+      scriptTimeout: 10000,
+      retryAttempts: 3,
+      ...config
+    };
+    
+    this.state = {
+      initialized: false,
+      scriptLoaded: false,
+      currentMode: null,
+      consentGiven: false,
+      lastEventId: 0,
+      loadingPromise: null
+    };
+    
+    this.eventQueue = [];
+    this.listeners = new Map();
+    
+    this.setupPaqInterception();
+    this.log('MatomoManager initialized', this.config);
+  }
+
+  // ================== LOGGING & DEBUGGING ==================
+
+  private log(message: string, data?: any): void {
+    if (!this.config.debug) return;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const fullMessage = `${this.config.logPrefix} [${timestamp}] ${message}`;
+    
+    if (data) {
+      console.log(fullMessage, data);
+    } else {
+      console.log(fullMessage);
+    }
+    
+    this.emit('log', { message, data, timestamp });
+  }
+
+  private setupPaqInterception(): void {
+    console.log('Setting up _paq interception');
+    if (typeof window === 'undefined') return;
+    
+    window._paq = window._paq || [];
+    
+    // Check for any existing tracking events and queue them
+    const existingEvents = window._paq.filter(cmd => this.isTrackingCommand(cmd));
+    if (existingEvents.length > 0) {
+      this.log(`🟡 Found ${existingEvents.length} existing tracking events, moving to queue`);
+      existingEvents.forEach(cmd => {
+        this.preInitQueue.push(cmd as MatomoCommand);
+      });
+      
+      // Remove tracking events from _paq, keep only config events
+      window._paq = window._paq.filter(cmd => !this.isTrackingCommand(cmd));
+      this.log(`📋 Cleaned _paq array: ${window._paq.length} config commands remaining`);
+    }
+    
+    // Store original push for later restoration
+    this.originalPaqPush = Array.prototype.push;
+    const self = this;
+    
+    window._paq.push = function(...args: MatomoCommand[]): number {
+      // Process each argument
+      const commandsToQueue: MatomoCommand[] = [];
+      const commandsToPush: MatomoCommand[] = [];
+      
+      args.forEach((arg, index) => {
+        if (Array.isArray(arg)) {
+          self.log(`_paq.push[${index}]: [${arg.map(item => 
+            typeof item === 'string' ? `"${item}"` : item
+          ).join(', ')}]`);
+        } else {
+          self.log(`_paq.push[${index}]: ${JSON.stringify(arg)}`);
+        }
+        
+        // Queue tracking events if not initialized yet
+        if (!self.state.initialized && self.isTrackingCommand(arg)) {
+          self.log(`🟡 QUEUING pre-init tracking command: ${JSON.stringify(arg)}`);
+          self.preInitQueue.push(arg as MatomoCommand);
+          commandsToQueue.push(arg as MatomoCommand);
+          self.emit('command-queued', arg);
+          // DO NOT add to commandsToPush - this prevents it from reaching _paq
+        } else {
+          // Either not a tracking command or we're initialized
+          commandsToPush.push(arg as MatomoCommand);
+        }
+      });
+      
+      // Only push non-queued commands to _paq
+      if (commandsToPush.length > 0) {
+        self.emit('paq-command', commandsToPush);
+        const result = self.originalPaqPush!.apply(this, commandsToPush);
+        self.log(`📋 Added ${commandsToPush.length} commands to _paq (length now: ${this.length})`);
+        return result;
+      }
+      
+      // If we only queued commands, don't modify _paq at all
+      if (commandsToQueue.length > 0) {
+        self.log(`📋 Queued ${commandsToQueue.length} commands, _paq unchanged (length: ${this.length})`);
+      }
+      
+      // Return current length (unchanged)
+      return this.length;
+    };
+  }
+
+  /**
+   * Check if a command is a tracking command that should be queued
+   */
+  private isTrackingCommand(command: any): boolean {
+    if (!Array.isArray(command) || command.length === 0) return false;
+    
+    const trackingCommands = [
+      'trackEvent',
+      'trackPageView',
+      'trackSiteSearch',
+      'trackGoal',
+      'trackLink',
+      'trackDownload'
+    ];
+    
+    return trackingCommands.includes(command[0]);
+  }
+
+
+
+  // ================== INITIALIZATION PATTERNS ==================
+
+  /**
+   * Initialize Matomo with different patterns
+   */
+  async initialize(pattern: InitializationPattern = 'cookie-consent', options: InitializationOptions = {}): Promise<void> {
+    if (this.state.initialized) {
+      this.log('Already initialized, skipping');
+      return;
+    }
+
+    // Prevent multiple simultaneous initializations
+    if (this.state.loadingPromise) {
+      this.log('Initialization already in progress, waiting...');
+      return this.state.loadingPromise;
+    }
+
+    this.state.loadingPromise = this.performInitialization(pattern, options);
+    
+    try {
+      await this.state.loadingPromise;
+    } finally {
+      this.state.loadingPromise = null;
+    }
+  }
+
+  private async performInitialization(pattern: InitializationPattern, options: InitializationOptions): Promise<void> {
+    this.log(`=== INITIALIZING MATOMO: ${pattern.toUpperCase()} ===`);
+    this.log(`📋 _paq array before init: ${window._paq.length} commands`);
+    this.log(`📋 Pre-init queue before init: ${this.preInitQueue.length} commands`);
+    
+    // Basic setup
+    this.log('Setting tracker URL and site ID');
+    window._paq.push(['setTrackerUrl', this.config.trackerUrl]);
+    window._paq.push(['setSiteId', this.config.siteId]);
+    
+    // Apply pattern-specific configuration
+    await this.applyInitializationPattern(pattern, options);
+    
+    // Common setup
+    this.log('Enabling standard features');
+    window._paq.push(['enableJSErrorTracking']);
+    window._paq.push(['enableLinkTracking']);
+    
+    // Set custom dimensions
+    for (const [id, value] of Object.entries(this.config.customDimensions)) {
+      this.log(`Setting custom dimension ${id}: ${value}`);
+      window._paq.push(['setCustomDimension', parseInt(id), value]);
+    }
+    
+    // Mark as initialized BEFORE adding trackPageView to prevent it from being queued
+    this.state.initialized = true;
+    this.state.currentMode = pattern;
+    
+    // Initial page view (now that we're initialized, this won't be queued)
+    this.log('Sending initial page view');
+    window._paq.push(['trackPageView']);
+    
+    this.log(`📋 _paq array before script load: ${window._paq.length} commands`);
+    
+    // Load script
+    await this.loadScript();
+    
+    this.log(`=== INITIALIZATION COMPLETE: ${pattern} ===`);
+    this.log(`📋 _paq array after init: ${window._paq.length} commands`);
+    this.log(`📋 Pre-init queue contains ${this.preInitQueue.length} commands (use processPreInitQueue() to flush)`);
+    
+    this.emit('initialized', { pattern, options });
+  }
+
+  private async applyInitializationPattern(pattern: InitializationPattern, options: InitializationOptions): Promise<void> {
+    switch (pattern) {
+      case 'cookie-consent':
+        await this.initializeCookieConsent(options);
+        break;
+      case 'anonymous':
+        await this.initializeAnonymous(options);
+        break;
+      case 'immediate':
+        await this.initializeImmediate(options);
+        break;
+      case 'no-consent':
+        await this.initializeNoConsent(options);
+        break;
+      default:
+        throw new Error(`Unknown initialization pattern: ${pattern}`);
+    }
+  }
+
+  private async initializeCookieConsent(options: InitializationOptions = {}): Promise<void> {
+    this.log('Pattern: Cookie consent required');
+    window._paq.push(['requireCookieConsent']);
+    this.state.consentGiven = false;
+  }
+
+  private async initializeAnonymous(options: InitializationOptions = {}): Promise<void> {
+    this.log('Pattern: Anonymous mode (no cookies)');
+    window._paq.push(['disableCookies']);
+    window._paq.push(['disableBrowserFeatureDetection']);
+    if (options.trackingMode !== false) {
+      window._paq.push(['setCustomDimension', 1, 'anon']);
+    }
+  }
+
+  private async initializeImmediate(options: InitializationOptions = {}): Promise<void> {
+    this.log('Pattern: Immediate consent (cookies enabled)');
+    window._paq.push(['requireCookieConsent']);
+    window._paq.push(['rememberConsentGiven']);
+    if (options.trackingMode !== false) {
+      window._paq.push(['setCustomDimension', 1, 'cookie']);
+    }
+    this.state.consentGiven = true;
+  }
+
+  private async initializeNoConsent(options: InitializationOptions = {}): Promise<void> {
+    this.log('Pattern: No consent management (cookies auto-enabled)');
+    // No consent calls - Matomo will create cookies automatically
+  }
+
+  // ================== MODE SWITCHING ==================
+
+  /**
+   * Switch between tracking modes
+   */
+  async switchMode(mode: TrackingMode, options: ModeSwitchOptions & { processQueue?: boolean } = {}): Promise<void> {
+    if (!this.state.initialized) {
+      throw new Error('MatomoManager must be initialized before switching modes');
+    }
+
+    this.log(`=== SWITCHING TO ${mode.toUpperCase()} MODE ===`);
+    
+    const wasMatomoLoaded = this.isMatomoLoaded();
+    this.log(`Matomo loaded: ${wasMatomoLoaded}`);
+    
+    try {
+      switch (mode) {
+        case 'cookie':
+          await this.switchToCookieMode(wasMatomoLoaded, options);
+          break;
+        case 'anonymous':
+          await this.switchToAnonymousMode(wasMatomoLoaded, options);
+          break;
+        default:
+          throw new Error(`Unknown mode: ${mode}`);
+      }
+      
+      this.state.currentMode = mode as InitializationPattern;
+      this.log(`=== MODE SWITCH COMPLETE: ${mode} ===`);
+      
+      // Auto-process queue when switching modes (final decision)
+      if (options.processQueue !== false && this.preInitQueue.length > 0) {
+        this.log(`🔄 Auto-processing queue after mode switch to ${mode}`);
+        await this.flushPreInitQueue();
+      }
+      
+      this.emit('mode-switched', { mode, options, wasMatomoLoaded });
+    } catch (error) {
+      this.log(`Error switching to ${mode} mode:`, error);
+      this.emit('mode-switch-error', { mode, options, error });
+      throw error;
+    }
+  }
+
+  private async switchToCookieMode(wasMatomoLoaded: boolean, options: ModeSwitchOptions): Promise<void> {
+    if (!wasMatomoLoaded) {
+      this.log('Matomo not loaded - queuing cookie mode setup');
+      window._paq.push(['requireCookieConsent']);
+    } else {
+      this.log('Matomo loaded - applying cookie mode immediately');
+      window._paq.push(['requireCookieConsent']);
+    }
+    
+    window._paq.push(['rememberConsentGiven']);
+    window._paq.push(['enableBrowserFeatureDetection']);
+    
+    if (options.setDimension !== false) {
+      window._paq.push(['setCustomDimension', 1, 'cookie']);
+    }
+    
+    window._paq.push(['trackEvent', 'mode_switch', 'cookie_mode', 'enabled']);
+    this.state.consentGiven = true;
+  }
+
+  private async switchToAnonymousMode(wasMatomoLoaded: boolean, options: ModeSwitchOptions): Promise<void> {
+    if (options.forgetConsent && wasMatomoLoaded) {
+      this.log('WARNING: Using forgetCookieConsentGiven on loaded Matomo may break tracking');
+      window._paq.push(['forgetCookieConsentGiven']);
+      this.state.consentGiven = false;
+    }
+    
+    if (options.deleteCookies !== false) {
+      await this.deleteMatomoCookies();
+    }
+    
+    window._paq.push(['disableCookies']);
+    window._paq.push(['disableBrowserFeatureDetection']);
+    
+    if (options.setDimension !== false) {
+      window._paq.push(['setCustomDimension', 1, 'anon']);
+    }
+    
+    window._paq.push(['trackEvent', 'mode_switch', 'anonymous_mode', 'enabled']);
+  }
+
+  // ================== CONSENT MANAGEMENT ==================
+
+  async giveConsent(options: { processQueue?: boolean } = {}): Promise<void> {
+    this.log('=== GIVING CONSENT ===');
+    window._paq.push(['rememberConsentGiven']);
+    this.state.consentGiven = true;
+    this.emit('consent-given');
+
+    // Automatically process queue when giving consent (final decision)
+    if (options.processQueue !== false && this.preInitQueue.length > 0) {
+      this.log('🔄 Auto-processing queue after consent given');
+      await this.flushPreInitQueue();
+    }
+  }
+
+  async revokeConsent(): Promise<void> {
+    this.log('=== REVOKING CONSENT ===');
+    this.log('WARNING: This will stop tracking until consent is given again');
+    window._paq.push(['forgetCookieConsentGiven']);
+    this.state.consentGiven = false;
+    this.emit('consent-revoked');
+
+    // Don't process queue when revoking - user doesn't want tracking
+    if (this.preInitQueue.length > 0) {
+      this.log(`📋 Queue contains ${this.preInitQueue.length} commands (not processed due to consent revocation)`);
+    }
+  }
+
+  // ================== TRACKING METHODS ==================
+
+  trackEvent(category: string, action: string, name?: string, value?: number): number {
+    const eventId = ++this.state.lastEventId;
+    this.log(`Tracking event ${eventId}: ${category} / ${action} / ${name} / ${value}`);
+    
+    const event: MatomoCommand = ['trackEvent', category, action];
+    if (name !== undefined) event.push(name);
+    if (value !== undefined) event.push(value);
+    
+    window._paq.push(event);
+    this.emit('event-tracked', { eventId, category, action, name, value });
+    
+    return eventId;
+  }
+
+  trackPageView(title?: string): void {
+    this.log(`Tracking page view: ${title || 'default'}`);
+    const pageView: MatomoCommand = ['trackPageView'];
+    if (title) pageView.push(title);
+    
+    window._paq.push(pageView);
+    this.emit('page-view-tracked', { title });
+  }
+
+  setCustomDimension(id: number, value: string): void {
+    this.log(`Setting custom dimension ${id}: ${value}`);
+    window._paq.push(['setCustomDimension', id, value]);
+    this.emit('custom-dimension-set', { id, value });
+  }
+
+  // ================== STATE MANAGEMENT ==================
+
+  getState(): MatomoState & MatomoStatus {
+    return {
+      ...this.state,
+      ...this.getStatus()
+    };
+  }
+
+  getStatus(): MatomoStatus {
+    return {
+      matomoLoaded: this.isMatomoLoaded(),
+      paqLength: window._paq ? window._paq.length : 0,
+      paqType: window._paq ? (Array.isArray(window._paq) ? 'array' : 'object') : 'undefined',
+      cookieCount: this.getMatomoCookies().length,
+      cookies: this.getMatomoCookies()
+    };
+  }
+
+  isMatomoLoaded(): boolean {
+    return typeof window !== 'undefined' && 
+           (typeof window.Matomo !== 'undefined' || typeof window.Piwik !== 'undefined');
+  }
+
+  getMatomoCookies(): string[] {
+    if (typeof document === 'undefined') return [];
+    
+    try {
+      return document.cookie
+        .split(';')
+        .map(cookie => cookie.trim())
+        .filter(cookie => cookie.startsWith('_pk_') || cookie.startsWith('mtm_'));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async deleteMatomoCookies(): Promise<void> {
+    if (typeof document === 'undefined') return;
+    
+    this.log('Deleting Matomo cookies');
+    const cookies = document.cookie.split(';');
+    
+    const deletionPromises: Promise<void>[] = [];
+    
+    for (const cookie of cookies) {
+      const eqPos = cookie.indexOf('=');
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+      
+      if (name.startsWith('_pk_') || name.startsWith('mtm_')) {
+        // Delete for multiple domain/path combinations
+        const deletions = [
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`,
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`,
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`
+        ];
+        
+        deletions.forEach(deletion => {
+          document.cookie = deletion;
+        });
+        
+        this.log(`Deleted cookie: ${name}`);
+        
+        // Add a small delay to ensure cookie deletion is processed
+        deletionPromises.push(new Promise(resolve => setTimeout(resolve, 10)));
+      }
+    }
+    
+    await Promise.all(deletionPromises);
+  }
+
+  // ================== SCRIPT LOADING ==================
+
+  async loadScript(): Promise<void> {
+    if (this.state.scriptLoaded) {
+      this.log('Script already loaded');
+      return;
+    }
+
+    if (typeof document === 'undefined') {
+      throw new Error('Cannot load script: document is not available');
+    }
+
+    const existingScript = document.querySelector('script[src*="matomo.js"]');
+    if (existingScript) {
+      this.log('Script element already exists');
+      this.state.scriptLoaded = true;
+      return;
+    }
+
+    return this.loadScriptWithRetry();
+  }
+
+  private async loadScriptWithRetry(attempt: number = 1): Promise<void> {
+    try {
+      await this.doLoadScript();
+    } catch (error) {
+      if (attempt < this.config.retryAttempts) {
+        this.log(`Script loading failed (attempt ${attempt}), retrying...`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        return this.loadScriptWithRetry(attempt + 1);
+      } else {
+        this.log('Script loading failed after all retries', error);
+        throw error;
+      }
+    }
+  }
+
+  private async doLoadScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.log('Loading Matomo script');
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = this.config.trackerUrl.replace('/matomo.php', '/matomo.js');
+      
+      const timeout = setTimeout(() => {
+        script.remove();
+        reject(new Error(`Script loading timeout after ${this.config.scriptTimeout}ms`));
+      }, this.config.scriptTimeout);
+      
+      script.onload = () => {
+        clearTimeout(timeout);
+        this.log('Matomo script loaded successfully');
+        this.state.scriptLoaded = true;
+        this.emit('script-loaded');
+        resolve();
+      };
+      
+      script.onerror = (error) => {
+        clearTimeout(timeout);
+        script.remove();
+        this.log('Failed to load Matomo script', error);
+        this.emit('script-error', error);
+        reject(new Error('Failed to load Matomo script'));
+      };
+      
+      document.head.appendChild(script);
+    });
+  }
+
+  // ================== RESET & CLEANUP ==================
+
+  async reset(): Promise<void> {
+    this.log('=== RESETTING MATOMO ===');
+    
+    // Delete cookies
+    await this.deleteMatomoCookies();
+    
+    // Clear pre-init queue
+    const queuedCommands = this.clearPreInitQueue();
+    
+    // Clear _paq array
+    if (window._paq && Array.isArray(window._paq)) {
+      window._paq.length = 0;
+      this.log('_paq array cleared');
+    }
+    
+    // Remove scripts
+    if (typeof document !== 'undefined') {
+      const scripts = document.querySelectorAll('script[src*="matomo.js"]');
+      scripts.forEach(script => {
+        script.remove();
+        this.log('Matomo script removed');
+      });
+    }
+    
+    // Reset state
+    this.state = {
+      initialized: false,
+      scriptLoaded: false,
+      currentMode: null,
+      consentGiven: false,
+      lastEventId: 0,
+      loadingPromise: null
+    };
+    
+    this.log(`=== RESET COMPLETE (cleared ${queuedCommands} queued commands) ===`);
+    this.emit('reset');
+  }
+
+  // ================== EVENT SYSTEM ==================
+
+  on<T = any>(event: string, callback: EventListener<T>): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)!.push(callback);
+  }
+
+  off<T = any>(event: string, callback: EventListener<T>): void {
+    if (this.listeners.has(event)) {
+      const callbacks = this.listeners.get(event)!;
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+
+  private emit(event: string, data: any = null): void {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event)!.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in ${event} listener:`, error);
+        }
+      });
+    }
+    
+    // Call global state change handler if configured
+    if (this.config.onStateChange && 
+        ['initialized', 'mode-switched', 'consent-given', 'consent-revoked'].includes(event)) {
+      try {
+        this.config.onStateChange(event, data, this.getState());
+      } catch (error) {
+        console.error('Error in onStateChange handler:', error);
+      }
+    }
+  }
+
+  // ================== UTILITY METHODS ==================
+
+  /**
+   * Test a specific consent behavior
+   */
+  async testConsentBehavior(): Promise<void> {
+    this.log('=== TESTING CONSENT BEHAVIOR ===');
+    
+    const cookiesBefore = this.getMatomoCookies();
+    this.log('Cookies before requireCookieConsent:', cookiesBefore);
+    
+    window._paq.push(['requireCookieConsent']);
+    
+    // Check immediately and after delay
+    const cookiesImmediate = this.getMatomoCookies();
+    this.log('Cookies immediately after requireCookieConsent:', cookiesImmediate);
+    
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        const cookiesAfter = this.getMatomoCookies();
+        this.log('Cookies 2 seconds after requireCookieConsent:', cookiesAfter);
+        
+        if (cookiesBefore.length > 0 && cookiesAfter.length === 0) {
+          this.log('🚨 CONFIRMED: requireCookieConsent DELETED existing cookies!');
+        } else if (cookiesBefore.length === cookiesAfter.length) {
+          this.log('✅ requireCookieConsent did NOT delete existing cookies');
+        }
+        
+        resolve();
+      }, 2000);
+    });
+  }
+
+  /**
+   * Get detailed diagnostic information
+   */
+  getDiagnostics(): MatomoDiagnostics {
+    const state = this.getState();
+    let tracker: { url: string; siteId: number | string } | null = null;
+    
+    if (this.isMatomoLoaded() && window.Matomo) {
+      try {
+        const matomoTracker = window.Matomo.getTracker();
+        tracker = {
+          url: matomoTracker.getTrackerUrl(),
+          siteId: matomoTracker.getSiteId(),
+        };
+      } catch (error) {
+        this.log('Error getting tracker info:', error);
+      }
+    }
+    
+    return {
+      config: this.config,
+      state,
+      status: this.getStatus(),
+      tracker,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 100) : 'N/A',
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Get current pre-initialization queue
+   */
+  getPreInitQueue(): MatomoCommand[] {
+    return [...this.preInitQueue];
+  }
+
+  /**
+   * Get queue status
+   */
+  getQueueStatus(): { 
+    queueLength: number; 
+    initialized: boolean; 
+    commands: MatomoCommand[]; 
+  } {
+    return {
+      queueLength: this.preInitQueue.length,
+      initialized: this.state.initialized,
+      commands: [...this.preInitQueue]
+    };
+  }
+
+  /**
+   * Process the pre-init queue manually
+   * Call this when you've made a final decision about consent/mode
+   */
+  async processPreInitQueue(): Promise<void> {
+    if (!this.state.initialized) {
+      throw new Error('Cannot process queue before initialization');
+    }
+    return this.flushPreInitQueue();
+  }
+
+  /**
+   * Internal method to actually flush the queue
+   */
+  private async flushPreInitQueue(): Promise<void> {
+    if (this.preInitQueue.length === 0) {
+      this.log('No pre-init commands to process');
+      return;
+    }
+
+    this.log(`🔄 PROCESSING ${this.preInitQueue.length} QUEUED COMMANDS`);
+    this.log(`📋 _paq array length before processing: ${window._paq.length}`);
+    
+    // Wait a short moment for Matomo to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Process each queued command
+    for (const [index, command] of this.preInitQueue.entries()) {
+      this.log(`📤 Processing queued command ${index + 1}/${this.preInitQueue.length}: ${JSON.stringify(command)}`);
+      
+      // Check current mode and consent state before processing
+      const currentMode = this.state.currentMode;
+      const consentGiven = this.state.consentGiven;
+      
+      // Skip tracking events if in consent-required mode without consent
+      if (this.isTrackingCommand(command) && 
+          (currentMode === 'cookie-consent' && !consentGiven)) {
+        this.log(`🚫 Skipping tracking command in ${currentMode} mode without consent: ${JSON.stringify(command)}`);
+        continue;
+      }
+      
+      // Always use _paq for proper consent handling - don't bypass Matomo's consent system
+      this.log(`📋 Adding command to _paq for proper consent handling: ${JSON.stringify(command)}`);
+      this.originalPaqPush?.call(window._paq, command);
+      
+      this.log(`📋 _paq length after processing command: ${window._paq.length}`);
+      
+      // Small delay between commands to avoid overwhelming
+      if (index < this.preInitQueue.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+    
+    this.log(`✅ PROCESSED ALL ${this.preInitQueue.length} QUEUED COMMANDS`);
+    this.log(`📋 Final _paq array length: ${window._paq.length}`);
+    this.emit('pre-init-queue-processed', { 
+      commandsProcessed: this.preInitQueue.length,
+      commands: [...this.preInitQueue] 
+    });
+    
+    // Clear the queue
+    this.preInitQueue.length = 0;
+  }
+
+  /**
+   * Clear the pre-init queue without processing
+   */
+  clearPreInitQueue(): number {
+    const cleared = this.preInitQueue.length;
+    this.preInitQueue.length = 0;
+    this.log(`🗑️ Cleared ${cleared} queued commands`);
+    this.emit('pre-init-queue-cleared', { commandsCleared: cleared });
+    return cleared;
+  }
+
+  /**
+   * Debug method to inspect current _paq contents
+   */
+  inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] } {
+    const contents = [...(window._paq || [])];
+    const trackingCommands = contents.filter(cmd => this.isTrackingCommand(cmd));
+    
+    this.log(`🔍 _paq inspection: ${contents.length} total, ${trackingCommands.length} tracking commands`);
+    contents.forEach((cmd, i) => {
+      const isTracking = this.isTrackingCommand(cmd);
+      this.log(`  [${i}] ${isTracking ? '📊' : '⚙️'} ${JSON.stringify(cmd)}`);
+    });
+    
+    return {
+      length: contents.length,
+      contents,
+      trackingCommands
+    };
+  }
+
+  /**
+   * Wait for Matomo to be loaded
+   */
+  async waitForLoad(timeout: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      const checkLoaded = () => {
+        if (this.isMatomoLoaded()) {
+          resolve();
+        } else if (Date.now() - startTime > timeout) {
+          reject(new Error(`Matomo not loaded after ${timeout}ms`));
+        } else {
+          setTimeout(checkLoaded, 100);
+        }
+      };
+      
+      checkLoaded();
+    });
+  }
+
+  /**
+   * Batch execute multiple commands
+   */
+  batch(commands: MatomoCommand[]): void {
+    this.log(`Executing batch of ${commands.length} commands`);
+    commands.forEach(command => {
+      window._paq.push(command);
+    });
+    this.emit('batch-executed', { commands });
+  }
+}
+
+// Default export for convenience
+export default MatomoManager;

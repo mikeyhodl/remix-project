@@ -10,30 +10,47 @@ import { Registry } from '@remix-project/remix-lib'
 import { Storage } from '@remix-project/remix-lib'
 
 import { createRoot } from 'react-dom/client'
+import { MatomoConfig, MatomoManager } from './app/matomo/MatomoManager'
 
-; (async function () {
-  try {
-    const configStorage = new Storage('config-v0.8:')
-    const config = new Config(configStorage)
-    Registry.getInstance().put({ api: config, name: 'config' })
-  } catch (e) { }
-  const theme = new ThemeModule()
-  theme.initTheme()
-  const locale = new LocaleModule()
-  const settingsConfig = { themes: theme.getThemes(), locales: locale.getLocales() }
+  ; (async function () {
+    const matomoConfig: MatomoConfig = {
+      trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
+      siteId: 5,
+      debug: true,
 
-  Registry.getInstance().put({ api: settingsConfig, name: 'settingsConfig' })
+      scriptTimeout: 10000,
 
-  const container = document.getElementById('root');
-  const root = createRoot(container)
-  if (container) {
-    if (window.location.hash.includes('source=github')) {
-      root.render(
-        <GitHubPopupCallback />
-      )
-    } else {
-      root.render(
-        <Preload root={root} />)
+      onStateChange: (event, data, state) => {
+        console.log(`STATE CHANGE: ${event}`, data);
+      }
     }
-  }
-})()
+    const matomoManager = new MatomoManager(matomoConfig)
+    window._matomoManagerInstance = matomoManager; 
+    ///matomoManager.initialize('anonymous')
+
+
+    try {
+      const configStorage = new Storage('config-v0.8:')
+      const config = new Config(configStorage)
+      Registry.getInstance().put({ api: config, name: 'config' })
+    } catch (e) { }
+    const theme = new ThemeModule()
+    theme.initTheme()
+    const locale = new LocaleModule()
+    const settingsConfig = { themes: theme.getThemes(), locales: locale.getLocales() }
+
+    Registry.getInstance().put({ api: settingsConfig, name: 'settingsConfig' })
+
+    const container = document.getElementById('root');
+    const root = createRoot(container)
+    if (container) {
+      if (window.location.hash.includes('source=github')) {
+        root.render(
+          <GitHubPopupCallback />
+        )
+      } else {
+        root.render(
+          <Preload root={root} />)
+      }
+    }
+  })()
