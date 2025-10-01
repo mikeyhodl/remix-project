@@ -1,11 +1,10 @@
 import { CustomTooltip } from '@remix-ui/helper'
-import React, { Fragment, Ref } from 'react'
+import React, { Fragment, Ref, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
 
-import { saveAs } from 'file-saver'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 export const Markup = React.forwardRef(
   (
@@ -66,6 +65,7 @@ interface UmlDownloadProps {
 }
 
 export default function UmlDownload(props: UmlDownloadProps) {
+  const { track } = useContext(AppContext)
   return (
     <Fragment>
       <CustomTooltip
@@ -78,7 +78,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
           <Dropdown.Menu as={UmlCustomMenu} className="form-select">
             <Dropdown.Item
               onClick={() => {
-                _paq.push(['trackEvent', 'solidityumlgen', 'umlpngdownload', 'downloadAsPng'])
+                track?.('solidityumlgen', 'umlpngdownload', 'downloadAsPng')
                 props.download('png')
               }}
               data-id="umlPngDownload"
@@ -100,7 +100,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
             <Dropdown.Divider />
             <Dropdown.Item
               onClick={() => {
-                _paq.push(['trackEvent', 'solUmlGen', 'umlpdfdownload', 'downloadAsPdf'])
+                track?.('solUmlGen', 'umlpdfdownload', 'downloadAsPdf')
                 props.download('pdf')
               }}
               data-id="umlPdfDownload"
