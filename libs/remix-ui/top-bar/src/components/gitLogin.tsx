@@ -3,6 +3,7 @@ import React, { useContext, useCallback } from 'react'
 import { Button, ButtonGroup, Dropdown } from 'react-bootstrap'
 import { CustomTopbarMenu } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 
 
@@ -20,7 +21,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
   loginWithGitHub
 }) => {
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   // Get the GitHub user state from app context
   const gitHubUser = appContext?.appState?.gitHubUser

@@ -6,11 +6,12 @@ import '../css/file-explorer-context-menu.css'
 import { customAction } from '@remixproject/plugin-api'
 import UploadFile from './upload-file'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const {
     actions,
     createNewFile,

@@ -40,3 +40,5 @@ function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
     </div>
   )
 }
+
+export { HomeTabFileElectron }

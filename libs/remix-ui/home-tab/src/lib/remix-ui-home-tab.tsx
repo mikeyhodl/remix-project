@@ -6,6 +6,7 @@ import HomeTabRecentWorkspaces from './components/homeTabRecentWorkspaces'
 import HomeTabScamAlert from './components/homeTabScamAlert'
 import HomeTabFeaturedPlugins from './components/homeTabFeaturedPlugins'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { HomeTabFileElectron } from './components/homeTabFileElectron'
 import HomeTabUpdates from './components/homeTabUpdates'
 import { FormattedMessage } from 'react-intl'
@@ -22,7 +23,7 @@ export interface RemixUiHomeTabProps {
 export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const { plugin } = props
 
   const [state, setState] = useState<{

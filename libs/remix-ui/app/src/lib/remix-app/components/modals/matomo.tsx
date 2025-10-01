@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { AppContext } from '../../context/context'
 import { useDialogDispatchers } from '../../context/provider'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface MatomoDialogProps {
   managePreferencesFn: () => void
@@ -9,7 +10,8 @@ interface MatomoDialogProps {
 }
 
 const MatomoDialog = (props: MatomoDialogProps) => {
-  const { settings, showMatomo, track } = useContext(AppContext)
+  const { settings, showMatomo } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const { modal } = useDialogDispatchers()
   const [visible, setVisible] = useState<boolean>(props.hide)
 

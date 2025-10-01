@@ -5,7 +5,19 @@ import { ThemeContext, themes } from '../themeContext'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
-import * as releaseDetails from './../../../../../../releaseDetails.json'
+// import * as releaseDetails from './../../../../../../releaseDetails.json'
+
+// Temporary fallback for missing releaseDetails.json
+const releaseDetails = {
+  version: 'Latest',
+  title: 'Release',
+  highlight1: 'New features and improvements',
+  highlight2: 'Bug fixes and stability',
+  highlight3: 'Enhanced user experience',
+  highlight4: 'Better performance',
+  moreLink: '#',
+  more: 'Learn more'
+}
 
 export type HomeTabFeaturedProps = {
   plugin: any

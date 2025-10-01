@@ -19,6 +19,7 @@ import { BasicTitle, calculateWarningStateEntries } from './components/BasicTitl
 import { Nav, TabContainer } from 'react-bootstrap'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 /* eslint-disable-next-line */
 export interface RemixUiStaticAnalyserProps {
@@ -33,7 +34,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
   const [runner] = useState(new CodeAnalysis())
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   const preProcessModules = (arr: any) => {
     return arr.map((Item, i) => {

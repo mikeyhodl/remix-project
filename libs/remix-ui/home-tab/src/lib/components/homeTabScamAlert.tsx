@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import React, { useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 
 function HomeTabScamAlert() {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   return (
     <div className="" id="hTScamAlertSection">
       <label className="ps-2 text-danger" style={{ fontSize: '1.2rem' }}>

@@ -13,6 +13,7 @@ import { copyFile, moveFileIsAllowed, moveFilesIsAllowed, moveFolderIsAllowed, m
 import { FlatTree } from './flat-tree'
 import { FileSystemContext } from '../contexts'
 import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export const FileExplorer = (props: FileExplorerProps) => {
   const intl = useIntl()
@@ -48,7 +49,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
 
   const { plugin } = useContext(FileSystemContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [filesSelected, setFilesSelected] = useState<string[]>([])
   const feWindow = (window as any)
 

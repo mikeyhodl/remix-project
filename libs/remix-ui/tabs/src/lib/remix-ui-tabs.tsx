@@ -7,6 +7,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import './remix-ui-tabs.css'
 import { values } from 'lodash'
 import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { desktopConnectionType } from '@remix-api'
 import { CompileDropdown, RunScriptDropdown } from '@remix-ui/tabs'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
@@ -84,7 +85,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const tabs = useRef(props.tabs)
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   const compileSeq = useRef(0)
   const compileWatchdog = useRef<number | null>(null)

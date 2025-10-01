@@ -6,6 +6,7 @@ import { ThemeContext } from '../themeContext'
 import WorkspaceTemplate from './workspaceTemplate'
 import 'react-multi-carousel/lib/styles.css'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { Plugin } from "@remixproject/engine";
 import { CustomRemixApi } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
@@ -72,7 +73,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
   const platform = useContext(platformContext)
   const themeFilter = useContext(ThemeContext)
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const intl = useIntl()
   const carouselRef = useRef<any>({})
   const carouselRefDiv = useRef(null)

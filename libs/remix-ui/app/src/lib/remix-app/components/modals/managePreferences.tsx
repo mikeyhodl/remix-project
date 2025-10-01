@@ -3,6 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { useDialogDispatchers } from '../../context/provider'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { AppContext } from '../../context/context'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 const ManagePreferencesSwitcher = (prop: {
   setParentState: (state: any) => void
@@ -87,7 +88,8 @@ const ManagePreferencesSwitcher = (prop: {
 
 const ManagePreferencesDialog = (props) => {
   const { modal } = useDialogDispatchers()
-  const { settings, track } = useContext(AppContext)
+  const { settings } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const [visible, setVisible] = useState<boolean>(true)
   const switcherState = useRef<Record<string, any>>(null)
 

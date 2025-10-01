@@ -15,6 +15,7 @@ import { contextMenuActions } from './utils'
 import FileExplorerContextMenu from './components/file-explorer-context-menu'
 import { customAction } from '@remixproject/plugin-api'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { ElectronMenu } from './components/electron-menu'
 import { ElectronWorkspaceName } from './components/electron-workspace-name'
 import { branch } from '@remix-api'
@@ -52,7 +53,7 @@ export function Workspace() {
   const [canPaste, setCanPaste] = useState(false)
 
   const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   const [state, setState] = useState<WorkSpaceState>({
     ctrlKey: false,
