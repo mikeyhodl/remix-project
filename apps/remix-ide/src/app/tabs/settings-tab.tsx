@@ -7,11 +7,7 @@ import { Registry } from '@remix-project/remix-lib'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { InitializationPattern, TrackingMode } from '../matomo/MatomoManager'
 
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
+// Window interface extension removed - use window._matomoManagerInstance instead of direct _paq access
 
 const profile = {
   name: 'settings',

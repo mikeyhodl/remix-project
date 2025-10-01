@@ -5,8 +5,8 @@ import { fileSystem } from "../fileSystem"
 // Helper function to track events using MatomoManager instance
 function track(category: string, action: string, name?: string) {
   try {
-    if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
-      (window as any)._matomoManagerInstance.trackEvent(category, action, name)
+    if (typeof window !== 'undefined' && window._matomoManagerInstance) {
+      window._matomoManagerInstance.trackEvent(category, action, name)
     }
   } catch (error) {
     // Silent fail for tracking
