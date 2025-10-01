@@ -424,11 +424,11 @@ export class GetDeployedContractsHandler extends BaseToolHandler {
       // TODO: Get deployed contracts from Remix storage/state
       const mockDeployedContracts = [
         {
-          name: 'MyToken',
-          address: '0x' + Math.random().toString(16).substr(2, 40),
-          network: args.network || 'local',
-          deployedAt: new Date().toISOString(),
-          transactionHash: '0x' + Math.random().toString(16).substr(2, 64)
+          name: '',
+          address: '0x' ,
+          network:  '',
+          deployedAt: '',
+          transactionHash: '0x'
         }
       ];
 

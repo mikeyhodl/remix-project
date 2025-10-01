@@ -24,7 +24,7 @@ const profile = {
     'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel',
     'addMCPServer', 'removeMCPServer', 'getMCPConnectionStatus', 'getMCPResources', 'getMCPTools', 'executeMCPTool',
     'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers',
-    'loadMCPServersFromSettings'
+    'loadMCPServersFromSettings', 'clearCaches'
   ],
   events: [],
   icon: 'assets/img/remix-logo-blue.png',
@@ -115,9 +115,13 @@ export class RemixAIPlugin extends Plugin {
     this.setAssistantProvider(this.assistantProvider) // propagate the provider to the remote inferencer
     this.aiIsActivated = true
 
+    this.on('blockchain', 'transactionExecuted', async () => {
+      this.clearCaches()
+    })
+    
+
     // initialize the remix MCP server 
     this.remixMCPServer = await createRemixMCPServer(this)
-    console.log(this)
     return true
   }
 
@@ -707,6 +711,13 @@ export class RemixAIPlugin extends Plugin {
   getIMCPServers(): IMCPServer[] {
     console.log(`[RemixAI Plugin] Getting MCP servers list (${this.mcpServers.length} servers)`);
     return this.mcpServers;
+  }
+
+  clearCaches(){
+     if (this.mcpInferencer){
+      this.mcpInferencer.resetResourceCache()
+      console.log(`[RemixAI Plugin] clearing mcp inference resource cache `)
+     }
   }
 
   // private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {

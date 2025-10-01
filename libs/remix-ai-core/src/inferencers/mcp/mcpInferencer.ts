@@ -395,6 +395,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     this.resourceCache.clear();
   }
 
+  async resetResourceCache(){
+    this.resourceCache.clear()
+  }
+
   async addMCPServer(server: IMCPServer): Promise<void> {
     console.log(`[MCP Inferencer] Adding MCP server: ${server.name}`);
     if (this.mcpClients.has(server.name)) {
@@ -579,6 +583,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                 this.resourceCache.delete(resource.uri);
               }, this.cacheTimeout);
             }
+          } else {
+            console.log('using cached resource content for ', resource.uri, content)
           }
 
           if (content?.text) {
