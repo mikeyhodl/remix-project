@@ -5,9 +5,7 @@ import * as packageJson from '../../../../../package.json'
 import { RemixUiSettings } from '@remix-ui/settings' //eslint-disable-line
 import { Registry } from '@remix-project/remix-lib'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { InitializationPattern, TrackingMode } from '../matomo/MatomoManager'
-
-// Window interface extension removed - use window._matomoManagerInstance instead of direct _paq access
+import { InitializationPattern, TrackingMode, MatomoState, CustomRemixApi } from '@remix-api'
 
 const profile = {
   name: 'settings',
@@ -29,6 +27,14 @@ const profile = {
 export default class SettingsTab extends ViewPlugin {
   config: any = {}
   editor: any
+  
+  // Type-safe method for Matomo plugin calls
+  private async callMatomo<K extends keyof CustomRemixApi['matomo']['methods']>(
+    method: K, 
+    ...args: Parameters<CustomRemixApi['matomo']['methods'][K]>
+  ): Promise<ReturnType<CustomRemixApi['matomo']['methods'][K]>> {
+    return await (this as any).call('matomo', method, ...args)
+  }
   private _deps: {
     themeModule: any
   }
@@ -115,7 +121,7 @@ export default class SettingsTab extends ViewPlugin {
     }
   }
 
-  updateMatomoPerfAnalyticsChoice(isChecked) {
+  async updateMatomoPerfAnalyticsChoice(isChecked) {
     console.log('[Matomo][settings] updateMatomoPerfAnalyticsChoice called with', isChecked)
     this.config.set('settings/matomo-perf-analytics', isChecked)
     // Timestamp consent indicator (we treat enabling perf as granting cookie consent; disabling as revoking)
@@ -123,13 +129,13 @@ export default class SettingsTab extends ViewPlugin {
     this.useMatomoPerfAnalytics = isChecked
 
     const mode: TrackingMode = isChecked ? 'cookie' : 'anonymous'
-    if (window._matomoManagerInstance.getState().initialized == false) {
+    const matomoState = await this.callMatomo('getState')
+    if (matomoState.initialized == false) {
       const pattern: InitializationPattern = isChecked ? "immediate" : "anonymous"
-      window._matomoManagerInstance.initialize(pattern).then(() => {
-        console.log('[Matomo][settings] Matomo initialized with mode', pattern)
-      })
+      await this.callMatomo('initialize', pattern)
+      console.log('[Matomo][settings] Matomo initialized with mode', pattern)
     } else {
-      window._matomoManagerInstance.switchMode(mode)
+      await this.callMatomo('switchMode', mode)
     }
 
     // Persist deprecated mode key for backward compatibility (other code might read it)
