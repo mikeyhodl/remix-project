@@ -13,7 +13,7 @@ import { groupListType } from '../types/componentTypes'
 import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
 
-const _paq = (window._paq = window._paq || [])
+
 
 export interface RemixUiRemixAiAssistantProps {
   plugin: Plugin

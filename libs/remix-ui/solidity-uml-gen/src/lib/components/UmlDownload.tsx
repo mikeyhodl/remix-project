@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
 
+import { saveAs } from 'file-saver'
 const _paq = (window._paq = window._paq || [])
 
 export const Markup = React.forwardRef(

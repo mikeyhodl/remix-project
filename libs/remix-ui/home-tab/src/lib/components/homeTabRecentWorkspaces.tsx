@@ -3,7 +3,6 @@ import React, { useState, useRef, useReducer, useEffect, useContext } from 'reac
 import { ThemeContext } from '../themeContext'
 import { AppContext } from '@remix-ui/app'
 import { getTimeAgo } from '@remix-ui/helper'
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
 
 interface HomeTabFileProps {
   plugin: any

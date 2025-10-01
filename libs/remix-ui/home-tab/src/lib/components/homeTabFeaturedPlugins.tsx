@@ -9,7 +9,6 @@ import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
 import { AppContext } from '@remix-ui/app'
 
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabFeaturedPluginsProps {
   plugin: any
 }

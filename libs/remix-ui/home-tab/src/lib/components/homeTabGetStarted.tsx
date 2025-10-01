@@ -11,7 +11,6 @@ import { CustomRemixApi } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
 
 
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabGetStartedProps {
   plugin: any
 }

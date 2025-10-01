@@ -7,7 +7,6 @@ import { ThemeContext } from '../themeContext'
 import { AppContext } from '@remix-ui/app'
 import { Placement } from 'react-bootstrap/esm/types'
 import { DesktopDownload } from 'libs/remix-ui/desktop-download' // eslint-disable-line @nrwl/nx/enforce-module-boundaries
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
 
 type HometabIconSection = {
   textToolip: JSX.Element

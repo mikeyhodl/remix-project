@@ -21,7 +21,7 @@ import { branch } from '@remix-api'
 import { gitUIPanels } from '@remix-ui/git'
 import { createModalMessage } from './components/createModal'
 
-const _paq = (window._paq = window._paq || [])
+
 
 const canUpload = window.File || window.FileReader || window.FileList || window.Blob
 

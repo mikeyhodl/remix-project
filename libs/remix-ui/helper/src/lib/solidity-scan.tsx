@@ -4,6 +4,8 @@ import { FormattedMessage } from 'react-intl'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ScanReport, SolScanTable } from '@remix-ui/helper'
 
+import { CopyToClipboard } from '@remix-ui/clipboard'
+import { CustomTooltip } from './components/custom-tooltip'
 const _paq = (window._paq = window._paq || [])
 
 export const handleSolidityScan = async (api: any, compiledFileName: string) => {

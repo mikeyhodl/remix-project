@@ -4,7 +4,7 @@ import { Button, ButtonGroup, Dropdown } from 'react-bootstrap'
 import { CustomTopbarMenu } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
 
-const _paq = window._paq || []
+
 
 interface GitHubLoginProps {
   cloneGitRepository: () => void

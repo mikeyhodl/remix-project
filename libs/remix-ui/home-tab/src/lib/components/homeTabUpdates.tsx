@@ -7,7 +7,8 @@ import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
 import { AppContext } from '@remix-ui/app'
 
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
+import {CustomTooltip} from '@remix-ui/helper'
+import {FormattedMessage} from 'react-intl'
 interface HomeTabUpdatesProps {
   plugin: any
 }

@@ -18,8 +18,6 @@ export interface RemixUiHomeTabProps {
   plugin: any
 }
 
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
-
 // --- Main Layout ---
 export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const platform = useContext(platformContext)

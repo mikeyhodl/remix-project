@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { Dropdown, DropdownButton } from 'react-bootstrap'
 import DropdownItem from 'react-bootstrap/DropdownItem'
 import { localeLang } from './types/carouselTypes'
 import { FormattedMessage } from 'react-intl'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {
   const [langOptions, setLangOptions] = useState<string>()
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   const changeLanguage = async (lang: string) => {
     await plugin.call('locale', 'switchLocale', lang)
@@ -40,7 +42,7 @@ export function LanguageOptions({ plugin }: { plugin: any }) {
               {
                 changeLanguage(lang.toLowerCase())
                 setLangOptions(lang)
-                _paq.push(['trackEvent', 'hometab', 'switchTo', lang])
+                track?.('hometab', 'switchTo', lang)
               }}
               style={{ color: 'var(--text)', cursor: 'pointer' }}
               key={index}

@@ -7,7 +7,6 @@ import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
 import * as releaseDetails from './../../../../../../releaseDetails.json'
 
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
 export type HomeTabFeaturedProps = {
   plugin: any
   }

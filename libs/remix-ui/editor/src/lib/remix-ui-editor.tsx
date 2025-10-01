@@ -28,7 +28,6 @@ import { noirLanguageConfig, noirTokensProvider } from './syntaxes/noir'
 import { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
-const _paq = (window._paq = window._paq || [])
 
 // Key for localStorage
 const HIDE_PASTE_WARNING_KEY = 'remixide.hide_paste_warning';

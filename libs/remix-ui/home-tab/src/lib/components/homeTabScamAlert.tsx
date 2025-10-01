@@ -3,8 +3,6 @@ import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import React, { useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
-
 function HomeTabScamAlert() {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)

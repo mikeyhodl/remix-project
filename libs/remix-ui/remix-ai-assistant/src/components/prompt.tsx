@@ -43,7 +43,7 @@ export interface PromptAreaProps {
   setAiMode: React.Dispatch<React.SetStateAction<'ask' | 'edit'>>
 }
 
-const _paq = (window._paq = window._paq || [])
+
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
   input,
