@@ -1,15 +1,18 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvironmentProps } from '../types'
 import { Dropdown } from 'react-bootstrap'
 import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
+import { AppContext } from '@remix-ui/app'
 
 const _paq = (window._paq = window._paq || [])
 
 export function EnvironmentUI(props: EnvironmentProps) {
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const vmStateName = useRef('')
   const providers = props.providers.providerList
   const [isSwitching, setIsSwitching] = useState(false)
@@ -104,7 +107,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const forkState = async () => {
-    _paq.push(['trackEvent', 'udapp', 'forkState', `forkState clicked`])
+    track?.('udapp', 'forkState', `forkState clicked`)
     let context = currentProvider.name
     context = context.replace('vm-fs-', '')
 
@@ -141,7 +144,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
             await props.runTabPlugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${currentProvider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + vmStateName.current)
           }
         }
-        _paq.push(['trackEvent', 'udapp', 'forkState', `forked from ${context}`])
+        track?.('udapp', 'forkState', `forked from ${context}`)
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {}
@@ -149,7 +152,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const resetVmState = async() => {
-    _paq.push(['trackEvent', 'udapp', 'deleteState', `deleteState clicked`])
+    track?.('udapp', 'deleteState', `deleteState clicked`)
     const context = currentProvider.name
     const contextExists = await props.runTabPlugin.call('fileManager', 'exists', `.states/${context}/state.json`)
     if (contextExists) {
@@ -169,7 +172,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
           const isPinnedContracts = await props.runTabPlugin.call('fileManager', 'exists', `.deploys/pinned-contracts/${context}`)
           if (isPinnedContracts) await props.runTabPlugin.call('fileManager', 'remove', `.deploys/pinned-contracts/${context}`)
           props.runTabPlugin.call('notification', 'toast', `VM state reset successfully.`)
-          _paq.push(['trackEvent', 'udapp', 'deleteState', `VM state reset`])
+          track?.('udapp', 'deleteState', `VM state reset`)
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
         null

@@ -1,9 +1,10 @@
 import { ActivityType } from "../lib/types"
-import React, { MutableRefObject, Ref, useEffect, useRef, useState } from 'react'
+import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState } from 'react'
 import GroupListMenu from "./contextOptMenu"
 import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
+import { AppContext } from '@remix-ui/app'
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -79,6 +80,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   aiMode,
   setAiMode
 }) => {
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   return (
     <>
@@ -121,7 +124,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('ask')
-                  _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'ask'])
+                  track?.('remixAI', 'ModeSwitch', 'ask')
                 }}
                 title="Ask mode - Chat with AI"
               >
@@ -132,7 +135,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('edit')
-                  _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'edit'])
+                  track?.('remixAI', 'ModeSwitch', 'edit')
                 }}
                 title="Edit mode - Edit workspace code"
               >

@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useReducer } from 'react' // eslint-disable-line
+import React, { useState, useRef, useEffect, useReducer, useContext } from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import { diffLines } from 'diff'
 import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
-import { AppModal } from '@remix-ui/app'
+import { AppContext, AppModal } from '@remix-ui/app'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
 import { reducerActions, reducerListener, initialState } from './actions/editor'
 import { solidityTokensProvider, solidityLanguageConfig } from './syntaxes/solidity'
@@ -158,6 +158,8 @@ export interface EditorUIProps {
 const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
   const intl = useIntl()
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const [, setCurrentBreakpoints] = useState({})
@@ -771,7 +773,7 @@ export const EditorUI = (props: EditorUIProps) => {
               setTimeout(async () => {
                 props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
               }, 500)
-              _paq.push(['trackEvent', 'ai', 'remixAI', 'vulnerability_check_pasted_code'])
+              track?.('ai', 'remixAI', 'vulnerability_check_pasted_code')
             })();
           }
         };
@@ -828,7 +830,7 @@ export const EditorUI = (props: EditorUIProps) => {
           )
         }
         props.plugin.call('notification', 'modal', modalContent)
-        _paq.push(['trackEvent', 'editor', 'onDidPaste', 'more_than_10_lines'])
+        track?.('editor', 'onDidPaste', 'more_than_10_lines')
       }
     })
 
@@ -839,7 +841,7 @@ export const EditorUI = (props: EditorUIProps) => {
         if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
           inlineCompletionProvider.currentCompletion.onAccepted()
           inlineCompletionProvider.currentCompletion.accepted = true
-          _paq.push(['trackEvent', 'ai', 'remixAI', 'Copilot_Completion_Accepted'])
+          track?.('ai', 'remixAI', 'Copilot_Completion_Accepted')
         }
       }
     });
@@ -975,7 +977,7 @@ export const EditorUI = (props: EditorUIProps) => {
               }, 150)
             }
           }
-          _paq.push(['trackEvent', 'ai', 'remixAI', 'generateDocumentation'])
+          track?.('ai', 'remixAI', 'generateDocumentation')
         },
       }
     }
@@ -994,7 +996,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
-        _paq.push(['trackEvent', 'ai', 'remixAI', 'explainFunction'])
+        track?.('ai', 'remixAI', 'explainFunction')
       },
     }
 
@@ -1018,7 +1020,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
-        _paq.push(['trackEvent', 'ai', 'remixAI', 'explainFunction'])
+        track?.('ai', 'remixAI', 'explainFunction')
       },
     }
 

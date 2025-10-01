@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { UdappProps } from '../types'
 import { FuncABI } from '@remix-project/core-plugin'
@@ -10,12 +10,14 @@ import { ContractGUI } from './contractGUI'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { BN } from 'bn.js'
 import { CustomTooltip, is0XPrefixed, isHexadecimal, isNumeric, shortenAddress } from '@remix-ui/helper'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 const txHelper = remixLib.execution.txHelper
 
 export function UniversalDappUI(props: UdappProps) {
   const intl = useIntl()
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const [toggleExpander, setToggleExpander] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState<FuncABI[]>(null)
   const [address, setAddress] = useState<string>('')
@@ -117,14 +119,14 @@ export function UniversalDappUI(props: UdappProps) {
   const remove = async() => {
     if (props.instance.isPinned) {
       await unsavePinnedContract()
-      _paq.push(['trackEvent', 'udapp', 'pinContracts', 'removePinned'])
+      track?.('udapp', 'pinContracts', 'removePinned')
     }
     props.removeInstance(props.index)
   }
 
   const unpinContract = async() => {
     await unsavePinnedContract()
-    _paq.push(['trackEvent', 'udapp', 'pinContracts', 'unpinned'])
+    track?.('udapp', 'pinContracts', 'unpinned')
     props.unpinInstance(props.index)
   }
 
@@ -146,12 +148,12 @@ export function UniversalDappUI(props: UdappProps) {
       pinnedAt: Date.now()
     }
     await props.plugin.call('fileManager', 'writeFile', `.deploys/pinned-contracts/${props.plugin.REACT_API.chainId}/${props.instance.address}.json`, JSON.stringify(objToSave, null, 2))
-    _paq.push(['trackEvent', 'udapp', 'pinContracts', `pinned at ${props.plugin.REACT_API.chainId}`])
+    track?.('udapp', 'pinContracts', `pinned at ${props.plugin.REACT_API.chainId}`)
     props.pinInstance(props.index, objToSave.pinnedAt, objToSave.filePath)
   }
 
   const runTransaction = (lookupOnly, funcABI: FuncABI, valArr, inputsValues, funcIndex?: number) => {
-    if (props.instance.isPinned) _paq.push(['trackEvent', 'udapp', 'pinContracts', 'interactWithPinned'])
+    if (props.instance.isPinned) track?.('udapp', 'pinContracts', 'interactWithPinned')
     const functionName = funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
     const logMsg = `${lookupOnly ? 'call' : 'transact'} to ${props.instance.name}.${functionName}`
 
