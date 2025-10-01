@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ProjectConfiguration } from '../../types';
 import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
+import { AppContext } from '@remix-ui/app';
 
 export interface ConfigSectionProps {
-  _paq: any;
   activeKey: string
   setActiveKey: (key: string) => void
   config: ProjectConfiguration
@@ -17,6 +17,8 @@ export interface ConfigSectionProps {
 
 export default function ConfigSection(props: ConfigSectionProps) {
   const [isVisible, setIsVisible] = useState(true)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   const handleAnimationEnd = () => {
     setIsVisible(false);
@@ -37,7 +39,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               if (!props.config.errorStatus) {
                 props.setActiveKey(props.config.name)
               }
-              props._paq.push(['trackEvent', 'scriptRunnerPlugin', 'loadScriptRunnerConfig', props.config.name])
+              track?.('scriptRunnerPlugin', 'loadScriptRunnerConfig', props.config.name)
             }}
             checked={(props.activeConfig && props.activeConfig.name === props.config.name)}
           />
@@ -108,7 +110,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               <div
                 onClick={() => {
                   props.loadScriptRunner(props.config)
-                  props._paq.push(['trackEvent', 'scriptRunnerPlugin', 'error_reloadScriptRunnerConfig', props.config.name])
+                  track?.('scriptRunnerPlugin', 'error_reloadScriptRunnerConfig', props.config.name)
                 }}
                 className="pointer text-danger d-flex flex-row"
               >

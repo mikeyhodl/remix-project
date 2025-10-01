@@ -8,22 +8,22 @@ import {
   CompletionCache,
 } from '../inlineCompetionsLibs';
 
-const _paq = (window._paq = window._paq || [])
-
 export class RemixInLineCompletionProvider implements monacoTypes.languages.InlineCompletionsProvider {
   props: EditorUIProps
   monaco: any
   completionEnabled: boolean
   task: string = 'code_completion'
   currentCompletion: any
+  track?: (category: string, action: string, name?: string) => void
 
   private rateLimiter: AdaptiveRateLimiter;
   private contextDetector: SmartContextDetector;
   private cache: CompletionCache;
 
-  constructor(props: any, monaco: any) {
+  constructor(props: any, monaco: any, track?: (category: string, action: string, name?: string) => void) {
     this.props = props
     this.monaco = monaco
+    this.track = track
     this.completionEnabled = true
     this.currentCompletion = {
       text: '',
@@ -201,7 +201,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     })
 
     const data = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after)
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'code_generation'])
+    this.track?.('ai', 'remixAI', 'code_generation')
     this.task = 'code_generation'
 
     const parsedData = data.trimStart()
@@ -227,7 +227,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     try {
       CompletionParams.stop = ['\n\n', '```']
       const output = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after, CompletionParams)
-      _paq.push(['trackEvent', 'ai', 'remixAI', 'code_insertion'])
+      this.track?.('ai', 'remixAI', 'code_insertion')
       const generatedText = output
 
       this.task = 'code_insertion'
@@ -258,7 +258,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
       CompletionParams.stop = ['\n', '```']
       this.task = 'code_completion'
       const output = await this.props.plugin.call('remixAI', 'code_completion', word, word_after, CompletionParams)
-      _paq.push(['trackEvent', 'ai', 'remixAI', 'code_completion'])
+      this.track?.('ai', 'remixAI', 'code_completion')
       const generatedText = output
       let clean = generatedText
 
@@ -306,7 +306,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionShown()
-    _paq.push(['trackEvent', 'ai', 'remixAI', this.task + '_did_show'])
+    this.track?.('ai', 'remixAI', this.task + '_did_show')
   }
 
   handlePartialAccept?(
@@ -318,7 +318,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionAccepted()
-    _paq.push(['trackEvent', 'ai', 'remixAI', this.task + '_partial_accept'])
+    this.track?.('ai', 'remixAI', this.task + '_partial_accept')
   }
 
   freeInlineCompletions(
