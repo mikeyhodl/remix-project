@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useRef, useReducer, useEffect } from 'react'
+import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
+import { AppContext } from '@remix-ui/app'
 
 interface HomeTabFileProps {
   plugin: any
 }
 
 function HomeTabFile({ plugin }: HomeTabFileProps) {
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const [state, setState] = useState<{
     searchInput: string
     showModalDialog: boolean
@@ -80,7 +82,7 @@ function HomeTabFile({ plugin }: HomeTabFileProps) {
   }
 
   const startCoding = async () => {
-    _paq.push(['trackEvent', 'hometab', 'filesSection', 'startCoding'])
+    track?.('hometab', 'filesSection', 'startCoding')
     plugin.verticalIcons.select('filePanel')
 
     const wName = 'Playground'
@@ -113,16 +115,16 @@ function HomeTabFile({ plugin }: HomeTabFileProps) {
   }
 
   const uploadFile = async (target) => {
-    _paq.push(['trackEvent', 'hometab', 'filesSection', 'uploadFile'])
+    track?.('hometab', 'filesSection', 'uploadFile')
     await plugin.call('filePanel', 'uploadFile', target)
   }
 
   const connectToLocalhost = () => {
-    _paq.push(['trackEvent', 'hometab', 'filesSection', 'connectToLocalhost'])
+    track?.('hometab', 'filesSection', 'connectToLocalhost')
     plugin.appManager.activatePlugin('remixd')
   }
   const importFromGist = () => {
-    _paq.push(['trackEvent', 'hometab', 'filesSection', 'importFromGist'])
+    track?.('hometab', 'filesSection', 'importFromGist')
     plugin.call('gistHandler', 'load', '')
     plugin.verticalIcons.select('filePanel')
   }
@@ -131,7 +133,7 @@ function HomeTabFile({ plugin }: HomeTabFileProps) {
     e.preventDefault()
     plugin.call('sidePanel', 'showContent', 'filePanel')
     plugin.verticalIcons.select('filePanel')
-    _paq.push(['trackEvent', 'hometab', 'filesSection', 'loadRecentWorkspace'])
+    track?.('hometab', 'filesSection', 'loadRecentWorkspace')
     await plugin.call('filePanel', 'switchToWorkspace', { name: workspaceName, isLocalhost: false })
   }
 
@@ -170,7 +172,7 @@ function HomeTabFile({ plugin }: HomeTabFileProps) {
           <div className="d-flex flex-row flex-wrap">
             <CustomTooltip placement={'top'} tooltipId="overlay-tooltip" tooltipClasses="text-nowrap" tooltipText={<FormattedMessage id="home.newFileTooltip" />} tooltipTextClasses="border bg-light text-dark p-1 pe-3">
               <button className="btn text-nowrap p-2 me-2 border my-1 mb-2" data-id="homeTabNewFile" style={{ width: 'fit-content' }} onClick={async () => {
-                _paq.push(['trackEvent', 'hometab', 'filesSection', 'newFile'])
+                track?.('hometab', 'filesSection', 'newFile')
                 await plugin.call('menuicons', 'select', 'filePanel')
                 await plugin.call('filePanel', 'createNewFile')
               }}>
@@ -207,7 +209,7 @@ function HomeTabFile({ plugin }: HomeTabFileProps) {
             <CustomTooltip placement={'top'} tooltipId="overlay-tooltip" tooltipClasses="text-nowrap" tooltipText={<FormattedMessage id="home.gitCloneTooltip" />} tooltipTextClasses="border bg-light text-dark p-1 pe-3"
             >
               <button className="btn text-nowrap p-2 me-2 border my-1 mb-2" data-id="landingPageImportFromGitHubButton" onClick={async () => {
-                _paq.push(['trackEvent', 'hometab', 'filesSection', 'Git Clone'])
+                track?.('hometab', 'filesSection', 'Git Clone')
                 await plugin.call('filePanel', 'clone')
               }}>
                 <i className="fa-brands fa-github-alt ps-1 pe-2"></i>

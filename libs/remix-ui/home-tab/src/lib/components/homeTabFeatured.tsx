@@ -103,7 +103,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                   </div>
                   <a
                     className="remixui_home_text btn-sm btn-secondary mt-2 text-decoration-none mb-3"
-                    onClick={() => track?.('hometab', 'featuredSection', 'seeFullChangelog'))
+                    onClick={() => track?.('hometab', 'featuredSection', 'seeFullChangelog')}
                     target="__blank"
                     href={releaseDetails.moreLink}
                   >
