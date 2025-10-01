@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-use-before-define
-import React from 'react'
+import React, { useContext } from 'react'
 import parse from 'html-react-parser'
 import { ScanReport } from '@remix-ui/helper'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 interface SolScanTableProps {
   scanReport: ScanReport
@@ -11,6 +11,8 @@ interface SolScanTableProps {
 
 export function SolScanTable(props: SolScanTableProps) {
   const { scanReport, fileName } = props
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const { multi_file_scan_details, multi_file_scan_summary } = scanReport
 
   return (
@@ -56,7 +58,7 @@ export function SolScanTable(props: SolScanTableProps) {
           <p>For more details,&nbsp;
             <a href="https://solidityscan.com/?utm_campaign=remix&utm_source=remix"
               target='_blank'
-              onClick={() => _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'goToSolidityScan'])}>
+              onClick={() => track?.('solidityCompiler', 'solidityScan', 'goToSolidityScan')}>
               go to SolidityScan.
             </a>
           </p>

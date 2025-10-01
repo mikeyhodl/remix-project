@@ -20,6 +20,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
   loginWithGitHub
 }) => {
   const appContext = useContext(AppContext)
+  const { track } = appContext
 
   // Get the GitHub user state from app context
   const gitHubUser = appContext?.appState?.gitHubUser
@@ -89,7 +90,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-publish-to-gist"
               onClick={async () => {
                 await publishToGist()
-                _paq.push(['trackEvent', 'topbar', 'GIT', 'publishToGist'])
+                track?.('topbar', 'GIT', 'publishToGist')
               }}
             >
               <i className="fab fa-github me-2"></i>
@@ -100,7 +101,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-disconnect"
               onClick={async () => {
                 await logOutOfGithub()
-                _paq.push(['trackEvent', 'topbar', 'GIT', 'logout'])
+                track?.('topbar', 'GIT', 'logout')
               }}
               className="text-danger"
             >

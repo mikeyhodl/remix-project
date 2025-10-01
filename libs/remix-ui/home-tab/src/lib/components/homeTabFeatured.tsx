@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext, themes } from '../themeContext'
+import { AppContext } from '@remix-ui/app'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
 import * as releaseDetails from './../../../../../../releaseDetails.json'
@@ -13,13 +14,15 @@ export type HomeTabFeaturedProps = {
 
 function HomeTabFeatured(props:HomeTabFeaturedProps) {
   const themeFilter = useContext(ThemeContext)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const handleStartLearneth = async () => {
     await props.plugin.appManager.activatePlugin(['LearnEth', 'solidityUnitTesting'])
     props.plugin.verticalIcons.select('LearnEth')
-    _paq.push(['trackEvent', 'hometab', 'featuredSection', 'LearnEth'])
+    track?.('hometab', 'featuredSection', 'LearnEth')
   }
   const handleStartRemixGuide = async () => {
-    _paq.push(['trackEvent', 'hometab', 'featuredSection', 'watchOnRemixGuide'])
+    track?.('hometab', 'featuredSection', 'watchOnRemixGuide')
     await props.plugin.appManager.activatePlugin(['remixGuide'])
     await props.plugin.call('tabs', 'focus', 'remixGuide')
   }
@@ -64,7 +67,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Please take a few minutes of your time to
                     <a
                       className="mx-1"
-                      onClick={() => _paq.push(['trackEvent', 'hometab', 'featuredSection', 'soliditySurvey24'])}
+                      onClick={() => track?.('hometab', 'featuredSection', 'soliditySurvey24')}
                       target="__blank"
                       href="https://cryptpad.fr/form/#/2/form/view/9xjPVmdv8z0Cyyh1ejseMQ0igmx-TedH5CPST3PhRUk/"
                     >
@@ -75,7 +78,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Thank you for your support! Read the full announcement
                     <a
                       className="remixui_home_text mx-1"
-                      onClick={() => _paq.push(['trackEvent', 'hometab', 'featuredSection', 'soliditySurvey24'])}
+                      onClick={() => track?.('hometab', 'featuredSection', 'soliditySurvey24')}
                       target="__blank"
                       href="https://soliditylang.org/blog/2024/12/27/solidity-developer-survey-2024-announcement/"
                     >
@@ -100,7 +103,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                   </div>
                   <a
                     className="remixui_home_text btn-sm btn-secondary mt-2 text-decoration-none mb-3"
-                    onClick={() => _paq.push(['trackEvent', 'hometab', 'featuredSection', 'seeFullChangelog'])}
+                    onClick={() => track?.('hometab', 'featuredSection', 'seeFullChangelog'))
                     target="__blank"
                     href={releaseDetails.moreLink}
                   >
