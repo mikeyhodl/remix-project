@@ -17,16 +17,11 @@ const profile = {
   version: '1.0.0'
 }
 
-const allowedPlugins = ['LearnEth', 'etherscan', 'vyper', 'circuit-compiler', 'doc-gen', 'doc-viewer', 'solhint', 'walletconnect', 'scriptRunner', 'scriptRunnerBridge', 'dgit', 'contract-verification', 'noir-compiler']
-
-
-
 const matomoManager = window._matomoManagerInstance
 export class Matomo extends Plugin {
 
   constructor() {
     super(profile)
-    console.log('Matomo plugin loaded')
   }
 
   /**
@@ -171,8 +166,7 @@ export class Matomo extends Plugin {
   }
 
   async track(data: string[]) {
-    console.log('Matomo track', data)
-    if (!allowedPlugins.includes(this.currentRequest.from)) return
+    console.log('Matomo plugin track', data)
     this.getMatomoManager().trackEvent(data[0], data[1], data[2], data[3] ? parseInt(data[3]) : undefined)
   }
 }

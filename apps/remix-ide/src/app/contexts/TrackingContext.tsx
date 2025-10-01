@@ -1,14 +1,14 @@
 import React, { createContext, useContext, ReactNode } from 'react'
 
 export interface TrackingContextType {
-  track?: (category: string, action: string, name?: string) => void
+  track?: (category: string, action: string, name?: string, value?: string | number) => void
 }
 
 const TrackingContext = createContext<TrackingContextType>({})
 
 interface TrackingProviderProps {
   children: ReactNode
-  trackingFunction?: (category: string, action: string, name?: string) => void
+  trackingFunction?: (category: string, action: string, name?: string, value?: string | number) => void
 }
 
 export const TrackingProvider: React.FC<TrackingProviderProps> = ({ 

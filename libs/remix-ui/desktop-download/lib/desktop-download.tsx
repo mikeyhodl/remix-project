@@ -194,6 +194,7 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
   const trackDownloadClick = (platform?: string, filename?: string, variant?: string) => {
     track?.(
       'desktopDownload',
+      'click',
       `${trackingContext}-${variant || 'button'}`,
       platform ? `${platform}-${filename}` : 'releases-page'
     )

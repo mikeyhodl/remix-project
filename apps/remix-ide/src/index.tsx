@@ -45,8 +45,17 @@ import { TrackingProvider } from './app/contexts/TrackingContext'
     const container = document.getElementById('root');
     const root = createRoot(container)
     if (container) {
-      const trackingFunction = (category: string, action: string, name?: string) => {
-        matomoManager.trackEvent?.(category, action, name)
+      const trackingFunction = (category: string, action: string, name?: string, value?: string | number) => {
+        let numericValue: number | undefined = undefined
+        if (value !== undefined) {
+          if (typeof value === 'number') {
+            numericValue = value
+          } else if (typeof value === 'string') {
+            const parsed = parseFloat(value)
+            numericValue = isNaN(parsed) ? undefined : parsed
+          }
+        }
+        matomoManager.trackEvent?.(category, action, name, numericValue)
       }
       
       if (window.location.hash.includes('source=github')) {
