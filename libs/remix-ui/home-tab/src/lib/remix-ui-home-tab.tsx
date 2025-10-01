@@ -24,6 +24,7 @@ const _paq = (window._paq = window._paq || []) // eslint-disable-line
 export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
+  const { track } = appContext
   const { plugin } = props
 
   const [state, setState] = useState<{
@@ -60,13 +61,13 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
       await plugin.appManager.activatePlugin(['LearnEth', 'solidity', 'solidityUnitTesting'])
       plugin.verticalIcons.select('LearnEth')
     }
-    _paq.push(['trackEvent', 'hometab', 'header', 'Start Learning'])
+    track?.('hometab', 'header', 'Start Learning')
   }
 
   const openTemplateSelection = async () => {
     await plugin.call('manager', 'activatePlugin', 'templateSelection')
     await plugin.call('tabs', 'focus', 'templateSelection')
-    _paq.push(['trackEvent', 'hometab', 'header', 'Create a new workspace'])
+    track?.('hometab', 'header', 'Create a new workspace')
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {

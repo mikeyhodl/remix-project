@@ -7,6 +7,7 @@ import { FormattedMessage } from 'react-intl'
 import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
+import { AppContext } from '@remix-ui/app'
 
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabFeaturedPluginsProps {
@@ -35,6 +36,8 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const [pluginList, setPluginList] = useState<{ caption: string, plugins: PluginInfo[] }>({ caption: '', plugins: []})
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const isDark = theme.name === 'dark'
 
   useEffect(() => {
@@ -59,11 +62,11 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const activateFeaturedPlugin = async (pluginId: string) => {
     setLoadingPlugins([...loadingPlugins, pluginId])
     if (await plugin.appManager.isActive(pluginId)) {
-      _paq.push(['trackEvent', 'hometab', 'featuredPluginsToggle', `deactivate-${pluginId}`])
+      track?.('hometab', 'featuredPluginsToggle', `deactivate-${pluginId}`)
       await plugin.appManager.deactivatePlugin(pluginId)
       setActivePlugins(activePlugins.filter((id) => id !== pluginId))
     } else {
-      _paq.push(['trackEvent', 'hometab', 'featuredPluginsToggle', `activate-${pluginId}`])
+      track?.('hometab', 'featuredPluginsToggle', `activate-${pluginId}`)
       await plugin.appManager.activatePlugin([pluginId])
       await plugin.verticalIcons.select(pluginId)
       setActivePlugins([...activePlugins, pluginId])
@@ -72,7 +75,7 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   }
 
   const handleFeaturedPluginActionClick = async (pluginInfo: PluginInfo) => {
-    _paq.push(['trackEvent', 'hometab', 'featuredPluginsActionClick', pluginInfo.pluginTitle])
+    track?.('hometab', 'featuredPluginsActionClick', pluginInfo.pluginTitle)
     if (pluginInfo.action.type === 'link') {
       window.open(pluginInfo.action.url, '_blank')
     } else if (pluginInfo.action.type === 'methodCall') {

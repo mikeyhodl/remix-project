@@ -1,15 +1,17 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { ContractDropdownProps, DeployMode } from '../types'
 import { ContractData, FuncABI, OverSizeLimit } from '@remix-project/core-plugin'
 import * as ethJSUtil from '@ethereumjs/util'
 import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
   const intl = useIntl()
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const [abiLabel, setAbiLabel] = useState<{
     display: string
     content: string
@@ -404,7 +406,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             >
               <i style={{ cursor: 'pointer' }} onClick={(_) => {
                 props.syncContracts()
-                _paq.push(['trackEvent', 'udapp', 'syncContracts', compilationSource ? compilationSource : 'compilationSourceNotYetSet'])
+                track?.('udapp', 'syncContracts', compilationSource ? compilationSource : 'compilationSourceNotYetSet')
               }} className="udapp_syncFramework udapp_icon fa fa-refresh" aria-hidden="true"></i>
             </CustomTooltip>
           ) : null}

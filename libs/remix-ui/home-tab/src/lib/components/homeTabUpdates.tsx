@@ -5,6 +5,7 @@ import axios from 'axios'
 import { HOME_TAB_BASE_URL, HOME_TAB_NEW_UPDATES } from './constant'
 import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
+import { AppContext } from '@remix-ui/app'
 
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 interface HomeTabUpdatesProps {
@@ -32,6 +33,8 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   const [pluginList, setPluginList] = useState<UpdateInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
   const isDark = theme.name === 'dark'
 
   useEffect(() => {
@@ -49,7 +52,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   }, [])
 
   const handleUpdatesActionClick = (updateInfo: UpdateInfo) => {
-    _paq.push(['trackEvent', 'hometab', 'updatesActionClick', updateInfo.title])
+    track?.('hometab', 'updatesActionClick', updateInfo.title)
     if (updateInfo.action.type === 'link') {
       window.open(updateInfo.action.url, '_blank')
     } else if (updateInfo.action.type === 'methodCall') {
