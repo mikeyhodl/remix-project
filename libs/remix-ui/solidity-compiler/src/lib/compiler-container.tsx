@@ -10,7 +10,8 @@ import { listenToEvents } from './actions/compiler'
 import { getValidLanguage } from '@remix-project/remix-solidity'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
-import { appPlatformTypes, platformContext, onLineContext, AppContext } from '@remix-ui/app'
+import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import * as packageJson from '../../../../../package.json'
 
 import './css/style.css'
@@ -21,7 +22,7 @@ const remixConfigPath = 'remix.config.json'
 export const CompilerContainer = (props: CompilerContainerProps) => {
   const online = useContext(onLineContext)
   const platform = useContext(platformContext)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const {
     api,
     compileTabLogic,

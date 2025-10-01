@@ -15,14 +15,14 @@ import { GitHubUser } from 'libs/remix-api/src/lib/types/git'
 import { GitHubCallback } from '../topbarUtils/gitOauthHandler'
 import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
-import { AppContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
   const [showDropdown, setShowDropdown] = useState(false)
   const platform = useContext(platformContext)
   const global = useContext(TopbarContext)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const plugin = global.plugin
   const LOCALHOST = ' - connect to localhost - '
   const NO_WORKSPACE = ' - none - '

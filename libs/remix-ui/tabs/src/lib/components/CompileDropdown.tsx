@@ -3,7 +3,7 @@ import DropdownMenu, { MenuItem } from './DropdownMenu'
 import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
 import { handleSolidityScan } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
 
@@ -18,7 +18,7 @@ interface CompileDropdownProps {
 }
 
 export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugin, disabled, onOpen, onRequestCompileAndPublish, compiledFileName, setCompileState }) => {
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const [scriptFiles, setScriptFiles] = useState<string[]>([])
 
   const compileThen = async (nextAction: () => void, actionName: string) => {

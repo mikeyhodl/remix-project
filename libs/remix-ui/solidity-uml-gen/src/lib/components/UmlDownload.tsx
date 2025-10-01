@@ -4,7 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
 
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export const Markup = React.forwardRef(
   (
@@ -65,7 +65,7 @@ interface UmlDownloadProps {
 }
 
 export default function UmlDownload(props: UmlDownloadProps) {
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   return (
     <Fragment>
       <CustomTooltip

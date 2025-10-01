@@ -9,7 +9,8 @@ import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { format } from 'util'
 import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
-import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import { appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface TestObject {
   fileName: string
@@ -43,7 +44,7 @@ interface FinalResult {
 export const SolidityUnitTesting = (props: Record<string, any>) => {
   // eslint-disable-line @typescript-eslint/no-explicit-any
   const platform = useContext(platformContext)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const { helper, testTab, initialPath } = props
   const { testTabLogic } = testTab
 

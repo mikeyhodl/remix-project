@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext, themes } from '../themeContext'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
 import * as releaseDetails from './../../../../../../releaseDetails.json'
@@ -13,8 +13,7 @@ export type HomeTabFeaturedProps = {
 
 function HomeTabFeatured(props:HomeTabFeaturedProps) {
   const themeFilter = useContext(ThemeContext)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const handleStartLearneth = async () => {
     await props.plugin.appManager.activatePlugin(['LearnEth', 'solidityUnitTesting'])
     props.plugin.verticalIcons.select('LearnEth')

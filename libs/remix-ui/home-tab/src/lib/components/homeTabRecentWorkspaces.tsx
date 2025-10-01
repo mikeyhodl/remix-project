@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { ThemeContext } from '../themeContext'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { getTimeAgo } from '@remix-ui/helper'
 
 interface HomeTabFileProps {
@@ -9,8 +9,7 @@ interface HomeTabFileProps {
 }
 
 function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [state, setState] = useState<{
     recentWorkspaces: Array<string | { name: string, timestamp: number }>
   }>({

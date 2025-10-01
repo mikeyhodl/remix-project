@@ -7,7 +7,7 @@ import { FormattedMessage } from 'react-intl'
 import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface HomeTabFeaturedPluginsProps {
   plugin: any
@@ -35,8 +35,7 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const [pluginList, setPluginList] = useState<{ caption: string, plugins: PluginInfo[] }>({ caption: '', plugins: []})
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
 
   useEffect(() => {

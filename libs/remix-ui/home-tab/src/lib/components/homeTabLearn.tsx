@@ -3,7 +3,7 @@ import React, { useEffect, useState, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext } from '../themeContext'
 import { CustomTooltip } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 enum VisibleTutorial {
   Basics,
@@ -22,8 +22,7 @@ function HomeTabLearn({ plugin }: HomeTabLearnProps) {
   })
 
   const themeFilter = useContext(ThemeContext)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   const startLearnEthTutorial = async (tutorial: 'basics' | 'soliditybeginner' | 'deploylibraries') => {
     await plugin.appManager.activatePlugin(['solidity', 'LearnEth', 'solidityUnitTesting'])

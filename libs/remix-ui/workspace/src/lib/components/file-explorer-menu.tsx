@@ -4,12 +4,13 @@ import { FormattedMessage } from 'react-intl'
 import { Placement } from 'react-bootstrap/esm/types'
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
-import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import { appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
   const platform = useContext(platformContext)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const [state, setState] = useState({
     menuItems: [
       {

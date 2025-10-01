@@ -2,7 +2,7 @@
 import React, { useContext } from 'react'
 import parse from 'html-react-parser'
 import { ScanReport } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface SolScanTableProps {
   scanReport: ScanReport
@@ -11,8 +11,7 @@ interface SolScanTableProps {
 
 export function SolScanTable(props: SolScanTableProps) {
   const { scanReport, fileName } = props
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const { multi_file_scan_details, multi_file_scan_summary } = scanReport
 
   return (

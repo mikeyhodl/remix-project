@@ -3,15 +3,14 @@ import React, { useState, useRef, useReducer, useEffect, useContext } from 'reac
 import { FormattedMessage } from 'react-intl'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface HomeTabFileProps {
   plugin: any
 }
 
 function HomeTabFile({ plugin }: HomeTabFileProps) {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [state, setState] = useState<{
     searchInput: string
     showModalDialog: boolean

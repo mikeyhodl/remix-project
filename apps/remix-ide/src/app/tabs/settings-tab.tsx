@@ -134,6 +134,7 @@ export default class SettingsTab extends ViewPlugin {
       const pattern: InitializationPattern = isChecked ? "immediate" : "anonymous"
       await this.callMatomo('initialize', pattern)
       console.log('[Matomo][settings] Matomo initialized with mode', pattern)
+      await this.callMatomo('processPreInitQueue')
     } else {
       await this.callMatomo('switchMode', mode)
     }

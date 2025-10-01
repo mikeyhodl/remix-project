@@ -5,7 +5,8 @@ import {PublishToStorage} from '@remix-ui/publish-to-storage' // eslint-disable-
 import {TreeView, TreeViewItem} from '@remix-ui/tree-view' // eslint-disable-line
 import {CopyToClipboard} from '@remix-ui/clipboard' // eslint-disable-line
 import { saveAs } from 'file-saver'
-import { AppModal, AppContext } from '@remix-ui/app'
+import { AppModal } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 import './css/style.css'
 import { CustomTooltip, handleSolidityScan } from '@remix-ui/helper'
@@ -14,7 +15,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   const { api, compiledFileName, contractsDetails, contractList, compilerInput, modal } = props
   const [selectedContract, setSelectedContract] = useState('')
   const [storage, setStorage] = useState(null)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
 
   const intl = useIntl()
 

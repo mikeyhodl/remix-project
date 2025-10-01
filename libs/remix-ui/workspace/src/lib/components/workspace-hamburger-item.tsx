@@ -2,7 +2,8 @@ import React, { useContext } from 'react'
 import { CustomTooltip, CustomMenu, CustomIconsToggle } from '@remix-ui/helper'
 import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
-import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import { appPlatformTypes, platformContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export interface HamburgerMenuItemProps {
   hideOption: boolean
@@ -15,7 +16,7 @@ export interface HamburgerMenuItemProps {
 export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
   const platform = useContext(platformContext)
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -44,7 +45,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
 // keeping the following for a later use:
 export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const uid = 'workspace' + props.kind
   return (
     <>

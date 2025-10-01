@@ -8,13 +8,13 @@ import {TransactionDebugger as Debugger} from '@remix-project/remix-debug' // es
 import {DebuggerUIProps} from './idebugger-api' // eslint-disable-line
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip, isValidHash } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 /* eslint-disable-next-line */
 import './debugger-ui.css'
 
 export const DebuggerUI = (props: DebuggerUIProps) => {
   const intl = useIntl()
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const debuggerModule = props.debuggerAPI
   const [state, setState] = useState({
     isActive: false,

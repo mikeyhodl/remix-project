@@ -2,7 +2,7 @@ import React, {useContext, useEffect, useState} from 'react' //eslint-disable-li
 import { useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { helper } from '@remix-project/remix-solidity'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import './renderer.css'
 
 interface RendererProps {
@@ -23,7 +23,7 @@ type RendererOptions = {
 
 export const Renderer = ({ message, opt, plugin, context }: RendererProps) => {
   const intl = useIntl()
-  const { track } = useContext(AppContext)
+  const { track } = useContext(TrackingContext)
   const [messageText, setMessageText] = useState(null)
   const [editorOptions, setEditorOptions] = useState<RendererOptions>({
     useSpan: false,
