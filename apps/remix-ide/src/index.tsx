@@ -11,6 +11,7 @@ import { Storage } from '@remix-project/remix-lib'
 
 import { createRoot } from 'react-dom/client'
 import { MatomoConfig, MatomoManager } from './app/matomo/MatomoManager'
+import { TrackingProvider } from './app/contexts/TrackingContext'
 
   ; (async function () {
     const matomoConfig: MatomoConfig = {
@@ -44,13 +45,22 @@ import { MatomoConfig, MatomoManager } from './app/matomo/MatomoManager'
     const container = document.getElementById('root');
     const root = createRoot(container)
     if (container) {
+      const trackingFunction = (category: string, action: string, name?: string) => {
+        matomoManager.trackEvent?.(category, action, name)
+      }
+      
       if (window.location.hash.includes('source=github')) {
         root.render(
-          <GitHubPopupCallback />
+          <TrackingProvider trackingFunction={trackingFunction}>
+            <GitHubPopupCallback />
+          </TrackingProvider>
         )
       } else {
         root.render(
-          <Preload root={root} />)
+          <TrackingProvider trackingFunction={trackingFunction}>
+            <Preload root={root} />
+          </TrackingProvider>
+        )
       }
     }
   })()
