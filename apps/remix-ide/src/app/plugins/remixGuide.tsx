@@ -8,8 +8,6 @@ import { RemixUIGridSection } from '@remix-ui/remix-ui-grid-section'
 import { RemixUIGridCell } from '@remix-ui/remix-ui-grid-cell'
 import * as Data from './remixGuideData.json'
 import './remixGuide.css'
-//@ts-ignore
-const _paq = (window._paq = window._paq || [])
 
 const profile = {
   name: 'remixGuide',

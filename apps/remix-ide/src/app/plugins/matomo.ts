@@ -2,8 +2,6 @@
 import { Plugin } from '@remixproject/engine'
 import MatomoManager, { IMatomoManager, InitializationOptions, InitializationPattern, MatomoCommand, MatomoConfig, MatomoDiagnostics, MatomoState, MatomoStatus, ModeSwitchOptions, TrackingMode } from '../matomo/MatomoManager'
 
-const _paq = window._paq = window._paq || []
-
 const profile = {
   name: 'matomo',
   description: 'send analytics to Matomo',
