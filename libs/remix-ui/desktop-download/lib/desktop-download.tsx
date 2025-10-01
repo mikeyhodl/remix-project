@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
 import { FormattedMessage } from 'react-intl'
 import './desktop-download.css'
-
-const _paq = (window._paq = window._paq || []) // eslint-disable-line
+import { AppContext } from '@remix-ui/app'
 
 interface DesktopDownloadProps {
   className?: string
@@ -49,6 +48,8 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detectedDownload, setDetectedDownload] = useState<DetectedDownload | null>(null)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   // Detect user's operating system
   const detectOS = (): 'windows' | 'macos' | 'linux' => {
@@ -192,13 +193,11 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
 
   // Track download click events
   const trackDownloadClick = (platform?: string, filename?: string, variant?: string) => {
-    const trackingData = [
-      'trackEvent',
+    track?.(
       'desktopDownload',
       `${trackingContext}-${variant || 'button'}`,
       platform ? `${platform}-${filename}` : 'releases-page'
-    ]
-    _paq.push(trackingData)
+    )
   }
 
   // Load release data on component mount

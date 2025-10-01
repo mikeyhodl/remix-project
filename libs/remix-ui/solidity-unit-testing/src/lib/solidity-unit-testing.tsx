@@ -9,9 +9,7 @@ import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { format } from 'util'
 import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
-
-const _paq = ((window as any)._paq = (window as any)._paq || []) // eslint-disable-line @typescript-eslint/no-explicit-any
+import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 
 interface TestObject {
   fileName: string
@@ -45,6 +43,7 @@ interface FinalResult {
 export const SolidityUnitTesting = (props: Record<string, any>) => {
   // eslint-disable-line @typescript-eslint/no-explicit-any
   const platform = useContext(platformContext)
+  const { track } = useContext(AppContext)
   const { helper, testTab, initialPath } = props
   const { testTabLogic } = testTab
 
@@ -276,7 +275,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       }
       finalLogs = finalLogs + '&emsp;' + formattedLog + '\n'
     }
-    _paq.push(['trackEvent', 'solidityUnitTesting', 'hardhat', 'console.log'])
+    track?.('solidityUnitTesting', 'hardhat', 'console.log')
     testTab.call('terminal', 'logHtml', { type: 'log', value: finalLogs })
   }
 
@@ -662,7 +661,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     const tests: string[] = selectedTests.current
     if (!tests || !tests.length) return
     else setProgressBarHidden(false)
-    _paq.push(['trackEvent', 'solidityUnitTesting', 'runTests', 'nbTestsRunning' + tests.length])
+    track?.('solidityUnitTesting', 'runTests', 'nbTestsRunning' + tests.length)
     eachOfSeries(tests, (value: string, key: string, callback: any) => {
       // eslint-disable-line @typescript-eslint/no-explicit-any
       if (hasBeenStopped.current) return

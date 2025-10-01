@@ -18,14 +18,7 @@ import { run } from './actions/staticAnalysisActions'
 import { BasicTitle, calculateWarningStateEntries } from './components/BasicTitle'
 import { Nav, TabContainer } from 'react-bootstrap'
 import { CustomTooltip } from '@remix-ui/helper'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
-
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
+import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 
 /* eslint-disable-next-line */
 export interface RemixUiStaticAnalyserProps {
@@ -39,6 +32,8 @@ type tabSelectionType = 'remix' | 'solhint' | 'slither' | 'none'
 export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
   const [runner] = useState(new CodeAnalysis())
   const platform = useContext(platformContext)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   const preProcessModules = (arr: any) => {
     return arr.map((Item, i) => {
@@ -872,7 +867,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
                   categoryIndex,
                   groupedModules,
                   runner,
-                  _paq,
+                  track,
                   message,
                   showWarnings,
                   allWarnings,
@@ -908,7 +903,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
                   categoryIndex,
                   groupedModules,
                   runner,
-                  _paq,
+                  track,
                   message,
                   showWarnings,
                   allWarnings,

@@ -1,9 +1,9 @@
-import React, {useEffect, useState} from 'react' // eslint-disable-line
+import React, {useEffect, useState, useContext} from 'react' // eslint-disable-line
 import { FormattedMessage } from 'react-intl'
 import { PluginRecord } from '../types'
 import './panel.css'
 import { CustomTooltip, RenderIf, RenderIfNot } from '@remix-ui/helper'
-const _paq = (window._paq = window._paq || [])
+import { AppContext } from '@remix-ui/app'
 
 export interface RemixPanelProps {
   plugins: Record<string, PluginRecord>,
@@ -15,6 +15,8 @@ export interface RemixPanelProps {
 const RemixUIPanelHeader = (props: RemixPanelProps) => {
   const [plugin, setPlugin] = useState<PluginRecord>()
   const [toggleExpander, setToggleExpander] = useState<boolean>(false)
+  const appContext = useContext(AppContext)
+  const { track } = appContext
 
   useEffect(() => {
     setToggleExpander(false)
@@ -32,12 +34,12 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
 
   const pinPlugin = () => {
     props.pinView && props.pinView(plugin.profile, plugin.view)
-    _paq.push(['trackEvent', 'PluginPanel', 'pinToRight', plugin.profile.name])
+    track?.('PluginPanel', 'pinToRight', plugin.profile.name)
   }
 
   const unPinPlugin = () => {
     props.unPinView && props.unPinView(plugin.profile)
-    _paq.push(['trackEvent', 'PluginPanel', 'pinToLeft', plugin.profile.name])
+    track?.('PluginPanel', 'pinToLeft', plugin.profile.name)
   }
 
   const closePlugin = async () => {

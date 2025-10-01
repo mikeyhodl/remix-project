@@ -2,12 +2,6 @@ import React, { useContext, useEffect, useState } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { AppContext } from '../../context/context'
 import { useDialogDispatchers } from '../../context/provider'
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = (window._paq = window._paq || [])
 
 interface MatomoDialogProps {
   managePreferencesFn: () => void
@@ -15,7 +9,7 @@ interface MatomoDialogProps {
 }
 
 const MatomoDialog = (props: MatomoDialogProps) => {
-  const { settings, showMatomo } = useContext(AppContext)
+  const { settings, showMatomo, track } = useContext(AppContext)
   const { modal } = useDialogDispatchers()
   const [visible, setVisible] = useState<boolean>(props.hide)
 
@@ -69,12 +63,12 @@ const MatomoDialog = (props: MatomoDialogProps) => {
     settings.updateMatomoAnalyticsChoice(true) // Enable Matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(true) // Enable Matomo Performance analytics
     settings.updateCopilotChoice(true) // Enable RemixAI copilot
-    _paq.push(['trackEvent', 'landingPage', 'MatomoAIModal', 'AcceptClicked'])
+    track?.('landingPage', 'MatomoAIModal', 'AcceptClicked')
     setVisible(false)
   }
 
   const handleManagePreferencesClick = async () => {
-    _paq.push(['trackEvent', 'landingPage', 'MatomoAIModal', 'ManagePreferencesClicked'])
+    track?.('landingPage', 'MatomoAIModal', 'ManagePreferencesClicked')
     setVisible(false)
     props.managePreferencesFn()
   }

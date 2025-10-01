@@ -891,6 +891,40 @@ export class MatomoManager implements IMatomoManager {
   }
 
   /**
+   * Execute a queued command using the appropriate MatomoManager method
+   */
+  private executeQueuedCommand(command: MatomoCommand): void {
+    const [commandName, ...args] = command;
+    
+    switch (commandName) {
+      case 'trackEvent':
+        const [category, action, name, value] = args;
+        this.trackEvent(category, action, name, value);
+        break;
+      case 'trackPageView':
+        const [title] = args;
+        this.trackPageView(title);
+        break;
+      case 'setCustomDimension':
+        const [id, dimValue] = args;
+        this.setCustomDimension(id, dimValue);
+        break;
+      case 'trackSiteSearch':
+      case 'trackGoal':
+      case 'trackLink':
+      case 'trackDownload':
+        // For other tracking commands, fall back to _paq
+        this.log(`📋 Using _paq for ${commandName} command: ${JSON.stringify(command)}`);
+        this.originalPaqPush?.call(window._paq, command);
+        break;
+      default:
+        this.log(`⚠️ Unknown queued command: ${commandName}, using _paq fallback`);
+        this.originalPaqPush?.call(window._paq, command);
+        break;
+    }
+  }
+
+  /**
    * Internal method to actually flush the queue
    */
   private async flushPreInitQueue(): Promise<void> {
@@ -920,9 +954,8 @@ export class MatomoManager implements IMatomoManager {
         continue;
       }
       
-      // Always use _paq for proper consent handling - don't bypass Matomo's consent system
-      this.log(`📋 Adding command to _paq for proper consent handling: ${JSON.stringify(command)}`);
-      this.originalPaqPush?.call(window._paq, command);
+      // Use appropriate MatomoManager method instead of bypassing to _paq
+      this.executeQueuedCommand(command);
       
       this.log(`📋 _paq length after processing command: ${window._paq.length}`);
       

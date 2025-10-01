@@ -12,12 +12,6 @@ import { CompileDropdown, RunScriptDropdown } from '@remix-ui/tabs'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import TabProxy from 'apps/remix-ide/src/app/panels/tab-proxy'
 
-// Initialize window._paq if it doesn't exist
-window._paq = window._paq || []
-
-// Helper function to always get current _paq reference
-const getPaq = () => window._paq
-
 /* eslint-disable-next-line */
 export interface TabsUIProps {
   tabs: Array<Tab>
@@ -90,6 +84,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const tabs = useRef(props.tabs)
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
+  const { track } = appContext
 
   const compileSeq = useRef(0)
   const compileWatchdog = useRef<number | null>(null)
@@ -263,7 +258,7 @@ export const TabsUI = (props: TabsUIProps) => {
     await props.plugin.call('menuicons', 'select', 'solidity')
     try {
       await props.plugin.call('solidity', 'compile', active().substr(active().indexOf('/') + 1, active().length))
-      getPaq().push(['trackEvent', 'editor', 'publishFromEditor', storageType])
+      track?.('editor', 'publishFromEditor', storageType)
 
       setTimeout(async () => {
         let buttonId
@@ -320,7 +315,7 @@ export const TabsUI = (props: TabsUIProps) => {
 })()`
 
         await props.plugin.call('fileManager', 'writeFile', newScriptPath, boilerplateContent)
-        getPaq().push(['trackEvent', 'editor', 'runScript', 'new_script'])
+        track?.('editor', 'runScript', 'new_script')
       } catch (e) {
         console.error(e)
         props.plugin.call('notification', 'toast', `Error creating new script: ${e.message}`)
@@ -350,7 +345,7 @@ export const TabsUI = (props: TabsUIProps) => {
       await props.plugin.call('scriptRunnerBridge', 'execute', content, path)
 
       setCompileState('compiled')
-      getPaq().push(['trackEvent', 'editor', 'runScriptWithEnv', runnerKey])
+      track?.('editor', 'runScriptWithEnv', runnerKey)
     } catch (e) {
       console.error(e)
       props.plugin.call('notification', 'toast', `Error running script: ${e.message}`)
@@ -431,8 +426,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const handleCompileClick = async () => {
     setCompileState('compiling')
     console.log('Compiling from editor')
-    console.log('Current _paq:', getPaq())
-    getPaq().push(['trackEvent', 'editor', 'clickRunFromEditor', tabsState.currentExt])
+    track?.('editor', 'clickRunFromEditor', tabsState.currentExt)
 
     try {
       const activePathRaw = active()
