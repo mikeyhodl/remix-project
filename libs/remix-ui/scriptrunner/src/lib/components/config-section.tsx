@@ -4,7 +4,7 @@ import { ProjectConfiguration } from '../../types';
 import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
-import { AppContext } from '@remix-ui/app';
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext';
 
 export interface ConfigSectionProps {
   activeKey: string
@@ -17,8 +17,7 @@ export interface ConfigSectionProps {
 
 export default function ConfigSection(props: ConfigSectionProps) {
   const [isVisible, setIsVisible] = useState(true)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   const handleAnimationEnd = () => {
     setIsVisible(false);

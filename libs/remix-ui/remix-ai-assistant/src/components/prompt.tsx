@@ -4,7 +4,7 @@ import GroupListMenu from "./contextOptMenu"
 import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -80,8 +80,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   aiMode,
   setAiMode
 }) => {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   return (
     <>

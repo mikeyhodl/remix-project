@@ -4,15 +4,14 @@ import { FormattedMessage } from 'react-intl'
 import { ModalDialog } from '@remix-ui/modal-dialog' // eslint-disable-line
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface HomeTabFileProps {
   plugin: any
 }
 
-export const HomeTabFileElectron = ({ plugin }: HomeTabFileProps) => {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
+  const { track } = useContext(TrackingContext)
 
   const loadTemplate = async () => {
     plugin.call('filePanel', 'loadTemplate')

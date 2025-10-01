@@ -4,7 +4,7 @@ import React, { useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ThemeContext } from '../themeContext'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { Placement } from 'react-bootstrap/esm/types'
 import { DesktopDownload } from 'libs/remix-ui/desktop-download' // eslint-disable-line @nrwl/nx/enforce-module-boundaries
 
@@ -57,8 +57,7 @@ const iconButtons: HometabIconSection[] = [
 function HomeTabTitle() {
   const remiAudioEl = useRef(null)
   const theme = useContext(ThemeContext)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
 
   const playRemi = async () => {

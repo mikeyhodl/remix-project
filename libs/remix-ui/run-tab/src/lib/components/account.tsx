@@ -7,14 +7,13 @@ import { PassphrasePrompt } from './passphrase'
 import { shortenAddress, CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { eip7702Constants } from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export function AccountUI(props: AccountProps) {
   const { selectedAccount, loadedAccounts } = props.accounts
   const { selectExEnv, personalMode, networkName } = props
   const accounts = Object.keys(loadedAccounts)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [plusOpt, setPlusOpt] = useState({
     classList: '',
     title: ''

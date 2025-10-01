@@ -3,13 +3,12 @@ import { Dropdown, DropdownButton } from 'react-bootstrap'
 import DropdownItem from 'react-bootstrap/DropdownItem'
 import { localeLang } from './types/carouselTypes'
 import { FormattedMessage } from 'react-intl'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {
   const [langOptions, setLangOptions] = useState<string>()
-  const appContext = useContext(AppContext)
-  const { track } = appContext
-
+  const { track } = useContext(TrackingContext)
+  
   const changeLanguage = async (lang: string) => {
     await plugin.call('locale', 'switchLocale', lang)
   }

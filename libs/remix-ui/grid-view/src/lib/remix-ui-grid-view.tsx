@@ -3,7 +3,7 @@ import React, {useState, useEffect, useContext, useRef, ReactNode} from 'react' 
 import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 
 
@@ -27,8 +27,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
   const [filter, setFilter] = useState("")
   const showUntagged = props.showUntagged || false
   const showPin = props.showPin || false
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const updateValue = (key: string, enabled: boolean, color?: string) => {
     if (!color || color === '') color = setKeyValueMap[key].color
     setKeyValueMap((prevMap) => ({

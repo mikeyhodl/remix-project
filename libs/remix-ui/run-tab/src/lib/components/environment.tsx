@@ -6,11 +6,10 @@ import { Dropdown } from 'react-bootstrap'
 import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export function EnvironmentUI(props: EnvironmentProps) {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const vmStateName = useRef('')
   const providers = props.providers.providerList
   const [isSwitching, setIsSwitching] = useState(false)

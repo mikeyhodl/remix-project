@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
 import { FormattedMessage } from 'react-intl'
 import './desktop-download.css'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface DesktopDownloadProps {
   className?: string
@@ -48,8 +48,7 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detectedDownload, setDetectedDownload] = useState<DetectedDownload | null>(null)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   // Detect user's operating system
   const detectOS = (): 'windows' | 'macos' | 'linux' => {

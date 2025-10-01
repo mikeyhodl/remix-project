@@ -3,11 +3,10 @@ import { FormattedMessage, useIntl } from 'react-intl'
 import CheckTxStatus from './ChechTxStatus' // eslint-disable-line
 import Context from './Context' // eslint-disable-line
 import showTable from './Table'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, txDetails, modal, provider }) => {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const intl = useIntl()
   const debug = (event, tx) => {
     event.stopPropagation()

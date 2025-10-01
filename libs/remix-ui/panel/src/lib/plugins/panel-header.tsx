@@ -3,7 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { PluginRecord } from '../types'
 import './panel.css'
 import { CustomTooltip, RenderIf, RenderIfNot } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export interface RemixPanelProps {
   plugins: Record<string, PluginRecord>,
@@ -15,8 +15,7 @@ export interface RemixPanelProps {
 const RemixUIPanelHeader = (props: RemixPanelProps) => {
   const [plugin, setPlugin] = useState<PluginRecord>()
   const [toggleExpander, setToggleExpander] = useState<boolean>(false)
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   useEffect(() => {
     setToggleExpander(false)

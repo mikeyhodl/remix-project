@@ -10,14 +10,13 @@ import { ContractGUI } from './contractGUI'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { BN } from 'bn.js'
 import { CustomTooltip, is0XPrefixed, isHexadecimal, isNumeric, shortenAddress } from '@remix-ui/helper'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 const txHelper = remixLib.execution.txHelper
 
 export function UniversalDappUI(props: UdappProps) {
   const intl = useIntl()
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [toggleExpander, setToggleExpander] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState<FuncABI[]>(null)
   const [address, setAddress] = useState<string>('')

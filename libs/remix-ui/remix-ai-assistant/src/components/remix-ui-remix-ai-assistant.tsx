@@ -5,7 +5,8 @@ import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse,
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
-import { AppContext, ModalTypes } from '@remix-ui/app'
+import { ModalTypes } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage } from '../lib/types'
@@ -48,8 +49,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [contextChoice, setContextChoice] = useState<'none' | 'current' | 'opened' | 'workspace'>(
     'none'
   )
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)

@@ -3,7 +3,7 @@ import React, { CSSProperties, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ScamAlert } from '../remixui-statusbar-panel'
 import '../../css/statusbar.css'
-import { AppContext } from '@remix-ui/app'
+import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export interface ScamDetailsProps {
   refs: ExtendedRefs<ReferenceType>
@@ -13,8 +13,7 @@ export interface ScamDetailsProps {
 }
 
 export default function ScamDetails ({ refs, floatStyle, scamAlerts }: ScamDetailsProps) {
-  const appContext = useContext(AppContext)
-  const { track } = appContext
+  const { track } = useContext(TrackingContext)
 
   return (
     <div
