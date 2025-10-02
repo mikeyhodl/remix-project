@@ -263,7 +263,7 @@ export class MatomoManager implements IMatomoManager {
   }
 
   private setupPaqInterception(): void {
-    console.log('Setting up _paq interception');
+    this.log('Setting up _paq interception');
     if (typeof window === 'undefined') return;
     
     window._paq = window._paq || [];

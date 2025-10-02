@@ -22,7 +22,7 @@ export function createMatomoConfig(): MatomoConfig {
   return {
     trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
     // siteId will be auto-derived from matomoDomains based on current hostname
-    debug: true,
+    debug: false,
     matomoDomains: MATOMO_DOMAINS,
     scriptTimeout: 10000,
     onStateChange: (event, data, state) => {

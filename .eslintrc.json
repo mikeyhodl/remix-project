@@ -74,6 +74,29 @@
       "rules": {
         "indent": ["error", 2]
       }
+    },
+    {
+      "files": ["**/src/app/matomo/*.ts", "**/src/assets/js/**/*.js"],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    },
+    {
+      "files": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+      "excludedFiles": ["**/src/app/matomo/*.ts", "**/src/assets/js/**/*.js"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "MemberExpression[object.type='Identifier'][object.name='window'][property.type='Identifier'][property.name='_paq']",
+            "message": "Direct usage of window._paq is not allowed. Use MatomoManager.trackEvent() or TrackingContext instead. If you need to track events, use the tracking function from TrackingContext or call matomoManager.trackEvent() directly."
+          },
+          {
+            "selector": "MemberExpression[object.type='MemberExpression'][object.object.type='Identifier'][object.object.name='window'][object.property.type='Identifier'][object.property.name='_paq']",
+            "message": "Direct usage of window._paq methods is not allowed. Use MatomoManager.trackEvent() or TrackingContext instead. If you need to track events, use the tracking function from TrackingContext or call matomoManager.trackEvent() directly."
+          }
+        ]
+      }
     }
   ],
   "globals": {
