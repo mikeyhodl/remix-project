@@ -501,7 +501,7 @@ module.exports = {
     /**
      * Simple pattern: User accepts cookies → has cookies + visitor ID → reload → same state
      */
-    'User accepts cookies #group1': function (browser: NightwatchBrowser) {
+    'User accepts cookies #pr #group1': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
@@ -520,7 +520,7 @@ module.exports = {
     /**
      * Simple pattern: User rejects cookies → no cookies + no visitor ID → reload → same anonymous state
      */
-    'User rejects cookies (anonymous mode) #group2': function (browser: NightwatchBrowser) {
+    'User rejects cookies (anonymous mode) #pr #group2': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
@@ -537,7 +537,7 @@ module.exports = {
     /**
      * Settings tab pattern: User switches preferences via Settings → Analytics
      */
-    'User switches settings via Settings tab #group3': function (browser: NightwatchBrowser) {
+    'User switches settings via Settings tab #pr #group3': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
@@ -567,7 +567,7 @@ module.exports = {
     /**
      * Simple pattern: Prequeue → Accept → Queue flush to cookie mode
      */
-    'Prequeue flush to cookie mode #group4': function (browser: NightwatchBrowser) {
+    'Prequeue flush to cookie mode #pr #group4': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
@@ -584,7 +584,7 @@ module.exports = {
     /**
      * Simple pattern: Prequeue → Reject → Queue flush to anonymous mode
      */
-    'Prequeue flush to anonymous mode #group5': function (browser: NightwatchBrowser) {
+    'Prequeue flush to anonymous mode #pr #group5': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
