@@ -2,7 +2,8 @@ import { RemixApp } from '@remix-ui/app'
 import axios from 'axios'
 import React, {useState, useEffect, useRef, useContext} from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
-import { useTracking } from '../contexts/TrackingContext'
+import { useTracking, TrackingProvider } from '../contexts/TrackingContext'
+import { TrackingFunction } from '../utils/TrackingFunction'
 import * as packageJson from '../../../../../package.json'
 import { fileSystem, fileSystems } from '../files/fileSystem'
 import { indexedDBFileSystem } from '../files/filesystems/indexedDB'
@@ -13,7 +14,12 @@ import isElectron from 'is-electron'
 
 // _paq.push(['trackEvent', 'App', 'Preload', 'start'])
 
-export const Preload = (props: any) => {
+interface PreloadProps {
+  root: any;
+  trackingFunction: TrackingFunction;
+}
+
+export const Preload = (props: PreloadProps) => {
   const { track } = useTracking()
   const [tip, setTip] = useState<string>('')
   const [supported, setSupported] = useState<boolean>(true)
@@ -38,7 +44,11 @@ export const Preload = (props: any) => {
       .then((AppComponent) => {
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {
-          props.root.render(<RemixApp app={appComponent} />)
+          props.root.render(
+            <TrackingProvider trackingFunction={props.trackingFunction}>
+              <RemixApp app={appComponent} />
+            </TrackingProvider>
+          )
         })
       })
       .catch((err) => {

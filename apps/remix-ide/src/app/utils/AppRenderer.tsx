@@ -38,7 +38,7 @@ export function renderApp(options: RenderAppOptions): Root | null {
   } else {
     root.render(
       <TrackingProvider trackingFunction={trackingFunction}>
-        <Preload root={root} />
+        <Preload root={root} trackingFunction={trackingFunction} />
       </TrackingProvider>
     );
   }

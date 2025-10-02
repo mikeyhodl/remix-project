@@ -92,11 +92,32 @@ function initMatomoDebugPlugin() {
   function parseVisitorId(request) {
     if (!request) return null;
     
-    const match = request.match(/_id=([^&]+)/);
-    if (match && match[1] && match[1] !== 'null' && match[1] !== 'undefined') {
-      return decodeURIComponent(match[1]);
+    console.log('[DEBUG] parseVisitorId - Full request:', request);
+    
+    // Look for _id parameter - this IS the visitor ID (not a separate userId)
+    // In anonymous mode: _id= (empty)
+    // In cookie mode: _id=18d92915c3022ce2 (has value)
+    const match = request.match(/_id=([^&]*)/);
+    console.log('[DEBUG] parseVisitorId - _id match:', match);
+    
+    if (match) {
+      const visitorIdValue = match[1];
+      console.log('[DEBUG] parseVisitorId - Raw _id value:', `"${visitorIdValue}"`);
+      
+      // If _id is empty or null, this is anonymous mode
+      if (!visitorIdValue || visitorIdValue === '' || visitorIdValue === 'null' || visitorIdValue === 'undefined') {
+        console.log('[DEBUG] parseVisitorId - Anonymous mode (_id is empty), returning null');
+        return null;
+      }
+      
+      // If _id has a value, this is cookie mode
+      const visitorId = decodeURIComponent(visitorIdValue);
+      console.log('[DEBUG] parseVisitorId - Cookie mode (_id has value), returning:', visitorId);
+      return visitorId;
     }
     
+    // _id parameter not found at all
+    console.log('[DEBUG] parseVisitorId - No _id parameter found, returning null');
     return null;
   }
 
@@ -116,9 +137,7 @@ function initMatomoDebugPlugin() {
         action: decodeURIComponent(params.get('e_a') || ''),
         name: decodeURIComponent(params.get('e_n') || ''),
         value: params.get('e_v') ? parseFloat(params.get('e_v')) : null,
-        visitorId: parseVisitorId(request),
-        userId: params.get('uid') ? decodeURIComponent(params.get('uid')) : null,
-        sessionId: params.get('pv_id') ? decodeURIComponent(params.get('pv_id')) : null,
+        visitorId: parseVisitorId(request), // From _id parameter: has value in cookie mode, null in anonymous mode
         dimension1: params.get('dimension1') ? decodeURIComponent(params.get('dimension1')) : null, // tracking mode
         dimension2: params.get('dimension2') ? decodeURIComponent(params.get('dimension2')) : null,
         dimension3: params.get('dimension3') ? decodeURIComponent(params.get('dimension3')) : null,
@@ -148,9 +167,7 @@ function initMatomoDebugPlugin() {
       return {
         url: decodeURIComponent(params.get('url') || ''),
         title: params.get('action_name') ? decodeURIComponent(params.get('action_name')) : null,
-        visitorId: parseVisitorId(request),
-        userId: params.get('uid') ? decodeURIComponent(params.get('uid')) : null,
-        sessionId: params.get('pv_id') ? decodeURIComponent(params.get('pv_id')) : null,
+        visitorId: parseVisitorId(request), // From _id parameter: has value in cookie mode, null in anonymous mode
         dimension1: params.get('dimension1') ? decodeURIComponent(params.get('dimension1')) : null,
         dimension2: params.get('dimension2') ? decodeURIComponent(params.get('dimension2')) : null,
         dimension3: params.get('dimension3') ? decodeURIComponent(params.get('dimension3')) : null,
