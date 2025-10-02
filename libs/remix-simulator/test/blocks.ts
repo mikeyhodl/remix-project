@@ -204,13 +204,10 @@ describe('blocks', () => {
       const contract = new ethers.ContractFactory(abi, code, signer)
 
       const contractInstance = await contract.deploy(100)
-      await contractInstance.waitForDeployment()
-
       const contractAddress = await contractInstance.getAddress()
       const contractInteract = new ethers.Contract(contractAddress, abi, signer)
 
       let tx = await contractInteract.set(100)
-      await tx.wait()
       let storage = await ethersProvider.getStorage(contractAddress, "0x0")
       assert.deepEqual(storage, '0x64')
 
@@ -223,7 +220,7 @@ describe('blocks', () => {
       await tx.wait()
       storage = await ethersProvider.getStorage(contractAddress, "0x0")
       assert.deepEqual(storage, '0x01')
-    }).timeout(20000)
+    }).timeout(10000)
   })
   describe('eth_call', () => {
     it('should get a value', async () => {
@@ -315,7 +312,6 @@ describe('blocks', () => {
       const contract = new ethers.ContractFactory(abi, code, signer)
 
       const contractInstance = await contract.deploy(100)
-      await contractInstance.waitForDeployment()
 
       const contractAddress = await contractInstance.getAddress()
       const contractInteract = new ethers.Contract(contractAddress, abi, signer)
@@ -323,6 +319,6 @@ describe('blocks', () => {
       let value = await contractInteract.get()
 
       assert.deepEqual(value, 100)
-    }).timeout(5000)
+    })
   })
 })
