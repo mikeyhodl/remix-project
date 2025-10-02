@@ -106,7 +106,9 @@ export class DeployContractHandler extends BaseToolHandler {
         txReturn = await new Promise(async (resolve, reject) => {
           const callbacks = { continueCb: (error, continueTxExecution, cancelCb) => {
             continueTxExecution()
-          }, promptCb: () => {}, statusCb: () => {}, finalCb: (error, contractObject, address: string, txResult: TxResult) => {
+          }, promptCb: () => {}, statusCb: (error) => {
+            console.log(error)
+          }, finalCb: (error, contractObject, address: string, txResult: TxResult) => {
             if (error) return reject(error)
             resolve({contractObject, address, txResult})
           }}
@@ -240,8 +242,16 @@ export class CallContractHandler extends BaseToolHandler {
       return 'Invalid contract address format';
     }
 
+
     if (!Array.isArray(args.abi)) {
-      return 'ABI must be an array';
+      try {
+        args.abi = JSON.parse(args.abi as any)
+        if (!Array.isArray(args.abi)) {
+          return 'ABI must be an array'
+        }
+      } catch (e) {
+        return 'ABI must be an array'
+      }
     }
 
     return true;
@@ -266,9 +276,11 @@ export class CallContractHandler extends BaseToolHandler {
             isView,
             (msg) => {
               // logMsg
+              console.log(msg)
             },
             (msg) => {
               // logCallback
+              console.log(msg)
             },
             (returnValue) => {
               // outputCb
@@ -278,6 +290,7 @@ export class CallContractHandler extends BaseToolHandler {
               continueTxExecution(null)
             },
             (error, continueTxExecution, cancelCb) => {
+              if (error) reject(error)
               // continueCb
               continueTxExecution()
             },
@@ -286,6 +299,7 @@ export class CallContractHandler extends BaseToolHandler {
             },
             (error, cancelCb) => {
               // promptCb
+              if (error) reject(error)
             },
             (error, {txResult, address, returnValue}) => {
               if (error) return reject(error)
