@@ -29,11 +29,11 @@ function acceptConsent(browser: NightwatchBrowser) {
 function rejectConsent(browser: NightwatchBrowser) {
     return browser
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-        .click('[data-id="matomoModal-modal-footer-manage-react"]') // Click "Manage Preferences"
-        .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]') // Wait for preferences dialog
-        .click('[data-id="matPerfToggle"]') // Uncheck performance analytics toggle
-        .click('[data-id="matomoModal-modal-footer-ok-react"]') // Save preferences
-        .waitForElementNotVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
+        .click('[data-id="matomoModal-modal-footer-cancel-react"]') // Click "Manage Preferences"
+        .waitForElementVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]') // Wait for preferences dialog
+        .click('[data-id="matomoPerfAnalyticsToggleSwitch"]') // Uncheck performance analytics toggle
+        .click('[data-id="managePreferencesModal-modal-footer-ok-react"]') // Save preferences
+        .waitForElementNotVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]')
         .pause(2000);
 }
 
@@ -51,6 +51,24 @@ function checkConsentState(browser: NightwatchBrowser, expectedHasCookies: boole
                 .assert.equal(hasCookies, expectedHasCookies, expectedHasCookies ? 'Should have cookies' : 'Should not have cookies')
                 .assert.equal(result.value.hasConsent, expectedHasCookies, expectedHasCookies ? 'Should have consent' : 'Should not have consent')
                 .assert.ok(true, `✅ ${description}: ${result.value.cookieCount} cookies, consent=${result.value.hasConsent}`);
+        });
+}
+
+// Helper 3b: Check cookie and consent state (with separate consent expectation)
+function checkTrackingState(browser: NightwatchBrowser, expectedHasCookies: boolean, expectedHasConsent: boolean, description: string) {
+    return browser
+        .execute(function () {
+            const cookies = document.cookie.split(';').filter(c => c.includes('_pk_'));
+            const matomoManager = (window as any)._matomoManagerInstance;
+            const hasConsent = matomoManager.getState().consentGiven;
+            const currentMode = matomoManager.getState().currentMode;
+            return { cookieCount: cookies.length, hasConsent, currentMode };
+        }, [], (result: any) => {
+            const hasCookies = result.value.cookieCount > 0;
+            browser
+                .assert.equal(hasCookies, expectedHasCookies, expectedHasCookies ? 'Should have cookies' : 'Should not have cookies')
+                .assert.equal(result.value.hasConsent, expectedHasConsent, expectedHasConsent ? 'Should have consent' : 'Should not have consent')
+                .assert.ok(true, `✅ ${description}: ${result.value.cookieCount} cookies, consent=${result.value.hasConsent}, mode=${result.value.currentMode}`);
         });
 }
 
@@ -191,6 +209,28 @@ function checkSameCookie(browser: NightwatchBrowser, description: string) {
         });
 }
 
+// Helper 8b: Check cookie value is different from before (new visitor ID)
+function checkNewCookie(browser: NightwatchBrowser, description: string) {
+    return browser
+        .execute(function () {
+            // Find the _pk_id cookie again
+            const cookies = document.cookie.split(';');
+            const pkCookie = cookies.find(c => c.trim().startsWith('_pk_id'));
+            return { pkCookie: pkCookie ? pkCookie.trim() : null };
+        }, [], (result: any) => {
+            const savedCookie = (browser as any).__savedCookie;
+            if (savedCookie && result.value.pkCookie) {
+                browser
+                    .assert.notEqual(result.value.pkCookie, savedCookie, 'Cookie value should be different (new visitor ID)')
+                    .assert.ok(true, `✅ ${description}: New visitor ID generated`);
+            } else if (result.value.pkCookie && !savedCookie) {
+                browser.assert.ok(true, `✅ ${description}: New visitor ID created (no previous cookie)`);
+            } else {
+                browser.assert.ok(true, `ℹ️ ${description}: No cookies found`);
+            }
+        });
+}
+
 // Helper 9: Dump all debug events to Nightwatch log
 function dumpAllEvents(browser: NightwatchBrowser, description: string) {
     return browser
@@ -268,6 +308,49 @@ function clickSolidity(browser: NightwatchBrowser) {
 
 function clickFileExplorer(browser: NightwatchBrowser) {
     return triggerEvent(browser, 'verticalIconsKindfilePanel', 'File Explorer');
+}
+
+// Helper: Navigate to settings and switch matomo preferences
+function switchMatomoSettings(browser: NightwatchBrowser, enablePerformance: boolean, description: string) {
+    return browser
+        .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+        .click('*[data-id="topbar-settingsIcon"]') // Open settings
+        .waitForElementVisible('*[data-id="settings-sidebar-analytics"]')
+        .click('*[data-id="settings-sidebar-analytics"]') // Click Analytics section
+        .waitForElementVisible('*[data-id="matomo-perf-analyticsSwitch"]')
+        .execute(function () {
+            // Check current toggle state
+            const perfToggle = document.querySelector('[data-id="matomo-perf-analyticsSwitch"]');
+            const isCurrentlyOn = perfToggle?.querySelector('.fa-toggle-on');
+            return { currentState: !!isCurrentlyOn };
+        }, [], (result: any) => {
+            const currentState = result.value.currentState;
+            const needsClick = currentState !== enablePerformance;
+            
+            if (needsClick) {
+                browser
+                    .click('*[data-id="matomo-perf-analyticsSwitch"]') // Toggle performance analytics
+                    .pause(1000) // Wait for setting to apply
+                    .assert.ok(true, `🔧 ${description}: Switched performance analytics to ${enablePerformance ? 'enabled' : 'disabled'}`);
+            } else {
+                browser.assert.ok(true, `🔧 ${description}: Performance analytics already ${enablePerformance ? 'enabled' : 'disabled'}`);
+            }
+        })
+        .pause(2000); // Wait for changes to take effect
+}
+
+// Helper: Verify settings state matches expectations  
+function verifySettingsState(browser: NightwatchBrowser, expectedPerformanceEnabled: boolean, description: string) {
+    return browser
+        .execute(function () {
+            const config = JSON.parse(window.localStorage.getItem('config-v0.8:.remix.config') || '{}');
+            const perfAnalytics = config['settings/matomo-perf-analytics'];
+            return { perfAnalytics };
+        }, [], (result: any) => {
+            browser
+                .assert.equal(result.value.perfAnalytics, expectedPerformanceEnabled, `Performance analytics should be ${expectedPerformanceEnabled ? 'enabled' : 'disabled'} in localStorage`)
+                .assert.ok(true, `✅ ${description}: localStorage shows performance=${result.value.perfAnalytics}`);
+        });
 }
 
 // Simple helper: setup and check tracking state
@@ -362,7 +445,7 @@ module.exports = {
     /**
      * Simple pattern: User rejects cookies → no cookies + no visitor ID → reload → same anonymous state
      */
-    'User rejects cookies (anonymous mode) #group1': function (browser: NightwatchBrowser) {
+    'User rejects cookies (anonymous mode) #group2': function (browser: NightwatchBrowser) {
         browser
             .perform(() => startFreshTest(browser))
             .perform(() => setupAndCheckState(browser, 'Initial state'))
@@ -374,5 +457,35 @@ module.exports = {
             .perform(() => clickHome(browser)) // Click again after reload - still anonymous
             .perform(() => checkLastEventMode(browser, 'anon', 'topbar', 'header', 'Home', 'Home click after reload (anonymous)')) // Verify event after reload still anonymous
             .assert.ok(true, '✅ Pattern complete: reject → anonymous → reload → same anonymous state → no visitor ID persistence')
+    },
+
+    /**
+     * Settings tab pattern: User switches preferences via Settings → Analytics
+     */
+    'User switches settings via Settings tab #group3': function (browser: NightwatchBrowser) {
+        browser
+            .perform(() => startFreshTest(browser))
+            .perform(() => setupAndCheckState(browser, 'Initial state'))
+            .perform(() => acceptConsent(browser)) // Start with cookie mode
+            .perform(() => checkConsentState(browser, true, 'After accept'))
+            .perform(() => clickHome(browser)) // Trigger event in cookie mode
+            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'Initial cookie mode event'))
+            .perform(() => rememberCookieValue(browser, 'Original cookie mode')) // Remember the first cookie
+            
+            // Switch to anonymous via settings
+            .perform(() => switchMatomoSettings(browser, false, 'Disable performance analytics'))
+            .perform(() => verifySettingsState(browser, false, 'Settings verification'))
+            .perform(() => checkConsentState(browser, false, 'After settings switch to anonymous'))
+            .perform(() => clickHome(browser)) // Trigger event in anonymous mode
+            .perform(() => checkLastEventMode(browser, 'anon', 'topbar', 'header', 'Home', 'After switch to anonymous'))
+            
+            // Switch back to cookie mode via settings
+            .perform(() => switchMatomoSettings(browser, true, 'Enable performance analytics'))
+            .perform(() => verifySettingsState(browser, true, 'Settings verification'))
+            .perform(() => checkConsentState(browser, true, 'After settings switch to cookie'))
+            .perform(() => clickHome(browser)) // Trigger event in cookie mode again
+            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'After switch back to cookie'))
+            .perform(() => checkNewCookie(browser, 'New visitor ID after anonymous switch')) // Verify it's a NEW cookie, not the old one
+            .assert.ok(true, '✅ Pattern complete: settings toggle → anonymous ↔ cookie mode switching works with new visitor ID')
     }
 }

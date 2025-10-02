@@ -566,8 +566,12 @@ export class MatomoManager implements IMatomoManager {
     if (options.forgetConsent && wasMatomoLoaded) {
       this.log('WARNING: Using forgetCookieConsentGiven on loaded Matomo may break tracking');
       window._paq.push(['forgetCookieConsentGiven']);
-      this.state.consentGiven = false;
     }
+    
+    // BUG FIX: Always set consentGiven to false when switching to anonymous mode
+    // Anonymous mode means no cookies, which means no consent for cookie tracking
+    this.state.consentGiven = false;
+    this.log('Consent state set to false (anonymous mode = no cookie consent)');
     
     if (options.deleteCookies !== false) {
       await this.deleteMatomoCookies();
