@@ -166,11 +166,12 @@ function initMatomoDebugPlugin() {
   // Plugin registration function
   function registerPlugin() {
     if (!window.Matomo || typeof window.Matomo.addPlugin !== 'function') {
+      console.error('[MatomoDebugPlugin] Matomo not found or addPlugin not available');
       return false;
     }
 
     try {
-      
+      console.log('[MatomoDebugPlugin] Registering plugin with Matomo');
       window.Matomo.addPlugin('DebugPlugin', {
         log: function () {
           const data = window.__matomoDebugData;
@@ -186,6 +187,7 @@ function initMatomoDebugPlugin() {
         // This event function is called by Matomo when events are tracked
         event: function () {
           const args = Array.from(arguments);
+          console.log('[MatomoDebugPlugin] Captured event with args:', args);
           
           const data = window.__matomoDebugData;
           
@@ -258,11 +260,18 @@ function initMatomoDebugPlugin() {
     }
   }
 
-  // Register for Matomo's async plugin initialization
-  if (typeof window.matomoPluginAsyncInit === 'undefined') {
-    window.matomoPluginAsyncInit = [];
+  // Try to register immediately if Matomo is already loaded
+  if (window.Matomo && typeof window.Matomo.addPlugin === 'function') {
+    console.log('[MatomoDebugPlugin] Matomo already loaded, registering immediately');
+    registerPlugin();
+  } else {
+    // Register for Matomo's async plugin initialization as fallback
+    console.log('[MatomoDebugPlugin] Matomo not ready, queuing for async initialization');
+    if (typeof window.matomoPluginAsyncInit === 'undefined') {
+      window.matomoPluginAsyncInit = [];
+    }
+    window.matomoPluginAsyncInit.push(registerPlugin);
   }
-  window.matomoPluginAsyncInit.push(registerPlugin);
 }
 
 // Export for use in loader

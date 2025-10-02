@@ -72,6 +72,7 @@ export interface MatomoDiagnostics {
     url: string;
     siteId: number | string;
   } | null;
+  plugins: string[];
   userAgent: string;
   timestamp: string;
 }
@@ -92,6 +93,26 @@ export interface ModeSwitchOptions {
   deleteCookies?: boolean;
   setDimension?: boolean;
   [key: string]: any;
+}
+
+export interface PluginLoadOptions {
+  timeout?: number;
+  retryAttempts?: number;
+  onLoad?: () => void;
+  onError?: (error: Error) => void;
+  initFunction?: string; // Name of the global init function to call after loading
+}
+
+export interface DebugPluginE2EHelpers {
+  getEvents: () => any[];
+  getLatestEvent: () => any;
+  getEventsByCategory: (category: string) => any[];
+  getEventsByAction: (action: string) => any[];
+  getPageViews: () => any[];
+  getVisitorIds: () => any[];
+  getDimensions: () => Record<string, any>;
+  clearData: () => void;
+  waitForEvent: (category?: string, action?: string, timeout?: number) => Promise<any>;
 }
 
 export interface EventData {
@@ -155,6 +176,13 @@ export interface IMatomoManager {
   loadScript(): Promise<void>;
   waitForLoad(timeout?: number): Promise<void>;
   
+  // Plugin loading
+  loadPlugin(src: string, options?: PluginLoadOptions): Promise<void>;
+  loadDebugPlugin(): Promise<void>;
+  loadDebugPluginForE2E(): Promise<DebugPluginE2EHelpers>;
+  getLoadedPlugins(): string[];
+  isPluginLoaded(src: string): boolean;
+  
   // Queue management
   getPreInitQueue(): MatomoCommand[];
   getQueueStatus(): { queueLength: number; initialized: boolean; commands: MatomoCommand[] };
@@ -181,6 +209,7 @@ export class MatomoManager implements IMatomoManager {
   private readonly eventQueue: MatomoCommand[];
   private readonly listeners: Map<string, EventListener[]>;
   private readonly preInitQueue: MatomoCommand[] = [];
+  private readonly loadedPlugins: Set<string> = new Set();
   private originalPaqPush: Function | null = null;
 
   constructor(config: MatomoConfig) {
@@ -753,6 +782,213 @@ export class MatomoManager implements IMatomoManager {
     });
   }
 
+  // ================== PLUGIN LOADING ==================
+
+  /**
+   * Load a Matomo plugin script
+   */
+  async loadPlugin(src: string, options: PluginLoadOptions = {}): Promise<void> {
+    const {
+      timeout = this.config.scriptTimeout,
+      retryAttempts = this.config.retryAttempts,
+      onLoad,
+      onError,
+      initFunction
+    } = options;
+
+    // Check if plugin is already loaded
+    if (this.loadedPlugins.has(src)) {
+      this.log(`Plugin already loaded: ${src}`);
+      return;
+    }
+
+    if (typeof document === 'undefined') {
+      throw new Error('Cannot load plugin: document is not available');
+    }
+
+    // Check if script element already exists
+    const existingScript = document.querySelector(`script[src="${src}"]`);
+    if (existingScript) {
+      this.log(`Plugin script already exists: ${src}`);
+      this.loadedPlugins.add(src);
+      return;
+    }
+
+    return this.loadPluginWithRetry(src, options, 1);
+  }
+
+  /**
+   * Load the Matomo debug plugin specifically
+   */
+  async loadDebugPlugin(): Promise<void> {
+    const src = 'assets/js/matomo-debug-plugin.js';
+    
+    return this.loadPlugin(src, {
+      initFunction: 'initMatomoDebugPlugin',
+      onLoad: () => {
+        this.log('Debug plugin loaded and initialized');
+        this.emit('debug-plugin-loaded');
+      },
+      onError: (error) => {
+        this.log('Debug plugin failed to load:', error);
+        this.emit('debug-plugin-error', error);
+      }
+    });
+  }
+
+  /**
+   * Load debug plugin specifically for E2E testing with enhanced helpers
+   * Returns easy-to-use helper functions for test assertions
+   */
+  async loadDebugPluginForE2E(): Promise<DebugPluginE2EHelpers> {
+    await this.loadDebugPlugin();
+    
+    // Wait a bit for plugin to be fully registered
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const helpers: DebugPluginE2EHelpers = {
+      getEvents: () => (window as any).__getMatomoEvents?.() || [],
+      getLatestEvent: () => (window as any).__getLatestMatomoEvent?.() || null,
+      getEventsByCategory: (category: string) => (window as any).__getMatomoEventsByCategory?.(category) || [],
+      getEventsByAction: (action: string) => (window as any).__getMatomoEventsByAction?.(action) || [],
+      getPageViews: () => (window as any).__getMatomoPageViews?.() || [],
+      getVisitorIds: () => (window as any).__getLatestVisitorId?.() || null,
+      getDimensions: () => (window as any).__getMatomoDimensions?.() || {},
+      clearData: () => (window as any).__clearMatomoDebugData?.(),
+      
+      waitForEvent: async (category?: string, action?: string, timeout = 5000): Promise<any> => {
+        const startTime = Date.now();
+        
+        return new Promise((resolve, reject) => {
+          const checkForEvent = () => {
+            const events = helpers.getEvents();
+            
+            let matchingEvent = null;
+            if (category && action) {
+              matchingEvent = events.find(e => e.category === category && e.action === action);
+            } else if (category) {
+              matchingEvent = events.find(e => e.category === category);
+            } else if (action) {
+              matchingEvent = events.find(e => e.action === action);
+            } else {
+              matchingEvent = events[events.length - 1]; // Latest event
+            }
+            
+            if (matchingEvent) {
+              resolve(matchingEvent);
+              return;
+            }
+            
+            if (Date.now() - startTime > timeout) {
+              reject(new Error(`Timeout waiting for event${category ? ` category=${category}` : ''}${action ? ` action=${action}` : ''}`));
+              return;
+            }
+            
+            setTimeout(checkForEvent, 100);
+          };
+          
+          checkForEvent();
+        });
+      }
+    };
+    
+    this.log('Debug plugin loaded for E2E testing with enhanced helpers');
+    this.emit('debug-plugin-e2e-ready', helpers);
+    
+    return helpers;
+  }
+
+  /**
+   * Get list of loaded plugins
+   */
+  getLoadedPlugins(): string[] {
+    return Array.from(this.loadedPlugins);
+  }
+
+  /**
+   * Check if a specific plugin is loaded
+   */
+  isPluginLoaded(src: string): boolean {
+    return this.loadedPlugins.has(src);
+  }
+
+  private async loadPluginWithRetry(src: string, options: PluginLoadOptions, attempt: number): Promise<void> {
+    const retryAttempts = options.retryAttempts || this.config.retryAttempts;
+    
+    try {
+      await this.doLoadPlugin(src, options);
+      this.loadedPlugins.add(src);
+    } catch (error) {
+      if (attempt < retryAttempts) {
+        this.log(`Plugin loading failed (attempt ${attempt}), retrying...`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        return this.loadPluginWithRetry(src, options, attempt + 1);
+      } else {
+        this.log(`Plugin loading failed after all retries: ${src}`, error);
+        if (options.onError) {
+          options.onError(error instanceof Error ? error : new Error(String(error)));
+        }
+        throw error;
+      }
+    }
+  }
+
+  private async doLoadPlugin(src: string, options: PluginLoadOptions): Promise<void> {
+    const timeout = options.timeout || this.config.scriptTimeout;
+    
+    return new Promise((resolve, reject) => {
+      this.log(`Loading plugin: ${src}`);
+      
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = src;
+      
+      const timeoutId = setTimeout(() => {
+        script.remove();
+        reject(new Error(`Plugin loading timeout after ${timeout}ms: ${src}`));
+      }, timeout);
+      
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        this.log(`Plugin script loaded: ${src}`);
+        
+        // Call initialization function if specified
+        if (options.initFunction && typeof (window as any)[options.initFunction] === 'function') {
+          try {
+            (window as any)[options.initFunction]();
+            this.log(`Plugin initialized: ${options.initFunction}`);
+          } catch (initError) {
+            this.log(`Plugin initialization failed: ${options.initFunction}`, initError);
+          }
+        }
+        
+        if (options.onLoad) {
+          options.onLoad();
+        }
+        
+        this.emit('plugin-loaded', { src, options });
+        resolve();
+      };
+      
+      script.onerror = (error) => {
+        clearTimeout(timeoutId);
+        script.remove();
+        const errorMessage = `Failed to load plugin: ${src}`;
+        this.log(errorMessage, error);
+        const pluginError = new Error(errorMessage);
+        
+        if (options.onError) {
+          options.onError(pluginError);
+        }
+        
+        this.emit('plugin-error', { src, error: pluginError });
+        reject(pluginError);
+      };
+      
+      document.head.appendChild(script);
+    });
+  }
+
   // ================== RESET & CLEANUP ==================
 
   async reset(): Promise<void> {
@@ -891,6 +1127,7 @@ export class MatomoManager implements IMatomoManager {
       state,
       status: this.getStatus(),
       tracker,
+      plugins: this.getLoadedPlugins(),
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 100) : 'N/A',
       timestamp: new Date().toISOString()
     };
