@@ -417,6 +417,81 @@ function setupAndCheckState(browser: NightwatchBrowser, description: string) {
         });
 }
 
+// Helper: Check prequeue vs debug events (before/after consent)
+function checkPrequeueState(browser: NightwatchBrowser, description: string) {
+    return browser
+        .execute(function () {
+            const matomoManager = (window as any)._matomoManagerInstance;
+            const debugHelpers = (window as any).__matomoDebugHelpers;
+            
+            if (!matomoManager || !debugHelpers) {
+                return { error: 'Missing components' };
+            }
+            
+            const queueStatus = matomoManager.getQueueStatus();
+            const events = debugHelpers.getEvents();
+            
+            return {
+                queueLength: queueStatus.queueLength,
+                debugEvents: events.length,
+                hasConsent: matomoManager.getState().consentGiven,
+                summary: `Queue: ${queueStatus.queueLength} events, Debug: ${events.length} events, Consent: ${matomoManager.getState().consentGiven}`
+            };
+        }, [], (result: any) => {
+            browser.assert.ok(true, `📊 ${description}: ${result.value.summary}`);
+            return result.value;
+        });
+}
+
+// Helper: Verify prequeue has events but debug is empty
+function verifyPrequeueActive(browser: NightwatchBrowser, description: string) {
+    return browser
+        .execute(function () {
+            const matomoManager = (window as any)._matomoManagerInstance;
+            const debugHelpers = (window as any).__matomoDebugHelpers;
+            const queueStatus = matomoManager.getQueueStatus();
+            const events = debugHelpers.getEvents();
+            return { queueLength: queueStatus.queueLength, debugEvents: events.length };
+        }, [], (result: any) => {
+            browser
+                .assert.ok(result.value.queueLength > 0, `Should have queued events (found ${result.value.queueLength})`)
+                .assert.equal(result.value.debugEvents, 0, 'Should have no debug events before consent')
+                .assert.ok(true, `✅ ${description}: ${result.value.queueLength} queued, ${result.value.debugEvents} debug`);
+        });
+}
+
+// Helper: Verify queue flushed to debug with correct mode
+function verifyQueueFlushed(browser: NightwatchBrowser, expectedMode: 'cookie' | 'anon', description: string) {
+    return browser
+        .execute(function (expectedMode) {
+            const matomoManager = (window as any)._matomoManagerInstance;
+            const debugHelpers = (window as any).__matomoDebugHelpers;
+            const queueStatus = matomoManager.getQueueStatus();
+            const events = debugHelpers.getEvents();
+            const modeEvents = events.filter((e: any) => e.dimension1 === expectedMode);
+            return { 
+                queueLength: queueStatus.queueLength, 
+                debugEvents: events.length,
+                modeEvents: modeEvents.length,
+                firstEvent: events[0] || null
+            };
+        }, [expectedMode], (result: any) => {
+            browser
+                .assert.equal(result.value.queueLength, 0, 'Queue should be empty after consent')
+                .assert.ok(result.value.debugEvents > 0, `Should have debug events after flush (found ${result.value.debugEvents})`)
+                .assert.ok(result.value.modeEvents > 0, `Should have ${expectedMode} mode events (found ${result.value.modeEvents})`)
+                .assert.ok(true, `✅ ${description}: ${result.value.queueLength} queued, ${result.value.debugEvents} debug (${result.value.modeEvents} ${expectedMode} mode)`);
+            
+            // Verify first event mode and visitor ID
+            if (result.value.firstEvent) {
+                const expectedHasId = expectedMode === 'cookie';
+                browser
+                    .assert.equal(result.value.firstEvent.dimension1, expectedMode, `Flushed events should be in ${expectedMode} mode`)
+                    .assert.equal(!!result.value.firstEvent.visitorId, expectedHasId, expectedHasId ? 'Flushed events should have visitor ID' : 'Flushed events should NOT have visitor ID');
+            }
+        });
+}
+
 module.exports = {
     '@disabled': false,
     before: function (browser: NightwatchBrowser, done: () => void) {
@@ -487,5 +562,39 @@ module.exports = {
             .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'After switch back to cookie'))
             .perform(() => checkNewCookie(browser, 'New visitor ID after anonymous switch')) // Verify it's a NEW cookie, not the old one
             .assert.ok(true, '✅ Pattern complete: settings toggle → anonymous ↔ cookie mode switching works with new visitor ID')
+    },
+
+    /**
+     * Simple pattern: Prequeue → Accept → Queue flush to cookie mode
+     */
+    'Prequeue flush to cookie mode #group4': function (browser: NightwatchBrowser) {
+        browser
+            .perform(() => startFreshTest(browser))
+            .perform(() => setupAndCheckState(browser, 'Initial state'))
+            .pause(3000) // Wait for events to accumulate in prequeue
+            .perform(() => checkPrequeueState(browser, 'Before consent'))
+            .perform(() => verifyPrequeueActive(browser, 'Prequeue working'))
+            .perform(() => acceptConsent(browser)) // Accept consent
+            .pause(2000) // Wait for queue flush
+            .perform(() => checkPrequeueState(browser, 'After consent'))
+            .perform(() => verifyQueueFlushed(browser, 'cookie', 'Queue flush successful'))
+            .assert.ok(true, '✅ Pattern complete: prequeue → accept → queue flush to cookie mode')
+    },
+
+    /**
+     * Simple pattern: Prequeue → Reject → Queue flush to anonymous mode
+     */
+    'Prequeue flush to anonymous mode #group5': function (browser: NightwatchBrowser) {
+        browser
+            .perform(() => startFreshTest(browser))
+            .perform(() => setupAndCheckState(browser, 'Initial state'))
+            .pause(3000) // Wait for events to accumulate in prequeue
+            .perform(() => checkPrequeueState(browser, 'Before consent'))
+            .perform(() => verifyPrequeueActive(browser, 'Prequeue working'))
+            .perform(() => rejectConsent(browser)) // Reject consent
+            .pause(2000) // Wait for queue flush
+            .perform(() => checkPrequeueState(browser, 'After consent'))
+            .perform(() => verifyQueueFlushed(browser, 'anon', 'Queue flush successful'))
+            .assert.ok(true, '✅ Pattern complete: prequeue → reject → queue flush to anonymous mode')
     }
 }
