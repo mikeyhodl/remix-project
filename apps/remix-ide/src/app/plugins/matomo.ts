@@ -65,8 +65,17 @@ export class Matomo extends Plugin {
 
   // ================== TRACKING METHODS ==================
   
-  trackEvent(event: MatomoEvent): number {
-    return matomoManager.trackEvent(event)
+  // Support both type-safe MatomoEvent objects and legacy string signatures
+  trackEvent(event: MatomoEvent): number;
+  trackEvent(category: string, action: string, name?: string, value?: number): number;
+  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): number {
+    if (typeof eventObjOrCategory === 'string') {
+      // Legacy string-based approach - convert to type-safe call
+      return matomoManager.trackEvent(eventObjOrCategory, action!, name, value)
+    } else {
+      // Type-safe MatomoEvent object
+      return matomoManager.trackEvent(eventObjOrCategory)
+    }
   }
 
   trackPageView(title?: string): void {
@@ -174,11 +183,22 @@ export class Matomo extends Plugin {
     return matomoManager.shouldShowConsentDialog(configApi)
   }
 
-    /**
-   * Track events using type-safe MatomoEvent objects
-   * @param event Type-safe MatomoEvent object
+  /**
+   * Track events using type-safe MatomoEvent objects or legacy string parameters
+   * @param eventObjOrCategory Type-safe MatomoEvent object or category string
+   * @param action Action string (if using legacy approach)
+   * @param name Optional name parameter
+   * @param value Optional value parameter
    */
-  async track(event: MatomoEvent): Promise<void> {
-    await matomoManager.trackEvent(event);
+  async track(event: MatomoEvent): Promise<void>;
+  async track(category: string, action: string, name?: string, value?: number): Promise<void>;
+  async track(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): Promise<void> {
+    if (typeof eventObjOrCategory === 'string') {
+      // Legacy string-based approach
+      await matomoManager.trackEvent(eventObjOrCategory, action!, name, value);
+    } else {
+      // Type-safe MatomoEvent object
+      await matomoManager.trackEvent(eventObjOrCategory);
+    }
   }
 }

@@ -33,7 +33,7 @@ export default class SettingsTab extends ViewPlugin {
     method: K, 
     ...args: Parameters<CustomRemixApi['matomo']['methods'][K]>
   ): Promise<ReturnType<CustomRemixApi['matomo']['methods'][K]>> {
-    return await (this as any).call('matomo', method, ...args)
+    return await this.call('matomo', method, ...args)
   }
   private _deps: {
     themeModule: any
