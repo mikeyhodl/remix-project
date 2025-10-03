@@ -4,31 +4,31 @@
  * Creates a standardized tracking function that works with MatomoManager
  */
 
+import { MatomoEvent, MatomoEventBase } from '@remix-api';
 import { MatomoManager } from '../matomo/MatomoManager';
 
+
+
 export type TrackingFunction = (
-  category: string, 
-  action: string, 
-  name?: string, 
-  value?: string | number
+  event: MatomoEvent
 ) => void;
 
 /**
  * Create a tracking function that properly handles value conversion and delegates to MatomoManager
  */
 export function createTrackingFunction(matomoManager: MatomoManager): TrackingFunction {
-  return (category: string, action: string, name?: string, value?: string | number) => {
+  return (event: MatomoEvent) => {
     let numericValue: number | undefined = undefined;
     
-    if (value !== undefined) {
-      if (typeof value === 'number') {
-        numericValue = value;
-      } else if (typeof value === 'string') {
-        const parsed = parseFloat(value);
+    if (event.value !== undefined) {
+      if (typeof event.value === 'number') {
+        numericValue = event.value;
+      } else if (typeof event.value === 'string') {
+        const parsed = parseFloat(event.value);
         numericValue = isNaN(parsed) ? undefined : parsed;
       }
     }
     
-    matomoManager.trackEvent?.(category, action, name, numericValue);
+    matomoManager.trackEvent?.(event.category, event.action, event.name, numericValue);
   };
 }

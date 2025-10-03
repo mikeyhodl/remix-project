@@ -14,6 +14,36 @@
 export interface MatomoEventBase {
   name?: string;
   value?: string | number;
+  isClick?: boolean; // Pre-defined by event builders - distinguishes click events from other interactions
+}
+
+// Type-Safe Constants - Access categories and actions via types instead of string literals
+export const MatomoCategories = {
+  FILE_EXPLORER: 'fileExplorer' as const,
+  COMPILER: 'compiler' as const, 
+  HOME_TAB: 'hometab' as const,
+  AI: 'AI' as const,
+  UDAPP: 'udapp' as const,
+  GIT: 'git' as const,
+  WORKSPACE: 'workspace' as const,
+  XTERM: 'xterm' as const,
+  LAYOUT: 'layout' as const,
+  REMIX_AI: 'remixAI' as const,
+  SETTINGS: 'settings' as const,
+  SOLIDITY: 'solidity' as const
+}
+
+export const FileExplorerActions = {
+  CONTEXT_MENU: 'contextMenu' as const,
+  WORKSPACE_MENU: 'workspaceMenu' as const, 
+  FILE_ACTION: 'fileAction' as const,
+  DRAG_DROP: 'dragDrop' as const
+}
+
+export const CompilerActions = {
+  COMPILED: 'compiled' as const,
+  ERROR: 'error' as const,
+  WARNING: 'warning' as const
 }
 
 export type MatomoEvent = 
@@ -511,3 +541,185 @@ export function createTypeSafeEvent(
     value
   };
 }
+
+// ================== TYPED EVENT BUILDERS ==================
+
+/**
+ * File Explorer Events - Type-safe builders
+ */
+export const FileExplorerEvents = {
+  contextMenu: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'contextMenu',
+    name,
+    value,
+    isClick: true // Context menu selections are click interactions
+  }),
+  
+  workspaceMenu: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'workspaceMenu', 
+    name,
+    value,
+    isClick: true // Workspace menu selections are click interactions
+  }),
+  
+  fileAction: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'fileAction',
+    name,
+    value,
+    isClick: true // File actions like double-click to open are click interactions
+  }),
+  
+  deleteKey: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'deleteKey',
+    name,
+    value,
+    isClick: false // Keyboard delete key is not a click interaction
+  }),
+  
+  osxDeleteKey: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'osxDeleteKey',
+    name,
+    value,
+    isClick: false // macOS delete key is not a click interaction
+  }),
+  
+  f2ToRename: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'f2ToRename',
+    name,
+    value,
+    isClick: false // F2 key to rename is not a click interaction
+  }),
+  
+  copyCombo: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'copyCombo',
+    name,
+    value,
+    isClick: false // Ctrl+C/Cmd+C keyboard shortcut is not a click interaction
+  }),
+  
+  cutCombo: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'cutCombo',
+    name,
+    value,
+    isClick: false // Ctrl+X/Cmd+X keyboard shortcut is not a click interaction
+  }),
+  
+  pasteCombo: (name?: string, value?: string | number): FileExplorerEvent => ({
+    category: 'fileExplorer',
+    action: 'pasteCombo',
+    name,
+    value,
+    isClick: false // Ctrl+V/Cmd+V keyboard shortcut is not a click interaction
+  })
+} as const;
+
+/**
+ * Compiler Events - Type-safe builders  
+ */
+export const CompilerEvents = {
+  compiled: (name?: string, value?: string | number): CompilerEvent => ({
+    category: 'compiler',
+    action: 'compiled',
+    name,
+    value,
+    isClick: false // Compilation completion is a system event, not a click
+  }),
+  
+  runCompile: (name?: string, value?: string | number): CompilerEvent => ({
+    category: 'compiler', 
+    action: 'runCompile',
+    name,
+    value,
+    isClick: true // User clicks compile button to trigger compilation
+  }),
+  
+  compilerDetails: (name?: string, value?: string | number): CompilerEvent => ({
+    category: 'compiler',
+    action: 'compilerDetails', 
+    name,
+    value,
+    isClick: true // User clicks to view compiler details
+  })
+} as const;
+
+/**
+ * Home Tab Events - Type-safe builders
+ */
+export const HomeTabEvents = {
+  titleCard: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'titleCard',
+    name,
+    value,
+    isClick: true // User clicks on title cards in home tab
+  }),
+  
+  filesSection: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'filesSection',
+    name,
+    value,
+    isClick: true // User clicks on items in files section
+  }),
+  
+  header: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'header',
+    name,
+    value,
+    isClick: true // User clicks on header elements
+  }),
+  
+  featuredSection: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'featuredSection',
+    name,
+    value,
+    isClick: true // User clicks on featured section items
+  })
+} as const;
+
+/**
+ * AI Events - Type-safe builders
+ */
+export const AIEvents = {
+  remixAI: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'remixAI',
+    name,
+    value,
+    isClick: true // User clicks to interact with RemixAI
+  }),
+  
+  explainFunction: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'explainFunction',
+    name,
+    value,
+    isClick: true // User clicks to request function explanation from AI
+  }),
+  
+  generateDocumentation: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'generateDocumentation',
+    name,
+    value,
+    isClick: true // User clicks to request AI documentation generation
+  }),
+  
+  vulnerabilityCheck: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'vulnerability_check_pasted_code',
+    name,
+    value,
+    isClick: true // User clicks to request AI vulnerability check
+  })
+} as const;
