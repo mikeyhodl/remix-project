@@ -6,6 +6,16 @@ import {Registry} from '@remix-project/remix-lib'
 import { trackMatomoEvent, ThemeModuleEvents } from '@remix-api'
 const isElectron = require('is-electron')
 
+interface Theme {
+  name: string;
+  quality: 'dark' | 'light';
+  url: string;
+  backgroundColor: string;
+  textColor: string;
+  shapeColor: string;
+  fillColor: string;
+}
+
 //sol2uml dot files cannot work with css variables so hex values for colors are used
 const themes = [
   { name: 'Dark', quality: 'dark', url: 'assets/css/themes/remix-dark_tvx1s2.css', backgroundColor: '#222336', textColor: '#babbcc',
@@ -23,6 +33,14 @@ const profile = {
 }
 
 export class ThemeModule extends Plugin {
+  events: EventEmitter;
+  _deps: { config?: any };
+  themes: { [key: string]: Theme };
+  currentThemeState: { queryTheme: string | null; currentTheme: string | null };
+  active: string;
+  forced: boolean;
+  initCallback?: () => void;
+
   constructor() {
     super(profile)
     this.events = new EventEmitter()
@@ -33,15 +51,16 @@ export class ThemeModule extends Plugin {
     themes.map((theme) => {
       this.themes[theme.name.toLocaleLowerCase()] = {
         ...theme,
+        quality: theme.quality as 'dark' | 'light',
         url: isElectron()
           ? theme.url
           : window.location.pathname.startsWith('/auth')
             ? window.location.origin + '/' + theme.url
             : window.location.origin + (window.location.pathname.startsWith('/address/') || window.location.pathname.endsWith('.sol') ? '/' : window.location.pathname) + theme.url
-      }
+      } as Theme
     })
     // Tracking now handled via plugin API
-    let queryTheme = (new QueryParams()).get().theme
+    let queryTheme = (new QueryParams()).get()['theme'] as string
     queryTheme = queryTheme && queryTheme.toLocaleLowerCase()
     queryTheme = this.themes[queryTheme] ? queryTheme : null
     let currentTheme = (this._deps.config && this._deps.config.get('settings/theme')) || null
@@ -55,7 +74,7 @@ export class ThemeModule extends Plugin {
   /** Return the active theme
    * @return {{ name: string, quality: string, url: string }} - The active theme
   */
-  currentTheme() {
+  currentTheme(): Theme {
     if (isElectron()) {
       const theme = 'https://remix.ethereum.org/' + this.themes[this.active].url.replace(/\\/g, '/').replace(/\/\//g, '/').replace(/\/$/g, '')
       return { ...this.themes[this.active], url: theme }
@@ -64,14 +83,14 @@ export class ThemeModule extends Plugin {
   }
 
   /** Returns all themes as an array */
-  getThemes() {
+  getThemes(): Theme[] {
     return Object.keys(this.themes).map(key => this.themes[key])
   }
 
   /**
    * Init the theme
    */
-  initTheme(callback) { // callback is setTimeOut in app.js which is always passed
+  initTheme(callback?: () => void): void { // callback is setTimeOut in app.js which is always passed
     if (callback) this.initCallback = callback
     if (this.active) {
       document.getElementById('theme-link') ? document.getElementById('theme-link').remove() : null
@@ -94,7 +113,7 @@ export class ThemeModule extends Plugin {
    * Change the current theme
    * @param {string} [themeName] - The name of the theme
    */
-  switchTheme (themeName) {
+  switchTheme(themeName?: string): void {
     themeName = themeName && themeName.toLocaleLowerCase()
     if (themeName && !Object.keys(this.themes).includes(themeName)) {
       throw new Error(`Theme ${themeName} doesn't exist`)
@@ -134,7 +153,7 @@ export class ThemeModule extends Plugin {
    * fixes the inversion for images since this should be adjusted when we switch between dark/light qualified themes
    * @param {element} [image] - the dom element which invert should be fixed to increase visibility
    */
-  fixInvert(image) {
+  fixInvert(image?: HTMLElement): void {
     const invert = this.currentTheme().quality === 'dark' ? 1 : 0
     if (image) {
       image.style.filter = `invert(${invert})`

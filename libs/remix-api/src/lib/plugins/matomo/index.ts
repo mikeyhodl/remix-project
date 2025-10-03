@@ -30,7 +30,7 @@ export * from './events/tools-events';
 import type { AIEvent, RemixAIEvent, RemixAIAssistantEvent } from './events/ai-events';
 import type { CompilerEvent, SolidityCompilerEvent } from './events/compiler-events';
 import type { GitEvent } from './events/git-events';
-import type { HomeTabEvent, TopbarEvent, LayoutEvent, SettingsEvent, LandingPageEvent, UniversalEvent } from './events/ui-events';
+import type { HomeTabEvent, TopbarEvent, LayoutEvent, SettingsEvent, ThemeEvent, LocaleEvent, LandingPageEvent, UniversalEvent } from './events/ui-events';
 import type { FileExplorerEvent, WorkspaceEvent, StorageEvent, BackupEvent } from './events/file-events';
 import type { BlockchainEvent, UdappEvent, RunEvent } from './events/blockchain-events';
 import type { PluginEvent, ManagerEvent, PluginManagerEvent, AppEvent, MatomoManagerEvent, PluginPanelEvent, MigrateEvent } from './events/plugin-events';
@@ -55,6 +55,8 @@ export type MatomoEvent = (
   | TopbarEvent
   | LayoutEvent
   | SettingsEvent
+  | ThemeEvent
+  | LocaleEvent
   | LandingPageEvent
   | UniversalEvent
   

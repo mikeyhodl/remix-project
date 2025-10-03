@@ -10,6 +10,32 @@ var format = remixLib.execution.txFormat
 var txHelper = remixLib.execution.txHelper
 import { addressToString } from '@remix-ui/helper'
 
+interface RecorderData {
+  _listen: boolean;
+  _replay: boolean;
+  journal: any[];
+  _createdContracts: { [key: string]: any };
+  _createdContractsReverse: { [key: string]: any };
+  _usedAccounts: { [key: string]: any };
+  _abis: { [key: string]: any };
+  _contractABIReferences: { [key: string]: any };
+  _linkReferences: { [key: string]: any };
+}
+
+interface RecorderRecord {
+  value: any;
+  inputs: any;
+  parameters: any;
+  name: any;
+  type: any;
+  abi?: any;
+  contractName?: any;
+  bytecode?: any;
+  linkReferences?: any;
+  to?: any;
+  from?: any;
+}
+
 const profile = {
   name: 'recorder',
   displayName: 'Recorder',
@@ -21,7 +47,11 @@ const profile = {
   * Record transaction as long as the user create them.
   */
 export class Recorder extends Plugin {
-  constructor (blockchain) {
+  event: any;
+  blockchain: any;
+  data: RecorderData;
+
+  constructor (blockchain: any) {
     super(profile)
     this.event = new EventManager()
     this.blockchain = blockchain
@@ -33,7 +63,7 @@ export class Recorder extends Plugin {
 
       // convert to and from to tokens
       if (this.data._listen) {
-        var record = { 
+        var record: RecorderRecord = { 
           value,
           inputs: txHelper.serializeInputs(payLoad.funAbi),
           parameters: payLoad.funArgs,

@@ -43,6 +43,18 @@ export interface SettingsEvent extends MatomoEventBase {
     | 'change';
 }
 
+export interface ThemeEvent extends MatomoEventBase {
+  category: 'theme';
+  action: 
+    | 'switchThemeTo';
+}
+
+export interface LocaleEvent extends MatomoEventBase {
+  category: 'locale';
+  action: 
+    | 'switchTo';
+}
+
 export interface LandingPageEvent extends MatomoEventBase {
   category: 'landingPage';
   action: 
@@ -207,6 +219,32 @@ export const SettingsEvents = {
     name,
     value,
     isClick: true // User changes settings
+  })
+} as const;
+
+/**
+ * Theme Events - Type-safe builders
+ */
+export const ThemeModuleEvents = {
+  switchThemeTo: (themeName?: string, value?: string | number): ThemeEvent => ({
+    category: 'theme',
+    action: 'switchThemeTo',
+    name: themeName,
+    value,
+    isClick: true // User switches theme
+  })
+} as const;
+
+/**
+ * Locale Events - Type-safe builders
+ */
+export const LocaleModuleEvents = {
+  switchTo: (localeCode?: string, value?: string | number): LocaleEvent => ({
+    category: 'locale',
+    action: 'switchTo',
+    name: localeCode,
+    value,
+    isClick: true // User switches locale
   })
 } as const;
 
