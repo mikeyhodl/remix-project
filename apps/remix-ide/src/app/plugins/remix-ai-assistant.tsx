@@ -4,6 +4,7 @@ import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
+import { trackMatomoEvent, RemixAIEvents } from '@remix-api'
 
 const profile = {
   name: 'remixaiassistant',
@@ -101,7 +102,8 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async handleActivity(type: string, payload: any) {
-    (window as any)._paq?.push(['trackEvent', 'remixai-assistant', `${type}-${payload}`])
+    // Use the proper type-safe tracking helper with RemixAI events
+    trackMatomoEvent(this, RemixAIEvents.remixAI(`${type}-${payload}`))
   }
 
   updateComponent(state: {
