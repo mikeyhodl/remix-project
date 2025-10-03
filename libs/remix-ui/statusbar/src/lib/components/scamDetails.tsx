@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { ScamAlert } from '../remixui-statusbar-panel'
 import '../../css/statusbar.css'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { HomeTabEvents } from '@remix-api'
 
 export interface ScamDetailsProps {
   refs: ExtendedRefs<ReferenceType>
@@ -41,8 +42,8 @@ export default function ScamDetails ({ refs, floatStyle, scamAlerts }: ScamDetai
                 <a
                   className={`remixui_home_text text-decoration-none ps-1`}
                   onClick={() => {
-                    index === 1 && track?.('hometab', 'scamAlert', 'learnMore')
-                    index === 2 && track?.('hometab', 'scamAlert', 'safetyTips')
+                    index === 1 && track?.(HomeTabEvents.scamAlert('learnMore'))
+                    index === 2 && track?.(HomeTabEvents.scamAlert('safetyTips'))
                   }}
                   target="__blank"
                   href={scamAlerts[index].url}

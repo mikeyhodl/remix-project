@@ -4,6 +4,7 @@ import { PluginRecord } from '../types'
 import './panel.css'
 import { CustomTooltip, RenderIf, RenderIfNot } from '@remix-ui/helper'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { PluginPanelEvents } from '@remix-api'
 
 export interface RemixPanelProps {
   plugins: Record<string, PluginRecord>,
@@ -33,12 +34,12 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
 
   const pinPlugin = () => {
     props.pinView && props.pinView(plugin.profile, plugin.view)
-    track?.('PluginPanel', 'pinToRight', plugin.profile.name)
+    track?.(PluginPanelEvents.pinToRight(plugin.profile.name))
   }
 
   const unPinPlugin = () => {
     props.unPinView && props.unPinView(plugin.profile)
-    track?.('PluginPanel', 'pinToLeft', plugin.profile.name)
+    track?.(PluginPanelEvents.pinToLeft(plugin.profile.name))
   }
 
   const closePlugin = async () => {

@@ -3,6 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { AppContext } from '../../context/context'
 import { useDialogDispatchers } from '../../context/provider'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { LandingPageEvents } from '@remix-api'
 
 interface MatomoDialogProps {
   managePreferencesFn: () => void
@@ -65,12 +66,12 @@ const MatomoDialog = (props: MatomoDialogProps) => {
     settings.updateMatomoAnalyticsChoice(true) // Enable Matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(true) // Enable Matomo Performance analytics
     settings.updateCopilotChoice(true) // Enable RemixAI copilot
-    track?.('landingPage', 'MatomoAIModal', 'AcceptClicked')
+    track?.(LandingPageEvents.MatomoAIModal('AcceptClicked'))
     setVisible(false)
   }
 
   const handleManagePreferencesClick = async () => {
-    track?.('landingPage', 'MatomoAIModal', 'ManagePreferencesClicked')
+    track?.(LandingPageEvents.MatomoAIModal('ManagePreferencesClicked'))
     setVisible(false)
     props.managePreferencesFn()
   }

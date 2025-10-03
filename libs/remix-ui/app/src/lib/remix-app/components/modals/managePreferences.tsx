@@ -4,6 +4,7 @@ import { useDialogDispatchers } from '../../context/provider'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { AppContext } from '../../context/context'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { LandingPageEvents } from '@remix-api'
 
 const ManagePreferencesSwitcher = (prop: {
   setParentState: (state: any) => void
@@ -114,8 +115,8 @@ const ManagePreferencesDialog = (props) => {
     settings.updateMatomoAnalyticsChoice(true) // Always true for matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(switcherState.current.matPerfSwitch) // Enable/Disable Matomo Performance analytics
     settings.updateCopilotChoice(switcherState.current.remixAISwitch) // Enable/Disable RemixAI copilot
-    track?.('landingPage', 'MatomoAIModal', `MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`)
-    track?.('landingPage', 'MatomoAIModal', `AICopilotStatus: ${switcherState.current.remixAISwitch}`)
+    track?.(LandingPageEvents.MatomoAIModal(`MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`))
+    track?.(LandingPageEvents.MatomoAIModal(`AICopilotStatus: ${switcherState.current.remixAISwitch}`))
     setVisible(false)
   }
 

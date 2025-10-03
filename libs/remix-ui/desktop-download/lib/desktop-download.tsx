@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
+import { DesktopDownloadEvents } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
 import { FormattedMessage } from 'react-intl'
 import './desktop-download.css'
@@ -192,12 +193,10 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
 
   // Track download click events
   const trackDownloadClick = (platform?: string, filename?: string, variant?: string) => {
-    track?.(
-      'desktopDownload',
-      'click',
+    track?.(DesktopDownloadEvents.click(
       `${trackingContext}-${variant || 'button'}`,
       platform ? `${platform}-${filename}` : 'releases-page'
-    )
+    ))
   }
 
   // Load release data on component mount

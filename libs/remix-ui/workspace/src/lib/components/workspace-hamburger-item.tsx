@@ -4,6 +4,7 @@ import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { FileExplorerEvents } from '@remix-api'
 
 export interface HamburgerMenuItemProps {
   hideOption: boolean
@@ -28,7 +29,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
               key={uid + '-fe-ws'}
               onClick={() => {
                 props.actionOnClick()
-                track?.('fileExplorer', 'workspaceMenu', uid)
+                track?.(FileExplorerEvents.workspaceMenu(uid))
               }}
             >
               <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>
@@ -56,7 +57,7 @@ export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
             key={uid + '-fe-ws'}
             onClick={() => {
               props.actionOnClick()
-              track?.('fileExplorer', 'workspaceMenu', uid)
+              track?.(FileExplorerEvents.workspaceMenu(uid))
             }}
           >
             <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>

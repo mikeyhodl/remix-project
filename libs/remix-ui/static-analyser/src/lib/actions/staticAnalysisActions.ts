@@ -3,6 +3,7 @@ import { CompilationResult, SourceWithTarget } from '@remixproject/plugin-api'
 import React from 'react' //eslint-disable-line
 import { AnalysisTab, RemixUiStaticAnalyserReducerActionType, RemixUiStaticAnalyserState, SolHintReport, SlitherAnalysisResults } from '../../staticanalyser'
 import { RemixUiStaticAnalyserProps } from '@remix-ui/static-analyser'
+import { SolidityStaticAnalyzerEvents } from '@remix-api'
 
 /**
  *
@@ -57,7 +58,7 @@ export async function run (lastCompilationResult, lastCompilationSource, current
       props.analysisModule.hints = []
       // Run solhint
       if (solhintEnabled) {
-        track?.('solidityStaticAnalyzer', 'analyze', 'solHint')
+        track?.(SolidityStaticAnalyzerEvents.analyze('solHint'))
         const hintsResult = await props.analysisModule.call('solhint', 'lint', state.file)
         props.analysisModule.hints = hintsResult
         setHints(hintsResult)
@@ -67,7 +68,7 @@ export async function run (lastCompilationResult, lastCompilationSource, current
       }
       // Remix Analysis
       if (basicEnabled) {
-        track?.('solidityStaticAnalyzer', 'analyze', 'remixAnalyzer')
+        track?.(SolidityStaticAnalyzerEvents.analyze('remixAnalyzer'))
         const results = runner.run(lastCompilationResult, categoryIndex)
         for (const result of results) {
           let moduleName
@@ -139,7 +140,7 @@ export async function run (lastCompilationResult, lastCompilationSource, current
           const compilerState = await props.analysisModule.call('solidity', 'getCompilerState')
           const { currentVersion, optimize, evmVersion } = compilerState
           await props.analysisModule.call('terminal', 'log', { type: 'log', value: '[Slither Analysis]: Running...' })
-          track?.('solidityStaticAnalyzer', 'analyze', 'slitherAnalyzer')
+          track?.(SolidityStaticAnalyzerEvents.analyze('slitherAnalyzer'))
           const result: SlitherAnalysisResults = await props.analysisModule.call('slither', 'analyse', state.file, { currentVersion, optimize, evmVersion })
           if (result.status) {
             props.analysisModule.call('terminal', 'log', { type: 'log', value: `[Slither Analysis]: Analysis Completed!! ${result.count} warnings found.` })

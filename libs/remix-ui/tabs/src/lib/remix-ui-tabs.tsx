@@ -8,7 +8,7 @@ import './remix-ui-tabs.css'
 import { values } from 'lodash'
 import { AppContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
-import { desktopConnectionType } from '@remix-api'
+import { desktopConnectionType, EditorEvents } from '@remix-api'
 import { CompileDropdown, RunScriptDropdown } from '@remix-ui/tabs'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import TabProxy from 'apps/remix-ide/src/app/panels/tab-proxy'
@@ -259,7 +259,7 @@ export const TabsUI = (props: TabsUIProps) => {
     await props.plugin.call('menuicons', 'select', 'solidity')
     try {
       await props.plugin.call('solidity', 'compile', active().substr(active().indexOf('/') + 1, active().length))
-      track?.('editor', 'publishFromEditor', storageType)
+      track?.(EditorEvents.publishFromEditor(storageType))
 
       setTimeout(async () => {
         let buttonId
@@ -316,7 +316,7 @@ export const TabsUI = (props: TabsUIProps) => {
 })()`
 
         await props.plugin.call('fileManager', 'writeFile', newScriptPath, boilerplateContent)
-        track?.('editor', 'runScript', 'new_script')
+        track?.(EditorEvents.runScript('new_script'))
       } catch (e) {
         console.error(e)
         props.plugin.call('notification', 'toast', `Error creating new script: ${e.message}`)
@@ -346,7 +346,7 @@ export const TabsUI = (props: TabsUIProps) => {
       await props.plugin.call('scriptRunnerBridge', 'execute', content, path)
 
       setCompileState('compiled')
-      track?.('editor', 'runScriptWithEnv', runnerKey)
+      track?.(EditorEvents.runScriptWithEnv(runnerKey))
     } catch (e) {
       console.error(e)
       props.plugin.call('notification', 'toast', `Error running script: ${e.message}`)
@@ -427,7 +427,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const handleCompileClick = async () => {
     setCompileState('compiling')
     console.log('Compiling from editor')
-    track?.('editor', 'clickRunFromEditor', tabsState.currentExt)
+    track?.(EditorEvents.clickRunFromEditor(tabsState.currentExt))
 
     try {
       const activePathRaw = active()

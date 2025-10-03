@@ -11,6 +11,7 @@ import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { SolidityUnitTestingEvents } from '@remix-api'
 
 interface TestObject {
   fileName: string
@@ -276,7 +277,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       }
       finalLogs = finalLogs + '&emsp;' + formattedLog + '\n'
     }
-    track?.('solidityUnitTesting', 'hardhat', 'console.log')
+    track?.(SolidityUnitTestingEvents.hardhat('console.log'))
     testTab.call('terminal', 'logHtml', { type: 'log', value: finalLogs })
   }
 
@@ -662,7 +663,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     const tests: string[] = selectedTests.current
     if (!tests || !tests.length) return
     else setProgressBarHidden(false)
-    track?.('solidityUnitTesting', 'runTests', 'nbTestsRunning' + tests.length)
+    track?.(SolidityUnitTestingEvents.runTests('nbTestsRunning' + tests.length))
     eachOfSeries(tests, (value: string, key: string, callback: any) => {
       // eslint-disable-line @typescript-eslint/no-explicit-any
       if (hasBeenStopped.current) return

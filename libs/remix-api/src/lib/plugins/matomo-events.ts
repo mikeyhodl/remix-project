@@ -185,7 +185,8 @@ export interface DebuggerEvent extends MatomoEventBase {
 export interface DesktopDownloadEvent extends MatomoEventBase {
   category: 'desktopDownload';
   action: 
-    | 'downloadDesktopApp';
+    | 'downloadDesktopApp'
+    | 'click';
 }
 
 export interface EditorEvent extends MatomoEventBase {
@@ -739,6 +740,14 @@ export const HomeTabEvents = {
     name,
     value,
     isClick: true // User clicks on featured section items
+  }),
+  
+  scamAlert: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'scamAlert',
+    name,
+    value,
+    isClick: true // User clicks on scam alert actions
   })
 } as const;
 
@@ -956,6 +965,38 @@ export const UdappEvents = {
     name,
     value,
     isClick: true // User clicks to sync contracts
+  }),
+  
+  pinContracts: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'pinContracts',
+    name,
+    value,
+    isClick: true // User clicks to pin/unpin contracts
+  }),
+  
+  safeSmartAccount: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'safeSmartAccount',
+    name,
+    value,
+    isClick: true // User interacts with Safe Smart Account features
+  }),
+  
+  contractDelegation: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'contractDelegation',
+    name,
+    value,
+    isClick: true // User interacts with contract delegation
+  }),
+  
+  signUsingAccount: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'signUsingAccount',
+    name,
+    value,
+    isClick: false // Signing action is typically system-triggered
   })
 } as const;
 
@@ -977,6 +1018,22 @@ export const EditorEvents = {
     name,
     value,
     isClick: true // User clicks to run script
+  }),
+  
+  runScriptWithEnv: (name?: string, value?: string | number): EditorEvent => ({
+    category: 'editor',
+    action: 'runScriptWithEnv',
+    name,
+    value,
+    isClick: true // User clicks to run script with environment
+  }),
+  
+  clickRunFromEditor: (name?: string, value?: string | number): EditorEvent => ({
+    category: 'editor',
+    action: 'clickRunFromEditor',
+    name,
+    value,
+    isClick: true // User clicks run button from editor
   }),
   
   onDidPaste: (name?: string, value?: string | number): EditorEvent => ({
@@ -1103,6 +1160,95 @@ export const TopBarEvents = {
     name,
     value,
     isClick: true // User clicks header items in topbar
+  })
+} as const;
+
+/**
+ * Landing Page Events - Type-safe builders
+ */
+export const LandingPageEvents = {
+  MatomoAIModal: (name?: string, value?: string | number): LandingPageEvent => ({
+    category: 'landingPage',
+    action: 'MatomoAIModal',
+    name,
+    value,
+    isClick: true // User interacts with Matomo AI modal
+  })
+} as const;
+
+/**
+ * Solidity Unit Testing Events - Type-safe builders
+ */
+export const SolidityUnitTestingEvents = {
+  hardhat: (name?: string, value?: string | number): SolidityUnitTestingEvent => ({
+    category: 'solidityUnitTesting',
+    action: 'hardhat',
+    name,
+    value,
+    isClick: true // User clicks Hardhat-related testing actions
+  }),
+  
+  runTests: (name?: string, value?: string | number): SolidityUnitTestingEvent => ({
+    category: 'solidityUnitTesting',
+    action: 'runTests',
+    name,
+    value,
+    isClick: true // User clicks to run tests
+  })
+} as const;
+
+/**
+ * Plugin Panel Events - Type-safe builders
+ */
+export const PluginPanelEvents = {
+  pinToRight: (name?: string, value?: string | number): PluginPanelEvent => ({
+    category: 'PluginPanel',
+    action: 'pinToRight',
+    name,
+    value,
+    isClick: true // User clicks to pin plugin to right panel
+  }),
+  
+  pinToLeft: (name?: string, value?: string | number): PluginPanelEvent => ({
+    category: 'PluginPanel',
+    action: 'pinToLeft',
+    name,
+    value,
+    isClick: true // User clicks to pin plugin to left panel
+  })
+} as const;
+
+/**
+ * Desktop Download Events - Type-safe builders
+ */
+export const DesktopDownloadEvents = {
+  downloadDesktopApp: (name?: string, value?: string | number): DesktopDownloadEvent => ({
+    category: 'desktopDownload',
+    action: 'downloadDesktopApp',
+    name,
+    value,
+    isClick: true // User clicks to download desktop app
+  }),
+  
+  click: (name?: string, value?: string | number): DesktopDownloadEvent => ({
+    category: 'desktopDownload',
+    action: 'click',
+    name,
+    value,
+    isClick: true // User clicks desktop download related items
+  })
+} as const;
+
+/**
+ * Solidity Static Analyzer Events - Type-safe builders
+ */
+export const SolidityStaticAnalyzerEvents = {
+  analyze: (name?: string, value?: string | number): SolidityStaticAnalyzerEvent => ({
+    category: 'solidityStaticAnalyzer',
+    action: 'analyze',
+    name,
+    value,
+    isClick: true // User triggers static analysis
   })
 } as const;
 

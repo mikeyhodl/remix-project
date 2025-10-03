@@ -11,6 +11,7 @@ import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { BN } from 'bn.js'
 import { CustomTooltip, is0XPrefixed, isHexadecimal, isNumeric, shortenAddress } from '@remix-ui/helper'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { UdappEvents } from '@remix-api'
 
 const txHelper = remixLib.execution.txHelper
 
@@ -118,14 +119,14 @@ export function UniversalDappUI(props: UdappProps) {
   const remove = async() => {
     if (props.instance.isPinned) {
       await unsavePinnedContract()
-      track?.('udapp', 'pinContracts', 'removePinned')
+      track?.(UdappEvents.pinContracts('removePinned'))
     }
     props.removeInstance(props.index)
   }
 
   const unpinContract = async() => {
     await unsavePinnedContract()
-    track?.('udapp', 'pinContracts', 'unpinned')
+    track?.(UdappEvents.pinContracts('unpinned'))
     props.unpinInstance(props.index)
   }
 
@@ -147,12 +148,12 @@ export function UniversalDappUI(props: UdappProps) {
       pinnedAt: Date.now()
     }
     await props.plugin.call('fileManager', 'writeFile', `.deploys/pinned-contracts/${props.plugin.REACT_API.chainId}/${props.instance.address}.json`, JSON.stringify(objToSave, null, 2))
-    track?.('udapp', 'pinContracts', `pinned at ${props.plugin.REACT_API.chainId}`)
+    track?.(UdappEvents.pinContracts(`pinned at ${props.plugin.REACT_API.chainId}`))
     props.pinInstance(props.index, objToSave.pinnedAt, objToSave.filePath)
   }
 
   const runTransaction = (lookupOnly, funcABI: FuncABI, valArr, inputsValues, funcIndex?: number) => {
-    if (props.instance.isPinned) track?.('udapp', 'pinContracts', 'interactWithPinned')
+    if (props.instance.isPinned) track?.(UdappEvents.pinContracts('interactWithPinned'))
     const functionName = funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
     const logMsg = `${lookupOnly ? 'call' : 'transact'} to ${props.instance.name}.${functionName}`
 

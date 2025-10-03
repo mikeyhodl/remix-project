@@ -14,6 +14,7 @@ import { FlatTree } from './flat-tree'
 import { FileSystemContext } from '../contexts'
 import { AppContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { FileExplorerEvents } from '@remix-api'
 
 export const FileExplorer = (props: FileExplorerProps) => {
   const intl = useIntl()
@@ -127,7 +128,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
     if (treeRef.current) {
       const deleteKeyPressHandler = async (eve: KeyboardEvent) => {
         if (eve.key === 'Delete' ) {
-          track?.('fileExplorer', 'deleteKey', 'deletePath')
+          track?.(FileExplorerEvents.deleteKey('deletePath'))
           setState((prevState) => {
             return { ...prevState, deleteKey: true }
           })
@@ -136,7 +137,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
         }
         if (eve.metaKey) {
           if (eve.key === 'Backspace') {
-            track?.('fileExplorer', 'osxDeleteKey', 'deletePath')
+            track?.(FileExplorerEvents.osxDeleteKey('deletePath'))
             setState((prevState) => {
               return { ...prevState, deleteKey: true }
             })
@@ -182,7 +183,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
     if (treeRef.current) {
       const F2KeyPressHandler = async (eve: KeyboardEvent) => {
         if (eve.key === 'F2' ) {
-          track?.('fileExplorer', 'f2ToRename', 'RenamePath')
+          track?.(FileExplorerEvents.f2ToRename('RenamePath'))
           await performRename()
           setState((prevState) => {
             return { ...prevState, F2Key: true }
@@ -271,7 +272,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const CopyComboHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'c' || eve.code === 'KeyC')) {
           await performCopy()
-          track?.('fileExplorer', 'copyCombo', 'copyFilesOrFile')
+          track?.(FileExplorerEvents.copyCombo('copyFilesOrFile'))
           return
         }
       }
@@ -279,7 +280,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const CutHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'x' || eve.code === 'KeyX')) {
           await performCut()
-          track?.('fileExplorer', 'cutCombo', 'cutFilesOrFile')
+          track?.(FileExplorerEvents.cutCombo('cutFilesOrFile'))
           return
         }
       }
@@ -287,7 +288,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const pasteHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'v' || eve.code === 'KeyV')) {
           performPaste()
-          track?.('fileExplorer', 'pasteCombo', 'PasteCopiedContent')
+          track?.(FileExplorerEvents.pasteCombo('PasteCopiedContent'))
           return
         }
       }
