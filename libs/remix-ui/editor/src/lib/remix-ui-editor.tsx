@@ -206,21 +206,24 @@ export const EditorUI = (props: EditorUIProps) => {
 
   const formatColor = (name) => {
     let color = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-    if (color.length === 4) {
+    if (color.length === 4 && color.startsWith('#')) {
       color = color.concat(color.substr(1))
     }
     return color
   }
+
   const defineAndSetTheme = (monaco) => {
     const themeType = props.themeType === 'dark' ? 'vs-dark' : 'vs'
     const themeName = props.themeType === 'dark' ? 'remix-dark' : 'remix-light'
+    const isDark = props.themeType === 'dark'
+    
     // see https://microsoft.github.io/monaco-editor/playground.html#customizing-the-appearence-exposed-colors
     const lightColor = formatColor('--bs-light')
     const infoColor = formatColor('--bs-info')
     const darkColor = formatColor('--bs-dark')
     const secondaryColor = formatColor('--bs-body-bg')
     const primaryColor = formatColor('--bs-primary')
-    const textColor = formatColor('--text') || darkColor
+    const textColor = formatColor('--bs-body-color') || darkColor
     const textbackground = formatColor('--bs-body-bg') || lightColor
     const blueColor = formatColor('--bs-blue')
     const successColor = formatColor('--bs-success')
@@ -348,7 +351,21 @@ export const EditorUI = (props: EditorUIProps) => {
   useEffect(() => {
     if (!monacoRef.current) return
     defineAndSetTheme(monacoRef.current)
-  })
+  }, [props.themeType]) // Only re-run when theme type changes
+
+  // Listen for theme changes to redefine the theme when CSS is loaded
+  useEffect(() => {
+    if (!monacoRef.current) return
+    
+    const handleThemeChange = () => {
+      // Small delay to ensure CSS variables are available after theme switch
+      setTimeout(() => {
+        defineAndSetTheme(monacoRef.current)
+      }, 100)
+    }
+
+    props.plugin.on('theme', 'themeChanged', handleThemeChange)
+  }, [monacoRef.current])
 
   useEffect(() => {
     props.plugin.on('fileManager', 'currentFileChanged', (file: string) => {
