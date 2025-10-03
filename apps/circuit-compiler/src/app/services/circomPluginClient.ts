@@ -23,9 +23,16 @@ export class CircomPluginClient extends PluginClient {
   private lastCompiledFile: string = ''
   private compiler: typeof compilerV215 & typeof compilerV216 & typeof compilerV217 & typeof compilerV218
   public _paq = {
-    push: (args) => {
-      // Legacy _paq interface for backwards compatibility
-      this.call('matomo' as any, 'track', args)
+    push: (args: any[]) => {
+      if (args[0] === 'trackEvent' && args.length >= 3) {
+        // Convert legacy _paq.push(['trackEvent', 'category', 'action', 'name']) 
+        // to matomo plugin call with legacy string signature
+        const [, category, action, name, value] = args;
+        this.call('matomo' as any, 'trackEvent', category, action, name, value);
+      } else {
+        // For other _paq commands, pass through as-is
+        console.warn('CircuitCompiler: Unsupported _paq command:', args);
+      }
     }
   }
 

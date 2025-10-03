@@ -209,12 +209,44 @@ export interface ContractVerificationEvent extends MatomoEventBase {
 
 export interface CircuitCompilerEvent extends MatomoEventBase {
   category: 'circuit-compiler';
-  action: 'compile' | 'generateR1cs' | 'computeWitness';
+  action: 
+    | 'compile' 
+    | 'generateR1cs' 
+    | 'computeWitness'
+    | 'runSetupAndExport'
+    | 'generateProof'
+    | 'wtns.exportJson'
+    | 'provingScheme'
+    | 'zKey.exportVerificationKey'
+    | 'zKey.exportSolidityVerifier'
+    | 'groth16.prove'
+    | 'groth16.exportSolidityCallData'
+    | 'plonk.prove'
+    | 'plonk.exportSolidityCallData'
+    | 'error';
 }
 
 export interface LearnethEvent extends MatomoEventBase {
   category: 'learneth';
-  action: 'display_file' | 'display_file_error' | 'test_step' | 'test_step_error' | 'show_answer' | 'show_answer_error' | 'test_solidity_compiler' | 'test_solidity_compiler_error';
+  action: 
+    | 'display_file' 
+    | 'display_file_error' 
+    | 'test_step' 
+    | 'test_step_error' 
+    | 'show_answer' 
+    | 'show_answer_error' 
+    | 'test_solidity_compiler' 
+    | 'test_solidity_compiler_error'
+    | 'navigate_next'
+    | 'navigate_finish'
+    | 'start_workshop'
+    | 'start_course'
+    | 'step_slide_in'
+    | 'select_repo'
+    | 'import_repo'
+    | 'load_repo'
+    | 'load_repo_error'
+    | 'reset_all';
 }
 
 export interface DebuggerEvent extends MatomoEventBase {
@@ -812,6 +844,94 @@ export const CircuitCompilerEvents = {
     name,
     value,
     isClick: false // Witness computation is a system process
+  }),
+
+  runSetupAndExport: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'runSetupAndExport',
+    name,
+    value,
+    isClick: false // Setup and export is a system process
+  }),
+
+  generateProof: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'generateProof',
+    name,
+    value,
+    isClick: false // Proof generation is a system process
+  }),
+
+  wtnsExportJson: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'wtns.exportJson',
+    name,
+    value,
+    isClick: false // Export operation is a system process
+  }),
+
+  provingScheme: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'provingScheme',
+    name,
+    value,
+    isClick: false // Scheme selection is a system process
+  }),
+
+  zKeyExportVerificationKey: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'zKey.exportVerificationKey',
+    name,
+    value,
+    isClick: false // Key export is a system process
+  }),
+
+  zKeyExportSolidityVerifier: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'zKey.exportSolidityVerifier',
+    name,
+    value,
+    isClick: false // Verifier export is a system process
+  }),
+
+  groth16Prove: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'groth16.prove',
+    name,
+    value,
+    isClick: false // Proof generation is a system process
+  }),
+
+  groth16ExportSolidityCallData: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'groth16.exportSolidityCallData',
+    name,
+    value,
+    isClick: false // Export operation is a system process
+  }),
+
+  plonkProve: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'plonk.prove',
+    name,
+    value,
+    isClick: false // Proof generation is a system process
+  }),
+
+  plonkExportSolidityCallData: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'plonk.exportSolidityCallData',
+    name,
+    value,
+    isClick: false // Export operation is a system process
+  }),
+
+  error: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'error',
+    name,
+    value,
+    isClick: false // Error event is a system event
   })
 } as const;
 
@@ -881,6 +1001,88 @@ export const LearnethEvents = {
     name,
     value,
     isClick: false // Error event
+  }),
+
+  // Navigation and workshop events
+  navigateNext: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'navigate_next',
+    name,
+    value,
+    isClick: true // User clicks to go to next step
+  }),
+
+  navigateFinish: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'navigate_finish',
+    name,
+    value,
+    isClick: true // User clicks to finish workshop
+  }),
+
+  startWorkshop: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'start_workshop',
+    name,
+    value,
+    isClick: true // User clicks to start workshop
+  }),
+
+  startCourse: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'start_course',
+    name,
+    value,
+    isClick: true // User clicks to start course
+  }),
+
+  stepSlideIn: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'step_slide_in',
+    name,
+    value,
+    isClick: true // User clicks on step
+  }),
+
+  // Repository events
+  selectRepo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'select_repo',
+    name,
+    value,
+    isClick: true // User selects repository
+  }),
+
+  importRepo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'import_repo',
+    name,
+    value,
+    isClick: true // User imports repository
+  }),
+
+  loadRepo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'load_repo',
+    name,
+    value,
+    isClick: false // System loads repository
+  }),
+
+  loadRepoError: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'load_repo_error',
+    name,
+    value,
+    isClick: false // System error loading repository
+  }),
+
+  resetAll: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'reset_all',
+    name,
+    value,
+    isClick: true // User clicks to reset all
   })
 } as const;
 

@@ -52,9 +52,18 @@ const Model: ModelType = {
         trackMatomoEvent(remixClient, event);
       };
 
+      // Legacy _paq compatibility layer for existing learneth tracking calls
       (window as any)._paq = {
-        push: (args) => {
-          remixClient.call('matomo' as any, 'track', args)
+        push: (args: any[]) => {
+          if (args[0] === 'trackEvent' && args.length >= 3) {
+            // Convert legacy _paq.push(['trackEvent', 'category', 'action', 'name']) 
+            // to matomo plugin call with legacy string signature
+            const [, category, action, name, value] = args;
+            remixClient.call('matomo' as any, 'trackEvent', category, action, name, value);
+          } else {
+            // For other _paq commands, pass through as-is
+            console.warn('Learneth: Unsupported _paq command:', args);
+          }
         }
       };
       
