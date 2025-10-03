@@ -21,6 +21,8 @@
  *   matomo.trackEvent('test', 'action', 'label');
  */
 
+import { MatomoEvent } from '@remix-api';
+
 // ================== TYPE DEFINITIONS ==================
 
 export interface MatomoConfig {
@@ -55,6 +57,7 @@ export interface MatomoStatus {
 export interface MatomoTracker {
   getTrackerUrl(): string;
   getSiteId(): number | string;
+  trackEvent(eventObj: MatomoEvent): void;
   trackEvent(category: string, action: string, name?: string, value?: number): void;
   trackPageView(title?: string): void;
   trackSiteSearch(keyword: string, category?: string, count?: number): void;
@@ -617,11 +620,32 @@ export class MatomoManager implements IMatomoManager {
 
   // ================== TRACKING METHODS ==================
 
-  trackEvent(category: string, action: string, name?: string, value?: number): number {
+  // Overloaded method signatures to support both legacy and type-safe usage
+  trackEvent(eventObj: MatomoEvent): number;
+  trackEvent(category: string, action: string, name?: string, value?: number): number;
+  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): number {
     const eventId = ++this.state.lastEventId;
-    this.log(`Tracking event ${eventId}: ${category} / ${action} / ${name} / ${value}`);
+
+    // If first parameter is a MatomoEvent object, use type-safe approach
+    if (typeof eventObjOrCategory === 'object' && eventObjOrCategory !== null && 'category' in eventObjOrCategory) {
+      const { category, action: eventAction, name: eventName, value: eventValue } = eventObjOrCategory;
+      this.log(`Tracking type-safe event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue}`);
+      
+      const event: MatomoCommand = ['trackEvent', category, eventAction];
+      if (eventName !== undefined) event.push(eventName);
+      if (eventValue !== undefined) event.push(eventValue);
+      
+      window._paq.push(event);
+      this.emit('event-tracked', { eventId, category, action: eventAction, name: eventName, value: eventValue });
+      
+      return eventId;
+    }
+
+    // Legacy string-based approach for backward compatibility
+    const category = eventObjOrCategory as string;
+    this.log(`Tracking legacy event ${eventId}: ${category} / ${action} / ${name} / ${value}`);
     
-    const event: MatomoCommand = ['trackEvent', category, action];
+    const event: MatomoCommand = ['trackEvent', category, action!];
     if (name !== undefined) event.push(name);
     if (value !== undefined) event.push(value);
     

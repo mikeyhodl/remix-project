@@ -30,7 +30,10 @@ export const MatomoCategories = {
   LAYOUT: 'layout' as const,
   REMIX_AI: 'remixAI' as const,
   SETTINGS: 'settings' as const,
-  SOLIDITY: 'solidity' as const
+  SOLIDITY: 'solidity' as const,
+  CONTRACT_VERIFICATION: 'ContractVerification' as const,
+  CIRCUIT_COMPILER: 'circuit-compiler' as const,
+  LEARNETH: 'learneth' as const
 }
 
 export const FileExplorerActions = {
@@ -51,7 +54,9 @@ export type MatomoEvent =
   | AppEvent
   | BackupEvent
   | BlockchainEvent
+  | CircuitCompilerEvent
   | CompilerEvent
+  | ContractVerificationEvent
   | DebuggerEvent
   | DesktopDownloadEvent
   | EditorEvent
@@ -60,6 +65,7 @@ export type MatomoEvent =
   | GridViewEvent
   | HomeTabEvent
   | LandingPageEvent
+  | LearnethEvent
   | LocaleModuleEvent
   | ManagerEvent
   | MatomoEvent_Core
@@ -155,7 +161,8 @@ export interface BackupEvent extends MatomoEventBase {
   category: 'Backup';
   action: 
     | 'download'
-    | 'error';
+    | 'error'
+    | 'userActivate';
 }
 
 export interface BlockchainEvent extends MatomoEventBase {
@@ -175,6 +182,21 @@ export interface CompilerEvent extends MatomoEventBase {
     | 'compilerDetails'
     | 'compileWithHardhat'
     | 'compileWithTruffle';
+}
+
+export interface ContractVerificationEvent extends MatomoEventBase {
+  category: 'ContractVerification';
+  action: 'verify' | 'lookup';
+}
+
+export interface CircuitCompilerEvent extends MatomoEventBase {
+  category: 'circuit-compiler';
+  action: 'compile' | 'generateR1cs' | 'computeWitness';
+}
+
+export interface LearnethEvent extends MatomoEventBase {
+  category: 'learneth';
+  action: 'display_file' | 'display_file_error' | 'test_step' | 'test_step_error' | 'show_answer' | 'show_answer_error' | 'test_solidity_compiler' | 'test_solidity_compiler_error';
 }
 
 export interface DebuggerEvent extends MatomoEventBase {
@@ -467,7 +489,12 @@ export interface UdappEvent extends MatomoEventBase {
     | 'deleteState'
     | 'pinContracts'
     | 'signUsingAccount'
-    | 'contractDelegation';
+    | 'contractDelegation'
+    | 'useAtAddress'
+    | 'DeployAndPublish'
+    | 'DeployOnly'
+    | 'DeployContractTo'
+    | 'broadcastCompilationResult';
 }
 
 export interface WorkspaceEvent extends MatomoEventBase {
@@ -706,6 +733,125 @@ export const CompilerEvents = {
     name,
     value,
     isClick: true // User clicks to view compiler details
+  })
+} as const;
+
+/**
+ * Contract Verification Events - Type-safe builders  
+ */
+export const ContractVerificationEvents = {
+  verify: (name?: string, value?: string | number): ContractVerificationEvent => ({
+    category: 'ContractVerification',
+    action: 'verify',
+    name,
+    value,
+    isClick: true // User clicks verify button to initiate contract verification
+  }),
+
+  lookup: (name?: string, value?: string | number): ContractVerificationEvent => ({
+    category: 'ContractVerification',
+    action: 'lookup',
+    name,
+    value,
+    isClick: true // User clicks lookup button to search for existing verification
+  })
+} as const;
+
+/**
+ * Circuit Compiler Events - Type-safe builders  
+ */
+export const CircuitCompilerEvents = {
+  compile: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'compile',
+    name,
+    value,
+    isClick: false // Compilation is triggered by user action but is a system process
+  }),
+
+  generateR1cs: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'generateR1cs',
+    name,
+    value,
+    isClick: false // R1CS generation is a system process
+  }),
+
+  computeWitness: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuit-compiler',
+    action: 'computeWitness',
+    name,
+    value,
+    isClick: false // Witness computation is a system process
+  })
+} as const;
+
+/**
+ * Learneth Events - Type-safe builders  
+ */
+export const LearnethEvents = {
+  displayFile: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'display_file',
+    name,
+    value,
+    isClick: true // User clicks to display file in IDE
+  }),
+
+  displayFileError: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'display_file_error',
+    name,
+    value,
+    isClick: false // Error event
+  }),
+
+  testStep: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'test_step',
+    name,
+    value,
+    isClick: true // User initiates test step
+  }),
+
+  testStepError: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'test_step_error',
+    name,
+    value,
+    isClick: false // Error event
+  }),
+
+  showAnswer: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'show_answer',
+    name,
+    value,
+    isClick: true // User clicks to show answer
+  }),
+
+  showAnswerError: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'show_answer_error',
+    name,
+    value,
+    isClick: false // Error event
+  }),
+
+  testSolidityCompiler: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'test_solidity_compiler',
+    name,
+    value,
+    isClick: false // System check
+  }),
+
+  testSolidityCompilerError: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'test_solidity_compiler_error',
+    name,
+    value,
+    isClick: false // Error event
   })
 } as const;
 
@@ -1176,6 +1322,46 @@ export const UdappEvents = {
     name,
     value,
     isClick: true // User clicks to delete state
+  }),
+
+  useAtAddress: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'useAtAddress',
+    name,
+    value,
+    isClick: true // User uses existing contract at address
+  }),
+
+  deployAndPublish: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'DeployAndPublish',
+    name,
+    value,
+    isClick: true // User deploys and publishes contract
+  }),
+
+  deployOnly: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'DeployOnly',
+    name,
+    value,
+    isClick: true // User deploys contract only
+  }),
+
+  deployContractTo: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'DeployContractTo',
+    name,
+    value,
+    isClick: true // User deploys contract to specific network
+  }),
+
+  broadcastCompilationResult: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'broadcastCompilationResult',
+    name,
+    value,
+    isClick: false // System broadcasts compilation results
   })
 } as const;
 
@@ -1411,6 +1597,35 @@ export const AppEvents = {
 } as const;
 
 /**
+ * Backup Events - Type-safe builders
+ */
+export const BackupEvents = {
+  download: (name?: string, value?: string | number): BackupEvent => ({
+    category: 'Backup',
+    action: 'download',
+    name,
+    value,
+    isClick: true // User initiated download
+  }),
+
+  error: (name?: string, value?: string | number): BackupEvent => ({
+    category: 'Backup',
+    action: 'error',
+    name,
+    value,
+    isClick: false // System error, not user action
+  }),
+
+  userActivate: (name?: string, value?: string | number): BackupEvent => ({
+    category: 'Backup',
+    action: 'userActivate',
+    name,
+    value,
+    isClick: true // User activated functionality
+  })
+} as const;
+
+/**
  * Storage Events - Type-safe builders
  */
 export const StorageEvents = {
@@ -1449,6 +1664,43 @@ export const MigrateEvents = {
     name,
     value,
     isClick: false // Migration error, not user action
+  })
+} as const;
+
+/**
+ * Blockchain Events - Type-safe builders
+ */
+export const BlockchainEvents = {
+  providerPinned: (name?: string, value?: string | number): BlockchainEvent => ({
+    category: 'blockchain',
+    action: 'providerPinned',
+    name,
+    value,
+    isClick: true // User pinned a provider
+  }),
+
+  providerUnpinned: (name?: string, value?: string | number): BlockchainEvent => ({
+    category: 'blockchain',
+    action: 'providerUnpinned',
+    name,
+    value,
+    isClick: true // User unpinned a provider
+  }),
+
+  deployWithProxy: (name?: string, value?: string | number): BlockchainEvent => ({
+    category: 'blockchain',
+    action: 'Deploy With Proxy',
+    name,
+    value,
+    isClick: true // User initiated proxy deployment
+  }),
+
+  upgradeWithProxy: (name?: string, value?: string | number): BlockchainEvent => ({
+    category: 'blockchain',
+    action: 'Upgrade With Proxy',
+    name,
+    value,
+    isClick: true // User initiated proxy upgrade
   })
 } as const;
 

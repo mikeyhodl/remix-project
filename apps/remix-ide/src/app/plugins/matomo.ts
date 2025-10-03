@@ -1,5 +1,6 @@
 'use strict'
 import { Plugin } from '@remixproject/engine'
+import { MatomoEvent } from '@remix-api'
 import MatomoManager, { IMatomoManager, InitializationOptions, InitializationPattern, MatomoCommand, MatomoConfig, MatomoDiagnostics, MatomoState, MatomoStatus, ModeSwitchOptions, TrackingMode } from '../matomo/MatomoManager'
 
 const profile = {
@@ -64,8 +65,8 @@ export class Matomo extends Plugin {
 
   // ================== TRACKING METHODS ==================
   
-  trackEvent(category: string, action: string, name?: string, value?: number): number {
-    return matomoManager.trackEvent(category, action, name, value)
+  trackEvent(event: MatomoEvent): number {
+    return matomoManager.trackEvent(event)
   }
 
   trackPageView(title?: string): void {
@@ -173,8 +174,11 @@ export class Matomo extends Plugin {
     return matomoManager.shouldShowConsentDialog(configApi)
   }
 
-  async track(data: string[]) {
-    console.log('Matomo plugin track', data)
-    this.getMatomoManager().trackEvent(data[0], data[1], data[2], data[3] ? parseInt(data[3]) : undefined)
+    /**
+   * Track events using type-safe MatomoEvent objects
+   * @param event Type-safe MatomoEvent object
+   */
+  async track(event: MatomoEvent): Promise<void> {
+    await matomoManager.trackEvent(event);
   }
 }

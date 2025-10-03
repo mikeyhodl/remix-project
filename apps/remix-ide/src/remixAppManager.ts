@@ -1,5 +1,6 @@
 import { Plugin, PluginManager } from '@remixproject/engine'
 import { EventEmitter } from 'events'
+import { trackMatomoEvent, PluginManagerEvents } from '@remix-api'
 import { QueryParams } from '@remix-project/remix-lib'
 import { IframePlugin } from '@remixproject/engine-web'
 import { Registry } from '@remix-project/remix-lib'
@@ -259,7 +260,7 @@ export class RemixAppManager extends BaseRemixAppManager {
     )
     this.event.emit('activate', plugin)
     this.emit('activate', plugin)
-    if (!this.isRequired(plugin.name)) this.call('matomo', 'trackEvent', 'pluginManager', 'activate', plugin.name)
+    if (!this.isRequired(plugin.name)) trackMatomoEvent(this, PluginManagerEvents.activate(plugin.name))
   }
 
   getAll() {
@@ -278,7 +279,7 @@ export class RemixAppManager extends BaseRemixAppManager {
       this.actives.filter((plugin) => !this.isDependent(plugin))
     )
     this.event.emit('deactivate', plugin)
-    this.call('matomo', 'trackEvent', 'pluginManager', 'deactivate', plugin.name)
+    trackMatomoEvent(this, PluginManagerEvents.deactivate(plugin.name))
   }
 
   isDependent(name: string): boolean {

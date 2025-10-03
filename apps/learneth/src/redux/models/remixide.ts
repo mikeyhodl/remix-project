@@ -2,6 +2,7 @@ import { toast } from 'react-toastify'
 import { type ModelType } from '../store'
 import remixClient from '../../remix-client'
 import { router } from '../../App'
+import { trackMatomoEvent, LearnethEvents } from '@remix-api'
 
 function getFilePath(file: string): string {
   const name = file.split('/')
@@ -46,11 +47,19 @@ const Model: ModelType = {
         },
       });
 
+      // Type-safe Matomo tracking helper
+      const trackLearnethEvent = (event: ReturnType<typeof LearnethEvents[keyof typeof LearnethEvents]>) => {
+        trackMatomoEvent(remixClient, event);
+      };
+
       (window as any)._paq = {
         push: (args) => {
           remixClient.call('matomo' as any, 'track', args)
         }
-      }
+      };
+      
+      // Make trackLearnethEvent available globally for the effects
+      (window as any).trackLearnethEvent = trackLearnethEvent;
 
       yield router.navigate('/home')
     },
@@ -74,7 +83,7 @@ const Model: ModelType = {
         return
       }
 
-      (<any>window)._paq.push(['trackEvent', 'learneth', 'display_file', `${(step && step.name)}/${path}`])
+      (<any>window).trackLearnethEvent(LearnethEvents.displayFile(`${(step && step.name)}/${path}`))
 
       toast.info(`loading ${path} into IDE`)
       yield put({
@@ -101,7 +110,7 @@ const Model: ModelType = {
         })
         toast.dismiss()
       } catch (error) {
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'display_file_error', error.message])
+        (<any>window).trackLearnethEvent(LearnethEvents.displayFileError(error.message))
         toast.dismiss()
         toast.error('File could not be loaded. Please try again.')
         yield put({
@@ -151,7 +160,7 @@ const Model: ModelType = {
             type: 'remixide/save',
             payload: { errors: ['Compiler failed to test this file']},
           });
-          (<any>window)._paq.push(['trackEvent', 'learneth', 'test_step_error', 'Compiler failed to test this file'])
+          (<any>window).trackLearnethEvent(LearnethEvents.testStepError('Compiler failed to test this file'))
         } else {
           const success = result.totalFailing === 0;
           if (success) {
@@ -167,14 +176,14 @@ const Model: ModelType = {
               },
             })
           }
-          (<any>window)._paq.push(['trackEvent', 'learneth', 'test_step', success])
+          (<any>window).trackLearnethEvent(LearnethEvents.testStep(String(success)))
         }
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'test_step_error', err])
+        (<any>window).trackLearnethEvent(LearnethEvents.testStepError(String(err)))
       }
       yield put({
         type: 'loading/save',
@@ -204,13 +213,13 @@ const Model: ModelType = {
         yield remixClient.call('fileManager', 'setFile', path, content)
         yield remixClient.call('fileManager', 'switchFile', `${path}`);
 
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'show_answer', path])
+        (<any>window).trackLearnethEvent(LearnethEvents.showAnswer(path))
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'show_answer_error', err.message])
+        (<any>window).trackLearnethEvent(LearnethEvents.showAnswerError(err.message))
       }
 
       toast.dismiss()
@@ -224,7 +233,7 @@ const Model: ModelType = {
     *testSolidityCompiler(_, { put, select }) {
       try {
         yield remixClient.call('solidity', 'getCompilationResult');
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'test_solidity_compiler'])
+        (<any>window).trackLearnethEvent(LearnethEvents.testSolidityCompiler())
       } catch (err) {
         const errors = yield select((state) => state.remixide.errors)
         yield put({
@@ -233,7 +242,7 @@ const Model: ModelType = {
             errors: [...errors, "The `Solidity Compiler` is not yet activated.<br>Please activate it using the `SOLIDITY` button in the `Featured Plugins` section of the homepage.<img class='img-thumbnail mt-3' src='assets/activatesolidity.png'>"],
           },
         });
-        (<any>window)._paq.push(['trackEvent', 'learneth', 'test_solidity_compiler_error', err.message])
+        (<any>window).trackLearnethEvent(LearnethEvents.testSolidityCompilerError(err.message))
       }
     }
   },

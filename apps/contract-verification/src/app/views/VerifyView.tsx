@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
+import { trackMatomoEvent, ContractVerificationEvents } from '@remix-api'
 
 import { AppContext } from '../AppContext'
 import { SearchableChainDropdown, ContractDropdown, ContractAddressInput } from '../components'
@@ -42,8 +43,8 @@ export const VerifyView = () => {
     setEnabledVerifiers({ ...enabledVerifiers, [verifierId]: checked })
   }
 
-  const sendToMatomo = async (eventAction: string, eventName: string) => {
-    await clientInstance.call("matomo" as any, 'track', ['trackEvent', 'ContractVerification', eventAction, eventName]);
+  const sendToMatomo = async (eventName: string) => {
+    await trackMatomoEvent(clientInstance, ContractVerificationEvents.verify(eventName));
   }
 
   const handleVerify = async (e) => {
@@ -68,7 +69,7 @@ export const VerifyView = () => {
         name: verifierId as VerifierIdentifier,
       }
       receipts.push({ verifierInfo, status: 'pending', contractId, isProxyReceipt: false, failedChecks: 0 })
-      await sendToMatomo('verify', `verifyWith${verifierId} On: ${selectedChain?.chainId} IsProxy: ${!!(hasProxy && proxyAddress)}`)
+      await sendToMatomo(`verifyWith${verifierId} On: ${selectedChain?.chainId} IsProxy: ${!!(hasProxy && proxyAddress)}`)
     }
 
     const newSubmittedContract: SubmittedContract = {

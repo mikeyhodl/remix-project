@@ -3,6 +3,7 @@ import React from 'react'
 import { extractNameFromKey, createNonClashingNameAsync } from '@remix-ui/helper'
 import Gists from 'gists'
 import { customAction } from '@remixproject/plugin-api'
+import { trackMatomoEventAsync, StorageEvents, BackupEvents } from '@remix-api'
 import { displayNotification, displayPopUp, fetchDirectoryError, fetchDirectoryRequest, fetchDirectorySuccess, focusElement, fsInitializationCompleted, hidePopUp, removeInputFieldSuccess, setCurrentLocalFilePath, setCurrentWorkspace, setExpandPath, setMode, setWorkspaces } from './payload'
 import { listenOnPluginEvents, listenOnProviderEvents } from './events'
 import { createWorkspaceTemplate, getWorkspaces, loadWorkspacePreset, setPlugin, workspaceExists } from './workspace'
@@ -199,7 +200,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-       plugin.call('matomo', 'trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`)
+        await trackMatomoEventAsync(plugin, StorageEvents.error(`Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`));
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {
@@ -366,7 +367,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-        plugin.call('matomo', 'trackEvent', 'Storage', 'error', `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`)
+        await trackMatomoEventAsync(plugin, StorageEvents.error(`Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`));
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {
@@ -725,15 +726,15 @@ export const handleDownloadFiles = async () => {
     await browserProvider.copyFolderToJson('/', ({ path, content }) => {
       zip.file(path, content)
     })
-    zip.generateAsync({ type: 'blob' }).then(function (blob) {
+    zip.generateAsync({ type: 'blob' }).then(async function (blob) {
       const today = new Date()
       const date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate()
       const time = today.getHours() + 'h' + today.getMinutes() + 'min'
 
       saveAs(blob, `remix-backup-at-${time}-${date}.zip`)
-      plugin.call('matomo', 'trackEvent', 'Backup', 'download', 'home')
-    }).catch((e) => {
-      plugin.call('matomo', 'trackEvent', 'Backup', 'error', e.message)
+      await trackMatomoEventAsync(plugin, BackupEvents.download('home'));
+    }).catch(async (e) => {
+      await trackMatomoEventAsync(plugin, BackupEvents.error(e.message));
       plugin.call('notification', 'toast', e.message)
     })
   } catch (e) {
@@ -759,7 +760,7 @@ export const handleDownloadWorkspace = async () => {
 export const restoreBackupZip = async () => {
   await plugin.appManager.activatePlugin(['restorebackupzip'])
   await plugin.call('mainPanel', 'showContent', 'restorebackupzip')
-  await plugin.call('matomo', 'trackEvent', 'Backup', 'userActivate', 'restorebackupzip')
+  await trackMatomoEventAsync(plugin, BackupEvents.userActivate('restorebackupzip'));
 }
 
 const packageGistFiles = async (directory) => {

@@ -1,4 +1,5 @@
 import { ContractData, FuncABI, NetworkDeploymentFile, SolcBuildFile, OverSizeLimit } from "@remix-project/core-plugin"
+import { trackMatomoEvent, UdappEvents } from '@remix-api'
 import { RunTab } from "../types/run-tab"
 import { CompilerAbstract as CompilerAbstractType } from '@remix-project/remix-solidity'
 import * as remixLib from '@remix-project/remix-lib'
@@ -27,11 +28,11 @@ const loadContractFromAddress = (plugin: RunTab, address, confirmCb, cb) => {
       } catch (e) {
         return cb('Failed to parse the current file as JSON ABI.')
       }
-      plugin.call('matomo', 'trackEvent', 'udapp', 'useAtAddress', 'AtAddressLoadWithABI')
+      trackMatomoEvent(plugin, UdappEvents.useAtAddress('AtAddressLoadWithABI'))
       cb(null, 'abi', abi)
     })
   } else {
-    plugin.call('matomo', 'trackEvent', 'udapp', 'useAtAddress', 'AtAddressLoadWithArtifacts')
+    trackMatomoEvent(plugin, UdappEvents.useAtAddress('AtAddressLoadWithArtifacts'))
     cb(null, 'instance')
   }
 }
@@ -177,10 +178,10 @@ export const createInstance = async (
 
     plugin.compilersArtefacts.addResolvedContract(addressToString(address), data)
     if (plugin.REACT_API.ipfsChecked) {
-      plugin.call('matomo', 'trackEvent', 'udapp', 'DeployAndPublish', plugin.REACT_API.networkName)
+      trackMatomoEvent(plugin, UdappEvents.deployAndPublish(plugin.REACT_API.networkName))
       publishToStorage('ipfs', selectedContract)
     } else {
-      plugin.call('matomo', 'trackEvent', 'udapp', 'DeployOnly', plugin.REACT_API.networkName)
+      trackMatomoEvent(plugin, UdappEvents.deployOnly(plugin.REACT_API.networkName))
     }
     if (isProxyDeployment) {
       const initABI = contractObject.abi.find(abi => abi.name === 'initialize')
@@ -239,7 +240,7 @@ export const createInstance = async (
 }
 
 const deployContract = (plugin: RunTab, selectedContract, args, contractMetadata, compilerContracts, callbacks, confirmationCb) => {
-  plugin.call('matomo', 'trackEvent', 'udapp', 'DeployContractTo', plugin.REACT_API.networkName)
+  trackMatomoEvent(plugin, UdappEvents.deployContractTo(plugin.REACT_API.networkName))
   const { statusCb } = callbacks
 
   if (!contractMetadata || (contractMetadata && contractMetadata.autoDeployLib)) {
@@ -307,7 +308,7 @@ export const runTransactions = (
   if (lookupOnly) callinfo = 'call'
   else if (funcABI.type === 'fallback' || funcABI.type === 'receive') callinfo = 'lowLevelinteractions'
   else callinfo = 'transact'
-  plugin.call('matomo', 'trackEvent', 'udapp', callinfo, plugin.REACT_API.networkName)
+  trackMatomoEvent(plugin, UdappEvents.sendTransaction(callinfo, plugin.REACT_API.networkName))
 
   const params = funcABI.type !== 'fallback' ? inputsValues : ''
   plugin.blockchain.runOrCallContractMethod(

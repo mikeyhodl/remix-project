@@ -1,5 +1,6 @@
 import { IFilePanel } from '@remixproject/plugin-api'
 import { StatusEvents } from '@remixproject/plugin-utils'
+import { MatomoEvent } from './matomo-events'
 
 // Import types from MatomoManager
 export type InitializationPattern = 'cookie-consent' | 'anonymous' | 'immediate' | 'no-consent';
@@ -60,8 +61,8 @@ export interface IMatomoApi {
         'matomo-mode-switched': (data: any) => void;
     } & StatusEvents
     methods: {
-        // Legacy method
-        track: (data: string[]) => void;
+        // Type-safe tracking method
+        track: (event: MatomoEvent) => void;
         
         // Direct access to full interface
         getManager: () => any;
@@ -78,7 +79,7 @@ export interface IMatomoApi {
         revokeConsent: () => Promise<void>;
         
         // Tracking methods
-        trackEvent: (category: string, action: string, name?: string, value?: number) => number;
+        trackEvent: (event: MatomoEvent) => number;
         trackPageView: (title?: string) => void;
         setCustomDimension: (id: number, value: string) => void;
         
