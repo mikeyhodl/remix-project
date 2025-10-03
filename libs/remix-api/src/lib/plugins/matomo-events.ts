@@ -15,7 +15,7 @@
  * AIEvents.remixAI(), AIEvents.explainFunction()
  * 
  * // Contracts  
- * UdappEvents.DeployAndPublish(), UdappEvents.sendTransaction()
+ * UdappEvents.DeployAndPublish(), UdappEvents.sendTransactionFromGui()
  * 
  * // Editor
  * EditorEvents.save(), EditorEvents.format()

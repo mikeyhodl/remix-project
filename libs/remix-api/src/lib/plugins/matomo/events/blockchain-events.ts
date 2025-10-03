@@ -30,6 +30,9 @@ export interface UdappEvent extends MatomoEventBase {
     | 'safeSmartAccount'
     | 'hardhat'
     | 'sendTx'
+    | 'call'
+    | 'lowLevelinteractions'
+    | 'transact'
     | 'syncContracts'
     | 'forkState'
     | 'deleteState'
@@ -156,6 +159,30 @@ export const UdappEvents = {
     name,
     value,
     isClick: true // User clicks to send transaction
+  }),
+
+  call: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'call',
+    name,
+    value,
+    isClick: true // User calls a view/pure function
+  }),
+
+  lowLevelinteractions: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'lowLevelinteractions',
+    name,
+    value,
+    isClick: true // User interacts with fallback/receive functions
+  }),
+
+  transact: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'transact',
+    name,
+    value,
+    isClick: true // User executes a state-changing function
   }),
   
   syncContracts: (name?: string, value?: string | number): UdappEvent => ({

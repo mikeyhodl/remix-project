@@ -305,10 +305,18 @@ export const runTransactions = (
   passphrasePrompt: (msg: string) => JSX.Element,
   funcIndex?: number) => {
   let callinfo = ''
-  if (lookupOnly) callinfo = 'call'
-  else if (funcABI.type === 'fallback' || funcABI.type === 'receive') callinfo = 'lowLevelinteractions'
-  else callinfo = 'transact'
-  trackMatomoEvent(plugin, UdappEvents.sendTransaction(callinfo, plugin.REACT_API.networkName))
+  let eventMethod
+  if (lookupOnly) {
+    callinfo = 'call'
+    eventMethod = UdappEvents.call
+  } else if (funcABI.type === 'fallback' || funcABI.type === 'receive') {
+    callinfo = 'lowLevelinteractions'
+    eventMethod = UdappEvents.lowLevelinteractions
+  } else {
+    callinfo = 'transact'
+    eventMethod = UdappEvents.transact
+  }
+  trackMatomoEvent(plugin, eventMethod(plugin.REACT_API.networkName))
 
   const params = funcABI.type !== 'fallback' ? inputsValues : ''
   plugin.blockchain.runOrCallContractMethod(
