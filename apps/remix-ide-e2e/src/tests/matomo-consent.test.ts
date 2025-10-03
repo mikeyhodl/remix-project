@@ -419,6 +419,38 @@ function setupAndCheckState(browser: NightwatchBrowser, description: string) {
         });
 }
 
+// Helper: Verify event tracking with dimension 3 check
+function verifyEventTracking(browser: NightwatchBrowser, expectedCategory: string, expectedAction: string, expectedName: string, isClickEvent: boolean, description: string) {
+    return browser
+        .pause(1000) // Wait for event to be captured
+        .execute(function () {
+            const debugHelpers = (window as any).__matomoDebugHelpers;
+            if (!debugHelpers) return { error: 'Debug helpers not found' };
+            
+            const events = debugHelpers.getEvents();
+            if (events.length === 0) return { error: 'No events found' };
+            
+            const lastEvent = events[events.length - 1];
+            return {
+                category: lastEvent.e_c || lastEvent.category || 'unknown',
+                action: lastEvent.e_a || lastEvent.action || 'unknown', 
+                name: lastEvent.e_n || lastEvent.name || 'unknown',
+                mode: lastEvent.dimension1,
+                isClick: lastEvent.dimension3 === true || lastEvent.dimension3 === 'true', // Our click dimension (handle string/boolean)
+                hasVisitorId: !!lastEvent.visitorId && lastEvent.visitorId !== 'null'
+            };
+        }, [], (result: any) => {
+            browser
+                .assert.equal(result.value.category, expectedCategory, `Event category should be "${expectedCategory}"`)
+                .assert.equal(result.value.action, expectedAction, `Event action should be "${expectedAction}"`) 
+                .assert.equal(result.value.name, expectedName, `Event name should be "${expectedName}"`)
+                .assert.equal(result.value.mode, 'cookie', 'Event should be in cookie mode')
+                .assert.equal(result.value.isClick, isClickEvent, `Dimension 3 (isClick) should be ${isClickEvent}`)
+                .assert.equal(result.value.hasVisitorId, true, 'Should have visitor ID in cookie mode')
+                .assert.ok(true, `✅ ${description}: ${result.value.category}/${result.value.action}/${result.value.name}, isClick=${result.value.isClick}, mode=${result.value.mode}`);
+        });
+}
+
 // Helper: Check prequeue vs debug events (before/after consent)
 function checkPrequeueState(browser: NightwatchBrowser, description: string) {
     return browser
@@ -598,5 +630,33 @@ module.exports = {
             .perform(() => checkPrequeueState(browser, 'After consent'))
             .perform(() => verifyQueueFlushed(browser, 'anon', 'Queue flush successful'))
             .assert.ok(true, '✅ Pattern complete: prequeue → reject → queue flush to anonymous mode')
+    },
+
+    /**
+     * Simple pattern: Test both tracking methods work with dimension 3
+     */
+    'Event tracking verification (plugin + context) #pr #group6': function (browser: NightwatchBrowser) {
+        browser
+            .perform(() => startFreshTest(browser))
+            .perform(() => setupAndCheckState(browser, 'Initial state'))
+            .perform(() => acceptConsent(browser)) // Accept to test cookie mode
+            .perform(() => checkConsentState(browser, true, 'After accept'))
+            
+            // Test git init tracking (Git init - should be click event)
+            .waitForElementVisible('*[data-id="verticalIconsKinddgit"]')
+            .click('*[data-id="verticalIconsKinddgit"]') // Open dgit plugin
+            .pause(1000)
+            .waitForElementVisible('*[data-id="initgit-btn"]')
+            .click('*[data-id="initgit-btn"]') // Initialize git repo
+            .pause(1000)
+            .perform(() => verifyEventTracking(browser, 'git', 'INIT', 'unknown', true, 'Git init click event'))
+            
+            // Test context-based tracking (Settings - should be click event) 
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .pause(1000)
+            .perform(() => verifyEventTracking(browser, 'topbar', 'header', 'Settings', true, 'Context-based click event'))
+            
+            .assert.ok(true, '✅ Both plugin and context tracking work with correct dimension 3')
     }
 }
