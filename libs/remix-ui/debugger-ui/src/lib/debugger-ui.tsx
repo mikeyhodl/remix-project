@@ -8,6 +8,7 @@ import {TransactionDebugger as Debugger} from '@remix-project/remix-debug' // es
 import {DebuggerUIProps} from './idebugger-api' // eslint-disable-line
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip, isValidHash } from '@remix-ui/helper'
+import { DebuggerEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 /* eslint-disable-next-line */
 import './debugger-ui.css'
@@ -260,7 +261,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     const web3 = optWeb3 || (state.opt.debugWithLocalNode ? await debuggerModule.web3() : await debuggerModule.getDebugWeb3())
     try {
       const networkId = await web3.eth.net.getId()
-      track?.('debugger', 'startDebugging', networkId)
+      track?.(DebuggerEvents.startDebugging(networkId))
       if (networkId === 42) {
         setState((prevState) => {
           return {

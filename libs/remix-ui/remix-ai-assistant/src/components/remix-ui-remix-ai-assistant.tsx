@@ -6,6 +6,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
+import { AIEvents, RemixAIEvents, RemixAIAssistantEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
@@ -156,7 +157,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'current':
         {
-          track?.('ai', 'remixAI', 'AddingAIContext', choice)
+          track?.(AIEvents.AddingAIContext(choice))
           const f = await props.plugin.call('fileManager', 'getCurrentFile')
           if (f) files = [f]
           await props.plugin.call('remixAI', 'setContextFiles', { context: 'currentFile' })
@@ -164,7 +165,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'opened':
         {
-          track?.('ai', 'remixAI', 'AddingAIContext', choice)
+          track?.(AIEvents.AddingAIContext(choice))
           const res = await props.plugin.call('fileManager', 'getOpenedFiles')
           if (Array.isArray(res)) {
             files = res
@@ -176,7 +177,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'workspace':
         {
-          track?.('ai', 'remixAI', 'AddingAIContext', choice)
+          track?.(AIEvents.AddingAIContext(choice))
           await props.plugin.call('remixAI', 'setContextFiles', { context: 'workspace' })
           files = ['@workspace']
         }
@@ -249,9 +250,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       prev.map(m => (m.id === msgId ? { ...m, sentiment: next } : m))
     )
     if (next === 'like') {
-      track?.('remixai-assistant', 'like-response')
+      track?.(RemixAIAssistantEvents.likeResponse())
     } else if (next === 'dislike') {
-      track?.('remixai-assistant', 'dislike-response')
+      track?.(RemixAIAssistantEvents.dislikeResponse())
     }
   }
 
@@ -433,7 +434,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     dispatchActivity('button', 'generateWorkspace')
     if (prompt && prompt.trim()) {
       await sendPrompt(`/workspace ${prompt.trim()}`)
-      track?.('remixAI', 'GenerateNewAIWorkspaceFromEditMode', prompt)
+      track?.(RemixAIEvents.GenerateNewAIWorkspaceFromEditMode(prompt))
     }
   }, [sendPrompt])
 
@@ -470,14 +471,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           dispatchActivity('button', 'setAssistant')
           setMessages([])
           sendPrompt(`/setAssistant ${assistantChoice}`)
-          track?.('remixAI', 'SetAIProvider', assistantChoice)
+          track?.(RemixAIEvents.SetAIProvider(assistantChoice))
           // Log specific Ollama selection
           if (assistantChoice === 'ollama') {
-            track?.('ai', 'remixAI', 'ollama_provider_selected', `from:${choiceSetting || 'unknown'}`)
+            track?.(AIEvents.ollamaProviderSelected(`from:${choiceSetting || 'unknown'}`))
           }
         } else {
           // This is a fallback, just update the backend silently
-          track?.('ai', 'remixAI', 'ollama_fallback_to_provider', `${assistantChoice}|from:${choiceSetting}`)
+          track?.(AIEvents.ollamaFallbackToProvider(`${assistantChoice}|from:${choiceSetting}`))
           await props.plugin.call('remixAI', 'setAssistantProvider', assistantChoice)
         }
         setAssistantChoice(assistantChoice || 'mistralai')
@@ -513,7 +514,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               if (!selectedModel && models.length > 0) {
                 const defaultModel = models.find(m => m.includes('codestral')) || models[0]
                 setSelectedModel(defaultModel)
-                track?.('ai', 'remixAI', 'ollama_default_model_selected', `${defaultModel}|codestral|total:${models.length}`)
+                track?.(AIEvents.ollamaDefaultModelSelected(`${defaultModel}|codestral|total:${models.length}`))
                 // Sync the default model with the backend
                 try {
                   await props.plugin.call('remixAI', 'setModel', defaultModel)
@@ -540,7 +541,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               sentiment: 'none'
             }])
             // Log Ollama unavailable event
-            track?.('ai', 'remixAI', 'ollama_unavailable', 'switching_to_mistralai')
+            track?.(AIEvents.ollamaUnavailable('switching_to_mistralai'))
             // Set failure flag before switching back to prevent success message
             setIsOllamaFailureFallback(true)
             // Automatically switch back to mistralai
@@ -557,7 +558,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             sentiment: 'none'
           }])
           // Log Ollama connection error
-          track?.('ai', 'remixAI', 'ollama_connection_error', `${error.message || 'unknown'}|switching_to_mistralai`)
+          track?.(AIEvents.ollamaConnectionError(`${error.message || 'unknown'}|switching_to_mistralai`))
           // Set failure flag before switching back to prevent success message
           setIsOllamaFailureFallback(true)
           // Switch back to mistralai on error
@@ -580,16 +581,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const previousModel = selectedModel
     setSelectedModel(modelName)
     setShowModelOptions(false)
-    track?.('ai', 'remixAI', 'ollama_model_selected', `${modelName}|from:${previousModel || 'none'}`)
+    track?.(AIEvents.ollamaModelSelected(`${modelName}|from:${previousModel || 'none'}`))
     // Update the model in the backend
     try {
       await props.plugin.call('remixAI', 'setModel', modelName)
-      track?.('ai', 'remixAI', 'ollama_model_set_backend_success', modelName)
+      track?.(AIEvents.ollamaModelSetBackendSuccess(modelName))
     } catch (error) {
       console.warn('Failed to set model:', error)
-      track?.('ai', 'remixAI', 'ollama_model_set_backend_failed', `${modelName}|${error.message || 'unknown'}`)
+      track?.(AIEvents.ollamaModelSetBackendFailed(`${modelName}|${error.message || 'unknown'}`))
     }
-    track?.('remixAI', 'SetOllamaModel', modelName)
+    track?.(RemixAIEvents.SetOllamaModel(modelName))
   }, [props.plugin, selectedModel])
 
   // refresh context whenever selection changes (even if selector is closed)
@@ -638,7 +639,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
       if (description && description.trim()) {
         sendPrompt(`/generate ${description.trim()}`)
-        track?.('remixAI', 'GenerateNewAIWorkspaceFromModal', description)
+        track?.(RemixAIEvents.GenerateNewAIWorkspaceFromModal(description))
       }
     } catch {
       /* user cancelled */

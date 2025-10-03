@@ -3,6 +3,7 @@ import { Dropdown, DropdownButton } from 'react-bootstrap'
 import DropdownItem from 'react-bootstrap/DropdownItem'
 import { localeLang } from './types/carouselTypes'
 import { FormattedMessage } from 'react-intl'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {
@@ -41,7 +42,7 @@ export function LanguageOptions({ plugin }: { plugin: any }) {
               {
                 changeLanguage(lang.toLowerCase())
                 setLangOptions(lang)
-                track?.('hometab', 'switchTo', lang)
+                track?.(HomeTabEvents.switchTo(lang))
               }}
               style={{ color: 'var(--text)', cursor: 'pointer' }}
               key={index}

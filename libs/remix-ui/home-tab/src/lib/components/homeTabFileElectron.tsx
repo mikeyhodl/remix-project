@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { ModalDialog } from '@remix-ui/modal-dialog' // eslint-disable-line
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface HomeTabFileProps {
@@ -22,7 +23,7 @@ function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
   }
 
   const importFromGist = () => {
-    track?.('hometab', 'filesSection', 'importFromGist')
+    track?.(HomeTabEvents.filesSection('importFromGist'))
     plugin.call('gistHandler', 'load', '')
     plugin.verticalIcons.select('filePanel')
   }

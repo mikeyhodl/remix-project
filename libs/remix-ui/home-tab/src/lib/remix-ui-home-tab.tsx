@@ -6,6 +6,7 @@ import HomeTabRecentWorkspaces from './components/homeTabRecentWorkspaces'
 import HomeTabScamAlert from './components/homeTabScamAlert'
 import HomeTabFeaturedPlugins from './components/homeTabFeaturedPlugins'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { HomeTabFileElectron } from './components/homeTabFileElectron'
 import HomeTabUpdates from './components/homeTabUpdates'
@@ -60,13 +61,13 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
       await plugin.appManager.activatePlugin(['LearnEth', 'solidity', 'solidityUnitTesting'])
       plugin.verticalIcons.select('LearnEth')
     }
-    track?.('hometab', 'header', 'Start Learning')
+    track?.(HomeTabEvents.header('Start Learning'))
   }
 
   const openTemplateSelection = async () => {
     await plugin.call('manager', 'activatePlugin', 'templateSelection')
     await plugin.call('tabs', 'focus', 'templateSelection')
-    track?.('hometab', 'header', 'Create a new workspace')
+    track?.(HomeTabEvents.header('Create a new workspace'))
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {

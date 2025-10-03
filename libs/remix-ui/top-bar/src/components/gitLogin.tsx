@@ -3,6 +3,7 @@ import React, { useContext, useCallback } from 'react'
 import { Button, ButtonGroup, Dropdown } from 'react-bootstrap'
 import { CustomTopbarMenu } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
+import { TopBarEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 
@@ -91,7 +92,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-publish-to-gist"
               onClick={async () => {
                 await publishToGist()
-                track?.('topbar', 'GIT', 'publishToGist')
+                track?.(TopBarEvents.GIT('publishToGist'))
               }}
             >
               <i className="fab fa-github me-2"></i>
@@ -102,7 +103,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-disconnect"
               onClick={async () => {
                 await logOutOfGithub()
-                track?.('topbar', 'GIT', 'logout')
+                track?.(TopBarEvents.GIT('logout'))
               }}
               className="text-danger"
             >

@@ -4,6 +4,7 @@ import GroupListMenu from "./contextOptMenu"
 import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
+import { RemixAIEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 // PromptArea component
@@ -123,7 +124,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('ask')
-                  track?.('remixAI', 'ModeSwitch', 'ask')
+                  track?.(RemixAIEvents.ModeSwitch('ask'))
                 }}
                 title="Ask mode - Chat with AI"
               >
@@ -134,7 +135,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('edit')
-                  track?.('remixAI', 'ModeSwitch', 'edit')
+                  track?.(RemixAIEvents.ModeSwitch('edit'))
                 }}
                 title="Edit mode - Edit workspace code"
               >

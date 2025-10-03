@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext, themes } from '../themeContext'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
@@ -29,10 +30,10 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
   const handleStartLearneth = async () => {
     await props.plugin.appManager.activatePlugin(['LearnEth', 'solidityUnitTesting'])
     props.plugin.verticalIcons.select('LearnEth')
-    track?.('hometab', 'featuredSection', 'LearnEth')
+    track?.(HomeTabEvents.featuredSection('LearnEth'))
   }
   const handleStartRemixGuide = async () => {
-    track?.('hometab', 'featuredSection', 'watchOnRemixGuide')
+    track?.(HomeTabEvents.featuredSection('watchOnRemixGuide'))
     await props.plugin.appManager.activatePlugin(['remixGuide'])
     await props.plugin.call('tabs', 'focus', 'remixGuide')
   }
@@ -77,7 +78,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Please take a few minutes of your time to
                     <a
                       className="mx-1"
-                      onClick={() => track?.('hometab', 'featuredSection', 'soliditySurvey24')}
+                      onClick={() => track?.(HomeTabEvents.featuredSection('soliditySurvey24'))}
                       target="__blank"
                       href="https://cryptpad.fr/form/#/2/form/view/9xjPVmdv8z0Cyyh1ejseMQ0igmx-TedH5CPST3PhRUk/"
                     >
@@ -88,7 +89,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Thank you for your support! Read the full announcement
                     <a
                       className="remixui_home_text mx-1"
-                      onClick={() => track?.('hometab', 'featuredSection', 'soliditySurvey24')}
+                      onClick={() => track?.(HomeTabEvents.featuredSection('soliditySurvey24'))}
                       target="__blank"
                       href="https://soliditylang.org/blog/2024/12/27/solidity-developer-survey-2024-announcement/"
                     >
@@ -113,7 +114,7 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                   </div>
                   <a
                     className="remixui_home_text btn-sm btn-secondary mt-2 text-decoration-none mb-3"
-                    onClick={() => track?.('hometab', 'featuredSection', 'seeFullChangelog')}
+                    onClick={() => track?.(HomeTabEvents.featuredSection('seeFullChangelog'))}
                     target="__blank"
                     href={releaseDetails.moreLink}
                   >

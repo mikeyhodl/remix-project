@@ -6,6 +6,7 @@ import { ThemeContext } from '../themeContext'
 import WorkspaceTemplate from './workspaceTemplate'
 import 'react-multi-carousel/lib/styles.css'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { Plugin } from "@remixproject/engine";
 import { CustomRemixApi } from '@remix-api'
@@ -145,7 +146,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
       await plugin.call('filePanel', 'setWorkspace', templateDisplayName)
       plugin.verticalIcons.select('filePanel')
     }
-    track?.('hometab', 'homeGetStarted', templateName)
+    track?.(HomeTabEvents.homeGetStarted(templateName))
   }
 
   return (
@@ -176,7 +177,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
                     }
                     onClick={async (e) => {
                       createWorkspace(template.templateName)
-                      track?.('hometab', 'homeGetStarted', template.templateName)
+                      track?.(HomeTabEvents.homeGetStarted(template.templateName))
                     }}
                     data-id={`homeTabGetStarted${template.templateName}`}
                   >

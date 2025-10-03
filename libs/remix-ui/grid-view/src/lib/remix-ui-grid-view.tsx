@@ -1,8 +1,8 @@
 import React, {useState, useEffect, useContext, useRef, ReactNode} from 'react' // eslint-disable-line
-
 import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
+import { GridViewEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 
@@ -110,7 +110,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
                     className="remixui_grid_view_btn text-secondary form-control bg-light border d-flex align-items-center p-2 justify-content-center fas fa-filter bg-light"
                     onClick={(e) => {
                       setFilter(searchInputRef.current.value)
-                      track?.('GridView' + (props.title ? props.title : ''), 'filter', searchInputRef.current.value)
+                      track?.(GridViewEvents.filterWithTitle(props.title || '', searchInputRef.current.value))
                     }}
                   ></button>
                   <input

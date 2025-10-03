@@ -3,6 +3,7 @@ import React, { useEffect, useState, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext } from '../themeContext'
 import { CustomTooltip } from '@remix-ui/helper'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 enum VisibleTutorial {
@@ -28,7 +29,7 @@ function HomeTabLearn({ plugin }: HomeTabLearnProps) {
     await plugin.appManager.activatePlugin(['solidity', 'LearnEth', 'solidityUnitTesting'])
     plugin.verticalIcons.select('LearnEth')
     plugin.call('LearnEth', 'startTutorial', 'remix-project-org/remix-workshops', 'master', tutorial)
-    track?.('hometab', 'startLearnEthTutorial', tutorial)
+    track?.(HomeTabEvents.startLearnEthTutorial(tutorial))
   }
 
   const goToLearnEthHome = async () => {

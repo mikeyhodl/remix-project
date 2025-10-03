@@ -341,6 +341,7 @@ export interface RemixAIEvent extends MatomoEventBase {
   category: 'remixAI';
   action: 
     | 'ModeSwitch'
+    | 'SetAIProvider'
     | 'SetAssistantProvider'
     | 'SetOllamaModel'
     | 'GenerateNewAIWorkspaceFromModal'
@@ -712,12 +713,12 @@ export const CompilerEvents = {
  * Home Tab Events - Type-safe builders
  */
 export const HomeTabEvents = {
-  titleCard: (name?: string, value?: string | number): HomeTabEvent => ({
+  header: (name?: string, value?: string | number): HomeTabEvent => ({
     category: 'hometab',
-    action: 'titleCard',
+    action: 'header',
     name,
     value,
-    isClick: true // User clicks on title cards in home tab
+    isClick: true // User clicks on header elements
   }),
   
   filesSection: (name?: string, value?: string | number): HomeTabEvent => ({
@@ -728,12 +729,76 @@ export const HomeTabEvents = {
     isClick: true // User clicks on items in files section
   }),
   
-  header: (name?: string, value?: string | number): HomeTabEvent => ({
+  scamAlert: (name?: string, value?: string | number): HomeTabEvent => ({
     category: 'hometab',
-    action: 'header',
+    action: 'scamAlert',
     name,
     value,
-    isClick: true // User clicks on header elements
+    isClick: true // User clicks on scam alert actions
+  }),
+  
+  switchTo: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'switchTo',
+    name,
+    value,
+    isClick: true // User clicks to switch language
+  }),
+  
+  titleCard: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'titleCard',
+    name,
+    value,
+    isClick: true // User clicks on title cards in home tab
+  }),
+  
+  recentWorkspacesCard: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'recentWorkspacesCard',
+    name,
+    value,
+    isClick: true // User clicks on recent workspaces cards
+  }),
+  
+  featuredPluginsToggle: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'featuredPluginsToggle',
+    name,
+    value,
+    isClick: true // User toggles featured plugins
+  }),
+  
+  featuredPluginsActionClick: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'featuredPluginsActionClick',
+    name,
+    value,
+    isClick: true // User clicks featured plugin actions
+  }),
+  
+  updatesActionClick: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'updatesActionClick',
+    name,
+    value,
+    isClick: true // User clicks on update actions
+  }),
+  
+  homeGetStarted: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'homeGetStarted',
+    name,
+    value,
+    isClick: true // User clicks get started templates
+  }),
+  
+  startLearnEthTutorial: (name?: string, value?: string | number): HomeTabEvent => ({
+    category: 'hometab',
+    action: 'startLearnEthTutorial',
+    name,
+    value,
+    isClick: true // User starts Learn Eth tutorial
   }),
   
   featuredSection: (name?: string, value?: string | number): HomeTabEvent => ({
@@ -742,14 +807,6 @@ export const HomeTabEvents = {
     name,
     value,
     isClick: true // User clicks on featured section items
-  }),
-  
-  scamAlert: (name?: string, value?: string | number): HomeTabEvent => ({
-    category: 'hometab',
-    action: 'scamAlert',
-    name,
-    value,
-    isClick: true // User clicks on scam alert actions
   })
 } as const;
 
@@ -781,12 +838,116 @@ export const AIEvents = {
     isClick: true // User clicks to request AI documentation generation
   }),
   
-  vulnerabilityCheck: (name?: string, value?: string | number): AIEvent => ({
+  vulnerabilityCheckPastedCode: (name?: string, value?: string | number): AIEvent => ({
     category: 'ai',
     action: 'vulnerability_check_pasted_code',
     name,
     value,
-    isClick: true // User clicks to request AI vulnerability check
+    isClick: true // User requests AI vulnerability check on pasted code
+  }),
+  
+  copilotCompletionAccepted: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'Copilot_Completion_Accepted',
+    name,
+    value,
+    isClick: true // User accepts AI copilot completion
+  }),
+  
+  codeGeneration: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'code_generation',
+    name,
+    value,
+    isClick: false // AI generates code automatically
+  }),
+  
+  codeInsertion: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'code_insertion',
+    name,
+    value,
+    isClick: false // AI inserts code automatically
+  }),
+  
+  codeCompletion: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'code_completion',
+    name,
+    value,
+    isClick: false // AI completes code automatically
+  }),
+  
+  AddingAIContext: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'AddingAIContext',
+    name,
+    value,
+    isClick: true // User adds AI context
+  }),
+  
+  ollamaProviderSelected: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_provider_selected',
+    name,
+    value,
+    isClick: false // System selects provider
+  }),
+  
+  ollamaFallbackToProvider: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_fallback_to_provider',
+    name,
+    value,
+    isClick: false // System fallback
+  }),
+  
+  ollamaDefaultModelSelected: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_default_model_selected',
+    name,
+    value,
+    isClick: false // System selects default model
+  }),
+  
+  ollamaUnavailable: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_unavailable',
+    name,
+    value,
+    isClick: false // System detects unavailability
+  }),
+  
+  ollamaConnectionError: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_connection_error',
+    name,
+    value,
+    isClick: false // System connection error
+  }),
+  
+  ollamaModelSelected: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_model_selected',
+    name,
+    value,
+    isClick: true // User selects model
+  }),
+  
+  ollamaModelSetBackendSuccess: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_model_set_backend_success',
+    name,
+    value,
+    isClick: false // System success
+  }),
+  
+  ollamaModelSetBackendFailed: (name?: string, value?: string | number): AIEvent => ({
+    category: 'ai',
+    action: 'ollama_model_set_backend_failed',
+    name,
+    value,
+    isClick: false // System failure
   })
 } as const;
 
@@ -1364,6 +1525,119 @@ export const RemixAIAssistantEvents = {
     name,
     value,
     isClick: true // User dislikes AI response
+  })
+} as const;
+
+/**
+ * Debugger Events - Type-safe builders
+ */
+export const DebuggerEvents = {
+  startDebugging: (name?: string, value?: string | number): DebuggerEvent => ({
+    category: 'debugger',
+    action: 'startDebugging',
+    name,
+    value,
+    isClick: true // User clicks to start debugging
+  })
+} as const;
+
+/**
+ * Grid View Events - Type-safe builders
+ */
+export const GridViewEvents = {
+  filter: (name?: string, value?: string | number): GridViewEvent => ({
+    category: 'GridView',
+    action: 'filter',
+    name,
+    value,
+    isClick: true // User clicks or types to filter
+  }),
+  
+  filterWithTitle: (title: string, name?: string, value?: string | number): GridViewEvent => ({
+    category: `GridView${title}` as any,
+    action: 'filter',
+    name,
+    value,
+    isClick: true // User clicks or types to filter with specific title
+  })
+} as const;
+
+/**
+ * Enhanced Remix AI Events - Type-safe builders for all AI assistant actions
+ */
+export const RemixAIEvents = {
+  ModeSwitch: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'ModeSwitch',
+    name,
+    value,
+    isClick: true // User clicks to switch AI mode
+  }),
+  
+  SetAIProvider: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'SetAIProvider',
+    name,
+    value,
+    isClick: true // User sets AI provider
+  }),
+  
+  SetAssistantProvider: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'SetAssistantProvider',
+    name,
+    value,
+    isClick: true // User sets AI assistant provider
+  }),
+  
+  SetOllamaModel: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'SetOllamaModel',
+    name,
+    value,
+    isClick: true // User sets Ollama model
+  }),
+  
+  GenerateNewAIWorkspaceFromModal: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'GenerateNewAIWorkspaceFromModal',
+    name,
+    value,
+    isClick: true // User generates workspace from modal
+  }),
+  
+  GenerateNewAIWorkspaceFromEditMode: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'GenerateNewAIWorkspaceFromEditMode',
+    name,
+    value,
+    isClick: true // User generates workspace from edit mode
+  })
+} as const;
+
+/**
+ * Enhanced Solidity UML Gen Events - Type-safe builders
+ */
+export const SolidityUMLGenEvents = {
+  umlpngdownload: (name?: string, value?: string | number): SolidityUMLGenEvent => ({
+    category: 'solidityumlgen',
+    action: 'umlpngdownload',
+    name,
+    value,
+    isClick: true // User downloads UML as PNG
+  })
+} as const;
+
+/**
+ * Sol UML Gen Events - Type-safe builders  
+ */
+export const SolUmlGenEvents = {
+  umlpdfdownload: (name?: string, value?: string | number): SolUmlGenEvent => ({
+    category: 'solUmlGen',
+    action: 'umlpdfdownload',
+    name,
+    value,
+    isClick: true // User downloads UML as PDF
   })
 } as const;
 

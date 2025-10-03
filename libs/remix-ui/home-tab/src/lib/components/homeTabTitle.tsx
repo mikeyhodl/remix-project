@@ -106,12 +106,7 @@ function HomeTabTitle() {
                   key={index}
                   onClick={() => {
                     openLink(button.urlLink)
-                    track?.({ 
-                      category: button.matomoTrackingEntry[1] as any, 
-                      action: button.matomoTrackingEntry[2] as any, 
-                      name: button.matomoTrackingEntry[3],
-                      isClick: true 
-                    } as any)
+                    track?.(HomeTabEvents.titleCard(button.matomoTrackingEntry[3]))
                   }}
                   className={`border-0 h-100 px-1 btn fab ${button.iconClass} text-dark`}
                 ></button>

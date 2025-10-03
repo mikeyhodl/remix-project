@@ -3,7 +3,7 @@ import React, { Fragment, Ref, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
-
+import { SolidityUMLGenEvents, SolUmlGenEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 export const Markup = React.forwardRef(
@@ -78,7 +78,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
           <Dropdown.Menu as={UmlCustomMenu} className="form-select">
             <Dropdown.Item
               onClick={() => {
-                track?.('solidityumlgen', 'umlpngdownload', 'downloadAsPng')
+                track?.(SolidityUMLGenEvents.umlpngdownload('downloadAsPng'))
                 props.download('png')
               }}
               data-id="umlPngDownload"
@@ -100,7 +100,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
             <Dropdown.Divider />
             <Dropdown.Item
               onClick={() => {
-                track?.('solUmlGen', 'umlpdfdownload', 'downloadAsPdf')
+                track?.(SolUmlGenEvents.umlpdfdownload('downloadAsPdf'))
                 props.download('pdf')
               }}
               data-id="umlPdfDownload"

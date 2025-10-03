@@ -7,6 +7,7 @@ import { FormattedMessage } from 'react-intl'
 import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface HomeTabFeaturedPluginsProps {
@@ -60,11 +61,11 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const activateFeaturedPlugin = async (pluginId: string) => {
     setLoadingPlugins([...loadingPlugins, pluginId])
     if (await plugin.appManager.isActive(pluginId)) {
-      track?.('hometab', 'featuredPluginsToggle', `deactivate-${pluginId}`)
+      track?.(HomeTabEvents.featuredPluginsToggle(`deactivate-${pluginId}`))
       await plugin.appManager.deactivatePlugin(pluginId)
       setActivePlugins(activePlugins.filter((id) => id !== pluginId))
     } else {
-      track?.('hometab', 'featuredPluginsToggle', `activate-${pluginId}`)
+      track?.(HomeTabEvents.featuredPluginsToggle(`activate-${pluginId}`))
       await plugin.appManager.activatePlugin([pluginId])
       await plugin.verticalIcons.select(pluginId)
       setActivePlugins([...activePlugins, pluginId])
@@ -73,7 +74,7 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   }
 
   const handleFeaturedPluginActionClick = async (pluginInfo: PluginInfo) => {
-    track?.('hometab', 'featuredPluginsActionClick', pluginInfo.pluginTitle)
+    track?.(HomeTabEvents.featuredPluginsActionClick(pluginInfo.pluginTitle))
     if (pluginInfo.action.type === 'link') {
       window.open(pluginInfo.action.url, '_blank')
     } else if (pluginInfo.action.type === 'methodCall') {

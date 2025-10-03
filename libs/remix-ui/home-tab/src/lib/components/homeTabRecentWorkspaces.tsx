@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { ThemeContext } from '../themeContext'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import { getTimeAgo } from '@remix-ui/helper'
 
@@ -63,7 +64,7 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
     setLoadingWorkspace(workspaceName)
     plugin.call('sidePanel', 'showContent', 'filePanel')
     plugin.verticalIcons.select('filePanel')
-    track?.('hometab', 'recentWorkspacesCard', 'loadRecentWorkspace')
+    track?.(HomeTabEvents.recentWorkspacesCard('loadRecentWorkspace'))
     await plugin.call('filePanel', 'switchToWorkspace', { name: workspaceName, isLocalhost: false })
     const workspaceFiles = await plugin.call('fileManager', 'readdir', '/')
 

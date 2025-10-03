@@ -2,6 +2,7 @@
 import React, { useContext } from 'react'
 import parse from 'html-react-parser'
 import { ScanReport } from '@remix-ui/helper'
+import { SolidityCompilerEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 
 interface SolScanTableProps {
@@ -57,7 +58,7 @@ export function SolScanTable(props: SolScanTableProps) {
           <p>For more details,&nbsp;
             <a href="https://solidityscan.com/?utm_campaign=remix&utm_source=remix"
               target='_blank'
-              onClick={() => track?.('solidityCompiler', 'solidityScan', 'goToSolidityScan')}>
+              onClick={() => track?.(SolidityCompilerEvents.solidityScan('goToSolidityScan'))}>
               go to SolidityScan.
             </a>
           </p>

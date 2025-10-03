@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import { HomeTabEvents } from '@remix-api'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
 import React, { useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
@@ -26,7 +27,7 @@ function HomeTabScamAlert() {
             <FormattedMessage id="home.scamAlertText2" />:
             <a
               className="ps-2 remixui_home_text"
-              onClick={() => track?.('hometab', 'scamAlert', 'learnMore')}
+              onClick={() => track?.(HomeTabEvents.scamAlert('learnMore'))}
               target="__blank"
               href="https://medium.com/remix-ide/remix-in-youtube-crypto-scams-71c338da32d"
             >
@@ -37,7 +38,7 @@ function HomeTabScamAlert() {
             <FormattedMessage id="home.scamAlertText3" />: &nbsp;
             <a
               className="remixui_home_text"
-              onClick={() => track?.('hometab', 'scamAlert', 'safetyTips')}
+              onClick={() => track?.(HomeTabEvents.scamAlert('safetyTips'))}
               target="__blank"
               href="https://remix-ide.readthedocs.io/en/latest/security.html"
             >

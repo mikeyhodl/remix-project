@@ -1,6 +1,7 @@
 /* eslint-disable no-control-regex */
 import { EditorUIProps, monacoTypes } from '@remix-ui/editor';
 import { CompletionParams } from '@remix/remix-ai-core';
+import { AIEvents, MatomoEvent } from '@remix-api';
 import * as monaco from 'monaco-editor';
 import {
   AdaptiveRateLimiter,
@@ -14,13 +15,13 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
   completionEnabled: boolean
   task: string = 'code_completion'
   currentCompletion: any
-  track?: (category: string, action: string, name?: string) => void
+  track?: (event: MatomoEvent) => void
 
   private rateLimiter: AdaptiveRateLimiter;
   private contextDetector: SmartContextDetector;
   private cache: CompletionCache;
 
-  constructor(props: any, monaco: any, track?: (category: string, action: string, name?: string) => void) {
+  constructor(props: any, monaco: any, track?: (event: MatomoEvent) => void) {
     this.props = props
     this.monaco = monaco
     this.track = track
@@ -201,7 +202,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     })
 
     const data = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after)
-    this.track?.('ai', 'remixAI', 'code_generation')
+    this.track?.(AIEvents.codeGeneration())
     this.task = 'code_generation'
 
     const parsedData = data.trimStart()
@@ -227,7 +228,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     try {
       CompletionParams.stop = ['\n\n', '```']
       const output = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after, CompletionParams)
-      this.track?.('ai', 'remixAI', 'code_insertion')
+      this.track?.(AIEvents.codeInsertion())
       const generatedText = output
 
       this.task = 'code_insertion'
@@ -258,7 +259,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
       CompletionParams.stop = ['\n', '```']
       this.task = 'code_completion'
       const output = await this.props.plugin.call('remixAI', 'code_completion', word, word_after, CompletionParams)
-      this.track?.('ai', 'remixAI', 'code_completion')
+      this.track?.(AIEvents.codeCompletion())
       const generatedText = output
       let clean = generatedText
 
@@ -306,7 +307,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionShown()
-    this.track?.('ai', 'remixAI', this.task + '_did_show')
+    this.track?.(AIEvents.remixAI(this.task + '_did_show'))
   }
 
   handlePartialAccept?(
@@ -318,7 +319,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionAccepted()
-    this.track?.('ai', 'remixAI', this.task + '_partial_accept')
+    this.track?.(AIEvents.remixAI(this.task + '_partial_accept'))
   }
 
   freeInlineCompletions(
