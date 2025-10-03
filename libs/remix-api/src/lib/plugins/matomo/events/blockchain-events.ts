@@ -25,10 +25,8 @@ export interface UdappEvent extends MatomoEventBase {
   category: 'udapp';
   action: 
     | 'providerChanged'
-    | 'sendTransaction-from-udapp'
-    | 'sendTransaction-from-API'
-    | 'sendTransaction-from-dGitProvider'
-    | 'sendTransaction-from-localPlugin'
+    | 'sendTransaction-from-plugin'
+    | 'sendTransaction-from-gui'
     | 'safeSmartAccount'
     | 'hardhat'
     | 'sendTx'
@@ -128,12 +126,20 @@ export const UdappEvents = {
     isClick: true // User clicks to change provider
   }),
   
-  sendTransaction: (name?: string, value?: string | number): UdappEvent => ({
+  sendTransactionFromPlugin: (name?: string, value?: string | number): UdappEvent => ({
     category: 'udapp',
-    action: 'sendTransaction-from-udapp',
+    action: 'sendTransaction-from-plugin',
     name,
     value,
-    isClick: true // User clicks to send transaction
+    isClick: true // User clicks to send transaction from plugin
+  }),
+
+  sendTransactionFromGui: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'sendTransaction-from-gui',
+    name,
+    value,
+    isClick: true // User clicks to send transaction from GUI
   }),
   
   hardhat: (name?: string, value?: string | number): UdappEvent => ({
