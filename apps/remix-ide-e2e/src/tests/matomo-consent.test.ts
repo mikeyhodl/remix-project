@@ -31,7 +31,9 @@ function rejectConsent(browser: NightwatchBrowser) {
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
         .click('[data-id="matomoModal-modal-footer-cancel-react"]') // Click "Manage Preferences"
         .waitForElementVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]') // Wait for preferences dialog
+        .waitForElementVisible('*[data-id="matomoPerfAnalyticsToggleSwitch"]')
         .click('[data-id="matomoPerfAnalyticsToggleSwitch"]') // Uncheck performance analytics toggle
+        .waitForElementVisible('*[data-id="managePreferencesModal-modal-footer-ok-react"]')
         .click('[data-id="managePreferencesModal-modal-footer-ok-react"]') // Save preferences
         .waitForElementNotVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]')
         .pause(2000);
