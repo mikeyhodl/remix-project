@@ -103,7 +103,7 @@ export const openFolderInSameWindow = async (path: string) => {
   await plugin.call('fs', 'openFolderInSameWindow', path)
 }
 
-import { GitEvents } from '@remix-api';
+import { trackMatomoEvent, GitEvents } from '@remix-api';
 
 export const openCloneDialog = async () => {
   plugin.call('filePanel', 'clone')
@@ -115,7 +115,7 @@ export const sendToMatomo = async (event: gitMatomoEventTypes, args?: string[]) 
     const matomoEvent = args && args.length > 0 
       ? eventMethod(args[0], args[1]) 
       : eventMethod();
-    plugin && await plugin.call('matomo', 'track', matomoEvent);
+    plugin && trackMatomoEvent(plugin, matomoEvent);
   }
   // Note: No legacy fallback - all events must use type-safe format
 }
