@@ -138,14 +138,6 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
             const events = debugHelpers.getEvents();
             if (events.length === 0) return { error: 'No events found' };
             
-            // Debug: Show all events to understand what's being captured
-            console.log('DEBUG: All events found:', events.map(e => ({
-                category: e.e_c || e.category,
-                action: e.e_a || e.action, 
-                name: e.e_n || e.name,
-                timestamp: e.timestamp
-            })));
-            
             const lastEvent = events[events.length - 1];
             
             // Store ALL events as JSON string in browser global for Nightwatch visibility

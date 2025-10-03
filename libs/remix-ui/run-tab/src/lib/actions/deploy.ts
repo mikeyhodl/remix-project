@@ -178,10 +178,10 @@ export const createInstance = async (
 
     plugin.compilersArtefacts.addResolvedContract(addressToString(address), data)
     if (plugin.REACT_API.ipfsChecked) {
-      trackMatomoEvent(plugin, UdappEvents.deployAndPublish(plugin.REACT_API.networkName))
+      trackMatomoEvent(plugin, UdappEvents.DeployAndPublish(plugin.REACT_API.networkName))
       publishToStorage('ipfs', selectedContract)
     } else {
-      trackMatomoEvent(plugin, UdappEvents.deployOnly(plugin.REACT_API.networkName))
+      trackMatomoEvent(plugin, UdappEvents.DeployOnly(plugin.REACT_API.networkName))
     }
     if (isProxyDeployment) {
       const initABI = contractObject.abi.find(abi => abi.name === 'initialize')
