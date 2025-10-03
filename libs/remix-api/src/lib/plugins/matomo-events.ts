@@ -76,6 +76,7 @@ export type MatomoEvent =
   | LocaleModuleEvent
   | ManagerEvent
   | MatomoEvent_Core
+  | MatomoManagerEvent
   | MigrateEvent
   | PluginEvent
   | PluginManagerEvent
@@ -172,6 +173,14 @@ export interface BackupEvent extends MatomoEventBase {
     | 'download'
     | 'error'
     | 'userActivate';
+}
+
+export interface MatomoManagerEvent extends MatomoEventBase {
+  category: 'Matomo';
+  action: 
+    | 'showConsentDialog'
+    | 'consentGiven'
+    | 'consentRevoked';
 }
 
 export interface BlockchainEvent extends MatomoEventBase {
@@ -386,7 +395,8 @@ export interface RemixAIEvent extends MatomoEventBase {
     | 'SetAssistantProvider'
     | 'SetOllamaModel'
     | 'GenerateNewAIWorkspaceFromModal'
-    | 'GenerateNewAIWorkspaceFromEditMode';
+    | 'GenerateNewAIWorkspaceFromEditMode'
+    | 'remixAI';
 }
 
 export interface RemixAIAssistantEvent extends MatomoEventBase {
@@ -1748,6 +1758,51 @@ export const AppEvents = {
     name,
     value,
     isClick: false // System error, not user action
+  }),
+  
+  queryParamsActivated: (name?: string, value?: string | number): AppEvent => ({
+    category: 'App',
+    action: 'queryParams-activated',
+    name,
+    value,
+    isClick: false // System activation, not user click
+  }),
+  
+  queryParamsCalls: (name?: string, value?: string | number): AppEvent => ({
+    category: 'App',
+    action: 'queryParams-calls',
+    name,
+    value,
+    isClick: false // System call, not user action
+  })
+} as const;
+
+/**
+ * Matomo Manager Events - Type-safe builders
+ */
+export const MatomoManagerEvents = {
+  showConsentDialog: (name?: string, value?: string | number): MatomoManagerEvent => ({
+    category: 'Matomo',
+    action: 'showConsentDialog',
+    name,
+    value,
+    isClick: false // System dialog, not user action
+  }),
+  
+  consentGiven: (name?: string, value?: string | number): MatomoManagerEvent => ({
+    category: 'Matomo',
+    action: 'consentGiven',
+    name,
+    value,
+    isClick: true // User gave consent
+  }),
+  
+  consentRevoked: (name?: string, value?: string | number): MatomoManagerEvent => ({
+    category: 'Matomo',
+    action: 'consentRevoked',
+    name,
+    value,
+    isClick: true // User revoked consent
   })
 } as const;
 
@@ -2019,6 +2074,15 @@ export const RemixAIEvents = {
     name,
     value,
     isClick: true // User generates workspace from edit mode
+  }),
+  
+  // Generic event for AI tracking
+  remixAI: (name?: string, value?: string | number): RemixAIEvent => ({
+    category: 'remixAI',
+    action: 'remixAI',
+    name,
+    value,
+    isClick: false // System events, not user clicks
   })
 } as const;
 

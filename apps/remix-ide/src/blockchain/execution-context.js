@@ -4,15 +4,16 @@ import { Web3 } from 'web3'
 import { execution } from '@remix-project/remix-lib'
 import EventManager from '../lib/events'
 import { bytesToHex } from '@ethereumjs/util'
+import { UdappEvents } from '@remix-api'
 
 let web3
 
 // Helper function to track events using MatomoManager
-function track(category, action, name, value) {
+function track(event) {
   try {
     const matomoManager = window._matomoManagerInstance
     if (matomoManager && matomoManager.trackEvent) {
-      matomoManager.trackEvent(category, action, name, value)
+      matomoManager.trackEvent(event)
     }
   } catch (error) {
     console.debug('Tracking error:', error)
@@ -166,7 +167,7 @@ export class ExecutionContext {
   }
 
   async executionContextChange (value, endPointUrl, confirmCb, infoCb, cb) {
-    track('udapp', 'providerChanged', value.context)
+    track(UdappEvents.providerChanged(value.context))
     const context = value.context
     if (!cb) cb = () => { /* Do nothing. */ }
     if (!confirmCb) confirmCb = () => { /* Do nothing. */ }

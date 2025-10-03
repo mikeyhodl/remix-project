@@ -29,6 +29,6 @@ export function createTrackingFunction(matomoManager: MatomoManager): TrackingFu
       }
     }
     
-    matomoManager.trackEvent?.(event.category, event.action, event.name, numericValue);
+    matomoManager.trackEvent?.({ ...event, value: numericValue });
   };
 }

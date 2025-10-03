@@ -94,6 +94,7 @@ import Config from './config'
 import FileManager from './app/files/fileManager'
 import FileProvider from "./app/files/fileProvider"
 import { appPlatformTypes } from '@remix-ui/app'
+import { MatomoEvent, AppEvents, MatomoManagerEvents } from '@remix-api'
 
 import DGitProvider from './app/files/dgitProvider'
 import WorkspaceFileProvider from './app/files/workspaceFileProvider'
@@ -162,11 +163,11 @@ class AppComponent {
   desktopClientMode: boolean
 
   // Tracking method that uses the global MatomoManager instance
-  track(category: string, action: string, name?: string, value?: number) {
+  track(event: MatomoEvent) {
     try {
-      const matomoManager = (window as any)._matomoManagerInstance
+      const matomoManager = window._matomoManagerInstance
       if (matomoManager && matomoManager.trackEvent) {
-        matomoManager.trackEvent(category, action, name, value)
+        matomoManager.trackEvent(event)
       }
     } catch (error) {
       console.debug('Tracking error:', error)
@@ -229,7 +230,7 @@ class AppComponent {
     this.workspace = pluginLoader.get()
     if (pluginLoader.current === 'queryParams') {
       this.workspace.map((workspace) => {
-        this.track('App', 'queryParams-activated', workspace)
+        this.track(AppEvents.queryParamsActivated(workspace))
       })
     }
     this.engine = new RemixEngine()
@@ -246,7 +247,7 @@ class AppComponent {
     
     
     if (this.showMatomo) {
-      this.track('Matomo', 'showConsentDialog');
+      this.track(MatomoManagerEvents.showConsentDialog());
     }
 
     this.walkthroughService = new WalkthroughService(appManager)
@@ -685,7 +686,7 @@ class AppComponent {
               if (callDetails.length > 1) {
                 this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
                 // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                this.track('App', 'queryParams-calls', this.params.call)
+                this.track(AppEvents.queryParamsCalls(this.params.call))
                 //@ts-ignore
                 await this.appManager.call(...callDetails).catch(console.error)
               }
@@ -696,7 +697,7 @@ class AppComponent {
 
               // call all functions in the list, one after the other
               for (const call of calls) {
-                this.track('App', 'queryParams-calls', call)
+                this.track(AppEvents.queryParamsCalls(call))
                 const callDetails = call.split('//')
                 if (callDetails.length > 1) {
                   this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)

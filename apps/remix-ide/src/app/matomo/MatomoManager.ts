@@ -160,7 +160,8 @@ export interface IMatomoManager {
   giveConsent(options?: { processQueue?: boolean }): Promise<void>;
   revokeConsent(): Promise<void>;
   
-  // Tracking methods
+  // Tracking methods - both type-safe and legacy signatures supported
+  trackEvent(event: MatomoEvent): number;
   trackEvent(category: string, action: string, name?: string, value?: number): number;
   trackPageView(title?: string): void;
   setCustomDimension(id: number, value: string): void;
@@ -620,36 +621,41 @@ export class MatomoManager implements IMatomoManager {
 
   // ================== TRACKING METHODS ==================
 
-  // Overloaded method signatures to support both legacy and type-safe usage
-  trackEvent(eventObj: MatomoEvent): number;
+  // Support both type-safe MatomoEvent objects and legacy signatures temporarily
+  trackEvent(event: MatomoEvent): number;
   trackEvent(category: string, action: string, name?: string, value?: number): number;
   trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): number {
     const eventId = ++this.state.lastEventId;
 
     // If first parameter is a MatomoEvent object, use type-safe approach
     if (typeof eventObjOrCategory === 'object' && eventObjOrCategory !== null && 'category' in eventObjOrCategory) {
-      const { category, action: eventAction, name: eventName, value: eventValue } = eventObjOrCategory;
-      this.log(`Tracking type-safe event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue}`);
+      const { category, action: eventAction, name: eventName, value: eventValue, isClick } = eventObjOrCategory;
+      this.log(`Tracking type-safe event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue} / isClick: ${isClick}`);
       
-      const event: MatomoCommand = ['trackEvent', category, eventAction];
-      if (eventName !== undefined) event.push(eventName);
-      if (eventValue !== undefined) event.push(eventValue);
+      // Set custom action dimension (id 3) for click tracking
+      if (isClick !== undefined) {
+        window._paq.push(['setCustomDimension', 3, isClick ? 'true' : 'false']);
+      }
       
-      window._paq.push(event);
-      this.emit('event-tracked', { eventId, category, action: eventAction, name: eventName, value: eventValue });
+      const matomoEvent: MatomoCommand = ['trackEvent', category, eventAction];
+      if (eventName !== undefined) matomoEvent.push(eventName);
+      if (eventValue !== undefined) matomoEvent.push(eventValue);
+      
+      window._paq.push(matomoEvent);
+      this.emit('event-tracked', { eventId, category, action: eventAction, name: eventName, value: eventValue, isClick });
       
       return eventId;
     }
 
-    // Legacy string-based approach for backward compatibility
+    // Legacy string-based approach - no isClick dimension set
     const category = eventObjOrCategory as string;
-    this.log(`Tracking legacy event ${eventId}: ${category} / ${action} / ${name} / ${value}`);
+    this.log(`Tracking legacy event ${eventId}: ${category} / ${action} / ${name} / ${value} (⚠️ no click dimension)`);
     
-    const event: MatomoCommand = ['trackEvent', category, action!];
-    if (name !== undefined) event.push(name);
-    if (value !== undefined) event.push(value);
+    const matomoEvent: MatomoCommand = ['trackEvent', category, action!];
+    if (name !== undefined) matomoEvent.push(name);
+    if (value !== undefined) matomoEvent.push(value);
     
-    window._paq.push(event);
+    window._paq.push(matomoEvent);
     this.emit('event-tracked', { eventId, category, action, name, value });
     
     return eventId;

@@ -4,6 +4,9 @@ import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { trackMatomoEvent, PluginEvents } from '@remix-api'
 import type { CompilerInput, CompilationSource } from '@remix-project/remix-solidity'
+import { Plugin } from '@remixproject/engine'
+import { customAction } from '@remixproject/plugin-api'
+import { concatSourceFiles, getDependencyGraph, normalizeContractPath } from '@remix-ui/solidity-compiler'
 
 const profile = {
   name: 'contractflattener',
