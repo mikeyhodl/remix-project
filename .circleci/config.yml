@@ -367,7 +367,7 @@ workflows:
               job: ["nogroup"]
               jobsize: ["1"]
               parallelism: [1]
-              scriptparameter: ["\\.pr\\.ts$"]
+              scriptparameter: ["\\.pr\\.js$"]
 
   run_flaky_tests:
     when: << pipeline.parameters.run_flaky_tests >>
