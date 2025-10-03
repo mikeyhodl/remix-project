@@ -1,8 +1,7 @@
-import { toHex, toNumber, toBigInt } from 'web3-utils'
 import { toChecksumAddress, bigIntToHex, bytesToHex, createAddressFromString } from '@ethereumjs/util'
 import { processTx } from './txProcess'
 import { execution } from '@remix-project/remix-lib'
-import { AbiCoder } from 'ethers'
+import { AbiCoder, toNumber } from 'ethers'
 import { VMexecutionResult } from '@remix-project/remix-lib'
 import { VMContext } from '../vm-context'
 import { Log, EVMError } from '@ethereumjs/evm'
@@ -297,7 +296,7 @@ export class Transactions {
     const address = payload.params[0]
 
     this.vmContext.vm().stateManager.getAccount(createAddressFromString(address)).then((account) => {
-      const nonce = toBigInt(account.nonce).toString(10)
+      const nonce = BigInt(account.nonce).toString(10)
       cb(null, nonce)
     }).catch((error) => {
       cb(error)
@@ -319,7 +318,7 @@ export class Transactions {
         blockHash: bytesToHex(txBlock.hash()),
         blockNumber: bigIntToHex(txBlock.header.number),
         from: receipt.from,
-        gas: toHex(BigInt(receipt.gas)),
+        gas: bigIntToHex(BigInt(receipt.gas)),
         chainId: '0xd05',
         // 'gasPrice': '2000000000000', // 0x123
         gasPrice: '0x4a817c800', // 20000000000
@@ -367,7 +366,7 @@ export class Transactions {
         blockHash: bytesToHex(txBlock.hash()),
         blockNumber: bigIntToHex(txBlock.header.number),
         from: receipt.from,
-        gas: toHex(BigInt(receipt.gas)),
+        gas: bigIntToHex(BigInt(receipt.gas)),
         chainId: '0xd05',
         // 'gasPrice': '2000000000000', // 0x123
         gasPrice: '0x4a817c800', // 20000000000
@@ -412,7 +411,7 @@ export class Transactions {
         blockHash: bytesToHex(txBlock.hash()),
         blockNumber: bigIntToHex(txBlock.header.number),
         from: receipt.from,
-        gas: toHex(BigInt(receipt.gas)),
+        gas: bigIntToHex(BigInt(receipt.gas)),
         // 'gasPrice': '2000000000000', // 0x123
         chainId: '0xd05',
         gasPrice: '0x4a817c800', // 20000000000
