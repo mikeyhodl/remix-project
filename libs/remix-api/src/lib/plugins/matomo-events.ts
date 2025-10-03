@@ -473,6 +473,61 @@ export interface WorkspaceEvent extends MatomoEventBase {
     | 'GIT';
 }
 
+export interface XTERMEvent extends MatomoEventBase {
+  category: 'xterm';
+  action: 
+    | 'terminal';
+}
+
+export interface LayoutEvent extends MatomoEventBase {
+  category: 'layout';
+  action: 
+    | 'pinToRight'
+    | 'pinToLeft';
+}
+
+export interface SettingsEvent extends MatomoEventBase {
+  category: 'settings';
+  action: 
+    | 'change';
+}
+
+export interface SolidityEvent extends MatomoEventBase {
+  category: 'solidity';
+  action: 
+    | 'compile'
+    | 'analyze';
+}
+
+export interface TabEvent extends MatomoEventBase {
+  category: 'tab';
+  action: 
+    | 'switch'
+    | 'close'
+    | 'pin';
+}
+
+export interface TestRunnerEvent extends MatomoEventBase {
+  category: 'testRunner';
+  action: 
+    | 'runTests'
+    | 'createTest';
+}
+
+export interface VMEvent extends MatomoEventBase {
+  category: 'vm';
+  action: 
+    | 'deploy'
+    | 'call';
+}
+
+export interface WalletConnectEvent extends MatomoEventBase {
+  category: 'walletConnect';
+  action: 
+    | 'connect'
+    | 'disconnect';
+}
+
 // ================== TRACKING FUNCTION TYPES ==================
 
 /**
@@ -722,4 +777,322 @@ export const AIEvents = {
     value,
     isClick: true // User clicks to request AI vulnerability check
   })
+} as const;
+
+/**
+ * Solidity Compiler Events - Type-safe builders
+ */
+export const SolidityCompilerEvents = {
+  runStaticAnalysis: (name?: string, value?: string | number): SolidityCompilerEvent => ({
+    category: 'solidityCompiler',
+    action: 'runStaticAnalysis',
+    name,
+    value,
+    isClick: true // User clicks to run static analysis
+  }),
+  
+  solidityScan: (name?: string, value?: string | number): SolidityCompilerEvent => ({
+    category: 'solidityCompiler',
+    action: 'solidityScan',
+    name,
+    value,
+    isClick: true // User interacts with Solidity scan features
+  }),
+  
+  staticAnalysis: (name?: string, value?: string | number): SolidityCompilerEvent => ({
+    category: 'solidityCompiler',
+    action: 'staticAnalysis',
+    name,
+    value,
+    isClick: false // Analysis completion is a system event
+  }),
+  
+  initiate: (name?: string, value?: string | number): SolidityCompilerEvent => ({
+    category: 'solidityCompiler',
+    action: 'initiate',
+    name,
+    value,
+    isClick: false // System initialization event
+  })
+} as const;
+
+/**
+ * Workspace Events - Type-safe builders
+ */
+export const WorkspaceEvents = {
+  switchWorkspace: (name?: string, value?: string | number): WorkspaceEvent => ({
+    category: 'Workspace',
+    action: 'switchWorkspace',
+    name,
+    value,
+    isClick: true // User clicks to switch workspace
+  }),
+  
+  GIT: (name?: string, value?: string | number): WorkspaceEvent => ({
+    category: 'Workspace',
+    action: 'GIT',
+    name,
+    value,
+    isClick: true // User clicks Git-related actions in workspace
+  })
+} as const;
+
+/**
+ * Git Events - Type-safe builders
+ */
+export const GitEvents = {
+  INIT: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'INIT',
+    name,
+    value,
+    isClick: true // User clicks to initialize git
+  }),
+  
+  COMMIT: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'COMMIT',
+    name,
+    value,
+    isClick: true // User clicks to commit changes
+  }),
+  
+  PUSH: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'PUSH',
+    name,
+    value,
+    isClick: true // User clicks to push changes
+  }),
+  
+  PULL: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'PULL',
+    name,
+    value,
+    isClick: true // User clicks to pull changes
+  }),
+  
+  CLONE: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'CLONE',
+    name,
+    value,
+    isClick: true // User clicks to clone repository
+  }),
+  
+  CHECKOUT: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'CHECKOUT',
+    name,
+    value,
+    isClick: true // User clicks to checkout branch
+  }),
+  
+  BRANCH: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'BRANCH',
+    name,
+    value,
+    isClick: true // User clicks branch-related actions
+  }),
+  
+  OPEN_PANEL: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'OPEN_PANEL',
+    name,
+    value,
+    isClick: true // User clicks to open git panel
+  }),
+  
+  CONNECT_TO_GITHUB: (name?: string, value?: string | number): GitEvent => ({
+    category: 'git',
+    action: 'CONNECT_TO_GITHUB',
+    name,
+    value,
+    isClick: true // User clicks to connect to GitHub
+  })
+} as const;
+
+/**
+ * Udapp Events - Type-safe builders
+ */
+export const UdappEvents = {
+  providerChanged: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'providerChanged',
+    name,
+    value,
+    isClick: true // User clicks to change provider
+  }),
+  
+  sendTransaction: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'sendTransaction-from-udapp',
+    name,
+    value,
+    isClick: true // User clicks to send transaction
+  }),
+  
+  hardhat: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'hardhat',
+    name,
+    value,
+    isClick: true // User clicks Hardhat-related actions
+  }),
+  
+  sendTx: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'sendTx',
+    name,
+    value,
+    isClick: true // User clicks to send transaction
+  })
+} as const;
+
+/**
+ * Editor Events - Type-safe builders
+ */
+export const EditorEvents = {
+  publishFromEditor: (name?: string, value?: string | number): EditorEvent => ({
+    category: 'editor',
+    action: 'publishFromEditor',
+    name,
+    value,
+    isClick: true // User clicks to publish from editor
+  }),
+  
+  runScript: (name?: string, value?: string | number): EditorEvent => ({
+    category: 'editor',
+    action: 'runScript',
+    name,
+    value,
+    isClick: true // User clicks to run script
+  }),
+  
+  onDidPaste: (name?: string, value?: string | number): EditorEvent => ({
+    category: 'editor',
+    action: 'onDidPaste',
+    name,
+    value,
+    isClick: false // Paste action is not a click
+  })
+} as const;
+
+/**
+ * Layout Events - Type-safe builders
+ */
+export const LayoutEvents = {
+  pinToRight: (name?: string, value?: string | number): PluginPanelEvent => ({
+    category: 'PluginPanel',
+    action: 'pinToRight',
+    name,
+    value,
+    isClick: true // User clicks to pin panel to right
+  }),
+  
+  pinToLeft: (name?: string, value?: string | number): PluginPanelEvent => ({
+    category: 'PluginPanel',
+    action: 'pinToLeft',
+    name,
+    value,
+    isClick: true // User clicks to pin panel to left
+  })
+} as const;
+
+/**
+ * Settings Events - Type-safe builders
+ */
+export const SettingsEvents = {
+  switchThemeTo: (name?: string, value?: string | number): ThemeModuleEvent => ({
+    category: 'themeModule',
+    action: 'switchThemeTo',
+    name,
+    value,
+    isClick: true // User clicks to switch theme
+  }),
+  
+  switchTo: (name?: string, value?: string | number): LocaleModuleEvent => ({
+    category: 'localeModule',
+    action: 'switchTo',
+    name,
+    value,
+    isClick: true // User clicks to switch locale
+  })
+} as const;
+
+/**
+ * Template Selection Events - Type-safe builders
+ */
+export const TemplateSelectionEvents = {
+  createWorkspace: (name?: string, value?: string | number): TemplateSelectionEvent => ({
+    category: 'template-selection',
+    action: 'createWorkspace',
+    name,
+    value,
+    isClick: true // User clicks to create workspace from template
+  }),
+  
+  addToCurrentWorkspace: (name?: string, value?: string | number): TemplateSelectionEvent => ({
+    category: 'template-selection',
+    action: 'addToCurrentWorkspace',
+    name,
+    value,
+    isClick: true // User clicks to add template to current workspace
+  })
+} as const;
+
+/**
+ * Plugin Manager Events - Type-safe builders
+ */
+export const PluginManagerEvents = {
+  activate: (name?: string, value?: string | number): PluginManagerEvent => ({
+    category: 'pluginManager',
+    action: 'activate',
+    name,
+    value,
+    isClick: true // User clicks to activate plugin
+  }),
+  
+  deactivate: (name?: string, value?: string | number): PluginManagerEvent => ({
+    category: 'pluginManager',
+    action: 'deactivate',
+    name,
+    value,
+    isClick: true // User clicks to deactivate plugin
+  })
+} as const;
+
+/**
+ * Terminal Events - Type-safe builders
+ */
+export const TerminalEvents = {
+  terminal: (name?: string, value?: string | number): XTERMEvent => ({
+    category: 'xterm',
+    action: 'terminal',
+    name,
+    value,
+    isClick: false // Terminal events are typically system events
+  })
+} as const;
+
+/**
+ * Universal Event Builder - For any category/action combination
+ * Use this when you need to create events for categories not covered by specific builders
+ */
+export const UniversalEvents = {
+  create: <T extends ValidCategories>(
+    category: T,
+    action: ValidActionsFor<T>,
+    name?: string,
+    value?: string | number,
+    isClick: boolean = true
+  ): Extract<MatomoEvent, { category: T }> => ({
+    category,
+    action,
+    name,
+    value,
+    isClick
+  }) as Extract<MatomoEvent, { category: T }>
 } as const;
