@@ -12,6 +12,7 @@ import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
 import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { CompilerEvents } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import './css/style.css'
@@ -399,8 +400,8 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     compileIcon.current.classList.remove('remixui_bouncingIcon')
     if (!state.autoCompile || (state.autoCompile && state.matomoAutocompileOnce)) {
       // track?.('compiler', 'compiled', 'solCompilationFinishedTriggeredByUser')
-      track?.('compiler', 'compiled', 'with_config_file_' + state.useFileConfiguration)
-      track?.('compiler', 'compiled', 'with_version_' + _retrieveVersion())
+      track?.(CompilerEvents.compiled('with_config_file_' + state.useFileConfiguration))
+      track?.(CompilerEvents.compiled('with_version_' + _retrieveVersion()))
       if (state.autoCompile && state.matomoAutocompileOnce) {
         setState((prevState) => {
           return { ...prevState, matomoAutocompileOnce: false }

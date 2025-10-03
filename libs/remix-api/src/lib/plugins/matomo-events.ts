@@ -948,6 +948,14 @@ export const UdappEvents = {
     name,
     value,
     isClick: true // User clicks to send transaction
+  }),
+  
+  syncContracts: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'syncContracts',
+    name,
+    value,
+    isClick: true // User clicks to sync contracts
   })
 } as const;
 
@@ -1074,6 +1082,27 @@ export const TerminalEvents = {
     name,
     value,
     isClick: false // Terminal events are typically system events
+  })
+} as const;
+
+/**
+ * TopBar Events - Type-safe builders
+ */
+export const TopBarEvents = {
+  GIT: (name?: string, value?: string | number): TopbarEvent => ({
+    category: 'topbar',
+    action: 'GIT',
+    name,
+    value,
+    isClick: true // User clicks Git actions in topbar
+  }),
+  
+  header: (name?: string, value?: string | number): TopbarEvent => ({
+    category: 'topbar',
+    action: 'header',
+    name,
+    value,
+    isClick: true // User clicks header items in topbar
   })
 } as const;
 

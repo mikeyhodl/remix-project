@@ -7,6 +7,7 @@ import * as ethJSUtil from '@ethereumjs/util'
 import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { UdappEvents } from '@remix-api'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
   const intl = useIntl()
@@ -405,7 +406,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             >
               <i style={{ cursor: 'pointer' }} onClick={(_) => {
                 props.syncContracts()
-                track?.('udapp', 'syncContracts', compilationSource ? compilationSource : 'compilationSourceNotYetSet')
+                track?.(UdappEvents.syncContracts(compilationSource ? compilationSource : 'compilationSourceNotYetSet'))
               }} className="udapp_syncFramework udapp_icon fa fa-refresh" aria-hidden="true"></i>
             </CustomTooltip>
           ) : null}

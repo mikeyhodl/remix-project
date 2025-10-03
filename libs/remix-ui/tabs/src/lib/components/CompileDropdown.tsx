@@ -4,6 +4,7 @@ import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
 import { handleSolidityScan } from '@remix-ui/helper'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { SolidityCompilerEvents } from '@remix-api'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
 
@@ -137,7 +138,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runRemixAnalysis = async () => {
-    track?.('solidityCompiler', 'staticAnalysis', 'initiate')
+    track?.(SolidityCompilerEvents.staticAnalysis('initiate'))
     await compileThen(async () => {
       const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
       if (!isStaticAnalyzersActive) {
@@ -156,7 +157,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runSolidityScan = async () => {
-    track?.('solidityCompiler', 'solidityScan', 'askPermissionToScan')
+    track?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
     const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -164,7 +165,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => track?.('solidityCompiler', 'solidityScan', 'learnMore')}>
+            onClick={() => track?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
               Learn more
           </a>
         </span><br/>
@@ -178,7 +179,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const openConfiguration = async () => {
-    track?.('solidityCompiler', 'initiate')
+    track?.(SolidityCompilerEvents.initiate())
     const isSolidityCompilerActive = await plugin.call('manager', 'isActive', 'solidity')
     if (!isSolidityCompilerActive) {
       await plugin.call('manager', 'activatePlugin', 'solidity')

@@ -7,6 +7,7 @@ import { customAction } from '@remixproject/plugin-api'
 import UploadFile from './upload-file'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { FileExplorerEvent, FileExplorerEvents } from '@remix-api'
 
 export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => {
   const platform = useContext(platformContext)
@@ -123,7 +124,7 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               key={key}
               className={className}
               onClick={() => {
-                track?.('fileExplorer', 'contextMenu', 'uploadFile')
+                track?.(FileExplorerEvents.contextMenu('uploadFile'))
                 setShowFileExplorer(true)
               }}
             >
@@ -143,7 +144,7 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               key={key}
               className={className}
               onClick={() => {
-                track?.('fileExplorer', 'contextMenu', 'uploadFile')
+                track?.(FileExplorerEvents.contextMenu('uploadFile'))
                 setShowFileExplorer(true)
               }}
             >
@@ -165,78 +166,78 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               switch (item.name) {
               case 'New File':
                 createNewFile(path)
-                track?.('fileExplorer', 'contextMenu', 'newFile')
+                track?.(FileExplorerEvents.contextMenu('newFile'))
                 break
               case 'New Folder':
                 createNewFolder(path)
-                track?.('fileExplorer', 'contextMenu', 'newFolder')
+                track?.(FileExplorerEvents.contextMenu('newFolder'))
                 break
               case 'Rename':
                 renamePath(path, type)
-                track?.('fileExplorer', 'contextMenu', 'rename')
+                track?.(FileExplorerEvents.contextMenu('rename'))
                 break
               case 'Delete':
                 deletePath(getPath())
-                track?.('fileExplorer', 'contextMenu', 'delete')
+                track?.(FileExplorerEvents.contextMenu('delete'))
                 break
               case 'Download':
                 downloadPath(path)
-                track?.('fileExplorer', 'contextMenu', 'download')
+                track?.(FileExplorerEvents.contextMenu('download'))
                 break
               case 'Push changes to gist':
-                track?.('fileExplorer', 'contextMenu', 'pushToChangesoGist')
+                track?.(FileExplorerEvents.contextMenu('pushToChangesoGist'))
                 pushChangesToGist(path)
                 break
               case 'Publish folder to gist':
-                track?.('fileExplorer', 'contextMenu', 'publishFolderToGist')
+                track?.(FileExplorerEvents.contextMenu('publishFolderToGist'))
                 publishFolderToGist(path)
                 break
               case 'Publish file to gist':
-                track?.('fileExplorer', 'contextMenu', 'publishFileToGist')
+                track?.(FileExplorerEvents.contextMenu('publishFileToGist'))
                 publishFileToGist(path)
                 break
               case 'Publish files to gist':
-                track?.('fileExplorer', 'contextMenu', 'publishFilesToGist')
+                track?.(FileExplorerEvents.contextMenu('publishFilesToGist'))
                 publishManyFilesToGist()
                 break
               case 'Run':
-                track?.('fileExplorer', 'contextMenu', 'runScript')
+                track?.(FileExplorerEvents.contextMenu('runScript'))
                 runScript(path)
                 break
               case 'Copy':
                 copy(path, type)
-                track?.('fileExplorer', 'contextMenu', 'copy')
+                track?.(FileExplorerEvents.contextMenu('copy'))
                 break
               case 'Copy name':
                 copyFileName(path, type)
-                track?.('fileExplorer', 'contextMenu', 'copyName')
+                track?.(FileExplorerEvents.contextMenu('copyName'))
                 break
               case 'Copy path':
                 copyPath(path, type)
-                track?.('fileExplorer', 'contextMenu', 'copyPath')
+                track?.(FileExplorerEvents.contextMenu('copyPath'))
                 break
               case 'Copy share URL':
                 copyShareURL(path, type)
-                track?.('fileExplorer', 'contextMenu', 'copyShareURL')
+                track?.(FileExplorerEvents.contextMenu('copyShareURL'))
                 break
               case 'Paste':
                 paste(path, type)
-                track?.('fileExplorer', 'contextMenu', 'paste')
+                track?.(FileExplorerEvents.contextMenu('paste'))
                 break
               case 'Delete All':
                 deletePath(getPath())
-                track?.('fileExplorer', 'contextMenu', 'deleteAll')
+                track?.(FileExplorerEvents.contextMenu('deleteAll'))
                 break
               case 'Publish Workspace to Gist':
-                track?.('fileExplorer', 'contextMenu', 'publishWorkspace')
+                track?.(FileExplorerEvents.contextMenu('publishWorkspace'))
                 publishFolderToGist(path)
                 break
               case 'Sign Typed Data':
-                track?.('fileExplorer', 'contextMenu', 'signTypedData')
+                track?.(FileExplorerEvents.contextMenu('signTypedData'))
                 signTypedData(path)
                 break
               default:
-                track?.('fileExplorer', 'contextMenu', `${item.id}/${item.name}`)
+                track?.(FileExplorerEvents.contextMenu(`${item.id}/${item.name}`))
                 emit && emit({ ...item, path: [path]} as customAction)
                 break
               }

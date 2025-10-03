@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { helper } from '@remix-project/remix-solidity'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { AIEvents } from '@remix-api'
 import './renderer.css'
 
 interface RendererProps {
@@ -101,7 +102,7 @@ export const Renderer = ({ message, opt, plugin, context }: RendererProps) => {
       setTimeout(async () => {
         await plugin.call('remixAI' as any, 'chatPipe', 'error_explaining', message)
       }, 500)
-      track?.('ai', 'remixAI', 'error_explaining_SolidityError')
+      track?.(AIEvents.remixAI('error_explaining_SolidityError'))
     } catch (err) {
       console.error('unable to ask RemixAI')
       console.error(err)
