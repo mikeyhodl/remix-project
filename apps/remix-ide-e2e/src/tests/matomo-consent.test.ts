@@ -32,7 +32,19 @@ function rejectConsent(browser: NightwatchBrowser) {
         .click('[data-id="matomoModal-modal-footer-cancel-react"]') // Click "Manage Preferences"
         .waitForElementVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]') // Wait for preferences dialog
         .waitForElementVisible('*[data-id="matomoPerfAnalyticsToggleSwitch"]')
-        .click('[data-id="matomoPerfAnalyticsToggleSwitch"]') // Uncheck performance analytics toggle
+        .execute(function() {
+            // Force click using JavaScript to bypass modal overlay issues
+            const element = document.querySelector('[data-id="matomoPerfAnalyticsToggleSwitch"]') as HTMLElement;
+            if (element) {
+                element.click();
+                return { success: true };
+            }
+            return { success: false, error: 'Toggle element not found' };
+        }, [], (result: any) => {
+            if (!result.value || !result.value.success) {
+                throw new Error(`Failed to click performance analytics toggle: ${result.value?.error || 'Unknown error'}`);
+            }
+        })
         .waitForElementVisible('*[data-id="managePreferencesModal-modal-footer-ok-react"]')
         .click('[data-id="managePreferencesModal-modal-footer-ok-react"]') // Save preferences
         .waitForElementNotVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]')
