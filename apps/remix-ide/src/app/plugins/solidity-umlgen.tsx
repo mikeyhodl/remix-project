@@ -1,6 +1,7 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { ViewPlugin } from '@remixproject/engine-web'
 import React from 'react'
+import { trackMatomoEvent, SolidityUMLGenEvents } from '@remix-api'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { RemixUiSolidityUmlGen } from '@remix-ui/solidity-uml-gen'
 import { ISolidityUmlGen, ThemeQualityType, ThemeSummary } from 'libs/remix-ui/solidity-uml-gen/src/types'
@@ -87,7 +88,7 @@ export class SolidityUmlGen extends ViewPlugin implements ISolidityUmlGen {
         })
         const payload = vizRenderStringSync(umlDot)
         this.updatedSvg = payload
-        this.call('matomo', 'trackEvent', 'solidityumlgen', 'umlgenerated')
+        trackMatomoEvent(this, SolidityUMLGenEvents.umlgenerated())
         this.renderComponent()
         await this.call('tabs', 'focus', 'solidityumlgen')
       } catch (error) {
@@ -124,7 +125,7 @@ export class SolidityUmlGen extends ViewPlugin implements ISolidityUmlGen {
   generateCustomAction = async (action: customAction) => {
     this.triggerGenerateUml = true
     this.updatedSvg = this.updatedSvg.startsWith('<?xml') ? '' : this.updatedSvg
-    this.call('matomo', 'trackEvent', 'solidityumlgen', 'activated')
+    trackMatomoEvent(this, SolidityUMLGenEvents.activated())
     await this.generateUml(action.path[0])
   }
 

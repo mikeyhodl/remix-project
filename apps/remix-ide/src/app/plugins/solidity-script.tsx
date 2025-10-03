@@ -3,6 +3,7 @@ import { format } from 'util'
 import { Plugin } from '@remixproject/engine'
 import { compile, CompilerSettings } from '@remix-project/remix-solidity'
 import { Transaction } from 'web3-types'
+import { trackMatomoEvent, SolidityScriptEvents, UdappEvents } from '@remix-api'
 
 const profile = {
   name: 'solidity-script',
@@ -17,7 +18,7 @@ export class SolidityScript extends Plugin {
   }
 
   async execute(path: string, functionName: string = 'run') {
-    this.call('matomo', 'trackEvent', 'SolidityScript', 'execute', 'script')
+    trackMatomoEvent(this, SolidityScriptEvents.execute('script'))
     this.call('terminal', 'log', `Running free function '${functionName}' from ${path}...`)
     let content = await this.call('fileManager', 'readFile', path)
     const params = await this.call('solidity', 'getCompilerQueryParameters')
@@ -130,7 +131,7 @@ export class SolidityScript extends Plugin {
           })}
         </div>
       )
-      this.call('matomo', 'trackEvent', 'udapp', 'hardhat', 'console.log')
+      trackMatomoEvent(this, UdappEvents.hardhat('console.log'))
       this.call('terminal', 'logHtml', finalLogs)
     }
   }

@@ -2,6 +2,7 @@
 import React from 'react'
 import { Plugin } from '@remixproject/engine'
 import { ElectronPlugin } from '@remixproject/engine-electron'
+import { trackMatomoEvent, PluginEvents } from '@remix-api'
 
 const profile = {
   name: 'desktopHost',
@@ -21,7 +22,7 @@ export class DesktopHost extends ElectronPlugin {
 
   onActivation() {
     console.log('DesktopHost activated')
-    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'DesktopHost')
+    trackMatomoEvent(this, PluginEvents.activated('DesktopHost'))
   }
 
 }

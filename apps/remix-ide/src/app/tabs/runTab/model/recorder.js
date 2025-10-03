@@ -4,6 +4,7 @@ import { bytesToHex } from '@ethereumjs/util'
 import { hash } from '@remix-project/remix-lib'
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../.././../../package.json'
+import { trackMatomoEvent, RunEvents } from '@remix-api'
 var EventManager = remixLib.EventManager
 var format = remixLib.execution.txFormat
 var txHelper = remixLib.execution.txHelper
@@ -289,9 +290,9 @@ export class Recorder extends Plugin {
   }
 
   runScenario (liveMode, json, continueCb, promptCb, alertCb, confirmationCb, logCallBack, cb) {
-    this.call('matomo', 'trackEvent', 'run', 'recorder', 'start')
+    trackMatomoEvent(this, RunEvents.recorder('start'))
     if (!json) {
-      this.call('matomo', 'trackEvent', 'run', 'recorder', 'wrong-json')
+      trackMatomoEvent(this, RunEvents.recorder('wrong-json'))
       return cb('a json content must be provided')
     }
     if (typeof json === 'string') {

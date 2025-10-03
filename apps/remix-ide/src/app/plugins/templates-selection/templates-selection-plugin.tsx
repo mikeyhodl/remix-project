@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { CustomTooltip } from "@remix-ui/helper"
+import { trackMatomoEvent, PluginEvents, TemplateSelectionEvents } from '@remix-api'
 import { AlertModal, AppModal } from '@remix-ui/app'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
@@ -42,7 +43,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'templateSelection')
     this.renderComponent()
-    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'remixGuide')
+    trackMatomoEvent(this, PluginEvents.activated('remixGuide'))
   }
 
   onDeactivation(): void {
@@ -171,7 +172,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
       const modalResult = await this.call('notification', 'modal', modal)
       if (!modalResult) return
-      this.call('matomo', 'trackEvent', 'template-selection', 'createWorkspace', item.value)
+      trackMatomoEvent(this, TemplateSelectionEvents.createWorkspace(item.value))
       this.emit('createWorkspaceReducerEvent', workspaceName, item.value, this.opts, false, errorCallback, initGit)
     }
 
@@ -181,7 +182,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
     const addToCurrentWorkspace = async (item: Template, templateGroup: TemplateGroup) => {
       this.opts = {}
-      this.call('matomo', 'trackEvent', 'template-selection', 'addToCurrentWorkspace', item.value)
+      trackMatomoEvent(this, TemplateSelectionEvents.addToCurrentWorkspace(item.value))
       if (templateGroup.hasOptions) {
         const modal: AppModal = {
           id: 'TemplatesSelection',

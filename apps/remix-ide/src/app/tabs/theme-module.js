@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
 import {Registry} from '@remix-project/remix-lib'
+import { trackMatomoEvent, ThemeModuleEvents } from '@remix-api'
 const isElectron = require('is-electron')
 
 //sol2uml dot files cannot work with css variables so hex values for colors are used
@@ -100,7 +101,7 @@ export class ThemeModule extends Plugin {
     }
     const next = themeName || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    this.call('matomo', 'trackEvent', 'themeModule', 'switchThemeTo', next)
+    trackMatomoEvent(this, ThemeModuleEvents.switchThemeTo(next))
     const nextTheme = this.themes[next] // Theme
     if (!this.forced) this._deps.config.set('settings/theme', next)
     document.getElementById('theme-link') ? document.getElementById('theme-link').remove() : null

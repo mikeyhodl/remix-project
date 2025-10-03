@@ -3,13 +3,14 @@ import axios from 'axios'
 import { FormattedMessage } from 'react-intl'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ScanReport, SolScanTable } from '@remix-ui/helper'
+import { trackMatomoEvent, SolidityCompilerEvents } from '@remix-api'
 
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { CustomTooltip } from './components/custom-tooltip'
 
 export const handleSolidityScan = async (api: any, compiledFileName: string) => {
   await api.call('notification', 'toast', 'Processing data to scan...')
-  await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'initiateScan')
+  await trackMatomoEvent(api, SolidityCompilerEvents.solidityScan('initiateScan'))
 
   const workspace = await api.call('filePanel', 'getCurrentWorkspace')
   const fileName = `${workspace.name}/${compiledFileName}`
@@ -42,7 +43,7 @@ export const handleSolidityScan = async (api: any, compiledFileName: string) => 
             }
           }))
         } else if (data.type === "scan_status" && data.payload.scan_status === "download_failed") {
-          await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'scanFailed')
+          await trackMatomoEvent(api, SolidityCompilerEvents.solidityScan('scanFailed'))
           await api.call('notification', 'modal', {
             id: 'SolidityScanError',
             title: <FormattedMessage id="solidity.solScan.errModalTitle" />,
@@ -51,7 +52,7 @@ export const handleSolidityScan = async (api: any, compiledFileName: string) => 
           })
           ws.close()
         } else if (data.type === "scan_status" && data.payload.scan_status === "scan_done") {
-          await api.call('matomo', 'trackEvent', 'solidityCompiler', 'solidityScan', 'scanSuccess')
+          await trackMatomoEvent(api, SolidityCompilerEvents.solidityScan('scanSuccess'))
           const { data: scanData } = await axios.post(`${endpointUrls.solidityScan}/downloadResult`, { url: data.payload.scan_details.link })
           const scanReport: ScanReport = scanData.scan_report
 

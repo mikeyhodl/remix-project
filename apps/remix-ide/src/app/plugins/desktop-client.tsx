@@ -1,6 +1,6 @@
 /* eslint-disable prefer-const */
 import React from 'react'
-import { desktopConnection, desktopConnectionType } from '@remix-api'
+import { desktopConnection, desktopConnectionType, trackMatomoEvent, PluginEvents } from '@remix-api'
 import { Blockchain } from '../../blockchain/blockchain'
 import { AppAction, AppModal, ModalTypes } from '@remix-ui/app'
 import { ViewPlugin } from '@remixproject/engine-web'
@@ -54,7 +54,7 @@ export class DesktopClient extends ViewPlugin {
 
   onActivation() {
     console.log('DesktopClient activated')
-    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'DesktopClient')
+    trackMatomoEvent(this, PluginEvents.activated('DesktopClient'))
 
     this.connectToWebSocket()
 

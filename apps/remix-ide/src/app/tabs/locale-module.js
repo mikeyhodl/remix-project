@@ -2,6 +2,7 @@ import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
 import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
+import { trackMatomoEvent, LocaleModuleEvents } from '@remix-api'
 import {Registry} from '@remix-project/remix-lib'
 import enJson from './locales/en'
 import zhJson from './locales/zh'
@@ -75,7 +76,7 @@ export class LocaleModule extends Plugin {
     }
     const next = localeCode || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    this.call('matomo', 'trackEvent', 'localeModule', 'switchTo', next)
+    trackMatomoEvent(this, LocaleModuleEvents.switchTo(next))
     
     const nextLocale = this.locales[next] // Locale
     if (!this.forced) this._deps.config.set('settings/locale', next)

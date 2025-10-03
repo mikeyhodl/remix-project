@@ -1,5 +1,6 @@
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../../package.json'
+import { trackMatomoEvent, ScriptExecutorEvents } from '@remix-api'
 
 export const profile = {
   name: 'compileAndRun',
@@ -28,11 +29,11 @@ export class CompileAndRun extends Plugin {
             e.preventDefault()
             this.targetFileName = file
             await this.call('solidity', 'compile', file)
-            this.call('matomo', 'trackEvent', 'ScriptExecutor', 'CompileAndRun', 'compile_solidity')
+            trackMatomoEvent(this, ScriptExecutorEvents.compileAndRun('compile_solidity'))
           } else if (file.endsWith('.js') || file.endsWith('.ts')) {
             e.preventDefault()
             this.runScript(file, false)
-            this.call('matomo', 'trackEvent', 'ScriptExecutor', 'CompileAndRun', 'run_script')
+            trackMatomoEvent(this, ScriptExecutorEvents.compileAndRun('run_script'))
           }
         }
       }
@@ -41,7 +42,7 @@ export class CompileAndRun extends Plugin {
 
   runScriptAfterCompilation (fileName: string) {
     this.targetFileName = fileName
-    this.call('matomo', 'trackEvent', 'ScriptExecutor', 'CompileAndRun', 'request_run_script')
+    trackMatomoEvent(this, ScriptExecutorEvents.compileAndRun('request_run_script'))
   }
 
   async runScript (fileName, clearAllInstances) {
@@ -72,7 +73,7 @@ export class CompileAndRun extends Plugin {
           const file = contract.object.devdoc['custom:dev-run-script']
           if (file) {
             this.runScript(file, true)
-            this.call('matomo', 'trackEvent', 'ScriptExecutor', 'CompileAndRun', 'run_script_after_compile')
+            trackMatomoEvent(this, ScriptExecutorEvents.compileAndRun('run_script_after_compile'))
           } else {
             this.call('notification', 'toast', 'You have not set a script to run. Set it with @custom:dev-run-script NatSpec tag.')
           }

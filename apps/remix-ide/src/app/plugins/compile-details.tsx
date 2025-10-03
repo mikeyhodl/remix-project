@@ -1,6 +1,7 @@
 import React from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { trackMatomoEvent, PluginEvents } from '@remix-api'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixUiCompileDetails } from '@remix-ui/solidity-compile-details'
 
@@ -35,7 +36,7 @@ export class CompilationDetailsPlugin extends ViewPlugin {
   }
 
   async onActivation() {
-    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'compilationDetails')
+    trackMatomoEvent(this, PluginEvents.activated('compilationDetails'))
   }
 
   onDeactivation(): void {

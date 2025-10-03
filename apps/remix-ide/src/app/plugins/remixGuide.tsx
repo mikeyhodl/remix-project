@@ -2,6 +2,7 @@
 import React, {useState} from 'react' // eslint-disable-line
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { trackMatomoEvent, PluginEvents, RemixGuideEvents } from '@remix-api'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixUIGridView } from '@remix-ui/remix-ui-grid-view'
 import { RemixUIGridSection } from '@remix-ui/remix-ui-grid-section'
@@ -45,7 +46,7 @@ export class RemixGuidePlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'remixGuide')
     this.renderComponent()
-    this.call('matomo', 'trackEvent', 'plugin', 'activated', 'remixGuide')
+    trackMatomoEvent(this, PluginEvents.activated('remixGuide'))
     // Read the data
     this.payload.data = Data
     this.handleKeyDown = (event) => {
@@ -133,7 +134,7 @@ export class RemixGuidePlugin extends ViewPlugin {
                     this.showVideo = true
                     this.videoID = cell.expandViewElement.videoID
                     this.renderComponent()
-                    this.call('matomo', 'trackEvent', 'remixGuide', 'playGuide', cell.title)
+                    trackMatomoEvent(this, RemixGuideEvents.playGuide(cell.title))
                   }}
                 >
                   <img

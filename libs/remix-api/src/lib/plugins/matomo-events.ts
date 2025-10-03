@@ -33,7 +33,14 @@ export const MatomoCategories = {
   SOLIDITY: 'solidity' as const,
   CONTRACT_VERIFICATION: 'ContractVerification' as const,
   CIRCUIT_COMPILER: 'circuit-compiler' as const,
-  LEARNETH: 'learneth' as const
+  LEARNETH: 'learneth' as const,
+  REMIX_GUIDE: 'remixGuide' as const,
+  TEMPLATE_SELECTION: 'template-selection' as const,
+  SOLIDITY_UML_GEN: 'solidityumlgen' as const,
+  SOLIDITY_SCRIPT: 'SolidityScript' as const,
+  SCRIPT_EXECUTOR: 'ScriptExecutor' as const,
+  LOCALE_MODULE: 'localeModule' as const,
+  THEME_MODULE: 'themeModule' as const
 }
 
 export const FileExplorerActions = {
@@ -73,12 +80,14 @@ export type MatomoEvent =
   | PluginEvent
   | PluginManagerEvent
   | PluginPanelEvent
+  | RemixGuideEvent
   | RemixAIEvent
   | RemixAIAssistantEvent
   | RunEvent
   | ScriptExecutorEvent
   | ScriptRunnerPluginEvent
   | SolidityCompilerEvent
+  | SolidityScriptEvent
   | SolidityStaticAnalyzerEvent
   | SolidityUMLGenEvent
   | SolidityUnitTestingEvent
@@ -343,6 +352,16 @@ export interface PluginEvent extends MatomoEventBase {
   action: 
     | 'activated'
     | 'contractFlattener';
+}
+
+export interface RemixGuideEvent extends MatomoEventBase {
+  category: 'remixGuide';
+  action: 'playGuide';
+}
+
+export interface SolidityScriptEvent extends MatomoEventBase {
+  category: 'SolidityScript';
+  action: 'execute';
 }
 
 export interface PluginManagerEvent extends MatomoEventBase {
@@ -852,6 +871,142 @@ export const LearnethEvents = {
     name,
     value,
     isClick: false // Error event
+  })
+} as const;
+
+/**
+ * Remix Guide Events - Type-safe builders  
+ */
+export const RemixGuideEvents = {
+  playGuide: (name?: string, value?: string | number): RemixGuideEvent => ({
+    category: 'remixGuide',
+    action: 'playGuide',
+    name,
+    value,
+    isClick: true // User clicks to play guide
+  })
+} as const;
+
+/**
+ * Solidity Script Events - Type-safe builders  
+ */
+export const SolidityScriptEvents = {
+  execute: (name?: string, value?: string | number): SolidityScriptEvent => ({
+    category: 'SolidityScript',
+    action: 'execute',
+    name,
+    value,
+    isClick: true // User executes script
+  })
+} as const;
+
+/**
+ * Plugin Events - Type-safe builders  
+ */
+export const PluginEvents = {
+  activated: (name?: string, value?: string | number): PluginEvent => ({
+    category: 'plugin',
+    action: 'activated',
+    name,
+    value,
+    isClick: false // Plugin activation is a system event
+  }),
+
+  contractFlattener: (name?: string, value?: string | number): PluginEvent => ({
+    category: 'plugin',
+    action: 'contractFlattener',
+    name,
+    value,
+    isClick: true // User initiates contract flattening
+  })
+} as const;
+
+/**
+ * Script Executor Events - Type-safe builders  
+ */
+export const ScriptExecutorEvents = {
+  compileAndRun: (name?: string, value?: string | number): ScriptExecutorEvent => ({
+    category: 'ScriptExecutor',
+    action: 'CompileAndRun',
+    name,
+    value,
+    isClick: true // User triggers compile and run
+  }),
+
+  requestRunScript: (name?: string, value?: string | number): ScriptExecutorEvent => ({
+    category: 'ScriptExecutor',
+    action: 'request_run_script',
+    name,
+    value,
+    isClick: true // User requests script execution
+  }),
+
+  runScriptAfterCompile: (name?: string, value?: string | number): ScriptExecutorEvent => ({
+    category: 'ScriptExecutor',
+    action: 'run_script_after_compile',
+    name,
+    value,
+    isClick: false // System event after compilation
+  })
+} as const;
+
+/**
+ * Locale Module Events - Type-safe builders  
+ */
+export const LocaleModuleEvents = {
+  switchTo: (name?: string, value?: string | number): LocaleModuleEvent => ({
+    category: 'localeModule',
+    action: 'switchTo',
+    name,
+    value,
+    isClick: true // User switches locale
+  })
+} as const;
+
+/**
+ * Theme Module Events - Type-safe builders  
+ */
+export const ThemeModuleEvents = {
+  switchThemeTo: (name?: string, value?: string | number): ThemeModuleEvent => ({
+    category: 'themeModule',
+    action: 'switchThemeTo',
+    name,
+    value,
+    isClick: true // User switches theme
+  })
+} as const;
+
+/**
+ * Manager Events - Type-safe builders  
+ */
+export const ManagerEvents = {
+  activate: (name?: string, value?: string | number): ManagerEvent => ({
+    category: 'manager',
+    action: 'activate',
+    name,
+    value,
+    isClick: true // User activates plugin
+  }),
+
+  deactivate: (name?: string, value?: string | number): ManagerEvent => ({
+    category: 'manager',
+    action: 'deactivate',
+    name,
+    value,
+    isClick: true // User deactivates plugin
+  })
+} as const;
+
+/**
+ * Run Events - Type-safe builders  
+ */
+export const RunEvents = {
+  recorder: (name?: string, value?: string | number): RunEvent => ({
+    category: 'run',
+    action: 'recorder',
+    name,
+    value,
+    isClick: true // User interacts with recorder functionality
   })
 } as const;
 
@@ -1877,6 +2032,22 @@ export const SolidityUMLGenEvents = {
     name,
     value,
     isClick: true // User downloads UML as PNG
+  }),
+
+  umlgenerated: (name?: string, value?: string | number): SolidityUMLGenEvent => ({
+    category: 'solidityumlgen',
+    action: 'umlgenerated',
+    name,
+    value,
+    isClick: false // System event when UML is generated
+  }),
+
+  activated: (name?: string, value?: string | number): SolidityUMLGenEvent => ({
+    category: 'solidityumlgen',
+    action: 'activated',
+    name,
+    value,
+    isClick: false // Plugin activation event
   })
 } as const;
 

@@ -3,6 +3,7 @@ import React from 'react' // eslint-disable-line
 import { RemixUiPluginManager } from '@remix-ui/plugin-manager' // eslint-disable-line
 import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { trackMatomoEvent, ManagerEvents } from '@remix-api'
 import { Profile } from '@remixproject/plugin-utils'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixEngine } from '../../remixEngine'
@@ -63,7 +64,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   activateP = (name) => {
     this.appManager.activatePlugin(name)
-    this.call('matomo', 'trackEvent', 'manager', 'activate', name)
+    trackMatomoEvent(this, ManagerEvents.activate(name))
   }
 
   /**
@@ -89,7 +90,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   deactivateP = (name) => {
     this.call('manager', 'deactivatePlugin', name)
-    this.call('matomo', 'trackEvent', 'manager', 'deactivate', name)
+    trackMatomoEvent(this, ManagerEvents.deactivate(name))
   }
 
   setDispatch (dispatch) {
