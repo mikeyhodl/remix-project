@@ -22,6 +22,7 @@
  */
 
 import { MatomoEvent } from '@remix-api';
+import { getDomainCustomDimensions, DomainCustomDimensions } from './MatomoConfig';
 
 // ================== TYPE DEFINITIONS ==================
 
@@ -215,6 +216,7 @@ export class MatomoManager implements IMatomoManager {
   private readonly preInitQueue: MatomoCommand[] = [];
   private readonly loadedPlugins: Set<string> = new Set();
   private originalPaqPush: Function | null = null;
+  private customDimensions: DomainCustomDimensions;
 
   constructor(config: MatomoConfig) {
     this.config = {
@@ -247,8 +249,12 @@ export class MatomoManager implements IMatomoManager {
       this.config.siteId = this.deriveSiteId();
     }
     
+    // Initialize domain-specific custom dimensions
+    this.customDimensions = getDomainCustomDimensions();
+    
     this.setupPaqInterception();
     this.log('MatomoManager initialized', this.config);
+    this.log('Custom dimensions for domain:', this.customDimensions);
   }
 
   // ================== SITE ID DERIVATION ==================
@@ -483,7 +489,7 @@ export class MatomoManager implements IMatomoManager {
     window._paq.push(['disableCookies']);
     window._paq.push(['disableBrowserFeatureDetection']);
     if (options.trackingMode !== false) {
-      window._paq.push(['setCustomDimension', 1, 'anon']);
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'anon']);
     }
   }
 
@@ -492,7 +498,7 @@ export class MatomoManager implements IMatomoManager {
     window._paq.push(['requireCookieConsent']);
     window._paq.push(['rememberConsentGiven']);
     if (options.trackingMode !== false) {
-      window._paq.push(['setCustomDimension', 1, 'cookie']);
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'cookie']);
     }
     this.state.consentGiven = true;
   }
@@ -559,7 +565,7 @@ export class MatomoManager implements IMatomoManager {
     window._paq.push(['enableBrowserFeatureDetection']);
     
     if (options.setDimension !== false) {
-      window._paq.push(['setCustomDimension', 1, 'cookie']);
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'cookie']);
     }
     
     window._paq.push(['trackEvent', 'mode_switch', 'cookie_mode', 'enabled']);
@@ -585,7 +591,7 @@ export class MatomoManager implements IMatomoManager {
     window._paq.push(['disableBrowserFeatureDetection']);
     
     if (options.setDimension !== false) {
-      window._paq.push(['setCustomDimension', 1, 'anon']);
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'anon']);
     }
     
     window._paq.push(['trackEvent', 'mode_switch', 'anonymous_mode', 'enabled']);
@@ -632,9 +638,9 @@ export class MatomoManager implements IMatomoManager {
       const { category, action: eventAction, name: eventName, value: eventValue, isClick } = eventObjOrCategory;
       this.log(`Tracking type-safe event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue} / isClick: ${isClick}`);
       
-      // Set custom action dimension (id 3) for click tracking
+      // Set custom action dimension for click tracking  
       if (isClick !== undefined) {
-        window._paq.push(['setCustomDimension', 3, isClick ? 'true' : 'false']);
+        window._paq.push(['setCustomDimension', this.customDimensions.clickAction, isClick ? 'true' : 'false']);
       }
       
       const matomoEvent: MatomoCommand = ['trackEvent', category, eventAction];

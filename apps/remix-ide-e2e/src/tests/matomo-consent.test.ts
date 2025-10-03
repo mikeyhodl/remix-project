@@ -159,7 +159,11 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
                 category: lastEvent.e_c || lastEvent.category || 'unknown',
                 action: lastEvent.e_a || lastEvent.action || 'unknown',
                 totalEvents: events.length,
-                allEventsJson: JSON.stringify(events, null, 2) // Include in return for immediate logging
+                allEventsJson: JSON.stringify(events, null, 2), // Include in return for immediate logging
+                // Domain-specific dimension check
+                trackingMode: lastEvent.dimension1, // Should be same as mode but checking dimension specifically
+                clickAction: lastEvent.dimension3, // Should be 'click' for click events, null for non-click
+                dimensionInfo: `d1=${lastEvent.dimension1}, d3=${lastEvent.dimension3 || 'null'}`
             };
         }, [], (result: any) => {
             const expectedHasId = expectedMode === 'cookie';
@@ -169,6 +173,8 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
                 .assert.equal(result.value.category, expectedCategory, `Event should have category "${expectedCategory}"`)
                 .assert.equal(result.value.action, expectedAction, `Event should have action "${expectedAction}"`)
                 .assert.equal(result.value.eventName, expectedName, `Event should have name "${expectedName}"`)
+                .assert.ok(result.value.trackingMode, 'Custom dimension 1 (trackingMode) should be set')
+                .assert.ok(true, `🎯 Domain dimensions: ${result.value.dimensionInfo} (localhost uses d1=trackingMode, d3=clickAction)`)
                 .assert.ok(true, `✅ ${description}: ${result.value.category}/${result.value.action}/${result.value.eventName} → ${result.value.mode} mode, visitorId=${result.value.hasVisitorId ? 'yes' : 'no'}`)
                 .assert.ok(true, `📋 All events JSON: ${result.value.allEventsJson}`);
             
