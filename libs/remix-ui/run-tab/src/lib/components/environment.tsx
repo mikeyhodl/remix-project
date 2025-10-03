@@ -7,6 +7,7 @@ import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { UdappEvents } from '@remix-api'
 
 export function EnvironmentUI(props: EnvironmentProps) {
   const { track } = useContext(TrackingContext)
@@ -104,7 +105,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const forkState = async () => {
-    track?.('udapp', 'forkState', `forkState clicked`)
+    track?.(UdappEvents.forkState(`forkState clicked`))
     let context = currentProvider.name
     context = context.replace('vm-fs-', '')
 
@@ -141,7 +142,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
             await props.runTabPlugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${currentProvider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + vmStateName.current)
           }
         }
-        track?.('udapp', 'forkState', `forked from ${context}`)
+        track?.(UdappEvents.forkState(`forked from ${context}`))
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {}
@@ -149,7 +150,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const resetVmState = async() => {
-    track?.('udapp', 'deleteState', `deleteState clicked`)
+    track?.(UdappEvents.deleteState(`deleteState clicked`))
     const context = currentProvider.name
     const contextExists = await props.runTabPlugin.call('fileManager', 'exists', `.states/${context}/state.json`)
     if (contextExists) {
@@ -169,7 +170,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
           const isPinnedContracts = await props.runTabPlugin.call('fileManager', 'exists', `.deploys/pinned-contracts/${context}`)
           if (isPinnedContracts) await props.runTabPlugin.call('fileManager', 'remove', `.deploys/pinned-contracts/${context}`)
           props.runTabPlugin.call('notification', 'toast', `VM state reset successfully.`)
-          track?.('udapp', 'deleteState', `VM state reset`)
+          track?.(UdappEvents.deleteState(`VM state reset`))
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
         null

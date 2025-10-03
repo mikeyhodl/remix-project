@@ -71,6 +71,7 @@ export type MatomoEvent =
   | RemixAIAssistantEvent
   | RunEvent
   | ScriptExecutorEvent
+  | ScriptRunnerPluginEvent
   | SolidityCompilerEvent
   | SolidityStaticAnalyzerEvent
   | SolidityUMLGenEvent
@@ -179,6 +180,7 @@ export interface CompilerEvent extends MatomoEventBase {
 export interface DebuggerEvent extends MatomoEventBase {
   category: 'debugger';
   action: 
+    | 'StepdetailState'
     | 'startDebugging';
 }
 
@@ -339,10 +341,10 @@ export interface RemixAIEvent extends MatomoEventBase {
   category: 'remixAI';
   action: 
     | 'ModeSwitch'
-    | 'GenerateNewAIWorkspaceFromEditMode'
-    | 'SetAIProvider'
+    | 'SetAssistantProvider'
     | 'SetOllamaModel'
-    | 'GenerateNewAIWorkspaceFromModal';
+    | 'GenerateNewAIWorkspaceFromModal'
+    | 'GenerateNewAIWorkspaceFromEditMode';
 }
 
 export interface RemixAIAssistantEvent extends MatomoEventBase {
@@ -372,13 +374,6 @@ export interface ScriptExecutorEvent extends MatomoEventBase {
     | 'run_script_after_compile';
 }
 
-export interface ScriptRunnerPluginEvent extends MatomoEventBase {
-  category: 'scriptRunnerPlugin';
-  action: 
-    | 'loadScriptRunnerConfig'
-    | 'error_reloadScriptRunnerConfig';
-}
-
 export interface SolidityCompilerEvent extends MatomoEventBase {
   category: 'solidityCompiler';
   action: 
@@ -392,6 +387,13 @@ export interface SolidityScriptEvent extends MatomoEventBase {
   category: 'SolidityScript';
   action: 
     | 'execute';
+}
+
+export interface ScriptRunnerPluginEvent extends MatomoEventBase {
+  category: 'scriptRunnerPlugin';
+  action: 
+    | 'loadScriptRunnerConfig'
+    | 'error_reloadScriptRunnerConfig';
 }
 
 export interface SolidityStaticAnalyzerEvent extends MatomoEventBase {
@@ -997,6 +999,22 @@ export const UdappEvents = {
     name,
     value,
     isClick: false // Signing action is typically system-triggered
+  }),
+  
+  forkState: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'forkState',
+    name,
+    value,
+    isClick: true // User clicks to fork state
+  }),
+  
+  deleteState: (name?: string, value?: string | number): UdappEvent => ({
+    category: 'udapp',
+    action: 'deleteState',
+    name,
+    value,
+    isClick: true // User clicks to delete state
   })
 } as const;
 
@@ -1219,6 +1237,61 @@ export const PluginPanelEvents = {
 } as const;
 
 /**
+ * App Events - Type-safe builders
+ */
+export const AppEvents = {
+  PreloadError: (name?: string, value?: string | number): AppEvent => ({
+    category: 'App',
+    action: 'PreloadError',
+    name,
+    value,
+    isClick: false // System error, not user action
+  })
+} as const;
+
+/**
+ * Storage Events - Type-safe builders
+ */
+export const StorageEvents = {
+  activate: (name?: string, value?: string | number): StorageEvent => ({
+    category: 'Storage',
+    action: 'activate',
+    name,
+    value,
+    isClick: false // System activation, not user click
+  }),
+  
+  error: (name?: string, value?: string | number): StorageEvent => ({
+    category: 'Storage',
+    action: 'error',
+    name,
+    value,
+    isClick: false // System error, not user action
+  })
+} as const;
+
+/**
+ * Migrate Events - Type-safe builders
+ */
+export const MigrateEvents = {
+  result: (name?: string, value?: string | number): MigrateEvent => ({
+    category: 'Migrate',
+    action: 'result',
+    name,
+    value,
+    isClick: false // Migration result, not user action
+  }),
+  
+  error: (name?: string, value?: string | number): MigrateEvent => ({
+    category: 'Migrate',
+    action: 'error',
+    name,
+    value,
+    isClick: false // Migration error, not user action
+  })
+} as const;
+
+/**
  * Desktop Download Events - Type-safe builders
  */
 export const DesktopDownloadEvents = {
@@ -1240,6 +1313,27 @@ export const DesktopDownloadEvents = {
 } as const;
 
 /**
+ * Script Runner Plugin Events - Type-safe builders
+ */
+export const ScriptRunnerPluginEvents = {
+  loadScriptRunnerConfig: (name?: string, value?: string | number): ScriptRunnerPluginEvent => ({
+    category: 'scriptRunnerPlugin',
+    action: 'loadScriptRunnerConfig',
+    name,
+    value,
+    isClick: true // User loads script runner config
+  }),
+  
+  error_reloadScriptRunnerConfig: (name?: string, value?: string | number): ScriptRunnerPluginEvent => ({
+    category: 'scriptRunnerPlugin',
+    action: 'error_reloadScriptRunnerConfig',
+    name,
+    value,
+    isClick: true // User reloads config after error
+  })
+} as const;
+
+/**
  * Solidity Static Analyzer Events - Type-safe builders
  */
 export const SolidityStaticAnalyzerEvents = {
@@ -1249,6 +1343,27 @@ export const SolidityStaticAnalyzerEvents = {
     name,
     value,
     isClick: true // User triggers static analysis
+  })
+} as const;
+
+/**
+ * Remix AI Assistant Events - Type-safe builders
+ */
+export const RemixAIAssistantEvents = {
+  likeResponse: (name?: string, value?: string | number): RemixAIAssistantEvent => ({
+    category: 'remixai-assistant',
+    action: 'like-response',
+    name,
+    value,
+    isClick: true // User likes AI response
+  }),
+  
+  dislikeResponse: (name?: string, value?: string | number): RemixAIAssistantEvent => ({
+    category: 'remixai-assistant',
+    action: 'dislike-response',
+    name,
+    value,
+    isClick: true // User dislikes AI response
   })
 } as const;
 

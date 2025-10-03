@@ -11,6 +11,7 @@ import { localStorageFS } from '../files/filesystems/localStorage'
 import { fileSystemUtility, migrationTestData } from '../files/filesystems/fileSystemUtility'
 import './styles/preload.css'
 import isElectron from 'is-electron'
+import { AppEvents, MigrateEvents, StorageEvents } from '@remix-api'
 
 // _paq.push(['trackEvent', 'App', 'Preload', 'start'])
 
@@ -52,7 +53,7 @@ export const Preload = (props: PreloadProps) => {
         })
       })
       .catch((err) => {
-        track?.('App', 'PreloadError', err && err.message)
+        track?.(AppEvents.PreloadError(err && err.message))
         console.error('Error loading Remix:', err)
         setError(true)
       })
@@ -69,7 +70,7 @@ export const Preload = (props: PreloadProps) => {
     setShowDownloader(false)
     const fsUtility = new fileSystemUtility()
     const migrationResult = await fsUtility.migrate(localStorageFileSystem.current, remixIndexedDB.current)
-    track?.('Migrate', 'result', migrationResult ? 'success' : 'fail')
+    track?.(MigrateEvents.result(migrationResult ? 'success' : 'fail'))
     await setFileSystems()
   }
 
@@ -80,10 +81,10 @@ export const Preload = (props: PreloadProps) => {
     ])
     if (fsLoaded) {
       console.log(fsLoaded.name + ' activated')
-      track?.('Storage', 'activate', fsLoaded.name)
+      track?.(StorageEvents.activate(fsLoaded.name))
       loadAppComponent()
     } else {
-      track?.('Storage', 'error', 'no supported storage')
+      track?.(StorageEvents.error('no supported storage'))
       setSupported(false)
     }
   }
@@ -101,8 +102,8 @@ export const Preload = (props: PreloadProps) => {
       return
     }
     async function loadStorage() {
-      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || track?.('Storage', 'error', 'indexedDB not supported')
-      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || track?.('Storage', 'error', 'localstorage not supported')
+      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || track?.(StorageEvents.error('indexedDB not supported'))
+      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || track?.(StorageEvents.error('localstorage not supported'))
       await testmigration()
       remixIndexedDB.current.loaded && (await remixIndexedDB.current.checkWorkspaces())
       localStorageFileSystem.current.loaded && (await localStorageFileSystem.current.checkWorkspaces())

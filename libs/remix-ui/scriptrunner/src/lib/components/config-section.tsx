@@ -5,6 +5,7 @@ import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-soli
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext';
+import { ScriptRunnerPluginEvents } from '@remix-api';
 
 export interface ConfigSectionProps {
   activeKey: string
@@ -38,7 +39,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               if (!props.config.errorStatus) {
                 props.setActiveKey(props.config.name)
               }
-              track?.('scriptRunnerPlugin', 'loadScriptRunnerConfig', props.config.name)
+              track?.(ScriptRunnerPluginEvents.loadScriptRunnerConfig(props.config.name))
             }}
             checked={(props.activeConfig && props.activeConfig.name === props.config.name)}
           />
@@ -109,7 +110,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               <div
                 onClick={() => {
                   props.loadScriptRunner(props.config)
-                  track?.('scriptRunnerPlugin', 'error_reloadScriptRunnerConfig', props.config.name)
+                  track?.(ScriptRunnerPluginEvents.error_reloadScriptRunnerConfig(props.config.name))
                 }}
                 className="pointer text-danger d-flex flex-row"
               >
