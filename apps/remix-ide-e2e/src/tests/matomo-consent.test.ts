@@ -29,9 +29,12 @@ function acceptConsent(browser: NightwatchBrowser) {
 function rejectConsent(browser: NightwatchBrowser) {
     return browser
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
+        .pause(1000) // Let initial modal settle
         .click('[data-id="matomoModal-modal-footer-cancel-react"]') // Click "Manage Preferences"
         .waitForElementVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]') // Wait for preferences dialog
+        .pause(2000) // Let preferences modal settle and finish animations
         .waitForElementVisible('*[data-id="matomoPerfAnalyticsToggleSwitch"]')
+        .pause(1000) // Let toggle switch fully render
         .saveScreenshot('./reports/screenshots/matomo-preferences-before-toggle.png') // Debug screenshot
         .execute(function() {
             // Force click using JavaScript to bypass modal overlay issues
