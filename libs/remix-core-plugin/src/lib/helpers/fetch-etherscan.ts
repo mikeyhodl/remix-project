@@ -11,14 +11,32 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
   if (!etherscanKey) etherscanKey = '2HKUX5ZVASZIKWJM8MIQVCRUVZ6JAWT531'
 
   if (etherscanKey) {
+    // Extract chain ID from Network object before converting to string
+    let chainId = 1 // Default to Ethereum mainnet
     if (typeof endpoint === 'object' && endpoint !== null && 'id' in endpoint && 'name' in endpoint) {
+      chainId = endpoint.id
       endpoint = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
     }
     try {
-      // Use V2 API with chainid parameter (defaults to mainnet)
-      const chainId = 1 // Default to Ethereum mainnet
-      data = await fetch('https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey)
+      // Try V2 API first with chainid parameter
+      let apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+      data = await fetch(apiUrl)
+      
+      // If V2 API fails (404 or other error), fallback to V1 API
+      if (!data.ok) {
+        apiUrl = 'https://' + endpoint + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+        data = await fetch(apiUrl)
+      }
       data = await data.json()
+      
+      // Handle deprecated V1 endpoint response
+      if (data.message === 'NOTOK' && data.result && data.result.includes('deprecated V1 endpoint')) {
+        // Force V2 API usage even if it initially failed
+        apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+        data = await fetch(apiUrl)
+        data = await data.json()
+      }
+      
       // etherscan api doc https://docs.etherscan.io/api-endpoints/contracts
       if (data.message === 'OK' && data.status === "1") {
         if (data.result.length) {
