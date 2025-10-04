@@ -514,10 +514,7 @@ workflows:
   lint_only:
     when: << pipeline.parameters.run_lint_only >>
     jobs:
-      - build
-      - lint:
-          requires:
-            - build
+      - lint
       - remix-libs
 
 # VS Code Extension Version: 1.5.1
