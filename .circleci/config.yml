@@ -15,6 +15,9 @@ parameters:
   run_flaky_tests:
     type: boolean
     default: false
+  run_lint_only:
+    type: boolean
+    default: false
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
@@ -507,5 +510,14 @@ workflows:
           filters:
             branches:
               only: remix_beta
+
+  lint_only:
+    when: << pipeline.parameters.run_lint_only >>
+    jobs:
+      - build
+      - lint:
+          requires:
+            - build
+      - remix-libs
 
 # VS Code Extension Version: 1.5.1
