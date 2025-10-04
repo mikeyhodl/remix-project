@@ -24,6 +24,24 @@ export interface SolidityCompilerEvent extends MatomoEventBase {
     | 'initiate';
 }
 
+export interface CompilerContainerEvent extends MatomoEventBase {
+  category: 'compilerContainer';
+  action: 
+    | 'compile'
+    | 'compileAndRun'
+    | 'autoCompile'
+    | 'includeNightlies'
+    | 'hideWarnings'
+    | 'optimization'
+    | 'useConfigurationFile'
+    | 'compilerSelection'
+    | 'languageSelection'
+    | 'evmVersionSelection'
+    | 'addCustomCompiler'
+    | 'viewLicense'
+    | 'advancedConfigToggle';
+}
+
 /**
  * Compiler Events - Type-safe builders
  */
@@ -95,5 +113,114 @@ export const SolidityCompilerEvents = {
     name,
     value,
     isClick: false // System initialization event
+  })
+} as const;
+
+/**
+ * Compiler Container Events - Type-safe builders for UI interactions
+ */
+export const CompilerContainerEvents = {
+  compile: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'compile',
+    name,
+    value,
+    isClick: true // User clicks compile button
+  }),
+  
+  compileAndRun: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'compileAndRun',
+    name,
+    value,
+    isClick: true // User clicks compile and run button
+  }),
+  
+  autoCompile: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'autoCompile',
+    name,
+    value,
+    isClick: true // User toggles auto-compile checkbox
+  }),
+  
+  includeNightlies: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'includeNightlies',
+    name,
+    value,
+    isClick: true // User toggles include nightly builds checkbox
+  }),
+  
+  hideWarnings: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'hideWarnings',
+    name,
+    value,
+    isClick: true // User toggles hide warnings checkbox
+  }),
+  
+  optimization: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'optimization',
+    name,
+    value,
+    isClick: true // User changes optimization settings
+  }),
+  
+  useConfigurationFile: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'useConfigurationFile',
+    name,
+    value,
+    isClick: true // User toggles use configuration file checkbox
+  }),
+  
+  compilerSelection: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'compilerSelection',
+    name,
+    value,
+    isClick: true // User selects different compiler version
+  }),
+  
+  languageSelection: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'languageSelection',
+    name,
+    value,
+    isClick: true // User changes language (Solidity/Yul)
+  }),
+  
+  evmVersionSelection: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'evmVersionSelection',
+    name,
+    value,
+    isClick: true // User selects EVM version
+  }),
+  
+  addCustomCompiler: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'addCustomCompiler',
+    name,
+    value,
+    isClick: true // User clicks to add custom compiler
+  }),
+  
+  viewLicense: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'viewLicense',
+    name,
+    value,
+    isClick: true // User clicks to view compiler license
+  }),
+  
+  advancedConfigToggle: (name?: string, value?: string | number): CompilerContainerEvent => ({
+    category: 'compilerContainer',
+    action: 'advancedConfigToggle',
+    name,
+    value,
+    isClick: true // User toggles advanced configurations section
   })
 } as const;

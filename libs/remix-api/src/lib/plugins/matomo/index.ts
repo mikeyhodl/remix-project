@@ -28,7 +28,7 @@ export * from './events/tools-events';
 
 // Import types for union
 import type { AIEvent, RemixAIEvent, RemixAIAssistantEvent } from './events/ai-events';
-import type { CompilerEvent, SolidityCompilerEvent } from './events/compiler-events';
+import type { CompilerEvent, SolidityCompilerEvent, CompilerContainerEvent } from './events/compiler-events';
 import type { GitEvent } from './events/git-events';
 import type { HomeTabEvent, TopbarEvent, LayoutEvent, SettingsEvent, ThemeEvent, LocaleEvent, LandingPageEvent, UniversalEvent } from './events/ui-events';
 import type { FileExplorerEvent, WorkspaceEvent, StorageEvent, BackupEvent } from './events/file-events';
@@ -46,6 +46,7 @@ export type MatomoEvent = (
   // Compilation events
   | CompilerEvent
   | SolidityCompilerEvent
+  | CompilerContainerEvent
   
   // Version Control events
   | GitEvent

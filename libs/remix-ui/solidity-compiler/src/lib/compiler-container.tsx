@@ -12,7 +12,7 @@ import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
 import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
 import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
-import { CompilerEvents } from '@remix-api'
+import { CompilerEvents, CompilerContainerEvents } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import './css/style.css'
@@ -202,6 +202,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const toggleConfigType = () => {
     setState((prevState) => {
+      // Track configuration file toggle
+      track?.(CompilerContainerEvents.useConfigurationFile(!state.useFileConfiguration ? 'enabled' : 'disabled'))
+
       api.setAppParameter('useFileConfiguration', !state.useFileConfiguration)
       return { ...prevState, useFileConfiguration: !state.useFileConfiguration }
     })
@@ -426,6 +429,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const currentFile = api.currentFile
 
     if (!isSolFileSelected()) return
+    
+    // Track compile button click
+    track?.(CompilerContainerEvents.compile(currentFile))
+    
     if (state.useFileConfiguration) await createNewConfigFile()
     _setCompilerVersionFromPragma(currentFile)
     let externalCompType
@@ -438,6 +445,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const currentFile = api.currentFile
 
     if (!isSolFileSelected()) return
+    
+    // Track compile and run button click
+    track?.(CompilerContainerEvents.compileAndRun(currentFile))
+    
     _setCompilerVersionFromPragma(currentFile)
     let externalCompType
     if (hhCompilation) externalCompType = 'hardhat'
@@ -500,6 +511,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const promptCompiler = () => {
+    // Track custom compiler addition prompt
+    track?.(CompilerContainerEvents.addCustomCompiler())
+    
     // custom url https://solidity-blog.s3.eu-central-1.amazonaws.com/data/08preview/soljson.js
     modal(
       intl.formatMessage({
@@ -515,6 +529,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const showCompilerLicense = () => {
+    // Track compiler license view
+    track?.(CompilerContainerEvents.viewLicense())
+    
     modal(
       intl.formatMessage({ id: 'solidity.compilerLicense' }),
       state.compilerLicense ? state.compilerLicense : intl.formatMessage({ id: 'solidity.compilerLicenseMsg3' }),
@@ -543,6 +560,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const handleLoadVersion = (value) => {
     if (value !== 'builtin' && !pathToURL[value]) return
+
+    // Track compiler selection
+    track?.(CompilerContainerEvents.compilerSelection(value))
+
     setState((prevState) => {
       return { ...prevState, selectedVersion: value, matomoAutocompileOnce: true }
     })
@@ -562,6 +583,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const handleAutoCompile = (e) => {
     const checked = e.target.checked
 
+    // Track auto-compile toggle
+    track?.(CompilerContainerEvents.autoCompile(checked ? 'enabled' : 'disabled'))
+
     api.setAppParameter('autoCompile', checked)
     checked && compile()
     setState((prevState) => {
@@ -575,6 +599,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const handleOptimizeChange = (value) => {
     const checked = !!value
+
+    // Track optimization toggle
+    track?.(CompilerContainerEvents.optimization(checked ? 'enabled' : 'disabled'))
 
     api.setAppParameter('optimize', checked)
     compileTabLogic.setOptimize(checked)
@@ -602,6 +629,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const handleHideWarningsChange = (e) => {
     const checked = e.target.checked
 
+    // Track hide warnings toggle
+    track?.(CompilerContainerEvents.hideWarnings(checked ? 'enabled' : 'disabled'))
+
     api.setAppParameter('hideWarnings', checked)
     state.autoCompile && compile()
     setState((prevState) => {
@@ -612,6 +642,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const handleNightliesChange = (e) => {
     const checked = e.target.checked
 
+    // Track include nightlies toggle
+    track?.(CompilerContainerEvents.includeNightlies(checked ? 'enabled' : 'disabled'))
+
     if (!checked) handleLoadVersion(state.defaultVersion)
     api.setAppParameter('includeNightlies', checked)
     setState((prevState) => {
@@ -621,6 +654,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const handleOnlyDownloadedChange = (e) => {
     const checked = e.target.checked
+
+    // Track downloaded compilers only toggle - we can use compilerSelection for this
+    track?.(CompilerContainerEvents.compilerSelection(checked ? 'downloadedOnly' : 'allVersions'))
+
     if (!checked) handleLoadVersion(state.defaultVersion)
     setState((prevState) => {
       return { ...prevState, onlyDownloaded: checked }
@@ -628,6 +665,9 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const handleLanguageChange = (value) => {
+    // Track language selection
+    track?.(CompilerContainerEvents.languageSelection(value))
+
     compileTabLogic.setLanguage(value)
     state.autoCompile && compile()
     setState((prevState) => {
@@ -637,6 +677,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const handleEvmVersionChange = (value) => {
     if (!value) return
+
+    // Track EVM version selection
+    track?.(CompilerContainerEvents.evmVersionSelection(value))
+
     let v = value
     if (v === 'default') {
       v = null
@@ -818,14 +862,22 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
             </div>
           )}
         </div>
-        <div className="d-flex px-4 remixui_compilerConfigSection justify-content-between" onClick={toggleConfigurations}>
+        <div className="d-flex px-4 remixui_compilerConfigSection justify-content-between" onClick={() => {
+          // Track advanced configuration toggle
+          track?.(CompilerContainerEvents.advancedConfigToggle(!toggleExpander ? 'expanded' : 'collapsed'))
+          toggleConfigurations()
+        }}>
           <div className="d-flex">
             <label className="remixui_compilerConfigSection">
               <FormattedMessage id="solidity.advancedConfigurations" />
             </label>
           </div>
           <div>
-            <span data-id="scConfigExpander" onClick={toggleConfigurations}>
+            <span data-id="scConfigExpander" onClick={() => {
+              // Track advanced configuration toggle
+              track?.(CompilerContainerEvents.advancedConfigToggle(!toggleExpander ? 'expanded' : 'collapsed'))
+              toggleConfigurations()
+            }}>
               <i className={!toggleExpander ? 'fas fa-angle-right' : 'fas fa-angle-down'} aria-hidden="true"></i>
             </span>
           </div>
