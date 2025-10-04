@@ -7,11 +7,10 @@ import WorkspaceTemplate from './workspaceTemplate'
 import 'react-multi-carousel/lib/styles.css'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { Plugin } from "@remixproject/engine";
 import { CustomRemixApi } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
-
 
 interface HomeTabGetStartedProps {
   plugin: any

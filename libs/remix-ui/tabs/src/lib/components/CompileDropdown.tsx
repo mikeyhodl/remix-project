@@ -3,7 +3,7 @@ import DropdownMenu, { MenuItem } from './DropdownMenu'
 import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
 import { handleSolidityScan } from '@remix-ui/helper'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { SolidityCompilerEvents } from '@remix-api'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'

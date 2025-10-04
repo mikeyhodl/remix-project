@@ -7,15 +7,13 @@ import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
 import { AIEvents, RemixAIEvents, RemixAIAssistantEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage } from '../lib/types'
 import { groupListType } from '../types/componentTypes'
 import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
-
-
 
 export interface RemixUiRemixAiAssistantProps {
   plugin: Plugin

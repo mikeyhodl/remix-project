@@ -7,7 +7,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import './remix-ui-tabs.css'
 import { values } from 'lodash'
 import { AppContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { desktopConnectionType, EditorEvents } from '@remix-api'
 import { CompileDropdown, RunScriptDropdown } from '@remix-ui/tabs'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries

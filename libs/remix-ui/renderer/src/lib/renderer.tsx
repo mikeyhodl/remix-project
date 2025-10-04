@@ -2,7 +2,7 @@ import React, {useContext, useEffect, useState} from 'react' //eslint-disable-li
 import { useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { helper } from '@remix-project/remix-solidity'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { AIEvents } from '@remix-api'
 import './renderer.css'
 

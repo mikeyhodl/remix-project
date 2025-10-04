@@ -6,7 +6,7 @@ import {TreeView, TreeViewItem} from '@remix-ui/tree-view' // eslint-disable-lin
 import {CopyToClipboard} from '@remix-ui/clipboard' // eslint-disable-line
 import { saveAs } from 'file-saver'
 import { AppModal } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { CompilerEvents, SolidityCompilerEvents } from '@remix-api'
 
 import './css/style.css'

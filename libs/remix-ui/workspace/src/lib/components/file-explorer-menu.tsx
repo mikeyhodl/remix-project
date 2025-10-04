@@ -5,7 +5,7 @@ import { Placement } from 'react-bootstrap/esm/types'
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { FileExplorerEvents } from '@remix-api'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {

@@ -8,7 +8,7 @@ export interface LocaleModule extends Plugin<any, any> {
     _deps: {
         config: any;
     };
-    
+
     element: HTMLDivElement;
     locales: {[key: string]: Locale};
     active: string;

@@ -6,7 +6,7 @@ import { ContractData, FuncABI, OverSizeLimit } from '@remix-project/core-plugin
 import * as ethJSUtil from '@ethereumjs/util'
 import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvents } from '@remix-api'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {

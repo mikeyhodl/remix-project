@@ -15,8 +15,6 @@ import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
 
-
-
 interface IRemixAppUi {
   app: any
 }

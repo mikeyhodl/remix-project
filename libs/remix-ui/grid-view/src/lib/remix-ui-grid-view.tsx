@@ -3,10 +3,7 @@ import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
 import { GridViewEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
-
-
-
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface RemixUIGridViewProps {
   plugin: any

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import React, { useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 

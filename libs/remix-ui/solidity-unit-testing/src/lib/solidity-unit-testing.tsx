@@ -10,7 +10,7 @@ import { format } from 'util'
 import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { SolidityUnitTestingEvents } from '@remix-api'
 
 interface TestObject {

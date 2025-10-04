@@ -5,7 +5,7 @@ import { ModalDialog } from '@remix-ui/modal-dialog' // eslint-disable-line
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface HomeTabFileProps {
   plugin: any

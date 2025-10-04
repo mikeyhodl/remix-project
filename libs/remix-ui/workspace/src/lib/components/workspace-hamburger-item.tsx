@@ -3,7 +3,7 @@ import { CustomTooltip, CustomMenu, CustomIconsToggle } from '@remix-ui/helper'
 import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { FileExplorerEvents } from '@remix-api'
 
 export interface HamburgerMenuItemProps {

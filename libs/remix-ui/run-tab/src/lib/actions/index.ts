@@ -13,9 +13,6 @@ import { DeployMode, MainnetPrompt } from '../types'
 import { runCurrentScenario, storeScenario } from './recorder'
 import { SolcInput, SolcOutput } from '@openzeppelin/upgrades-core'
 
-
-
-
 let plugin: RunTab, dispatch: React.Dispatch<any> = () => {}
 
 export const initRunTab = (udapp: RunTab, resetEventsAndAccounts: boolean) => async (reducerDispatch: React.Dispatch<any>) => {

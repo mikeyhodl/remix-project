@@ -5,8 +5,6 @@ import FiltersContext from "./filtersContext"
 import { CustomTooltip } from '@remix-ui/helper'
 import { ChildCallbackContext } from './remix-ui-grid-section'
 
-
-
 interface RemixUIGridCellProps {
   plugin: any
   pinned?: boolean

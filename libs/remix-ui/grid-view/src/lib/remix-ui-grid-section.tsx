@@ -1,8 +1,6 @@
 import React, {createContext, ReactNode, useEffect, useState} from 'react' // eslint-disable-line
 import './remix-ui-grid-section.css'
 
-
-
 // Define the type for the context value
 interface ChildCallbackContextType {
   onChildCallback: (id: string, enabled: boolean) => void;

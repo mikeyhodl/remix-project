@@ -3,7 +3,7 @@ import React, { useState, useRef, useReducer, useEffect, useContext } from 'reac
 import { FormattedMessage } from 'react-intl'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { HomeTabEvents } from '@remix-api'
 
 interface HomeTabFileProps {

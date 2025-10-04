@@ -3,7 +3,7 @@ import { DesktopDownloadEvents } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
 import { FormattedMessage } from 'react-intl'
 import './desktop-download.css'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface DesktopDownloadProps {
   className?: string

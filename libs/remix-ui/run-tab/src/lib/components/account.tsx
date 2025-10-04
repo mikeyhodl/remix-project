@@ -7,7 +7,7 @@ import { PassphrasePrompt } from './passphrase'
 import { shortenAddress, CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { eip7702Constants } from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvents } from '@remix-api'
 
 export function AccountUI(props: AccountProps) {

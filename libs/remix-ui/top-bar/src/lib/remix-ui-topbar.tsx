@@ -15,7 +15,7 @@ import { GitHubUser } from 'libs/remix-api/src/lib/types/git'
 import { GitHubCallback } from '../topbarUtils/gitOauthHandler'
 import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { TopBarEvents, WorkspaceEvents } from '@remix-api'
 
 export function RemixUiTopbar() {
@@ -289,7 +289,7 @@ export function RemixUiTopbar() {
 
   const loginWithGitHub = async () => {
     global.plugin.call('dgit', 'login')
-                  track?.(TopBarEvents.header('Settings'))
+    track?.(TopBarEvents.header('Settings'))
   }
 
   const logOutOfGithub = async () => {

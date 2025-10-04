@@ -2,7 +2,7 @@
 import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { ThemeContext } from '../themeContext'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { getTimeAgo } from '@remix-ui/helper'
 
 interface HomeTabFileProps {

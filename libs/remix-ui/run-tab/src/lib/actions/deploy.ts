@@ -12,9 +12,6 @@ import { addInstance } from "./actions"
 import { addressToString, logBuilder } from "@remix-ui/helper"
 import { Web3 } from "web3"
 
-
-
-
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
 

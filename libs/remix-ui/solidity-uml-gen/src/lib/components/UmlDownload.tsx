@@ -4,7 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
 import { SolidityUMLGenEvents, SolUmlGenEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export const Markup = React.forwardRef(
   (

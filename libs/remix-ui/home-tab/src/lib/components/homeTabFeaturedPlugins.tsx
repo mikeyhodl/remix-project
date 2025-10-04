@@ -8,7 +8,7 @@ import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface HomeTabFeaturedPluginsProps {
   plugin: any

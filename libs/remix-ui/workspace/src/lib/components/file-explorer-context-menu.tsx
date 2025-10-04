@@ -6,7 +6,7 @@ import '../css/file-explorer-context-menu.css'
 import { customAction } from '@remixproject/plugin-api'
 import UploadFile from './upload-file'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { FileExplorerEvent, FileExplorerEvents } from '@remix-api'
 
 export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => {

@@ -6,7 +6,7 @@ import { Dropdown } from 'react-bootstrap'
 import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvents } from '@remix-api'
 
 export function EnvironmentUI(props: EnvironmentProps) {

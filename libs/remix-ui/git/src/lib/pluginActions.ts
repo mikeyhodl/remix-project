@@ -112,8 +112,8 @@ export const sendToMatomo = async (event: gitMatomoEventTypes, args?: string[]) 
   // Map gitMatomoEventTypes to GitEvents dynamically
   const eventMethod = GitEvents[event as keyof typeof GitEvents];
   if (typeof eventMethod === 'function') {
-    const matomoEvent = args && args.length > 0 
-      ? eventMethod(args[0], args[1]) 
+    const matomoEvent = args && args.length > 0
+      ? eventMethod(args[0], args[1])
       : eventMethod();
     plugin && trackMatomoEvent(plugin, matomoEvent);
   }

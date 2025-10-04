@@ -4,9 +4,7 @@ import { Button, ButtonGroup, Dropdown } from 'react-bootstrap'
 import { CustomTopbarMenu } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
 import { TopBarEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
-
-
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface GitHubLoginProps {
   cloneGitRepository: () => void

@@ -5,7 +5,7 @@ import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
 import { RemixAIEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -43,8 +43,6 @@ export interface PromptAreaProps {
   aiMode: 'ask' | 'edit'
   setAiMode: React.Dispatch<React.SetStateAction<'ask' | 'edit'>>
 }
-
-
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
   input,

@@ -32,4 +32,5 @@ export const useAppTracking = () => {
   return useTracking()
 }
 
+export { TrackingContext }
 export default TrackingContext

@@ -3,7 +3,7 @@ import React, { CSSProperties, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ScamAlert } from '../remixui-statusbar-panel'
 import '../../css/statusbar.css'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { HomeTabEvents } from '@remix-api'
 
 export interface ScamDetailsProps {

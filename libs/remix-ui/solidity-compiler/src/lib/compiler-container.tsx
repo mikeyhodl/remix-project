@@ -11,7 +11,7 @@ import { getValidLanguage } from '@remix-project/remix-solidity'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
 import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { CompilerEvents, CompilerContainerEvents } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
@@ -429,10 +429,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const currentFile = api.currentFile
 
     if (!isSolFileSelected()) return
-    
+
     // Track compile button click
     track?.(CompilerContainerEvents.compile(currentFile))
-    
+
     if (state.useFileConfiguration) await createNewConfigFile()
     _setCompilerVersionFromPragma(currentFile)
     let externalCompType
@@ -445,10 +445,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const currentFile = api.currentFile
 
     if (!isSolFileSelected()) return
-    
+
     // Track compile and run button click
     track?.(CompilerContainerEvents.compileAndRun(currentFile))
-    
+
     _setCompilerVersionFromPragma(currentFile)
     let externalCompType
     if (hhCompilation) externalCompType = 'hardhat'
@@ -513,7 +513,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const promptCompiler = () => {
     // Track custom compiler addition prompt
     track?.(CompilerContainerEvents.addCustomCompiler())
-    
+
     // custom url https://solidity-blog.s3.eu-central-1.amazonaws.com/data/08preview/soljson.js
     modal(
       intl.formatMessage({
@@ -531,7 +531,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const showCompilerLicense = () => {
     // Track compiler license view
     track?.(CompilerContainerEvents.viewLicense())
-    
+
     modal(
       intl.formatMessage({ id: 'solidity.compilerLicense' }),
       state.compilerLicense ? state.compilerLicense : intl.formatMessage({ id: 'solidity.compilerLicenseMsg3' }),

@@ -3,7 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { PluginRecord } from '../types'
 import './panel.css'
 import { CustomTooltip, RenderIf, RenderIfNot } from '@remix-ui/helper'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { PluginPanelEvents } from '@remix-api'
 
 export interface RemixPanelProps {

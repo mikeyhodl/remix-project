@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { AppContext } from '../../context/context'
 import { useDialogDispatchers } from '../../context/provider'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { LandingPageEvents } from '@remix-api'
 
 interface MatomoDialogProps {

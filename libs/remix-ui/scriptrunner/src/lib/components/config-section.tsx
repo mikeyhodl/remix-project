@@ -4,7 +4,7 @@ import { ProjectConfiguration } from '../../types';
 import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext';
+import { TrackingContext } from '@remix-ide/tracking';
 import { ScriptRunnerPluginEvents } from '@remix-api';
 
 export interface ConfigSectionProps {

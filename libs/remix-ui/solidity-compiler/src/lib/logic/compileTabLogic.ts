@@ -3,9 +3,6 @@ import { getValidLanguage, Compiler } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 import { configFileContent } from '../compilerConfiguration'
 
-
-
-
 export class CompileTabLogic {
   public compiler
   public api: ICompilerApi

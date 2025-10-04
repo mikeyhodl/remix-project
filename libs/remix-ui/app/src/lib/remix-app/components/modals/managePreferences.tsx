@@ -3,7 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { useDialogDispatchers } from '../../context/provider'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { AppContext } from '../../context/context'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { LandingPageEvents } from '@remix-api'
 
 const ManagePreferencesSwitcher = (prop: {

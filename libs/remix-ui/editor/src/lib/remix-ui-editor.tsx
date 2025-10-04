@@ -5,7 +5,7 @@ import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
 import { AppContext, AppModal } from '@remix-ui/app'
 import { AIEvents, EditorEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
 import { reducerActions, reducerListener, initialState } from './actions/editor'
 import { solidityTokensProvider, solidityLanguageConfig } from './syntaxes/solidity'
@@ -216,7 +216,7 @@ export const EditorUI = (props: EditorUIProps) => {
     const themeType = props.themeType === 'dark' ? 'vs-dark' : 'vs'
     const themeName = props.themeType === 'dark' ? 'remix-dark' : 'remix-light'
     const isDark = props.themeType === 'dark'
-    
+
     // see https://microsoft.github.io/monaco-editor/playground.html#customizing-the-appearence-exposed-colors
     const lightColor = formatColor('--bs-light')
     const infoColor = formatColor('--bs-info')
@@ -356,7 +356,7 @@ export const EditorUI = (props: EditorUIProps) => {
   // Listen for theme changes to redefine the theme when CSS is loaded
   useEffect(() => {
     if (!monacoRef.current) return
-    
+
     const handleThemeChange = () => {
       // Small delay to ensure CSS variables are available after theme switch
       setTimeout(() => {

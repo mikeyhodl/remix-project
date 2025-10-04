@@ -15,15 +15,13 @@ import { contextMenuActions } from './utils'
 import FileExplorerContextMenu from './components/file-explorer-context-menu'
 import { customAction } from '@remixproject/plugin-api'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { HomeTabEvents, WorkspaceEvents } from '@remix-api'
 import { ElectronMenu } from './components/electron-menu'
 import { ElectronWorkspaceName } from './components/electron-workspace-name'
 import { branch } from '@remix-api'
 import { gitUIPanels } from '@remix-ui/git'
 import { createModalMessage } from './components/createModal'
-
-
 
 const canUpload = window.File || window.FileReader || window.FileList || window.Blob
 

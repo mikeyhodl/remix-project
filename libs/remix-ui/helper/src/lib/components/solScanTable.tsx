@@ -3,7 +3,7 @@ import React, { useContext } from 'react'
 import parse from 'html-react-parser'
 import { ScanReport } from '@remix-ui/helper'
 import { SolidityCompilerEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface SolScanTableProps {
   scanReport: ScanReport

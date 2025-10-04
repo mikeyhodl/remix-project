@@ -4,7 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { ThemeContext } from '../themeContext'
 import { CustomTooltip } from '@remix-ui/helper'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 enum VisibleTutorial {
   Basics,

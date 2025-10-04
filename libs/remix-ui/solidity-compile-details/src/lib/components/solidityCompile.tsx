@@ -4,7 +4,7 @@ import { ContractPropertyName } from '@remix-ui/solidity-compiler'
 import React, { useContext } from 'react'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { useIntl } from 'react-intl'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 import { CompilerEvents } from '@remix-api'
 
 export default function SolidityCompile({ contractProperties, selectedContract, help, insertValue, saveAs, plugin }: any) {

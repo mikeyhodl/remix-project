@@ -19,7 +19,7 @@ import { BasicTitle, calculateWarningStateEntries } from './components/BasicTitl
 import { Nav, TabContainer } from 'react-bootstrap'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
 /* eslint-disable-next-line */
 export interface RemixUiStaticAnalyserProps {

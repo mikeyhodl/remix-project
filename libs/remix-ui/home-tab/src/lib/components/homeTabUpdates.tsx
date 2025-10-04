@@ -6,10 +6,10 @@ import { HOME_TAB_BASE_URL, HOME_TAB_NEW_UPDATES } from './constant'
 import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
 import { HomeTabEvents } from '@remix-api'
-import TrackingContext from 'apps/remix-ide/src/app/contexts/TrackingContext'
+import { TrackingContext } from '@remix-ide/tracking'
 
-import {CustomTooltip} from '@remix-ui/helper'
-import {FormattedMessage} from 'react-intl'
+import { CustomTooltip } from '@remix-ui/helper'
+import { FormattedMessage } from 'react-intl'
 interface HomeTabUpdatesProps {
   plugin: any
 }
