@@ -11,33 +11,33 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
   if (!etherscanKey) etherscanKey = '2HKUX5ZVASZIKWJM8MIQVCRUVZ6JAWT531'
 
   if (etherscanKey) {
-    // Extract chain ID from Network object before converting to string
+    // Extract chain ID and build endpoint string once
     let chainId = 1 // Default to Ethereum mainnet
+    let endpointStr: string
     if (typeof endpoint === 'object' && endpoint !== null && 'id' in endpoint && 'name' in endpoint) {
       chainId = endpoint.id
-      endpoint = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
+      const normalized = String((endpoint as any).name || '').toLowerCase()
+      endpointStr = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + normalized + '.etherscan.io'
+    } else {
+      endpointStr = endpoint as string
     }
     try {
-      // Try V2 API first with chainid parameter
-      let apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-      data = await fetch(apiUrl)
-      
-      // If V2 API fails (404 or other error), fallback to V1 API
-      if (!data.ok) {
-        apiUrl = 'https://' + endpoint + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        data = await fetch(apiUrl)
+      // Prefer central V2 API host with chainid param (works across Etherscan-supported networks)
+      const v2CentralUrl = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+      let response = await fetch(v2CentralUrl)
+
+      // If central V2 not OK, try per-network V2, then per-network V1
+      if (!response.ok) {
+        const v2PerNetworkUrl = 'https://' + endpointStr + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+        response = await fetch(v2PerNetworkUrl)
+        if (!response.ok) {
+          const v1Url = 'https://' + endpointStr + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+          response = await fetch(v1Url)
+        }
       }
-      
-      data = await data.json()
-      
-      // Handle deprecated V1 endpoint response
-      if (data.message === 'NOTOK' && data.result && data.result.includes('deprecated V1 endpoint')) {
-        // Force V2 API usage even if it initially failed
-        apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        data = await fetch(apiUrl)
-        data = await data.json()
-      }
-      
+
+      data = await response.json()
+
       // etherscan api doc https://docs.etherscan.io/api-endpoints/contracts
       if (data.message === 'OK' && data.status === "1") {
         if (data.result.length) {
