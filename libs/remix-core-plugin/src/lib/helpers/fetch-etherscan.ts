@@ -15,7 +15,9 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
       endpoint = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
     }
     try {
-      data = await fetch('https://' + endpoint + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey)
+      // Use V2 API with chainid parameter (defaults to mainnet)
+      const chainId = 1 // Default to Ethereum mainnet
+      data = await fetch('https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey)
       data = await data.json()
       // etherscan api doc https://docs.etherscan.io/api-endpoints/contracts
       if (data.message === 'OK' && data.status === "1") {
