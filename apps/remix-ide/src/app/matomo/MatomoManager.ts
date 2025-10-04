@@ -22,7 +22,7 @@
  */
 
 import { MatomoEvent } from '@remix-api';
-import { getDomainCustomDimensions, DomainCustomDimensions } from './MatomoConfig';
+import { getDomainCustomDimensions, DomainCustomDimensions, ENABLE_MATOMO_LOCALHOST } from './MatomoConfig';
 
 // ================== TYPE DEFINITIONS ==================
 
@@ -398,6 +398,18 @@ export class MatomoManager implements IMatomoManager {
     if (this.state.initialized) {
       this.log('Already initialized, skipping');
       return;
+    }
+
+    // For localhost/127.0.0.1, only initialize Matomo when explicitly requested
+    // This prevents CircleCI tests from flooding the localhost Matomo domain
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocalhost) {
+      // Check developer flag first, then localStorage as fallback
+      const showMatomo = ENABLE_MATOMO_LOCALHOST || (typeof localStorage !== 'undefined' && localStorage.getItem('showMatomo') === 'true');
+      if (!showMatomo) {
+        this.log('Skipping Matomo initialization on localhost - set ENABLE_MATOMO_LOCALHOST=true in MatomoConfig.ts or localStorage.setItem("showMatomo", "true") to enable');
+        return;
+      }
     }
 
     // Prevent multiple simultaneous initializations
@@ -1187,6 +1199,17 @@ export class MatomoManager implements IMatomoManager {
       
       if (!isSupported) {
         return false;
+      }
+
+      // For localhost/127.0.0.1, only enable Matomo when explicitly requested
+      // This prevents CircleCI tests from flooding the localhost Matomo domain
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalhost) {
+        // Check developer flag first, then localStorage as fallback
+        const showMatomo = ENABLE_MATOMO_LOCALHOST || localStorage.getItem('showMatomo') === 'true';
+        if (!showMatomo) {
+          return false;
+        }
       }
       
       // Check current configuration

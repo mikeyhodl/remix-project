@@ -6,6 +6,26 @@
 
 import { MatomoConfig } from './MatomoManager';
 
+// ================ DEVELOPER CONFIGURATION ================
+/**
+ * Enable Matomo tracking on localhost for development and testing
+ * 
+ * USAGE:
+ * - Set to `true` to enable Matomo on localhost/127.0.0.1 during development
+ * - Set to `false` (default) to disable Matomo on localhost (prevents CI test pollution)
+ * 
+ * ALTERNATIVES:
+ * - You can also enable Matomo temporarily by setting localStorage.setItem('showMatomo', 'true') in browser console
+ * - The localStorage method is temporary (cleared on browser restart)
+ * - This config flag is permanent until you change it back
+ * 
+ * IMPORTANT:
+ * - CircleCI tests automatically disable this through environment isolation
+ * - Production domains (remix.ethereum.org, etc.) are unaffected by this setting
+ * - Only affects localhost and 127.0.0.1 domains
+ */
+export const ENABLE_MATOMO_LOCALHOST = false;
+
 // Type for domain-specific custom dimensions
 export interface DomainCustomDimensions {
   trackingMode: number;  // Dimension ID for 'anon'/'cookie' tracking mode
@@ -75,7 +95,7 @@ export function createMatomoConfig(): MatomoConfig {
     matomoDomains: MATOMO_DOMAINS,
     scriptTimeout: 10000,
     onStateChange: (event, data, state) => {
-      console.log(`STATE CHANGE: ${event}`, data);
+      // hook into state changes if needed
     }
   };
 }
