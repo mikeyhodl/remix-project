@@ -56,7 +56,7 @@ const Model: ModelType = {
       (window as any)._paq = {
         push: (args: any[]) => {
           if (args[0] === 'trackEvent' && args.length >= 3) {
-            // Convert legacy _paq.push(['trackEvent', 'category', 'action', 'name']) 
+            // Convert legacy _paq.push(['trackEvent', 'category', 'action', 'name'])
             // to matomo plugin call with legacy string signature
             const [, category, action, name, value] = args;
             remixClient.call('matomo' as any, 'trackEvent', category, action, name, value);
@@ -66,7 +66,7 @@ const Model: ModelType = {
           }
         }
       };
-      
+
       // Make trackLearnethEvent available globally for the effects
       (window as any).trackLearnethEvent = trackLearnethEvent;
 
