@@ -16,7 +16,7 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
     let endpointStr: string
     if (typeof endpoint === 'object' && endpoint !== null && 'id' in endpoint && 'name' in endpoint) {
       chainId = endpoint.id
-      const normalized = String((endpoint as any).name || '').toLowerCase()
+      const normalized = String(endpoint.name || '').toLowerCase()
       endpointStr = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + normalized + '.etherscan.io'
     } else {
       endpointStr = endpoint as string
