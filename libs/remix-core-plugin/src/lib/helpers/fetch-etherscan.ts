@@ -16,19 +16,27 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
     let endpointStr: string
     if (typeof endpoint === 'object' && endpoint !== null && 'id' in endpoint && 'name' in endpoint) {
       chainId = endpoint.id
-      endpointStr = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
+      // Normalize name for per-network host (e.g., 'Sepolia' -> 'sepolia')
+      const normalized = String((endpoint as any).name || '').toLowerCase()
+      endpointStr = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + normalized + '.etherscan.io'
     } else {
       endpointStr = endpoint as string
     }
     try {
       // Prefer central V2 API host with chainid param (works across Etherscan-supported networks)
-      const v2Url = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-      let response = await fetch(v2Url)
+      const v2CentralUrl = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+      let response = await fetch(v2CentralUrl)
 
-      // If V2 host not reachable or returns an HTTP error, fallback to legacy V1 per-network endpoint
+      // If central V2 host is not reachable or returns an HTTP error,
+      // try per-network V2 next (future-proof if/when endpoints enable V2),
+      // then fallback to legacy V1 per-network endpoint.
       if (!response.ok) {
-        const v1Url = 'https://' + endpointStr + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        response = await fetch(v1Url)
+        const v2PerNetworkUrl = 'https://' + endpointStr + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+        response = await fetch(v2PerNetworkUrl)
+        if (!response.ok) {
+          const v1Url = 'https://' + endpointStr + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+          response = await fetch(v1Url)
+        }
       }
 
       data = await response.json()
