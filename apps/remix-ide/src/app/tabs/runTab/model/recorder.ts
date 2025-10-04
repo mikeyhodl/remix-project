@@ -36,6 +36,11 @@ interface RecorderRecord {
   from?: any;
 }
 
+interface JournalEntry {
+  timestamp: string | number;
+  record: RecorderRecord;
+}
+
 const profile = {
   name: 'recorder',
   displayName: 'Recorder',
@@ -232,7 +237,7 @@ export class Recorder extends Plugin {
     this.setListen(false)
     const liveMsg = liveMode ? ' with updated contracts' : ''
     logCallBack(`Running ${records.length} transaction(s)${liveMsg} ...`)
-    async.eachOfSeries(records, async (tx, index, cb) => {
+    async.eachOfSeries(records, async (tx: JournalEntry, index, cb) => {
       if (liveMode && tx.record.type === 'constructor') {
         // resolve the bytecode and ABI using the contract name, this ensure getting the last compiled one.
         const data = await this.call('compilerArtefacts', 'getArtefactsByContractName', tx.record.contractName)
@@ -270,7 +275,7 @@ export class Recorder extends Plugin {
       }
       if (!fnABI) {
         alertCb('cannot resolve abi of ' + JSON.stringify(record, null, '\t') + '. Execution stopped at ' + index)
-        return cb('cannot resolve abi')
+        return cb(new Error('cannot resolve abi'))
       }
       if (tx.record.parameters) {
         /* check if we have some params to resolve */
@@ -294,7 +299,7 @@ export class Recorder extends Plugin {
       const data = format.encodeData(fnABI, tx.record.parameters, tx.record.bytecode)
       if (data.error) {
         alertCb(data.error + '. Record:' + JSON.stringify(record, null, '\t') + '. Execution stopped at ' + index)
-        return cb(data.error)
+        return cb(new Error(data.error))
       }
       logCallBack(`(${index}) ${JSON.stringify(record, null, '\t')}`)
       logCallBack(`(${index}) data: ${data.data}`)
