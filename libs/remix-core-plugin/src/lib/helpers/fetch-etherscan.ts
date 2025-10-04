@@ -21,14 +21,14 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
       // Try V2 API first with chainid parameter
       let apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
       data = await fetch(apiUrl)
-      
+
       // If V2 API fails (404 or other error), fallback to V1 API
       if (!data.ok) {
         apiUrl = 'https://' + endpoint + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
         data = await fetch(apiUrl)
       }
       data = await data.json()
-      
+
       // Handle deprecated V1 endpoint response
       if (data.message === 'NOTOK' && data.result && data.result.includes('deprecated V1 endpoint')) {
         // Force V2 API usage even if it initially failed
@@ -36,7 +36,7 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
         data = await fetch(apiUrl)
         data = await data.json()
       }
-      
+
       // etherscan api doc https://docs.etherscan.io/api-endpoints/contracts
       if (data.message === 'OK' && data.status === "1") {
         if (data.result.length) {
