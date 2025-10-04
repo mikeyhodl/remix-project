@@ -13,34 +13,30 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
   if (etherscanKey) {
     // Extract chain ID from Network object before converting to string
     let chainId = 1 // Default to Ethereum mainnet
+    let endpointStr: string
     if (typeof endpoint === 'object' && endpoint !== null && 'id' in endpoint && 'name' in endpoint) {
       chainId = endpoint.id
-      endpoint = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
+      endpointStr = endpoint.id == 1 ? 'api.etherscan.io' : 'api-' + endpoint.name + '.etherscan.io'
+    } else {
+      endpointStr = endpoint as string
     }
     try {
-      // Try V2 API first with chainid parameter
-      let apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-      data = await fetch(apiUrl)
+      // Prefer central V2 API host with chainid param (works across networks)
+      const v2Url = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+      let response = await fetch(v2Url)
 
-      // If V2 API fails (404 or other error), fallback to V1 API
-      if (!data.ok) {
-        apiUrl = 'https://' + endpoint + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        data = await fetch(apiUrl)
+      // If V2 host not reachable or returns an HTTP error, fallback to legacy V1 per-network endpoint
+      if (!response.ok) {
+        const v1Url = 'https://' + endpointStr + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
+        response = await fetch(v1Url)
       }
-      data = await data.json()
 
-      // Handle deprecated V1 endpoint response
-      if (data.message === 'NOTOK' && data.result && data.result.includes('deprecated V1 endpoint')) {
-        // Force V2 API usage even if it initially failed
-        apiUrl = 'https://' + endpoint + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        data = await fetch(apiUrl)
-        data = await data.json()
-      }
+      data = await response.json()
 
       // etherscan api doc https://docs.etherscan.io/api-endpoints/contracts
       if (data.message === 'OK' && data.status === "1") {
         if (data.result.length) {
-          if (data.result[0].SourceCode === '') throw new Error(`contract not verified on Etherscan ${endpoint}`)
+          if (data.result[0].SourceCode === '') throw new Error(`contract not verified on Etherscan ${endpointStr}`)
           if (data.result[0].SourceCode.startsWith('{')) {
             data.result[0].SourceCode = JSON.parse(data.result[0].SourceCode.replace(/(?:\r\n|\r|\n)/g, '').replace(/^{{/, '{').replace(/}}$/, '}'))
           }
