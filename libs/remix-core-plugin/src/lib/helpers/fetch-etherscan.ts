@@ -21,7 +21,7 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
       endpointStr = endpoint as string
     }
     try {
-      // Prefer central V2 API host with chainid param (works across networks)
+      // Prefer central V2 API host with chainid param (works across Etherscan-supported networks)
       const v2Url = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
       let response = await fetch(v2Url)
 
