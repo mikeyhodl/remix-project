@@ -36,7 +36,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== INITIALIZATION METHODS ==================
-  
+
   async initialize(pattern?: InitializationPattern, options?: InitializationOptions): Promise<void> {
     return matomoManager.initialize(pattern, options)
   }
@@ -50,7 +50,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== MODE SWITCHING & CONSENT ==================
-  
+
   async switchMode(mode: TrackingMode, options?: ModeSwitchOptions & { processQueue?: boolean }): Promise<void> {
     return matomoManager.switchMode(mode, options)
   }
@@ -64,7 +64,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== TRACKING METHODS ==================
-  
+
   // Support both type-safe MatomoEvent objects and legacy string signatures
   trackEvent(event: MatomoEvent): number;
   trackEvent(category: string, action: string, name?: string, value?: number): number;
@@ -87,7 +87,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== STATE & STATUS ==================
-  
+
   getState(): MatomoState & MatomoStatus {
     return matomoManager.getState()
   }
@@ -109,7 +109,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== QUEUE MANAGEMENT ==================
-  
+
   getPreInitQueue(): MatomoCommand[] {
     return matomoManager.getPreInitQueue()
   }
@@ -127,7 +127,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== UTILITY & DIAGNOSTICS ==================
-  
+
   async testConsentBehavior(): Promise<void> {
     return matomoManager.testConsentBehavior()
   }
@@ -149,7 +149,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== EVENT SYSTEM ==================
-  
+
   /**
    * Add event listener to MatomoManager events
    * Note: Renamed to avoid conflict with Plugin base class
@@ -167,7 +167,7 @@ export class Matomo extends Plugin {
   }
 
   // ================== PLUGIN-SPECIFIC METHODS ==================
-  
+
   /**
    * Get direct access to the underlying MatomoManager instance
    * Use this if you need access to methods not exposed by the interface

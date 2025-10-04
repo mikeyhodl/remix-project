@@ -240,12 +240,11 @@ class AppComponent {
     const matomoManager = (window as any)._matomoManagerInstance;
     const configApi = Registry.getInstance().get('config').api;
     this.showMatomo = matomoManager ? matomoManager.shouldShowConsentDialog(configApi) : false;
-    
+
     // Store config values for backwards compatibility
     this.matomoConfAlreadySet = configApi.exists('settings/matomo-perf-analytics');
     this.matomoCurrentSetting = configApi.get('settings/matomo-perf-analytics');
-    
-    
+
     if (this.showMatomo) {
       this.track(MatomoManagerEvents.showConsentDialog());
     }

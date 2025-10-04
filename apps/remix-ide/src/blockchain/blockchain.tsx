@@ -795,10 +795,10 @@ export class Blockchain extends Plugin {
 
     const logTransaction = (txhash, origin) => {
       this.detectNetwork((error, network) => {
-        const sendTransactionEvent = origin === 'plugin' 
-          ? UdappEvents.sendTransactionFromPlugin 
+        const sendTransactionEvent = origin === 'plugin'
+          ? UdappEvents.sendTransactionFromPlugin
           : UdappEvents.sendTransactionFromGui;
-          
+
         if (network && network.id) {
           trackMatomoEvent(this, sendTransactionEvent(`${txhash}-${network.id}`))
         } else {

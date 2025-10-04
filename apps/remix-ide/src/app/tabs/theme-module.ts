@@ -2,9 +2,9 @@ import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
 import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
-import {Registry} from '@remix-project/remix-lib'
+import { Registry } from '@remix-project/remix-lib'
 import { trackMatomoEvent, ThemeModuleEvents } from '@remix-api'
-const isElectron = require('is-electron')
+import isElectron from 'is-electron'
 
 interface Theme {
   name: string;
@@ -124,8 +124,6 @@ export class ThemeModule extends Plugin {
     const nextTheme = this.themes[next] // Theme
     if (!this.forced) this._deps.config.set('settings/theme', next)
     document.getElementById('theme-link') ? document.getElementById('theme-link').remove() : null
-
-    
 
     const theme = document.createElement('link')
     theme.setAttribute('rel', 'stylesheet')

@@ -27,10 +27,10 @@ const profile = {
 export default class SettingsTab extends ViewPlugin {
   config: any = {}
   editor: any
-  
+
   // Type-safe method for Matomo plugin calls
   private async callMatomo<K extends keyof CustomRemixApi['matomo']['methods']>(
-    method: K, 
+    method: K,
     ...args: Parameters<CustomRemixApi['matomo']['methods'][K]>
   ): Promise<ReturnType<CustomRemixApi['matomo']['methods'][K]>> {
     return await this.call('matomo', method, ...args)
@@ -146,6 +146,5 @@ export default class SettingsTab extends ViewPlugin {
     this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked);
     this.dispatch({ ...this })
   }
-
 
 }

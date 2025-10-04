@@ -1,6 +1,6 @@
 import { RemixApp } from '@remix-ui/app'
 import axios from 'axios'
-import React, {useState, useEffect, useRef, useContext} from 'react'
+import React, { useState, useEffect, useRef, useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { useTracking, TrackingProvider } from '../contexts/TrackingContext'
 import { TrackingFunction } from '../utils/TrackingFunction'

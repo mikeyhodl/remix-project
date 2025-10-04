@@ -8,24 +8,24 @@ import { createTrackingFunction } from './app/utils/TrackingFunction'
 import { setupThemeAndLocale } from './app/utils/AppSetup'
 import { renderApp } from './app/utils/AppRenderer'
 
-  ; (async function () {
-    // Create Matomo configuration
-    const matomoConfig = createMatomoConfig();
-    const matomoManager = new MatomoManager(matomoConfig);
-    window._matomoManagerInstance = matomoManager; 
+; (async function () {
+  // Create Matomo configuration
+  const matomoConfig = createMatomoConfig();
+  const matomoManager = new MatomoManager(matomoConfig);
+  window._matomoManagerInstance = matomoManager;
 
-    // Setup config and auto-initialize Matomo if we have existing settings
-    await autoInitializeMatomo({
-      matomoManager,
-      debug: true
-    });
+  // Setup config and auto-initialize Matomo if we have existing settings
+  await autoInitializeMatomo({
+    matomoManager,
+    debug: true
+  });
 
-    // Setup theme and locale
-    setupThemeAndLocale();
+  // Setup theme and locale
+  setupThemeAndLocale();
 
-    // Create tracking function
-    const trackingFunction = createTrackingFunction(matomoManager);
+  // Create tracking function
+  const trackingFunction = createTrackingFunction(matomoManager);
 
-    // Render the app
-    renderApp({ trackingFunction });
-  })()
+  // Render the app
+  renderApp({ trackingFunction });
+})()

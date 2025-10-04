@@ -12,9 +12,9 @@ interface TrackingProviderProps {
   trackingFunction?: (event: MatomoEvent) => void
 }
 
-export const TrackingProvider: React.FC<TrackingProviderProps> = ({ 
-  children, 
-  trackingFunction 
+export const TrackingProvider: React.FC<TrackingProviderProps> = ({
+  children,
+  trackingFunction
 }) => {
   return (
     <TrackingContext.Provider value={{ track: trackingFunction }}>

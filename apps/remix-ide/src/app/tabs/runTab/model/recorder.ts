@@ -1,13 +1,13 @@
-var async = require('async')
-var remixLib = require('@remix-project/remix-lib')
+import * as async from 'async'
+import * as remixLib from '@remix-project/remix-lib'
 import { bytesToHex } from '@ethereumjs/util'
 import { hash } from '@remix-project/remix-lib'
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../.././../../package.json'
 import { trackMatomoEvent, RunEvents } from '@remix-api'
-var EventManager = remixLib.EventManager
-var format = remixLib.execution.txFormat
-var txHelper = remixLib.execution.txHelper
+const EventManager = remixLib.EventManager
+const format = remixLib.execution.txFormat
+const txHelper = remixLib.execution.txHelper
 import { addressToString } from '@remix-ui/helper'
 
 interface RecorderData {
@@ -41,7 +41,7 @@ const profile = {
   displayName: 'Recorder',
   description: 'Records transactions to save and run',
   version: packageJson.version,
-  methods: [  ]
+  methods: []
 }
 /**
   * Record transaction as long as the user create them.
@@ -59,27 +59,27 @@ export class Recorder extends Plugin {
 
     this.blockchain.event.register('initiatingTransaction', (timestamp, tx, payLoad) => {
       if (tx.useCall) return
-      var { from, to, value } = tx
+      const { from, to, value } = tx
 
       // convert to and from to tokens
       if (this.data._listen) {
-        var record: RecorderRecord = { 
+        const record: RecorderRecord = {
           value,
           inputs: txHelper.serializeInputs(payLoad.funAbi),
           parameters: payLoad.funArgs,
-          name: payLoad.funAbi.name,          
+          name: payLoad.funAbi.name,
           type: payLoad.funAbi.type
         }
         if (!to) {
-          var abi = payLoad.contractABI
-          var keccak = bytesToHex(hash.keccakFromString(JSON.stringify(abi)))
+          const abi = payLoad.contractABI
+          const keccak = bytesToHex(hash.keccakFromString(JSON.stringify(abi)))
           record.abi = keccak
           record.contractName = payLoad.contractName
           record.bytecode = payLoad.contractBytecode
           record.linkReferences = payLoad.linkReferences
           if (record.linkReferences && Object.keys(record.linkReferences).length) {
-            for (var file in record.linkReferences) {
-              for (var lib in record.linkReferences[file]) {
+            for (const file in record.linkReferences) {
+              for (const lib in record.linkReferences[file]) {
                 this.data._linkReferences[lib] = '<address>'
               }
             }
@@ -88,13 +88,13 @@ export class Recorder extends Plugin {
 
           this.data._contractABIReferences[timestamp] = keccak
         } else {
-          var creationTimestamp = this.data._createdContracts[to]
+          const creationTimestamp = this.data._createdContracts[to]
           record.to = `created{${creationTimestamp}}`
           record.abi = this.data._contractABIReferences[creationTimestamp]
-        }        
-        for (var p in record.parameters) {
-          var thisarg = record.parameters[p]
-          var thistimestamp = this.data._createdContracts[thisarg]
+        }
+        for (const p in record.parameters) {
+          const thisarg = record.parameters[p]
+          const thistimestamp = this.data._createdContracts[thisarg]
           if (thistimestamp) record.parameters[p] = `created{${thistimestamp}}`
         }
 
@@ -137,7 +137,7 @@ export class Recorder extends Plugin {
   }
 
   extractTimestamp (value) {
-    var stamp = /created{(.*)}/g.exec(value)
+    const stamp = /created{(.*)}/g.exec(value)
     if (stamp) {
       return stamp[1]
     }
@@ -154,7 +154,7 @@ export class Recorder extends Plugin {
     */
   resolveAddress (record, accounts, options) {
     if (record.to) {
-      var stamp = this.extractTimestamp(record.to)
+      const stamp = this.extractTimestamp(record.to)
       if (stamp) {
         record.to = this.data._createdContractsReverse[stamp]
       }
@@ -181,13 +181,13 @@ export class Recorder extends Plugin {
     *
     */
   getAll () {
-    var records = [].concat(this.data.journal)
+    const records = [].concat(this.data.journal)
     return {
       accounts: this.data._usedAccounts,
       linkReferences: this.data._linkReferences,
       transactions: records.sort((A, B) => {
-        var stampA = A.timestamp
-        var stampB = B.timestamp
+        const stampA = A.timestamp
+        const stampB = B.timestamp
         return stampA - stampB
       }),
       abis: this.data._abis
@@ -241,16 +241,16 @@ export class Recorder extends Plugin {
         abis[updatedABIKeccak] = data.artefact.abi
         tx.record.abi = updatedABIKeccak
       }
-      var record = this.resolveAddress(tx.record, accounts, options)
-      var abi = abis[tx.record.abi]
+      const record = this.resolveAddress(tx.record, accounts, options)
+      const abi = abis[tx.record.abi]
       if (!abi) {
         return alertCb('cannot find ABI for ' + tx.record.abi + '.  Execution stopped at ' + index)
       }
       /* Resolve Library */
       if (record.linkReferences && Object.keys(record.linkReferences).length) {
-        for (var k in linkReferences) {
-          var link = linkReferences[k]
-          var timestamp = this.extractTimestamp(link)
+        for (const k in linkReferences) {
+          let link = linkReferences[k]
+          const timestamp = this.extractTimestamp(link)
           if (timestamp && this.data._createdContractsReverse[timestamp]) {
             link = this.data._createdContractsReverse[timestamp]
           }
@@ -258,7 +258,7 @@ export class Recorder extends Plugin {
         }
       }
       /* Encode params */
-      var fnABI
+      let fnABI
       if (tx.record.type === 'constructor') {
         fnABI = txHelper.getConstructorInterface(abi)
       } else if (tx.record.type === 'fallback') {
@@ -276,12 +276,12 @@ export class Recorder extends Plugin {
         /* check if we have some params to resolve */
         try {
           tx.record.parameters.forEach((value, index) => {
-            var isString = true
+            let isString = true
             if (typeof value !== 'string') {
               isString = false
               value = JSON.stringify(value)
             }
-            for (var timestamp in this.data._createdContractsReverse) {
+            for (const timestamp in this.data._createdContractsReverse) {
               value = value.replace(new RegExp('created\\{' + timestamp + '\\}', 'g'), this.data._createdContractsReverse[timestamp])
             }
             if (!isString) value = JSON.parse(value)
@@ -291,7 +291,7 @@ export class Recorder extends Plugin {
           return alertCb('cannot resolve input parameters ' + JSON.stringify(tx.record.parameters) + '. Execution stopped at ' + index)
         }
       }
-      var data = format.encodeData(fnABI, tx.record.parameters, tx.record.bytecode)
+      const data = format.encodeData(fnABI, tx.record.parameters, tx.record.bytecode)
       if (data.error) {
         alertCb(data.error + '. Record:' + JSON.stringify(record, null, '\t') + '. Execution stopped at ' + index)
         return cb(data.error)

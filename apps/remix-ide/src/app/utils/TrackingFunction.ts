@@ -1,13 +1,11 @@
 /**
  * Tracking Function Factory
- * 
+ *
  * Creates a standardized tracking function that works with MatomoManager
  */
 
 import { MatomoEvent, MatomoEventBase } from '@remix-api';
 import { MatomoManager } from '../matomo/MatomoManager';
-
-
 
 export type TrackingFunction = (
   event: MatomoEvent
@@ -19,7 +17,7 @@ export type TrackingFunction = (
 export function createTrackingFunction(matomoManager: MatomoManager): TrackingFunction {
   return (event: MatomoEvent) => {
     let numericValue: number | undefined = undefined;
-    
+
     if (event.value !== undefined) {
       if (typeof event.value === 'number') {
         numericValue = event.value;
@@ -28,7 +26,7 @@ export function createTrackingFunction(matomoManager: MatomoManager): TrackingFu
         numericValue = isNaN(parsed) ? undefined : parsed;
       }
     }
-    
+
     matomoManager.trackEvent?.({ ...event, value: numericValue });
   };
 }
