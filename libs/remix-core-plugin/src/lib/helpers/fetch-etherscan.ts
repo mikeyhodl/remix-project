@@ -25,22 +25,22 @@ export const fetchContractFromEtherscan = async (plugin, endpoint: string | Netw
       // Prefer central V2 API host with chainid param (works across Etherscan-supported networks)
       const v2CentralUrl = 'https://api.etherscan.io/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
       let response = await fetch(v2CentralUrl)
-      let centralV2Status = response.status;
-      let centralV2StatusText = response.statusText;
+      const centralV2Status = response.status;
+      const centralV2StatusText = response.statusText;
 
       // If central V2 not OK, try per-network V2, then per-network V1
       if (!response.ok) {
         const v2PerNetworkUrl = 'https://' + endpointStr + '/v2/api?chainid=' + chainId + '&module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-        let v2PerNetworkResponse = await fetch(v2PerNetworkUrl)
-        let v2PerNetworkStatus = v2PerNetworkResponse.status;
-        let v2PerNetworkStatusText = v2PerNetworkResponse.statusText;
+        const v2PerNetworkResponse = await fetch(v2PerNetworkUrl)
+        const v2PerNetworkStatus = v2PerNetworkResponse.status;
+        const v2PerNetworkStatusText = v2PerNetworkResponse.statusText;
         if (v2PerNetworkResponse.ok) {
           response = v2PerNetworkResponse;
         } else {
           const v1Url = 'https://' + endpointStr + '/api?module=contract&action=getsourcecode&address=' + contractAddress + '&apikey=' + etherscanKey
-          let v1Response = await fetch(v1Url)
-          let v1Status = v1Response.status;
-          let v1StatusText = v1Response.statusText;
+          const v1Response = await fetch(v1Url)
+          const v1Status = v1Response.status;
+          const v1StatusText = v1Response.statusText;
           if (v1Response.ok) {
             response = v1Response;
           } else {
