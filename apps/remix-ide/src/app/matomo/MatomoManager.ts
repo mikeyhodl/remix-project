@@ -59,7 +59,7 @@ export interface MatomoTracker {
   getTrackerUrl(): string;
   getSiteId(): number | string;
   trackEvent(eventObj: MatomoEvent): void;
-  trackEvent(category: string, action: string, name?: string, value?: number): void;
+  trackEvent(category: string, action: string, name?: string, value?: string | number): void;
   trackPageView(title?: string): void;
   trackSiteSearch(keyword: string, category?: string, count?: number): void;
   trackGoal(goalId: number, value?: number): void;
@@ -163,7 +163,7 @@ export interface IMatomoManager {
 
   // Tracking methods - both type-safe and legacy signatures supported
   trackEvent(event: MatomoEvent): number;
-  trackEvent(category: string, action: string, name?: string, value?: number): number;
+  trackEvent(category: string, action: string, name?: string, value?: string | number): number;
   trackPageView(title?: string): void;
   setCustomDimension(id: number, value: string): void;
 
@@ -639,8 +639,8 @@ export class MatomoManager implements IMatomoManager {
 
   // Support both type-safe MatomoEvent objects and legacy signatures temporarily
   trackEvent(event: MatomoEvent): number;
-  trackEvent(category: string, action: string, name?: string, value?: number): number;
-  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): number {
+  trackEvent(category: string, action: string, name?: string, value?: string | number): number;
+  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: string | number): number {
     const eventId = ++this.state.lastEventId;
 
     // If first parameter is a MatomoEvent object, use type-safe approach

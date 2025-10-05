@@ -67,8 +67,8 @@ export class Matomo extends Plugin {
 
   // Support both type-safe MatomoEvent objects and legacy string signatures
   trackEvent(event: MatomoEvent): number;
-  trackEvent(category: string, action: string, name?: string, value?: number): number;
-  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): number {
+  trackEvent(category: string, action: string, name?: string, value?: string | number): number;
+  trackEvent(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: string | number): number {
     if (typeof eventObjOrCategory === 'string') {
       // Legacy string-based approach - convert to type-safe call
       return matomoManager.trackEvent(eventObjOrCategory, action!, name, value)
@@ -188,11 +188,11 @@ export class Matomo extends Plugin {
    * @param eventObjOrCategory Type-safe MatomoEvent object or category string
    * @param action Action string (if using legacy approach)
    * @param name Optional name parameter
-   * @param value Optional value parameter
+   * @param value Optional value parameter (string or number)
    */
   async track(event: MatomoEvent): Promise<void>;
-  async track(category: string, action: string, name?: string, value?: number): Promise<void>;
-  async track(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: number): Promise<void> {
+  async track(category: string, action: string, name?: string, value?: string | number): Promise<void>;
+  async track(eventObjOrCategory: MatomoEvent | string, action?: string, name?: string, value?: string | number): Promise<void> {
     if (typeof eventObjOrCategory === 'string') {
       // Legacy string-based approach
       await matomoManager.trackEvent(eventObjOrCategory, action!, name, value);

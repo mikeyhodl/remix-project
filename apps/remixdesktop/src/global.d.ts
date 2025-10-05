@@ -9,7 +9,7 @@ declare global {
       isE2E: () => Promise<boolean>
   canTrackMatomo: () => Promise<boolean>
   // Desktop tracking helpers
-      trackDesktopEvent: (category: string, action: string, name?: string, value?: number) => Promise<any>
+      trackDesktopEvent: (category: string, action: string, name?: string, value?: string | number) => Promise<any>
       setTrackingMode: (mode: 'cookie' | 'anon') => Promise<boolean>
       openFolder: (path: string) => Promise<any>
       openFolderInSameWindow: (path: string) => Promise<any>

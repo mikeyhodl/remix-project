@@ -12,21 +12,13 @@ export type TrackingFunction = (
 ) => void;
 
 /**
- * Create a tracking function that properly handles value conversion and delegates to MatomoManager
+ * Create a tracking function that properly delegates to MatomoManager
+ * Value can be either string or number as per Matomo API specification
  */
 export function createTrackingFunction(matomoManager: MatomoManager): TrackingFunction {
   return (event: MatomoEvent) => {
-    let numericValue: number | undefined = undefined;
-
-    if (event.value !== undefined) {
-      if (typeof event.value === 'number') {
-        numericValue = event.value;
-      } else if (typeof event.value === 'string') {
-        const parsed = parseFloat(event.value);
-        numericValue = isNaN(parsed) ? undefined : parsed;
-      }
-    }
-
-    matomoManager.trackEvent?.({ ...event, value: numericValue });
+    // Pass the event directly to MatomoManager without converting value
+    // Matomo API accepts both string and number for the value parameter
+    matomoManager.trackEvent?.(event);
   };
 }

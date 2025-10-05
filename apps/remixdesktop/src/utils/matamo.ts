@@ -35,7 +35,7 @@ let sessionVisitorId: string | null = null; // for anon ephemeral
 let sessionLastHit: number = 0; // for anon mode visit continuity
 let initialized = false; // true after initDesktopMatomo completes
 // Queue events before initial pageview so they join same visit
-type Queued = { type: 'pv' | 'ev'; name?: string; category?: string; action?: string; label?: string; value?: number };
+type Queued = { type: 'pv' | 'ev'; name?: string; category?: string; action?: string; label?: string; value?: string | number };
 const preInitQueue: Queued[] = [];
 
 function loadState(filePath: string): TrackerState | null {
@@ -176,7 +176,7 @@ export function trackDesktopPageView(name: string) {
   debugLog('pageview sent', { name, mode });
 }
 
-export function trackDesktopEvent(category: string, action: string, name?: string, value?: number) {
+export function trackDesktopEvent(category: string, action: string, name?: string, value?: string | number) {
   if (!initialized) {
     preInitQueue.push({ type: 'ev', category, action, label: name, value });
     debugLog('queued event (pre-init)', { category, action, name, value });
@@ -192,7 +192,7 @@ export function trackDesktopEvent(category: string, action: string, name?: strin
   params.e_c = category;
   params.e_a = action;
   if (name) params.e_n = name;
-  if (typeof value === 'number' && !isNaN(value)) params.e_v = String(value);
+  if (value !== undefined && value !== null) params.e_v = String(value);
   send(params);
   if (mode === 'cookie' && state) {
     state.lastHit = now;

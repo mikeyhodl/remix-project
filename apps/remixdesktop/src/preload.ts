@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isE2E: () => ipcRenderer.invoke('config:isE2E'),
   canTrackMatomo: () => ipcRenderer.invoke('config:canTrackMatomo'),
   // New granular tracking APIs
-  trackDesktopEvent: (category: string, action: string, name?: string, value?: number) =>
+  trackDesktopEvent: (category: string, action: string, name?: string, value?: string | number) =>
     {
       const payload = ['trackEvent', category, action, name, value]
       if (process.env.MATOMO_DEBUG === '1') console.log('[Matomo][preload] trackDesktopEvent', payload)

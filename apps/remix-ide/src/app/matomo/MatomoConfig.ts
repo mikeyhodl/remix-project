@@ -24,7 +24,7 @@ import { MatomoConfig } from './MatomoManager';
  * - Production domains (remix.ethereum.org, etc.) are unaffected by this setting
  * - Only affects localhost and 127.0.0.1 domains
  */
-export const ENABLE_MATOMO_LOCALHOST = false;
+export const ENABLE_MATOMO_LOCALHOST = true;
 
 // Type for domain-specific custom dimensions
 export interface DomainCustomDimensions {
