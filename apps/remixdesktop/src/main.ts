@@ -12,15 +12,6 @@ const args = process.argv.slice(1)
 console.log("args", args)
 export const isE2ELocal = args.find(arg => arg.startsWith('--e2e-local'))
 export const isE2E = args.find(arg => arg.startsWith('--e2e'))
-// Development Matomo tracking override: use site id 6 and allow tracking in dev mode
-export const isMatomoDev = args.includes('--matomo-dev-track')
-export const isMatomoDebug = args.includes('--matomo-debug') || process.env.MATOMO_DEBUG === '1'
-if (isMatomoDev) {
-  console.log('[Matomo][desktop] Dev tracking flag enabled (--matomo-dev-track) -> using site id 6 in dev')
-}
-if (isMatomoDebug) {
-  console.log('[Matomo][desktop] Debug logging enabled (--matomo-debug or MATOMO_DEBUG=1)')
-}
 
 if (isE2ELocal) {
   console.log('e2e mode')
@@ -76,8 +67,8 @@ export const createWindow = async (dir?: string): Promise<void> => {
   mainWindow.loadURL(
     (process.env.NODE_ENV === 'production' || isPackaged) && !isE2ELocal ? `file://${__dirname}/remix-ide/index.html` + params :
       'http://localhost:8080' + params)
-  // Track window creation (new Matomo desktop API)
-  trackDesktopEvent('Instance', 'create_window');
+
+  trackEvent('Instance', 'create_window', '', 1);
 
   if (dir) {
     mainWindow.setTitle(dir)
@@ -99,10 +90,8 @@ export const createWindow = async (dir?: string): Promise<void> => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
-  // Initialize anon mode by default (renderer can upgrade to cookie mode)
-  initAndTrackLaunch('anon');
-  // trackDesktopEvent('App', 'Launch', app.getVersion()); // Removed: duplicate of pageview
-  trackDesktopEvent('App', 'OS', process.platform);
+  trackEvent('App', 'Launch', app.getVersion(), 1, 1);
+  trackEvent('App', 'OS', process.platform, 1);
   if (!isE2E) registerLinuxProtocolHandler();
   require('./engine')
 });
@@ -264,8 +253,7 @@ import TerminalMenu from './menus/terminal';
 import HelpMenu from './menus/help';
 import { execCommand } from './menus/commands';
 import main from './menus/main';
-// Desktop Matomo tracking (new API)
-import { initAndTrackLaunch, trackDesktopEvent, setDesktopTrackingMode } from './utils/matamo';
+import { trackEvent } from './utils/matamo';
 import { githubAuthHandlerPlugin } from './engine';
 
 
@@ -298,29 +286,16 @@ ipcMain.handle('config:isE2E', async () => {
   return isE2E
 })
 
-ipcMain.handle('config:canTrackMatomo', async () => {
-  const enabled = (((process.env.NODE_ENV === 'production' || isPackaged) && !isE2E) || isMatomoDev) && !isE2E;
-  if (isMatomoDebug) console.log('config:canTrackMatomo', { enabled, isPackaged, nodeEnv: process.env.NODE_ENV, isE2E, isMatomoDev });
-  return enabled;
+ipcMain.handle('config:canTrackMatomo', async (event, name: string) => {
+  console.log('config:canTrackMatomo', ((process.env.NODE_ENV === 'production' || isPackaged) && !isE2E))
+  return ((process.env.NODE_ENV === 'production' || isPackaged) && !isE2E)
 })
 
 ipcMain.handle('matomo:trackEvent', async (event, data) => {
-  if (Array.isArray(data) && data[0] === 'trackEvent') {
-    if (process.env.MATOMO_DEBUG || process.env.NODE_ENV === 'development') {
-      console.log('[Matomo][desktop][IPC] event received', data);
-    }
-    trackDesktopEvent(data[1], data[2], data[3], data[4]);
-  } else {
-    if (process.env.MATOMO_DEBUG || process.env.NODE_ENV === 'development') {
-      console.log('[Matomo][desktop][IPC] ignored payload', data);
-    }
+  if (data && data[0] && data[0] === 'trackEvent') {
+    trackEvent(data[1], data[2], data[3], data[4])
   }
-});
-
-ipcMain.handle('matomo:setMode', async (_event, mode: 'cookie' | 'anon') => {
-  setDesktopTrackingMode(mode);
-  return true;
-});
+})
 
 ipcMain.on('focus-window', (windowId: any) => {
   console.log('focus-window', windowId)

@@ -18,14 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isPackaged: () => ipcRenderer.invoke('config:isPackaged'),
   isE2E: () => ipcRenderer.invoke('config:isE2E'),
   canTrackMatomo: () => ipcRenderer.invoke('config:canTrackMatomo'),
-  // New granular tracking APIs
-  trackDesktopEvent: (category: string, action: string, name?: string, value?: string | number) =>
-    {
-      const payload = ['trackEvent', category, action, name, value]
-      if (process.env.MATOMO_DEBUG === '1') console.log('[Matomo][preload] trackDesktopEvent', payload)
-      return ipcRenderer.invoke('matomo:trackEvent', payload)
-    },
-  setTrackingMode: (mode: 'cookie' | 'anon') => ipcRenderer.invoke('matomo:setMode', mode),
+  trackEvent: (args: any[]) => ipcRenderer.invoke('matomo:trackEvent', args),
   openFolder: (path: string) => ipcRenderer.invoke('fs:openFolder', webContentsId, path),
   openFolderInSameWindow: (path: string) => ipcRenderer.invoke('fs:openFolderInSameWindow', webContentsId, path),
   activatePlugin: (name: string) => {

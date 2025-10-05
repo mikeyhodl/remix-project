@@ -3,7 +3,7 @@ import { Profile } from "@remixproject/plugin-utils"
 import { autoUpdater } from "electron-updater"
 import { app } from 'electron';
 import { isE2E } from "../main";
-import { trackDesktopEvent } from "../utils/matamo";
+import { trackEvent } from "../utils/matamo";
 
 const profile = {
   displayName: 'appUpdater',
@@ -114,7 +114,7 @@ class AppUpdaterPluginClient extends ElectronBasePluginClient {
       type: 'log',
       value: 'Remix Desktop version: ' + autoUpdater.currentVersion,
     })
-  trackDesktopEvent('App', 'CheckForUpdate', 'Remix Desktop version: ' + autoUpdater.currentVersion, 1);
+    trackEvent('App', 'CheckForUpdate', 'Remix Desktop version: ' + autoUpdater.currentVersion, 1);
 
     autoUpdater.checkForUpdates()
   }
