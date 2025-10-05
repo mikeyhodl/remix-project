@@ -13,11 +13,7 @@ import isElectron from 'is-electron'
 import type { Template, TemplateGroup } from '@remix-ui/workspace'
 import './templates-selection-plugin.css'
 import { templates } from './templates'
-import { AssistantParams } from '@remix/remix-ai-core'
 import { TEMPLATE_METADATA } from '@remix-ui/workspace'
-
-//@ts-ignore
-import * as packageJson from '../../../../../../package.json'
 
 const profile = {
   name: 'templateSelection',

@@ -5,8 +5,6 @@ import { trackMatomoEvent, PluginEvents } from '@remix-api'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixUiCompileDetails } from '@remix-ui/solidity-compile-details'
 
-import * as packageJson from '../../../../../package.json'
-
 const profile = {
   name: 'compilationDetails',
   displayName: 'Solidity Compile Details',
