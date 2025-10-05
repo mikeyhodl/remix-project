@@ -65,7 +65,7 @@ interface UmlDownloadProps {
 }
 
 export default function UmlDownload(props: UmlDownloadProps) {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   return (
     <Fragment>
       <CustomTooltip
@@ -78,7 +78,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
           <Dropdown.Menu as={UmlCustomMenu} className="form-select">
             <Dropdown.Item
               onClick={() => {
-                track?.(SolidityUMLGenEvents.umlpngdownload('downloadAsPng'))
+                trackMatomoEvent?.(SolidityUMLGenEvents.umlpngdownload('downloadAsPng'))
                 props.download('png')
               }}
               data-id="umlPngDownload"
@@ -100,7 +100,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
             <Dropdown.Divider />
             <Dropdown.Item
               onClick={() => {
-                track?.(SolUmlGenEvents.umlpdfdownload('downloadAsPdf'))
+                trackMatomoEvent?.(SolUmlGenEvents.umlpdfdownload('downloadAsPdf'))
                 props.download('pdf')
               }}
               data-id="umlPdfDownload"

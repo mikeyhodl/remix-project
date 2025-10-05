@@ -35,7 +35,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   const [pluginList, setPluginList] = useState<UpdateInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
 
   useEffect(() => {
@@ -53,7 +53,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   }, [])
 
   const handleUpdatesActionClick = (updateInfo: UpdateInfo) => {
-    track?.(HomeTabEvents.updatesActionClick(updateInfo.title))
+    trackMatomoEvent?.(HomeTabEvents.updatesActionClick(updateInfo.title))
     if (updateInfo.action.type === 'link') {
       window.open(updateInfo.action.url, '_blank')
     } else if (updateInfo.action.type === 'methodCall') {

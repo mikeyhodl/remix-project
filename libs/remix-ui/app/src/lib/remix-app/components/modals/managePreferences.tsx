@@ -90,7 +90,7 @@ const ManagePreferencesSwitcher = (prop: {
 const ManagePreferencesDialog = (props) => {
   const { modal } = useDialogDispatchers()
   const { settings } = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [visible, setVisible] = useState<boolean>(true)
   const switcherState = useRef<Record<string, any>>(null)
 
@@ -115,8 +115,8 @@ const ManagePreferencesDialog = (props) => {
     settings.updateMatomoAnalyticsChoice(true) // Always true for matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(switcherState.current.matPerfSwitch) // Enable/Disable Matomo Performance analytics
     settings.updateCopilotChoice(switcherState.current.remixAISwitch) // Enable/Disable RemixAI copilot
-    track?.(LandingPageEvents.MatomoAIModal(`MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`))
-    track?.(LandingPageEvents.MatomoAIModal(`AICopilotStatus: ${switcherState.current.remixAISwitch}`))
+    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal(`MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`))
+    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal(`AICopilotStatus: ${switcherState.current.remixAISwitch}`))
     setVisible(false)
   }
 

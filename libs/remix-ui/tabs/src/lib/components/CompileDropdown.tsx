@@ -19,7 +19,7 @@ interface CompileDropdownProps {
 }
 
 export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugin, disabled, onOpen, onRequestCompileAndPublish, compiledFileName, setCompileState }) => {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [scriptFiles, setScriptFiles] = useState<string[]>([])
 
   const compileThen = async (nextAction: () => void, actionName: string) => {
@@ -138,7 +138,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runRemixAnalysis = async () => {
-    track?.(SolidityCompilerEvents.staticAnalysis('initiate'))
+    trackMatomoEvent?.(SolidityCompilerEvents.staticAnalysis('initiate'))
     await compileThen(async () => {
       const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
       if (!isStaticAnalyzersActive) {
@@ -157,7 +157,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runSolidityScan = async () => {
-    track?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
+    trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
     const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -165,7 +165,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => track?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
+            onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
               Learn more
           </a>
         </span><br/>
@@ -179,7 +179,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const openConfiguration = async () => {
-    track?.(SolidityCompilerEvents.initiate())
+    trackMatomoEvent?.(SolidityCompilerEvents.initiate())
     const isSolidityCompilerActive = await plugin.call('manager', 'isActive', 'solidity')
     if (!isSolidityCompilerActive) {
       await plugin.call('manager', 'activatePlugin', 'solidity')

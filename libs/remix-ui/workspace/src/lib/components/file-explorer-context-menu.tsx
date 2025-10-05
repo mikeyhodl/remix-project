@@ -12,7 +12,7 @@ import { FileExplorerEvent, FileExplorerEvents } from '@remix-api'
 export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const {
     actions,
     createNewFile,
@@ -124,7 +124,7 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               key={key}
               className={className}
               onClick={() => {
-                track?.(FileExplorerEvents.contextMenu('uploadFile'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('uploadFile'))
                 setShowFileExplorer(true)
               }}
             >
@@ -144,7 +144,7 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               key={key}
               className={className}
               onClick={() => {
-                track?.(FileExplorerEvents.contextMenu('uploadFile'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('uploadFile'))
                 setShowFileExplorer(true)
               }}
             >
@@ -166,78 +166,78 @@ export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => 
               switch (item.name) {
               case 'New File':
                 createNewFile(path)
-                track?.(FileExplorerEvents.contextMenu('newFile'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('newFile'))
                 break
               case 'New Folder':
                 createNewFolder(path)
-                track?.(FileExplorerEvents.contextMenu('newFolder'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('newFolder'))
                 break
               case 'Rename':
                 renamePath(path, type)
-                track?.(FileExplorerEvents.contextMenu('rename'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('rename'))
                 break
               case 'Delete':
                 deletePath(getPath())
-                track?.(FileExplorerEvents.contextMenu('delete'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('delete'))
                 break
               case 'Download':
                 downloadPath(path)
-                track?.(FileExplorerEvents.contextMenu('download'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('download'))
                 break
               case 'Push changes to gist':
-                track?.(FileExplorerEvents.contextMenu('pushToChangesoGist'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('pushToChangesoGist'))
                 pushChangesToGist(path)
                 break
               case 'Publish folder to gist':
-                track?.(FileExplorerEvents.contextMenu('publishFolderToGist'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('publishFolderToGist'))
                 publishFolderToGist(path)
                 break
               case 'Publish file to gist':
-                track?.(FileExplorerEvents.contextMenu('publishFileToGist'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('publishFileToGist'))
                 publishFileToGist(path)
                 break
               case 'Publish files to gist':
-                track?.(FileExplorerEvents.contextMenu('publishFilesToGist'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('publishFilesToGist'))
                 publishManyFilesToGist()
                 break
               case 'Run':
-                track?.(FileExplorerEvents.contextMenu('runScript'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('runScript'))
                 runScript(path)
                 break
               case 'Copy':
                 copy(path, type)
-                track?.(FileExplorerEvents.contextMenu('copy'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('copy'))
                 break
               case 'Copy name':
                 copyFileName(path, type)
-                track?.(FileExplorerEvents.contextMenu('copyName'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('copyName'))
                 break
               case 'Copy path':
                 copyPath(path, type)
-                track?.(FileExplorerEvents.contextMenu('copyPath'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('copyPath'))
                 break
               case 'Copy share URL':
                 copyShareURL(path, type)
-                track?.(FileExplorerEvents.contextMenu('copyShareURL'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('copyShareURL'))
                 break
               case 'Paste':
                 paste(path, type)
-                track?.(FileExplorerEvents.contextMenu('paste'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('paste'))
                 break
               case 'Delete All':
                 deletePath(getPath())
-                track?.(FileExplorerEvents.contextMenu('deleteAll'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('deleteAll'))
                 break
               case 'Publish Workspace to Gist':
-                track?.(FileExplorerEvents.contextMenu('publishWorkspace'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('publishWorkspace'))
                 publishFolderToGist(path)
                 break
               case 'Sign Typed Data':
-                track?.(FileExplorerEvents.contextMenu('signTypedData'))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu('signTypedData'))
                 signTypedData(path)
                 break
               default:
-                track?.(FileExplorerEvents.contextMenu(`${item.id}/${item.name}`))
+                trackMatomoEvent?.(FileExplorerEvents.contextMenu(`${item.id}/${item.name}`))
                 emit && emit({ ...item, path: [path]} as customAction)
                 break
               }

@@ -17,7 +17,7 @@ export interface HamburgerMenuItemProps {
 export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
   const platform = useContext(platformContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -29,7 +29,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
               key={uid + '-fe-ws'}
               onClick={() => {
                 props.actionOnClick()
-                track?.(FileExplorerEvents.workspaceMenu(uid))
+                trackMatomoEvent?.(FileExplorerEvents.workspaceMenu(uid))
               }}
             >
               <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>
@@ -46,7 +46,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
 // keeping the following for a later use:
 export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -57,7 +57,7 @@ export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
             key={uid + '-fe-ws'}
             onClick={() => {
               props.actionOnClick()
-              track?.(FileExplorerEvents.workspaceMenu(uid))
+              trackMatomoEvent?.(FileExplorerEvents.workspaceMenu(uid))
             }}
           >
             <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>

@@ -16,7 +16,7 @@ export interface RemixPanelProps {
 const RemixUIPanelHeader = (props: RemixPanelProps) => {
   const [plugin, setPlugin] = useState<PluginRecord>()
   const [toggleExpander, setToggleExpander] = useState<boolean>(false)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   useEffect(() => {
     setToggleExpander(false)
@@ -34,12 +34,12 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
 
   const pinPlugin = () => {
     props.pinView && props.pinView(plugin.profile, plugin.view)
-    track?.(PluginPanelEvents.pinToRight(plugin.profile.name))
+    trackMatomoEvent?.(PluginPanelEvents.pinToRight(plugin.profile.name))
   }
 
   const unPinPlugin = () => {
     props.unPinView && props.unPinView(plugin.profile)
-    track?.(PluginPanelEvents.pinToLeft(plugin.profile.name))
+    trackMatomoEvent?.(PluginPanelEvents.pinToLeft(plugin.profile.name))
   }
 
   const closePlugin = async () => {

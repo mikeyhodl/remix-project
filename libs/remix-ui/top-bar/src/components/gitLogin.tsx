@@ -20,7 +20,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
   loginWithGitHub
 }) => {
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   // Get the GitHub user state from app context
   const gitHubUser = appContext?.appState?.gitHubUser
@@ -90,7 +90,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-publish-to-gist"
               onClick={async () => {
                 await publishToGist()
-                track?.(TopBarEvents.GIT('publishToGist'))
+                trackMatomoEvent?.(TopBarEvents.GIT('publishToGist'))
               }}
             >
               <i className="fab fa-github me-2"></i>
@@ -101,7 +101,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
               data-id="github-dropdown-item-disconnect"
               onClick={async () => {
                 await logOutOfGithub()
-                track?.(TopBarEvents.GIT('logout'))
+                trackMatomoEvent?.(TopBarEvents.GIT('logout'))
               }}
               className="text-danger"
             >

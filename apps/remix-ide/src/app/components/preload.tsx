@@ -53,7 +53,7 @@ export const Preload = (props: PreloadProps) => {
         })
       })
       .catch((err) => {
-        track?.(AppEvents.PreloadError(err && err.message))
+        trackMatomoEvent?.(AppEvents.PreloadError(err && err.message))
         console.error('Error loading Remix:', err)
         setError(true)
       })
@@ -70,7 +70,7 @@ export const Preload = (props: PreloadProps) => {
     setShowDownloader(false)
     const fsUtility = new fileSystemUtility()
     const migrationResult = await fsUtility.migrate(localStorageFileSystem.current, remixIndexedDB.current)
-    track?.(MigrateEvents.result(migrationResult ? 'success' : 'fail'))
+    trackMatomoEvent?.(MigrateEvents.result(migrationResult ? 'success' : 'fail'))
     await setFileSystems()
   }
 
@@ -81,10 +81,10 @@ export const Preload = (props: PreloadProps) => {
     ])
     if (fsLoaded) {
       console.log(fsLoaded.name + ' activated')
-      track?.(StorageEvents.activate(fsLoaded.name))
+      trackMatomoEvent?.(StorageEvents.activate(fsLoaded.name))
       loadAppComponent()
     } else {
-      track?.(StorageEvents.error('no supported storage'))
+      trackMatomoEvent?.(StorageEvents.error('no supported storage'))
       setSupported(false)
     }
   }
@@ -102,8 +102,8 @@ export const Preload = (props: PreloadProps) => {
       return
     }
     async function loadStorage() {
-      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || track?.(StorageEvents.error('indexedDB not supported'))
-      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || track?.(StorageEvents.error('localstorage not supported'))
+      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || trackMatomoEvent?.(StorageEvents.error('indexedDB not supported'))
+      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || trackMatomoEvent?.(StorageEvents.error('localstorage not supported'))
       await testmigration()
       remixIndexedDB.current.loaded && (await remixIndexedDB.current.checkWorkspaces())
       localStorageFileSystem.current.loaded && (await localStorageFileSystem.current.checkWorkspaces())

@@ -52,7 +52,7 @@ export function Workspace() {
   const [canPaste, setCanPaste] = useState(false)
 
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const [state, setState] = useState<WorkSpaceState>({
     ctrlKey: false,
@@ -219,7 +219,7 @@ export function Workspace() {
   ))
 
   const processLoading = (type: string) => {
-    track?.(HomeTabEvents.filesSection('importFrom' + type))
+    trackMatomoEvent?.(HomeTabEvents.filesSection('importFrom' + type))
     const contentImport = global.plugin.contentImport
     const workspace = global.plugin.fileManager.getProvider('workspace')
     const startsWith = modalState.importSource.substring(0, 4)
@@ -522,7 +522,7 @@ export function Workspace() {
     try {
       await global.dispatchSwitchToWorkspace(name)
       global.dispatchHandleExpandPath([])
-      track?.(WorkspaceEvents.switchWorkspace(name))
+      trackMatomoEvent?.(WorkspaceEvents.switchWorkspace(name))
     } catch (e) {
       global.modal(
         intl.formatMessage({ id: 'filePanel.workspace.switch' }),
@@ -860,10 +860,10 @@ export function Workspace() {
     try {
       if (branch.remote) {
         await global.dispatchCheckoutRemoteBranch(branch)
-        track?.(WorkspaceEvents.GIT('checkout_remote_branch'))
+        trackMatomoEvent?.(WorkspaceEvents.GIT('checkout_remote_branch'))
       } else {
         await global.dispatchSwitchToBranch(branch)
-        track?.(WorkspaceEvents.GIT('switch_to_existing_branch'))
+        trackMatomoEvent?.(WorkspaceEvents.GIT('switch_to_existing_branch'))
       }
     } catch (e) {
       console.error(e)
@@ -880,7 +880,7 @@ export function Workspace() {
   const switchToNewBranch = async () => {
     try {
       await global.dispatchCreateNewBranch(branchFilter)
-      track?.(WorkspaceEvents.GIT('switch_to_new_branch'))
+      trackMatomoEvent?.(WorkspaceEvents.GIT('switch_to_new_branch'))
     } catch (e) {
       global.modal(
         intl.formatMessage({ id: 'filePanel.checkoutGitBranch' }),
@@ -924,7 +924,7 @@ export function Workspace() {
   const logInGithub = async () => {
     await global.plugin.call('menuicons', 'select', 'dgit');
     await global.plugin.call('dgit', 'open', gitUIPanels.GITHUB)
-    track?.(WorkspaceEvents.GIT('login'))
+    trackMatomoEvent?.(WorkspaceEvents.GIT('login'))
   }
 
   const IsGitRepoDropDownMenuItem = (props: { isGitRepo: boolean, mName: string}) => {

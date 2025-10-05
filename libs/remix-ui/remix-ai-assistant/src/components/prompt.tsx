@@ -79,7 +79,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   aiMode,
   setAiMode
 }) => {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   return (
     <>
@@ -122,7 +122,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('ask')
-                  track?.(RemixAIEvents.ModeSwitch('ask'))
+                  trackMatomoEvent?.(RemixAIEvents.ModeSwitch('ask'))
                 }}
                 title="Ask mode - Chat with AI"
               >
@@ -133,7 +133,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('edit')
-                  track?.(RemixAIEvents.ModeSwitch('edit'))
+                  trackMatomoEvent?.(RemixAIEvents.ModeSwitch('edit'))
                 }}
                 title="Edit mode - Edit workspace code"
               >

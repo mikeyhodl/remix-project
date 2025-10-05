@@ -11,7 +11,7 @@ import { FileExplorerEvents } from '@remix-api'
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
   const platform = useContext(platformContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [state, setState] = useState({
     menuItems: [
       {
@@ -104,7 +104,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        track?.(FileExplorerEvents.fileAction(action))
+                        trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                         props.uploadFile(e.target)
                         e.target.value = null
                       }}
@@ -135,7 +135,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        track?.(FileExplorerEvents.fileAction(action))
+                        trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                         props.uploadFolder(e.target)
                         e.target.value = null
                       }}
@@ -161,7 +161,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     className={icon + ' mx-1 remixui_menuItem'}
                     key={`index-${action}-${placement}-${icon}`}
                     onClick={() => {
-                      track?.(FileExplorerEvents.fileAction(action))
+                      trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                       props.handleGitInit()
                     }}
                   >
@@ -183,7 +183,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     data-id={'fileExplorerNewFile' + action}
                     onClick={(e) => {
                       e.stopPropagation()
-                      track?.(FileExplorerEvents.fileAction(action))
+                      trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                       if (action === 'createNewFile') {
                         props.createNewFile()
                       } else if (action === 'createNewFolder') {
@@ -191,10 +191,10 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       } else if (action === 'publishToGist' || action == 'updateGist') {
                         props.publishToGist()
                       } else if (action === 'importFromIpfs') {
-                        track?.(FileExplorerEvents.fileAction(action))
+                        trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                         props.importFromIpfs('Ipfs', 'ipfs hash', ['ipfs://QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH'], 'ipfs://')
                       } else if (action === 'importFromHttps') {
-                        track?.(FileExplorerEvents.fileAction(action))
+                        trackMatomoEvent?.(FileExplorerEvents.fileAction(action))
                         props.importFromHttps('Https', 'http/https raw content', ['https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/token/ERC20/ERC20.sol'])
                       } else {
                         state.actions[action]()

@@ -8,7 +8,7 @@ import { TrackingContext } from '@remix-ide/tracking'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {
   const [langOptions, setLangOptions] = useState<string>()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const changeLanguage = async (lang: string) => {
     await plugin.call('locale', 'switchLocale', lang)
@@ -42,7 +42,7 @@ export function LanguageOptions({ plugin }: { plugin: any }) {
               {
                 changeLanguage(lang.toLowerCase())
                 setLangOptions(lang)
-                track?.(HomeTabEvents.switchTo(lang))
+                trackMatomoEvent?.(HomeTabEvents.switchTo(lang))
               }}
               style={{ color: 'var(--text)', cursor: 'pointer' }}
               key={index}

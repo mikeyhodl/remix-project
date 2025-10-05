@@ -160,7 +160,7 @@ const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
   const intl = useIntl()
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const [, setCurrentBreakpoints] = useState({})
@@ -791,7 +791,7 @@ export const EditorUI = (props: EditorUIProps) => {
               setTimeout(async () => {
                 props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
               }, 500)
-              track?.(AIEvents.vulnerabilityCheckPastedCode())
+              trackMatomoEvent?.(AIEvents.vulnerabilityCheckPastedCode())
             })();
           }
         };
@@ -848,7 +848,7 @@ export const EditorUI = (props: EditorUIProps) => {
           )
         }
         props.plugin.call('notification', 'modal', modalContent)
-        track?.(EditorEvents.onDidPaste('more_than_10_lines'))
+        trackMatomoEvent?.(EditorEvents.onDidPaste('more_than_10_lines'))
       }
     })
 
@@ -859,7 +859,7 @@ export const EditorUI = (props: EditorUIProps) => {
         if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
           inlineCompletionProvider.currentCompletion.onAccepted()
           inlineCompletionProvider.currentCompletion.accepted = true
-          track?.(AIEvents.copilotCompletionAccepted())
+          trackMatomoEvent?.(AIEvents.copilotCompletionAccepted())
         }
       }
     });
@@ -995,7 +995,7 @@ export const EditorUI = (props: EditorUIProps) => {
               }, 150)
             }
           }
-          track?.(AIEvents.generateDocumentation())
+          trackMatomoEvent?.(AIEvents.generateDocumentation())
         },
       }
     }
@@ -1014,7 +1014,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
-        track?.(AIEvents.explainFunction())
+        trackMatomoEvent?.(AIEvents.explainFunction())
       },
     }
 
@@ -1038,7 +1038,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
-        track?.(AIEvents.explainFunction())
+        trackMatomoEvent?.(AIEvents.explainFunction())
       },
     }
 

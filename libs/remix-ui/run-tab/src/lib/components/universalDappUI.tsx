@@ -17,7 +17,7 @@ const txHelper = remixLib.execution.txHelper
 
 export function UniversalDappUI(props: UdappProps) {
   const intl = useIntl()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [toggleExpander, setToggleExpander] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState<FuncABI[]>(null)
   const [address, setAddress] = useState<string>('')
@@ -119,14 +119,14 @@ export function UniversalDappUI(props: UdappProps) {
   const remove = async() => {
     if (props.instance.isPinned) {
       await unsavePinnedContract()
-      track?.(UdappEvents.pinContracts('removePinned'))
+      trackMatomoEvent?.(UdappEvents.pinContracts('removePinned'))
     }
     props.removeInstance(props.index)
   }
 
   const unpinContract = async() => {
     await unsavePinnedContract()
-    track?.(UdappEvents.pinContracts('unpinned'))
+    trackMatomoEvent?.(UdappEvents.pinContracts('unpinned'))
     props.unpinInstance(props.index)
   }
 
@@ -148,12 +148,12 @@ export function UniversalDappUI(props: UdappProps) {
       pinnedAt: Date.now()
     }
     await props.plugin.call('fileManager', 'writeFile', `.deploys/pinned-contracts/${props.plugin.REACT_API.chainId}/${props.instance.address}.json`, JSON.stringify(objToSave, null, 2))
-    track?.(UdappEvents.pinContracts(`pinned at ${props.plugin.REACT_API.chainId}`))
+    trackMatomoEvent?.(UdappEvents.pinContracts(`pinned at ${props.plugin.REACT_API.chainId}`))
     props.pinInstance(props.index, objToSave.pinnedAt, objToSave.filePath)
   }
 
   const runTransaction = (lookupOnly, funcABI: FuncABI, valArr, inputsValues, funcIndex?: number) => {
-    if (props.instance.isPinned) track?.(UdappEvents.pinContracts('interactWithPinned'))
+    if (props.instance.isPinned) trackMatomoEvent?.(UdappEvents.pinContracts('interactWithPinned'))
     const functionName = funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
     const logMsg = `${lookupOnly ? 'call' : 'transact'} to ${props.instance.name}.${functionName}`
 

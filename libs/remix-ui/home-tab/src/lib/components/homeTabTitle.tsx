@@ -58,12 +58,12 @@ const iconButtons: HometabIconSection[] = [
 function HomeTabTitle() {
   const remiAudioEl = useRef(null)
   const theme = useContext(ThemeContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
 
   const playRemi = async () => {
     remiAudioEl.current.play()
-    track?.(HomeTabEvents.titleCard('remiAudio'))
+    trackMatomoEvent?.(HomeTabEvents.titleCard('remiAudio'))
   }
 
   const openLink = (url = '') => {
@@ -106,7 +106,7 @@ function HomeTabTitle() {
                   key={index}
                   onClick={() => {
                     openLink(button.urlLink)
-                    track?.(HomeTabEvents.titleCard(button.matomoTrackingEntry[3]))
+                    trackMatomoEvent?.(HomeTabEvents.titleCard(button.matomoTrackingEntry[3]))
                   }}
                   className={`border-0 h-100 px-1 btn fab ${button.iconClass} text-dark`}
                 ></button>
@@ -115,8 +115,8 @@ function HomeTabTitle() {
           </span>
         </div>
         <div className="d-flex flex-row flex-wrap justify-content-between">
-          <a className="btn btn-secondary bg-dark text-decoration-none col-md-5" style={{ fontSize: '0.7rem', minWidth: '125px', color: isDark ? 'white' : 'black' }} href="https://remix-ide.readthedocs.io/en/latest" target="_blank" onClick={() => track?.(HomeTabEvents.titleCard('documentation'))}><FormattedMessage id="home.documentation" /></a>
-          <a className="btn btn-secondary bg-dark text-decoration-none col-md-5" style={{ fontSize: '0.7rem', minWidth: '125px', color: isDark ? 'white' : 'black' }} href="https://remix-project.org" target="_blank" onClick={() => track?.(HomeTabEvents.titleCard('webSite'))}><FormattedMessage id="home.website" /></a>
+          <a className="btn btn-secondary bg-dark text-decoration-none col-md-5" style={{ fontSize: '0.7rem', minWidth: '125px', color: isDark ? 'white' : 'black' }} href="https://remix-ide.readthedocs.io/en/latest" target="_blank" onClick={() => trackMatomoEvent?.(HomeTabEvents.titleCard('documentation'))}><FormattedMessage id="home.documentation" /></a>
+          <a className="btn btn-secondary bg-dark text-decoration-none col-md-5" style={{ fontSize: '0.7rem', minWidth: '125px', color: isDark ? 'white' : 'black' }} href="https://remix-project.org" target="_blank" onClick={() => trackMatomoEvent?.(HomeTabEvents.titleCard('webSite'))}><FormattedMessage id="home.website" /></a>
         </div>
         <DesktopDownload className='mt-3' compact trackingContext="hometab" />
       </div>

@@ -34,7 +34,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
   const [runner] = useState(new CodeAnalysis())
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const preProcessModules = (arr: any) => {
     return arr.map((Item, i) => {

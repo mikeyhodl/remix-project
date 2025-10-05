@@ -14,7 +14,7 @@ export function AccountUI(props: AccountProps) {
   const { selectedAccount, loadedAccounts } = props.accounts
   const { selectExEnv, personalMode, networkName } = props
   const accounts = Object.keys(loadedAccounts)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [plusOpt, setPlusOpt] = useState({
     classList: '',
     title: ''
@@ -191,7 +191,7 @@ export function AccountUI(props: AccountProps) {
             href="https://docs.safe.global/advanced/smart-account-overview#safe-smart-account"
             target="_blank"
             rel="noreferrer noopener"
-            onClick={() => track?.(UdappEvents.safeSmartAccount('learnMore'))}
+            onClick={() => trackMatomoEvent?.(UdappEvents.safeSmartAccount('learnMore'))}
             className="mb-3 d-inline-block link-primary"
           >
             Learn more
@@ -229,12 +229,12 @@ export function AccountUI(props: AccountProps) {
       ),
       intl.formatMessage({ id: 'udapp.continue' }),
       () => {
-        track?.(UdappEvents.safeSmartAccount('createClicked'))
+        trackMatomoEvent?.(UdappEvents.safeSmartAccount('createClicked'))
         props.createNewSmartAccount()
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {
-        track?.(UdappEvents.safeSmartAccount('cancelClicked'))
+        trackMatomoEvent?.(UdappEvents.safeSmartAccount('cancelClicked'))
       }
     )
   }
@@ -264,7 +264,7 @@ export function AccountUI(props: AccountProps) {
         try {
           await props.delegationAuthorization(delegationAuthorizationAddressRef.current)
           setContractHasDelegation(true)
-          track?.(UdappEvents.contractDelegation('create'))
+          trackMatomoEvent?.(UdappEvents.contractDelegation('create'))
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -290,7 +290,7 @@ export function AccountUI(props: AccountProps) {
           await props.delegationAuthorization('0x0000000000000000000000000000000000000000')
           delegationAuthorizationAddressRef.current = ''
           setContractHasDelegation(false)
-          track?.(UdappEvents.contractDelegation('remove'))
+          trackMatomoEvent?.(UdappEvents.contractDelegation('remove'))
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -305,7 +305,7 @@ export function AccountUI(props: AccountProps) {
   }
 
   const signMessage = () => {
-    track?.(UdappEvents.signUsingAccount(`selectExEnv: ${selectExEnv}`))
+    trackMatomoEvent?.(UdappEvents.signUsingAccount(`selectExEnv: ${selectExEnv}`))
     if (!accounts[0]) {
       return props.tooltip(intl.formatMessage({ id: 'udapp.tooltipText1' }))
     }

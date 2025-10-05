@@ -11,7 +11,7 @@ import { UdappEvents } from '@remix-api'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
   const intl = useIntl()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [abiLabel, setAbiLabel] = useState<{
     display: string
     content: string
@@ -406,7 +406,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             >
               <i style={{ cursor: 'pointer' }} onClick={(_) => {
                 props.syncContracts()
-                track?.(UdappEvents.syncContracts(compilationSource ? compilationSource : 'compilationSourceNotYetSet'))
+                trackMatomoEvent?.(UdappEvents.syncContracts(compilationSource ? compilationSource : 'compilationSourceNotYetSet'))
               }} className="udapp_syncFramework udapp_icon fa fa-refresh" aria-hidden="true"></i>
             </CustomTooltip>
           ) : null}

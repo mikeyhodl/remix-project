@@ -10,7 +10,7 @@ import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvents } from '@remix-api'
 
 export function EnvironmentUI(props: EnvironmentProps) {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const vmStateName = useRef('')
   const providers = props.providers.providerList
   const [isSwitching, setIsSwitching] = useState(false)
@@ -105,7 +105,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const forkState = async () => {
-    track?.(UdappEvents.forkState(`forkState clicked`))
+    trackMatomoEvent?.(UdappEvents.forkState(`forkState clicked`))
     let context = currentProvider.name
     context = context.replace('vm-fs-', '')
 
@@ -142,7 +142,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
             await props.runTabPlugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${currentProvider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + vmStateName.current)
           }
         }
-        track?.(UdappEvents.forkState(`forked from ${context}`))
+        trackMatomoEvent?.(UdappEvents.forkState(`forked from ${context}`))
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {}
@@ -150,7 +150,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const resetVmState = async() => {
-    track?.(UdappEvents.deleteState(`deleteState clicked`))
+    trackMatomoEvent?.(UdappEvents.deleteState(`deleteState clicked`))
     const context = currentProvider.name
     const contextExists = await props.runTabPlugin.call('fileManager', 'exists', `.states/${context}/state.json`)
     if (contextExists) {
@@ -170,7 +170,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
           const isPinnedContracts = await props.runTabPlugin.call('fileManager', 'exists', `.deploys/pinned-contracts/${context}`)
           if (isPinnedContracts) await props.runTabPlugin.call('fileManager', 'remove', `.deploys/pinned-contracts/${context}`)
           props.runTabPlugin.call('notification', 'toast', `VM state reset successfully.`)
-          track?.(UdappEvents.deleteState(`VM state reset`))
+          trackMatomoEvent?.(UdappEvents.deleteState(`VM state reset`))
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
         null

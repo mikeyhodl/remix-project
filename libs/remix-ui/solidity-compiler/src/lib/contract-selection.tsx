@@ -16,7 +16,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   const { api, compiledFileName, contractsDetails, contractList, compilerInput, modal } = props
   const [selectedContract, setSelectedContract] = useState('')
   const [storage, setStorage] = useState(null)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const intl = useIntl()
 
@@ -167,7 +167,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const details = () => {
-    track?.(CompilerEvents.compilerDetails('display'))
+    trackMatomoEvent?.(CompilerEvents.compilerDetails('display'))
     if (!selectedContract) throw new Error('No contract compiled yet')
 
     const help = {
@@ -236,7 +236,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       </div>
     )
     const downloadFn = () => {
-      track?.(CompilerEvents.compilerDetails('download'))
+      trackMatomoEvent?.(CompilerEvents.compilerDetails('download'))
       saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
     }
     // modal(selectedContract, log, intl.formatMessage({id: 'solidity.download'}), downloadFn, true, intl.formatMessage({id: 'solidity.close'}), null)
@@ -248,7 +248,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runStaticAnalysis = async () => {
-    track?.(SolidityCompilerEvents.runStaticAnalysis('initiate'))
+    trackMatomoEvent?.(SolidityCompilerEvents.runStaticAnalysis('initiate'))
     const plugin = api as any
     const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
     if (!isStaticAnalyzersActive) {
@@ -262,7 +262,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runSolidityScan = async () => {
-    track?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
+    trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
     const modalStruct: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -270,7 +270,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => track?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
+            onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
               Learn more
           </a>
         </span>
@@ -280,7 +280,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       okLabel: <FormattedMessage id="solidity.solScan.modalOkLabel" />,
       okFn: handleScanContinue,
       cancelLabel: <FormattedMessage id="solidity.solScan.modalCancelLabel" />,
-      cancelFn:() => { track?.(SolidityCompilerEvents.solidityScan('cancelClicked'))}
+      cancelFn:() => { trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('cancelClicked'))}
     }
     await (api as any).call('notification', 'modal', modal)
   }

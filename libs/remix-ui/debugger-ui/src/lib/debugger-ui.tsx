@@ -15,7 +15,7 @@ import './debugger-ui.css'
 
 export const DebuggerUI = (props: DebuggerUIProps) => {
   const intl = useIntl()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const debuggerModule = props.debuggerAPI
   const [state, setState] = useState({
     isActive: false,
@@ -261,7 +261,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     const web3 = optWeb3 || (state.opt.debugWithLocalNode ? await debuggerModule.web3() : await debuggerModule.getDebugWeb3())
     try {
       const networkId = await web3.eth.net.getId()
-      track?.(DebuggerEvents.startDebugging(networkId))
+      trackMatomoEvent?.(DebuggerEvents.startDebugging(networkId))
       if (networkId === 42) {
         setState((prevState) => {
           return {

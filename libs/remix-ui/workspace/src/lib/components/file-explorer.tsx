@@ -50,7 +50,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
 
   const { plugin } = useContext(FileSystemContext)
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [filesSelected, setFilesSelected] = useState<string[]>([])
   const feWindow = (window as any)
 
@@ -128,7 +128,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
     if (treeRef.current) {
       const deleteKeyPressHandler = async (eve: KeyboardEvent) => {
         if (eve.key === 'Delete' ) {
-          track?.(FileExplorerEvents.deleteKey('deletePath'))
+          trackMatomoEvent?.(FileExplorerEvents.deleteKey('deletePath'))
           setState((prevState) => {
             return { ...prevState, deleteKey: true }
           })
@@ -137,7 +137,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
         }
         if (eve.metaKey) {
           if (eve.key === 'Backspace') {
-            track?.(FileExplorerEvents.osxDeleteKey('deletePath'))
+            trackMatomoEvent?.(FileExplorerEvents.osxDeleteKey('deletePath'))
             setState((prevState) => {
               return { ...prevState, deleteKey: true }
             })
@@ -183,7 +183,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
     if (treeRef.current) {
       const F2KeyPressHandler = async (eve: KeyboardEvent) => {
         if (eve.key === 'F2' ) {
-          track?.(FileExplorerEvents.f2ToRename('RenamePath'))
+          trackMatomoEvent?.(FileExplorerEvents.f2ToRename('RenamePath'))
           await performRename()
           setState((prevState) => {
             return { ...prevState, F2Key: true }
@@ -272,7 +272,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const CopyComboHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'c' || eve.code === 'KeyC')) {
           await performCopy()
-          track?.(FileExplorerEvents.copyCombo('copyFilesOrFile'))
+          trackMatomoEvent?.(FileExplorerEvents.copyCombo('copyFilesOrFile'))
           return
         }
       }
@@ -280,7 +280,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const CutHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'x' || eve.code === 'KeyX')) {
           await performCut()
-          track?.(FileExplorerEvents.cutCombo('cutFilesOrFile'))
+          trackMatomoEvent?.(FileExplorerEvents.cutCombo('cutFilesOrFile'))
           return
         }
       }
@@ -288,7 +288,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
       const pasteHandler = async (eve: KeyboardEvent) => {
         if ((eve.metaKey || eve.ctrlKey) && (eve.key === 'v' || eve.code === 'KeyV')) {
           performPaste()
-          track?.(FileExplorerEvents.pasteCombo('PasteCopiedContent'))
+          trackMatomoEvent?.(FileExplorerEvents.pasteCombo('PasteCopiedContent'))
           return
         }
       }

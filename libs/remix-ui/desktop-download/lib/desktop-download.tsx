@@ -49,7 +49,7 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detectedDownload, setDetectedDownload] = useState<DetectedDownload | null>(null)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   // Detect user's operating system
   const detectOS = (): 'windows' | 'macos' | 'linux' => {
@@ -193,7 +193,7 @@ export const DesktopDownload: React.FC<DesktopDownloadProps> = ({
 
   // Track download click events
   const trackDownloadClick = (platform?: string, filename?: string, variant?: string) => {
-    track?.(DesktopDownloadEvents.click(
+    trackMatomoEvent?.(DesktopDownloadEvents.click(
       `${trackingContext}-${variant || 'button'}`,
       platform ? `${platform}-${filename}` : 'releases-page'
     ))

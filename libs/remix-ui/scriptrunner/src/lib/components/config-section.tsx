@@ -18,7 +18,7 @@ export interface ConfigSectionProps {
 
 export default function ConfigSection(props: ConfigSectionProps) {
   const [isVisible, setIsVisible] = useState(true)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const handleAnimationEnd = () => {
     setIsVisible(false);
@@ -39,7 +39,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               if (!props.config.errorStatus) {
                 props.setActiveKey(props.config.name)
               }
-              track?.(ScriptRunnerPluginEvents.loadScriptRunnerConfig(props.config.name))
+              trackMatomoEvent?.(ScriptRunnerPluginEvents.loadScriptRunnerConfig(props.config.name))
             }}
             checked={(props.activeConfig && props.activeConfig.name === props.config.name)}
           />
@@ -110,7 +110,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               <div
                 onClick={() => {
                   props.loadScriptRunner(props.config)
-                  track?.(ScriptRunnerPluginEvents.error_reloadScriptRunnerConfig(props.config.name))
+                  trackMatomoEvent?.(ScriptRunnerPluginEvents.error_reloadScriptRunnerConfig(props.config.name))
                 }}
                 className="pointer text-danger d-flex flex-row"
               >

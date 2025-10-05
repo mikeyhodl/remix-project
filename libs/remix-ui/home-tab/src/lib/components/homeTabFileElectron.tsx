@@ -12,7 +12,7 @@ interface HomeTabFileProps {
 }
 
 function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const loadTemplate = async () => {
     plugin.call('filePanel', 'loadTemplate')
@@ -23,7 +23,7 @@ function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
   }
 
   const importFromGist = () => {
-    track?.(HomeTabEvents.filesSection('importFromGist'))
+    trackMatomoEvent?.(HomeTabEvents.filesSection('importFromGist'))
     plugin.call('gistHandler', 'load', '')
     plugin.verticalIcons.select('filePanel')
   }

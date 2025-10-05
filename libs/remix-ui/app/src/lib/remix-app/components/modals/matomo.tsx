@@ -12,7 +12,7 @@ interface MatomoDialogProps {
 
 const MatomoDialog = (props: MatomoDialogProps) => {
   const { settings, showMatomo } = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const { modal } = useDialogDispatchers()
   const [visible, setVisible] = useState<boolean>(props.hide)
 
@@ -66,12 +66,12 @@ const MatomoDialog = (props: MatomoDialogProps) => {
     settings.updateMatomoAnalyticsChoice(true) // Enable Matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(true) // Enable Matomo Performance analytics
     settings.updateCopilotChoice(true) // Enable RemixAI copilot
-    track?.(LandingPageEvents.MatomoAIModal('AcceptClicked'))
+    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal('AcceptClicked'))
     setVisible(false)
   }
 
   const handleManagePreferencesClick = async () => {
-    track?.(LandingPageEvents.MatomoAIModal('ManagePreferencesClicked'))
+    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal('ManagePreferencesClicked'))
     setVisible(false)
     props.managePreferencesFn()
   }

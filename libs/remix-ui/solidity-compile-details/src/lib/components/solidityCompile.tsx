@@ -9,9 +9,9 @@ import { CompilerEvents } from '@remix-api'
 
 export default function SolidityCompile({ contractProperties, selectedContract, help, insertValue, saveAs, plugin }: any) {
   const intl = useIntl()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const downloadFn = () => {
-    track?.(CompilerEvents.compilerDetails('download'))
+    trackMatomoEvent?.(CompilerEvents.compilerDetails('download'))
     saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
   }
   return (

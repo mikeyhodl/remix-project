@@ -14,7 +14,7 @@ export interface ScamDetailsProps {
 }
 
 export default function ScamDetails ({ refs, floatStyle, scamAlerts }: ScamDetailsProps) {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   return (
     <div
@@ -42,8 +42,8 @@ export default function ScamDetails ({ refs, floatStyle, scamAlerts }: ScamDetai
                 <a
                   className={`remixui_home_text text-decoration-none ps-1`}
                   onClick={() => {
-                    index === 1 && track?.(HomeTabEvents.scamAlert('learnMore'))
-                    index === 2 && track?.(HomeTabEvents.scamAlert('safetyTips'))
+                    index === 1 && trackMatomoEvent?.(HomeTabEvents.scamAlert('learnMore'))
+                    index === 2 && trackMatomoEvent?.(HomeTabEvents.scamAlert('safetyTips'))
                   }}
                   target="__blank"
                   href={scamAlerts[index].url}

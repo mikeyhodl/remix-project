@@ -45,7 +45,7 @@ interface FinalResult {
 export const SolidityUnitTesting = (props: Record<string, any>) => {
   // eslint-disable-line @typescript-eslint/no-explicit-any
   const platform = useContext(platformContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const { helper, testTab, initialPath } = props
   const { testTabLogic } = testTab
 
@@ -277,7 +277,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       }
       finalLogs = finalLogs + '&emsp;' + formattedLog + '\n'
     }
-    track?.(SolidityUnitTestingEvents.hardhat('console.log'))
+    trackMatomoEvent?.(SolidityUnitTestingEvents.hardhat('console.log'))
     testTab.call('terminal', 'logHtml', { type: 'log', value: finalLogs })
   }
 
@@ -663,7 +663,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     const tests: string[] = selectedTests.current
     if (!tests || !tests.length) return
     else setProgressBarHidden(false)
-    track?.(SolidityUnitTestingEvents.runTests('nbTestsRunning' + tests.length))
+    trackMatomoEvent?.(SolidityUnitTestingEvents.runTests('nbTestsRunning' + tests.length))
     eachOfSeries(tests, (value: string, key: string, callback: any) => {
       // eslint-disable-line @typescript-eslint/no-explicit-any
       if (hasBeenStopped.current) return

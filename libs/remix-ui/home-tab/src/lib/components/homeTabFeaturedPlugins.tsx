@@ -36,7 +36,7 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const [pluginList, setPluginList] = useState<{ caption: string, plugins: PluginInfo[] }>({ caption: '', plugins: []})
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
 
   useEffect(() => {
@@ -61,11 +61,11 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const activateFeaturedPlugin = async (pluginId: string) => {
     setLoadingPlugins([...loadingPlugins, pluginId])
     if (await plugin.appManager.isActive(pluginId)) {
-      track?.(HomeTabEvents.featuredPluginsToggle(`deactivate-${pluginId}`))
+      trackMatomoEvent?.(HomeTabEvents.featuredPluginsToggle(`deactivate-${pluginId}`))
       await plugin.appManager.deactivatePlugin(pluginId)
       setActivePlugins(activePlugins.filter((id) => id !== pluginId))
     } else {
-      track?.(HomeTabEvents.featuredPluginsToggle(`activate-${pluginId}`))
+      trackMatomoEvent?.(HomeTabEvents.featuredPluginsToggle(`activate-${pluginId}`))
       await plugin.appManager.activatePlugin([pluginId])
       await plugin.verticalIcons.select(pluginId)
       setActivePlugins([...activePlugins, pluginId])
@@ -74,7 +74,7 @@ function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   }
 
   const handleFeaturedPluginActionClick = async (pluginInfo: PluginInfo) => {
-    track?.(HomeTabEvents.featuredPluginsActionClick(pluginInfo.pluginTitle))
+    trackMatomoEvent?.(HomeTabEvents.featuredPluginsActionClick(pluginInfo.pluginTitle))
     if (pluginInfo.action.type === 'link') {
       window.open(pluginInfo.action.url, '_blank')
     } else if (pluginInfo.action.type === 'methodCall') {

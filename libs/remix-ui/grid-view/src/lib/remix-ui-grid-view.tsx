@@ -24,7 +24,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
   const [filter, setFilter] = useState("")
   const showUntagged = props.showUntagged || false
   const showPin = props.showPin || false
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const updateValue = (key: string, enabled: boolean, color?: string) => {
     if (!color || color === '') color = setKeyValueMap[key].color
     setKeyValueMap((prevMap) => ({
@@ -107,7 +107,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
                     className="remixui_grid_view_btn text-secondary form-control bg-light border d-flex align-items-center p-2 justify-content-center fas fa-filter bg-light"
                     onClick={(e) => {
                       setFilter(searchInputRef.current.value)
-                      track?.(GridViewEvents.filterWithTitle(props.title || '', searchInputRef.current.value))
+                      trackMatomoEvent?.(GridViewEvents.filterWithTitle(props.title || '', searchInputRef.current.value))
                     }}
                   ></button>
                   <input

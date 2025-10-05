@@ -22,7 +22,7 @@ export interface RemixUiHomeTabProps {
 export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const { plugin } = props
 
   const [state, setState] = useState<{
@@ -59,13 +59,13 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
       await plugin.appManager.activatePlugin(['LearnEth', 'solidity', 'solidityUnitTesting'])
       plugin.verticalIcons.select('LearnEth')
     }
-    track?.(HomeTabEvents.header('Start Learning'))
+    trackMatomoEvent?.(HomeTabEvents.header('Start Learning'))
   }
 
   const openTemplateSelection = async () => {
     await plugin.call('manager', 'activatePlugin', 'templateSelection')
     await plugin.call('tabs', 'focus', 'templateSelection')
-    track?.(HomeTabEvents.header('Create a new workspace'))
+    trackMatomoEvent?.(HomeTabEvents.header('Create a new workspace'))
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {

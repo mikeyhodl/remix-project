@@ -73,7 +73,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
   const platform = useContext(platformContext)
   const themeFilter = useContext(ThemeContext)
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
   const carouselRef = useRef<any>({})
   const carouselRefDiv = useRef(null)
@@ -145,7 +145,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
       await plugin.call('filePanel', 'setWorkspace', templateDisplayName)
       plugin.verticalIcons.select('filePanel')
     }
-    track?.(HomeTabEvents.homeGetStarted(templateName))
+    trackMatomoEvent?.(HomeTabEvents.homeGetStarted(templateName))
   }
 
   return (
@@ -176,7 +176,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
                     }
                     onClick={async (e) => {
                       createWorkspace(template.templateName)
-                      track?.(HomeTabEvents.homeGetStarted(template.templateName))
+                      trackMatomoEvent?.(HomeTabEvents.homeGetStarted(template.templateName))
                     }}
                     data-id={`homeTabGetStarted${template.templateName}`}
                   >

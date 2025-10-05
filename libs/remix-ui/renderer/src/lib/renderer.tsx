@@ -24,7 +24,7 @@ type RendererOptions = {
 
 export const Renderer = ({ message, opt, plugin, context }: RendererProps) => {
   const intl = useIntl()
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [messageText, setMessageText] = useState(null)
   const [editorOptions, setEditorOptions] = useState<RendererOptions>({
     useSpan: false,
@@ -102,7 +102,7 @@ export const Renderer = ({ message, opt, plugin, context }: RendererProps) => {
       setTimeout(async () => {
         await plugin.call('remixAI' as any, 'chatPipe', 'error_explaining', message)
       }, 500)
-      track?.(AIEvents.remixAI('error_explaining_SolidityError'))
+      trackMatomoEvent?.(AIEvents.remixAI('error_explaining_SolidityError'))
     } catch (err) {
       console.error('unable to ask RemixAI')
       console.error(err)

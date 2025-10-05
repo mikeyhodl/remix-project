@@ -12,7 +12,7 @@ interface SolScanTableProps {
 
 export function SolScanTable(props: SolScanTableProps) {
   const { scanReport, fileName } = props
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const { multi_file_scan_details, multi_file_scan_summary } = scanReport
 
   return (
@@ -58,7 +58,7 @@ export function SolScanTable(props: SolScanTableProps) {
           <p>For more details,&nbsp;
             <a href="https://solidityscan.com/?utm_campaign=remix&utm_source=remix"
               target='_blank'
-              onClick={() => track?.(SolidityCompilerEvents.solidityScan('goToSolidityScan'))}>
+              onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('goToSolidityScan'))}>
               go to SolidityScan.
             </a>
           </p>

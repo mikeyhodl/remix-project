@@ -85,7 +85,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const tabs = useRef(props.tabs)
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const compileSeq = useRef(0)
   const compileWatchdog = useRef<number | null>(null)
@@ -259,7 +259,7 @@ export const TabsUI = (props: TabsUIProps) => {
     await props.plugin.call('menuicons', 'select', 'solidity')
     try {
       await props.plugin.call('solidity', 'compile', active().substr(active().indexOf('/') + 1, active().length))
-      track?.(EditorEvents.publishFromEditor(storageType))
+      trackMatomoEvent?.(EditorEvents.publishFromEditor(storageType))
 
       setTimeout(async () => {
         let buttonId
@@ -316,7 +316,7 @@ export const TabsUI = (props: TabsUIProps) => {
 })()`
 
         await props.plugin.call('fileManager', 'writeFile', newScriptPath, boilerplateContent)
-        track?.(EditorEvents.runScript('new_script'))
+        trackMatomoEvent?.(EditorEvents.runScript('new_script'))
       } catch (e) {
         console.error(e)
         props.plugin.call('notification', 'toast', `Error creating new script: ${e.message}`)
@@ -346,7 +346,7 @@ export const TabsUI = (props: TabsUIProps) => {
       await props.plugin.call('scriptRunnerBridge', 'execute', content, path)
 
       setCompileState('compiled')
-      track?.(EditorEvents.runScriptWithEnv(runnerKey))
+      trackMatomoEvent?.(EditorEvents.runScriptWithEnv(runnerKey))
     } catch (e) {
       console.error(e)
       props.plugin.call('notification', 'toast', `Error running script: ${e.message}`)
@@ -427,7 +427,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const handleCompileClick = async () => {
     setCompileState('compiling')
     console.log('Compiling from editor')
-    track?.(EditorEvents.clickRunFromEditor(tabsState.currentExt))
+    trackMatomoEvent?.(EditorEvents.clickRunFromEditor(tabsState.currentExt))
 
     try {
       const activePathRaw = active()

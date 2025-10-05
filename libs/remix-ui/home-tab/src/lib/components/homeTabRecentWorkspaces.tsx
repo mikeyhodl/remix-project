@@ -10,7 +10,7 @@ interface HomeTabFileProps {
 }
 
 function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [state, setState] = useState<{
     recentWorkspaces: Array<string | { name: string, timestamp: number }>
   }>({
@@ -64,7 +64,7 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
     setLoadingWorkspace(workspaceName)
     plugin.call('sidePanel', 'showContent', 'filePanel')
     plugin.verticalIcons.select('filePanel')
-    track?.(HomeTabEvents.recentWorkspacesCard('loadRecentWorkspace'))
+    trackMatomoEvent?.(HomeTabEvents.recentWorkspacesCard('loadRecentWorkspace'))
     await plugin.call('filePanel', 'switchToWorkspace', { name: workspaceName, isLocalhost: false })
     const workspaceFiles = await plugin.call('fileManager', 'readdir', '/')
 

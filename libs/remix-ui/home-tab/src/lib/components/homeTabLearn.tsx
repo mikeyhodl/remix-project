@@ -23,13 +23,13 @@ function HomeTabLearn({ plugin }: HomeTabLearnProps) {
   })
 
   const themeFilter = useContext(ThemeContext)
-  const { track } = useContext(TrackingContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const startLearnEthTutorial = async (tutorial: 'basics' | 'soliditybeginner' | 'deploylibraries') => {
     await plugin.appManager.activatePlugin(['solidity', 'LearnEth', 'solidityUnitTesting'])
     plugin.verticalIcons.select('LearnEth')
     plugin.call('LearnEth', 'startTutorial', 'remix-project-org/remix-workshops', 'master', tutorial)
-    track?.(HomeTabEvents.startLearnEthTutorial(tutorial))
+    trackMatomoEvent?.(HomeTabEvents.startLearnEthTutorial(tutorial))
   }
 
   const goToLearnEthHome = async () => {
