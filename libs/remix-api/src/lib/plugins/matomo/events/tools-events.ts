@@ -11,9 +11,7 @@ export interface DebuggerEvent extends MatomoEventBase {
   action: 
     | 'start'
     | 'step'
-    | 'stop'
     | 'breakpoint'
-    | 'inspect'
     | 'startDebugging';
 }
 
@@ -45,17 +43,13 @@ export interface SolidityStaticAnalyzerEvent extends MatomoEventBase {
   category: 'solidityStaticAnalyzer';
   action: 
     | 'analyze'
-    | 'warningFound'
-    | 'errorFound'
-    | 'checkCompleted';
+    | 'warningFound';
 }
 
 export interface DesktopDownloadEvent extends MatomoEventBase {
   category: 'desktopDownload';
   action: 
     | 'download'
-    | 'install'
-    | 'update'
     | 'click';
 }
 
@@ -72,8 +66,7 @@ export interface XTERMEvent extends MatomoEventBase {
   category: 'xterm';
   action: 
     | 'terminal'
-    | 'command'
-    | 'clear';
+    | 'command';
 }
 
 export interface SolidityScriptEvent extends MatomoEventBase {
@@ -620,9 +613,7 @@ export interface CircuitCompilerEvent extends MatomoEventBase {
   category: 'circuitCompiler';
   action:
     | 'compile'
-    | 'setup'
     | 'generateProof'
-    | 'verifyProof'
     | 'error'
     | 'generateR1cs'
     | 'computeWitness';
@@ -637,28 +628,12 @@ export const CircuitCompilerEvents = {
     isClick: true // User compiles circuit
   }),
   
-  setup: (name?: string, value?: string | number): CircuitCompilerEvent => ({
-    category: 'circuitCompiler',
-    action: 'setup',
-    name,
-    value,
-    isClick: true // User sets up circuit compiler
-  }),
-  
   generateProof: (name?: string, value?: string | number): CircuitCompilerEvent => ({
     category: 'circuitCompiler',
     action: 'generateProof',
     name,
     value,
     isClick: true // User generates proof
-  }),
-  
-  verifyProof: (name?: string, value?: string | number): CircuitCompilerEvent => ({
-    category: 'circuitCompiler',
-    action: 'verifyProof',
-    name,
-    value,
-    isClick: true // User verifies proof
   }),
   
   error: (name?: string, value?: string | number): CircuitCompilerEvent => ({
@@ -693,9 +668,7 @@ export interface ContractVerificationEvent extends MatomoEventBase {
   category: 'contractVerification';
   action:
     | 'verify'
-    | 'lookup'
-    | 'success'
-    | 'error';
+    | 'lookup';
 }
 
 export const ContractVerificationEvents = {
@@ -713,22 +686,6 @@ export const ContractVerificationEvents = {
     name,
     value,
     isClick: true // User looks up contract verification
-  }),
-  
-  success: (name?: string, value?: string | number): ContractVerificationEvent => ({
-    category: 'contractVerification',
-    action: 'success',
-    name,
-    value,
-    isClick: false // Verification success is system event
-  }),
-  
-  error: (name?: string, value?: string | number): ContractVerificationEvent => ({
-    category: 'contractVerification',
-    action: 'error',
-    name,
-    value,
-    isClick: false // Verification errors are system events
   })
 } as const;
 

@@ -13,9 +13,7 @@ export interface PluginEvent extends MatomoEventBase {
     | 'activated'
     | 'deactivate'
     | 'install'
-    | 'uninstall'
     | 'error'
-    | 'loaded'
     | 'contractFlattener';
 }
 
@@ -31,8 +29,7 @@ export interface PluginManagerEvent extends MatomoEventBase {
   category: 'pluginManager';
   action: 
     | 'activate'
-    | 'deactivate'
-    | 'toggle';
+    | 'deactivate';
 }
 
 export interface PluginPanelEvent extends MatomoEventBase {

@@ -10,8 +10,6 @@ export interface CompilerEvent extends MatomoEventBase {
   category: 'compiler';
   action: 
     | 'compiled'
-    | 'error' 
-    | 'warning'
     | 'compilerDetails';
 }
 
@@ -52,22 +50,6 @@ export const CompilerEvents = {
     name,
     value,
     isClick: false // Compilation is typically a system event
-  }),
-  
-  error: (name?: string, value?: string | number): CompilerEvent => ({
-    category: 'compiler',
-    action: 'error',
-    name,
-    value,
-    isClick: false // Error is a system event
-  }),
-  
-  warning: (name?: string, value?: string | number): CompilerEvent => ({
-    category: 'compiler',
-    action: 'warning',
-    name,
-    value,
-    isClick: false // Warning is a system event
   }),
   
   compilerDetails: (name?: string, value?: string | number): CompilerEvent => ({

@@ -301,40 +301,5 @@ export const LandingPageEvents = {
   })
 } as const;
 
-// Universal Events - General purpose events
-export interface UniversalEvent extends MatomoEventBase {
-  category: 'universal';
-  action: 
-    | 'generic'
-    | 'custom'
-    | 'interaction';
-}
-
-export const UniversalEvents = {
-  generic: (name?: string, value?: string | number): UniversalEvent => ({
-    category: 'universal',
-    action: 'generic',
-    name,
-    value,
-    isClick: false // Generic system event
-  }),
-  
-  custom: (name?: string, value?: string | number): UniversalEvent => ({
-    category: 'universal',
-    action: 'custom',
-    name,
-    value,
-    isClick: true // Custom user interaction
-  }),
-  
-  interaction: (name?: string, value?: string | number): UniversalEvent => ({
-    category: 'universal',
-    action: 'interaction',
-    name,
-    value,
-    isClick: true // General user interaction
-  })
-} as const;
-
 // Naming compatibility aliases
 export const TopBarEvents = TopbarEvents; // Alias for backward compatibility

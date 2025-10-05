@@ -5,7 +5,7 @@ import { FormattedMessage } from 'react-intl'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ThemeContext } from '../themeContext'
 import { TrackingContext } from '@remix-ide/tracking'
-import { HomeTabEvents, UniversalEvents } from '@remix-api'
+import { HomeTabEvents } from '@remix-api'
 import { Placement } from 'react-bootstrap/esm/types'
 import { DesktopDownload } from 'libs/remix-ui/desktop-download' // eslint-disable-line @nrwl/nx/enforce-module-boundaries
 

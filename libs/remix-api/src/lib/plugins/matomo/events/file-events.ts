@@ -17,8 +17,7 @@ export interface FileExplorerEvent extends MatomoEventBase {
     | 'f2ToRename'
     | 'copyCombo'
     | 'cutCombo'
-    | 'pasteCombo'
-    | 'dragDrop';
+    | 'pasteCombo';
 }
 
 export interface WorkspaceEvent extends MatomoEventBase {
@@ -26,21 +25,14 @@ export interface WorkspaceEvent extends MatomoEventBase {
   action: 
     | 'switchWorkspace'
     | 'GIT'
-    | 'createWorkspace'
-    | 'deleteWorkspace'
-    | 'renameWorkspace'
-    | 'cloneWorkspace'
-    | 'downloadWorkspace'
-    | 'restoreWorkspace';
+    | 'createWorkspace';
 }
 
 export interface StorageEvent extends MatomoEventBase {
   category: 'Storage';
   action: 
     | 'activate'
-    | 'error'
-    | 'backup'
-    | 'restore';
+    | 'error';
 }
 
 export interface BackupEvent extends MatomoEventBase {

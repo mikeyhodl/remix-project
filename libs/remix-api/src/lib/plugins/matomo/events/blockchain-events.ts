@@ -10,10 +10,8 @@ export interface BlockchainEvent extends MatomoEventBase {
   category: 'blockchain';
   action: 
     | 'providerChanged'
-    | 'networkChanged'
     | 'accountChanged'
     | 'connectionError'
-    | 'transactionSent'
     | 'transactionFailed'
     | 'providerPinned'
     | 'providerUnpinned'
@@ -43,16 +41,13 @@ export interface UdappEvent extends MatomoEventBase {
     | 'DeployAndPublish'
     | 'DeployOnly'
     | 'DeployContractTo'
-    | 'broadcastCompilationResult'
-    | 'runTests';
+    | 'broadcastCompilationResult';
 }
 
 export interface RunEvent extends MatomoEventBase {
   category: 'run';
   action: 
     | 'recorder'
-    | 'deploy'
-    | 'execute'
     | 'debug';
 }
 
@@ -66,22 +61,6 @@ export const BlockchainEvents = {
     name,
     value,
     isClick: true // User clicks to change provider
-  }),
-  
-  networkChanged: (name?: string, value?: string | number): BlockchainEvent => ({
-    category: 'blockchain',
-    action: 'networkChanged',
-    name,
-    value,
-    isClick: true // User changes network
-  }),
-  
-  transactionSent: (name?: string, value?: string | number): BlockchainEvent => ({
-    category: 'blockchain',
-    action: 'transactionSent',
-    name,
-    value,
-    isClick: false // Transaction sending is a system event
   }),
   
   providerPinned: (name?: string, value?: string | number): BlockchainEvent => ({
@@ -273,14 +252,6 @@ export const UdappEvents = {
     isClick: true // User deploys contract to specific address
   }),
   
-  runTests: (name?: string, value?: string | number): UdappEvent => ({
-    category: 'udapp',
-    action: 'runTests',
-    name,
-    value,
-    isClick: true // User clicks to run tests
-  }),
-  
   broadcastCompilationResult: (name?: string, value?: string | number): UdappEvent => ({
     category: 'udapp',
     action: 'broadcastCompilationResult',
@@ -300,21 +271,5 @@ export const RunEvents = {
     name,
     value,
     isClick: true // User interacts with recorder functionality
-  }),
-  
-  deploy: (name?: string, value?: string | number): RunEvent => ({
-    category: 'run',
-    action: 'deploy',
-    name,
-    value,
-    isClick: true // User deploys contract
-  }),
-  
-  execute: (name?: string, value?: string | number): RunEvent => ({
-    category: 'run',
-    action: 'execute',
-    name,
-    value,
-    isClick: true // User executes function
   })
 } as const;
