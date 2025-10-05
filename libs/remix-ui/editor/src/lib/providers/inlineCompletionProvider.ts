@@ -15,16 +15,16 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
   completionEnabled: boolean
   task: string = 'code_completion'
   currentCompletion: any
-  track?: (event: MatomoEvent) => void
+  trackMatomoEvent?: (event: MatomoEvent) => void
 
   private rateLimiter: AdaptiveRateLimiter;
   private contextDetector: SmartContextDetector;
   private cache: CompletionCache;
 
-  constructor(props: any, monaco: any, track?: (event: MatomoEvent) => void) {
+  constructor(props: any, monaco: any, trackMatomoEvent?: (event: MatomoEvent) => void) {
     this.props = props
     this.monaco = monaco
-    this.track = track
+    this.trackMatomoEvent = trackMatomoEvent
     this.completionEnabled = true
     this.currentCompletion = {
       text: '',
