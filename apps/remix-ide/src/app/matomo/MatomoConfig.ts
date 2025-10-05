@@ -60,7 +60,7 @@ export const MATOMO_CUSTOM_DIMENSIONS = {
   // Development domains
   localhost: {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 2 // Dimension for 'true'/'false' click tracking
+    clickAction: 3 // Dimension for 'true'/'false' click tracking
   },
   '127.0.0.1': {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
