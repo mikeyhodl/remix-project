@@ -21,7 +21,7 @@ interface PreloadProps {
 }
 
 export const Preload = (props: PreloadProps) => {
-  const { track } = useTracking()
+  const { trackMatomoEvent } = useTracking()
   const [tip, setTip] = useState<string>('')
   const [supported, setSupported] = useState<boolean>(true)
   const [error, setError] = useState<boolean>(false)

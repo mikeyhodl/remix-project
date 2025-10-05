@@ -469,7 +469,7 @@ export const EditorUI = (props: EditorUIProps) => {
     }
   }, [props.currentFile, props.isDiff])
 
-  const inlineCompletionProvider = new RemixInLineCompletionProvider(props, monacoRef.current, track)
+  const inlineCompletionProvider = new RemixInLineCompletionProvider(props, monacoRef.current, trackMatomoEvent)
 
   const convertToMonacoDecoration = (decoration: lineText | sourceAnnotation | sourceMarker, typeOfDecoration: string) => {
     if (typeOfDecoration === 'sourceAnnotationsPerFile') {
