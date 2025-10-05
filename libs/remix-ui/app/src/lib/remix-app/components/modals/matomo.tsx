@@ -63,7 +63,6 @@ const MatomoDialog = (props: MatomoDialogProps) => {
 
   const handleAcceptAllClick = async () => {
     // Consent is managed by cookie consent system in settings
-    settings.updateMatomoAnalyticsChoice(true) // Enable Matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(true) // Enable Matomo Performance analytics
     settings.updateCopilotChoice(true) // Enable RemixAI copilot
     trackMatomoEvent?.(LandingPageEvents.MatomoAIModal('AcceptClicked'))

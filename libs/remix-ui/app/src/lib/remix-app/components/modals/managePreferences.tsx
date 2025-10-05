@@ -112,7 +112,6 @@ const ManagePreferencesDialog = (props) => {
 
   const savePreferences = async () => {
     // Consent is managed by cookie consent system in settings
-    settings.updateMatomoAnalyticsChoice(true) // Always true for matomo Anonymous analytics
     settings.updateMatomoPerfAnalyticsChoice(switcherState.current.matPerfSwitch) // Enable/Disable Matomo Performance analytics
     settings.updateCopilotChoice(switcherState.current.remixAISwitch) // Enable/Disable RemixAI copilot
     trackMatomoEvent?.(LandingPageEvents.MatomoAIModal(`MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`))

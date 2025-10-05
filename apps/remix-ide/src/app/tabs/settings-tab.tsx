@@ -10,8 +10,7 @@ import { InitializationPattern, TrackingMode, MatomoState, CustomRemixApi } from
 const profile = {
   name: 'settings',
   displayName: 'Settings',
-  // updateMatomoAnalyticsMode deprecated: tracking mode now derived purely from perf toggle (Option B)
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice', 'updateMatomoAnalyticsMode'],
+  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice'],
   events: [],
   icon: 'assets/img/settings.webp',
   description: 'Remix-IDE settings',
@@ -108,19 +107,6 @@ export default class SettingsTab extends ViewPlugin {
     return this.get('settings/copilot/suggest/activate')
   }
 
-  updateMatomoAnalyticsChoice(_isChecked) {
-    // Deprecated legacy toggle (disabled in UI). Mode now derives from performance analytics only.
-    // Intentionally no-op to avoid user confusion; kept for backward compat if invoked programmatically.
-  }
-
-  // Deprecated public method: retained for backward compatibility (external plugins or old code calling it).
-  // It now simply forwards to performance-based derivation by toggling perf flag if needed.
-  updateMatomoAnalyticsMode(_mode: 'cookie' | 'anon') {
-    if (window.localStorage.getItem('matomo-debug') === 'true') {
-      console.debug('[Matomo][settings] DEPRECATED updateMatomoAnalyticsMode call ignored; mode derived from perf toggle')
-    }
-  }
-
   async updateMatomoPerfAnalyticsChoice(isChecked) {
     console.log('[Matomo][settings] updateMatomoPerfAnalyticsChoice called with', isChecked)
     this.config.set('settings/matomo-perf-analytics', isChecked)
@@ -139,9 +125,6 @@ export default class SettingsTab extends ViewPlugin {
       await this.callMatomo('switchMode', mode)
     }
 
-    // Persist deprecated mode key for backward compatibility (other code might read it)
-    this.config.set('settings/matomo-analytics-mode', mode)
-    this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
     this.useMatomoAnalytics = true
     this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked);
     this.dispatch({ ...this })
