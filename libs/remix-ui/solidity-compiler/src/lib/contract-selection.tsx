@@ -263,7 +263,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
 
   const runSolidityScan = async () => {
     trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
-    const modalStruct: AppModal = {
+    const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
       message: <div className='d-flex flex-column'>
