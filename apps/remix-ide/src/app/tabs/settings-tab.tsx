@@ -5,7 +5,6 @@ import * as packageJson from '../../../../../package.json'
 import {RemixUiSettings} from '@remix-ui/settings' //eslint-disable-line
 import { Registry } from '@remix-project/remix-lib'
 import { PluginViewWrapper } from '@remix-ui/helper'
-
 declare global {
   interface Window {
     _paq: any
@@ -16,8 +15,7 @@ const _paq = (window._paq = window._paq || [])
 const profile = {
   name: 'settings',
   displayName: 'Settings',
-  // updateMatomoAnalyticsMode deprecated: tracking mode now derived purely from perf toggle (Option B)
-  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice', 'updateMatomoAnalyticsMode'],
+  methods: ['get', 'updateCopilotChoice', 'getCopilotSetting', 'updateMatomoPerfAnalyticsChoice'],
   events: [],
   icon: 'assets/img/settings.webp',
   description: 'Remix-IDE settings',
@@ -106,114 +104,38 @@ export default class SettingsTab extends ViewPlugin {
     return this.get('settings/copilot/suggest/activate')
   }
 
-  updateMatomoAnalyticsChoice(_isChecked) {
-    // Deprecated legacy toggle (disabled in UI). Mode now derives from performance analytics only.
-    // Intentionally no-op to avoid user confusion; kept for backward compat if invoked programmatically.
-  }
-
-  // Deprecated public method: retained for backward compatibility (external plugins or old code calling it).
-  // It now simply forwards to performance-based derivation by toggling perf flag if needed.
-  updateMatomoAnalyticsMode(_mode: 'cookie' | 'anon') {
-    if (window.localStorage.getItem('matomo-debug') === 'true') {
-      console.debug('[Matomo][settings] DEPRECATED updateMatomoAnalyticsMode call ignored; mode derived from perf toggle')
+  updateMatomoAnalyticsChoice(isChecked) {
+    this.config.set('settings/matomo-analytics', isChecked)
+    // set timestamp to local storage to track when the user has given consent
+    localStorage.setItem('matomo-analytics-consent', Date.now().toString())
+    this.useMatomoAnalytics = isChecked
+    if (!isChecked) {
+      // revoke tracking consent
+      _paq.push(['forgetConsentGiven']);
+    } else {
+      // user has given consent to process their data
+      _paq.push(['setConsentGiven']);
     }
+    this.dispatch({
+      ...this
+    })
   }
 
   updateMatomoPerfAnalyticsChoice(isChecked) {
-    console.log('[Matomo][settings] updateMatomoPerfAnalyticsChoice called with', isChecked)
     this.config.set('settings/matomo-perf-analytics', isChecked)
-    // Timestamp consent indicator (we treat enabling perf as granting cookie consent; disabling as revoking)
+    // set timestamp to local storage to track when the user has given consent
     localStorage.setItem('matomo-analytics-consent', Date.now().toString())
     this.useMatomoPerfAnalytics = isChecked
-
-    const MATOMO_TRACKING_MODE_DIMENSION_ID = 1 // only remaining custom dimension (tracking mode)
-    const mode = isChecked ? 'cookie' : 'anon'
-
-    // Always re-assert cookie consent boundary so runtime flip is clean
-    _paq.push(['requireCookieConsent'])
-    
-    if (mode === 'cookie') {
-      // Cookie mode: give cookie consent and remember it
-      _paq.push(['rememberConsentGiven']);
-      _paq.push(['enableBrowserFeatureDetection']); 
-      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'cookie']);
-      _paq.push(['trackEvent', 'tracking_mode_change', 'cookie']);
-      console.log('Granting cookie consent for Matomo (switching to cookie mode)');
-      (window as any).__initMatomoTracking('cookie');
+    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked)
+    if (!isChecked) {
+      // revoke tracking consent for performance data
+      _paq.push(['disableCookies'])
     } else {
-      // Anonymous mode: revoke cookie consent completely
-      //_paq.push(['setConsentGiven']); 
-      console.log('Revoking cookie consent for Matomo (switching to anon mode)')
-      //_paq.push(['forgetCookieConsentGiven']) // This removes cookie consent and deletes cookies
-      //_paq.push(['disableCookies']) // Extra safety - prevent any new cookies
-      
-      // Manual cookie deletion as backup (Matomo cookies typically start with _pk_)
-      this.deleteMatomoCookies()
-      
-      _paq.push(['setCustomDimension', MATOMO_TRACKING_MODE_DIMENSION_ID, 'anon'])
-      _paq.push(['trackEvent', 'tracking_mode_change', 'anon'])
-      if (window.localStorage.getItem('matomo-debug') === 'true') {
-        _paq.push(['trackEvent', 'debug', 'anon_mode_active_toggle'])
-      }
-      (window as any).__initMatomoTracking('anon');
+      // user has given consent to process their performance data
+      _paq.push(['setCookieConsentGiven'])
     }
-    
-    // Performance dimension removed: mode alone now encodes cookie vs anon. Keep event for analytics toggle if useful.
-    _paq.push(['trackEvent', 'perf_analytics_toggle', isChecked ? 'on' : 'off'])
-    if (window.localStorage.getItem('matomo-debug') === 'true') {
-      console.debug('[Matomo][settings] perf toggle -> mode derived', { perf: isChecked, mode })
-    }
-
-    // If running inside Electron, propagate mode to desktop tracker & emit desktop-specific event.
-    if ((window as any).electronAPI) {
-      try {
-        (window as any).electronAPI.setTrackingMode(mode)
-        // Also send an explicit desktop event (uses new API if available)
-        if ((window as any).electronAPI.trackDesktopEvent) {
-          (window as any).electronAPI.trackDesktopEvent('tracking_mode_change', mode, isChecked ? 'on' : 'off')
-        }
-      } catch (e) {
-        console.warn('[Matomo][desktop-sync] failed to set tracking mode in electron layer', e)
-      }
-    }
-    // Persist deprecated mode key for backward compatibility (other code might read it)
-    this.config.set('settings/matomo-analytics-mode', mode)
-    this.config.set('settings/matomo-analytics', mode === 'cookie') // legacy boolean
-    this.useMatomoAnalytics = true
-
-    this.emit('matomoPerfAnalyticsChoiceUpdated', isChecked);
-    
-    const buffer = (window as any).__drainMatomoQueue();
-    (window as any).__loadMatomoScript();
-    (window as any).__restoreMatomoQueue(buffer);
-
-    this.dispatch({ ...this })
-  }
-
-  // Helper method to manually delete Matomo cookies
-  private deleteMatomoCookies() {
-    try {
-      // Get all cookies
-      const cookies = document.cookie.split(';')
-      
-      for (let cookie of cookies) {
-        const eqPos = cookie.indexOf('=')
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
-        
-        // Delete Matomo cookies (typically start with _pk_)
-        if (name.startsWith('_pk_')) {
-          // Delete for current domain and path
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`
-          
-          if (window.localStorage.getItem('matomo-debug') === 'true') {
-            console.debug('[Matomo][cookie-cleanup] Deleted cookie:', name)
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Matomo][cookie-cleanup] Failed to delete cookies:', e)
-    }
+    this.dispatch({
+      ...this
+    })
   }
 }
