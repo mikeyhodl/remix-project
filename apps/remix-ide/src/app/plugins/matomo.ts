@@ -13,7 +13,7 @@ const profile = {
     'waitForLoad', 'getPreInitQueue', 'getQueueStatus', 'processPreInitQueue',
     'clearPreInitQueue', 'testConsentBehavior', 'getDiagnostics', 'inspectPaqArray',
     'batch', 'reset', 'addMatomoListener', 'removeMatomoListener', 'getMatomoManager',
-    'shouldShowConsentDialog'
+    'shouldShowConsentDialog', 'getBotDetectionResult', 'isBot', 'getBotType', 'getBotConfidence'
   ],
   events: ['matomo-initialized', 'matomo-consent-changed', 'matomo-mode-switched'],
   version: '1.0.0'
@@ -181,6 +181,36 @@ export class Matomo extends Plugin {
    */
   shouldShowConsentDialog(configApi?: any): boolean {
     return matomoManager.shouldShowConsentDialog(configApi)
+  }
+
+  // ================== BOT DETECTION METHODS ==================
+
+  /**
+   * Get full bot detection result with details
+   */
+  getBotDetectionResult() {
+    return matomoManager.getBotDetectionResult()
+  }
+
+  /**
+   * Check if current visitor is detected as a bot
+   */
+  isBot(): boolean {
+    return matomoManager.isBot()
+  }
+
+  /**
+   * Get the type of bot detected (or 'human' if not a bot)
+   */
+  getBotType(): string {
+    return matomoManager.getBotType()
+  }
+
+  /**
+   * Get confidence level of bot detection
+   */
+  getBotConfidence(): 'high' | 'medium' | 'low' | null {
+    return matomoManager.getBotConfidence()
   }
 
   /**

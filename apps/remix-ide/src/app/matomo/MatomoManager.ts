@@ -23,6 +23,7 @@
 
 import { MatomoEvent } from '@remix-api';
 import { getDomainCustomDimensions, DomainCustomDimensions, ENABLE_MATOMO_LOCALHOST } from './MatomoConfig';
+import { BotDetector, BotDetectionResult } from './BotDetector';
 
 // ================== TYPE DEFINITIONS ==================
 
@@ -197,6 +198,12 @@ export interface IMatomoManager {
   // Utility and diagnostic methods
   testConsentBehavior(): Promise<void>;
   getDiagnostics(): MatomoDiagnostics;
+  
+  // Bot detection methods
+  getBotDetectionResult(): BotDetectionResult | null;
+  isBot(): boolean;
+  getBotType(): string;
+  getBotConfidence(): 'high' | 'medium' | 'low' | null;
   inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] };
   batch(commands: MatomoCommand[]): void;
   reset(): Promise<void>;
@@ -217,6 +224,7 @@ export class MatomoManager implements IMatomoManager {
   private readonly loadedPlugins: Set<string> = new Set();
   private originalPaqPush: ((...args: any[]) => void) | null = null;
   private customDimensions: DomainCustomDimensions;
+  private botDetectionResult: BotDetectionResult | null = null;
 
   constructor(config: MatomoConfig) {
     this.config = {
@@ -251,6 +259,10 @@ export class MatomoManager implements IMatomoManager {
 
     // Initialize domain-specific custom dimensions
     this.customDimensions = getDomainCustomDimensions();
+
+    // Perform bot detection
+    this.botDetectionResult = BotDetector.detect();
+    this.log('Bot detection result:', this.botDetectionResult);
 
     this.setupPaqInterception();
     this.log('MatomoManager initialized', this.config);
@@ -447,6 +459,20 @@ export class MatomoManager implements IMatomoManager {
     for (const [id, value] of Object.entries(this.config.customDimensions)) {
       this.log(`Setting custom dimension ${id}: ${value}`);
       window._paq.push(['setCustomDimension', parseInt(id), value]);
+    }
+
+    // Set bot detection dimension
+    if (this.botDetectionResult) {
+      const botTypeValue = this.botDetectionResult.isBot 
+        ? this.botDetectionResult.botType || 'unknown-bot'
+        : 'human';
+      this.log(`Setting bot detection dimension ${this.customDimensions.isBot}: ${botTypeValue} (confidence: ${this.botDetectionResult.confidence})`);
+      window._paq.push(['setCustomDimension', this.customDimensions.isBot, botTypeValue]);
+      
+      // Log bot detection reasons in debug mode
+      if (this.botDetectionResult.reasons.length > 0) {
+        this.log('Bot detection reasons:', this.botDetectionResult.reasons);
+      }
     }
 
     // Mark as initialized BEFORE adding trackPageView to prevent it from being queued
@@ -1427,6 +1453,39 @@ export class MatomoManager implements IMatomoManager {
       window._paq.push(command);
     });
     this.emit('batch-executed', { commands });
+  }
+
+  // ================== BOT DETECTION METHODS ==================
+
+  /**
+   * Get full bot detection result with details
+   */
+  getBotDetectionResult(): BotDetectionResult | null {
+    return this.botDetectionResult;
+  }
+
+  /**
+   * Check if current visitor is detected as a bot
+   */
+  isBot(): boolean {
+    return this.botDetectionResult?.isBot || false;
+  }
+
+  /**
+   * Get the type of bot detected (or 'human' if not a bot)
+   */
+  getBotType(): string {
+    if (!this.botDetectionResult?.isBot) {
+      return 'human';
+    }
+    return this.botDetectionResult.botType || 'unknown-bot';
+  }
+
+  /**
+   * Get confidence level of bot detection
+   */
+  getBotConfidence(): 'high' | 'medium' | 'low' | null {
+    return this.botDetectionResult?.confidence || null;
   }
 }
 

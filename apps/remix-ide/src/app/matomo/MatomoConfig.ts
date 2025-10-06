@@ -30,6 +30,7 @@ export const ENABLE_MATOMO_LOCALHOST = false;
 export interface DomainCustomDimensions {
   trackingMode: number; // Dimension ID for 'anon'/'cookie' tracking mode
   clickAction: number; // Dimension ID for 'true'/'false' click tracking
+  isBot: number; // Dimension ID for 'human'/'bot' detection
 }
 
 // Single source of truth for Matomo site ids (matches loader.js.txt)
@@ -47,24 +48,29 @@ export const MATOMO_CUSTOM_DIMENSIONS = {
   // Production domains
   'alpha.remix.live': {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 2 // Dimension for 'true'/'false' click tracking
+    clickAction: 2, // Dimension for 'true'/'false' click tracking
+    isBot: 3 // Dimension for 'human'/'bot'/'automation' detection
   },
   'beta.remix.live': {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 2 // Dimension for 'true'/'false' click tracking
+    clickAction: 2, // Dimension for 'true'/'false' click tracking
+    isBot: 3 // Dimension for 'human'/'bot'/'automation' detection
   },
   'remix.ethereum.org': {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 2 // Dimension for 'true'/'false' click tracking
+    clickAction: 2, // Dimension for 'true'/'false' click tracking
+    isBot: 3 // Dimension for 'human'/'bot'/'automation' detection
   },
   // Development domains
   localhost: {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 3 // Dimension for 'true'/'false' click tracking
+    clickAction: 3, // Dimension for 'true'/'false' click tracking
+    isBot: 4 // Dimension for 'human'/'bot'/'automation' detection
   },
   '127.0.0.1': {
     trackingMode: 1, // Dimension for 'anon'/'cookie' tracking mode
-    clickAction: 3 // Dimension for 'true'/'false' click tracking
+    clickAction: 3, // Dimension for 'true'/'false' click tracking
+    isBot: 4 // Dimension for 'human'/'bot'/'automation' detection
   }
 };
 
