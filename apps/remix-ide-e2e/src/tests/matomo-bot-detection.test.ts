@@ -33,12 +33,32 @@ module.exports = {
       .pause(2000)
   },
 
+  'Load debug plugin before accepting consent': function (browser: NightwatchBrowser) {
+    browser
+      // Load debug plugin BEFORE accepting consent so it captures the bot detection event
+      .execute(function () {
+        const matomoManager = (window as any)._matomoManagerInstance;
+        if (!matomoManager) return { success: false, error: 'No MatomoManager' };
+        
+        return new Promise((resolve) => {
+          matomoManager.loadDebugPluginForE2E().then((debugHelpers: any) => {
+            (window as any).__matomoDebugHelpers = debugHelpers;
+            resolve({ success: true });
+          }).catch((error: any) => {
+            resolve({ success: false, error: error.message });
+          });
+        });
+      }, [], (result: any) => {
+        browser.assert.ok(result.value.success, 'Debug plugin loaded before consent');
+      })
+  },
+
   'Accept consent to enable tracking': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
       .click('[data-id="matomoModal-modal-footer-ok-react"]')
       .waitForElementNotVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-      .pause(2000)
+      .pause(2000) // Wait for Matomo initialization and bot detection event to be sent
   },
 
   'Verify bot detection identifies automation tool': function (browser: NightwatchBrowser) {
@@ -128,23 +148,7 @@ module.exports = {
 
   'Verify events are tracked with bot detection': function (browser: NightwatchBrowser) {
     browser
-      // Initialize debug plugin to track events
-      .execute(function () {
-        const matomoManager = (window as any)._matomoManagerInstance;
-        if (!matomoManager) return { success: false, error: 'No MatomoManager' };
-        
-        return new Promise((resolve) => {
-          matomoManager.loadDebugPluginForE2E().then((debugHelpers: any) => {
-            (window as any).__matomoDebugHelpers = debugHelpers;
-            resolve({ success: true });
-          }).catch((error: any) => {
-            resolve({ success: false, error: error.message });
-          });
-        });
-      }, [], (result: any) => {
-        browser.assert.ok(result.value.success, 'Debug plugin loaded');
-      })
-      
+      // Debug plugin already loaded in previous test
       // Wait for the 2-second mouse tracking delay to complete + buffer for initialization
       .pause(4000) // Increased from 3000ms to 4000ms for more reliability
       
