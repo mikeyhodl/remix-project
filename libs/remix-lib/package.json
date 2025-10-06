@@ -29,8 +29,7 @@
     "rlp": "^3.0.0",
     "solc": "0.8.26",
     "string-similarity": "^4.0.4",
-    "viem": "2.22.3",
-    "web3": "^4.1.1"
+    "viem": "2.22.3"
   },
   "devDependencies": {
     "@babel/core": "^7.4.5",

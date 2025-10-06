@@ -1,8 +1,7 @@
 'use strict'
 import { EventManager } from '../eventManager'
 import type { Transaction as InternalTransaction } from './txRunner'
-import { Web3 } from 'web3'
-import { BrowserProvider, getAddress } from 'ethers'
+import { BrowserProvider, getAddress, parseUnits } from 'ethers'
 import { normalizeHexAddress } from '../helpers/uiHelper'
 import { aaSupportedNetworks, aaLocalStorageKey, getPimlicoBundlerURL, aaDeterminiticProxyAddress } from '../helpers/aaConstants'
 import { randomBytes } from 'crypto'
@@ -17,7 +16,7 @@ const { createPimlicoClient } = require("permissionless/clients/pimlico")
 export class TxRunnerWeb3 {
   event
   _api
-  getWeb3: () => Web3
+  getWeb3: () => BrowserProvider
   currentblockGasLimit: () => number
 
   constructor (api, getWeb3, currentblockGasLimit) {
@@ -37,11 +36,11 @@ export class TxRunnerWeb3 {
     }
     if (txFee) {
       if (txFee.baseFeePerGas) {
-        tx.maxPriorityFeePerGas = toHex(BigInt(this.getWeb3().utils.toWei(txFee.maxPriorityFee, 'gwei')))
-        tx.maxFeePerGas = toHex(BigInt(this.getWeb3().utils.toWei(txFee.maxFee, 'gwei')))
+        tx.maxPriorityFeePerGas = toHex(BigInt(parseUnits(txFee.maxPriorityFee, 'gwei')))
+        tx.maxFeePerGas = toHex(BigInt(parseUnits(txFee.maxFee, 'gwei')))
         tx.type = '0x2'
       } else {
-        tx.gasPrice = toHex(BigInt(this.getWeb3().utils.toWei(txFee.gasPrice, 'gwei')))
+        tx.gasPrice = toHex(BigInt(parseUnits(txFee.gasPrice, 'gwei')))
         // tx.type = '0x1'
       }
       if (tx.authorizationList) {
@@ -97,8 +96,8 @@ export class TxRunnerWeb3 {
       promptCb(
         async (value) => {
           try {
-            const res = await (this.getWeb3() as any).eth.personal.sendTransaction({ ...tx, value }, { checkRevertBeforeSending: false, ignoreGasPricing: true })
-            cb(null, res.transactionHash, isCreation, false, null)
+            const res = await (await this.getWeb3().getSigner()).sendTransaction({ ...tx, value })
+            cb(null, res.hash, isCreation, false, null)
 
           } catch (e) {
             console.log(`Send transaction failed: ${e.message || e.error} . if you use an injected provider, please check it is properly unlocked. `)
@@ -118,8 +117,8 @@ export class TxRunnerWeb3 {
           const { txHash, contractAddress } = await this.sendUserOp(tx, network.id)
           cb(null, txHash, isCreation, true, contractAddress)
         } else {
-          const res = await this.getWeb3().eth.sendTransaction(tx, null, { checkRevertBeforeSending: false, ignoreGasPricing: true })
-          cb(null, res.transactionHash, isCreation, false, null)
+          const res = await (await this.getWeb3().getSigner()).sendTransaction(tx)
+          cb(null, res.hash, isCreation, false, null)
         }
       } catch (e) {
         if (!e.message) e.message = ''
@@ -146,7 +145,7 @@ export class TxRunnerWeb3 {
       if (this._api && this._api.isVM()) {
         (this.getWeb3() as any).remix.registerCallId(timestamp)
       }
-      this.getWeb3().eth.call(tx)
+      this.getWeb3().call(tx)
         .then((result: any) => callback(null, {
           result: result
         }))
@@ -170,7 +169,7 @@ export class TxRunnerWeb3 {
           txCopy.gasPrice = undefined
         }
       }
-      const ethersProvider = new BrowserProvider(this.getWeb3().currentProvider as any)
+      const ethersProvider = this.getWeb3()
       ethersProvider.estimateGas(txCopy)
         .then(gasEstimationBigInt => {
           gasEstimationForceSend(null, () => {
@@ -322,9 +321,9 @@ export class TxRunnerWeb3 {
   }
 }
 
-async function tryTillReceiptAvailable (txhash: string, web3: Web3) {
+async function tryTillReceiptAvailable (txhash: string, provider: BrowserProvider) {
   try {
-    const receipt = await web3.eth.getTransactionReceipt(txhash)
+    const receipt = await provider.getTransactionReceipt(txhash)
     if (receipt) {
       if (!receipt.to && !receipt.contractAddress) {
         // this is a contract creation and the receipt doesn't contain a contract address. we have to keep polling...
@@ -334,15 +333,15 @@ async function tryTillReceiptAvailable (txhash: string, web3: Web3) {
     }
   } catch (e) {}
   await pause()
-  return await tryTillReceiptAvailable(txhash, web3)
+  return await tryTillReceiptAvailable(txhash, provider)
 }
 
-async function tryTillTxAvailable (txhash: string, web3: Web3) {
+async function tryTillTxAvailable (txhash: string, provider: BrowserProvider) {
   try {
-    const tx = await web3.eth.getTransaction(txhash)
+    const tx = await provider.getTransaction(txhash)
     if (tx && tx.blockHash) return tx
   } catch (e) {}
-  return await tryTillTxAvailable(txhash, web3)
+  return await tryTillTxAvailable(txhash, provider)
 }
 
 async function pause () { return new Promise((resolve, reject) => { setTimeout(resolve, 500) }) }
