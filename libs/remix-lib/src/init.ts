@@ -1,6 +1,6 @@
 'use strict'
 import { Web3, Web3PluginBase } from 'web3'
-import { toNumber } from 'web3-utils'
+import { toNumber } from 'ethers'
 
 export function extendWeb3 (web3) {
   if (!web3.debug){

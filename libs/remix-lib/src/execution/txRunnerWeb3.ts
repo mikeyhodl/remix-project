@@ -2,13 +2,12 @@
 import { EventManager } from '../eventManager'
 import type { Transaction as InternalTransaction } from './txRunner'
 import { Web3 } from 'web3'
-import { BrowserProvider } from 'ethers'
+import { BrowserProvider, getAddress } from 'ethers'
 import { normalizeHexAddress } from '../helpers/uiHelper'
 import { aaSupportedNetworks, aaLocalStorageKey, getPimlicoBundlerURL, aaDeterminiticProxyAddress } from '../helpers/aaConstants'
-import { toBigInt, toHex, toChecksumAddress } from 'web3-utils'
 import { randomBytes } from 'crypto'
 import "viem/window"
-import { custom, http, createWalletClient, createPublicClient, encodePacked, getContractAddress } from "viem"
+import { custom, http, createWalletClient, createPublicClient, encodePacked, getContractAddress, toHex } from "viem"
 import * as chains from "viem/chains"
 import { entryPoint07Address } from "viem/account-abstraction"
 const { createSmartAccountClient } = require("permissionless")
@@ -70,7 +69,7 @@ export class TxRunnerWeb3 {
             if (receipt.logs && receipt.logs.length) {
               receipt.logs.map((log) => {
                 if (log.topics[0] === '0xa1fb700aaee2ae4a2ff6f91ce7eba292f89c2f5488b8ec4c5c5c8150692595c3') {
-                  (receipt as any).contractAddress = toChecksumAddress(normalizeHexAddress(toHex(log.topics[2])))
+                  (receipt as any).contractAddress = getAddress(normalizeHexAddress(toHex(log.topics[2])))
                 }
               })
             }
@@ -165,7 +164,7 @@ export class TxRunnerWeb3 {
           // the sending stack (web3.js / metamask need to have the type defined)
           // this is to avoid the following issue: https://github.com/MetaMask/metamask-extension/issues/11824
           txCopy.type = '0x2'
-          txCopy.maxFeePerGas = Math.ceil(Number((toBigInt(network.lastBlock.baseFeePerGas) + toBigInt(network.lastBlock.baseFeePerGas) / BigInt(3)).toString()))
+          txCopy.maxFeePerGas = Math.ceil(Number((BigInt(network.lastBlock.baseFeePerGas) + BigInt(network.lastBlock.baseFeePerGas) / BigInt(3)).toString()))
         } else {
           txCopy.type = '0x1'
           txCopy.gasPrice = undefined
