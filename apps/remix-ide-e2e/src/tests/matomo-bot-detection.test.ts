@@ -162,12 +162,19 @@ module.exports = {
         const isBot = matomoManager.isBot();
         const botType = matomoManager.getBotType();
         
+        // Find bot detection event
+        const botDetectionEvent = events.find((e: any) => 
+          e.category === 'bot-detection' || e.e_c === 'bot-detection'
+        );
+        
         return {
           isBot,
           botType,
           eventCount: events.length,
           lastEvent: events[events.length - 1] || null,
-          isInitialized: matomoManager.getState().initialized
+          isInitialized: matomoManager.getState().initialized,
+          hasBotDetectionEvent: !!botDetectionEvent,
+          botDetectionEvent: botDetectionEvent || null
         };
       }, [], (result: any) => {
         console.log('📈 Event Tracking Result:', result.value);
@@ -190,6 +197,22 @@ module.exports = {
           true,
           'Bot status should remain true after event tracking'
         );
+        
+        // Verify bot detection event was sent
+        browser.assert.ok(
+          result.value.hasBotDetectionEvent,
+          'Bot detection event should be tracked'
+        );
+        
+        // Log bot detection event details
+        if (result.value.botDetectionEvent) {
+          console.log('🤖 Bot Detection Event:', {
+            category: result.value.botDetectionEvent.e_c || result.value.botDetectionEvent.category,
+            action: result.value.botDetectionEvent.e_a || result.value.botDetectionEvent.action,
+            name: result.value.botDetectionEvent.e_n || result.value.botDetectionEvent.name,
+            value: result.value.botDetectionEvent.e_v || result.value.botDetectionEvent.value
+          });
+        }
         
         // Log last event details
         if (result.value.lastEvent) {

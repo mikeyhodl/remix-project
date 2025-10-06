@@ -122,6 +122,29 @@ const matomoManager = new MatomoManager({
 
 **Note:** Disabling the delay may result in less accurate bot detection, as passive bots won't have mouse movement data.
 
+## Bot Traffic Separation (Optional)
+
+By default, bots are tracked in the same Matomo site as humans, tagged with the `isBot` custom dimension. You can optionally route bot traffic to **separate Matomo site IDs** to keep human analytics completely clean:
+
+```typescript
+// In MatomoConfig.ts
+export const MATOMO_BOT_SITE_IDS = {
+  'remix.ethereum.org': 12,  // Bots go to site ID 12
+  'alpha.remix.live': 10,    // Humans stay in site ID 3
+  'beta.remix.live': 11,
+  'localhost': null,         // Keep together for testing
+  '127.0.0.1': null
+};
+```
+
+**Benefits:**
+- ✅ Zero bot visits in human analytics
+- ✅ Dedicated bot analysis dashboard
+- ✅ Cleaner reports and conversions
+- ✅ Easy to enable/disable per domain
+
+See [Bot Site Separation Guide](./MATOMO_BOT_SITE_SEPARATION.md) for full setup instructions.
+
 ## Custom Dimensions IDs
 
 The bot detection dimension IDs are configured per domain in `MatomoConfig.ts`:
@@ -140,6 +163,130 @@ The bot detection dimension IDs are configured per domain in `MatomoConfig.ts`:
 - `automation-*` - Browser automation (Selenium, Puppeteer, etc.)
 - `googlebot`, `bingbot`, etc. - Named crawlers
 - `unknown-bot` - Generic bot detection
+
+## Bot Detection Event
+
+On every page load, a **bot detection event** is automatically sent to Matomo with the detection results:
+
+### Event Structure
+
+```javascript
+Category: 'bot-detection'
+Action: 'bot-detected' or 'human-detected'
+Name: Detection method/reason (see table below)
+Value: Confidence score + reason count
+  - High confidence: 100 + (number of reasons)
+  - Medium confidence: 50 + (number of reasons)
+  - Low confidence: 10 + (number of reasons)
+```
+
+### Detection Methods (Event Names)
+
+**Bot Detection Methods:**
+| Event Name | Description | Typical Scenario |
+|------------|-------------|------------------|
+| `webdriver-flag` | navigator.webdriver detected | Selenium, Puppeteer, Playwright |
+| `user-agent-pattern` | Bot signature in user agent | Googlebot, Bingbot, crawlers |
+| `headless-browser` | Headless Chrome/Firefox detected | Headless automation |
+| `automation-detected` | Browser automation artifacts | PhantomJS, automated tests |
+| `missing-features` | Missing browser APIs | Incomplete browser implementations |
+| `behavioral-signals` | Suspicious behavior patterns | Missing referrer, instant load |
+| `mouse-patterns` | Unnatural mouse movements | Straight lines, constant speed |
+| `other-detection` | Other detection signals | Miscellaneous indicators |
+
+**Human Detection Methods:**
+| Event Name | Description |
+|------------|-------------|
+| `human-mouse-confirmed` | Natural mouse movements detected (high likelihood) |
+| `human-mouse-likely` | Some human-like mouse behavior (medium likelihood) |
+| `human-no-bot-signals` | No bot indicators found |
+
+### Example Events
+
+**Selenium Bot (WebDriver):**
+```
+Category: bot-detection
+Action: bot-detected
+Name: webdriver-flag
+Value: 102 (high confidence:100 + 2 detection reasons)
+```
+
+**Googlebot Crawler:**
+```
+Category: bot-detection
+Action: bot-detected
+Name: user-agent-pattern
+Value: 101 (high confidence:100 + 1 detection reason)
+```
+
+**Human with Mouse Tracking:**
+```
+Category: bot-detection
+Action: human-detected
+Name: human-mouse-confirmed
+Value: 100 (high confidence:100 + 0 bot reasons)
+```
+
+**Headless Browser:**
+```
+Category: bot-detection
+Action: bot-detected
+Name: headless-browser
+Value: 103 (high confidence:100 + 3 detection reasons)
+```
+
+### Use Cases
+
+1. **Detection Method Analysis**: See which detection methods catch the most bots
+   - Filter by event name: `webdriver-flag`, `user-agent-pattern`, etc.
+   
+2. **Confidence Distribution**: Monitor detection quality via event values
+   - High confidence (100+): Reliable detections
+   - Medium confidence (50+): Review for false positives
+   - Low confidence (10+): May need investigation
+
+3. **Bot Type Breakdown**: Understand your bot traffic composition
+   - Automation tools: `webdriver-flag`, `automation-detected`
+   - Search engines: `user-agent-pattern`
+   - Headless browsers: `headless-browser`
+
+4. **Human Verification**: Confirm mouse tracking effectiveness
+   - `human-mouse-confirmed`: Natural behavior
+   - `human-mouse-likely`: Partial confirmation
+   - `human-no-bot-signals`: Passive browsing
+
+### Matomo Event Report
+
+Go to **Behavior** → **Events** → Filter by `bot-detection`:
+
+```
+Event Category    Event Action      Event Name              Avg. Value    Total Events
+bot-detection    bot-detected       webdriver-flag          102           823
+bot-detection    bot-detected       user-agent-pattern      101           412
+bot-detection    bot-detected       headless-browser        103           156
+bot-detection    human-detected     human-mouse-confirmed   100           11,234
+bot-detection    human-detected     human-no-bot-signals    100           1,309
+```
+
+### Advanced Segmentation
+
+**High Confidence Bots Only:**
+```
+Event Category = bot-detection
+Event Value >= 100
+```
+
+**WebDriver Automation Traffic:**
+```
+Event Category = bot-detection
+Event Name = webdriver-flag
+```
+
+**Humans with Mouse Confirmation:**
+```
+Event Category = bot-detection
+Event Name = human-mouse-confirmed
+```
 
 ## Usage
 

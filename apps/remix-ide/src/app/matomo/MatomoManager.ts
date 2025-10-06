@@ -22,7 +22,7 @@
  */
 
 import { MatomoEvent } from '@remix-api';
-import { getDomainCustomDimensions, DomainCustomDimensions, ENABLE_MATOMO_LOCALHOST } from './MatomoConfig';
+import { getDomainCustomDimensions, DomainCustomDimensions, ENABLE_MATOMO_LOCALHOST, getSiteIdForTracking } from './MatomoConfig';
 import { BotDetector, BotDetectionResult } from './BotDetector';
 
 // ================== TYPE DEFINITIONS ==================
@@ -457,10 +457,25 @@ export class MatomoManager implements IMatomoManager {
       await this.waitForMouseData();
     }
 
+    // Determine site ID based on bot detection
+    const isBot = this.botDetectionResult?.isBot || false;
+    const siteId = getSiteIdForTracking(isBot);
+    
+    if (siteId !== this.config.siteId) {
+      this.log(`🤖 Bot detected - routing to bot tracking site ID: ${siteId} (human site ID: ${this.config.siteId})`);
+      
+      // Update custom dimensions if bot site has different dimension IDs
+      const botDimensions = getDomainCustomDimensions(true);
+      if (botDimensions !== this.customDimensions) {
+        this.customDimensions = botDimensions;
+        this.log('🔄 Updated to bot-specific custom dimensions:', botDimensions);
+      }
+    }
+
     // Basic setup
     this.log('Setting tracker URL and site ID');
     window._paq.push(['setTrackerUrl', this.config.trackerUrl]);
-    window._paq.push(['setSiteId', this.config.siteId]);
+    window._paq.push(['setSiteId', siteId]); // Use bot site ID if configured
 
     // Apply pattern-specific configuration
     await this.applyInitializationPattern(pattern, options);
@@ -494,6 +509,11 @@ export class MatomoManager implements IMatomoManager {
     this.state.initialized = true;
     this.state.currentMode = pattern;
 
+    // Send bot detection event to Matomo for analytics
+    if (this.botDetectionResult) {
+      this.trackBotDetectionEvent(this.botDetectionResult);
+    }
+
     // Initial page view (now that we're initialized, this won't be queued)
     this.log('Sending initial page view');
     window._paq.push(['trackPageView']);
@@ -508,6 +528,80 @@ export class MatomoManager implements IMatomoManager {
     this.log(`📋 Pre-init queue contains ${this.preInitQueue.length} commands (use processPreInitQueue() to flush)`);
 
     this.emit('initialized', { pattern, options });
+  }
+
+  /**
+   * Track bot detection result as a Matomo event
+   * This sends detection details to Matomo for analysis
+   */
+  private trackBotDetectionEvent(detection: BotDetectionResult): void {
+    const category = 'bot-detection';
+    const action = detection.isBot ? 'bot-detected' : 'human-detected';
+    
+    // Name: Primary detection reason (most important one)
+    let name = '';
+    if (detection.isBot && detection.reasons.length > 0) {
+      // Extract the key detection method from first reason
+      const firstReason = detection.reasons[0];
+      if (firstReason.includes('navigator.webdriver')) {
+        name = 'webdriver-flag';
+      } else if (firstReason.includes('User agent')) {
+        name = 'user-agent-pattern';
+      } else if (firstReason.includes('headless')) {
+        name = 'headless-browser';
+      } else if (firstReason.includes('Browser automation')) {
+        name = 'automation-detected';
+      } else if (firstReason.includes('missing features')) {
+        name = 'missing-features';
+      } else if (firstReason.includes('Behavioral signals')) {
+        name = 'behavioral-signals';
+      } else if (firstReason.includes('Mouse')) {
+        name = 'mouse-patterns';
+      } else {
+        name = 'other-detection';
+      }
+    } else if (!detection.isBot) {
+      // For humans, indicate detection method
+      if (detection.mouseAnalysis?.humanLikelihood === 'high') {
+        name = 'human-mouse-confirmed';
+      } else if (detection.mouseAnalysis?.humanLikelihood === 'medium') {
+        name = 'human-mouse-likely';
+      } else {
+        name = 'human-no-bot-signals';
+      }
+    }
+    
+    // Value: encode detection confidence + number of detection signals
+    // High confidence = 100, Medium = 50, Low = 10
+    // Add number of reasons as bonus (capped at 9)
+    const baseConfidence = detection.confidence === 'high' ? 100 : 
+                          detection.confidence === 'medium' ? 50 : 10;
+    const reasonCount = Math.min(detection.reasons.length, 9);
+    const value = baseConfidence + reasonCount;
+    
+    // Track the event
+    window._paq.push([
+      'trackEvent',
+      category,
+      action,
+      name,
+      value
+    ]);
+    
+    this.log(`📊 Bot detection event tracked: ${action} → ${name} (confidence: ${detection.confidence}, reasons: ${detection.reasons.length}, value: ${value})`);
+    
+    // Log all reasons for debugging
+    if (this.config.debug && detection.reasons.length > 0) {
+      this.log(`   Detection reasons:`);
+      detection.reasons.forEach((reason, i) => {
+        this.log(`     ${i + 1}. ${reason}`);
+      });
+    }
+    
+    // Log mouse analysis if available
+    if (detection.mouseAnalysis) {
+      this.log(`   Mouse: ${detection.mouseAnalysis.movements} movements, likelihood: ${detection.mouseAnalysis.humanLikelihood}`);
+    }
   }
 
   /**

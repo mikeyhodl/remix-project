@@ -24,7 +24,7 @@ import { MatomoConfig } from './MatomoManager';
  * - Production domains (remix.ethereum.org, etc.) are unaffected by this setting
  * - Only affects localhost and 127.0.0.1 domains
  */
-export const ENABLE_MATOMO_LOCALHOST = true;
+export const ENABLE_MATOMO_LOCALHOST = false;
 
 // Type for domain-specific custom dimensions
 export interface DomainCustomDimensions {
@@ -42,7 +42,17 @@ export const MATOMO_DOMAINS = {
   '127.0.0.1': 5
 };
 
-// Domain-specific custom dimension IDs
+// Bot tracking site IDs (separate databases to avoid polluting human analytics)
+// Set to null to use same site ID for bots (they'll be filtered via isBot dimension)
+export const MATOMO_BOT_SITE_IDS = {
+  'alpha.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 10)
+  'beta.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 11)
+  'remix.ethereum.org': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 12)
+  'localhost': 7, // Keep bots in same localhost site for testing
+  '127.0.0.1': 7 // Keep bots in same localhost site for testing
+};
+
+// Domain-specific custom dimension IDs for HUMAN traffic
 // These IDs must match what's configured in each Matomo site
 export const MATOMO_CUSTOM_DIMENSIONS = {
   // Production domains
@@ -74,11 +84,55 @@ export const MATOMO_CUSTOM_DIMENSIONS = {
   }
 };
 
+// Domain-specific custom dimension IDs for BOT traffic (when using separate bot sites)
+// These IDs must match what's configured in the bot tracking sites
+// Set to null to use the same dimension IDs as human sites
+export const MATOMO_BOT_CUSTOM_DIMENSIONS = {
+  'alpha.remix.live': null, // TODO: Configure if bot site has different dimension IDs
+  'beta.remix.live': null, // TODO: Configure if bot site has different dimension IDs
+  'remix.ethereum.org': null, // TODO: Configure if bot site has different dimension IDs
+  'localhost': {
+    trackingMode: 1, // Use same dimension IDs as human site
+    clickAction: 3, // Use same dimension IDs as human site
+    isBot: 2
+  }, // Use same dimension IDs as human site
+  '127.0.0.1': {
+    trackingMode: 1, // Use same dimension IDs as human site
+    clickAction: 3, // Use same dimension IDs as human site
+    isBot: 2
+  } // Use same dimension IDs as human site
+};
+
+/**
+ * Get the appropriate site ID for the current domain and bot status
+ * 
+ * @param isBot - Whether the visitor is detected as a bot
+ * @returns Site ID to use for tracking
+ */
+export function getSiteIdForTracking(isBot: boolean): number {
+  const hostname = window.location.hostname;
+
+  // If bot and bot site ID is configured, use it
+  if (isBot && MATOMO_BOT_SITE_IDS[hostname] !== null && MATOMO_BOT_SITE_IDS[hostname] !== undefined) {
+    return MATOMO_BOT_SITE_IDS[hostname];
+  }
+
+  // Otherwise use normal site ID
+  return MATOMO_DOMAINS[hostname] || MATOMO_DOMAINS['localhost'];
+}
+
 /**
  * Get custom dimensions configuration for current domain
+ * 
+ * @param isBot - Whether the visitor is detected as a bot (to use bot-specific dimensions if configured)
  */
-export function getDomainCustomDimensions(): DomainCustomDimensions {
+export function getDomainCustomDimensions(isBot: boolean = false): DomainCustomDimensions {
   const hostname = window.location.hostname;
+
+  // If bot and bot-specific dimensions are configured, use them
+  if (isBot && MATOMO_BOT_CUSTOM_DIMENSIONS[hostname] !== null && MATOMO_BOT_CUSTOM_DIMENSIONS[hostname] !== undefined) {
+    return MATOMO_BOT_CUSTOM_DIMENSIONS[hostname];
+  }
 
   // Return dimensions for current domain
   if (MATOMO_CUSTOM_DIMENSIONS[hostname]) {
@@ -97,7 +151,7 @@ export function createMatomoConfig(): MatomoConfig {
   return {
     trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
     // siteId will be auto-derived from matomoDomains based on current hostname
-    debug: true,
+    debug: false,
     matomoDomains: MATOMO_DOMAINS,
     scriptTimeout: 10000,
     onStateChange: (event, data, state) => {
