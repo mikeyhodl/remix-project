@@ -145,12 +145,12 @@ module.exports = {
         browser.assert.ok(result.value.success, 'Debug plugin loaded');
       })
       
-      // Wait for the 2-second mouse tracking delay to complete
-      .pause(3000)
+      // Wait for the 2-second mouse tracking delay to complete + buffer for initialization
+      .pause(4000) // Increased from 3000ms to 4000ms for more reliability
       
       // Trigger a tracked event by clicking a plugin
       .clickLaunchIcon('filePanel')
-      .pause(2000)
+      .pause(3000) // Increased from 2000ms to 3000ms for event propagation
       
       .execute(function () {
         const matomoManager = (window as any)._matomoManagerInstance;

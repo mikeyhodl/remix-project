@@ -6,14 +6,22 @@ import init from '../helpers/init'
 function startFreshTest(browser: NightwatchBrowser) {
     return browser
         .execute(function () {
+            // Clear all Matomo-related state for clean test
+            localStorage.removeItem('config-v0.8:.remix.config');
+            localStorage.removeItem('matomo-analytics-consent');
             localStorage.setItem('showMatomo', 'true');
+            // Clear cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
         }, [])
         .refreshPage()
         .waitForElementPresent({
             selector: `//*[@data-id='compilerloaded']`,
             locateStrategy: 'xpath',
             timeout: 120000
-        });
+        })
+        .pause(1000); // Extra pause to ensure clean state
 }
 
 // Helper 2: Accept consent modal
