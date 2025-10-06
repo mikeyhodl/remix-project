@@ -24,7 +24,7 @@ import { MatomoConfig } from './MatomoManager';
  * - Production domains (remix.ethereum.org, etc.) are unaffected by this setting
  * - Only affects localhost and 127.0.0.1 domains
  */
-export const ENABLE_MATOMO_LOCALHOST = false;
+export const ENABLE_MATOMO_LOCALHOST = true;
 
 // Type for domain-specific custom dimensions
 export interface DomainCustomDimensions {
@@ -97,7 +97,7 @@ export function createMatomoConfig(): MatomoConfig {
   return {
     trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
     // siteId will be auto-derived from matomoDomains based on current hostname
-    debug: false,
+    debug: true,
     matomoDomains: MATOMO_DOMAINS,
     scriptTimeout: 10000,
     onStateChange: (event, data, state) => {

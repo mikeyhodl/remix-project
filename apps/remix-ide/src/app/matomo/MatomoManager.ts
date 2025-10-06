@@ -37,6 +37,8 @@ export interface MatomoConfig {
   scriptTimeout?: number;
   retryAttempts?: number;
   matomoDomains?: Record<string, number>;
+  mouseTrackingDelay?: number; // ms to wait for mouse movements before initializing (default: 2000)
+  waitForMouseTracking?: boolean; // Whether to delay init for mouse tracking (default: true)
 }
 
 export interface MatomoState {
@@ -236,6 +238,8 @@ export class MatomoManager implements IMatomoManager {
       retryAttempts: 3,
       matomoDomains: {},
       siteId: 0, // Default fallback, will be derived if not explicitly set
+      mouseTrackingDelay: 2000, // Wait 2 seconds for mouse movements
+      waitForMouseTracking: true, // Enable mouse tracking delay by default
       ...config
     };
 
@@ -260,9 +264,15 @@ export class MatomoManager implements IMatomoManager {
     // Initialize domain-specific custom dimensions
     this.customDimensions = getDomainCustomDimensions();
 
-    // Perform bot detection
-    this.botDetectionResult = BotDetector.detect();
-    this.log('Bot detection result:', this.botDetectionResult);
+    // Start mouse tracking immediately (but don't analyze yet)
+    if (this.config.waitForMouseTracking) {
+      BotDetector.startMouseTracking();
+      this.log('Mouse tracking started - will analyze before initialization');
+    }
+
+    // Perform initial bot detection (without mouse data)
+    this.botDetectionResult = BotDetector.detect(false); // Don't include mouse tracking yet
+    this.log('Initial bot detection result (without mouse):', this.botDetectionResult);
 
     this.setupPaqInterception();
     this.log('MatomoManager initialized', this.config);
@@ -442,6 +452,11 @@ export class MatomoManager implements IMatomoManager {
     this.log(`📋 _paq array before init: ${window._paq.length} commands`);
     this.log(`📋 Pre-init queue before init: ${this.preInitQueue.length} commands`);
 
+    // Wait for mouse tracking to gather data
+    if (this.config.waitForMouseTracking) {
+      await this.waitForMouseData();
+    }
+
     // Basic setup
     this.log('Setting tracker URL and site ID');
     window._paq.push(['setTrackerUrl', this.config.trackerUrl]);
@@ -493,6 +508,30 @@ export class MatomoManager implements IMatomoManager {
     this.log(`📋 Pre-init queue contains ${this.preInitQueue.length} commands (use processPreInitQueue() to flush)`);
 
     this.emit('initialized', { pattern, options });
+  }
+
+  /**
+   * Wait for mouse tracking data before initializing Matomo
+   * This ensures we have accurate human/bot detection before sending any events
+   */
+  private async waitForMouseData(): Promise<void> {
+    const delay = this.config.mouseTrackingDelay || 2000;
+    this.log(`⏳ Waiting ${delay}ms for mouse movements to determine human/bot status...`);
+    
+    // Wait for the configured delay
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    // Re-run bot detection with mouse tracking data
+    this.botDetectionResult = BotDetector.detect(true); // Include mouse analysis
+    this.log('✅ Bot detection complete with mouse data:', this.botDetectionResult);
+    
+    if (this.botDetectionResult.mouseAnalysis) {
+      this.log('🖱️ Mouse analysis:', {
+        movements: this.botDetectionResult.mouseAnalysis.movements,
+        humanLikelihood: this.botDetectionResult.mouseAnalysis.humanLikelihood,
+        suspiciousPatterns: this.botDetectionResult.mouseAnalysis.suspiciousPatterns
+      });
+    }
   }
 
   private async applyInitializationPattern(pattern: InitializationPattern, options: InitializationOptions): Promise<void> {

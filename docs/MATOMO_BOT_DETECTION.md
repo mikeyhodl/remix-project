@@ -4,6 +4,43 @@
 
 The Remix IDE Matomo integration now includes comprehensive bot detection to filter and segment bot traffic from human users. This helps maintain accurate analytics by tagging automated visitors (CI/CD, crawlers, testing tools) with a custom dimension.
 
+**Key Innovation:** Matomo initialization is delayed by 2 seconds to capture mouse movements, ensuring accurate human/bot classification before any data is sent.
+
+## How It Works
+
+### Initialization Flow
+
+1. **Immediate Detection** (Constructor)
+   - User agent analysis
+   - Automation flag detection  
+   - Headless browser detection
+   - Missing feature detection
+   - Behavioral signals analysis
+   - **Mouse tracking starts** (but not analyzed yet)
+
+2. **Delayed Analysis** (Before Matomo Init)
+   - Waits **2 seconds** (configurable) for user to move mouse
+   - Re-runs bot detection **with mouse movement data**
+   - All events queued in `preInitQueue` during this time
+   - Matomo initializes **only after** human/bot status determined
+
+3. **Dimension Setting** (Matomo Initialization)
+   - Sets `isBot` custom dimension with accurate value
+   - Flushes pre-init queue with correct bot dimension
+   - All subsequent events automatically tagged
+
+### Why The Delay?
+
+**Problem:** Bots are fast! They often trigger events before a human has time to move their mouse.
+
+**Solution:** We delay Matomo initialization by 2 seconds to:
+- ✅ Capture mouse movements from real humans
+- ✅ Distinguish passive (headless) bots from humans
+- ✅ Ensure accurate bot dimension on ALL events
+- ✅ Prevent bot data from polluting human analytics
+
+**Performance:** Events are queued during the 2-second window and sent immediately after with the correct bot status.
+
 ## Features
 
 - **Multi-layered detection**: User agent patterns, automation flags, headless browser detection, and behavioral signals
@@ -56,7 +93,36 @@ Analyzes cursor behavior patterns:
 
 See [Mouse Movement Detection](./MOUSE_MOVEMENT_DETECTION.md) for detailed documentation.
 
-## Custom Dimension IDs
+## Configuration
+
+### Adjusting the Delay
+
+By default, Matomo waits **2 seconds** for mouse movements. You can adjust this:
+
+```typescript
+const matomoManager = new MatomoManager({
+  trackerUrl: 'https://matomo.example.com/matomo.php',
+  siteId: 1,
+  mouseTrackingDelay: 3000, // Wait 3 seconds instead
+  waitForMouseTracking: true, // Enable delay (default: true)
+});
+```
+
+### Disabling Mouse Tracking Delay
+
+For immediate initialization (not recommended for production):
+
+```typescript
+const matomoManager = new MatomoManager({
+  trackerUrl: 'https://matomo.example.com/matomo.php',
+  siteId: 1,
+  waitForMouseTracking: false, // No delay
+});
+```
+
+**Note:** Disabling the delay may result in less accurate bot detection, as passive bots won't have mouse movement data.
+
+## Custom Dimensions IDs
 
 The bot detection dimension IDs are configured per domain in `MatomoConfig.ts`:
 

@@ -128,27 +128,60 @@ module.exports = {
 
   'Verify events are tracked with bot detection': function (browser: NightwatchBrowser) {
     browser
+      // Initialize debug plugin to track events
+      .execute(function () {
+        const matomoManager = (window as any)._matomoManagerInstance;
+        if (!matomoManager) return { success: false, error: 'No MatomoManager' };
+        
+        return new Promise((resolve) => {
+          matomoManager.loadDebugPluginForE2E().then((debugHelpers: any) => {
+            (window as any).__matomoDebugHelpers = debugHelpers;
+            resolve({ success: true });
+          }).catch((error: any) => {
+            resolve({ success: false, error: error.message });
+          });
+        });
+      }, [], (result: any) => {
+        browser.assert.ok(result.value.success, 'Debug plugin loaded');
+      })
+      
+      // Wait for the 2-second mouse tracking delay to complete
+      .pause(3000)
+      
       // Trigger a tracked event by clicking a plugin
       .clickLaunchIcon('filePanel')
-      .pause(1000)
+      .pause(2000)
       
       .execute(function () {
         const matomoManager = (window as any)._matomoManagerInstance;
-        const events = (window as any).__getMatomoEvents?.() || [];
+        const debugHelpers = (window as any).__matomoDebugHelpers;
+        
+        if (!debugHelpers) return { error: 'Debug helpers not found' };
+        
+        const events = debugHelpers.getEvents();
+        const isBot = matomoManager.isBot();
+        const botType = matomoManager.getBotType();
         
         return {
-          isBot: matomoManager.isBot(),
-          botType: matomoManager.getBotType(),
+          isBot,
+          botType,
           eventCount: events.length,
-          lastEvent: events[events.length - 1]
+          lastEvent: events[events.length - 1] || null,
+          isInitialized: matomoManager.getState().initialized
         };
       }, [], (result: any) => {
         console.log('📈 Event Tracking Result:', result.value);
 
+        // Verify Matomo is initialized
+        browser.assert.ok(
+          result.value.isInitialized,
+          'Matomo should be initialized after delay'
+        );
+
         // Verify events are being tracked
         browser.assert.ok(
           result.value.eventCount > 0,
-          'Events should be tracked even for bots'
+          `Events should be tracked even for bots (found ${result.value.eventCount})`
         );
 
         // Verify bot is still detected
@@ -157,6 +190,15 @@ module.exports = {
           true,
           'Bot status should remain true after event tracking'
         );
+        
+        // Log last event details
+        if (result.value.lastEvent) {
+          console.log('📊 Last event:', {
+            category: result.value.lastEvent.e_c,
+            action: result.value.lastEvent.e_a,
+            name: result.value.lastEvent.e_n
+          });
+        }
       })
   },
 
@@ -172,17 +214,33 @@ module.exports = {
           hasBotType: typeof result?.botType === 'string' || result?.botType === undefined,
           hasConfidence: ['high', 'medium', 'low'].includes(result?.confidence),
           hasReasons: Array.isArray(result?.reasons),
-          hasUserAgent: typeof result?.userAgent === 'string'
+          hasUserAgent: typeof result?.userAgent === 'string',
+          // Also return actual values for logging
+          actualIsBot: result?.isBot,
+          actualBotType: result?.botType,
+          actualConfidence: result?.confidence,
+          actualReasons: result?.reasons,
+          actualUserAgent: result?.userAgent,
+          hasMouseAnalysis: !!result?.mouseAnalysis,
+          mouseMovements: result?.mouseAnalysis?.movements || 0,
+          humanLikelihood: result?.mouseAnalysis?.humanLikelihood || 'unknown'
         };
       }, [], (result: any) => {
         console.log('🔍 Bot Detection Structure:', result.value);
 
         browser.assert.strictEqual(result.value.hasResult, true, 'Should have bot detection result');
-        browser.assert.strictEqual(result.value.hasIsBot, true, 'Should have isBot boolean');
-        browser.assert.strictEqual(result.value.hasBotType, true, 'Should have botType string');
-        browser.assert.strictEqual(result.value.hasConfidence, true, 'Should have valid confidence level');
-        browser.assert.strictEqual(result.value.hasReasons, true, 'Should have reasons array');
+        browser.assert.strictEqual(result.value.hasIsBot, true, `Should have isBot boolean (value: ${result.value.actualIsBot})`);
+        browser.assert.strictEqual(result.value.hasBotType, true, `Should have botType string (value: ${result.value.actualBotType})`);
+        browser.assert.strictEqual(result.value.hasConfidence, true, `Should have valid confidence level (value: ${result.value.actualConfidence})`);
+        browser.assert.strictEqual(result.value.hasReasons, true, `Should have reasons array (count: ${result.value.actualReasons?.length || 0})`);
         browser.assert.strictEqual(result.value.hasUserAgent, true, 'Should have userAgent string');
+        
+        // Log mouse analysis if available
+        if (result.value.hasMouseAnalysis) {
+          browser.assert.ok(true, `🖱️ Mouse Analysis: ${result.value.mouseMovements} movements, likelihood: ${result.value.humanLikelihood}`);
+        } else {
+          browser.assert.ok(true, '🖱️ Mouse Analysis: Not available (bot detected before mouse tracking)');
+        }
       })
   },
 
