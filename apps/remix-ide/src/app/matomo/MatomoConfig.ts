@@ -62,9 +62,9 @@ export const MATOMO_DOMAINS: SiteIdConfig = {
 export const MATOMO_BOT_SITE_IDS: BotSiteIdConfig = {
   'alpha.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 10)
   'beta.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 11)
-  'remix.ethereum.org': 8, // TODO: Create bot tracking site in Matomo (e.g., site ID 12)
-  'localhost': 7, // Keep bots in same localhost site for testing
-  '127.0.0.1': 7 // Keep bots in same localhost site for testing
+  'remix.ethereum.org': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 12)
+  'localhost': null, // Keep bots in same localhost site for testing (E2E tests need cookies)
+  '127.0.0.1': null // Keep bots in same localhost site for testing (E2E tests need cookies)
 };
 
 // Domain-specific custom dimension IDs for HUMAN traffic
@@ -105,21 +105,9 @@ export const MATOMO_CUSTOM_DIMENSIONS: CustomDimensionsConfig = {
 export const MATOMO_BOT_CUSTOM_DIMENSIONS: BotCustomDimensionsConfig = {
   'alpha.remix.live': null, // TODO: Configure if bot site has different dimension IDs
   'beta.remix.live': null, // TODO: Configure if bot site has different dimension IDs
-  'remix.ethereum.org': {
-    trackingMode: 1,
-    clickAction: 3,
-    isBot: 2
-  }, // TODO: Configure if bot site has different dimension IDs
-  'localhost': {
-    trackingMode: 1,
-    clickAction: 3,
-    isBot: 2
-  },
-  '127.0.0.1': {
-    trackingMode: 1,
-    clickAction: 3,
-    isBot: 2
-  }
+  'remix.ethereum.org': null, // TODO: Configure if bot site has different dimension IDs
+  'localhost': null, // Use same dimension IDs as human site
+  '127.0.0.1': null // Use same dimension IDs as human site
 };
 
 /**

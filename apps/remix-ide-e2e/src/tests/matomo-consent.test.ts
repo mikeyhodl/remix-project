@@ -22,7 +22,23 @@ function acceptConsent(browser: NightwatchBrowser) {
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
         .click('[data-id="matomoModal-modal-footer-ok-react"]')
         .waitForElementNotVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-        .pause(2000);
+        .pause(4000) // Wait for bot detection (2s delay) + Matomo initialization + script load + cookie setting
+        .execute(function() {
+            // Wait for Matomo script to fully load and initialize
+            const checkMatomoReady = () => {
+                const matomo = (window as any).Matomo;
+                const matomoManager = (window as any)._matomoManagerInstance;
+                return {
+                    hasPaq: !!(window as any)._paq,
+                    hasMatomo: !!matomo,
+                    matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
+                    initialized: matomoManager?.getState?.()?.initialized || false
+                };
+            };
+            return checkMatomoReady();
+        }, [], (result: any) => {
+            browser.assert.ok(result.value.initialized, `Matomo should be initialized after accepting consent (initialized=${result.value.initialized}, loaded=${result.value.matomoLoaded})`);
+        });
 }
 
 // Helper 2b: Reject consent via manage preferences
@@ -65,7 +81,23 @@ function rejectConsent(browser: NightwatchBrowser) {
             }
         })
         .waitForElementNotVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]')
-        .pause(2000);
+        .pause(4000) // Wait for bot detection (2s delay) + Matomo initialization + script load + cookie setting
+        .execute(function() {
+            // Wait for Matomo script to fully load and initialize
+            const checkMatomoReady = () => {
+                const matomo = (window as any).Matomo;
+                const matomoManager = (window as any)._matomoManagerInstance;
+                return {
+                    hasPaq: !!(window as any)._paq,
+                    hasMatomo: !!matomo,
+                    matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
+                    initialized: matomoManager?.getState?.()?.initialized || false
+                };
+            };
+            return checkMatomoReady();
+        }, [], (result: any) => {
+            browser.assert.ok(result.value.initialized, `Matomo should be initialized (initialized=${result.value.initialized}, loaded=${result.value.matomoLoaded})`);
+        });
 }
 
 // Helper 3: Check cookie and consent state
@@ -73,15 +105,29 @@ function checkConsentState(browser: NightwatchBrowser, expectedHasCookies: boole
     return browser
         .execute(function () {
             const cookies = document.cookie.split(';').filter(c => c.includes('_pk_'));
+            const allCookies = document.cookie.split(';');
             const matomoManager = (window as any)._matomoManagerInstance;
             const hasConsent = matomoManager.getState().consentGiven;
-            return { cookieCount: cookies.length, hasConsent };
+            const isInitialized = matomoManager.getState().initialized;
+            const botDetection = matomoManager.getBotDetectionResult();
+            return { 
+                cookieCount: cookies.length, 
+                hasConsent, 
+                isInitialized,
+                isBot: botDetection?.isBot,
+                botType: botDetection?.botType,
+                allCookiesCount: allCookies.length,
+                firstCookie: allCookies[0]
+            };
         }, [], (result: any) => {
             const hasCookies = result.value.cookieCount > 0;
             browser
+                .assert.equal(result.value.isInitialized, true, 'Matomo should be initialized before checking cookies')
+                .assert.ok(true, `🤖 Bot status: isBot=${result.value.isBot}, botType=${result.value.botType}`)
+                .assert.ok(true, `🍪 All cookies: ${result.value.allCookiesCount} total, ${result.value.cookieCount} Matomo cookies`)
                 .assert.equal(hasCookies, expectedHasCookies, expectedHasCookies ? 'Should have cookies' : 'Should not have cookies')
                 .assert.equal(result.value.hasConsent, expectedHasCookies, expectedHasCookies ? 'Should have consent' : 'Should not have consent')
-                .assert.ok(true, `✅ ${description}: ${result.value.cookieCount} cookies, consent=${result.value.hasConsent}`);
+                .assert.ok(true, `✅ ${description}: ${result.value.cookieCount} cookies, consent=${result.value.hasConsent}, initialized=${result.value.isInitialized}`);
         });
 }
 
@@ -151,15 +197,18 @@ function reloadAndCheckPersistence(browser: NightwatchBrowser, expectedHasModal:
 function triggerEvent(browser: NightwatchBrowser, elementId: string, description: string = '') {
     const displayName = description || elementId.replace('verticalIcons', '').replace('Icon', '');
     return browser
+        .waitForElementVisible(`[data-id="${elementId}"]`, 5000)
+        .assert.ok(true, `🔍 Element [data-id="${elementId}"] is visible`)
         .click(`[data-id="${elementId}"]`)
+        .assert.ok(true, `🖱️ Clicked: ${displayName}`)
         .pause(2000) // Wait longer for event to be captured by debug plugin
-        .assert.ok(true, `🎯 Triggered: ${displayName}`);
+        .assert.ok(true, `⏱️ Waited 2s after ${displayName} click`);
 }
 
 // Helper 6: Check last event has correct tracking mode and visitor ID
 function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' | 'anon', expectedCategory: string, expectedAction: string, expectedName: string, description: string) {
     return browser
-        .pause(1000) // Extra wait to ensure debug plugin captured the event
+        .pause(3000) // Extra wait to ensure debug plugin captured the event (increased from 1000ms)
         .execute(function () {
             const debugHelpers = (window as any).__matomoDebugHelpers;
             if (!debugHelpers) return { error: 'Debug helpers not found' };
@@ -167,10 +216,38 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
             const events = debugHelpers.getEvents();
             if (events.length === 0) return { error: 'No events found' };
             
-            const lastEvent = events[events.length - 1];
+            // Filter out bot-detection and landingPage (consent modal) events to find last user navigation event
+            const userEvents = events.filter(e => {
+                const category = e.e_c || e.category || '';
+                return category !== 'bot-detection' && category !== 'landingPage';
+            });
+            
+            if (userEvents.length === 0) return { error: 'No user navigation events found (only bot-detection/landingPage events)' };
+            
+            const lastEvent = userEvents[userEvents.length - 1];
             
             // Store ALL events as JSON string in browser global for Nightwatch visibility
             (window as any).__detectedevents = JSON.stringify(events, null, 2);
+            
+            // Debug: Show ALL events with index, category, and timestamp
+            const allEventsSummary = events.map((e, idx) => ({
+                idx,
+                cat: e.e_c || e.category || 'unknown',
+                act: e.e_a || e.action || 'unknown',
+                name: e.e_n || e.name || 'unknown',
+                ts: e.timestamp || e._cacheId || 'no-ts'
+            }));
+            
+            // Debug: Show last 3 USER events (after filtering) with categories
+            const recentEvents = userEvents.slice(-3).map((e, relIdx) => {
+                const absIdx = events.indexOf(e);
+                return {
+                    idx: absIdx,
+                    cat: e.e_c || e.category,
+                    act: e.e_a || e.action,
+                    name: e.e_n || e.name
+                };
+            });
             
             return {
                 mode: lastEvent.dimension1, // 'cookie' or 'anon'
@@ -180,6 +257,9 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
                 category: lastEvent.e_c || lastEvent.category || 'unknown',
                 action: lastEvent.e_a || lastEvent.action || 'unknown',
                 totalEvents: events.length,
+                userEventsCount: userEvents.length,
+                recentEvents: JSON.stringify(recentEvents),
+                allEventsSummary: JSON.stringify(allEventsSummary),
                 allEventsJson: JSON.stringify(events, null, 2), // Include in return for immediate logging
                 // Domain-specific dimension check
                 trackingMode: lastEvent.dimension1, // Should be same as mode but checking dimension specifically
@@ -189,6 +269,9 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
         }, [], (result: any) => {
             const expectedHasId = expectedMode === 'cookie';
             browser
+                .assert.ok(true, `📋 All events (${result.value.totalEvents}): ${result.value.allEventsSummary}`)
+                .assert.ok(true, `📋 Recent user events (last 3): ${result.value.recentEvents}`)
+                .assert.ok(true, `📊 Total: ${result.value.totalEvents} events, ${result.value.userEventsCount} user events`)
                 .assert.equal(result.value.mode, expectedMode, `Event should be in ${expectedMode} mode`)
                 .assert.equal(result.value.hasVisitorId, expectedHasId, expectedHasId ? 'Should have visitor ID' : 'Should NOT have visitor ID')
                 .assert.equal(result.value.category, expectedCategory, `Event should have category "${expectedCategory}"`)
@@ -196,8 +279,7 @@ function checkLastEventMode(browser: NightwatchBrowser, expectedMode: 'cookie' |
                 .assert.equal(result.value.eventName, expectedName, `Event should have name "${expectedName}"`)
                 .assert.ok(result.value.trackingMode, 'Custom dimension 1 (trackingMode) should be set')
                 .assert.ok(true, `🎯 Domain dimensions: ${result.value.dimensionInfo} (localhost uses d1=trackingMode, d3=clickAction)`)
-                .assert.ok(true, `✅ ${description}: ${result.value.category}/${result.value.action}/${result.value.eventName} → ${result.value.mode} mode, visitorId=${result.value.hasVisitorId ? 'yes' : 'no'}`)
-                .assert.ok(true, `📋 All events JSON: ${result.value.allEventsJson}`);
+                .assert.ok(true, `✅ ${description}: ${result.value.category}/${result.value.action}/${result.value.eventName} → ${result.value.mode} mode, visitorId=${result.value.hasVisitorId ? 'yes' : 'no'}`);
             
             // Store visitor ID globally for comparison later
             (browser as any).__lastVisitorId = result.value.visitorId;
@@ -457,7 +539,15 @@ function verifyEventTracking(browser: NightwatchBrowser, expectedCategory: strin
             const events = debugHelpers.getEvents();
             if (events.length === 0) return { error: 'No events found' };
             
-            const lastEvent = events[events.length - 1];
+            // Filter out bot-detection and landingPage (consent modal) events to find last user navigation event
+            const userEvents = events.filter(e => {
+                const category = e.e_c || e.category || '';
+                return category !== 'bot-detection' && category !== 'landingPage';
+            });
+            
+            if (userEvents.length === 0) return { error: 'No user navigation events found (only bot-detection/landingPage events)' };
+            
+            const lastEvent = userEvents[userEvents.length - 1];
             return {
                 category: lastEvent.e_c || lastEvent.category || 'unknown',
                 action: lastEvent.e_a || lastEvent.action || 'unknown', 
