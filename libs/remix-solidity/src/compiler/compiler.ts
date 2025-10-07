@@ -478,10 +478,29 @@ export class Compiler {
    * @returns the file that imports it, or null
    */
   findImportingFile(importPath: string, loadedFiles: Source): string | null {
+    // Helper to check if an import statement matches the target path
+    // Handles relative paths like './IERC1155.sol' matching '@openzeppelin/.../IERC1155.sol'
+    const pathsMatch = (importStatement: string, targetPath: string): boolean => {
+      // Exact match
+      if (importStatement === targetPath) return true
+      
+      // Check if the import statement is a relative path and target is absolute
+      if (importStatement.startsWith('./') || importStatement.startsWith('../')) {
+        // Extract filename from both paths
+        const importFilename = importStatement.split('/').pop()
+        const targetFilename = targetPath.split('/').pop()
+        return importFilename === targetFilename
+      }
+      
+      return false
+    }
+    
     // Check our import map first
     for (const [file, imports] of this.importMap.entries()) {
-      if (imports.includes(importPath)) {
-        return file
+      for (const imp of imports) {
+        if (pathsMatch(imp, importPath)) {
+          return file
+        }
       }
     }
     
@@ -490,8 +509,10 @@ export class Compiler {
       if (!this.importMap.has(file)) {
         const imports = this.parseImports(loadedFiles[file].content)
         this.importMap.set(file, imports)
-        if (imports.includes(importPath)) {
-          return file
+        for (const imp of imports) {
+          if (pathsMatch(imp, importPath)) {
+            return file
+          }
         }
       }
     }
