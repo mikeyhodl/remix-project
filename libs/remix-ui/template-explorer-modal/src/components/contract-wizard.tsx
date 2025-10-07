@@ -153,7 +153,7 @@ export function ContractWizard () {
             <Editor
               height="460px"
               defaultLanguage="typescript"
-              options={{ readOnly: true, minimap: { enabled: false } }}
+              options={{ readOnly: true, minimap: { enabled: false }, theme: 'vs-dark' }}
               value={strategy.contractCode as string}
             />
           </div>

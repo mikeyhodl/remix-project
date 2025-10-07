@@ -20,7 +20,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC721, Ownable {
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -42,7 +42,7 @@ contract ${contractName} is ERC721, Ownable {
     uint256 private _nextTokenId;
 
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -79,7 +79,7 @@ contract ${contractName} is ERC721, ERC721Burnable, Ownable {
     uint256 private _nextTokenId;
 
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -102,7 +102,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC721, ERC721Pausable, Ownable {
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -138,7 +138,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC721, ERC721Pausable, Ownable, ERC721Burnable {
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -176,7 +176,7 @@ contract ${contractName} is ERC721, ERC721Pausable, Ownable, ERC721Burnable {
     uint256 private _nextTokenId;
 
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -221,7 +221,7 @@ contract ${contractName} is ERC721, ERC721Enumerable, ERC721Pausable, Ownable, E
     uint256 private _nextTokenId;
 
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -283,7 +283,7 @@ contract ${contractName} is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pa
     uint256 private _nextTokenId;
 
     constructor(address initialOwner)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -361,7 +361,7 @@ contract ${contractName} is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pa
     uint256 private _nextTokenId;
 
     constructor(address defaultAdmin, address pauser, address minter)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
     {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, pauser);
@@ -440,7 +440,7 @@ contract ${contractName} is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pa
     uint256 private _nextTokenId;
 
     constructor(address initialAuthority)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         AccessManaged(initialAuthority)
     {}
 
@@ -522,7 +522,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -613,7 +613,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -703,7 +703,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -790,7 +790,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -890,7 +890,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -989,7 +989,7 @@ contract ${contractName} is Initializable, ERC721Upgradeable, ERC721EnumerableUp
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC721Pausable_init();
@@ -1072,7 +1072,7 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
@@ -1086,7 +1086,7 @@ contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable,
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessControl_init();
         __ERC721Burnable_init();
@@ -1149,7 +1149,7 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -1162,7 +1162,7 @@ contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable,
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessControl_init();
         __ERC721Burnable_init();
@@ -1218,9 +1218,9 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import {ERC721Pausable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 
-contract MyToken is ERC721, ERC721Pausable, AccessManaged, ERC721Burnable {
+contract ${contractName} is ERC721, ERC721Pausable, AccessManaged, ERC721Burnable {
     constructor(address initialAuthority)
-        ERC721("MyToken", "MTK")
+        ERC721("${contractName}", "MTK")
         AccessManaged(initialAuthority)
     {}
 
@@ -1259,7 +1259,7 @@ import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC72
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -1272,7 +1272,7 @@ contract MyToken is Initializable, ERC721Upgradeable, AccessControlUpgradeable, 
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
@@ -1315,14 +1315,14 @@ import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC72
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
     }
@@ -1351,14 +1351,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1405,7 +1405,7 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
@@ -1419,7 +1419,7 @@ contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable,
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -1480,14 +1480,14 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
@@ -1535,14 +1535,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, OwnableUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, OwnableUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __Ownable_init(initialOwner);
         __ERC721Burnable_init();
@@ -1587,7 +1587,7 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessControlUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -1600,7 +1600,7 @@ contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable,
         public
         initializer
     {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessControl_init();
         __ERC721Burnable_init();
@@ -1658,14 +1658,14 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessManagedUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable, AccessManagedUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC721_init("MyToken", "MTK");
+        __ERC721_init("${contractName}", "MTK");
         __ERC721Pausable_init();
         __AccessManaged_init(initialAuthority);
         __ERC721Burnable_init();
@@ -1691,6 +1691,80 @@ contract MyToken is Initializable, ERC721Upgradeable, ERC721PausableUpgradeable,
     function _update(address to, uint256 tokenId, address auth)
         internal
         override(ERC721Upgradeable, ERC721PausableUpgradeable)
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
+    }
+}
+`
+
+export const erc721BurnableOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.4.0
+pragma solidity ^0.8.27;
+
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+
+contract ${contractName} is ERC721, ERC721Burnable {
+    constructor() ERC721("${contractName}", "MTK") {}
+}
+`
+
+export const erc721BurnableMintableOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.4.0
+pragma solidity ^0.8.27;
+
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract ${contractName} is ERC721, ERC721Burnable, Ownable {
+    constructor(address initialOwner)
+        ERC721("${contractName}", "MTK")
+        Ownable(initialOwner)
+    {}
+
+    function safeMint(address to, uint256 tokenId) public onlyOwner {
+        _safeMint(to, tokenId);
+    }
+}
+`
+
+export const erc721BurnableMintablePausableOwnableOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.4.0
+pragma solidity ^0.8.27;
+
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import {ERC721Pausable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract ${contractName} is ERC721, ERC721Pausable, Ownable, ERC721Burnable {
+    constructor(address initialOwner)
+        ERC721("${contractName}", "MTK")
+        Ownable(initialOwner)
+    {}
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function safeMint(address to, uint256 tokenId) public onlyOwner {
+        _safeMint(to, tokenId);
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Pausable)
         returns (address)
     {
         return super._update(to, tokenId, auth);

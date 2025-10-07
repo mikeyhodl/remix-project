@@ -11,8 +11,13 @@ export interface TemplateExplorerWizardState {
   metadata: MetadataType
   templateRepository: TemplateCategory[]
   selectedTag: string | null
+  recentBump: number
   setSearchTerm: (term: string) => void
+  wizardStep: WizardStep
+  setWizardStep: (step: WizardStep) => void
 }
+
+export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset'
 
 export interface TemplateExplorerContextType {
   plugin: any
@@ -28,6 +33,8 @@ export interface TemplateExplorerContextType {
   addRecentTemplate: (template: TemplateItem) => void
   RECENT_KEY: string
   allTags: string[]
+  dispatch: (action: any) => void
+  state: TemplateExplorerWizardState
 }
 
 export enum TemplateExplorerWizardAction {
@@ -53,7 +60,8 @@ export enum TemplateExplorerWizardAction {
   FINALIZE_WORKSPACE_CREATION = 'FINALIZE_WORKSPACE_CREATION',
   ABORT_WORKSPACE_CREATION = 'ABORT_WORKSPACE_CREATION',
   BACK_ONE_STEP = 'BACK_ONE_STEP',
-  SET_SEARCH_TERM = 'SET_SEARCH_TERM'
+  SET_SEARCH_TERM = 'SET_SEARCH_TERM',
+  SET_WIZARD_STEP = 'SET_WIZARD_STEP'
 }
 
 export interface TemplateItem {

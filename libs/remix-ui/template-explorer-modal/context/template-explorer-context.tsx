@@ -26,8 +26,11 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
   }, [])
 
+  useEffect(() => {
+    console.log('state context', state)
+  }, [state])
+
   const setSearchTerm = (term: string) => {
-    console.log('check status', { term, dedupedTemplates, state })
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
   }
 
@@ -126,7 +129,14 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     return (filteredTemplates || []).map((group: any) => ({
       ...group,
       items: makeUniqueItems(group && group.items ? group.items : [])
-    })).filter((g: any) => g && g.items && g.items.length > 0)
+    })).filter((g: any) => {
+      // Keep categories that have items OR special functionality (like Cookbook)
+      return g && (
+        (g.items && g.items.length > 0) ||
+        (g.name === 'Cookbook' && g.onClick) ||
+        (g.hasOptions && g.name !== 'Cookbook')
+      )
+    })
   }, [filteredTemplates, recentTemplates])
 
   const handleTagClick = (tag: string) => {
@@ -153,7 +163,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

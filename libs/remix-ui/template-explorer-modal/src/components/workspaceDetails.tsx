@@ -28,6 +28,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
               readOnly: true,
               minimap: { enabled: false },
               lineNumbers: 'off',
+              theme: 'vs-dark',
               scrollbar: {
                 vertical: 'hidden',
                 horizontal: 'hidden'

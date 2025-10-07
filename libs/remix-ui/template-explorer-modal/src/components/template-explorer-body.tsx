@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect, useReducer } from 'react'
 import { TemplateExplorer } from './template-explorer'
 import { TopCards } from './topCards'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
@@ -9,9 +9,13 @@ export interface TemplateExplorerBodyProps {
 }
 
 export function TemplateExplorerBody({ plugin }: TemplateExplorerBodyProps) {
-  const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates } = useContext(TemplateExplorerContext)
+  const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates, state } = useContext(TemplateExplorerContext)
 
   const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
+
+  useEffect(() => {
+    console.log('state template explorer body', state)
+  }, [state])
   return (
     <section>
       <TopCards />

@@ -176,6 +176,7 @@ export function getErc721ContractCode (contractType: 'erc721', state: ContractTy
           }
           return erc721.erc721FullOptionsManagedTransparent(state.contractName || 'MyToken')
         }
+        return erc721.erc721BurnableMintablePausableOwnableOnlyOptions(state.contractName || 'MyToken')
       }
       else if (state.contractAccessControl === 'roles') {
         if (state.contractUpgradability.uups) {
@@ -343,6 +344,7 @@ export function getErc721ContractCode (contractType: 'erc721', state: ContractTy
           return erc721.erc721FullOptionsManagedTransparent(state.contractName || 'MyToken')
         }
       }
+      return erc721.erc721BurnableOnlyOptions(state.contractName || 'MyToken')
     } else if (state.contractOptions.pausable) {
       if (state.contractAccessControl === 'ownable') {
         if (state.contractUpgradability.uups) {
