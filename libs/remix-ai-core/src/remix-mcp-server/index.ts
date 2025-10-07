@@ -16,6 +16,7 @@ export { createFileManagementTools } from './handlers/FileManagementHandler';
 export { createCompilationTools } from './handlers/CompilationHandler';
 export { createDeploymentTools } from './handlers/DeploymentHandler';
 export { createDebuggingTools } from './handlers/DebuggingHandler';
+export { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 
 // Resource Providers
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
