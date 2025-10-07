@@ -20,12 +20,10 @@ export class Compiler {
   state: CompilerState
   handleImportCall
   workerHandler: EsWebWorkerHandlerInterface
-  importMap: Map<string, string[]> // Maps file -> array of imports it contains
   
-  constructor(handleImportCall?: (fileurl: string, cb, target?: string | null) => void) {
+  constructor(handleImportCall?: (fileurl: string, cb) => void) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
-    this.importMap = new Map()
     this.state = {
       viaIR: false,
       compileJSON: null,
@@ -116,18 +114,6 @@ export class Compiler {
     console.log(`[Compiler] 🚀 Starting NEW compilation for target: "${target}"`)
     console.log(`[Compiler] 📁 Initial files provided: ${Object.keys(files).length}`)
     console.log(`${'='.repeat(80)}\n`)
-    
-    // Reset import map for new compilation
-    this.importMap.clear()
-    
-    // Parse initial files
-    for (const file in files) {
-      const imports = this.parseImports(files[file].content)
-      if (imports.length > 0) {
-        this.importMap.set(file, imports)
-        console.log(`[Compiler] 📋 Initial file "${file}" has ${imports.length} import(s):`, imports)
-      }
-    }
     
     this.state.target = target
     this.state.compilationStartTime = new Date().getTime()
@@ -420,13 +406,7 @@ export class Compiler {
       if (this.handleImportCall) {
         const position = remainingCount - importHints.length
         
-        // Try to find which file is importing this
-        const importingFile = this.findImportingFile(m, files)
-        const targetInfo = importingFile 
-          ? `imported by: "${importingFile}"`
-          : `original target: "${this.state.target}"`
-        
-        console.log(`[Compiler] 🔍 [${position}/${remainingCount}] Resolving import: "${m}" (${targetInfo})`)
+        console.log(`[Compiler] 🔍 [${position}/${remainingCount}] Resolving import: "${m}"`)
         
         this.handleImportCall(m, (err, content: string) => {
           if (err) {
@@ -436,17 +416,10 @@ export class Compiler {
             console.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
             files[m] = { content }
             
-            // Parse imports from the newly loaded file
-            const newImports = this.parseImports(content)
-            if (newImports.length > 0) {
-              this.importMap.set(m, newImports)
-              console.log(`[Compiler] 📄 "${m}" contains ${newImports.length} import(s)`)
-            }
-            
             console.log(`[Compiler] 🔄 Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
             this.gatherImports(files, importHints, cb)
           }
-        }, importingFile || this.state.target)
+        })
       }
       return
     }
@@ -454,71 +427,7 @@ export class Compiler {
     if (cb) { cb(null, { sources: files }) }
   }
 
-  /**
-   * @dev Parse import statements from file content
-   * @param content file content
-   * @returns array of import paths
-   */
-  parseImports(content: string): string[] {
-    const imports: string[] = []
-    // Match: import "path"; or import 'path'; or import {...} from "path";
-    const importRegex = /import\s+(?:[^"']*["']([^"']+)["']|["']([^"']+)["'])/g
-    let match
-    while ((match = importRegex.exec(content)) !== null) {
-      const importPath = match[1] || match[2]
-      if (importPath) imports.push(importPath)
-    }
-    return imports
-  }
 
-  /**
-   * @dev Find which loaded file likely imports the given path
-   * @param importPath the import to find
-   * @param loadedFiles currently loaded files
-   * @returns the file that imports it, or null
-   */
-  findImportingFile(importPath: string, loadedFiles: Source): string | null {
-    // Helper to check if an import statement matches the target path
-    // Handles relative paths like './IERC1155.sol' matching '@openzeppelin/.../IERC1155.sol'
-    const pathsMatch = (importStatement: string, targetPath: string): boolean => {
-      // Exact match
-      if (importStatement === targetPath) return true
-      
-      // Check if the import statement is a relative path and target is absolute
-      if (importStatement.startsWith('./') || importStatement.startsWith('../')) {
-        // Extract filename from both paths
-        const importFilename = importStatement.split('/').pop()
-        const targetFilename = targetPath.split('/').pop()
-        return importFilename === targetFilename
-      }
-      
-      return false
-    }
-    
-    // Check our import map first
-    for (const [file, imports] of this.importMap.entries()) {
-      for (const imp of imports) {
-        if (pathsMatch(imp, importPath)) {
-          return file
-        }
-      }
-    }
-    
-    // Fallback: parse files we haven't analyzed yet
-    for (const file in loadedFiles) {
-      if (!this.importMap.has(file)) {
-        const imports = this.parseImports(loadedFiles[file].content)
-        this.importMap.set(file, imports)
-        for (const imp of imports) {
-          if (pathsMatch(imp, importPath)) {
-            return file
-          }
-        }
-      }
-    }
-    
-    return null
-  }
 
   /**
    * @dev Truncate version string

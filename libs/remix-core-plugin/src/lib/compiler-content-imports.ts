@@ -121,6 +121,143 @@ export class CompilerImports extends Plugin {
     }
   }
 
+  /**
+   * Extract npm package name from import path
+   * @param importPath - the import path (e.g., "@openzeppelin/contracts/token/ERC20/ERC20.sol")
+   * @returns package name (e.g., "@openzeppelin/contracts") or null
+   */
+  extractPackageName(importPath: string): string | null {
+    // Handle scoped packages like @openzeppelin/contracts
+    if (importPath.startsWith('@')) {
+      const match = importPath.match(/^(@[^/]+\/[^/]+)/)
+      return match ? match[1] : null
+    }
+    // Handle regular packages
+    const match = importPath.match(/^([^/]+)/)
+    return match ? match[1] : null
+  }
+
+  /**
+   * Fetch package.json for an npm package
+   * @param packageName - the package name (e.g., "@openzeppelin/contracts")
+   * @returns package.json content or null
+   */
+  async fetchPackageJson(packageName: string): Promise<string | null> {
+    const npm_urls = [
+      "https://cdn.jsdelivr.net/npm/",
+      "https://unpkg.com/"
+    ]
+    
+    console.log(`[ContentImport] 📦 Fetching package.json for: ${packageName}`)
+    
+    for (const baseUrl of npm_urls) {
+      try {
+        const url = `${baseUrl}${packageName}/package.json`
+        const response = await fetch(url)
+        if (response.ok) {
+          const content = await response.text()
+          console.log(`[ContentImport] ✅ Successfully fetched package.json for ${packageName} from ${baseUrl}`)
+          return content
+        }
+      } catch (e) {
+        console.log(`[ContentImport] ⚠️  Failed to fetch from ${baseUrl}: ${e.message}`)
+        // Try next URL
+      }
+    }
+    
+    console.log(`[ContentImport] ❌ Could not fetch package.json for ${packageName}`)
+    return null
+  }
+
+  /**
+   * Rewrite imports in content to include version tags from package.json dependencies
+   * @param content - the file content with imports
+   * @param packageName - the package this file belongs to
+   * @param packageJsonContent - the package.json content (string)
+   * @returns modified content with versioned imports
+   */
+  rewriteImportsWithVersions(content: string, packageName: string, packageJsonContent: string): string {
+    try {
+      const packageJson = JSON.parse(packageJsonContent)
+      const dependencies = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+        ...packageJson.peerDependencies
+      }
+      
+      if (!dependencies || Object.keys(dependencies).length === 0) {
+        return content
+      }
+
+      console.log(`[ContentImport] 🔄 Checking imports in file from package: ${packageName}`)
+      
+      // Match Solidity import statements
+      // Handles: import "path"; import 'path'; import {...} from "path";
+      const importRegex = /import\s+(?:[^"']*["']([^"']+)["']|["']([^"']+)["'])/g
+      let modifiedContent = content
+      let modificationsCount = 0
+      
+      // Find all imports
+      const imports: string[] = []
+      let match
+      while ((match = importRegex.exec(content)) !== null) {
+        const importPath = match[1] || match[2]
+        if (importPath) {
+          imports.push(importPath)
+        }
+      }
+      
+      // Process each import
+      for (const importPath of imports) {
+        // Extract package name from import
+        const importedPackage = this.extractPackageName(importPath)
+        
+        if (importedPackage && dependencies[importedPackage]) {
+          const version = dependencies[importedPackage]
+          
+          // Check if the import already has a version tag
+          if (!importPath.includes('@') || (importPath.startsWith('@') && importPath.split('@').length === 2)) {
+            // Rewrite the import to include version
+            // For scoped packages: @openzeppelin/contracts/path -> @openzeppelin/contracts@5.0.0/path
+            // For regular packages: hardhat/console.sol -> hardhat@2.0.0/console.sol
+            
+            let versionedImport: string
+            if (importPath.startsWith('@')) {
+              // Scoped package: @scope/package/path -> @scope/package@version/path
+              const parts = importPath.split('/')
+              versionedImport = `${parts[0]}/${parts[1]}@${version}/${parts.slice(2).join('/')}`
+            } else {
+              // Regular package: package/path -> package@version/path
+              const parts = importPath.split('/')
+              versionedImport = `${parts[0]}@${version}/${parts.slice(1).join('/')}`
+            }
+            
+            // Replace in content (need to escape special regex characters in the import path)
+            const escapedImportPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const replaceRegex = new RegExp(`(["'])${escapedImportPath}\\1`, 'g')
+            
+            const beforeReplace = modifiedContent
+            modifiedContent = modifiedContent.replace(replaceRegex, `$1${versionedImport}$1`)
+            
+            if (beforeReplace !== modifiedContent) {
+              modificationsCount++
+              console.log(`[ContentImport] 📝 Rewrote import: "${importPath}" → "${versionedImport}" (version: ${version})`)
+            }
+          }
+        }
+      }
+      
+      if (modificationsCount > 0) {
+        console.log(`[ContentImport] ✅ Modified ${modificationsCount} import(s) with version tags`)
+      }
+      
+      return modifiedContent
+    } catch (e) {
+      console.error(`[ContentImport] ❌ Error rewriting imports: ${e.message}`)
+      return content // Return original content on error
+    }
+  }
+
   importExternal (url, targetPath) {
     return new Promise((resolve, reject) => {
       this.import(url,
@@ -131,7 +268,48 @@ export class CompilerImports extends Plugin {
           try {
             const provider = await this.call('fileManager', 'getProviderOf', null)
             const path = targetPath || type + '/' + cleanUrl
-            if (provider) await provider.addExternal('.deps/' + path, content, url)
+            
+            // If this is an npm import, fetch and save the package.json first, then rewrite imports
+            let finalContent = content
+            let packageJsonContent: string | null = null
+            
+            if (type === 'npm' && provider) {
+              const packageName = this.extractPackageName(cleanUrl)
+              if (packageName) {
+                const packageJsonPath = `.deps/npm/${packageName}/package.json`
+                
+                // Try to get existing package.json or fetch it
+                const exists = await this.call('fileManager', 'exists', packageJsonPath)
+                if (exists) {
+                  console.log(`[ContentImport] ⏭️  package.json already exists at: ${packageJsonPath}`)
+                  try {
+                    packageJsonContent = await this.call('fileManager', 'readFile', packageJsonPath)
+                  } catch (readErr) {
+                    console.error(`[ContentImport] ⚠️  Could not read existing package.json: ${readErr.message}`)
+                  }
+                } else {
+                  packageJsonContent = await this.fetchPackageJson(packageName)
+                  if (packageJsonContent) {
+                    try {
+                      await this.call('fileManager', 'writeFile', packageJsonPath, packageJsonContent)
+                      console.log(`[ContentImport] 💾 Saved package.json to: ${packageJsonPath}`)
+                    } catch (writeErr) {
+                      console.error(`[ContentImport] ❌ Failed to write package.json: ${writeErr.message}`)
+                    }
+                  }
+                }
+                
+                // Rewrite imports in the content with version tags from package.json
+                if (packageJsonContent) {
+                  finalContent = this.rewriteImportsWithVersions(content, packageName, packageJsonContent)
+                }
+              }
+            }
+            
+            // Save the file (with rewritten imports if applicable)
+            if (provider) {
+              await provider.addExternal('.deps/' + path, finalContent, url)
+            }
           } catch (err) {
             console.error(err)
           }
