@@ -51,7 +51,7 @@ export class StartDebugSessionHandler extends BaseToolHandler {
   }
 
   validate(args: DebugSessionArgs): boolean | string {
-    const required = this.validateRequired(args, ['contractAddress']);
+    const required = this.validateRequired(args, ['transactionHash']);
     if (required !== true) return required;
 
     const types = this.validateTypes(args, {
@@ -68,8 +68,7 @@ export class StartDebugSessionHandler extends BaseToolHandler {
 
   async execute(args: DebugSessionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Integrate with Remix debugger plugin
-      plugin.call('debugger', 'debug', args.transactionHash);
+      await plugin.call('debugger', 'debug', args.transactionHash)
       // Mock debug session creation
       const result: DebugSessionResult = {
         success: true,
@@ -77,7 +76,7 @@ export class StartDebugSessionHandler extends BaseToolHandler {
         status: 'started',
         createdAt: new Date().toISOString()
       };
-
+      plugin.call('menuicons', 'select', 'debugger')
       return this.createSuccessResult(result);
 
     } catch (error) {
