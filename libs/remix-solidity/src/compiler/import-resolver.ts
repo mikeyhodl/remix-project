@@ -1,20 +1,18 @@
 'use strict'
 
-/**
- * ImportResolver - Per-compilation import resolution with isolated state
- * 
- * This class is instantiated once per compilation to maintain isolated
- * import mappings. It resolves package imports to their versioned equivalents
- * and manages the resolution of external dependencies.
- */
+import { ResolutionIndex } from './resolution-index'
+
 export class ImportResolver {
   private importMappings: Map<string, string>
   private pluginApi: any
   private targetFile: string
+  private resolutionIndex: ResolutionIndex
+  private resolutions: Map<string, string> = new Map()
 
-  constructor(pluginApi: any, targetFile: string) {
+  constructor(pluginApi: any, targetFile: string, resolutionIndex: ResolutionIndex) {
     this.pluginApi = pluginApi
     this.targetFile = targetFile
+    this.resolutionIndex = resolutionIndex
     this.importMappings = new Map()
     
     console.log(`[ImportResolver] 🆕 Created new resolver instance for: "${targetFile}"`)
@@ -60,8 +58,6 @@ export class ImportResolver {
     try {
       console.log(`[ImportResolver] 📦 Fetching package.json for ISOLATED mapping: ${packageName}`)
       
-      // Use 'resolve' instead of 'resolveAndSave' to just fetch without saving
-      // ContentImport will save it later if an actual import from this package is requested
       const packageJsonUrl = `${packageName}/package.json`
       const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
       
@@ -78,6 +74,8 @@ export class ImportResolver {
   }
 
   public async resolveAndSave(url: string, targetPath?: string, skipResolverMappings = false): Promise<string> {
+    const originalUrl = url
+    let finalUrl = url
     const packageName = this.extractPackageName(url)
     
     if (!skipResolverMappings && packageName) {
@@ -95,6 +93,10 @@ export class ImportResolver {
           const versionedPackageName = this.importMappings.get(mappingKey)
           const mappedUrl = url.replace(packageName, versionedPackageName)
           console.log(`[ImportResolver] 🔀 Applying ISOLATED mapping: ${url} → ${mappedUrl}`)
+          
+          finalUrl = mappedUrl
+          this.resolutions.set(originalUrl, finalUrl)
+          
           return this.resolveAndSave(mappedUrl, targetPath, true)
         } else {
           console.log(`[ImportResolver] ⚠️  No mapping available for ${mappingKey}`)
@@ -105,7 +107,26 @@ export class ImportResolver {
     console.log(`[ImportResolver] 📥 Fetching file (skipping ContentImport global mappings): ${url}`)
     const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
     
+    if (!skipResolverMappings || originalUrl === url) {
+      if (!this.resolutions.has(originalUrl)) {
+        this.resolutions.set(originalUrl, url)
+        console.log(`[ImportResolver] �� Recorded resolution: ${originalUrl} → ${url}`)
+      }
+    }
+    
     return content
+  }
+
+  public async saveResolutionsToIndex(): Promise<void> {
+    console.log(`[ImportResolver] 💾 Saving ${this.resolutions.size} resolution(s) to index for: ${this.targetFile}`)
+    
+    this.resolutionIndex.clearFileResolutions(this.targetFile)
+    
+    this.resolutions.forEach((resolvedPath, originalImport) => {
+      this.resolutionIndex.recordResolution(this.targetFile, originalImport, resolvedPath)
+    })
+    
+    await this.resolutionIndex.save()
   }
 
   public getTargetFile(): string {

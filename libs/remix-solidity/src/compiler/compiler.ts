@@ -5,6 +5,7 @@ import compilerInput, { compilerInputForConfigFile } from './compiler-input'
 import EventManager from '../lib/eventManager'
 import txHelper from './helper'
 import { ImportResolver } from './import-resolver'
+import { ResolutionIndex } from './resolution-index'
 
 import {
   Source, SourceWithTarget, MessageFromWorker, CompilerState, CompilationResult,
@@ -23,12 +24,22 @@ export class Compiler {
   workerHandler: EsWebWorkerHandlerInterface
   pluginApi: any // Reference to a plugin that can call contentImport
   currentResolver: ImportResolver | null // Current compilation's import resolver
+  resolutionIndex: ResolutionIndex | null // Persistent index of all resolutions
   
   constructor(handleImportCall?: (fileurl: string, cb) => void, pluginApi?: any) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
     this.pluginApi = pluginApi
     this.currentResolver = null
+    this.resolutionIndex = null
+    
+    // Initialize resolution index if we have plugin API
+    if (this.pluginApi) {
+      this.resolutionIndex = new ResolutionIndex(this.pluginApi)
+      this.resolutionIndex.load().catch(err => {
+        console.log(`[Compiler] ⚠️  Failed to load resolution index:`, err)
+      })
+    }
     
     console.log(`[Compiler] 🏗️  Constructor: pluginApi provided:`, !!pluginApi)
     
@@ -125,8 +136,8 @@ export class Compiler {
     
     // Create a fresh ImportResolver instance for this compilation
     // This ensures complete isolation of import mappings per compilation
-    if (this.pluginApi) {
-      this.currentResolver = new ImportResolver(this.pluginApi, target)
+    if (this.pluginApi && this.resolutionIndex) {
+      this.currentResolver = new ImportResolver(this.pluginApi, target, this.resolutionIndex)
       console.log(`[Compiler] 🆕 Created new ImportResolver instance for this compilation`)
     } else {
       this.currentResolver = null
@@ -226,8 +237,12 @@ export class Compiler {
     } else {
       console.log(`[Compiler] ✅ 🎉 Compilation successful for target: "${this.state.target}"`)
       
-      // Clean up resolver on successful completion
+      // Save resolution index before cleaning up resolver
       if (this.currentResolver) {
+        console.log(`[Compiler] 💾 Saving resolution index...`)
+        this.currentResolver.saveResolutionsToIndex().catch(err => {
+          console.log(`[Compiler] ⚠️  Failed to save resolution index:`, err)
+        })
         console.log(`[Compiler] 🧹 Compilation successful, discarding resolver`)
         this.currentResolver = null
       }
