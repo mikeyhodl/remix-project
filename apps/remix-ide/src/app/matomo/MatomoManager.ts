@@ -512,6 +512,22 @@ export class MatomoManager implements IMatomoManager {
     // Set E2E marker for bot detection completion
     this.setE2EStateMarker('matomo-bot-detection-complete');
 
+    // Set trackingMode dimension before bot detection event based on pattern
+    // This ensures the bot detection event has proper tracking mode metadata
+    if (pattern === 'anonymous') {
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'anon']);
+      this.log('Set trackingMode dimension: anon');
+    } else if (pattern === 'immediate') {
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'cookie']);
+      this.log('Set trackingMode dimension: cookie (immediate consent)');
+    } else if (pattern === 'cookie-consent') {
+      // For cookie-consent mode, we'll set dimension to 'cookie' after consent is given
+      // For now, set to 'pending' to indicate consent not yet given
+      window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'pending']);
+      this.log('Set trackingMode dimension: pending (awaiting consent)');
+    }
+    // no-consent mode doesn't set dimension explicitly
+
     // Send bot detection event to Matomo for analytics
     if (this.botDetectionResult) {
       this.trackBotDetectionEvent(this.botDetectionResult);
@@ -777,6 +793,11 @@ export class MatomoManager implements IMatomoManager {
   async giveConsent(options: { processQueue?: boolean } = {}): Promise<void> {
     this.log('=== GIVING CONSENT ===');
     window._paq.push(['rememberConsentGiven']);
+    
+    // Update trackingMode dimension from 'pending' to 'cookie' when consent given
+    window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'cookie']);
+    this.log('Updated trackingMode dimension: cookie (consent given)');
+    
     this.state.consentGiven = true;
     this.emit('consent-given');
 
