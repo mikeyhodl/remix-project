@@ -19,6 +19,8 @@ export class ResolutionIndex {
   private indexPath: string = '.deps/npm/.resolution-index.json'
   private index: Record<string, Record<string, string>> = {}
   private isDirty: boolean = false
+  private loadPromise: Promise<void> | null = null
+  private isLoaded: boolean = false
 
   constructor(pluginApi: any) {
     this.pluginApi = pluginApi
@@ -28,19 +30,44 @@ export class ResolutionIndex {
    * Load the existing index from disk
    */
   async load(): Promise<void> {
-    try {
-      const exists = await this.pluginApi.call('fileManager', 'exists', this.indexPath)
-      if (exists) {
-        const content = await this.pluginApi.call('fileManager', 'readFile', this.indexPath)
-        this.index = JSON.parse(content)
-        console.log(`[ResolutionIndex] 📖 Loaded index with ${Object.keys(this.index).length} source files`)
-      } else {
-        console.log(`[ResolutionIndex] 📝 No existing index found, starting fresh`)
+    // Return existing load promise if already loading
+    if (this.loadPromise) {
+      return this.loadPromise
+    }
+    
+    // Return immediately if already loaded
+    if (this.isLoaded) {
+      return Promise.resolve()
+    }
+    
+    this.loadPromise = (async () => {
+      try {
+        const exists = await this.pluginApi.call('fileManager', 'exists', this.indexPath)
+        if (exists) {
+          const content = await this.pluginApi.call('fileManager', 'readFile', this.indexPath)
+          this.index = JSON.parse(content)
+          console.log(`[ResolutionIndex] 📖 Loaded index with ${Object.keys(this.index).length} source files`)
+        } else {
+          console.log(`[ResolutionIndex] 📝 No existing index found, starting fresh`)
+          this.index = {}
+        }
+        this.isLoaded = true
+      } catch (err) {
+        console.log(`[ResolutionIndex] ⚠️  Failed to load index:`, err)
         this.index = {}
+        this.isLoaded = true
       }
-    } catch (err) {
-      console.log(`[ResolutionIndex] ⚠️  Failed to load index:`, err)
-      this.index = {}
+    })()
+    
+    return this.loadPromise
+  }
+
+  /**
+   * Ensure the index is loaded before using it
+   */
+  async ensureLoaded(): Promise<void> {
+    if (!this.isLoaded) {
+      await this.load()
     }
   }
 
@@ -77,6 +104,23 @@ export class ResolutionIndex {
   lookup(sourceFile: string, importPath: string): string | null {
     if (this.index[sourceFile] && this.index[sourceFile][importPath]) {
       return this.index[sourceFile][importPath]
+    }
+    return null
+  }
+
+  /**
+   * Look up an import path across ALL source files in the index
+   * This is useful when navigating from library files (which aren't keys in the index)
+   * @param importPath The import path to look up
+   * @returns The resolved path from any source file that used it, or null if not found
+   */
+  lookupAny(importPath: string): string | null {
+    // Search through all source files for this import
+    for (const sourceFile in this.index) {
+      if (this.index[sourceFile][importPath]) {
+        console.log(`[ResolutionIndex] 🔍 Found import "${importPath}" in source file "${sourceFile}":`, this.index[sourceFile][importPath])
+        return this.index[sourceFile][importPath]
+      }
     }
     return null
   }

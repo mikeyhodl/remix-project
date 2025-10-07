@@ -133,7 +133,6 @@ export default class CodeParserCompiler {
      * @returns
      */
   async compile() {
-    return 
     try {
       this.plugin.currentFile = await this.plugin.call('fileManager', 'file')
       if (this.plugin.currentFile && this.plugin.currentFile.endsWith('.sol')) {
