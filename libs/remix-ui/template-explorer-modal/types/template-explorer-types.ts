@@ -15,6 +15,21 @@ export interface TemplateExplorerWizardState {
   setSearchTerm: (term: string) => void
   wizardStep: WizardStep
   setWizardStep: (step: WizardStep) => void
+  contractType: ContractType
+  contractOptions: {
+    mintable?: boolean
+    burnable?: boolean
+    pausable?: boolean
+  }
+  contractAccessControl: AccessControlType
+  contractUpgradability: {
+    uups?: boolean
+    transparent?: boolean
+  }
+  contractCode: string
+  contractImport?: string
+  contractName?: string
+  tokenName?: string
 }
 
 export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset'

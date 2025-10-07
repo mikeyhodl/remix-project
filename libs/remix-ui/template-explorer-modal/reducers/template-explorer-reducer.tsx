@@ -1,6 +1,8 @@
 import React from 'react'
-import { MetadataType, TemplateExplorerWizardAction, TemplateExplorerWizardState, TemplateRepository, WizardStep } from '../types/template-explorer-types'
+import { ContractWizardAction, MetadataType, TemplateExplorerWizardAction, TemplateExplorerWizardState, TemplateRepository, WizardStep } from '../types/template-explorer-types'
 import { metadata, templatesRepository } from '../src/utils/helpers'
+import * as erc20 from '../src/contractCode/erc20'
+import { getErc20ContractCode } from '../src/utils/contractWizardUtils'
 
 export const initialState: TemplateExplorerWizardState = {
   workspaceTemplateChosen: '',
@@ -17,7 +19,22 @@ export const initialState: TemplateExplorerWizardState = {
   setSearchTerm: (term: string) => {},
   wizardStep: 'template',
   setWizardStep: (step: WizardStep) => {},
-  recentBump: 0
+  recentBump: 0,
+  contractType: 'erc20',
+  contractOptions: {
+    mintable: false,
+    burnable: false,
+    pausable: false
+  },
+  contractAccessControl: '',
+  contractUpgradability: {
+    uups: false,
+    transparent: false
+  },
+  contractCode: erc20.erc20DefaultNoOptions('MyToken'),
+  contractImport: '',
+  tokenName: 'MyToken',
+  contractName: 'MyToken'
 }
 
 export const templateExplorerReducer = (state: TemplateExplorerWizardState, action: any) => {
@@ -61,8 +78,36 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
     console.log('action.payload wizardStep', action.payload)
     return { ...state, wizardStep: action.payload }
   }
-  default:
-    return state
+  case ContractWizardAction.CONTRACT_TYPE_UPDATED: {
+    return { ...state, contractType: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_UPGRADABILITY_UPDATE: {
+    return { ...state, contractUpgradability: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_ACCESS_CONTROL_UPDATE: {
+    return { ...state, contractAccessControl: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_OPTIONS_UPDATE: {
+    return { ...state, contractOptions: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_CODE_UPDATE: {
+    return { ...state, contractCode: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_IMPORT_UPDATE: {
+    return { ...state, contractImport: action.payload }
+  }
+  case ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE: {
+    return { ...state, initializeAsGitRepo: action.payload }
+  }
+  case ContractWizardAction.TOKEN_NAME_UPDATE: {
+    return { ...state, tokenName: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_NAME_UPDATE: {
+    return { ...state, contractName: action.payload }
+  }
+  default: {
+    return { ...state, contractCode: getErc20ContractCode('erc20', state) }
+  }
   }
 }
 

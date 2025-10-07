@@ -1,4 +1,4 @@
-import React,{ useEffect, useMemo, useReducer, useState } from 'react'
+import React,{ useContext, useEffect, useMemo, useReducer, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import * as erc20 from '../contractCode/erc20'
 import * as erc721 from '../contractCode/erc721'
@@ -6,6 +6,7 @@ import * as erc1155 from '../contractCode/erc1155'
 import { AccessControlType, ContractTypeStrategy, ContractWizardAction } from '../../types/template-explorer-types'
 import { contractWizardReducer } from '../../reducers/contract-wizard-reducer'
 import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from '../utils/contractWizardUtils'
+import { TemplateExplorerContext } from '../../context/template-explorer-context'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -34,7 +35,8 @@ export function ContractWizard () {
   })
   const [initGit, setInitGit] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [strategy, dispatch] = useReducer(contractWizardReducer, defaultStrategy)
+  const { state, dispatch } = useContext(TemplateExplorerContext)
+  const strategy = state
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {
@@ -82,12 +84,11 @@ export function ContractWizard () {
               <option>Solidity</option>
             </select>
             <select className="form-select form-select-sm w-auto" defaultValue="ERC20" onChange={(e) => {
-              dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: e.target.value as 'erc20' | 'erc721' | 'erc1155' | 'custom' })
+              dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: e.target.value as 'erc20' | 'erc721' | 'erc1155' })
             }}>
               <option value="erc20">ERC20</option>
               <option value="erc721">ERC721</option>
               <option value="erc1155">ERC1155</option>
-              <option value="custom">Custom</option>
             </select>
           </div>
         </div>
