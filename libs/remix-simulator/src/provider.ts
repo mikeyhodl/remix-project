@@ -157,7 +157,7 @@ export class Provider {
   }
 }
 
-export function extend (provider) { // Provider should be ethers.js provider
+export function extendProvider (provider) { // Provider should be ethers.js provider
 
   provider.remix.getExecutionResultFromSimulator = async (transactionHash) => {
     return await this.send('eth_getExecutionResultFromSimulator', [transactionHash])

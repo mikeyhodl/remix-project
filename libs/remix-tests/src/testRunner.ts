@@ -1,6 +1,6 @@
 import async from 'async'
 import * as changeCase from 'change-case'
-import { Web3 } from 'web3'
+import {keccak256, AbiCoder } from 'ethers'
 import assertionEvents from './assertionEvents'
 import {
   RunListInterface, TestCbInterface, TestResultInterface, ResultCbInterface,
@@ -218,8 +218,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
   const isJSONInterfaceAvailable = testObject && testObject.options && testObject.options.jsonInterface
   if (!isJSONInterfaceAvailable) { return resultsCallback(new Error('Contract interface not available'), { passingNum, failureNum, timePassed }) }
   const runList: RunListInterface[] = createRunList(testObject.options.jsonInterface, fileAST, testName)
-  const web3 = opts.web3 || new Web3()
-  web3.eth.handleRevert = true // enables returning error reason on revert
+  const provider = opts.provider
   const accts: TestResultInterface = {
     type: 'accountList',
     value: opts.accounts
@@ -250,12 +249,12 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
     if (func.constant) {
       sendParams = {}
       const tagTimestamp = 'remix_tests_tag' + Date.now()
-      if (web3.remix && web3.remix.registerCallId) web3.remix.registerCallId(tagTimestamp)
+      if (provider.remix && provider.remix.registerCallId) provider.remix.registerCallId(tagTimestamp)
       method.call(sendParams).then(async (result) => {
         const time = (Date.now() - startTime) / 1000.0
         let tagTxHash
-        if (web3.remix && web3.remix.getHashFromTagBySimulator) tagTxHash = await web3.remix.getHashFromTagBySimulator(tagTimestamp)
-        if (web3.remix && web3.remix.getHHLogsForTx) hhLogs = await web3.remix.getHHLogsForTx(tagTxHash)
+        if (provider.remix && provider.remix.getHashFromTagBySimulator) tagTxHash = await provider.remix.getHashFromTagBySimulator(tagTimestamp)
+        if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(tagTxHash)
         debugTxHash = tagTxHash
         if (result) {
           const resp: TestResultInterface = {
@@ -264,7 +263,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
             filename: testObject.filename,
             time: time,
             context: testName,
-            web3,
+            provider,
             debugTxHash
           }
           if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
@@ -279,7 +278,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
             time: time,
             errMsg: 'function returned false',
             context: testName,
-            web3,
+            provider,
             debugTxHash
           }
           if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
@@ -302,9 +301,9 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
       method.send(sendParams).on('receipt', async (receipt) => {
         try {
           debugTxHash = receipt.transactionHash
-          if (web3.remix && web3.remix.getHHLogsForTx) hhLogs = await web3.remix.getHHLogsForTx(receipt.transactionHash)
+          if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(receipt.transactionHash)
           const time: number = (Date.now() - startTime) / 1000.0
-          const assertionEventHashes = assertionEvents.map(e => Web3.utils.sha3(e.name + '(' + e.params.join() + ')'))
+          const assertionEventHashes = assertionEvents.map(e => keccak256(e.name + '(' + e.params.join() + ')'))
           let testPassed = false
           for (const i in receipt.logs) {
             let events = receipt.logs[i]
@@ -312,7 +311,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
             for (const event of events) {
               const eIndex = assertionEventHashes.indexOf(event.topics[0]) // event name topic will always be at index 0
               if (eIndex >= 0) {
-                const testEvent = web3.eth.abi.decodeParameters(assertionEvents[eIndex].params, event.data)
+                const testEvent = AbiCoder.defaultAbiCoder().decode(assertionEvents[eIndex].params, event.data)
                 if (!testEvent[0]) {
                   const assertMethod = testEvent[2]
                   if (assertMethod === 'ok') { // for 'Assert.ok' method
@@ -331,7 +330,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
                     returned: testEvent[3],
                     expected: testEvent[4],
                     location,
-                    web3,
+                    provider,
                     debugTxHash
                   }
                   if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
@@ -352,7 +351,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
               filename: testObject.filename,
               time: time,
               context: testName,
-              web3,
+              provider,
               debugTxHash
             }
             if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
@@ -391,13 +390,13 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           time: time,
           errMsg,
           context: testName,
-          web3
+          provider
         }
         if (err.receipt) txHash = err.receipt.transactionHash
         else if (err.message.includes('Transaction has been reverted by the EVM')) {
           txHash = JSON.parse(err.message.replace('Transaction has been reverted by the EVM:', '')).transactionHash
         }
-        if (web3.remix && web3.remix.getHHLogsForTx && txHash) hhLogs = await web3.remix.getHHLogsForTx(txHash)
+        if (provider.remix && provider.remix.getHHLogsForTx && txHash) hhLogs = await provider.remix.getHHLogsForTx(txHash)
         if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
         resp.debugTxHash = txHash
         testCallback(undefined, resp)

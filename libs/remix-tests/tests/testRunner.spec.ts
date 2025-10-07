@@ -1,7 +1,7 @@
 import * as async from 'async'
-import { Web3 } from 'web3';
+import { ethers } from 'ethers'
 import * as assert from 'assert'
-import { Provider, extend } from '@remix-project/remix-simulator'
+import { Provider, extendProvider } from '@remix-project/remix-simulator'
 
 import { compileFileOrFiles } from '../src/compiler'
 import { deployAll } from '../src/deployer'
@@ -40,27 +40,25 @@ function deepEqualExcluding(a: any, b: any, excludedKeys: string[]) {
 }
 
 let accounts: string[]
-const provider: any = new Provider()
+const simulatorProvider: any = new Provider()
 
 async function compileAndDeploy(filename: string, callback: any) {
-  const web3: Web3 = new Web3()
   const sourceASTs: any = {}
-  await provider.init()
-  web3.setProvider(provider)
-  extend(web3)
+  await simulatorProvider.init()
+  const provider = new ethers.BrowserProvider(simulatorProvider)
+  extendProvider(provider)
   let compilationData: any
   async.waterfall([
     function getAccountList(next: any): void {
-      web3.eth.getAccounts()
+      provider.send("eth_requestAccounts", []) 
         .then(( _accounts: string[]) => {
           accounts = _accounts
-          web3.eth.defaultAccount = accounts[0]
           next(undefined)
         })
         .catch((_err: Error | null | undefined) => next(_err))
     },
     function compile(next: any): void {
-      compileFileOrFiles(filename, false, { accounts, web3 }, null, next)
+      compileFileOrFiles(filename, false, { accounts, provider }, null, next)
     },
     function deployAllContracts(compilationResult: compilationInterface, asts, next: any): void {
       for (const filename in asts) {
@@ -70,13 +68,13 @@ async function compileAndDeploy(filename: string, callback: any) {
       // eslint-disable-next-line no-useless-catch
       try {
         compilationData = compilationResult
-        deployAll(compilationResult, web3, accounts, false, null, next)
+        deployAll(compilationResult, provider, accounts, false, null, next)
       } catch (e) {
         throw e
       }
     }
   ], function (_err: Error | null | undefined, contracts: any): void {
-    callback(null, compilationData, contracts, sourceASTs, accounts, web3)
+    callback(null, compilationData, contracts, sourceASTs, accounts, provider)
   })
 }
 
@@ -108,8 +106,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_0/assert_ok_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('AssertOkTest', contracts.AssertOkTest, compilationData[filename]['AssertOkTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('AssertOkTest', contracts.AssertOkTest, compilationData[filename]['AssertOkTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -140,8 +138,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_0/assert_equal_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('AssertEqualTest', contracts.AssertEqualTest, compilationData[filename]['AssertEqualTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('AssertEqualTest', contracts.AssertEqualTest, compilationData[filename]['AssertEqualTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -179,8 +177,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_0/assert_notEqual_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('AssertNotEqualTest', contracts.AssertNotEqualTest, compilationData[filename]['AssertNotEqualTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('AssertNotEqualTest', contracts.AssertNotEqualTest, compilationData[filename]['AssertNotEqualTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -219,8 +217,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_0/assert_greaterThan_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('AssertGreaterThanTest', contracts.AssertGreaterThanTest, compilationData[filename]['AssertGreaterThanTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('AssertGreaterThanTest', contracts.AssertGreaterThanTest, compilationData[filename]['AssertGreaterThanTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -252,8 +250,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_0/assert_lesserThan_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('AssertLesserThanTest', contracts.AssertLesserThanTest, compilationData[filename]['AssertLesserThanTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('AssertLesserThanTest', contracts.AssertLesserThanTest, compilationData[filename]['AssertLesserThanTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -285,8 +283,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_1/simple_storage_test.sol'
 
       before((done) => {
-        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) => {
-          runTest('MyTest', contracts.MyTest, compilationData[filename]['MyTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) => {
+          runTest('MyTest', contracts.MyTest, compilationData[filename]['MyTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -316,8 +314,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_2/simple_storage_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('MyTest', contracts.MyTest, compilationData[filename]['MyTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('MyTest', contracts.MyTest, compilationData[filename]['MyTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -346,8 +344,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_3/simple_string_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('StringTest', contracts.StringTest, compilationData[filename]['StringTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('StringTest', contracts.StringTest, compilationData[filename]['StringTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -372,8 +370,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_5/test/simple_storage_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('StorageResolveTest', contracts.StorageResolveTest, compilationData[filename]['StorageResolveTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('StorageResolveTest', contracts.StorageResolveTest, compilationData[filename]['StorageResolveTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -399,8 +397,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/examples_4/SafeMath_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('SafeMathTest', contracts.SafeMathTest, compilationData[filename]['SafeMathTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('SafeMathTest', contracts.SafeMathTest, compilationData[filename]['SafeMathTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -419,8 +417,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/number/number_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('IntegerTest', contracts.IntegerTest, compilationData[filename]['IntegerTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('IntegerTest', contracts.IntegerTest, compilationData[filename]['IntegerTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -439,8 +437,8 @@ describe('testRunner', function () {
       const filename: string = __dirname + '/various_sender/sender_and_value_test.sol'
 
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('SenderAndValueTest', contracts.SenderAndValueTest, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, web3 }, testCallback, resultsCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('SenderAndValueTest', contracts.SenderAndValueTest, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
         })
       })
 
@@ -467,8 +465,8 @@ describe('testRunner', function () {
         }
       }
       before(done => {
-        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], web3: any) {
-          runTest('SenderAndValueTest', undefined, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, web3 }, testCallback, errorCallback(done))
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('SenderAndValueTest', undefined, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, provider }, testCallback, errorCallback(done))
         })
       })
 

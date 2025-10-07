@@ -1,17 +1,17 @@
 import async from 'async'
 import { execution } from '@remix-project/remix-lib'
-import { Web3, FMT_BYTES, FMT_NUMBER } from 'web3'
 import { compilationInterface } from './types'
+import { BrowserProvider, ContractFactory, ethers } from 'ethers'
 
 /**
  * @dev Deploy all contracts from compilation result
  * @param compileResult compilation result
- * @param web3 web3 object
+ * @param provider BrowserProvider object
  * @param withDoubleGas If true, try deployment with gas double of estimation (used for Out-of-gas error only)
  * @param callback Callback
  */
 
-export function deployAll (compileResult: compilationInterface, web3: Web3, testsAccounts, withDoubleGas: boolean, deployCb, callback) {
+export function deployAll (compileResult: compilationInterface, provider: BrowserProvider, testsAccounts, withDoubleGas: boolean, deployCb, callback) {
   const compiledObject = {}
   const contracts = {}
   const accounts: string[] = testsAccounts
@@ -58,7 +58,7 @@ export function deployAll (compileResult: compilationInterface, web3: Web3, test
     },
     function deployContracts (contractsToDeploy: string[], next) {
       const deployRunner = (deployObject, contractObject, contractName, filename, callback) => {
-        deployObject.estimateGas(undefined, { number: FMT_NUMBER.NUMBER, bytes: FMT_BYTES.HEX }).then((gasValue) => {
+        deployObject.estimateGas(undefined).then((gasValue) => {
           const gasBase = Math.ceil(gasValue * 1.2)
           const gas = withDoubleGas ? gasBase * 2 : gasBase
           deployObject.send({
@@ -89,9 +89,12 @@ export function deployAll (compileResult: compilationInterface, web3: Web3, test
         const contract = compiledObject[contractName]
         const encodeDataFinalCallback = (error, contractDeployData) => {
           if (error) return nextEach(error)
-          const contractObject = new web3.eth.Contract(contract.abi)
-          const deployObject = contractObject.deploy({ arguments: [], data: '0x' + contractDeployData.dataHex })
-          deployRunner(deployObject, contractObject, contractName, contract.filename, (error) => { nextEach(error) })
+          provider.getSigner().then((signer) => {
+            const contractObject: ContractFactory = new ethers.ContractFactory(contract.abi, '0x' + contractDeployData.dataHex, signer)
+            contractObject.deploy().then((deployObject) => {
+              deployRunner(deployObject, contractObject, contractName, contract.filename, (error) => { nextEach(error) })
+            })
+          })
         }
 
         const encodeDataStepCallback = (msg) => { console.dir(msg) }
@@ -99,9 +102,12 @@ export function deployAll (compileResult: compilationInterface, web3: Web3, test
         const encodeDataDeployLibraryCallback = (libData, callback) => {
           const abi = compiledObject[libData.data.contractName].abi
           const code = compiledObject[libData.data.contractName].code
-          const libraryObject = new web3.eth.Contract(abi)
-          const deployObject = libraryObject.deploy({ arguments: [], data: '0x' + code })
-          deployRunner(deployObject, libraryObject, libData.data.contractName, contract.filename, callback)
+          provider.getSigner().then((signer) => {
+            const libraryObject = new ethers.ContractFactory(abi, '0x' + code, signer)
+            contract.deploy().then((deployObject) => {
+              deployRunner(deployObject, libraryObject, libData.data.contractName, contract.filename, callback)
+            })
+          })
         }
 
         const funAbi = null // no need to set the abi for encoding the constructor
