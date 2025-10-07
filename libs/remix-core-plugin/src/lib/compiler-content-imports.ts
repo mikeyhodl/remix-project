@@ -17,8 +17,11 @@ export type ResolvedImport = {
 
 export class CompilerImports extends Plugin {
   urlResolver: any
+  importMappings: Map<string, string> // Maps non-versioned imports to versioned imports
+  
   constructor () {
     super(profile)
+    this.importMappings = new Map()
     this.urlResolver = new RemixURLResolver(async () => {
       try {
         let yarnLock
@@ -49,15 +52,20 @@ export class CompilerImports extends Plugin {
 
   onActivation(): void {
     const packageFiles = ['package.json', 'package-lock.json', 'yarn.lock']
-    this.on('filePanel', 'setWorkspace', () => this.urlResolver.clearCache())
+    this.on('filePanel', 'setWorkspace', () => {
+      this.urlResolver.clearCache()
+      this.importMappings.clear()
+    })
     this.on('fileManager', 'fileRemoved', (file: string) => {
       if (packageFiles.includes(file)) {
         this.urlResolver.clearCache()
+        this.importMappings.clear()
       }
     })
     this.on('fileManager', 'fileChanged', (file: string) => {
       if (packageFiles.includes(file)) {
         this.urlResolver.clearCache()
+        this.importMappings.clear()
       }
     })
   }
@@ -108,6 +116,19 @@ export class CompilerImports extends Plugin {
     if (!loadingCb) loadingCb = () => {}
     if (!cb) cb = () => {}
 
+    // Check if this import should be redirected via package-level mappings BEFORE resolving
+    const packageName = this.extractPackageName(url)
+    if (packageName && !url.includes('@')) {
+      const mappingKey = `__PKG__${packageName}`
+      if (this.importMappings.has(mappingKey)) {
+        const versionedPackageName = this.importMappings.get(mappingKey)
+        const mappedUrl = url.replace(packageName, versionedPackageName)
+        console.log(`[ContentImport] 🗺️  Redirecting via package mapping: ${url} → ${mappedUrl}`)
+        // Recursively call import with the mapped URL
+        return this.import(mappedUrl, force, loadingCb, cb)
+      }
+    }
+
     const self = this
 
     let resolved
@@ -126,6 +147,40 @@ export class CompilerImports extends Plugin {
    * @param importPath - the import path (e.g., "@openzeppelin/contracts/token/ERC20/ERC20.sol")
    * @returns package name (e.g., "@openzeppelin/contracts") or null
    */
+  /**
+   * Create import mappings from package imports to versioned imports
+   * Instead of mapping individual files, we map entire packages as wildcards
+   * @param content File content to parse for imports
+   * @param packageName The package name (e.g., "@openzeppelin/contracts")
+   * @param packageJsonContent The package.json content as a string
+   */
+  createImportMappings(content: string, packageName: string, packageJsonContent: string): void {
+    console.log(`[ContentImport] 📋 Creating import mappings for ${packageName}`)
+    
+    try {
+      const packageJson = JSON.parse(packageJsonContent)
+      const dependencies = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+        ...packageJson.peerDependencies
+      }
+      
+      // For each dependency, create a PACKAGE-LEVEL mapping
+      // This maps ALL imports from that package to the versioned equivalent
+      for (const [depPackageName, depVersion] of Object.entries(dependencies)) {
+        // Create a wildcard mapping entry
+        // We'll use the package name as the key with a special marker
+        const mappingKey = `__PKG__${depPackageName}`
+        const mappingValue = `${depPackageName}@${depVersion}`
+        
+        this.importMappings.set(mappingKey, mappingValue)
+        console.log(`[ContentImport] 🗺️  Package mapping: ${depPackageName}/* → ${depPackageName}@${depVersion}/*`)
+      }
+    } catch (error) {
+      console.error(`[ContentImport] ❌ Error creating import mappings:`, error)
+    }
+  }
+
   extractPackageName(importPath: string): string | null {
     // Handle scoped packages like @openzeppelin/contracts
     if (importPath.startsWith('@')) {
@@ -169,95 +224,6 @@ export class CompilerImports extends Plugin {
     return null
   }
 
-  /**
-   * Rewrite imports in content to include version tags from package.json dependencies
-   * @param content - the file content with imports
-   * @param packageName - the package this file belongs to
-   * @param packageJsonContent - the package.json content (string)
-   * @returns modified content with versioned imports
-   */
-  rewriteImportsWithVersions(content: string, packageName: string, packageJsonContent: string): string {
-    try {
-      const packageJson = JSON.parse(packageJsonContent)
-      const dependencies = {
-        ...packageJson.dependencies,
-        ...packageJson.devDependencies,
-        ...packageJson.peerDependencies
-      }
-      
-      if (!dependencies || Object.keys(dependencies).length === 0) {
-        return content
-      }
-
-      console.log(`[ContentImport] 🔄 Checking imports in file from package: ${packageName}`)
-      
-      // Match Solidity import statements
-      // Handles: import "path"; import 'path'; import {...} from "path";
-      const importRegex = /import\s+(?:[^"']*["']([^"']+)["']|["']([^"']+)["'])/g
-      let modifiedContent = content
-      let modificationsCount = 0
-      
-      // Find all imports
-      const imports: string[] = []
-      let match
-      while ((match = importRegex.exec(content)) !== null) {
-        const importPath = match[1] || match[2]
-        if (importPath) {
-          imports.push(importPath)
-        }
-      }
-      
-      // Process each import
-      for (const importPath of imports) {
-        // Extract package name from import
-        const importedPackage = this.extractPackageName(importPath)
-        
-        if (importedPackage && dependencies[importedPackage]) {
-          const version = dependencies[importedPackage]
-          
-          // Check if the import already has a version tag
-          if (!importPath.includes('@') || (importPath.startsWith('@') && importPath.split('@').length === 2)) {
-            // Rewrite the import to include version
-            // For scoped packages: @openzeppelin/contracts/path -> @openzeppelin/contracts@5.0.0/path
-            // For regular packages: hardhat/console.sol -> hardhat@2.0.0/console.sol
-            
-            let versionedImport: string
-            if (importPath.startsWith('@')) {
-              // Scoped package: @scope/package/path -> @scope/package@version/path
-              const parts = importPath.split('/')
-              versionedImport = `${parts[0]}/${parts[1]}@${version}/${parts.slice(2).join('/')}`
-            } else {
-              // Regular package: package/path -> package@version/path
-              const parts = importPath.split('/')
-              versionedImport = `${parts[0]}@${version}/${parts.slice(1).join('/')}`
-            }
-            
-            // Replace in content (need to escape special regex characters in the import path)
-            const escapedImportPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            const replaceRegex = new RegExp(`(["'])${escapedImportPath}\\1`, 'g')
-            
-            const beforeReplace = modifiedContent
-            modifiedContent = modifiedContent.replace(replaceRegex, `$1${versionedImport}$1`)
-            
-            if (beforeReplace !== modifiedContent) {
-              modificationsCount++
-              console.log(`[ContentImport] 📝 Rewrote import: "${importPath}" → "${versionedImport}" (version: ${version})`)
-            }
-          }
-        }
-      }
-      
-      if (modificationsCount > 0) {
-        console.log(`[ContentImport] ✅ Modified ${modificationsCount} import(s) with version tags`)
-      }
-      
-      return modifiedContent
-    } catch (e) {
-      console.error(`[ContentImport] ❌ Error rewriting imports: ${e.message}`)
-      return content // Return original content on error
-    }
-  }
-
   importExternal (url, targetPath) {
     return new Promise((resolve, reject) => {
       this.import(url,
@@ -269,8 +235,8 @@ export class CompilerImports extends Plugin {
             const provider = await this.call('fileManager', 'getProviderOf', null)
             const path = targetPath || type + '/' + cleanUrl
             
-            // If this is an npm import, fetch and save the package.json first, then rewrite imports
-            let finalContent = content
+            // If this is an npm import, fetch and save the package.json, then create import mappings
+            // We DO NOT rewrite the source code - we create mappings instead for transparent resolution
             let packageJsonContent: string | null = null
             
             if (type === 'npm' && provider) {
@@ -299,16 +265,30 @@ export class CompilerImports extends Plugin {
                   }
                 }
                 
-                // Rewrite imports in the content with version tags from package.json
+                // Create import mappings (non-versioned → versioned) instead of rewriting source
+                // This preserves the original source code for Sourcify verification
                 if (packageJsonContent) {
-                  finalContent = this.rewriteImportsWithVersions(content, packageName, packageJsonContent)
+                  this.createImportMappings(content, packageName, packageJsonContent)
+                  
+                  // Also create a self-mapping for this package if it has a version
+                  try {
+                    const packageJson = JSON.parse(packageJsonContent)
+                    if (packageJson.version && !cleanUrl.includes('@')) {
+                      const mappingKey = `__PKG__${packageName}`
+                      const mappingValue = `${packageName}@${packageJson.version}`
+                      this.importMappings.set(mappingKey, mappingValue)
+                      console.log(`[ContentImport] 🗺️  Self-mapping: ${packageName}/* → ${packageName}@${packageJson.version}/*`)
+                    }
+                  } catch (e) {
+                    // Ignore errors in self-mapping
+                  }
                 }
               }
             }
             
-            // Save the file (with rewritten imports if applicable)
+            // Save the ORIGINAL file content (no rewriting)
             if (provider) {
-              await provider.addExternal('.deps/' + path, finalContent, url)
+              await provider.addExternal('.deps/' + path, content, url)
             }
           } catch (err) {
             console.error(err)
@@ -326,10 +306,76 @@ export class CompilerImports extends Plugin {
     *
     * @param {String} url - URL of the content. can be basically anything like file located in the browser explorer, in the localhost explorer, raw HTTP, github address etc...
     * @param {String} targetPath - (optional) internal path where the content should be saved to
+    * @param {Boolean} skipMappings - (optional) if true, skip package-level mapping resolution. Used by code parser to avoid conflicts with main compiler
     * @returns {Promise} - string content
     */
-  async resolveAndSave (url, targetPath) {
+  async resolveAndSave (url, targetPath, skipMappings = false) {
     try {
+      // Extract package name for use in various checks below
+      const packageName = this.extractPackageName(url)
+      
+      // FIRST: Check if this import should be redirected via package-level mappings
+      // Skip this if skipMappings is true (e.g., for code parser to avoid race conditions)
+      if (!skipMappings) {
+        console.log(`[ContentImport] 🔍 resolveAndSave called with url: ${url}, extracted package: ${packageName}`)
+        
+        // Check if this URL has a version (e.g., @package@1.0.0 or package@1.0.0)
+        // We only want to redirect non-versioned imports
+        const hasVersion = packageName && url.includes(`${packageName}@`)
+        
+        if (packageName && !hasVersion) {
+          const mappingKey = `__PKG__${packageName}`
+          console.log(`[ContentImport] 🔑 Looking for mapping key: ${mappingKey}`)
+          console.log(`[ContentImport] 📚 Available mappings:`, Array.from(this.importMappings.keys()))
+          
+          if (this.importMappings.has(mappingKey)) {
+            const versionedPackageName = this.importMappings.get(mappingKey)
+            const mappedUrl = url.replace(packageName, versionedPackageName)
+            console.log(`[ContentImport] 🗺️  Resolving via package mapping: ${url} → ${mappedUrl}`)
+            return await this.resolveAndSave(mappedUrl, targetPath, skipMappings)
+          } else {
+            console.log(`[ContentImport] ⚠️  No mapping found for: ${mappingKey}`)
+          }
+        } else if (hasVersion) {
+          console.log(`[ContentImport] ℹ️  URL already has version, skipping mapping check`)
+        }
+      } else {
+        console.log(`[ContentImport] ⏭️  Skipping mapping resolution (skipMappings=true) for url: ${url}`)
+      }
+      
+      // SECOND: Check if we should redirect `.deps/npm/` paths back to npm format for fetching
+      if (url.startsWith('.deps/npm/')) {
+        const npmPath = url.replace('.deps/npm/', '')
+        console.log(`[ContentImport] 🔄 Converting .deps/npm/ path to npm format: ${url} → ${npmPath}`)
+        return await this.importExternal(npmPath, null)
+      }
+      
+      // THIRD: For non-versioned npm imports, check if we already have a versioned equivalent file
+      // This prevents fetching duplicates when the same version is already downloaded
+      if (packageName && !url.includes('@')) {
+        const packageJsonPath = `.deps/npm/${packageName}/package.json`
+        try {
+          const exists = await this.call('fileManager', 'exists', packageJsonPath)
+          if (exists) {
+            const packageJsonContent = await this.call('fileManager', 'readFile', packageJsonPath)
+            const packageJson = JSON.parse(packageJsonContent)
+            const version = packageJson.version
+            
+            // Construct versioned path
+            let versionedPath = url.replace(packageName, `${packageName}@${version}`)
+            
+            // Check if versioned file exists
+            const versionedExists = await this.call('fileManager', 'exists', `.deps/${versionedPath}`)
+            if (versionedExists) {
+              console.log(`[ContentImport] 🔄 Using existing versioned file: ${versionedPath}`)
+              return await this.resolveAndSave(versionedPath, null)
+            }
+          }
+        } catch (e) {
+          // Continue with normal resolution if check fails
+        }
+      }
+      
       if (targetPath && this.currentRequest) {
         const canCall = await this.askUserPermission('resolveAndSave', 'This action will update the path ' + targetPath)
         if (!canCall) throw new Error('No permission to update ' + targetPath)
