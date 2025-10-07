@@ -27,7 +27,16 @@ export class CompileTabLogic {
     this.api = api
     this.contentImport = contentImport
     this.event = new EventEmitter()
-    this.compiler = new Compiler((url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)))
+    
+    console.log(`[CompileTabLogic] 🏗️  Constructor called with contentImport:`, !!contentImport, contentImport)
+    
+    // Create compiler with both legacy callback (for backwards compatibility)
+    // and the contentImport plugin (for new ImportResolver architecture)
+    this.compiler = new Compiler(
+      (url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)),
+      contentImport // Pass the plugin so Compiler can create ImportResolver instances
+    )
+    
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }
 

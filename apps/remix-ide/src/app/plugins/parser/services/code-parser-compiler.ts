@@ -119,7 +119,10 @@ export default class CodeParserCompiler {
       this.plugin.emit('astFinished')
     }
 
-        this.compiler = new Compiler((url, cb) => { return this.plugin.call('contentImport', 'resolveAndSave', url).then((result) => cb(null, result)).catch((error: Error) => cb(error.message)) })
+    this.compiler = new Compiler(
+      (url, cb) => { return this.plugin.call('contentImport', 'resolveAndSave', url).then((result) => cb(null, result)).catch((error: Error) => cb(error.message)) },
+      this.plugin // Pass the plugin reference so Compiler can create ImportResolver instances
+    )
     this.compiler.event.register('compilationFinished', this.onAstFinished)
   }
 
@@ -130,6 +133,7 @@ export default class CodeParserCompiler {
      * @returns
      */
   async compile() {
+    return 
     try {
       this.plugin.currentFile = await this.plugin.call('fileManager', 'file')
       if (this.plugin.currentFile && this.plugin.currentFile.endsWith('.sol')) {
