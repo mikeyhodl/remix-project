@@ -24,7 +24,7 @@ import { MatomoConfig } from './MatomoManager';
  * - Production domains (remix.ethereum.org, etc.) are unaffected by this setting
  * - Only affects localhost and 127.0.0.1 domains
  */
-export const ENABLE_MATOMO_LOCALHOST = false;
+export const ENABLE_MATOMO_LOCALHOST = true;
 
 // Type for domain-specific custom dimensions
 export interface DomainCustomDimensions {
@@ -105,9 +105,21 @@ export const MATOMO_CUSTOM_DIMENSIONS: CustomDimensionsConfig = {
 export const MATOMO_BOT_CUSTOM_DIMENSIONS: BotCustomDimensionsConfig = {
   'alpha.remix.live': null, // TODO: Configure if bot site has different dimension IDs
   'beta.remix.live': null, // TODO: Configure if bot site has different dimension IDs
-  'remix.ethereum.org': null, // TODO: Configure if bot site has different dimension IDs
-  'localhost': null, // Use same dimension IDs as human site
-  '127.0.0.1': null // Use same dimension IDs as human site
+  'remix.ethereum.org': {
+    trackingMode: 1, 
+    clickAction: 3, 
+    isBot: 2 
+  },
+  'localhost': {
+    trackingMode: 1, 
+    clickAction: 3, 
+    isBot: 2
+  },
+  '127.0.0.1': {
+    trackingMode: 1, 
+    clickAction: 3, 
+    isBot: 2
+  }
 };
 
 /**
@@ -158,7 +170,7 @@ export function createMatomoConfig(): MatomoConfig {
   return {
     trackerUrl: 'https://matomo.remix.live/matomo/matomo.php',
     // siteId will be auto-derived from matomoDomains based on current hostname
-    debug: false,
+    debug: true,
     matomoDomains: MATOMO_DOMAINS,
     scriptTimeout: 10000,
     onStateChange: (event, data, state) => {
