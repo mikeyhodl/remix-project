@@ -29,10 +29,10 @@
 
 ```
 class Compiler {
-    handleImportCall: (fileurl: string, cb: Function) => void;
+    handleImportCall: (fileurl: string, cb: Function, target?: string | null) => void;
     event: EventManager;
     state: CompilerState;
-    constructor(handleImportCall: (fileurl: string, cb: Function) => void);
+    constructor(handleImportCall: (fileurl: string, cb: Function, target?: string | null) => void);
     /**
      * @dev Setter function for CompilerState's properties (used by IDE)
      * @param key key

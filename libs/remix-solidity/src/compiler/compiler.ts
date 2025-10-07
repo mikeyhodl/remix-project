@@ -20,9 +20,12 @@ export class Compiler {
   state: CompilerState
   handleImportCall
   workerHandler: EsWebWorkerHandlerInterface
-  constructor(handleImportCall?: (fileurl: string, cb) => void) {
+  importMap: Map<string, string[]> // Maps file -> array of imports it contains
+  
+  constructor(handleImportCall?: (fileurl: string, cb, target?: string | null) => void) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
+    this.importMap = new Map()
     this.state = {
       viaIR: false,
       compileJSON: null,
@@ -86,11 +89,19 @@ export class Compiler {
     if (timeStamp < this.state.compilationStartTime && this.state.compilerRetriggerMode == CompilerRetriggerMode.retrigger ) {
       return
     }
+    const fileCount = Object.keys(files).length
+    const missingCount = missingInputs?.length || 0
+    console.log(`[Compiler] 🔄 internalCompile called with ${fileCount} file(s), ${missingCount} missing input(s) to resolve`)
+    
     this.gatherImports(files, missingInputs, (error, input) => {
       if (error) {
+        console.log(`[Compiler] ❌ gatherImports failed:`, error)
         this.state.lastCompilationResult = null
         this.event.trigger('compilationFinished', [false, { error: { formattedMessage: error, severity: 'error' } }, files, input, this.state.currentVersion])
-      } else if (this.state.compileJSON && input) { this.state.compileJSON(input, timeStamp) }
+      } else if (this.state.compileJSON && input) { 
+        console.log(`[Compiler] ✅ All imports gathered, sending ${Object.keys(input.sources).length} file(s) to compiler`)
+        this.state.compileJSON(input, timeStamp) 
+      }
     })
   }
 
@@ -101,6 +112,23 @@ export class Compiler {
    */
 
   compile(files: Source, target: string): void {
+    console.log(`\n${'='.repeat(80)}`)
+    console.log(`[Compiler] 🚀 Starting NEW compilation for target: "${target}"`)
+    console.log(`[Compiler] 📁 Initial files provided: ${Object.keys(files).length}`)
+    console.log(`${'='.repeat(80)}\n`)
+    
+    // Reset import map for new compilation
+    this.importMap.clear()
+    
+    // Parse initial files
+    for (const file in files) {
+      const imports = this.parseImports(files[file].content)
+      if (imports.length > 0) {
+        this.importMap.set(file, imports)
+        console.log(`[Compiler] 📋 Initial file "${file}" has ${imports.length} import(s):`, imports)
+      }
+    }
+    
     this.state.target = target
     this.state.compilationStartTime = new Date().getTime()
     this.event.trigger('compilationStarted', [])
@@ -173,12 +201,16 @@ export class Compiler {
     if (data.errors) data.errors.forEach((err) => checkIfFatalError(err))
     if (!noFatalErrors) {
       // There are fatal errors, abort here
+      console.log(`[Compiler] ❌ Compilation failed with errors for target: "${this.state.target}"`)
       this.state.lastCompilationResult = null
       this.event.trigger('compilationFinished', [false, data, source, input, version])
     } else if (missingInputs !== undefined && missingInputs.length > 0 && source && source.sources) {
       // try compiling again with the new set of inputs
+      console.log(`[Compiler] 🔄 Compilation round complete, but found ${missingInputs.length} missing input(s):`, missingInputs)
+      console.log(`[Compiler] 🔁 Re-compiling with new imports (sequential resolution will start)...`)
       this.internalCompile(source.sources, missingInputs, timeStamp)
     } else {
+      console.log(`[Compiler] ✅ 🎉 Compilation successful for target: "${this.state.target}"`)
       data = this.updateInterface(data)
       if (source) {
         source.target = this.state.target
@@ -372,22 +404,99 @@ export class Compiler {
 
   gatherImports(files: Source, importHints?: string[], cb?: gatherImportsCallbackInterface): void {
     importHints = importHints || []
+    const remainingCount = importHints.length
+    
+    if (remainingCount > 0) {
+      console.log(`[Compiler] 📦 gatherImports: ${remainingCount} import(s) remaining in queue`)
+    }
+    
     while (importHints.length > 0) {
       const m: string = importHints.pop() as string
-      if (m && m in files) continue
+      if (m && m in files) {
+        console.log(`[Compiler] ⏭️  Skipping "${m}" - already loaded`)
+        continue
+      }
 
       if (this.handleImportCall) {
+        const position = remainingCount - importHints.length
+        
+        // Try to find which file is importing this
+        const importingFile = this.findImportingFile(m, files)
+        const targetInfo = importingFile 
+          ? `imported by: "${importingFile}"`
+          : `original target: "${this.state.target}"`
+        
+        console.log(`[Compiler] 🔍 [${position}/${remainingCount}] Resolving import: "${m}" (${targetInfo})`)
+        
         this.handleImportCall(m, (err, content: string) => {
-          if (err && cb) cb(err)
-          else {
+          if (err) {
+            console.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}" - Error: ${err}`)
+            if (cb) cb(err)
+          } else {
+            console.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
             files[m] = { content }
+            
+            // Parse imports from the newly loaded file
+            const newImports = this.parseImports(content)
+            if (newImports.length > 0) {
+              this.importMap.set(m, newImports)
+              console.log(`[Compiler] 📄 "${m}" contains ${newImports.length} import(s)`)
+            }
+            
+            console.log(`[Compiler] 🔄 Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
             this.gatherImports(files, importHints, cb)
           }
-        })
+        }, importingFile || this.state.target)
       }
       return
     }
+    console.log(`[Compiler] ✨ All imports resolved! Total files: ${Object.keys(files).length}`)
     if (cb) { cb(null, { sources: files }) }
+  }
+
+  /**
+   * @dev Parse import statements from file content
+   * @param content file content
+   * @returns array of import paths
+   */
+  parseImports(content: string): string[] {
+    const imports: string[] = []
+    // Match: import "path"; or import 'path'; or import {...} from "path";
+    const importRegex = /import\s+(?:[^"']*["']([^"']+)["']|["']([^"']+)["'])/g
+    let match
+    while ((match = importRegex.exec(content)) !== null) {
+      const importPath = match[1] || match[2]
+      if (importPath) imports.push(importPath)
+    }
+    return imports
+  }
+
+  /**
+   * @dev Find which loaded file likely imports the given path
+   * @param importPath the import to find
+   * @param loadedFiles currently loaded files
+   * @returns the file that imports it, or null
+   */
+  findImportingFile(importPath: string, loadedFiles: Source): string | null {
+    // Check our import map first
+    for (const [file, imports] of this.importMap.entries()) {
+      if (imports.includes(importPath)) {
+        return file
+      }
+    }
+    
+    // Fallback: parse files we haven't analyzed yet
+    for (const file in loadedFiles) {
+      if (!this.importMap.has(file)) {
+        const imports = this.parseImports(loadedFiles[file].content)
+        this.importMap.set(file, imports)
+        if (imports.includes(importPath)) {
+          return file
+        }
+      }
+    }
+    
+    return null
   }
 
   /**
