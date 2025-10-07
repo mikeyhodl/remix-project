@@ -62,9 +62,9 @@ export const MATOMO_DOMAINS: SiteIdConfig = {
 export const MATOMO_BOT_SITE_IDS: BotSiteIdConfig = {
   'alpha.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 10)
   'beta.remix.live': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 11)
-  'remix.ethereum.org': null, // TODO: Create bot tracking site in Matomo (e.g., site ID 12)
-  'localhost': null, // Keep bots in same localhost site for testing (E2E tests need cookies)
-  '127.0.0.1': null // Keep bots in same localhost site for testing (E2E tests need cookies)
+  'remix.ethereum.org': 8, // TODO: Create bot tracking site in Matomo (e.g., site ID 12)
+  'localhost': 7, // Keep bots in same localhost site for testing (E2E tests need cookies)
+  '127.0.0.1': 7 // Keep bots in same localhost site for testing (E2E tests need cookies)
 };
 
 // Domain-specific custom dimension IDs for HUMAN traffic
