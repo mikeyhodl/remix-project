@@ -509,6 +509,9 @@ export class MatomoManager implements IMatomoManager {
     this.state.initialized = true;
     this.state.currentMode = pattern;
 
+    // Set E2E marker for bot detection completion
+    this.setE2EStateMarker('matomo-bot-detection-complete');
+
     // Send bot detection event to Matomo for analytics
     if (this.botDetectionResult) {
       this.trackBotDetectionEvent(this.botDetectionResult);
@@ -526,6 +529,9 @@ export class MatomoManager implements IMatomoManager {
     this.log(`=== INITIALIZATION COMPLETE: ${pattern} ===`);
     this.log(`📋 _paq array after init: ${window._paq.length} commands`);
     this.log(`📋 Pre-init queue contains ${this.preInitQueue.length} commands (use processPreInitQueue() to flush)`);
+
+    // Set E2E marker for complete initialization
+    this.setE2EStateMarker('matomo-initialized');
 
     this.emit('initialized', { pattern, options });
   }
@@ -1102,6 +1108,10 @@ export class MatomoManager implements IMatomoManager {
     };
 
     this.log('Debug plugin loaded for E2E testing with enhanced helpers');
+    
+    // Set E2E marker for debug plugin loaded
+    this.setE2EStateMarker('matomo-debug-plugin-loaded');
+    
     this.emit('debug-plugin-e2e-ready', helpers);
 
     return helpers;
@@ -1619,6 +1629,30 @@ export class MatomoManager implements IMatomoManager {
    */
   getBotConfidence(): 'high' | 'medium' | 'low' | null {
     return this.botDetectionResult?.confidence || null;
+  }
+
+  // ================== E2E TESTING HELPERS ==================
+
+  /**
+   * Set E2E state marker on DOM for reliable test assertions
+   * Similar to 'compilerloaded' pattern - creates empty div with data-id
+   * 
+   * @param markerId - Unique identifier for the state (e.g., 'matomo-initialized')
+   */
+  private setE2EStateMarker(markerId: string): void {
+    // Remove any existing marker with this ID
+    const existing = document.querySelector(`[data-id="${markerId}"]`);
+    if (existing) {
+      existing.remove();
+    }
+
+    // Create new marker element
+    const marker = document.createElement('div');
+    marker.setAttribute('data-id', markerId);
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+
+    this.log(`🧪 E2E marker set: ${markerId}`);
   }
 }
 

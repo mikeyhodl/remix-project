@@ -20,8 +20,7 @@ function startFreshTest(browser: NightwatchBrowser) {
             selector: `//*[@data-id='compilerloaded']`,
             locateStrategy: 'xpath',
             timeout: 120000
-        })
-        .pause(1000); // Extra pause to ensure clean state
+        });
 }
 
 // Helper 2: Accept consent modal
@@ -30,20 +29,26 @@ function acceptConsent(browser: NightwatchBrowser) {
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
         .click('[data-id="matomoModal-modal-footer-ok-react"]')
         .waitForElementNotVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-        .pause(4000) // Wait for bot detection (2s delay) + Matomo initialization + script load + cookie setting
+        // Wait for bot detection and Matomo initialization
+        .waitForElementPresent({
+            selector: `//*[@data-id='matomo-bot-detection-complete']`,
+            locateStrategy: 'xpath',
+            timeout: 5000
+        })
+        .waitForElementPresent({
+            selector: `//*[@data-id='matomo-initialized']`,
+            locateStrategy: 'xpath',
+            timeout: 5000
+        })
         .execute(function() {
-            // Wait for Matomo script to fully load and initialize
-            const checkMatomoReady = () => {
-                const matomo = (window as any).Matomo;
-                const matomoManager = (window as any)._matomoManagerInstance;
-                return {
-                    hasPaq: !!(window as any)._paq,
-                    hasMatomo: !!matomo,
-                    matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
-                    initialized: matomoManager?.getState?.()?.initialized || false
-                };
+            // Verify Matomo initialization
+            const matomoManager = (window as any)._matomoManagerInstance;
+            return {
+                hasPaq: !!(window as any)._paq,
+                hasMatomo: !!(window as any).Matomo,
+                matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
+                initialized: matomoManager?.getState?.()?.initialized || false
             };
-            return checkMatomoReady();
         }, [], (result: any) => {
             browser.assert.ok(result.value.initialized, `Matomo should be initialized after accepting consent (initialized=${result.value.initialized}, loaded=${result.value.matomoLoaded})`);
         });
@@ -53,12 +58,9 @@ function acceptConsent(browser: NightwatchBrowser) {
 function rejectConsent(browser: NightwatchBrowser) {
     return browser
         .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-        .pause(1000) // Let initial modal settle
         .click('[data-id="matomoModal-modal-footer-cancel-react"]') // Click "Manage Preferences"
         .waitForElementVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]') // Wait for preferences dialog
-        .pause(2000) // Let preferences modal settle and finish animations
         .waitForElementVisible('*[data-id="matomoPerfAnalyticsToggleSwitch"]')
-        .pause(1000) // Let toggle switch fully render
         .saveScreenshot('./reports/screenshots/matomo-preferences-before-toggle.png') // Debug screenshot
         .execute(function() {
             // Force click using JavaScript to bypass modal overlay issues
@@ -89,20 +91,26 @@ function rejectConsent(browser: NightwatchBrowser) {
             }
         })
         .waitForElementNotVisible('*[data-id="managePreferencesModalModalDialogModalBody-react"]')
-        .pause(4000) // Wait for bot detection (2s delay) + Matomo initialization + script load + cookie setting
+        // Wait for bot detection and Matomo initialization
+        .waitForElementPresent({
+            selector: `//*[@data-id='matomo-bot-detection-complete']`,
+            locateStrategy: 'xpath',
+            timeout: 5000
+        })
+        .waitForElementPresent({
+            selector: `//*[@data-id='matomo-initialized']`,
+            locateStrategy: 'xpath',
+            timeout: 5000
+        })
         .execute(function() {
-            // Wait for Matomo script to fully load and initialize
-            const checkMatomoReady = () => {
-                const matomo = (window as any).Matomo;
-                const matomoManager = (window as any)._matomoManagerInstance;
-                return {
-                    hasPaq: !!(window as any)._paq,
-                    hasMatomo: !!matomo,
-                    matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
-                    initialized: matomoManager?.getState?.()?.initialized || false
-                };
+            // Verify Matomo initialization
+            const matomoManager = (window as any)._matomoManagerInstance;
+            return {
+                hasPaq: !!(window as any)._paq,
+                hasMatomo: !!(window as any).Matomo,
+                matomoLoaded: matomoManager?.isMatomoLoaded?.() || false,
+                initialized: matomoManager?.getState?.()?.initialized || false
             };
-            return checkMatomoReady();
         }, [], (result: any) => {
             browser.assert.ok(result.value.initialized, `Matomo should be initialized (initialized=${result.value.initialized}, loaded=${result.value.matomoLoaded})`);
         });

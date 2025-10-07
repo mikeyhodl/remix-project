@@ -30,7 +30,6 @@ module.exports = {
         locateStrategy: 'xpath',
         timeout: 120000
       })
-      .pause(2000)
   },
 
   'Load debug plugin before accepting consent': function (browser: NightwatchBrowser) {
@@ -51,6 +50,12 @@ module.exports = {
       }, [], (result: any) => {
         browser.assert.ok(result.value.success, 'Debug plugin loaded before consent');
       })
+      // Wait for debug plugin loaded marker
+      .waitForElementPresent({
+        selector: `//*[@data-id='matomo-debug-plugin-loaded']`,
+        locateStrategy: 'xpath',
+        timeout: 5000
+      })
   },
 
   'Accept consent to enable tracking': function (browser: NightwatchBrowser) {
@@ -58,7 +63,18 @@ module.exports = {
       .waitForElementVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
       .click('[data-id="matomoModal-modal-footer-ok-react"]')
       .waitForElementNotVisible('*[data-id="matomoModalModalDialogModalBody-react"]')
-      .pause(2000) // Wait for Matomo initialization and bot detection event to be sent
+      // Wait for bot detection to complete
+      .waitForElementPresent({
+        selector: `//*[@data-id='matomo-bot-detection-complete']`,
+        locateStrategy: 'xpath',
+        timeout: 5000
+      })
+      // Wait for full Matomo initialization
+      .waitForElementPresent({
+        selector: `//*[@data-id='matomo-initialized']`,
+        locateStrategy: 'xpath',
+        timeout: 5000
+      })
   },
 
   'Verify bot detection identifies automation tool': function (browser: NightwatchBrowser) {
@@ -148,13 +164,10 @@ module.exports = {
 
   'Verify events are tracked with bot detection': function (browser: NightwatchBrowser) {
     browser
-      // Debug plugin already loaded in previous test
-      // Wait for the 2-second mouse tracking delay to complete + buffer for initialization
-      .pause(4000) // Increased from 3000ms to 4000ms for more reliability
-      
+      // Matomo already initialized (marker checked in previous test)
       // Trigger a tracked event by clicking a plugin
       .clickLaunchIcon('filePanel')
-      .pause(3000) // Increased from 2000ms to 3000ms for event propagation
+      .pause(1000) // Small delay for event propagation
       
       .execute(function () {
         const matomoManager = (window as any)._matomoManagerInstance;
