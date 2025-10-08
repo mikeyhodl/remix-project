@@ -348,6 +348,151 @@ export class ImportResolver implements IImportResolver {
     return resolvedMajor !== requestedMajor
   }
 
+  /**
+   * Check dependencies of a package for version conflicts
+   */
+  private async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: any): Promise<void> {
+    const allDeps = {
+      ...(packageJson.dependencies || {}),
+      ...(packageJson.peerDependencies || {})
+    }
+    
+    if (Object.keys(allDeps).length === 0) return
+    
+    const depTypes = []
+    if (packageJson.dependencies) depTypes.push('dependencies')
+    if (packageJson.peerDependencies) depTypes.push('peerDependencies')
+    console.log(`[ImportResolver] 🔗 Found ${depTypes.join(' & ')} for ${packageName}:`, Object.keys(allDeps))
+    
+    for (const [dep, requestedRange] of Object.entries(allDeps)) {
+      await this.checkDependencyConflict(packageName, resolvedVersion, dep, requestedRange as string, packageJson.peerDependencies)
+    }
+  }
+
+  /**
+   * Check a single dependency for version conflicts
+   */
+  private async checkDependencyConflict(
+    packageName: string, 
+    packageVersion: string, 
+    dep: string, 
+    requestedRange: string,
+    peerDependencies: any
+  ): Promise<void> {
+    const isPeerDep = peerDependencies && dep in peerDependencies
+    
+    // IMPORTANT: Only check if this dependency is ALREADY mapped (i.e., actually imported)
+    // Don't recursively fetch the entire npm dependency tree!
+    const depMappingKey = `__PKG__${dep}`
+    if (!this.importMappings.has(depMappingKey)) return
+    
+    const resolvedDepPackage = this.importMappings.get(depMappingKey)
+    const resolvedDepVersion = this.extractVersion(resolvedDepPackage)
+    
+    if (!resolvedDepVersion || typeof requestedRange !== 'string') return
+    
+    const conflictKey = `${isPeerDep ? 'peer' : 'dep'}:${packageName}→${dep}:${requestedRange}→${resolvedDepVersion}`
+    
+    // Check if it looks like a potential conflict (basic semver check)
+    if (this.conflictWarnings.has(conflictKey) || !this.isPotentialVersionConflict(requestedRange, resolvedDepVersion)) {
+      return
+    }
+    
+    this.conflictWarnings.add(conflictKey)
+    
+    // Determine where the resolved version came from
+    let resolvedFrom = 'npm registry'
+    const sourcePackage = this.packageSources.get(dep)
+    if (this.workspaceResolutions.has(dep)) {
+      resolvedFrom = 'workspace package.json'
+    } else if (this.lockFileVersions.has(dep)) {
+      resolvedFrom = 'lock file'
+    } else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') {
+      resolvedFrom = `${sourcePackage}/package.json`
+    }
+    
+    // Check if this is a BREAKING change (different major versions)
+    const isBreaking = this.isBreakingVersionConflict(requestedRange, resolvedDepVersion)
+    const severity = isBreaking ? 'error' : 'warn'
+    const emoji = isBreaking ? '🚨' : '⚠️'
+    
+    const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
+    const warningMsg = [
+      `${emoji} Version mismatch detected:`,
+      `   Package ${packageName}@${packageVersion} requires in ${depType}:`,
+      `     "${dep}": "${requestedRange}"`,
+      ``,
+      `   But actual imported version is: ${dep}@${resolvedDepVersion}`,
+      `     (resolved from ${resolvedFrom})`,
+      ``,
+      isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
+      isBreaking ? `` : '',
+      `💡 To fix, update your workspace package.json:`,
+      `     "${dep}": "${requestedRange}"`,
+      ``
+    ].filter(line => line !== '').join('\n')
+    
+    this.pluginApi.call('terminal', 'log', { 
+      type: severity, 
+      value: warningMsg 
+    }).catch(err => {
+      console.warn(warningMsg)
+    })
+  }
+
+  /**
+   * Resolve a package version from workspace, lock file, or npm
+   */
+  private async resolvePackageVersion(packageName: string): Promise<{ version: string | null, source: string }> {
+    // PRIORITY 1: Workspace resolutions/overrides
+    if (this.workspaceResolutions.has(packageName)) {
+      const version = this.workspaceResolutions.get(packageName)
+      console.log(`[ImportResolver] 📌 Using workspace resolution: ${packageName} → ${version}`)
+      return { version, source: 'workspace-resolution' }
+    }
+    
+    // PRIORITY 2: Lock file (if no workspace override)
+    if (this.lockFileVersions.has(packageName)) {
+      const version = this.lockFileVersions.get(packageName)
+      console.log(`[ImportResolver] 🔒 Using lock file version: ${packageName} → ${version}`)
+      return { version, source: 'lock-file' }
+    }
+    
+    // PRIORITY 3: Fetch package.json (fallback)
+    return await this.fetchPackageVersionFromNpm(packageName)
+  }
+
+  /**
+   * Fetch package version from npm and save package.json
+   */
+  private async fetchPackageVersionFromNpm(packageName: string): Promise<{ version: string | null, source: string }> {
+    try {
+      console.log(`[ImportResolver] 📦 Fetching package.json for: ${packageName}`)
+      
+      const packageJsonUrl = `${packageName}/package.json`
+      const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+      
+      const packageJson = JSON.parse(content.content || content)
+      if (!packageJson.version) {
+        return { version: null, source: 'fetched' }
+      }
+      
+      // Save package.json to file system for visibility and debugging
+      try {
+        const targetPath = `.deps/npm/${packageName}@${packageJson.version}/package.json`
+        await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+        console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+      } catch (saveErr) {
+        console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
+      }
+      
+      return { version: packageJson.version, source: 'package-json' }
+    } catch (err) {
+      console.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
+      return { version: null, source: 'fetched' }
+    }
+  }
+
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
     
@@ -355,161 +500,56 @@ export class ImportResolver implements IImportResolver {
       return
     }
     
-    let resolvedVersion: string | null = null
-    let source = 'fetched'
+    // Resolve version from workspace, lock file, or npm
+    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
     
-    // PRIORITY 1: Workspace resolutions/overrides
-    if (this.workspaceResolutions.has(packageName)) {
-      resolvedVersion = this.workspaceResolutions.get(packageName)
-      source = 'workspace-resolution'
-      console.log(`[ImportResolver] � Using workspace resolution: ${packageName} → ${resolvedVersion}`)
-    }
-    
-    // PRIORITY 2: Lock file (if no workspace override)
-    if (!resolvedVersion && this.lockFileVersions.has(packageName)) {
-      resolvedVersion = this.lockFileVersions.get(packageName)
-      source = 'lock-file'
-      console.log(`[ImportResolver] 🔒 Using lock file version: ${packageName} → ${resolvedVersion}`)
-    }
-    
-    // PRIORITY 3: Fetch package.json (fallback)
     if (!resolvedVersion) {
-      try {
-        console.log(`[ImportResolver] 📦 Fetching package.json for: ${packageName}`)
-        
-        const packageJsonUrl = `${packageName}/package.json`
-        const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
-        
-        const packageJson = JSON.parse(content.content || content)
-        if (packageJson.version) {
-          resolvedVersion = packageJson.version
-          source = 'package-json'
-          
-          // Save package.json to file system for visibility and debugging
-          // Use versioned folder path
-          try {
-            const targetPath = `.deps/npm/${packageName}@${packageJson.version}/package.json`
-            await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
-            console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-          } catch (saveErr) {
-            console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
-          }
-        }
-      } catch (err) {
-        console.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
-        return
-      }
+      return
     }
     
-    if (resolvedVersion) {
-      const versionedPackageName = `${packageName}@${resolvedVersion}`
-      this.importMappings.set(mappingKey, versionedPackageName)
+    const versionedPackageName = `${packageName}@${resolvedVersion}`
+    this.importMappings.set(mappingKey, versionedPackageName)
+    
+    // Record the source of this resolution
+    if (source === 'workspace-resolution' || source === 'lock-file') {
+      this.packageSources.set(packageName, 'workspace')
+    } else {
+      this.packageSources.set(packageName, packageName) // Direct fetch from npm
+    }
+    
+    console.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
+    
+    // Check dependencies for conflicts
+    await this.checkPackageDependenciesIfNeeded(packageName, resolvedVersion, source)
+    
+    console.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
+  }
+
+  /**
+   * Check package dependencies if we haven't already (when using lock file or workspace resolutions)
+   */
+  private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string, source: string): Promise<void> {
+    try {
+      const packageJsonUrl = `${packageName}/package.json`
+      const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+      const packageJson = JSON.parse(content.content || content)
       
-      // Record the source of this resolution
-      if (source === 'workspace-resolution' || source === 'lock-file') {
-        this.packageSources.set(packageName, 'workspace')
-      } else {
-        this.packageSources.set(packageName, packageName) // Direct fetch from npm
+      // Save package.json if we haven't already (when using lock file or workspace resolutions)
+      if (source !== 'package-json') {
+        try {
+          const targetPath = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
+          await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+          console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+        } catch (saveErr) {
+          console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
+        }
       }
       
-      console.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
-      
-      // Always check peer dependencies (regardless of source) to detect conflicts
-      try {
-        const packageJsonUrl = `${packageName}/package.json`
-        const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
-        const packageJson = JSON.parse(content.content || content)
-        
-        // Save package.json if we haven't already (when using lock file or workspace resolutions)
-        // Use versioned folder path
-        if (source !== 'package-json') {
-          try {
-            const targetPath = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
-            await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
-            console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-          } catch (saveErr) {
-            console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
-          }
-        }
-        
-        // Check both peerDependencies AND regular dependencies for conflicts
-        // In Solidity, unlike npm, we can't have multiple versions - everything shares one namespace
-        const allDeps = {
-          ...(packageJson.dependencies || {}),
-          ...(packageJson.peerDependencies || {})
-        }
-        
-        if (Object.keys(allDeps).length > 0) {
-          const depTypes = []
-          if (packageJson.dependencies) depTypes.push('dependencies')
-          if (packageJson.peerDependencies) depTypes.push('peerDependencies')
-          console.log(`[ImportResolver] 🔗 Found ${depTypes.join(' & ')} for ${packageName}:`, Object.keys(allDeps))
-          
-          for (const [dep, requestedRange] of Object.entries(allDeps)) {
-            const isPeerDep = packageJson.peerDependencies && dep in packageJson.peerDependencies
-            
-            // IMPORTANT: Only check if this dependency is ALREADY mapped (i.e., actually imported)
-            // Don't recursively fetch the entire npm dependency tree!
-            const depMappingKey = `__PKG__${dep}`
-            if (this.importMappings.has(depMappingKey)) {
-              const resolvedDepPackage = this.importMappings.get(depMappingKey)
-              const resolvedDepVersion = this.extractVersion(resolvedDepPackage)
-              
-              if (resolvedDepVersion && typeof requestedRange === 'string') {
-                const conflictKey = `${isPeerDep ? 'peer' : 'dep'}:${packageName}→${dep}:${requestedRange}→${resolvedDepVersion}`
-                
-                // Check if it looks like a potential conflict (basic semver check)
-                if (!this.conflictWarnings.has(conflictKey) && this.isPotentialVersionConflict(requestedRange, resolvedDepVersion)) {
-                  this.conflictWarnings.add(conflictKey)
-                  
-                  // Determine where the resolved version came from
-                  let resolvedFrom = 'npm registry'
-                  const sourcePackage = this.packageSources.get(dep)
-                  if (this.workspaceResolutions.has(dep)) {
-                    resolvedFrom = 'workspace package.json'
-                  } else if (this.lockFileVersions.has(dep)) {
-                    resolvedFrom = 'lock file'
-                  } else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') {
-                    resolvedFrom = `${sourcePackage}/package.json`
-                  }
-                  
-                  // Check if this is a BREAKING change (different major versions)
-                  const isBreaking = this.isBreakingVersionConflict(requestedRange, resolvedDepVersion)
-                  const severity = isBreaking ? 'error' : 'warn'
-                  const emoji = isBreaking ? '🚨' : '⚠️'
-                  
-                  const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
-                  const warningMsg = [
-                    `${emoji} Version mismatch detected:`,
-                    `   Package ${packageName}@${resolvedVersion} requires in ${depType}:`,
-                    `     "${dep}": "${requestedRange}"`,
-                    ``,
-                    `   But actual imported version is: ${dep}@${resolvedDepVersion}`,
-                    `     (resolved from ${resolvedFrom})`,
-                    ``,
-                    isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
-                    isBreaking ? `` : '',
-                    `💡 To fix, update your workspace package.json:`,
-                    `     "${dep}": "${requestedRange}"`,
-                    ``
-                  ].filter(line => line !== '').join('\n')
-                  
-                  this.pluginApi.call('terminal', 'log', { 
-                    type: severity, 
-                    value: warningMsg 
-                  }).catch(err => {
-                    console.warn(warningMsg)
-                  })
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        // Dependencies are optional, don't fail compilation
-      }
-      
-      console.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
+      // Check dependencies for conflicts
+      await this.checkPackageDependencies(packageName, resolvedVersion, packageJson)
+    } catch (err) {
+      // Dependencies are optional, don't fail compilation
+      console.log(`[ImportResolver] ℹ️  Could not check dependencies for ${packageName}`)
     }
   }
 
