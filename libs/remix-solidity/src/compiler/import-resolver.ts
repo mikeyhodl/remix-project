@@ -125,6 +125,9 @@ export class ImportResolver implements IImportResolver {
    * Parse lock file to get actual installed versions
    */
   private async loadLockFileVersions(): Promise<void> {
+    // Clear existing lock file versions to pick up changes
+    this.lockFileVersions.clear()
+    
     // Try yarn.lock first
     try {
       const yarnLockExists = await this.pluginApi.call('fileManager', 'exists', 'yarn.lock')
@@ -467,6 +470,9 @@ export class ImportResolver implements IImportResolver {
     }
     
     // PRIORITY 2: Lock file (if no workspace override)
+    // Reload lock files fresh each time to pick up changes
+    await this.loadLockFileVersions()
+    
     if (this.lockFileVersions.has(packageName)) {
       const version = this.lockFileVersions.get(packageName)
       console.log(`[ImportResolver] 🔒 Using lock file version: ${packageName} → ${version}`)
