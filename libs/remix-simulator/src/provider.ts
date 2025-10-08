@@ -159,27 +159,29 @@ export class Provider {
 
 export function extendProvider (provider) { // Provider should be ethers.js provider
 
+  if (!provider.remix) provider.remix = {}
+
   provider.remix.getExecutionResultFromSimulator = async (transactionHash) => {
-    return await this.send('eth_getExecutionResultFromSimulator', [transactionHash])
+    return await provider.send('eth_getExecutionResultFromSimulator', [transactionHash])
   }
 
   provider.remix.getHHLogsForTx = async (transactionHash) => {
-    return await this.send('eth_getHHLogsForTx',[transactionHash])
+    return await provider.send('eth_getHHLogsForTx',[transactionHash])
   }
 
   provider.remix.getHashFromTagBySimulator = async (timestamp) => {
-    return await this.send('eth_getHashFromTagBySimulator', [timestamp])
+    return await provider.send('eth_getHashFromTagBySimulator', [timestamp])
   }
 
   provider.remix.registerCallId = async (id) => {
-    return await this.send('eth_registerCallId',[id])
+    return await provider.send('eth_registerCallId',[id])
   }
 
   provider.remix.getStateDb = async () => {
-    return await this.send('eth_getStateDb', [])
+    return await provider.send('eth_getStateDb', [])
   }
 
   provider.remix.getBlocksData = async () => {
-    return await this.send('eth_getBlocksData',[])
+    return await provider.send('eth_getBlocksData',[])
   }
 }

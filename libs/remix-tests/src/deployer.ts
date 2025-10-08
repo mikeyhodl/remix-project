@@ -1,7 +1,7 @@
 import async from 'async'
 import { execution } from '@remix-project/remix-lib'
 import { compilationInterface } from './types'
-import { BrowserProvider, ContractFactory, ethers } from 'ethers'
+import { BaseContract, BrowserProvider, Contract, ContractFactory, ethers, TransactionReceipt, TransactionResponse } from 'ethers'
 
 /**
  * @dev Deploy all contracts from compilation result
@@ -57,27 +57,26 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
       next(null, contractsToDeploy)
     },
     function deployContracts (contractsToDeploy: string[], next) {
-      const deployRunner = (deployObject, contractObject, contractName, filename, callback) => {
-        deployObject.estimateGas(undefined).then((gasValue) => {
-          const gasBase = Math.ceil(gasValue * 1.2)
-          const gas = withDoubleGas ? gasBase * 2 : gasBase
-          deployObject.send({
-            from: accounts[0],
-            gas: gas
-          }).on('receipt', async function (receipt) {
-            contractObject.options.address = receipt.contractAddress
-            contractObject.options.from = accounts[0]
-            contractObject.options.gas = 5000 * 1000
-            compiledObject[contractName].deployedAddress = receipt.contractAddress
+      const deployRunner = (deployObject, {abi, signer}, contractName, filename, callback) => {
+        deployObject.getDeployTransaction().then((tx: TransactionResponse) => {
+          provider.estimateGas(tx).then((gasValue) => {
+            const gasBase = Math.ceil(Number(gasValue) * 1.2)
+            const gas = withDoubleGas ? gasBase * 2 : gasBase
+            deployObject.deploy({
+              from: accounts[0],
+              gasLimit: gas
+            }).then(async function (deployContractObj: BaseContract) {
+              const deployTx = deployContractObj.deploymentTransaction()
+              const receipt: TransactionReceipt = await provider.getTransactionReceipt(deployTx.hash)
+              const contractObject: Contract = new ethers.Contract(receipt.contractAddress, abi, signer)
+              compiledObject[contractName].deployedAddress = receipt.contractAddress
 
-            contracts[contractName] = contractObject
-            contracts[contractName].filename = filename
+              contracts[contractName] = contractObject
+              contracts[contractName].filename = filename
 
-            if (deployCb) await deployCb(filename, receipt.contractAddress)
-            callback(null, { receipt: { contractAddress: receipt.contractAddress } }) // TODO this will only work with JavaScriptV VM
-          }).on('error', function (err) {
-            console.error(err)
-            callback(err)
+              if (deployCb) await deployCb(filename, receipt.contractAddress)
+              callback(null, { receipt: { contractAddress: receipt.contractAddress } }) // TODO this will only work with JavaScriptV VM
+            })
           })
         }).catch((err) => {
           console.error(err)
@@ -90,10 +89,8 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
         const encodeDataFinalCallback = (error, contractDeployData) => {
           if (error) return nextEach(error)
           provider.getSigner().then((signer) => {
-            const contractObject: ContractFactory = new ethers.ContractFactory(contract.abi, '0x' + contractDeployData.dataHex, signer)
-            contractObject.deploy().then((deployObject) => {
-              deployRunner(deployObject, contractObject, contractName, contract.filename, (error) => { nextEach(error) })
-            })
+            const deployObject: ContractFactory = new ethers.ContractFactory(contract.abi, '0x' + contractDeployData.dataHex, signer)
+            deployRunner(deployObject, {abi: contract.abi, signer}, contractName, contract.filename, (error) => { nextEach(error) })
           })
         }
 
@@ -103,10 +100,8 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
           const abi = compiledObject[libData.data.contractName].abi
           const code = compiledObject[libData.data.contractName].code
           provider.getSigner().then((signer) => {
-            const libraryObject = new ethers.ContractFactory(abi, '0x' + code, signer)
-            contract.deploy().then((deployObject) => {
-              deployRunner(deployObject, libraryObject, libData.data.contractName, contract.filename, callback)
-            })
+            const deployObject: ContractFactory = new ethers.ContractFactory(abi, '0x' + code, signer)
+            deployRunner(deployObject, {abi, signer}, libData.data.contractName, contract.filename, callback)
           })
         }
 

@@ -1,6 +1,6 @@
 import async from 'async'
 import * as changeCase from 'change-case'
-import {keccak256, AbiCoder } from 'ethers'
+import {keccak256, AbiCoder, ContractTransactionResponse, toUtf8Bytes } from 'ethers'
 import assertionEvents from './assertionEvents'
 import {
   RunListInterface, TestCbInterface, TestResultInterface, ResultCbInterface,
@@ -215,9 +215,9 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
   let failureNum = 0
   let timePassed = 0
   const failedTransactions = {}
-  const isJSONInterfaceAvailable = testObject && testObject.options && testObject.options.jsonInterface
+  const isJSONInterfaceAvailable = testObject && testObject.interface && testObject.interface.fragments
   if (!isJSONInterfaceAvailable) { return resultsCallback(new Error('Contract interface not available'), { passingNum, failureNum, timePassed }) }
-  const runList: RunListInterface[] = createRunList(testObject.options.jsonInterface, fileAST, testName)
+  const runList: RunListInterface[] = createRunList(testObject.interface.fragments, fileAST, testName)
   const provider = opts.provider
   const accts: TestResultInterface = {
     type: 'accountList',
@@ -243,14 +243,14 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
     let sendParams: Record<string, any> | null = null
     if (sender) sendParams = { from: sender }
     if (func.inputs && func.inputs.length > 0) { return resultsCallback(new Error(`Method '${func.name}' can not have parameters inside a test contract`), { passingNum, failureNum, timePassed }) }
-    const method = testObject.methods[func.name].apply(testObject.methods[func.name], [])
+   
     const startTime = Date.now()
     let debugTxHash:string
     if (func.constant) {
       sendParams = {}
       const tagTimestamp = 'remix_tests_tag' + Date.now()
       if (provider.remix && provider.remix.registerCallId) provider.remix.registerCallId(tagTimestamp)
-      method.call(sendParams).then(async (result) => {
+      testObject[func.name](sendParams).then(async (result) => {
         const time = (Date.now() - startTime) / 1000.0
         let tagTxHash
         if (provider.remix && provider.remix.getHashFromTagBySimulator) tagTxHash = await provider.remix.getHashFromTagBySimulator(tagTimestamp)
@@ -298,12 +298,13 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
       }
       if (!sendParams) sendParams = {}
       sendParams.gas = 10000000 * 8
-      method.send(sendParams).on('receipt', async (receipt) => {
+      testObject[func.name](sendParams).then(async (txResponse: ContractTransactionResponse) => {
         try {
-          debugTxHash = receipt.transactionHash
-          if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(receipt.transactionHash)
+          const receipt = await provider.getTransactionReceipt(txResponse.hash)
+          debugTxHash = receipt.hash
+          if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(receipt.hash)
           const time: number = (Date.now() - startTime) / 1000.0
-          const assertionEventHashes = assertionEvents.map(e => keccak256(e.name + '(' + e.params.join() + ')'))
+          const assertionEventHashes = assertionEvents.map(e => keccak256(toUtf8Bytes(e.name + '(' + e.params.join() + ')')))
           let testPassed = false
           for (const i in receipt.logs) {
             let events = receipt.logs[i]
@@ -311,7 +312,8 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
             for (const event of events) {
               const eIndex = assertionEventHashes.indexOf(event.topics[0]) // event name topic will always be at index 0
               if (eIndex >= 0) {
-                const testEvent = AbiCoder.defaultAbiCoder().decode(assertionEvents[eIndex].params, event.data)
+                const testEventArray = AbiCoder.defaultAbiCoder().decode(assertionEvents[eIndex].params, event.data)
+                const testEvent = [...testEventArray] // Make it mutable
                 if (!testEvent[0]) {
                   const assertMethod = testEvent[2]
                   if (assertMethod === 'ok') { // for 'Assert.ok' method
@@ -376,9 +378,9 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           console.error(err)
           return next(err)
         }
-      }).on('error', async (err) => {
+      }).catch(async (err) => {
         const time: number = (Date.now() - startTime) / 1000.0
-        if (failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
+        if (!err.receipt || failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
         failedTransactions[err.receipt.transactionHash] = time
         let errMsg = err.message
         let txHash
