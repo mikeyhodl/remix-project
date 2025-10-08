@@ -5,7 +5,7 @@ export interface TemplateExplorerStrategy {
   activateScreen: (dispatch: (action: ActionWithPayload) => void) => void
 }
 
-export class TemplateCateogryStrategy {
+export class TemplateCategoryStrategy {
   strategy: TemplateExplorerStrategy
 
   setStrategy(strategy: TemplateExplorerStrategy) {
@@ -57,3 +57,4 @@ export class BasicStrategy implements TemplateExplorerStrategy {
     dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'basic' })
   }
 }
+

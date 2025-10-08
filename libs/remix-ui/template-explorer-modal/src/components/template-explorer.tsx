@@ -2,11 +2,11 @@ import isElectron from 'is-electron'
 import React, { useContext, useEffect } from 'react'
 import { TemplateCategory, TemplateExplorerProps, TemplateExplorerWizardAction, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { CookbookStrategy, GenAiStrategy, GenericStrategy, RemixDefaultStrategy, TemplateCateogryStrategy, WizardStrategy } from '../../stategies/templateCategoryStrategy'
+import { CookbookStrategy, GenAiStrategy, GenericStrategy, RemixDefaultStrategy, WizardStrategy } from '../../stategies/templateCategoryStrategy'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, addRecentTemplate, plugin, dispatch, state } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, addRecentTemplate, plugin, dispatch, state, templateCategoryStrategy } = useContext(TemplateExplorerContext)
 
   return (
     <div className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
@@ -55,26 +55,28 @@ export function TemplateExplorer() {
                     flexDirection: 'column'
                   }}
                   onClick={() => {
-                    const strategy = new TemplateCateogryStrategy()
-                    dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: item.value })
+                    dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: item })
                     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
                     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.value })
                     if (template.name.toLowerCase() === 'generic' && !item.value.toLowerCase().includes('remixaitemplate') && item.value !== 'remixDefault') {
-                      strategy.setStrategy(new GenericStrategy())
-                      strategy.switchScreen(dispatch)
+                      templateCategoryStrategy.setStrategy(new GenericStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
                     } else if (template.name.toLowerCase() === 'generic' && item.value.toLowerCase().includes('remixaitemplate')) {
-                      strategy.setStrategy(new GenAiStrategy())
-                      strategy.switchScreen(dispatch)
+                      templateCategoryStrategy.setStrategy(new GenAiStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
                     } else if (template.name.toLowerCase() === 'generic' && item.value === 'remixDefault') {
                       console.log('remixdefault')
-                      strategy.setStrategy(new RemixDefaultStrategy())
-                      strategy.switchScreen(dispatch)
+                      templateCategoryStrategy.setStrategy(new RemixDefaultStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
                     } else if (template.name.toLowerCase().includes('zeppelin')) {
-                      strategy.setStrategy(new WizardStrategy())
-                      strategy.switchScreen(dispatch)
+                      templateCategoryStrategy.setStrategy(new WizardStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
                     } else if (template.name.toLowerCase().includes('cookbook')) {
-                      strategy.setStrategy(new CookbookStrategy())
-                      strategy.switchScreen(dispatch)
+                      templateCategoryStrategy.setStrategy(new CookbookStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
+                    } else if (template.name.toLowerCase() !== 'generic' && template.name.toLowerCase() !== 'zeppelin' && template.name.toLowerCase() !== 'cookbook') {
+                      templateCategoryStrategy.setStrategy(new GenericStrategy())
+                      templateCategoryStrategy.switchScreen(dispatch)
                     }
                   }}
                   onMouseEnter={(e) => {

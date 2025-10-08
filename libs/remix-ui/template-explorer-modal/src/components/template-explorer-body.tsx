@@ -17,11 +17,11 @@ export function TemplateExplorerBody({ plugin }: TemplateExplorerBodyProps) {
     console.log('state template explorer body', state)
   }, [state])
   return (
-    <section>
+    <section className="mx-4">
       <TopCards />
       {
         (dedupedTemplates.length === 0) ? <NotFound /> : (
-          <div className="body overflow-y-hidden">
+          <div className="body overflow-y-hidden pt-3">
             <>
               <label className="text-dark fs-5">Workspace Templates</label>
               <div className="">

@@ -47,7 +47,7 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
     return { ...state, workspaceTemplateChosen: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP:{
-    return { ...state, workspaceTemplateGroupChosen: action.payload.templateGroupChosen }
+    return { ...state, workspaceTemplateGroupChosen: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_NAME:{
     return { ...state, workspaceName: action.payload }
@@ -103,6 +103,7 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
     return { ...state, tokenName: action.payload }
   }
   case ContractWizardAction.CONTRACT_NAME_UPDATE: {
+    console.log('action.payload contractName', action.payload)
     return { ...state, contractName: action.payload }
   }
   default: {

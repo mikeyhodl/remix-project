@@ -141,6 +141,8 @@ export const createWorkspace = async (
   isGitRepo: boolean = false,
   createCommit: boolean = true
 ) => {
+  console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit })
+  return
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
       await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts)
@@ -249,6 +251,7 @@ export const populateWorkspace = async (
 }
 
 export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType) => {
+  console.log('createWorkspaceTemplate', workspaceName, template, metadata)
   if (!workspaceName) throw new Error('workspace name cannot be empty')
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('workspace already exists')

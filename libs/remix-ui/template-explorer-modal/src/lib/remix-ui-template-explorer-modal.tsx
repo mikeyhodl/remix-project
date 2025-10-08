@@ -20,9 +20,6 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
 
   const { plugin, setSearchTerm, state, dispatch } = useContext(TemplateExplorerContext)
 
-  useEffect(() => {
-    console.log('state', state)
-  }, [state.wizardStep, state.workspaceTemplateChosen, state.workspaceTemplateGroupChosen, state.workspaceName])
   return (
     <section>
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
@@ -37,9 +34,14 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div> : <div>
-              <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
-                <button className="btn" onClick={() => dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'template' })}>
-                  <i className="fa-solid fa-chevron-left"></i>
+              <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
+                <button className="btn" onClick={() => {
+                  dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'reset' })
+                  dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: '' })
+                  dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: '' })
+                  dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' })
+                }}>
+                  <i className="fa-solid fa-chevron-left me-2"></i>
                   Template List
                 </button>
               </div>
@@ -48,7 +50,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
               <i className="fa-solid fa-xmark text-dark"></i>
             </button>
           </div>
-          {state.wizardStep === 'template' ? <TemplateExplorerBody plugin={props.plugin} /> : null}
+          {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <TemplateExplorerBody plugin={props.plugin} /> : null}
           {state.wizardStep === 'generic' ? <GenericWorkspaceTemplate /> : null}
           {state.wizardStep === 'genAI' ? <GenerateWorkspaceWithAi /> : null}
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}

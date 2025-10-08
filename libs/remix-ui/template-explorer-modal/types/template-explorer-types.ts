@@ -1,6 +1,10 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
+import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
+import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
+import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
 
 export interface TemplateExplorerWizardState {
-  workspaceTemplateChosen: string
+  workspaceTemplateChosen: any
   workspaceTemplateGroupChosen: string
   workspaceName: string
   defaultWorkspaceName: string
@@ -32,7 +36,7 @@ export interface TemplateExplorerWizardState {
   tokenName?: string
 }
 
-export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset'
+export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'zkp'
 
 export interface TemplateExplorerContextType {
   plugin: any
@@ -50,6 +54,9 @@ export interface TemplateExplorerContextType {
   allTags: string[]
   dispatch: (action: any) => void
   state: TemplateExplorerWizardState
+  theme: any
+  makeWorkspace: TemplateExplorerModalFacade
+  templateCategoryStrategy: TemplateCategoryStrategy
 }
 
 export enum TemplateExplorerWizardAction {
@@ -185,4 +192,14 @@ export interface ModifyContractProps {
     type: ContractWizardAction;
     payload: any;
 }) => void
+}
+
+export interface CreateWorkspaceDeps {
+  workspaceName: string,
+  workspaceTemplateName: WorkspaceTemplate,
+  opts?: { mintable?: boolean, burnable?: boolean, pausable?: boolean, uups?: boolean, transparent?: boolean },
+  isEmpty?: boolean,
+  cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
+  isGitRepo?: boolean,
+  createCommit?: boolean
 }

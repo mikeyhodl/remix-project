@@ -4,9 +4,11 @@ import * as erc20 from '../contractCode/erc20'
 import * as erc721 from '../contractCode/erc721'
 import * as erc1155 from '../contractCode/erc1155'
 import { AccessControlType, ContractTypeStrategy, ContractWizardAction } from '../../types/template-explorer-types'
-import { contractWizardReducer } from '../../reducers/contract-wizard-reducer'
 import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from '../utils/contractWizardUtils'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import { CustomTooltip } from '@remix-ui/helper'
+import { OverlayTrigger, Tooltip } from 'react-bootstrap'
+import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -26,16 +28,8 @@ const defaultStrategy: ContractTypeStrategy = {
 }
 
 export function ContractWizard () {
-  const [tokenName, setTokenName] = useState('MyToken')
-
-  const [accessControl, setAccessControl] = useState<'ownable' | 'roles' | 'managed' | ''>('')
-  const [upgradability, setUpgradability] = useState({
-    uups: false,
-    transparent: false
-  })
-  const [initGit, setInitGit] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const { state, dispatch } = useContext(TemplateExplorerContext)
+  const { state, dispatch, theme, makeWorkspace } = useContext(TemplateExplorerContext)
   const strategy = state
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
@@ -58,10 +52,10 @@ export function ContractWizard () {
   }
   function updateContractName(contractName: string) {
     dispatch({ type: ContractWizardAction.CONTRACT_NAME_UPDATE, payload: contractName })
+    dispatch({ type: ContractWizardAction.TOKEN_NAME_UPDATE, payload: contractName })
   }
 
   useEffect(() => {
-    // console.log('strategy', strategy)
     if (strategy.contractType === 'erc20') {
       dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode(strategy.contractType, strategy) })
     } else if (strategy.contractType === 'erc721') {
@@ -76,7 +70,9 @@ export function ContractWizard () {
       <div className="row g-3">
         <div className="col-12 d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            {showEditModal ? <input className="form-control form-control-sm" value={tokenName} onChange={(e) => setTokenName(e.target.value)} /> : <span className="fw-semibold">{tokenName}</span>}
+            {showEditModal ? <input className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span className={`fw-semibold fs-6 ${theme.currentTheme().name === 'Light' ? 'text-dark' : 'text-light'}`}>
+              {state.tokenName}
+            </span>}
             <i className="fas fa-edit" onClick={() => setShowEditModal(true)}></i>
           </div>
           <div className="d-flex align-items-center gap-2">
@@ -98,7 +94,7 @@ export function ContractWizard () {
             <div className="mb-3">
               <div className="fw-semibold mb-2">Contract settings</div>
               <label className="form-label text-uppercase small mb-1">Token name</label>
-              <input className="form-control form-control-sm" placeholder="My Token" value={tokenName} onChange={(e) => updateTokenName(e.target.value)} />
+              <input className="form-control form-control-sm" placeholder="My Token" value={state.tokenName} readOnly />
             </div>
 
             <div className="mb-3">
@@ -154,16 +150,30 @@ export function ContractWizard () {
             <Editor
               height="460px"
               defaultLanguage="typescript"
-              options={{ readOnly: true, minimap: { enabled: false }, theme: 'vs-dark' }}
+              options={{ readOnly: true, minimap: { enabled: false }, theme: theme.currentTheme().name === 'Light' ? 'vs' : 'vs-dark' }}
               value={strategy.contractCode as string}
             />
           </div>
           <div className="d-flex justify-content-between align-items-center gap-3 mt-3">
             <div className="form-check m-0">
-              <input className="form-check-input" type="checkbox" id="initGit" checked={initGit} onChange={(e) => setInitGit(e.target.checked)} />
-              <label className="form-check-label" htmlFor="initGit">Initialize as a Git repository</label>
+              <>
+                <input className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
+                  onChange={(e) => dispatch({ type: ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE, payload: e.target.checked })} />
+                <label className="form-check-label" htmlFor="initGit">Initialize as a Git repository</label>
+              </>
             </div>
-            <button className="btn btn-primary btn-sm">Validate workspace</button>
+
+            <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
+              console.log('about to create workspace')
+              await makeWorkspace.createWorkspace({
+                workspaceName: state.workspaceTemplateChosen.displayName,
+                workspaceTemplateName: state.workspaceTemplateChosen.value,
+                opts: { mintable: state.contractOptions.mintable, burnable: state.contractOptions.burnable, pausable: state.contractOptions.pausable, uups: state.contractUpgradability.uups, transparent: state.contractUpgradability.transparent },
+                isEmpty: false,
+                isGitRepo: state.initializeAsGitRepo,
+                createCommit: true
+              })
+            }}>Validate workspace</button>
           </div>
         </div>
       </div>

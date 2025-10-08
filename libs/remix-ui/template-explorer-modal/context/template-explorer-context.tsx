@@ -6,17 +6,17 @@ import { metadata, templatesRepository } from '../src/utils/helpers'
 import { AppContext } from '@remix-ui/app'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
 import { RemixUiTemplateExplorerModal } from '@remix-ui/template-explorer-modal'
+import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
+import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
 export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin }) => {
-  // const [templateRepository, setTemplateRepository] = useState<TemplateCategory[]>([])
-  // const [metadata, setMetadata] = useState<any[]>([])
-  // const [selectedTag, setSelectedTag] = useState<string | null>(null)
-  // const [recentBump, setRecentBump] = useState<number>(0)
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const appContext = useContext(AppContext)
   const { plugin } = props
+  const makeWorkspace = new TemplateExplorerModalFacade(plugin)
+  const templateCategoryStrategy = new TemplateCategoryStrategy()
 
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
@@ -25,10 +25,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
   }, [])
-
-  useEffect(() => {
-    console.log('state context', state)
-  }, [state])
 
   const setSearchTerm = (term: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
@@ -163,7 +159,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme: plugin.theme, makeWorkspace, templateCategoryStrategy }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>
