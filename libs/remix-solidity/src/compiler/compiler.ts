@@ -5,7 +5,6 @@ import compilerInput, { compilerInputForConfigFile } from './compiler-input'
 import EventManager from '../lib/eventManager'
 import txHelper from './helper'
 import { ImportResolver } from './import-resolver'
-import { ResolutionIndex } from './resolution-index'
 
 import {
   Source, SourceWithTarget, MessageFromWorker, CompilerState, CompilationResult,
@@ -24,29 +23,12 @@ export class Compiler {
   workerHandler: EsWebWorkerHandlerInterface
   pluginApi: any // Reference to a plugin that can call contentImport
   currentResolver: ImportResolver | null // Current compilation's import resolver
-  resolutionIndex: ResolutionIndex | null // Persistent index of all resolutions
   
   constructor(handleImportCall?: (fileurl: string, cb) => void, pluginApi?: any) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
     this.pluginApi = pluginApi
     this.currentResolver = null
-    this.resolutionIndex = null
-    
-    // Initialize resolution index if we have plugin API
-    if (this.pluginApi) {
-      this.resolutionIndex = new ResolutionIndex(this.pluginApi)
-      this.resolutionIndex.load().catch(err => {
-        console.log(`[Compiler] ⚠️  Failed to load resolution index:`, err)
-      })
-      
-      // Set up workspace change listeners after a short delay to ensure plugin system is ready
-      setTimeout(() => {
-        if (this.resolutionIndex) {
-          this.resolutionIndex.onActivation()
-        }
-      }, 100)
-    }
     
     console.log(`[Compiler] 🏗️  Constructor: pluginApi provided:`, !!pluginApi)
     
@@ -143,8 +125,8 @@ export class Compiler {
     
     // Create a fresh ImportResolver instance for this compilation
     // This ensures complete isolation of import mappings per compilation
-    if (this.pluginApi && this.resolutionIndex) {
-      this.currentResolver = new ImportResolver(this.pluginApi, target, this.resolutionIndex)
+    if (this.pluginApi) {
+      this.currentResolver = new ImportResolver(this.pluginApi, target)
       console.log(`[Compiler] 🆕 Created new ImportResolver instance for this compilation`)
     } else {
       this.currentResolver = null

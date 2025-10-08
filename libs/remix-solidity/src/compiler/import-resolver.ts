@@ -7,19 +7,37 @@ export class ImportResolver {
   private importMappings: Map<string, string>
   private pluginApi: Plugin
   private targetFile: string
-  private resolutionIndex: ResolutionIndex
   private resolutions: Map<string, string> = new Map()
   private workspaceResolutions: Map<string, string> = new Map() // From package.json resolutions/overrides
   private lockFileVersions: Map<string, string> = new Map() // From yarn.lock or package-lock.json
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
 
-  constructor(pluginApi: Plugin, targetFile: string, resolutionIndex: ResolutionIndex) {
+  // Shared resolution index across all ImportResolver instances
+  private static resolutionIndex: ResolutionIndex | null = null
+  private static resolutionIndexInitialized: boolean = false
+
+  constructor(pluginApi: Plugin, targetFile: string) {
     this.pluginApi = pluginApi
     this.targetFile = targetFile
-    this.resolutionIndex = resolutionIndex
     this.importMappings = new Map()
     
     console.log(`[ImportResolver] 🆕 Created new resolver instance for: "${targetFile}"`)
+    
+    // Initialize shared resolution index on first use
+    if (!ImportResolver.resolutionIndexInitialized) {
+      ImportResolver.resolutionIndexInitialized = true
+      ImportResolver.resolutionIndex = new ResolutionIndex(this.pluginApi)
+      ImportResolver.resolutionIndex.load().catch(err => {
+        console.log(`[ImportResolver] ⚠️  Failed to load resolution index:`, err)
+      })
+      
+      // Set up workspace change listeners after a short delay to ensure plugin system is ready
+      setTimeout(() => {
+        if (ImportResolver.resolutionIndex) {
+          ImportResolver.resolutionIndex.onActivation()
+        }
+      }, 100)
+    }
     
     // Initialize workspace resolution rules
     this.initializeWorkspaceResolutions().catch(err => {
@@ -536,13 +554,18 @@ export class ImportResolver {
   public async saveResolutionsToIndex(): Promise<void> {
     console.log(`[ImportResolver] 💾 Saving ${this.resolutions.size} resolution(s) to index for: ${this.targetFile}`)
     
-    this.resolutionIndex.clearFileResolutions(this.targetFile)
+    if (!ImportResolver.resolutionIndex) {
+      console.log(`[ImportResolver] ⚠️  Resolution index not initialized, skipping save`)
+      return
+    }
+    
+    ImportResolver.resolutionIndex.clearFileResolutions(this.targetFile)
     
     this.resolutions.forEach((resolvedPath, originalImport) => {
-      this.resolutionIndex.recordResolution(this.targetFile, originalImport, resolvedPath)
+      ImportResolver.resolutionIndex!.recordResolution(this.targetFile, originalImport, resolvedPath)
     })
     
-    await this.resolutionIndex.save()
+    await ImportResolver.resolutionIndex.save()
   }
 
   public getTargetFile(): string {
