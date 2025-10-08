@@ -158,16 +158,19 @@ module.exports = {
     browser
       .clickLaunchIcon('filePanel')
       // Change yarn.lock to a different version (4.7.3)
-      .addFile('yarn.lock', sources[5]['yarn.lock'])
+      .openFile('yarn.lock')
+      .pause(1000)
+      .setEditorValue(sources[5]['yarn.lock'].content)
       .pause(2000)
       // Delete the old .deps folder to force re-resolution
-      .perform(function() {
-        browser.execute(function() {
-          // @ts-ignore
-          window.remixFileSystem.remove('.deps')
-        })
-      })
-      .pause(1000)
+      .rightClick('[data-id="treeViewLitreeViewItem.deps"]')
+      .waitForElementVisible('[id="menuitemdelete"]')
+      .click('[id="menuitemdelete"]')
+      .waitForElementVisible('[data-id="modalDialogCustomPromptTextDelete"]')
+      .click('[data-id="modalDialogCustomPromptTextDelete"]')
+      .waitForElementVisible('[data-id="modalDialogCustomPromptButtonDelete"]')
+      .click('[data-id="modalDialogCustomPromptButtonDelete"]')
+      .pause(2000)
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
       .pause(10000)
@@ -203,16 +206,19 @@ module.exports = {
     browser
       .clickLaunchIcon('filePanel')
       // Change package-lock.json to a different version (4.6.0)
-      .addFile('package-lock.json', sources[7]['package-lock.json'])
+      .openFile('package-lock.json')
+      .pause(1000)
+      .setEditorValue(sources[7]['package-lock.json'].content)
       .pause(2000)
       // Delete the old .deps folder to force re-resolution
-      .perform(function() {
-        browser.execute(function() {
-          // @ts-ignore
-          window.remixFileSystem.remove('.deps')
-        })
-      })
-      .pause(1000)
+      .rightClick('[data-id="treeViewLitreeViewItem.deps"]')
+      .waitForElementVisible('[id="menuitemdelete"]')
+      .click('[id="menuitemdelete"]')
+      .waitForElementVisible('[data-id="modalDialogCustomPromptTextDelete"]')
+      .click('[data-id="modalDialogCustomPromptTextDelete"]')
+      .waitForElementVisible('[data-id="modalDialogCustomPromptButtonDelete"]')
+      .click('[data-id="modalDialogCustomPromptButtonDelete"]')
+      .pause(2000)
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
       .pause(10000)
