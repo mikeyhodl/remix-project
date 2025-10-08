@@ -29,6 +29,7 @@ import { createCompilationTools } from './handlers/CompilationHandler';
 import { createFileManagementTools } from './handlers/FileManagementHandler';
 import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
+import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
@@ -464,9 +465,14 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       console.log(`Registered ${deploymentTools.length} deployment tools`, 'info');
 
       // Register debugging tools
-      // const debuggingTools = createDebuggingTools();
-      // this._tools.registerBatch(debuggingTools);
-      // console.log(`Registered ${debuggingTools.length} debugging tools`, 'info');
+      const debuggingTools = createDebuggingTools();
+      this._tools.registerBatch(debuggingTools);
+      console.log(`Registered ${debuggingTools.length} debugging tools`, 'info');
+
+      // Register debugging tools
+      const codeAnalysisTools = createCodeAnalysisTools();
+      this._tools.registerBatch(codeAnalysisTools);
+      console.log(`Registered ${codeAnalysisTools.length} code analysis tools`, 'info');
 
       const totalTools = this._tools.list().length;
       console.log(`Total tools registered: ${totalTools}`, 'info');

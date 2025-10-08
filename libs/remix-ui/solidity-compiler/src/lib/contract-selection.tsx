@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
+import { handleSolidityScan } from '@remix-project/core-plugin'
 import { ContractPropertyName, ContractSelectionProps } from './types'
 import {PublishToStorage} from '@remix-ui/publish-to-storage' // eslint-disable-line
 import {TreeView, TreeViewItem} from '@remix-ui/tree-view' // eslint-disable-line
@@ -8,7 +9,7 @@ import { saveAs } from 'file-saver'
 import { AppModal } from '@remix-ui/app'
 
 import './css/style.css'
-import { CustomTooltip, handleSolidityScan } from '@remix-ui/helper'
+import { CustomTooltip, SolScanTable } from '@remix-ui/helper'
 
 const _paq = (window._paq = window._paq || [])
 
@@ -258,7 +259,12 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const handleScanContinue = async () => {
-    await handleSolidityScan(api, props.compiledFileName)
+    await handleSolidityScan(
+      api,
+      props.compiledFileName,
+      intl.formatMessage({ id: 'solidity.solScan.errModalTitle' }),
+      (scanReport, fileName) => <SolScanTable scanReport={scanReport} fileName={fileName} />
+    )
   }
 
   const runSolidityScan = async () => {

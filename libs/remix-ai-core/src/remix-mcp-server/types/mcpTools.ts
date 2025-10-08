@@ -104,14 +104,16 @@ export interface CompilerConfigArgs {
 
 export interface DeployContractArgs {
   contractName: string;
-  constructorArgs?: any[];
+  constructorArgs: any[];
   gasLimit?: number;
   gasPrice?: string;
   value?: string;
   account?: string;
+  file: string;
 }
 
 export interface CallContractArgs {
+  contractName: string;
   address: string;
   abi: any[];
   methodName: string;
@@ -131,11 +133,12 @@ export interface SendTransactionArgs {
   account?: string;
 }
 
+export interface RunScriptArgs {
+  file: string
+}
+
 export interface DebugSessionArgs {
-  contractAddress: string;
   transactionHash?: string;
-  sourceFile?: string;
-  network?: string;
 }
 
 export interface BreakpointArgs {
@@ -254,28 +257,26 @@ export interface DeploymentResult {
   success: boolean;
   contractAddress?: string;
   transactionHash: string;
-  gasUsed: number;
+  gasUsed: number | bigint;
   effectiveGasPrice: string;
-  blockNumber: number;
+  blockNumber: number | bigint;
   logs: any[];
 }
+
+export interface RunScriptResult {}
 
 export interface ContractInteractionResult {
   success: boolean;
   result?: any;
   transactionHash?: string;
-  gasUsed?: number;
+  gasUsed?: number | bigint;
   logs?: any[];
   error?: string;
 }
 
 export interface DebugSessionResult {
   success: boolean;
-  sessionId: string;
-  contractAddress: string;
-  network: string;
   transactionHash?: string;
-  sourceFile?: string;
   status: string;
   createdAt: string;
 }

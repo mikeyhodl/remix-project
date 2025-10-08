@@ -12,9 +12,16 @@ import {
   SendTransactionArgs,
   DeploymentResult,
   AccountInfo,
-  ContractInteractionResult
+  ContractInteractionResult,
+  RunScriptArgs,
+  RunScriptResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
+import { getContractData } from '@remix-project/core-plugin'
+import type { TxResult } from '@remix-project/remix-lib';
+import type { TransactionReceipt } from 'web3'
+import { BrowserProvider } from "ethers"
+import web3, { Web3 } from 'web3'
 
 /**
  * Deploy Contract Tool Handler
@@ -54,9 +61,13 @@ export class DeployContractHandler extends BaseToolHandler {
       account: {
         type: 'string',
         description: 'Account to deploy from (address or index)'
+      },
+      file: {
+        type: 'string',
+        description: 'The file containing the contract to deploy'
       }
     },
-    required: ['contractName']
+    required: ['contractName', 'file']
   };
 
   getPermissions(): string[] {
@@ -86,68 +97,58 @@ export class DeployContractHandler extends BaseToolHandler {
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get compilation result to find contract
-      // TODO: Get actual compilation result
-      const contracts = {}; // await plugin.solidity.getCompilationResult();
+      const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
+      const data = getContractData(args.contractName, compilerAbstract)
+      if (!data) {
+        return this.createErrorResult(`Could not retrieve contract data for '${args.contractName}'`);
+      }
+
+      let txReturn
+      try {
+        txReturn = await new Promise(async (resolve, reject) => {
+          const callbacks = { continueCb: (error, continueTxExecution, cancelCb) => {
+            continueTxExecution()
+          }, promptCb: () => {}, statusCb: (error) => {
+            console.log(error)
+          }, finalCb: (error, contractObject, address: string, txResult: TxResult) => {
+            if (error) return reject(error)
+            resolve({contractObject, address, txResult})
+          }}
+          const confirmationCb = (network, tx, gasEstimation, continueTxExecution, cancelCb) => {
+            continueTxExecution(null)
+          }
+          const compilerContracts = await plugin.call('compilerArtefacts', 'getLastCompilationResult')
+          plugin.call('blockchain', 'deployContractAndLibraries', 
+            data, 
+            args.constructorArgs ? args.constructorArgs : [],
+            null, 
+            compilerContracts.getData().contracts, 
+            callbacks, 
+            confirmationCb
+          )
+        })
+      } catch (e) {
+        return this.createErrorResult(`Deployment error: ${e.message || e}`);
+      }
       
-      if (!contracts || Object.keys(contracts).length === 0) {
-        return this.createErrorResult('No compiled contracts found. Please compile first.');
-      }
-
-      // Find the contract to deploy
-      const contractKey = Object.keys(contracts).find(key => 
-        key.includes(args.contractName)
-      );
-
-      if (!contractKey) {
-        return this.createErrorResult(`Contract '${args.contractName}' not found in compilation result`);
-      }
-
-      // Get current account
-      const accounts = await this.getAccounts(plugin);
-      const deployAccount = args.account || accounts[0];
-
-      if (!deployAccount) {
-        return this.createErrorResult('No account available for deployment');
-      }
-
-      // Prepare deployment transaction
-      const deploymentData = {
-        contractName: args.contractName,
-        account: deployAccount,
-        constructorArgs: args.constructorArgs || [],
-        gasLimit: args.gasLimit,
-        gasPrice: args.gasPrice,
-        value: args.value || '0'
-      };
-
-      // TODO: Execute actual deployment via Remix Run Tab API
-      const mockResult: DeploymentResult = {
-        success: false,
-        contractAddress: undefined,
-        transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-        gasUsed: args.gasLimit || 1000000,
+      
+      const receipt = (txReturn.txResult.receipt as TransactionReceipt)
+      const result: DeploymentResult = {
+        transactionHash: web3.utils.bytesToHex(receipt.transactionHash),
+        gasUsed: web3.utils.toNumber(receipt.gasUsed),
         effectiveGasPrice: args.gasPrice || '20000000000',
-        blockNumber: Math.floor(Math.random() * 1000000),
-        logs: []
+        blockNumber: web3.utils.toNumber(receipt.blockNumber),
+        logs: receipt.logs,
+        contractAddress: receipt.contractAddress,
+        success: receipt.status === BigInt(1) ? true : false        
       };
 
-      // Mock implementation - in real implementation, use Remix deployment API
-      mockResult.success = true;
-      mockResult.contractAddress = '0x' + Math.random().toString(16).substr(2, 40);
+      plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
 
-      return this.createSuccessResult(mockResult);
+      return this.createSuccessResult(result);
 
     } catch (error) {
       return this.createErrorResult(`Deployment failed: ${error.message}`);
-    }
-  }
-
-  private async getAccounts(plugin: Plugin): Promise<string[]> {
-    try {
-      // TODO: Get accounts from Remix API
-      return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
-    } catch (error) {
-      return [];
     }
   }
 }
@@ -161,6 +162,11 @@ export class CallContractHandler extends BaseToolHandler {
   inputSchema = {
     type: 'object',
     properties: {
+      contractName: {
+        type: 'string',
+        description: 'Contract name',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
       address: {
         type: 'string',
         description: 'Contract address',
@@ -204,7 +210,7 @@ export class CallContractHandler extends BaseToolHandler {
         description: 'Account to call from'
       }
     },
-    required: ['address', 'abi', 'methodName']
+    required: ['address', 'abi', 'methodName', 'contractName']
   };
 
   getPermissions(): string[] {
@@ -212,7 +218,7 @@ export class CallContractHandler extends BaseToolHandler {
   }
 
   validate(args: CallContractArgs): boolean | string {
-    const required = this.validateRequired(args, ['address', 'abi', 'methodName']);
+    const required = this.validateRequired(args, ['address', 'abi', 'methodName', 'contractName']);
     if (required !== true) return required;
 
     const types = this.validateTypes(args, {
@@ -229,8 +235,16 @@ export class CallContractHandler extends BaseToolHandler {
       return 'Invalid contract address format';
     }
 
+
     if (!Array.isArray(args.abi)) {
-      return 'ABI must be an array';
+      try {
+        args.abi = JSON.parse(args.abi as any)
+        if (!Array.isArray(args.abi)) {
+          return 'ABI must be an array'
+        }
+      } catch (e) {
+        return 'ABI must be an array'
+      }
     }
 
     return true;
@@ -238,55 +252,113 @@ export class CallContractHandler extends BaseToolHandler {
 
   async execute(args: CallContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // Find the method in ABI
-      const method = args.abi.find((item: any) => 
-        item.name === args.methodName && item.type === 'function'
-      );
-
-      if (!method) {
-        return this.createErrorResult(`Method '${args.methodName}' not found in ABI`);
+      const funcABI = args.abi.find((item: any) => item.name === args.methodName && item.type === 'function')
+      const isView =  funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure';
+      let txReturn
+      try {        
+        txReturn = await new Promise(async (resolve, reject) => {
+          const params = funcABI.type !== 'fallback' ? args.args.join(',') : ''
+          plugin.call('blockchain', 'runOrCallContractMethod', 
+            args.contractName,
+            args.abi,      
+            funcABI,
+            undefined,
+            args.args ? args.args : [],
+            args.address,
+            params,
+            isView,
+            (msg) => {
+              // logMsg
+              console.log(msg)
+            },
+            (msg) => {
+              // logCallback
+              console.log(msg)
+            },
+            (returnValue) => {
+              // outputCb
+            },
+            (network, tx, gasEstimation, continueTxExecution, cancelCb) => {
+              // confirmationCb
+              continueTxExecution(null)
+            },
+            (error, continueTxExecution, cancelCb) => {
+              if (error) reject(error)
+              // continueCb
+              continueTxExecution()
+            },
+            (okCb, cancelCb) => {
+              // promptCb
+            },
+            (error, {txResult, address, returnValue}) => {
+              if (error) return reject(error)
+              resolve({txResult, address, returnValue})
+            },
+          )
+        })
+      } catch (e) {
+        return this.createErrorResult(`Deployment error: ${e.message}`);
       }
-
-      // Get accounts
-      const accounts = await this.getAccounts(plugin);
-      const callAccount = args.account || accounts[0];
-
-      if (!callAccount) {
-        return this.createErrorResult('No account available for contract call');
-      }
-
-      // Determine if this is a view function or transaction
-      const isView = method.stateMutability === 'view' || method.stateMutability === 'pure';
 
       // TODO: Execute contract call via Remix Run Tab API
-      const mockResult: ContractInteractionResult = {
-        success: true,
-        result: isView ? 'mock_view_result' : undefined,
-        transactionHash: isView ? undefined : '0x' + Math.random().toString(16).substr(2, 64),
-        gasUsed: isView ? 0 : (args.gasLimit || 100000),
-        logs: []
+      const receipt = (txReturn.txResult.receipt as TransactionReceipt)
+      const result: ContractInteractionResult = {
+        result: txReturn.returnValue,
+        transactionHash: isView ? undefined : web3.utils.bytesToHex(receipt.transactionHash),
+        gasUsed: web3.utils.toNumber(receipt.gasUsed),        
+        logs: receipt.logs,
+        success: receipt.status === BigInt(1) ? true : false     
       };
 
-      if (isView) {
-        mockResult.result = `View function result for ${args.methodName}`;
-      } else {
-        mockResult.transactionHash = '0x' + Math.random().toString(16).substr(2, 64);
-        mockResult.gasUsed = args.gasLimit || 100000;
-      }
-
-      return this.createSuccessResult(mockResult);
+      return this.createSuccessResult(result);
 
     } catch (error) {
       return this.createErrorResult(`Contract call failed: ${error.message}`);
     }
   }
+}
 
-  private async getAccounts(plugin: Plugin): Promise<string[]> {
+/**
+ * Run Script
+ */
+export class RunScriptHandler extends BaseToolHandler {
+  name = 'send_transaction';
+  description = 'Run a script in the current environment';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      file: {
+        type: 'string',
+        description: 'path to the file',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      }
+    },
+    required: ['file']
+  };
+
+  getPermissions(): string[] {
+    return ['transaction:send'];
+  }
+
+  validate(args: RunScriptArgs): boolean | string {
+    const required = this.validateRequired(args, ['file']);
+    if (required !== true) return required;
+
+    return true;
+  }
+
+  async execute(args: RunScriptArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Get accounts from Remix API
-      return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
+      const content = await plugin.call('fileManager', 'readFile', args.file)
+      await plugin.call('scriptRunnerBridge', 'execute', content, args.file)
+
+      const result: RunScriptResult = {}
+
+      return this.createSuccessResult(result);
+
     } catch (error) {
-      return [];
+      console.log(error)
+      return this.createErrorResult(`Run script failed: ${error.message}`);
     }
   }
 }
@@ -363,38 +435,42 @@ export class SendTransactionHandler extends BaseToolHandler {
 
   async execute(args: SendTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // Get accounts
-      const accounts = await this.getAccounts(plugin);
-      const sendAccount = args.account || accounts[0];
+      // Get accounts     
+      const sendAccount = args.account
 
       if (!sendAccount) {
         return this.createErrorResult('No account available for sending transaction');
       }
+      const web3: Web3 = await plugin.call('blockchain', 'web3')
+      const ethersProvider = new BrowserProvider(web3.currentProvider)
+      const signer = await ethersProvider.getSigner();
+      const tx = await signer.sendTransaction({
+        from: args.account,
+        to: args.to,
+        value: args.value || '0',
+        data: args.data,
+        gasLimit: args.gasLimit,
+        gasPrice: args.gasPrice
+      });
 
+      // Wait for the transaction to be mined
+      const receipt = await tx.wait()
       // TODO: Send a real transaction via Remix Run Tab API
       const mockResult = {
         success: true,
-        transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-        from: sendAccount,
+        transactionHash: receipt.hash,
+        from: args.account,
         to: args.to,
         value: args.value || '0',
-        gasUsed: args.gasLimit || 21000,
-        blockNumber: Math.floor(Math.random() * 1000000)
+        gasUsed: web3.utils.toNumber(receipt.gasUsed),
+        blockNumber: receipt.blockNumber
       };
 
       return this.createSuccessResult(mockResult);
 
     } catch (error) {
+      console.log(error)
       return this.createErrorResult(`Transaction failed: ${error.message}`);
-    }
-  }
-
-  private async getAccounts(plugin: Plugin): Promise<string[]> {
-    try {
-      // TODO: Get accounts from Remix API
-      return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
-    } catch (error) {
-      return [];
     }
   }
 }
@@ -421,21 +497,11 @@ export class GetDeployedContractsHandler extends BaseToolHandler {
 
   async execute(args: { network?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Get deployed contracts from Remix storage/state
-      const mockDeployedContracts = [
-        {
-          name: '',
-          address: '0x' ,
-          network:  '',
-          deployedAt: '',
-          transactionHash: '0x'
-        }
-      ];
-
+      const deployedContracts = await plugin.call('udapp', 'getAllDeployedInstances')
       return this.createSuccessResult({
         success: true,
-        contracts: mockDeployedContracts,
-        count: mockDeployedContracts.length
+        contracts: deployedContracts,
+        count: deployedContracts.length
       });
 
     } catch (error) {
@@ -455,7 +521,7 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
     properties: {
       environment: {
         type: 'string',
-        enum: ['vm-london', 'vm-berlin', 'injected', 'web3'],
+        enum: ['vm-prague', 'vm-cancun', 'vm-shanghai', 'vm-paris', 'vm-london', 'vm-berlin', 'vm-mainnet-fork', 'vm-sepolia-fork', 'vm-custom-fork', 'walletconnect', 'basic-http-provider', 'hardhat-provider', 'ganache-provider', 'foundry-provider', 'injected-Rabby Wallet', 'injected-MetaMask', 'injected-metamask-optimism', 'injected-metamask-arbitrum', 'injected-metamask-sepolia', 'injected-metamask-ephemery', 'injected-metamask-gnosis', 'injected-metamask-chiado', 'injected-metamask-linea'],
         description: 'Execution environment'
       },
       networkUrl: {
@@ -471,26 +537,23 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
   }
 
   validate(args: { environment: string; networkUrl?: string }): boolean | string {
-    const required = this.validateRequired(args, ['environment']);
-    if (required !== true) return required;
-
-    const validEnvironments = ['vm-london', 'vm-berlin', 'injected', 'web3'];
-    if (!validEnvironments.includes(args.environment)) {
-      return `Invalid environment. Must be one of: ${validEnvironments.join(', ')}`;
-    }
-
+    // we validate in the execute method to have access to the list of available providers.
     return true;
   }
 
-  async execute(args: { environment: string; networkUrl?: string }, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: { environment: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Set execution environment via Remix Run Tab API
-      
+      const providers = await plugin.call('blockchain', 'getAllProviders')
+      console.log('available providers', Object.keys(providers))
+      const provider = Object.keys(providers).find((p) => p === args.environment)
+      if (!provider) {
+        return this.createErrorResult(`Could not find provider for environment '${args.environment}'`);
+      } 
+      await plugin.call('blockchain', 'changeExecutionContext', { context: args.environment })
       return this.createSuccessResult({
         success: true,
         message: `Execution environment set to: ${args.environment}`,
         environment: args.environment,
-        networkUrl: args.networkUrl
       });
 
     } catch (error) {
@@ -534,16 +597,14 @@ export class GetAccountBalanceHandler extends BaseToolHandler {
 
   async execute(args: { account: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // TODO: Get account balance from current provider
-      const mockBalance = (Math.random() * 10).toFixed(4);
-
+      const web3 = await plugin.call('blockchain', 'web3')
+      const balance = await web3.eth.getBalance(args.account)
       return this.createSuccessResult({
         success: true,
         account: args.account,
-        balance: mockBalance,
+        balance: web3.utils.fromWei(balance, 'ether'),
         unit: 'ETH'
-      });
-
+      })
     } catch (error) {
       return this.createErrorResult(`Failed to get account balance: ${error.message}`);
     }
@@ -678,9 +739,10 @@ export class SetSelectedAccountHandler extends BaseToolHandler {
     try {
       // Set the selected account through the udapp plugin
       await plugin.call('udapp' as any, 'setAccount', args.address);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a moment for the change to propagate
 
       // Verify the account was set
-      const runTabApi = await plugin.call('udapp' as any, 'getAccounts');
+      const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI');
       const currentSelected = runTabApi?.accounts?.selectedAccount;
 
       if (currentSelected !== args.address) {
@@ -716,37 +778,25 @@ export class GetCurrentEnvironmentHandler extends BaseToolHandler {
   async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get environment information
-      const provider = await plugin.call('blockchain' as any, 'getCurrentProvider');
-      const networkName = await plugin.call('blockchain' as any, 'getNetworkName').catch(() => 'unknown');
-      const chainId = await plugin.call('blockchain' as any, 'getChainId').catch(() => 'unknown');
+      const provider = await plugin.call('blockchain' as any, 'getProvider');
+      const network = await plugin.call('network', 'detectNetwork')
 
-      // Get accounts info
-      const runTabApi = await plugin.call('udapp' as any, 'getAccounts');
-      const accountsCount = runTabApi?.accounts?.loadedAccounts
-        ? Object.keys(runTabApi.accounts.loadedAccounts).length
-        : 0;
+      // Verify the account was set
+      const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI');
+      const accounts = runTabApi?.accounts;
 
       const result = {
         success: true,
         environment: {
-          provider: {
-            name: provider?.name || 'unknown',
-            displayName: provider?.displayName || provider?.name || 'unknown',
-            kind: provider?.kind || 'unknown'
-          },
-          network: {
-            name: networkName,
-            chainId: chainId
-          },
-          accounts: {
-            total: accountsCount,
-            selected: runTabApi?.accounts?.selectedAccount || null
-          }
+          provider,
+          network,
+          accounts
         }
       };
 
       return this.createSuccessResult(result);
     } catch (error) {
+      console.error(error)
       return this.createErrorResult(`Failed to get environment information: ${error.message}`);
     }
   }
@@ -828,6 +878,14 @@ export function createDeploymentTools(): RemixToolDefinition[] {
       category: ToolCategory.DEPLOYMENT,
       permissions: ['environment:read'],
       handler: new GetCurrentEnvironmentHandler()
+    },
+    {
+      name: 'run_script',
+      description: 'Run a script in the current environment',
+      inputSchema: new RunScriptHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['transaction:send'],
+      handler: new RunScriptHandler()
     }
   ];
 }
