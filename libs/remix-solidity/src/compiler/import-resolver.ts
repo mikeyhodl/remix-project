@@ -12,6 +12,8 @@ export class ImportResolver implements IImportResolver {
   private workspaceResolutions: Map<string, string> = new Map() // From package.json resolutions/overrides
   private lockFileVersions: Map<string, string> = new Map() // From yarn.lock or package-lock.json
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
+  private importedFiles: Map<string, string> = new Map() // Track imported files: "pkg/path/to/file.sol" -> "version"
+  private packageSources: Map<string, string> = new Map() // Track which package.json resolved each dependency: "pkg" -> "source-package"
 
   // Shared resolution index across all ImportResolver instances
   private static resolutionIndex: ResolutionIndex | null = null
@@ -231,8 +233,40 @@ export class ImportResolver implements IImportResolver {
 
   private extractVersion(url: string): string | null {
     // Match version after @ symbol: pkg@1.2.3 or @scope/pkg@1.2.3
-    const match = url.match(/@(\d+\.\d+\.\d+[^\s/]*)/)
+    // Also matches partial versions: @5, @5.0, @5.0.2
+    const match = url.match(/@(\d+(?:\.\d+)?(?:\.\d+)?[^\s/]*)/)
     return match ? match[1] : null
+  }
+
+  private extractRelativePath(url: string, packageName: string): string | null {
+    // Extract the relative path after the package name (and optional version)
+    // Examples:
+    //   "@openzeppelin/contracts@5.0.2/token/ERC20/IERC20.sol" -> "token/ERC20/IERC20.sol"
+    //   "@openzeppelin/contracts/token/ERC20/IERC20.sol" -> "token/ERC20/IERC20.sol"
+    const versionedPattern = new RegExp(`^${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}@[^/]+/(.+)$`)
+    const versionedMatch = url.match(versionedPattern)
+    if (versionedMatch) {
+      return versionedMatch[1]
+    }
+    
+    const unversionedPattern = new RegExp(`^${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`)
+    const unversionedMatch = url.match(unversionedPattern)
+    if (unversionedMatch) {
+      return unversionedMatch[1]
+    }
+    
+    return null
+  }
+
+  /**
+   * Compare major versions between requested and resolved versions
+   * Returns true if they're different major versions
+   */
+  private hasMajorVersionMismatch(requestedVersion: string, resolvedVersion: string): boolean {
+    const requestedMajor = parseInt(requestedVersion.split('.')[0])
+    const resolvedMajor = parseInt(resolvedVersion.split('.')[0])
+    
+    return !isNaN(requestedMajor) && !isNaN(resolvedMajor) && requestedMajor !== resolvedMajor
   }
 
   /**
@@ -370,6 +404,14 @@ export class ImportResolver implements IImportResolver {
     if (resolvedVersion) {
       const versionedPackageName = `${packageName}@${resolvedVersion}`
       this.importMappings.set(mappingKey, versionedPackageName)
+      
+      // Record the source of this resolution
+      if (source === 'workspace-resolution' || source === 'lock-file') {
+        this.packageSources.set(packageName, 'workspace')
+      } else {
+        this.packageSources.set(packageName, packageName) // Direct fetch from npm
+      }
+      
       console.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
       
       // Always check peer dependencies (regardless of source) to detect conflicts
@@ -420,12 +462,15 @@ export class ImportResolver implements IImportResolver {
                 if (!this.conflictWarnings.has(conflictKey) && this.isPotentialVersionConflict(requestedRange, resolvedDepVersion)) {
                   this.conflictWarnings.add(conflictKey)
                   
-                  // Determine the source of the resolved version
-                  let resolutionSource = 'package.json fetch'
+                  // Determine where the resolved version came from
+                  let resolvedFrom = 'npm registry'
+                  const sourcePackage = this.packageSources.get(dep)
                   if (this.workspaceResolutions.has(dep)) {
-                    resolutionSource = 'workspace resolutions'
+                    resolvedFrom = 'workspace package.json'
                   } else if (this.lockFileVersions.has(dep)) {
-                    resolutionSource = 'lock file'
+                    resolvedFrom = 'lock file'
+                  } else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') {
+                    resolvedFrom = `${sourcePackage}/package.json`
                   }
                   
                   // Check if this is a BREAKING change (different major versions)
@@ -436,17 +481,16 @@ export class ImportResolver implements IImportResolver {
                   const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
                   const warningMsg = [
                     `${emoji} Version mismatch detected:`,
-                    `   Package ${packageName}@${resolvedVersion} specifies in its ${depType}:`,
+                    `   Package ${packageName}@${resolvedVersion} requires in ${depType}:`,
                     `     "${dep}": "${requestedRange}"`,
-                    `   But resolved version is ${dep}@${resolvedDepVersion} (from ${resolutionSource})`,
+                    ``,
+                    `   But actual imported version is: ${dep}@${resolvedDepVersion}`,
+                    `     (resolved from ${resolvedFrom})`,
                     ``,
                     isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
                     isBreaking ? `` : '',
-                    `💡 To fix this, you can either:`,
-                    `   1. Add "${dep}": "${requestedRange}" to your workspace package.json dependencies`,
-                    `   2. Or force the version with resolutions/overrides:`,
-                    `      • For Yarn: "resolutions": { "${dep}": "${requestedRange}" }`,
-                    `      • For npm:  "overrides": { "${dep}": "${requestedRange}" }`,
+                    `💡 To fix, update your workspace package.json:`,
+                    `     "${dep}": "${requestedRange}"`,
                     ``
                   ].filter(line => line !== '').join('\n')
                   
@@ -507,57 +551,63 @@ export class ImportResolver implements IImportResolver {
           const resolvedVersion = this.extractVersion(versionedPackageName)
           
           if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
-            const conflictKey = `${packageName}:${requestedVersion}→${resolvedVersion}`
+            // Extract the relative file path to check for actual duplicate imports
+            const relativePath = this.extractRelativePath(url, packageName)
+            const fileKey = relativePath ? `${packageName}/${relativePath}` : null
             
-            if (!this.conflictWarnings.has(conflictKey)) {
-              this.conflictWarnings.add(conflictKey)
+            // Check if we've already imported this EXACT file from a different version
+            const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
+            
+            if (previousVersion && previousVersion !== resolvedVersion) {
+              // REAL CONFLICT: Same file imported from two different versions
+              const conflictKey = `${fileKey}:${previousVersion}↔${resolvedVersion}`
               
-              // Determine the source of the resolved version
-              let resolutionSource = 'package.json fetch'
-              if (this.workspaceResolutions.has(packageName)) {
-                resolutionSource = 'workspace resolutions'
-              } else if (this.lockFileVersions.has(packageName)) {
-                resolutionSource = 'lock file'
+              if (!this.conflictWarnings.has(conflictKey)) {
+                this.conflictWarnings.add(conflictKey)
+                
+                // Determine the source of the resolved version
+                let resolutionSource = 'npm registry'
+                const sourcePackage = this.packageSources.get(packageName)
+                if (this.workspaceResolutions.has(packageName)) {
+                  resolutionSource = 'workspace package.json'
+                } else if (this.lockFileVersions.has(packageName)) {
+                  resolutionSource = 'lock file'
+                } else if (sourcePackage && sourcePackage !== packageName) {
+                  resolutionSource = `${sourcePackage}/package.json`
+                }
+                
+                const warningMsg = [
+                  `🚨 DUPLICATE FILE DETECTED - Will cause compilation errors!`,
+                  `   File: ${relativePath}`,
+                  `   From package: ${packageName}`,
+                  ``,
+                  `   Already imported from version: ${previousVersion}`,
+                  `   Now requesting version:       ${resolvedVersion}`,
+                  `     (from ${resolutionSource})`,
+                  ``,
+                  `🔧 REQUIRED FIX - Use explicit versioned imports in your Solidity file:`,
+                  `   Choose ONE version:`,
+                  `     import "${packageName}@${previousVersion}/${relativePath}";`,
+                  `   OR`,
+                  `     import "${packageName}@${resolvedVersion}/${relativePath}";`,
+                  `     (and update package.json: "${packageName}": "${resolvedVersion}")`,
+                  ``
+                ].join('\n')
+                
+                this.pluginApi.call('terminal', 'log', { 
+                  type: 'error', 
+                  value: warningMsg 
+                }).catch(err => {
+                  console.warn(warningMsg)
+                })
               }
-              
-              // Check if this is a BREAKING change (different major versions)
-              const isBreaking = this.isBreakingVersionConflict(requestedVersion, resolvedVersion)
-              const severity = isBreaking ? 'error' : 'warn'
-              const emoji = isBreaking ? '🚨' : '⚠️'
-              
-              // Log to terminal plugin for user visibility with actionable advice
-              const warningMsg = [
-                `${emoji} Version conflict detected in ${this.targetFile}:`,
-                `   An imported package contains hardcoded versioned imports:`,
-                `     ${packageName}@${requestedVersion}`,
-                `   But your workspace resolved to: ${packageName}@${resolvedVersion} (from ${resolutionSource})`,
-                ``,
-                isBreaking ? `⚠️ MAJOR VERSION MISMATCH - Will cause duplicate declaration errors!` : '',
-                isBreaking ? `` : '',
-                `� REQUIRED FIX - Add explicit versioned imports to your Solidity file:`,
-                `   import "${packageName}@${resolvedVersion}/...";  // Add BEFORE other imports`,
-                ``,
-                `   This ensures all packages use the same canonical version.`,
-                `   Example:`,
-                `     import "${packageName}@${resolvedVersion}/token/ERC20/IERC20.sol";`,
-                `     // ... then your other imports`,
-                ``,
-                `💡 To switch to version ${requestedVersion} instead:`,
-                `   1. Update package.json: "${packageName}": "${requestedVersion}"`,
-                `   2. Use explicit imports: import "${packageName}@${requestedVersion}/...";`,
-                ``
-              ].filter(line => line !== '').join('\n')
-              
-              this.pluginApi.call('terminal', 'log', { 
-                type: severity, 
-                value: warningMsg 
-              }).catch(err => {
-                // Fallback to console if terminal plugin is unavailable
-                console.warn(warningMsg)
-              })
+            } else if (fileKey && !previousVersion) {
+              // First time seeing this file - just record which version we're using
+              // Don't warn about version mismatches here - only warn if same file imported twice
+              this.importedFiles.set(fileKey, resolvedVersion)
+              console.log(`[ImportResolver] 📝 Tracking import: ${fileKey} from version ${resolvedVersion}`)
             }
             
-            // Use the resolved version instead
             const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, versionedPackageName)
             finalUrl = mappedUrl
             this.resolutions.set(originalUrl, finalUrl)
