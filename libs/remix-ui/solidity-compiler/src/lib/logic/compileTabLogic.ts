@@ -1,5 +1,5 @@
 import { ICompilerApi } from '@remix-project/remix-lib'
-import { getValidLanguage, Compiler } from '@remix-project/remix-solidity'
+import { getValidLanguage, Compiler, ImportResolver } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 import { configFileContent } from '../compilerConfiguration'
 
@@ -31,10 +31,13 @@ export class CompileTabLogic {
     console.log(`[CompileTabLogic] 🏗️  Constructor called with contentImport:`, !!contentImport, contentImport)
     
     // Create compiler with both legacy callback (for backwards compatibility)
-    // and the contentImport plugin (for new ImportResolver architecture)
+    // and an import resolver factory (for new ImportResolver architecture)
     this.compiler = new Compiler(
       (url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)),
-      contentImport // Pass the plugin so Compiler can create ImportResolver instances
+      contentImport ? (target) => {
+        // Factory function: creates a new ImportResolver for each compilation
+        return new ImportResolver(contentImport, target)
+      } : null
     )
     
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']

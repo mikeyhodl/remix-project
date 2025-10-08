@@ -2,8 +2,9 @@
 
 import { Plugin } from '@remixproject/engine'
 import { ResolutionIndex } from './resolution-index'
+import { IImportResolver } from './import-resolver-interface'
 
-export class ImportResolver {
+export class ImportResolver implements IImportResolver {
   private importMappings: Map<string, string>
   private pluginApi: Plugin
   private targetFile: string
@@ -349,6 +350,16 @@ export class ImportResolver {
         if (packageJson.version) {
           resolvedVersion = packageJson.version
           source = 'package-json'
+          
+          // Save package.json to file system for visibility and debugging
+          // Use versioned folder path
+          try {
+            const targetPath = `.deps/npm/${packageName}@${packageJson.version}/package.json`
+            await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+            console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+          } catch (saveErr) {
+            console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
+          }
         }
       } catch (err) {
         console.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
@@ -366,6 +377,18 @@ export class ImportResolver {
         const packageJsonUrl = `${packageName}/package.json`
         const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
         const packageJson = JSON.parse(content.content || content)
+        
+        // Save package.json if we haven't already (when using lock file or workspace resolutions)
+        // Use versioned folder path
+        if (source !== 'package-json') {
+          try {
+            const targetPath = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
+            await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+            console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+          } catch (saveErr) {
+            console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
+          }
+        }
         
         // Check both peerDependencies AND regular dependencies for conflicts
         // In Solidity, unlike npm, we can't have multiple versions - everything shares one namespace

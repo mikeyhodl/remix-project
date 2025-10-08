@@ -4,7 +4,7 @@ import { update } from 'solc/abi'
 import compilerInput, { compilerInputForConfigFile } from './compiler-input'
 import EventManager from '../lib/eventManager'
 import txHelper from './helper'
-import { ImportResolver } from './import-resolver'
+import { IImportResolver } from './import-resolver-interface'
 
 import {
   Source, SourceWithTarget, MessageFromWorker, CompilerState, CompilationResult,
@@ -21,16 +21,19 @@ export class Compiler {
   state: CompilerState
   handleImportCall
   workerHandler: EsWebWorkerHandlerInterface
-  pluginApi: any // Reference to a plugin that can call contentImport
-  currentResolver: ImportResolver | null // Current compilation's import resolver
+  importResolverFactory: ((target: string) => IImportResolver) | null // Factory to create resolvers per compilation
+  currentResolver: IImportResolver | null // Current compilation's import resolver
   
-  constructor(handleImportCall?: (fileurl: string, cb) => void, pluginApi?: any) {
+  constructor(
+    handleImportCall?: (fileurl: string, cb) => void, 
+    importResolverFactory?: (target: string) => IImportResolver
+  ) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
-    this.pluginApi = pluginApi
+    this.importResolverFactory = importResolverFactory || null
     this.currentResolver = null
     
-    console.log(`[Compiler] 🏗️  Constructor: pluginApi provided:`, !!pluginApi)
+    console.log(`[Compiler] 🏗️  Constructor: importResolverFactory provided:`, !!importResolverFactory)
     
     this.state = {
       viaIR: false,
@@ -121,16 +124,16 @@ export class Compiler {
     console.log(`\n${'='.repeat(80)}`)
     console.log(`[Compiler] 🚀 Starting NEW compilation for target: "${target}"`)
     console.log(`[Compiler] 📁 Initial files provided: ${Object.keys(files).length}`)
-    console.log(`[Compiler] 🔌 pluginApi available:`, !!this.pluginApi)
+    console.log(`[Compiler] 🔌 importResolverFactory available:`, !!this.importResolverFactory)
     
     // Create a fresh ImportResolver instance for this compilation
     // This ensures complete isolation of import mappings per compilation
-    if (this.pluginApi) {
-      this.currentResolver = new ImportResolver(this.pluginApi, target)
-      console.log(`[Compiler] 🆕 Created new ImportResolver instance for this compilation`)
+    if (this.importResolverFactory) {
+      this.currentResolver = this.importResolverFactory(target)
+      console.log(`[Compiler] 🆕 Created new resolver instance for this compilation`)
     } else {
       this.currentResolver = null
-      console.log(`[Compiler] ⚠️  No plugin API - import resolution will use legacy callback`)
+      console.log(`[Compiler] ⚠️  No resolver factory - import resolution will use legacy callback`)
     }
     
     console.log(`${'='.repeat(80)}\n`)
