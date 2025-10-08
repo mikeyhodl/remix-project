@@ -66,6 +66,16 @@ export class ImportResolver {
         const versionedPackageName = `${packageName}@${packageJson.version}`
         this.importMappings.set(mappingKey, versionedPackageName)
         console.log(`[ImportResolver] ✅ Created ISOLATED mapping: ${mappingKey} → ${versionedPackageName}`)
+        
+        // Also map peer dependencies if they exist
+        if (packageJson.peerDependencies) {
+          console.log(`[ImportResolver] 🔗 Found peer dependencies for ${packageName}:`, Object.keys(packageJson.peerDependencies))
+          for (const peerDep of Object.keys(packageJson.peerDependencies)) {
+            // Recursively fetch and map peer dependencies
+            await this.fetchAndMapPackage(peerDep)
+          }
+        }
+        
         console.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
       }
     } catch (err) {

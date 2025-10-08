@@ -39,6 +39,13 @@ export class Compiler {
       this.resolutionIndex.load().catch(err => {
         console.log(`[Compiler] ⚠️  Failed to load resolution index:`, err)
       })
+      
+      // Set up workspace change listeners after a short delay to ensure plugin system is ready
+      setTimeout(() => {
+        if (this.resolutionIndex) {
+          this.resolutionIndex.onActivation()
+        }
+      }, 100)
     }
     
     console.log(`[Compiler] 🏗️  Constructor: pluginApi provided:`, !!pluginApi)

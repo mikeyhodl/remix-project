@@ -14,16 +14,33 @@
  *   }
  * }
  */
+import { Plugin } from '@remixproject/engine'
 export class ResolutionIndex {
-  private pluginApi: any
+  private pluginApi: Plugin
   private indexPath: string = '.deps/npm/.resolution-index.json'
   private index: Record<string, Record<string, string>> = {}
   private isDirty: boolean = false
   private loadPromise: Promise<void> | null = null
   private isLoaded: boolean = false
 
-  constructor(pluginApi: any) {
+  constructor(pluginApi: Plugin) {
     this.pluginApi = pluginApi
+  }
+
+  /**
+   * Set up event listeners after plugin activation
+   * Should be called after the plugin system is ready
+   */
+  onActivation(): void {
+    // Listen for workspace changes and reload the index
+    if (this.pluginApi && this.pluginApi.on) {
+      this.pluginApi.on('filePanel', 'setWorkspace', () => {
+        console.log(`[ResolutionIndex] 🔄 Workspace changed, reloading index...`)
+        this.reload().catch(err => {
+          console.log(`[ResolutionIndex] ⚠️  Failed to reload index after workspace change:`, err)
+        })
+      })
+    }
   }
 
   /**
@@ -69,6 +86,19 @@ export class ResolutionIndex {
     if (!this.isLoaded) {
       await this.load()
     }
+  }
+
+  /**
+   * Reload the index from disk (e.g., after workspace change)
+   * This clears the current in-memory index and reloads from the file system
+   */
+  async reload(): Promise<void> {
+    console.log(`[ResolutionIndex] 🔄 Reloading index (workspace changed)`)
+    this.index = {}
+    this.isDirty = false
+    this.isLoaded = false
+    this.loadPromise = null
+    await this.load()
   }
 
   /**
