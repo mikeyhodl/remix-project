@@ -93,10 +93,10 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('ExplicitVersions.sol', sources[2]['ExplicitVersions.sol'])
+            .addFile('ExplicitVersions.sol', sources[3]['ExplicitVersions.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(10000)
+            .pause(1000)
             .clickLaunchIcon('filePanel')
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
@@ -125,11 +125,11 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('package.json', sources[3]['package.json'])  // Has @openzeppelin/contracts@4.8.3
-            .addFile('ConflictingVersions.sol', sources[3]['ConflictingVersions.sol'])  // Imports @5
+            .addFile('package.json', sources[4]['package.json'])  // Has @openzeppelin/contracts@4.8.3
+            .addFile('ConflictingVersions.sol', sources[4]['ConflictingVersions.sol'])  // Imports @5
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(8000)
+            .pause(1000)
             .clickLaunchIcon('filePanel')
             // Verify that when explicit version @5 is used, it resolves to 5.x.x
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
@@ -145,8 +145,8 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('yarn.lock', sources[4]['yarn.lock'])
-            .addFile('YarnLockTest.sol', sources[4]['YarnLockTest.sol'])
+            .addFile('yarn.lock', sources[5]['yarn.lock'])
+            .addFile('YarnLockTest.sol', sources[5]['YarnLockTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000) // Longer pause for npm fetch
@@ -163,8 +163,8 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('package-lock.json', sources[6]['package-lock.json'])
-            .addFile('PackageLockTest.sol', sources[6]['PackageLockTest.sol'])
+            .addFile('package-lock.json', sources[7]['package-lock.json'])
+            .addFile('PackageLockTest.sol', sources[7]['PackageLockTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
@@ -175,6 +175,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should use version from package-lock.json (4.8.1)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.1"]', 10000)
+            .end()
     },
 
 }
