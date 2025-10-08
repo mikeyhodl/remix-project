@@ -400,9 +400,11 @@ export class ImportResolver {
                     ``,
                     isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
                     isBreaking ? `` : '',
-                    `💡 To fix this, add to your workspace package.json:`,
-                    `   • For Yarn: "resolutions": { "${dep}": "${requestedRange}" }`,
-                    `   • For npm:  "overrides": { "${dep}": "${requestedRange}" }`,
+                    `💡 To fix this, you can either:`,
+                    `   1. Add "${dep}": "${requestedRange}" to your workspace package.json dependencies`,
+                    `   2. Or force the version with resolutions/overrides:`,
+                    `      • For Yarn: "resolutions": { "${dep}": "${requestedRange}" }`,
+                    `      • For npm:  "overrides": { "${dep}": "${requestedRange}" }`,
                     ``
                   ].filter(line => line !== '').join('\n')
                   
@@ -489,9 +491,11 @@ export class ImportResolver {
                 ``,
                 isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
                 isBreaking ? `` : '',
-                `💡 To use version ${requestedVersion} instead, add to your workspace package.json:`,
-                `   • For Yarn: "resolutions": { "${packageName}": "${requestedVersion}" }`,
-                `   • For npm:  "overrides": { "${packageName}": "${requestedVersion}" }`,
+                `💡 To use version ${requestedVersion} instead, you can either:`,
+                `   1. Add "${packageName}": "${requestedVersion}" to your workspace package.json dependencies`,
+                `   2. Or force the version with resolutions/overrides:`,
+                `      • For Yarn: "resolutions": { "${packageName}": "${requestedVersion}" }`,
+                `      • For npm:  "overrides": { "${packageName}": "${requestedVersion}" }`,
                 ``
               ].filter(line => line !== '').join('\n')
               
