@@ -1,10 +1,11 @@
 'use strict'
 
+import { Plugin } from '@remixproject/engine'
 import { ResolutionIndex } from './resolution-index'
 
 export class ImportResolver {
   private importMappings: Map<string, string>
-  private pluginApi: any
+  private pluginApi: Plugin
   private targetFile: string
   private resolutionIndex: ResolutionIndex
   private resolutions: Map<string, string> = new Map()
@@ -12,7 +13,7 @@ export class ImportResolver {
   private lockFileVersions: Map<string, string> = new Map() // From yarn.lock or package-lock.json
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
 
-  constructor(pluginApi: any, targetFile: string, resolutionIndex: ResolutionIndex) {
+  constructor(pluginApi: Plugin, targetFile: string, resolutionIndex: ResolutionIndex) {
     this.pluginApi = pluginApi
     this.targetFile = targetFile
     this.resolutionIndex = resolutionIndex
