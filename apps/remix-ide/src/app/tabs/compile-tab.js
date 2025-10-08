@@ -37,7 +37,7 @@ export default class CompileTab extends CompilerApiMixin(ViewPlugin) { // implem
     this.config = config
     this.queryParams = new QueryParams()
     // Pass 'this' as the plugin reference so CompileTabLogic can access contentImport via this.call()
-    this.compileTabLogic = new CompileTabLogic(this, this)
+    this.compileTabLogic = new CompileTabLogic(this)
     this.compiler = this.compileTabLogic.compiler
     this.compileTabLogic.init()
     this.initCompilerApi()
