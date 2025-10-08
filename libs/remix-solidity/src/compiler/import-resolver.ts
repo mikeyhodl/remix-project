@@ -508,6 +508,7 @@ export class ImportResolver implements IImportResolver {
           
           if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
             const conflictKey = `${packageName}:${requestedVersion}→${resolvedVersion}`
+            
             if (!this.conflictWarnings.has(conflictKey)) {
               this.conflictWarnings.add(conflictKey)
               
@@ -526,18 +527,24 @@ export class ImportResolver implements IImportResolver {
               
               // Log to terminal plugin for user visibility with actionable advice
               const warningMsg = [
-                `${emoji} Version conflict in ${this.targetFile}:`,
-                `   Import path requests: ${packageName}@${requestedVersion}`,
-                `   (This versioned import likely comes from a package's import remapping)`,
-                `   But resolved to:      ${packageName}@${resolvedVersion} (from ${resolutionSource})`,
+                `${emoji} Version conflict detected in ${this.targetFile}:`,
+                `   An imported package contains hardcoded versioned imports:`,
+                `     ${packageName}@${requestedVersion}`,
+                `   But your workspace resolved to: ${packageName}@${resolvedVersion} (from ${resolutionSource})`,
                 ``,
-                isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
+                isBreaking ? `⚠️ MAJOR VERSION MISMATCH - Will cause duplicate declaration errors!` : '',
                 isBreaking ? `` : '',
-                `💡 To use version ${requestedVersion} instead, you can either:`,
-                `   1. Add "${packageName}": "${requestedVersion}" to your workspace package.json dependencies`,
-                `   2. Or force the version with resolutions/overrides:`,
-                `      • For Yarn: "resolutions": { "${packageName}": "${requestedVersion}" }`,
-                `      • For npm:  "overrides": { "${packageName}": "${requestedVersion}" }`,
+                `� REQUIRED FIX - Add explicit versioned imports to your Solidity file:`,
+                `   import "${packageName}@${resolvedVersion}/...";  // Add BEFORE other imports`,
+                ``,
+                `   This ensures all packages use the same canonical version.`,
+                `   Example:`,
+                `     import "${packageName}@${resolvedVersion}/token/ERC20/IERC20.sol";`,
+                `     // ... then your other imports`,
+                ``,
+                `💡 To switch to version ${requestedVersion} instead:`,
+                `   1. Update package.json: "${packageName}": "${requestedVersion}"`,
+                `   2. Use explicit imports: import "${packageName}@${requestedVersion}/...";`,
                 ``
               ].filter(line => line !== '').join('\n')
               
@@ -556,6 +563,37 @@ export class ImportResolver implements IImportResolver {
             this.resolutions.set(originalUrl, finalUrl)
             
             return this.resolveAndSave(mappedUrl, targetPath, true)
+          } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
+            // Versions MATCH - normalize to canonical path to prevent duplicate declarations
+            // This ensures "@openzeppelin/contracts@4.8.3/..." always resolves to the same path
+            // regardless of which import statement triggered it first
+            const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, versionedPackageName)
+            if (mappedUrl !== url) {
+              finalUrl = mappedUrl
+              this.resolutions.set(originalUrl, finalUrl)
+              
+              return this.resolveAndSave(mappedUrl, targetPath, true)
+            }
+          }
+        } else {
+          // No mapping exists yet - this is the FIRST import with an explicit version
+          // Record it as our canonical version for this package
+          if (requestedVersion) {
+            const versionedPackageName = `${packageName}@${requestedVersion}`
+            this.importMappings.set(mappingKey, versionedPackageName)
+            
+            // Fetch and save package.json for this version
+            try {
+              const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
+              const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+              const packageJson = JSON.parse(content.content || content)
+              
+              const targetPath = `.deps/npm/${versionedPackageName}/package.json`
+              await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+              console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+            } catch (err) {
+              console.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
+            }
           }
         }
       }
