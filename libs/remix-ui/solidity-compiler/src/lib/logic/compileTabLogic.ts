@@ -23,20 +23,19 @@ export class CompileTabLogic {
   public evmVersions: Array<string>
   public useFileConfiguration: boolean
 
-  constructor (api: ICompilerApi, contentImport) {
+  constructor (api: ICompilerApi) {
     this.api = api
-    this.contentImport = contentImport
+
     this.event = new EventEmitter()
     
-    console.log(`[CompileTabLogic] 🏗️  Constructor called with contentImport:`, !!contentImport, contentImport)
     
     // Create compiler with both legacy callback (for backwards compatibility)
     // and an import resolver factory (for new ImportResolver architecture)
     this.compiler = new Compiler(
       (url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)),
-      contentImport ? (target) => {
+      api ? (target) => {
         // Factory function: creates a new ImportResolver for each compilation
-        return new ImportResolver(contentImport, target)
+        return new ImportResolver(api as any, target)
       } : null
     )
     

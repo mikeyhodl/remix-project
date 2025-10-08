@@ -691,7 +691,6 @@ export class ImportResolver implements IImportResolver {
     
     console.log(`[ImportResolver] 📥 Fetching file (skipping ContentImport global mappings): ${url}`)
     const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
-    
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) {
         this.resolutions.set(originalUrl, url)
