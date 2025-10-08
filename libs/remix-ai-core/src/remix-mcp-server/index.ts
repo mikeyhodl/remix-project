@@ -90,7 +90,7 @@ export async function createRemixMCPServer(
     debug: false,
     maxConcurrentTools: 10,
     toolTimeout: 30000,
-    resourceCacheTTL: 300000,
+    resourceCacheTTL: 5000,
     enableResourceCache: false,
     security: enableSecurity ? {
       enablePermissions: securityConfig.requirePermissions,
