@@ -17,9 +17,7 @@ module.exports = {
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
             .addFile('UpgradeableNFT.sol', sources[0]['UpgradeableNFT.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .clickLaunchIcon('filePanel')
+            .pause(3000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]')
@@ -194,18 +192,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155Paus
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MyToken is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable {
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(address initialOwner) initializer public {
-        __ERC1155_init("");
-        __Ownable_init(initialOwner);
-        __ERC1155Pausable_init();
-        __ERC1155Burnable_init();
-    }
-}
 `
         }
     },
