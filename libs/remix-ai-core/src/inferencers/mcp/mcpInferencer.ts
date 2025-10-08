@@ -301,7 +301,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private mcpClients: Map<string, MCPClient> = new Map();
   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
   private resourceCache: Map<string, IMCPResourceContent> = new Map();
-  private cacheTimeout: number = 300000; // 5 minutes
+  private cacheTimeout: number = 5000;
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
   private remixMCPServer?: any; // Internal RemixMCPServer instance
@@ -560,7 +560,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         
         try {
           // Try to get from cache first
-          let content = this.resourceCache.get(resource.uri);
+          let content = null //this.resourceCache.get(resource.uri);
           if (!content) {
             const client = this.mcpClients.get(serverName);
             if (client) {
@@ -620,15 +620,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             continue;
           }
 
-          let content = this.resourceCache.get(resource.uri);
-          if (!content) {
-            content = await client.readResource(resource.uri);
-            this.resourceCache.set(resource.uri, content);
-            setTimeout(() => {
-              this.resourceCache.delete(resource.uri);
-            }, this.cacheTimeout);
-          }
-
+          const content = await client.readResource(resource.uri);
           if (content.text) {
             mcpContext += `\n--- Resource: ${resource.name} (${resource.uri}) ---\n`;
             mcpContext += content.text;
@@ -661,7 +653,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     console.log(`[MCP Inferencer] Sending request with ${llmFormattedTools.length} available tools in LLM format`);
 
     try {
-      const response = await super.answer(prompt, enhancedOptions);
+      const response = await super.answer(enrichedPrompt, enhancedOptions);
       console.log('got initial response', response)
       
       const toolExecutionCallback = async (tool_calls) => {
