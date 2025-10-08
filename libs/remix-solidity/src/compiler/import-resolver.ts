@@ -94,7 +94,7 @@ export class ImportResolver implements IImportResolver {
       }
       
       // Also check dependencies and peerDependencies for version hints
-      // These are lower priority than explicit resolutions/overrides, but useful for reference
+      // These are lower priority than explicit resolutions/overrides
       const allDeps = {
         ...(packageJson.dependencies || {}),
         ...(packageJson.peerDependencies || {}),
@@ -104,8 +104,16 @@ export class ImportResolver implements IImportResolver {
       for (const [pkg, versionRange] of Object.entries(allDeps)) {
         // Only store if not already set by resolutions/overrides
         if (!this.workspaceResolutions.has(pkg) && typeof versionRange === 'string') {
-          // Store the version range as-is (lock file will provide actual version)
-          console.log(`[ImportResolver] 📦 Found workspace dependency: ${pkg}@${versionRange}`)
+          // For exact versions (e.g., "4.8.3"), store directly
+          // For ranges (e.g., "^4.8.0"), we'll need the lock file or npm to resolve
+          if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
+            // Exact version - store it
+            this.workspaceResolutions.set(pkg, versionRange)
+            console.log(`[ImportResolver] 📦 Workspace dependency (exact): ${pkg} → ${versionRange}`)
+          } else {
+            // Range - just log it, lock file or npm will resolve
+            console.log(`[ImportResolver] 📦 Workspace dependency (range): ${pkg}@${versionRange}`)
+          }
         }
       }
     } catch (err) {
@@ -152,8 +160,10 @@ export class ImportResolver implements IImportResolver {
       let currentPackage = null
       
       for (const line of lines) {
-        // Match: "@openzeppelin/contracts@^5.0.0":
-        const packageMatch = line.match(/^"?([^"@]+)@[^"]*"?:/)
+        // Match: "@openzeppelin/contracts@^5.0.0": or "lodash@^4.17.0":
+        // For scoped packages: "@scope/package@version"
+        // For regular packages: "package@version"
+        const packageMatch = line.match(/^"?(@?[^"@]+(?:\/[^"@]+)?)@[^"]*"?:/)
         if (packageMatch) {
           currentPackage = packageMatch[1]
         }
@@ -193,7 +203,12 @@ export class ImportResolver implements IImportResolver {
       if (lockData.packages) {
         for (const [path, data] of Object.entries(lockData.packages)) {
           if (data && typeof data === 'object' && 'version' in data) {
-            const pkg = path.replace('node_modules/', '')
+            // Skip root package (path is empty string "")
+            if (path === '') continue
+            
+            // Extract package name from path
+            // Format: "node_modules/@openzeppelin/contracts" -> "@openzeppelin/contracts"
+            const pkg = path.replace(/^node_modules\//, '')
             if (pkg && pkg !== '') {
               this.lockFileVersions.set(pkg, (data as any).version)
               console.log(`[ImportResolver] 🔒 Lock file: ${pkg} → ${(data as any).version}`)
