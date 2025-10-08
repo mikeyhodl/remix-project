@@ -403,8 +403,7 @@ export class ImportResolver {
                     `💡 To fix this, add to your workspace package.json:`,
                     `   • For Yarn: "resolutions": { "${dep}": "${requestedRange}" }`,
                     `   • For npm:  "overrides": { "${dep}": "${requestedRange}" }`,
-                    ``,
-                    `   Then run 'yarn install' or 'npm install' to update your lock file.`
+                    ``
                   ].filter(line => line !== '').join('\n')
                   
                   this.pluginApi.call('terminal', 'log', { 
@@ -493,8 +492,7 @@ export class ImportResolver {
                 `💡 To use version ${requestedVersion} instead, add to your workspace package.json:`,
                 `   • For Yarn: "resolutions": { "${packageName}": "${requestedVersion}" }`,
                 `   • For npm:  "overrides": { "${packageName}": "${requestedVersion}" }`,
-                ``,
-                `   Then run 'yarn install' or 'npm install' to update your lock file.`
+                ``
               ].filter(line => line !== '').join('\n')
               
               this.pluginApi.call('terminal', 'log', { 
