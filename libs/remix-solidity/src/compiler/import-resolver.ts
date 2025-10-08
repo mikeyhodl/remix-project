@@ -277,6 +277,23 @@ export class ImportResolver {
     return false
   }
 
+  /**
+   * Check if version conflict is a BREAKING change (different major versions)
+   * This is likely to cause compilation failures
+   */
+  private isBreakingVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
+    const resolvedMatch = resolvedVersion.match(/^(\d+)/)
+    if (!resolvedMatch) return false
+    const resolvedMajor = parseInt(resolvedMatch[1])
+    
+    // Extract major version from requested range
+    const rangeMatch = requestedRange.match(/(\d+)/)
+    if (!rangeMatch) return false
+    const requestedMajor = parseInt(rangeMatch[1])
+    
+    return resolvedMajor !== requestedMajor
+  }
+
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
     
@@ -369,22 +386,29 @@ export class ImportResolver {
                     resolutionSource = 'lock file'
                   }
                   
+                  // Check if this is a BREAKING change (different major versions)
+                  const isBreaking = this.isBreakingVersionConflict(requestedRange, resolvedDepVersion)
+                  const severity = isBreaking ? 'error' : 'warn'
+                  const emoji = isBreaking ? '🚨' : '⚠️'
+                  
                   const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
                   const warningMsg = [
-                    `⚠️ Version mismatch detected:`,
-                    `   Package ${packageName} specifies in its ${depType}:`,
+                    `${emoji} Version mismatch detected:`,
+                    `   Package ${packageName}@${resolvedVersion} specifies in its ${depType}:`,
                     `     "${dep}": "${requestedRange}"`,
                     `   But resolved version is ${dep}@${resolvedDepVersion} (from ${resolutionSource})`,
                     ``,
+                    isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
+                    isBreaking ? `` : '',
                     `💡 To fix this, add to your workspace package.json:`,
                     `   • For Yarn: "resolutions": { "${dep}": "${requestedRange}" }`,
                     `   • For npm:  "overrides": { "${dep}": "${requestedRange}" }`,
                     ``,
                     `   Then run 'yarn install' or 'npm install' to update your lock file.`
-                  ].join('\n')
+                  ].filter(line => line !== '').join('\n')
                   
                   this.pluginApi.call('terminal', 'log', { 
-                    type: 'warn', 
+                    type: severity, 
                     value: warningMsg 
                   }).catch(err => {
                     console.warn(warningMsg)
@@ -452,22 +476,29 @@ export class ImportResolver {
                 resolutionSource = 'lock file'
               }
               
+              // Check if this is a BREAKING change (different major versions)
+              const isBreaking = this.isBreakingVersionConflict(requestedVersion, resolvedVersion)
+              const severity = isBreaking ? 'error' : 'warn'
+              const emoji = isBreaking ? '🚨' : '⚠️'
+              
               // Log to terminal plugin for user visibility with actionable advice
               const warningMsg = [
-                `⚠️ Version conflict in ${this.targetFile}:`,
+                `${emoji} Version conflict in ${this.targetFile}:`,
                 `   Import path requests: ${packageName}@${requestedVersion}`,
                 `   (This versioned import likely comes from a package's import remapping)`,
                 `   But resolved to:      ${packageName}@${resolvedVersion} (from ${resolutionSource})`,
                 ``,
+                isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
+                isBreaking ? `` : '',
                 `💡 To use version ${requestedVersion} instead, add to your workspace package.json:`,
                 `   • For Yarn: "resolutions": { "${packageName}": "${requestedVersion}" }`,
                 `   • For npm:  "overrides": { "${packageName}": "${requestedVersion}" }`,
                 ``,
                 `   Then run 'yarn install' or 'npm install' to update your lock file.`
-              ].join('\n')
+              ].filter(line => line !== '').join('\n')
               
               this.pluginApi.call('terminal', 'log', { 
-                type: 'warn', 
+                type: severity, 
                 value: warningMsg 
               }).catch(err => {
                 // Fallback to console if terminal plugin is unavailable

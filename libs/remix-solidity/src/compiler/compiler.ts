@@ -473,8 +473,13 @@ export class Compiler {
             this.gatherImports(files, importHints, cb)
           })
           .catch(err => {
-            console.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}" - Error: ${err}`)
-            if (cb) cb(err)
+            console.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}"`)
+            // Format error message to match handleImportCall pattern
+            const errorMessage = err && typeof err === 'object' && err.message 
+              ? err.message 
+              : (typeof err === 'string' ? err : String(err))
+            console.log(`[Compiler] ❌ Error details:`, errorMessage)
+            if (cb) cb(errorMessage)
           })
         return
       } else if (this.handleImportCall) {
