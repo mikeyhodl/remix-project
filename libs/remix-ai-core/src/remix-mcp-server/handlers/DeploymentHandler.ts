@@ -12,7 +12,9 @@ import {
   SendTransactionArgs,
   DeploymentResult,
   AccountInfo,
-  ContractInteractionResult
+  ContractInteractionResult,
+  RunScriptArgs,
+  RunScriptResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
 import { getContractData } from '@remix-project/core-plugin'
@@ -312,6 +314,51 @@ export class CallContractHandler extends BaseToolHandler {
 
     } catch (error) {
       return this.createErrorResult(`Contract call failed: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Run Script
+ */
+export class RunScriptHandler extends BaseToolHandler {
+  name = 'send_transaction';
+  description = 'Run a script in the current environment';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      file: {
+        type: 'string',
+        description: 'path to the file',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      }
+    },
+    required: ['file']
+  };
+
+  getPermissions(): string[] {
+    return ['transaction:send'];
+  }
+
+  validate(args: RunScriptArgs): boolean | string {
+    const required = this.validateRequired(args, ['file']);
+    if (required !== true) return required;
+
+    return true;
+  }
+
+  async execute(args: RunScriptArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const content = await plugin.call('fileManager', 'readFile', args.file)
+      await plugin.call('scriptRunnerBridge', 'execute', content, args.file)
+
+      const result: RunScriptResult = {}
+
+      return this.createSuccessResult(result);
+
+    } catch (error) {
+      console.log(error)
+      return this.createErrorResult(`Run script failed: ${error.message}`);
     }
   }
 }
@@ -831,6 +878,14 @@ export function createDeploymentTools(): RemixToolDefinition[] {
       category: ToolCategory.DEPLOYMENT,
       permissions: ['environment:read'],
       handler: new GetCurrentEnvironmentHandler()
+    },
+    {
+      name: 'run_script',
+      description: 'Run a script in the current environment',
+      inputSchema: new RunScriptHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['transaction:send'],
+      handler: new RunScriptHandler()
     }
   ];
 }

@@ -133,6 +133,10 @@ export interface SendTransactionArgs {
   account?: string;
 }
 
+export interface RunScriptArgs {
+  file: string
+}
+
 export interface DebugSessionArgs {
   transactionHash?: string;
 }
@@ -258,6 +262,8 @@ export interface DeploymentResult {
   blockNumber: number | bigint;
   logs: any[];
 }
+
+export interface RunScriptResult {}
 
 export interface ContractInteractionResult {
   success: boolean;
