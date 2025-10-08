@@ -126,7 +126,7 @@ export class DeployContractHandler extends BaseToolHandler {
           )
         })
       } catch (e) {
-        return this.createErrorResult(`Deployment error: ${e.message}`);
+        return this.createErrorResult(`Deployment error: ${e.message || e}`);
       }
       
       
@@ -147,15 +147,6 @@ export class DeployContractHandler extends BaseToolHandler {
 
     } catch (error) {
       return this.createErrorResult(`Deployment failed: ${error.message}`);
-    }
-  }
-
-  private async getAccounts(plugin: Plugin): Promise<string[]> {
-    try {
-      // TODO: Get accounts from Remix API
-      return ['0x' + Math.random().toString(16).substr(2, 40)]; // Mock account
-    } catch (error) {
-      return [];
     }
   }
 }
@@ -296,10 +287,6 @@ export class CallContractHandler extends BaseToolHandler {
             },
             (okCb, cancelCb) => {
               // promptCb
-            },
-            (error, cancelCb) => {
-              // promptCb
-              if (error) reject(error)
             },
             (error, {txResult, address, returnValue}) => {
               if (error) return reject(error)
