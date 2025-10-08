@@ -56,7 +56,6 @@ export class RemixAIPlugin extends Plugin {
   mcpInferencer: MCPInferencer | null = null
   mcpEnabled: boolean = true
   remixMCPServer: RemixMCPServer | null = null
-  baseInferencer: any = null
 
   constructor(inDesktop:boolean) {
     super(profile)
@@ -80,7 +79,6 @@ export class RemixAIPlugin extends Plugin {
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
 
-    
     // Load MCP servers from settings
     this.loadMCPServersFromSettings();
   }
@@ -116,9 +114,15 @@ export class RemixAIPlugin extends Plugin {
     this.aiIsActivated = true
 
     this.on('blockchain', 'transactionExecuted', async () => {
+      console.log('[REMIXAI - ] transactionExecuted: clearing caches')
       this.clearCaches()
     })
-    
+    this.on('web3Provider', 'transactionBroadcasted', (txhash) => {
+      console.log('[REMIXAI - ] transactionBroadcasted: clearing caches')
+      this.clearCaches()
+    });
+
+    (window as any).getRemixAIPlugin = this
 
     // initialize the remix MCP server 
     this.remixMCPServer = await createRemixMCPServer(this)

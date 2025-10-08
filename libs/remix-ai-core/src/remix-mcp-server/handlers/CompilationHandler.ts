@@ -47,7 +47,8 @@ export class SolidityCompileHandler extends BaseToolHandler {
         enum: ['london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium'],
         default: 'london'
       }
-    }
+    },
+    required: ['file']
   };
 
   getPermissions(): string[] {

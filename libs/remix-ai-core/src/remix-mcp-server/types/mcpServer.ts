@@ -12,48 +12,27 @@ import EventEmitter from 'events';
  * Remix MCP Server configuration
  */
 export interface RemixMCPServerConfig {
-  /** Server name */
   name: string;
-  /** Server version */
   version: string;
-  /** Server description */
   description: string;
-  /** Enable debug logging */
   debug?: boolean;
-  /** Maximum concurrent tool executions */
   maxConcurrentTools?: number;
-  /** Tool execution timeout in milliseconds */
   toolTimeout?: number;
-  /** Resource cache TTL in milliseconds */
   resourceCacheTTL?: number;
-  /** Enable resource caching */
   enableResourceCache?: boolean;
-  /** Security settings */
   security?: {
-    /** Enable permission checking */
     enablePermissions?: boolean;
-    /** Required permissions for server access */
     requiredPermissions?: string[];
-    /** Allowed file patterns for file operations */
     allowedFilePatterns?: RegExp[];
-    /** Blocked file patterns for file operations */
     blockedFilePatterns?: RegExp[];
-    /** Enable audit logging */
     enableAuditLog?: boolean;
   };
-  /** Feature flags */
   features?: {
-    /** Enable compilation tools */
     compilation?: boolean;
-    /** Enable deployment tools */
     deployment?: boolean;
-    /** Enable debugging tools */
     debugging?: boolean;
-    /** Enable analysis tools */
     analysis?: boolean;
-    /** Enable testing tools */
     testing?: boolean;
-    /** Enable git tools */
     git?: boolean;
   };
 }
@@ -73,19 +52,12 @@ export enum ServerState {
  * MCP Server statistics
  */
 export interface ServerStats {
-  /** Server uptime in milliseconds */
   uptime: number;
-  /** Total tool calls executed */
   totalToolCalls: number;
-  /** Total resources served */
   totalResourcesServed: number;
-  /** Active tool executions */
   activeToolExecutions: number;
-  /** Resource cache hit rate */
   cacheHitRate: number;
-  /** Error count */
   errorCount: number;
-  /** Last activity timestamp */
   lastActivity: Date;
 }
 
@@ -93,19 +65,12 @@ export interface ServerStats {
  * Tool execution status
  */
 export interface ToolExecutionStatus {
-  /** Execution ID */
   id: string;
-  /** Tool name */
   toolName: string;
-  /** Start time */
   startTime: Date;
-  /** End time */
   endTime?: Date;
-  /** Execution status */
   status: 'running' | 'completed' | 'failed' | 'timeout';
-  /** Error message if failed */
   error?: string;
-  /** Execution context */
   context: {
     workspace: string;
     user: string;
@@ -117,17 +82,11 @@ export interface ToolExecutionStatus {
  * Resource cache entry
  */
 export interface ResourceCacheEntry {
-  /** Resource URI */
   uri: string;
-  /** Cached content */
   content: any;
-  /** Cache timestamp */
   timestamp: Date;
-  /** Cache TTL */
   ttl: number;
-  /** Access count */
   accessCount: number;
-  /** Last access time */
   lastAccess: Date;
 }
 
@@ -135,15 +94,10 @@ export interface ResourceCacheEntry {
  * Audit log entry
  */
 export interface AuditLogEntry {
-  /** Entry ID */
   id: string;
-  /** Timestamp */
   timestamp: Date;
-  /** Event type */
   type: 'tool_call' | 'resource_access' | 'permission_check' | 'error';
-  /** User identifier */
   user: string;
-  /** Event details */
   details: {
     toolName?: string;
     resourceUri?: string;
@@ -152,7 +106,6 @@ export interface AuditLogEntry {
     args?: any;
     result?: any;
   };
-  /** Event severity */
   severity: 'info' | 'warning' | 'error';
 }
 
@@ -160,13 +113,9 @@ export interface AuditLogEntry {
  * Permission check result
  */
 export interface PermissionCheckResult {
-  /** Check result */
   allowed: boolean;
-  /** Reason if not allowed */
   reason?: string;
-  /** Required permissions */
   requiredPermissions: string[];
-  /** User permissions */
   userPermissions: string[];
 }
 

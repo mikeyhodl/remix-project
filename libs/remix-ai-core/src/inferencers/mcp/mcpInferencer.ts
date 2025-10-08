@@ -16,14 +16,6 @@ import {
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
-import { HandleMistralAIResponse } from '@remix/remix-ai-core';
-import axios from "axios";
-// Note: Official MCP SDK imports cause browser compatibility issues due to Node.js dependencies
-// We'll implement a browser-compatible MCP client using the existing HTTP/SSE infrastructure
-// import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-// import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-// import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
@@ -32,9 +24,6 @@ export class MCPClient {
   private resources: IMCPResource[] = [];
   private tools: IMCPTool[] = [];
   private remixMCPServer?: RemixMCPServer; // Will be injected for internal transport
-  
-  
-  // Legacy SSE connection properties (fallback for custom implementations)
   private requestId: number = 1;
 
   constructor(server: IMCPServer, remixMCPServer?: any) {

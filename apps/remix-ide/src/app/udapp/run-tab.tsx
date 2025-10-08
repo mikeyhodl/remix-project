@@ -178,7 +178,6 @@ export class RunTab extends ViewPlugin {
   }
 
   getDeployedContracts() {
-    // Return deployed contract instances from the React API with enhanced transaction data
     if (!this.REACT_API || !this.REACT_API.instances) {
       return {};
     }
