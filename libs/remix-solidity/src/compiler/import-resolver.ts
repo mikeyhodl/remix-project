@@ -490,6 +490,10 @@ export class ImportResolver implements IImportResolver {
    * E.g., if we've mapped @chainlink/contracts-ccip@1.6.1, and it imports @chainlink/contracts,
    * we want to use contracts-ccip's dependencies to resolve that import
    */
+  /**
+   * Find the parent package context for dependency resolution
+   * Uses LIFO (most recently mapped package) as the parent context
+   */
   private findParentPackageContext(): string | null {
     // Look through all mapped packages to find a potential parent
     // The most recently mapped package is likely the parent we're resolving from
@@ -503,7 +507,6 @@ export class ImportResolver implements IImportResolver {
       .filter(Boolean)
     
     // Return the most recently added parent package (LIFO - last in, first out)
-    // This works because we process imports sequentially
     for (let i = mappedPackages.length - 1; i >= 0; i--) {
       const pkg = mappedPackages[i]
       if (pkg && this.parentPackageDependencies.has(pkg)) {
@@ -515,10 +518,60 @@ export class ImportResolver implements IImportResolver {
   }
 
   /**
+   * Check if multiple parent packages have conflicting dependencies on the same package
+   * This helps users understand complex dependency conflicts
+   */
+  private checkForConflictingParentDependencies(packageName: string): void {
+    const conflictingParents: Array<{ parent: string, version: string }> = []
+    
+    // Check all parent packages to see if they depend on this package
+    for (const [parentPkg, deps] of this.parentPackageDependencies.entries()) {
+      if (deps.has(packageName)) {
+        conflictingParents.push({
+          parent: parentPkg,
+          version: deps.get(packageName)!
+        })
+      }
+    }
+    
+    // If 2+ parent packages have different versions of the same dependency, warn the user
+    if (conflictingParents.length >= 2) {
+      const uniqueVersions = new Set(conflictingParents.map(p => p.version))
+      
+      if (uniqueVersions.size > 1) {
+        const conflictKey = `multi-parent:${packageName}:${Array.from(uniqueVersions).sort().join('↔')}`
+        
+        if (!this.conflictWarnings.has(conflictKey)) {
+          this.conflictWarnings.add(conflictKey)
+          
+          const warningMsg = [
+            `⚠️  MULTI-PARENT DEPENDENCY CONFLICT`,
+            ``,
+            `   Multiple parent packages require different versions of: ${packageName}`,
+            ``,
+            ...conflictingParents.map(p => `   • ${p.parent} requires ${packageName}@${p.version}`),
+            ``
+          ].join('\n')
+          
+          this.pluginApi.call('terminal', 'log', {
+            type: 'warn',
+            value: warningMsg
+          }).catch(err => {
+            console.warn(warningMsg)
+          })
+        }
+      }
+    }
+  }
+
+  /**
    * Resolve a package version from workspace, lock file, or npm
    */
   private async resolvePackageVersion(packageName: string): Promise<{ version: string | null, source: string }> {
     console.log(`[ImportResolver] 🔍 Resolving version for: ${packageName}`)
+    
+    // Check if multiple parent packages have conflicting dependencies
+    this.checkForConflictingParentDependencies(packageName)
     
     // PRIORITY 1: Workspace resolutions/overrides
     if (this.workspaceResolutions.has(packageName)) {
@@ -782,6 +835,25 @@ export class ImportResolver implements IImportResolver {
             // (different files, no conflict)
             console.log(`[ImportResolver] ✅ Explicit version: ${packageName}@${requestedVersion}`)
             
+            // Fetch and save package.json for this version (if not already done)
+            const versionedPackageName = `${packageName}@${requestedVersion}`
+            if (!this.parentPackageDependencies.has(versionedPackageName)) {
+              try {
+                const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
+                const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+                const packageJson = JSON.parse(content.content || content)
+                
+                const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
+                await this.pluginApi.call('fileManager', 'setFile', pkgJsonPath, JSON.stringify(packageJson, null, 2))
+                console.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
+                
+                // Store dependencies for future parent context resolution
+                this.storePackageDependencies(versionedPackageName, packageJson)
+              } catch (err) {
+                console.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
+              }
+            }
+            
             // Use the URL as-is (with explicit version)
             finalUrl = url
             this.resolutions.set(originalUrl, finalUrl)
@@ -828,6 +900,7 @@ export class ImportResolver implements IImportResolver {
     
     console.log(`[ImportResolver] 📥 Fetching: ${url}`)
     const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
+    
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) {
         this.resolutions.set(originalUrl, url)
