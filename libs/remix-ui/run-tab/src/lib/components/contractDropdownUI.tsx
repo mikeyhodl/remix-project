@@ -42,20 +42,24 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const contractsRef = useRef<HTMLSelectElement>(null)
   const atAddressValue = useRef<HTMLInputElement>(null)
   const { contractList, loadType, currentFile, compilationSource, currentContract, compilationCount, deployOptions } = props.contracts
-  const [isVerifyChecked, setVerifyChecked] = useState<boolean>(() => {
-    const saved = window.localStorage.getItem('deploy-verify-contract-checked')
-    return saved !== null ? JSON.parse(saved) : true
-  })
-
+  const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
   const [isNetworkSupported, setNetworkSupported] = useState<boolean>(false)
 
   useEffect(() => {
     const checkSupport = async () => {
       if (props.plugin) {
         const supportedChain = await getSupportedChain(props.plugin)
-        setNetworkSupported(!!supportedChain)
+        const isSupported = !!supportedChain
+        setNetworkSupported(isSupported)
+
+        if (isSupported) {
+          const saved = window.localStorage.getItem('deploy-verify-contract-checked')
+          setVerifyChecked(saved !== null ? JSON.parse(saved) : true)
+        } else {
+          setVerifyChecked(false)
+        }
       }
-    }
+    };
     checkSupport()
   }, [props.networkName])
 
