@@ -132,21 +132,20 @@ export class SolidityCompileHandler extends BaseToolHandler {
         compilerConfig.version || 'latest' // version
       )
 
-      // Extract contract data
-      // if (compilationResult.data.contracts) {
-      //   for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
-      //     for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
-      //       const contract = contractData as any;
-      //       result.contracts[`${fileName}:${contractName}`] = {
-      //         abi: contract.abi || [],
-      //         bytecode: contract.evm?.bytecode?.object || '',
-      //         deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-      //         metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
-      //         gasEstimates: contract.evm?.gasEstimates || {}
-      //       };
-      //     }
-      //   }
-      // }
+      if (compilationResult.data?.contracts) {
+        for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
+          for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
+            const contract = contractData as any;
+            result.contracts[`${fileName}:${contractName}`] = {
+              abi: contract.abi || [],
+              bytecode: contract.evm?.bytecode?.object || '',
+              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+              gasEstimates: contract.evm?.gasEstimates || {}
+            };
+          }
+        }
+      }
 
       return this.createSuccessResult(result);
     } catch (error) {
