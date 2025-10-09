@@ -1,6 +1,6 @@
 'use strict'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
-import { Compiler, ImportResolver } from '@remix-project/remix-solidity'
+import { SmartCompiler, ImportResolver } from '@remix-project/remix-solidity'
 
 import { CompilationResult, CompilationSource } from '@remix-project/remix-solidity'
 import { CodeParser } from "../code-parser";
@@ -119,11 +119,12 @@ export default class CodeParserCompiler {
       this.plugin.emit('astFinished')
     }
 
-    this.compiler = new Compiler(
-      (url, cb) => { return this.plugin.call('contentImport', 'resolveAndSave', url).then((result) => cb(null, result)).catch((error: Error) => cb(error.message)) },
-      (target) => {
-        // Factory function: creates a new ImportResolver for each compilation
-        return new ImportResolver(this.plugin, target)
+    this.compiler = new SmartCompiler(
+      this.plugin,
+      (url, cb) => { 
+        return this.plugin.call('contentImport', 'resolveAndSave', url)
+          .then((result) => cb(null, result))
+          .catch((error: Error) => cb(error))
       }
     )
     this.compiler.event.register('compilationFinished', this.onAstFinished)
