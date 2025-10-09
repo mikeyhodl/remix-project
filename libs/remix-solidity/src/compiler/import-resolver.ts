@@ -122,9 +122,21 @@ export class ImportResolver implements IImportResolver {
       for (const [pkg, versionRange] of Object.entries(allDeps)) {
         // Only store if not already set by resolutions/overrides
         if (!this.workspaceResolutions.has(pkg) && typeof versionRange === 'string') {
+          // Handle npm aliases like "npm:@openzeppelin/contracts@4.8.3"
+          if (versionRange.startsWith('npm:')) {
+            const npmAlias = versionRange.substring(4) // Remove "npm:" prefix
+            const match = npmAlias.match(/^(@?[^@]+)@(.+)$/)
+            if (match) {
+              const [, realPackage, version] = match
+              this.workspaceResolutions.set(pkg, `alias:${realPackage}@${version}`)
+              console.log(`[ImportResolver] 🔗 NPM alias: ${pkg} → ${realPackage}@${version}`)
+            } else {
+              console.log(`[ImportResolver] ⚠️  Invalid npm alias format: ${pkg} → ${versionRange}`)
+            }
+          }
           // For exact versions (e.g., "4.8.3"), store directly
           // For ranges (e.g., "^4.8.0"), we'll need the lock file or npm to resolve
-          if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
+          else if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
             // Exact version - store it
             this.workspaceResolutions.set(pkg, versionRange)
             console.log(`[ImportResolver] 📦 Workspace dependency (exact): ${pkg} → ${versionRange}`)
@@ -597,11 +609,26 @@ export class ImportResolver implements IImportResolver {
     // Check if multiple parent packages have conflicting dependencies
     this.checkForConflictingParentDependencies(packageName)
     
-    // PRIORITY 1: Workspace resolutions/overrides
+    // PRIORITY 1: Workspace resolutions/overrides - ALWAYS reload fresh
+    await this.loadWorkspaceResolutions()
+    
     if (this.workspaceResolutions.has(packageName)) {
-      const version = this.workspaceResolutions.get(packageName)
-      console.log(`[ImportResolver] ✅ PRIORITY 1 - Workspace resolution: ${packageName} → ${version}`)
-      return { version, source: 'workspace-resolution' }
+      const resolution = this.workspaceResolutions.get(packageName)
+      
+      // Handle npm aliases like "alias:@openzeppelin/contracts@4.8.3"
+      if (resolution?.startsWith('alias:')) {
+        const aliasTarget = resolution.substring(6) // Remove "alias:" prefix
+        console.log(`[ImportResolver] 🔗 PRIORITY 1 - NPM alias: ${packageName} → ${aliasTarget}`)
+        const match = aliasTarget.match(/^(@?[^@]+)@(.+)$/)
+        if (match) {
+          const [, realPackage, version] = match
+          // Return the specific version from the alias, don't recurse
+          return { version, source: `alias:${packageName}→${realPackage}` }
+        }
+      } else {
+        console.log(`[ImportResolver] ✅ PRIORITY 1 - Workspace resolution: ${packageName} → ${resolution}`)
+        return { version: resolution, source: 'workspace-resolution' }
+      }
     }
     console.log(`[ImportResolver]    ⏭️  Priority 1 (workspace): Not found`)
     
@@ -654,8 +681,10 @@ export class ImportResolver implements IImportResolver {
       }
       
       // Save package.json to file system for visibility and debugging
+      // Use the actual package name from package.json, not the potentially aliased packageName parameter
+      const realPackageName = packageJson.name || packageName
       try {
-        const targetPath = `.deps/npm/${packageName}@${packageJson.version}/package.json`
+        const targetPath = `.deps/npm/${realPackageName}@${packageJson.version}/package.json`
         await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
         console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
       } catch (saveErr) {
@@ -722,7 +751,17 @@ export class ImportResolver implements IImportResolver {
       return
     }
     
-    const versionedPackageName = `${packageName}@${resolvedVersion}`
+    // Handle npm aliases: if this is an alias, use the real package name
+    let actualPackageName = packageName
+    if (source.startsWith('alias:')) {
+      const aliasMatch = source.match(/^alias:[^→]+→(.+)$/)
+      if (aliasMatch) {
+        actualPackageName = aliasMatch[1]
+        console.log(`[ImportResolver] 🔄 Using real package name: ${packageName} → ${actualPackageName}`)
+      }
+    }
+    
+    const versionedPackageName = `${actualPackageName}@${resolvedVersion}`
     this.importMappings.set(mappingKey, versionedPackageName)
     
     // Record the source of this resolution
@@ -752,7 +791,9 @@ export class ImportResolver implements IImportResolver {
       // Save package.json if we haven't already (when using lock file or workspace resolutions)
       if (source !== 'package-json') {
         try {
-          const targetPath = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
+          // Use the actual package name from package.json, not the potentially aliased packageName parameter
+          const realPackageName = packageJson.name || packageName
+          const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
           await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
           console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
         } catch (saveErr) {
