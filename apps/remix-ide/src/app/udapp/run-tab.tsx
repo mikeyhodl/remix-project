@@ -106,7 +106,7 @@ export class RunTab extends ViewPlugin {
     // Listen for transaction execution events to collect deployment data
     this.on('blockchain','transactionExecuted', (error, from, to, data, useCall, result, timestamp, payload) => {
       console.log('[UDAPP] Transaction execution detected:', result.receipt.contractAddress)
-      
+
       if (!error && result && result.receipt && result.receipt.contractAddress) {
 
         // Store deployment transaction data

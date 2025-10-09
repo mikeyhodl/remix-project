@@ -703,7 +703,7 @@ export class Blockchain extends Plugin {
           if (lookupOnly) {
             outputCb(returnValue)
           }
-          if (finalCb) finalCb(error, {txResult, address: _address, returnValue})
+          if (finalCb) finalCb(error, { txResult, address: _address, returnValue })
         })
       },
       (msg) => {

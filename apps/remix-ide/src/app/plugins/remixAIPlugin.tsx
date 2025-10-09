@@ -124,7 +124,7 @@ export class RemixAIPlugin extends Plugin {
 
     (window as any).getRemixAIPlugin = this
 
-    // initialize the remix MCP server 
+    // initialize the remix MCP server
     this.remixMCPServer = await createRemixMCPServer(this)
     return true
   }
@@ -530,7 +530,7 @@ export class RemixAIPlugin extends Plugin {
   async removeMCPServer(serverName: string): Promise<void> {
     try {
       console.log(`[RemixAI Plugin] Removing MCP server: ${serverName}`);
-      
+
       // Check if it's a built-in server
       const serverToRemove = this.mcpServers.find(s => s.name === serverName);
       if (serverToRemove?.isBuiltIn) {
@@ -608,7 +608,7 @@ export class RemixAIPlugin extends Plugin {
       console.log(`[RemixAI Plugin] Raw savedServers from settings:`, savedServers);
       console.log(`[RemixAI Plugin] Type of savedServers:`, typeof savedServers);
       if (savedServers) {
-        let loadedServers = JSON.parse(savedServers);
+        const loadedServers = JSON.parse(savedServers);
         // Ensure built-in servers are always present
         const builtInServers: IMCPServer[] = [
           {
@@ -632,7 +632,7 @@ export class RemixAIPlugin extends Plugin {
 
         this.mcpServers = loadedServers;
         console.log(`[RemixAI Plugin] Loaded ${this.mcpServers.length} MCP servers from settings:`, this.mcpServers.map(s => s.name));
-        
+
         // Save back to settings if we added built-in servers
         if (loadedServers.length > JSON.parse(savedServers).length) {
           await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(loadedServers));
@@ -718,10 +718,10 @@ export class RemixAIPlugin extends Plugin {
   }
 
   clearCaches(){
-     if (this.mcpInferencer){
+    if (this.mcpInferencer){
       this.mcpInferencer.resetResourceCache()
       console.log(`[RemixAI Plugin] clearing mcp inference resource cache `)
-     }
+    }
   }
 
   // private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {
