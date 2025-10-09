@@ -433,24 +433,24 @@ describe('testRunner', function () {
     })
 
     // Test Transaction with custom sender & value
-    // describe('various sender', function () {
-    //   const filename: string = __dirname + '/various_sender/sender_and_value_test.sol'
+    describe('various sender', function () {
+      const filename: string = __dirname + '/various_sender/sender_and_value_test.sol'
 
-    //   before(done => {
-    //     compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
-    //       runTest('SenderAndValueTest', contracts.SenderAndValueTest, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
-    //     })
-    //   })
+      before(done => {
+        compileAndDeploy(filename, function (_err: Error | null | undefined, compilationData: any, contracts: any, asts: any, accounts: string[], provider: any) {
+          runTest('SenderAndValueTest', contracts.SenderAndValueTest, compilationData[filename]['SenderAndValueTest'], asts[filename], { accounts, provider }, testCallback, resultsCallback(done))
+        })
+      })
 
-    //   after(() => { tests = [] })
+      after(() => { tests = [] })
 
-    //   it('should have 17 passing tests', () => {
-    //     assert.equal(results.passingNum, 17)
-    //   })
-    //   it('should have 0 failing tests', () => {
-    //     assert.equal(results.failureNum, 0)
-    //   })
-    // })
+      it('should have 17 passing tests', () => {
+        assert.equal(results.passingNum, 17)
+      })
+      it('should have 0 failing tests', () => {
+        assert.equal(results.failureNum, 0)
+      })
+    })
 
     // Test `runTest` method without sending contract object (should throw error)
     // describe('runTest method without contract json interface', function () {

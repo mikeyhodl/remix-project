@@ -1,6 +1,6 @@
 import async from 'async'
 import * as changeCase from 'change-case'
-import {keccak256, AbiCoder, ContractTransactionResponse, toUtf8Bytes } from 'ethers'
+import {keccak256, AbiCoder, ContractTransactionResponse, toUtf8Bytes, Interface } from 'ethers'
 import assertionEvents from './assertionEvents'
 import {
   RunListInterface, TestCbInterface, TestResultInterface, ResultCbInterface,
@@ -183,28 +183,29 @@ function createRunList (jsonInterface: FunctionDescription[], fileAST: AstNode, 
   const availableFunctions: string[] = getAvailableFunctions(fileAST, testContractName)
   const testFunctionsInterface: FunctionDescription[] = getTestFunctionsInterface(jsonInterface, availableFunctions)
   const specialFunctionsInterface: Record<string, FunctionDescription> = getSpecialFunctionsInterface(jsonInterface)
+  const contractInterface: Interface = new Interface(jsonInterface)
   const runList: RunListInterface[] = []
 
   if (availableFunctions.includes('beforeAll')) {
     const func = specialFunctionsInterface['beforeAll']
-    runList.push({ name: 'beforeAll', inputs: func.inputs, signature: func.signature, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
+    runList.push({ name: 'beforeAll', inputs: func.inputs, signature: contractInterface.getFunction(func.name).selector, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
   }
 
   for (const func of testFunctionsInterface) {
     if (availableFunctions.includes('beforeEach')) {
       const func = specialFunctionsInterface['beforeEach']
-      runList.push({ name: 'beforeEach', inputs: func.inputs, signature: func.signature, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
+      runList.push({ name: 'beforeEach', inputs: func.inputs, signature: contractInterface.getFunction(func.name).selector, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
     }
-    if (func.name && func.inputs) runList.push({ name: func.name, inputs: func.inputs, signature: func.signature, type: 'test', constant: isConstant(func), payable: isPayable(func) })
+    if (func.name && func.inputs) runList.push({ name: func.name, inputs: func.inputs, signature: contractInterface.getFunction(func.name).selector, type: 'test', constant: isConstant(func), payable: isPayable(func) })
     if (availableFunctions.indexOf('afterEach') >= 0) {
       const func = specialFunctionsInterface['afterEach']
-      runList.push({ name: 'afterEach', inputs: func.inputs, signature: func.signature, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
+      runList.push({ name: 'afterEach', inputs: func.inputs, signature: contractInterface.getFunction(func.name).selector, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
     }
   }
 
   if (availableFunctions.indexOf('afterAll') >= 0) {
     const func = specialFunctionsInterface['afterAll']
-    runList.push({ name: 'afterAll', inputs: func.inputs, signature: func.signature, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
+    runList.push({ name: 'afterAll', inputs: func.inputs, signature: contractInterface.getFunction(func.name).selector, type: 'internal', constant: isConstant(func), payable: isPayable(func) })
   }
 
   return runList
