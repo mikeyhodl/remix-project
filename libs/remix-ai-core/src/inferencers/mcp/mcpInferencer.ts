@@ -305,6 +305,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
   private remixMCPServer?: any; // Internal RemixMCPServer instance
+  private MAX_TOOL_EXECUTIONS = 10;
 
   constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any) {
     super(apiUrl, completionUrl);
@@ -646,10 +647,24 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     try {
       const response = await super.answer(enrichedPrompt, enhancedOptions);
       console.log('got initial response', response)
-      
+
+      // Track number of tool execution iterations
+      let toolExecutionCount = 0;
+
       const toolExecutionCallback = async (tool_calls) => {
         console.log('calling tool execution callback')
-          // Handle tool calls in the response
+
+        // avoid circular tooling
+        if (toolExecutionCount >= this.MAX_TOOL_EXECUTIONS) {
+          console.log(`[MCP Inferencer] Maximum tool execution limit (${this.MAX_TOOL_EXECUTIONS}) reached. Stopping further executions.`);
+          return { streamResponse: await super.answer(enrichedPrompt, options)};
+          return;
+        }
+
+        toolExecutionCount++;
+        console.log(`[MCP Inferencer] Tool execution iteration ${toolExecutionCount}/${this.MAX_TOOL_EXECUTIONS}`);
+
+        // Handle tool calls in the response
         if (tool_calls && tool_calls.length > 0) {
           console.log(`[MCP Inferencer] LLM requested ${tool_calls.length} tool calls`);
           const toolResults = [];
@@ -689,7 +704,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
         }
       }
-      
+
       return { streamResponse: response, callback:toolExecutionCallback} as IAIStreamResponse;
     } catch (error) {
       console.error(`[MCP Inferencer] Error in enhanced answer:`, error);
