@@ -277,4 +277,13 @@ export class DependencyResolver {
     
     return sources
   }
+
+  /**
+   * Save all import resolutions to the resolution index for "Go to Definition" functionality
+   * This should be called after buildDependencyTree() completes successfully
+   */
+  public async saveResolutionIndex(): Promise<void> {
+    console.log(`[DependencyResolver] 💾 Saving resolution index...`)
+    await this.resolver.saveResolutionsToIndex()
+  }
 }

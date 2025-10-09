@@ -232,12 +232,8 @@ export class Compiler {
     } else {
       console.log(`[Compiler] ✅ 🎉 Compilation successful for target: "${this.state.target}"`)
       
-      // Save resolution index before cleaning up resolver
+      // Clean up resolver (no longer needed - DependencyResolver handles resolution index)
       if (this.currentResolver) {
-        console.log(`[Compiler] 💾 Saving resolution index...`)
-        this.currentResolver.saveResolutionsToIndex().catch(err => {
-          console.log(`[Compiler] ⚠️  Failed to save resolution index:`, err)
-        })
         console.log(`[Compiler] 🧹 Compilation successful, discarding resolver`)
         this.currentResolver = null
       }

@@ -163,6 +163,9 @@ export class CompileTabLogic {
         console.log(`[CompileTabLogic] ✅ Dependency tree built successfully`)
         console.log(`[CompileTabLogic] 📦 Source bundle contains ${sourceBundle.size} files`)
         
+        // Save resolution index for "Go to Definition" functionality
+        await depResolver.saveResolutionIndex()
+        
         // Get import graph for debugging/logging
         const importGraph = depResolver.getImportGraph()
         if (importGraph.size > 0) {

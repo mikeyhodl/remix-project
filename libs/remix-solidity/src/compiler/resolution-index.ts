@@ -184,10 +184,22 @@ export class ResolutionIndex {
     }
 
     try {
+      // Ensure the directory exists before writing the file
+      const directory = '.deps/npm'
+      try {
+        const exists = await this.pluginApi.call('fileManager', 'exists', directory)
+        if (!exists) {
+          await this.pluginApi.call('fileManager', 'mkdir', directory)
+          console.log(`[ResolutionIndex] 📁 Created directory: ${directory}`)
+        }
+      } catch (dirErr) {
+        console.log(`[ResolutionIndex] ⚠️  Could not ensure directory exists:`, dirErr)
+      }
+      
       const content = JSON.stringify(this.index, null, 2)
       await this.pluginApi.call('fileManager', 'writeFile', this.indexPath, content)
       this.isDirty = false
-      console.log(`[ResolutionIndex] 💾 Saved index with ${Object.keys(this.index).length} source files`)
+      console.log(`[ResolutionIndex] 💾 Saved index with ${Object.keys(this.index).length} source files to: ${this.indexPath}`)
     } catch (err) {
       console.log(`[ResolutionIndex] ❌ Failed to save index:`, err)
     }
