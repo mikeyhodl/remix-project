@@ -14,6 +14,9 @@ export class ImportResolver implements IImportResolver {
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
   private importedFiles: Map<string, string> = new Map() // Track imported files: "pkg/path/to/file.sol" -> "version"
   private packageSources: Map<string, string> = new Map() // Track which package.json resolved each dependency: "pkg" -> "source-package"
+  private parentPackageDependencies: Map<string, Map<string, string>> = new Map() // Track dependencies of each parent package: "parent@version" -> { "dep" -> "version" }
+  private workspaceName: string | null = null
+  private static currentWorkspace: string | null = null
 
   // Shared resolution index across all ImportResolver instances
   private static resolutionIndex: ResolutionIndex | null = null
@@ -125,8 +128,10 @@ export class ImportResolver implements IImportResolver {
    * Parse lock file to get actual installed versions
    */
   private async loadLockFileVersions(): Promise<void> {
-    // Clear existing lock file versions to pick up changes
-    this.lockFileVersions.clear()
+    // Only reload if we haven't loaded lock files yet (avoid repeated logging)
+    if (this.lockFileVersions.size > 0) {
+      return
+    }
     
     // Try yarn.lock first
     try {
@@ -136,7 +141,7 @@ export class ImportResolver implements IImportResolver {
         return
       }
     } catch (err) {
-      console.log(`[ImportResolver] ℹ️  No yarn.lock found`)
+      // Silent
     }
 
     // Try package-lock.json
@@ -147,7 +152,7 @@ export class ImportResolver implements IImportResolver {
         return
       }
     } catch (err) {
-      console.log(`[ImportResolver] ℹ️  No package-lock.json found`)
+      // Silent
     }
   }
 
@@ -175,10 +180,11 @@ export class ImportResolver implements IImportResolver {
         const versionMatch = line.match(/^\s+version\s+"([^"]+)"/)
         if (versionMatch && currentPackage) {
           this.lockFileVersions.set(currentPackage, versionMatch[1])
-          console.log(`[ImportResolver] 🔒 Lock file: ${currentPackage} → ${versionMatch[1]}`)
           currentPackage = null
         }
       }
+      
+      console.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from yarn.lock`)
     } catch (err) {
       console.log(`[ImportResolver] ⚠️  Failed to parse yarn.lock:`, err)
     }
@@ -197,7 +203,6 @@ export class ImportResolver implements IImportResolver {
         for (const [pkg, data] of Object.entries(lockData.dependencies)) {
           if (data && typeof data === 'object' && 'version' in data) {
             this.lockFileVersions.set(pkg, (data as any).version)
-            console.log(`[ImportResolver] 🔒 Lock file: ${pkg} → ${(data as any).version}`)
           }
         }
       }
@@ -214,11 +219,12 @@ export class ImportResolver implements IImportResolver {
             const pkg = path.replace(/^node_modules\//, '')
             if (pkg && pkg !== '') {
               this.lockFileVersions.set(pkg, (data as any).version)
-              console.log(`[ImportResolver] 🔒 Lock file: ${pkg} → ${(data as any).version}`)
             }
           }
         }
       }
+      
+      console.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from package-lock.json`)
     } catch (err) {
       console.log(`[ImportResolver] ⚠️  Failed to parse package-lock.json:`, err)
     }
@@ -480,27 +486,78 @@ export class ImportResolver implements IImportResolver {
   }
 
   /**
+   * Find the parent package context we're currently resolving from
+   * E.g., if we've mapped @chainlink/contracts-ccip@1.6.1, and it imports @chainlink/contracts,
+   * we want to use contracts-ccip's dependencies to resolve that import
+   */
+  private findParentPackageContext(): string | null {
+    // Look through all mapped packages to find a potential parent
+    // The most recently mapped package is likely the parent we're resolving from
+    const mappedPackages = Array.from(this.importMappings.values())
+      .filter(v => v.includes('@')) // Only versioned packages
+      .map(v => {
+        // Extract package@version from versioned package name
+        const match = v.match(/^(@?[^@]+)@(.+)$/)
+        return match ? `${match[1]}@${match[2]}` : null
+      })
+      .filter(Boolean)
+    
+    // Return the most recently added parent package (LIFO - last in, first out)
+    // This works because we process imports sequentially
+    for (let i = mappedPackages.length - 1; i >= 0; i--) {
+      const pkg = mappedPackages[i]
+      if (pkg && this.parentPackageDependencies.has(pkg)) {
+        return pkg
+      }
+    }
+    
+    return null
+  }
+
+  /**
    * Resolve a package version from workspace, lock file, or npm
    */
   private async resolvePackageVersion(packageName: string): Promise<{ version: string | null, source: string }> {
+    console.log(`[ImportResolver] 🔍 Resolving version for: ${packageName}`)
+    
     // PRIORITY 1: Workspace resolutions/overrides
     if (this.workspaceResolutions.has(packageName)) {
       const version = this.workspaceResolutions.get(packageName)
-      console.log(`[ImportResolver] 📌 Using workspace resolution: ${packageName} → ${version}`)
+      console.log(`[ImportResolver] ✅ PRIORITY 1 - Workspace resolution: ${packageName} → ${version}`)
       return { version, source: 'workspace-resolution' }
     }
+    console.log(`[ImportResolver]    ⏭️  Priority 1 (workspace): Not found`)
     
-    // PRIORITY 2: Lock file (if no workspace override)
+    // PRIORITY 2: Parent package dependencies
+    // Check if we're resolving from within a parent package (e.g., @chainlink/contracts-ccip@1.6.1)
+    const parentPackage = this.findParentPackageContext()
+    if (parentPackage) {
+      console.log(`[ImportResolver]    🔍 Priority 2 (parent): Checking ${parentPackage}`)
+      const parentDeps = this.parentPackageDependencies.get(parentPackage)
+      if (parentDeps && parentDeps.has(packageName)) {
+        const version = parentDeps.get(packageName)!
+        console.log(`[ImportResolver] ✅ PRIORITY 2 - Parent dependency: ${packageName} → ${version} (from ${parentPackage})`)
+        return { version, source: `parent-${parentPackage}` }
+      } else {
+        console.log(`[ImportResolver]    ⏭️  Priority 2 (parent): ${packageName} not in ${parentPackage} deps`)
+      }
+    } else {
+      console.log(`[ImportResolver]    ⏭️  Priority 2 (parent): No parent package context`)
+    }
+    
+    // PRIORITY 3: Lock file (if no workspace override or parent dependency)
     // Reload lock files fresh each time to pick up changes
     await this.loadLockFileVersions()
     
     if (this.lockFileVersions.has(packageName)) {
       const version = this.lockFileVersions.get(packageName)
-      console.log(`[ImportResolver] 🔒 Using lock file version: ${packageName} → ${version}`)
+      console.log(`[ImportResolver] ✅ PRIORITY 3 - Lock file: ${packageName} → ${version}`)
       return { version, source: 'lock-file' }
     }
+    console.log(`[ImportResolver]    ⏭️  Priority 3 (lock file): Not found`)
     
-    // PRIORITY 3: Fetch package.json (fallback)
+    // PRIORITY 4: Fetch package.json (fallback)
+    console.log(`[ImportResolver]    🌐 Priority 4 (NPM): Fetching latest...`)
     return await this.fetchPackageVersionFromNpm(packageName)
   }
 
@@ -528,11 +585,50 @@ export class ImportResolver implements IImportResolver {
         console.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
       }
       
+      // Store parent's dependencies for future lookups
+      this.storePackageDependencies(`${packageName}@${packageJson.version}`, packageJson)
+      
       return { version: packageJson.version, source: 'package-json' }
     } catch (err) {
       console.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
       return { version: null, source: 'fetched' }
     }
+  }
+
+  /**
+   * Extract and store dependencies from a package.json for future parent context resolution
+   */
+  private storePackageDependencies(packageKey: string, packageJson: any): void {
+    if (!packageJson.dependencies && !packageJson.peerDependencies) {
+      return
+    }
+    
+    const deps = new Map<string, string>()
+    
+    // Store regular dependencies
+    if (packageJson.dependencies) {
+      for (const [dep, versionRange] of Object.entries(packageJson.dependencies)) {
+        // Extract version number from range (e.g., "^1.4.0" -> "1.4.0")
+        const cleanVersion = (versionRange as string).replace(/^[\^~>=<]+/, '')
+        deps.set(dep, cleanVersion)
+      }
+    }
+    
+    // Store peer dependencies
+    if (packageJson.peerDependencies) {
+      for (const [dep, versionRange] of Object.entries(packageJson.peerDependencies)) {
+        if (!deps.has(dep)) {
+          const cleanVersion = (versionRange as string).replace(/^[\^~>=<]+/, '')
+          deps.set(dep, cleanVersion)
+        }
+      }
+    }
+    
+    this.parentPackageDependencies.set(packageKey, deps)
+    console.log(`[ImportResolver] 📚 Stored ${deps.size} dependencies for ${packageKey}:`)
+    deps.forEach((version, dep) => {
+      console.log(`[ImportResolver]      - ${dep}: ${version}`)
+    })
   }
 
   private async fetchAndMapPackage(packageName: string): Promise<void> {
@@ -587,6 +683,9 @@ export class ImportResolver implements IImportResolver {
         }
       }
       
+      // Store dependencies for future parent context resolution
+      this.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
+      
       // Check dependencies for conflicts
       await this.checkPackageDependencies(packageName, resolvedVersion, packageJson)
     } catch (err) {
@@ -607,14 +706,14 @@ export class ImportResolver implements IImportResolver {
         const mappingKey = `__PKG__${packageName}`
         
         if (!this.importMappings.has(mappingKey)) {
-          console.log(`[ImportResolver] 🔍 First import from ${packageName}, fetching package.json...`)
+          console.log(`[ImportResolver] 🔍 First import from ${packageName}, resolving version...`)
           await this.fetchAndMapPackage(packageName)
         }
         
         if (this.importMappings.has(mappingKey)) {
           const versionedPackageName = this.importMappings.get(mappingKey)
           const mappedUrl = url.replace(packageName, versionedPackageName)
-          console.log(`[ImportResolver] 🔀 Applying ISOLATED mapping: ${url} → ${mappedUrl}`)
+          console.log(`[ImportResolver] 🔀 Mapped: ${packageName} → ${versionedPackageName}`)
           
           finalUrl = mappedUrl
           this.resolutions.set(originalUrl, finalUrl)
@@ -640,23 +739,12 @@ export class ImportResolver implements IImportResolver {
             // Check if we've already imported this EXACT file from a different version
             const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
             
-            if (previousVersion && previousVersion !== resolvedVersion) {
+            if (previousVersion && previousVersion !== requestedVersion) {
               // REAL CONFLICT: Same file imported from two different versions
-              const conflictKey = `${fileKey}:${previousVersion}↔${resolvedVersion}`
+              const conflictKey = `${fileKey}:${previousVersion}↔${requestedVersion}`
               
               if (!this.conflictWarnings.has(conflictKey)) {
                 this.conflictWarnings.add(conflictKey)
-                
-                // Determine the source of the resolved version
-                let resolutionSource = 'npm registry'
-                const sourcePackage = this.packageSources.get(packageName)
-                if (this.workspaceResolutions.has(packageName)) {
-                  resolutionSource = 'workspace package.json'
-                } else if (this.lockFileVersions.has(packageName)) {
-                  resolutionSource = 'lock file'
-                } else if (sourcePackage && sourcePackage !== packageName) {
-                  resolutionSource = `${sourcePackage}/package.json`
-                }
                 
                 const warningMsg = [
                   `🚨 DUPLICATE FILE DETECTED - Will cause compilation errors!`,
@@ -664,15 +752,13 @@ export class ImportResolver implements IImportResolver {
                   `   From package: ${packageName}`,
                   ``,
                   `   Already imported from version: ${previousVersion}`,
-                  `   Now requesting version:       ${resolvedVersion}`,
-                  `     (from ${resolutionSource})`,
+                  `   Now requesting version:       ${requestedVersion}`,
                   ``,
                   `🔧 REQUIRED FIX - Use explicit versioned imports in your Solidity file:`,
                   `   Choose ONE version:`,
                   `     import "${packageName}@${previousVersion}/${relativePath}";`,
                   `   OR`,
-                  `     import "${packageName}@${resolvedVersion}/${relativePath}";`,
-                  `     (and update package.json: "${packageName}": "${resolvedVersion}")`,
+                  `     import "${packageName}@${requestedVersion}/${relativePath}";`,
                   ``
                 ].join('\n')
                 
@@ -683,18 +769,24 @@ export class ImportResolver implements IImportResolver {
                   console.warn(warningMsg)
                 })
               }
-            } else if (fileKey && !previousVersion) {
-              // First time seeing this file - just record which version we're using
-              // Don't warn about version mismatches here - only warn if same file imported twice
-              this.importedFiles.set(fileKey, resolvedVersion)
-              console.log(`[ImportResolver] 📝 Tracking import: ${fileKey} from version ${resolvedVersion}`)
             }
             
-            const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, versionedPackageName)
-            finalUrl = mappedUrl
+            // Record this file import (even if different version)
+            if (fileKey) {
+              this.importedFiles.set(fileKey, requestedVersion)
+              console.log(`[ImportResolver] 📝 Tracking: ${fileKey} @ ${requestedVersion}`)
+            }
+            
+            // IMPORTANT: Don't force version mapping! Allow explicit version to be used
+            // This allows: contracts@4.8.0/ERC20.sol + contracts@5.2.0/StorageSlot.sol
+            // (different files, no conflict)
+            console.log(`[ImportResolver] ✅ Explicit version: ${packageName}@${requestedVersion}`)
+            
+            // Use the URL as-is (with explicit version)
+            finalUrl = url
             this.resolutions.set(originalUrl, finalUrl)
             
-            return this.resolveAndSave(mappedUrl, targetPath, true)
+            return this.resolveAndSave(url, targetPath, true)
           } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
             // Versions MATCH - normalize to canonical path to prevent duplicate declarations
             // This ensures "@openzeppelin/contracts@4.8.3/..." always resolves to the same path
@@ -723,6 +815,9 @@ export class ImportResolver implements IImportResolver {
               const targetPath = `.deps/npm/${versionedPackageName}/package.json`
               await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
               console.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+              
+              // Store dependencies for future parent context resolution
+              this.storePackageDependencies(versionedPackageName, packageJson)
             } catch (err) {
               console.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
             }
@@ -731,12 +826,11 @@ export class ImportResolver implements IImportResolver {
       }
     }
     
-    console.log(`[ImportResolver] 📥 Fetching file (skipping ContentImport global mappings): ${url}`)
+    console.log(`[ImportResolver] 📥 Fetching: ${url}`)
     const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) {
         this.resolutions.set(originalUrl, url)
-        console.log(`[ImportResolver] �� Recorded resolution: ${originalUrl} → ${url}`)
       }
     }
     

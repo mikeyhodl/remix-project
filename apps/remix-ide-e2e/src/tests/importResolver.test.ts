@@ -16,7 +16,7 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('UpgradeableNFT.sol', sources[0]['UpgradeableNFT.sol'])
+            .addFile('UpgradeableNFT.sol', upgradeableNFTSource['UpgradeableNFT.sol'])
             .pause(3000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
@@ -56,8 +56,8 @@ module.exports = {
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
             // Create a package.json specifying OpenZeppelin version
-            .addFile('package.json', sources[1]['package.json'])
-            .addFile('TokenWithDeps.sol', sources[1]['TokenWithDeps.sol'])
+            .addFile('package.json', packageJsonV4_8_3Source['package.json'])
+            .addFile('TokenWithDeps.sol', packageJsonV4_8_3Source['TokenWithDeps.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)  // Wait for compilation
@@ -68,7 +68,7 @@ module.exports = {
             // Verify the correct version from package.json was used (4.8.3)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 60000)
             .openFile('package.json')
-            .setEditorValue(sources[2]['package.json'].content) // Change to OpenZeppelin 5.4.0
+            .setEditorValue(packageJsonV5_4_0Source['package.json'].content) // Change to OpenZeppelin 5.4.0
             .pause(1000)
             .openFile('TokenWithDeps.sol')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
@@ -92,7 +92,7 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('ExplicitVersions.sol', sources[3]['ExplicitVersions.sol'])
+            .addFile('ExplicitVersions.sol', explicitVersionsSource['ExplicitVersions.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
@@ -124,8 +124,8 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('package.json', sources[4]['package.json'])  // Has @openzeppelin/contracts@4.8.3
-            .addFile('ConflictingVersions.sol', sources[4]['ConflictingVersions.sol'])  // Imports @5
+            .addFile('package.json', conflictingVersionsSource['package.json'])  // Has @openzeppelin/contracts@4.8.3
+            .addFile('ConflictingVersions.sol', conflictingVersionsSource['ConflictingVersions.sol'])  // Imports @5
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
@@ -144,8 +144,8 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('yarn.lock', sources[5]['yarn.lock'])
-            .addFile('YarnLockTest.sol', sources[5]['YarnLockTest.sol'])
+            .addFile('yarn.lock', yarnLockV4_9_6Source['yarn.lock'])
+            .addFile('YarnLockTest.sol', yarnLockV4_9_6Source['YarnLockTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000) // Longer pause for npm fetch
@@ -162,8 +162,8 @@ module.exports = {
         browser
             .clickLaunchIcon('filePanel')
             .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
-            .addFile('package-lock.json', sources[7]['package-lock.json'])
-            .addFile('PackageLockTest.sol', sources[7]['PackageLockTest.sol'])
+            .addFile('package-lock.json', packageLockV4_8_1Source['package-lock.json'])
+            .addFile('PackageLockTest.sol', packageLockV4_8_1Source['PackageLockTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
@@ -177,13 +177,30 @@ module.exports = {
             .end()
     },
 
+    'Test Chainlink CCIP parent dependency resolution #group7': function (browser: NightwatchBrowser) {
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('ChainlinkCCIP.sol', chainlinkCCIPSource['ChainlinkCCIP.sol'])
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
+            // Verify contracts@1.4.0 (not 1.5.0!) - this is the key test for parent dependency resolution
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 10000)
+            // Verify contracts-ccip@1.6.1
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.2"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.1"]', 10000)
+            .end()
+    },
+
 }
 
-const sources = [
-    {
-        // Test basic upgradeable contracts import
-        'UpgradeableNFT.sol': {
-            content: `// SPDX-License-Identifier: MIT
+// Named source objects for each test group - much clearer than array indices!
+const upgradeableNFTSource = {
+    'UpgradeableNFT.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
@@ -193,21 +210,21 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155Burn
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 `
-        }
-    },
-    {
-        // Test workspace package.json version resolution
-        'package.json': {
-            content: `{
+    }
+}
+
+const packageJsonV4_8_3Source = {
+    'package.json': {
+        content: `{
   "name": "test-workspace",
   "version": "1.0.0",
   "dependencies": {
     "@openzeppelin/contracts": "4.8.3"
   }
 }`
-        },
-        'TokenWithDeps.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    },
+    'TokenWithDeps.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -215,21 +232,21 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MyToken is ERC20 {
     constructor() ERC20("MyToken", "MTK") {}
 }`
-        }
-    },
-        {
-        // Test workspace package.json version resolution
-        'package.json': {
-            content: `{
+    }
+}
+
+const packageJsonV5_4_0Source = {
+    'package.json': {
+        content: `{
   "name": "test-workspace",
   "version": "1.0.0",
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
   }
 }`
-        },
-        'TokenWithDeps.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    },
+    'TokenWithDeps.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -237,12 +254,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MyToken is ERC20 {
     constructor() ERC20("MyToken", "MTK") {}
 }`
-        }
-    },
-    {
-        // Test explicit versioned imports get deduplicated
-        'ExplicitVersions.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    }
+}
+
+const explicitVersionsSource = {
+    'ExplicitVersions.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
@@ -256,33 +273,33 @@ contract MyToken is ERC20 {
         return token.totalSupply();
     }
 }`
-        }
-    },
-    {
-        // Test version conflict scenarios
-        'package.json': {
-            content: `{
+    }
+}
+
+const conflictingVersionsSource = {
+    'package.json': {
+        content: `{
   "name": "conflict-test",
   "version": "1.0.0",
   "dependencies": {
     "@openzeppelin/contracts": "4.8.3"
   }
 }`
-        },
-        'ConflictingVersions.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    },
+    'ConflictingVersions.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 // Package.json has 4.8.3, but we explicitly request 5
 import "@openzeppelin/contracts@5/token/ERC20/IERC20.sol";
 
 contract MyToken {}`
-        }
-    },
-    {
-        // Test yarn.lock version resolution (group 5)
-        'yarn.lock': {
-            content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
+    }
+}
+
+const yarnLockV4_9_6Source = {
+    'yarn.lock': {
+        content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
 # yarn lockfile v1
 
 "@openzeppelin/contracts@^4.9.0":
@@ -290,9 +307,9 @@ contract MyToken {}`
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.6.tgz"
   integrity sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dy96XIBCrAtOzko4xtrkR9Nj/Ox+oF+Y5C+RqXoRWA==
 `
-        },
-        'YarnLockTest.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    },
+    'YarnLockTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -301,12 +318,12 @@ contract MyToken is ERC20 {
     // Should resolve to 4.9.6 from yarn.lock
     constructor() ERC20("MyToken", "MTK") {}
 }`
-        }
-    },
-    {
-        // Test yarn.lock change detection (group 5) - Changed version to 4.7.3
-        'yarn.lock': {
-            content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
+    }
+}
+
+const yarnLockV4_7_3Source = {
+    'yarn.lock': {
+        content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
 # yarn lockfile v1
 
 "@openzeppelin/contracts@^4.7.0":
@@ -314,12 +331,12 @@ contract MyToken is ERC20 {
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz"
   integrity sha512-dGRS0agJzu8ybo44pCIf3xBaPQN/65AIXNgK8+4gzKd5kbvlqyxryUYVLJv7fK98Seyd2hDzVEHSWAh0Bt1Yw==
 `
-        }
-    },
-    {
-        // Test package-lock.json version resolution (group 6)
-        'package-lock.json': {
-            content: `{
+    }
+}
+
+const packageLockV4_8_1Source = {
+    'package-lock.json': {
+        content: `{
   "name": "remix-project",
   "version": "1.0.0",
   "lockfileVersion": 3,
@@ -339,9 +356,9 @@ contract MyToken is ERC20 {
     }
   }
 }`
-        },
-        'PackageLockTest.sol': {
-            content: `// SPDX-License-Identifier: MIT
+    },
+    'PackageLockTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -350,12 +367,12 @@ contract MyToken is ERC20 {
     // Should resolve to 4.8.1 from package-lock.json
     constructor() ERC20("MyToken", "MTK") {}
 }`
-        }
-    },
-    {
-        // Test package-lock.json change detection (group 6) - Changed version to 4.6.0
-        'package-lock.json': {
-            content: `{
+    }
+}
+
+const packageLockV4_6_0Source = {
+    'package-lock.json': {
+        content: `{
   "name": "remix-project",
   "version": "1.0.0",
   "lockfileVersion": 3,
@@ -375,6 +392,30 @@ contract MyToken is ERC20 {
     }
   }
 }`
-        }
     }
+}
+
+const chainlinkCCIPSource = {
+    'ChainlinkCCIP.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPClientExample.sol";
+
+`
+    }
+}
+
+// Keep sources array for backwards compatibility with @sources function
+const sources = [
+    upgradeableNFTSource,
+    packageJsonV4_8_3Source,
+    packageJsonV5_4_0Source,
+    explicitVersionsSource,
+    conflictingVersionsSource,
+    yarnLockV4_9_6Source,
+    yarnLockV4_7_3Source,
+    packageLockV4_8_1Source,
+    packageLockV4_6_0Source,
+    chainlinkCCIPSource
 ]
