@@ -1,4 +1,5 @@
 export { Compiler } from './compiler/compiler'
+export { SmartCompiler } from './compiler/smart-compiler'
 export { ImportResolver } from './compiler/import-resolver'
 export { DependencyResolver } from './compiler/dependency-resolver'
 export { IImportResolver } from './compiler/import-resolver-interface'

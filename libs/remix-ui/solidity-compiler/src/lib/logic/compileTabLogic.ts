@@ -1,5 +1,5 @@
 import { ICompilerApi } from '@remix-project/remix-lib'
-import { getValidLanguage, Compiler, ImportResolver, DependencyResolver } from '@remix-project/remix-solidity'
+import { getValidLanguage, SmartCompiler } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 import { configFileContent } from '../compilerConfiguration'
 
@@ -29,12 +29,15 @@ export class CompileTabLogic {
     this.event = new EventEmitter()
     
     
-    // Create compiler with dependency resolution error callback
-    this.compiler = new Compiler((url, cb) => {
-      console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
-      console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
-      cb(`File not found: ${url} - Missing from pre-built dependency tree`)
-    })
+    // Create smart compiler with automatic dependency resolution
+    this.compiler = new SmartCompiler(
+      this.api as any,
+      (url, cb) => {
+        console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
+        console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
+        cb(new Error(`File not found: ${url} - Missing from pre-built dependency tree`))
+      }
+    )
     
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }
@@ -142,7 +145,7 @@ export class CompileTabLogic {
     if (!target) throw new Error('No target provided for compilation')
     
     try {
-      console.log(`[CompileTabLogic] 🎯 Starting compilation for: ${target}`)
+      console.log(`[CompileTabLogic] 🎯 Starting smart compilation for: ${target}`)
       
       // Read the entry file
       const content = await this.api.readFile(target)
@@ -152,70 +155,17 @@ export class CompileTabLogic {
       await this.setCompilerMappings()
       await this.setCompilerConfigContent()
       
-      // Build dependency tree BEFORE compilation
-      console.log(`[CompileTabLogic] 🌳 Building dependency tree...`)
-      const depResolver = new DependencyResolver(this.api as any, target)
+      // SmartCompiler automatically handles dependency resolution and compilation
+      console.log(`[CompileTabLogic] 🧠 Using SmartCompiler with automatic dependency resolution`)
       
-      try {
-        // Build complete source bundle with context-aware resolution
-        const sourceBundle = await depResolver.buildDependencyTree(target)
-        
-        console.log(`[CompileTabLogic] ✅ Dependency tree built successfully`)
-        console.log(`[CompileTabLogic] 📦 Source bundle contains ${sourceBundle.size} files`)
-        
-        // Save resolution index for "Go to Definition" functionality
-        await depResolver.saveResolutionIndex()
-        
-        // Get import graph for debugging/logging
-        const importGraph = depResolver.getImportGraph()
-        if (importGraph.size > 0) {
-          console.log(`[CompileTabLogic] 📊 Import graph:`)
-          importGraph.forEach((imports, file) => {
-            console.log(`[CompileTabLogic]   ${file}`)
-            imports.forEach(imp => console.log(`[CompileTabLogic]     → ${imp}`))
-          })
-        }
-        
-        // Convert to compiler input format
-        const sources = depResolver.toCompilerInput()
-        
-        // Add the entry file if it's not already in the bundle (e.g., local file)
-        if (!sources[target]) {
-          sources[target] = { content }
-        }
-        
-        console.log(`[CompileTabLogic] 🔨 Passing ${Object.keys(sources).length} files to simple new compiler`)
-        
-        // Log all files that will be compiled
-        Object.keys(sources).forEach((filePath, index) => {
-          console.log(`[CompileTabLogic]   ${index + 1}. ${filePath}`)
-        })
-        
-        console.log(`[CompileTabLogic] �️  Starting compilation with this.compiler...`, sources)
-        // Enable compilation with simple stopping callback
-        setTimeout(() => { 
-          this.compiler.compile(sources, target)
-        }, 100)
-
-        console.log(`[CompileTabLogic] ⏳ Compilation triggered for: ${target}`)
-        
-        return true
-      } catch (depError) {
-        console.error(`[CompileTabLogic] ❌ Failed to build dependency tree:`, depError)
-        
-        // Fall back to old approach if dependency resolution fails
-        console.log(`[CompileTabLogic] ⚠️  Falling back to legacy approach - but COMPILATION DISABLED`)
-        const sources = { [target]: { content } }
-        
-        console.log(`[CompileTabLogic] ⏸️  Would compile with legacy approach: ${target}`)
-        
-        // Skip actual compilation for now
-        // setTimeout(() => { 
-        //   this.compiler.compile(sources, target)
-        // }, 100)
-        
-        return true
-      }
+      const sources = { [target]: { content } }
+      
+      console.log(`[CompileTabLogic] � Starting smart compilation...`)
+      this.compiler.compile(sources, target)
+      
+      console.log(`[CompileTabLogic] ⏳ Smart compilation triggered for: ${target}`)
+      
+      return true
     } catch (error) {
       console.error(`[CompileTabLogic] ❌ Compilation failed:`, error)
       throw error
