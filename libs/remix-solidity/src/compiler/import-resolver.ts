@@ -399,13 +399,28 @@ export class ImportResolver implements IImportResolver {
   ): Promise<void> {
     const isPeerDep = peerDependencies && dep in peerDependencies
     
-    // IMPORTANT: Only check if this dependency is ALREADY mapped (i.e., actually imported)
-    // Don't recursively fetch the entire npm dependency tree!
+    // For peer dependencies, check against workspace/lock file versions even if not yet imported
+    // For regular dependencies, only check if already mapped (don't recursively fetch entire tree)
     const depMappingKey = `__PKG__${dep}`
-    if (!this.importMappings.has(depMappingKey)) return
+    let resolvedDepVersion: string | null = null
     
-    const resolvedDepPackage = this.importMappings.get(depMappingKey)
-    const resolvedDepVersion = this.extractVersion(resolvedDepPackage)
+    if (this.importMappings.has(depMappingKey)) {
+      // Dependency already imported - get its mapped version
+      const resolvedDepPackage = this.importMappings.get(depMappingKey)
+      resolvedDepVersion = this.extractVersion(resolvedDepPackage)
+    } else if (isPeerDep) {
+      // Peer dependency not yet imported - check what version would be resolved
+      // Check workspace resolutions first
+      if (this.workspaceResolutions.has(dep)) {
+        resolvedDepVersion = this.workspaceResolutions.get(dep)!
+      } else if (this.lockFileVersions.has(dep)) {
+        resolvedDepVersion = this.lockFileVersions.get(dep)!
+      }
+      // Don't fetch from npm - that's too expensive for peer dep checking
+    } else {
+      // Regular dependency not yet imported - skip check
+      return
+    }
     
     if (!resolvedDepVersion || typeof requestedRange !== 'string') return
     
@@ -435,18 +450,24 @@ export class ImportResolver implements IImportResolver {
     const emoji = isBreaking ? '🚨' : '⚠️'
     
     const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
+    const isAlreadyImported = this.importMappings.has(depMappingKey)
+    
     const warningMsg = [
-      `${emoji} Version mismatch detected:`,
+      `${emoji} ${isPeerDep ? 'Peer Dependency' : 'Dependency'} version mismatch detected:`,
       `   Package ${packageName}@${packageVersion} requires in ${depType}:`,
       `     "${dep}": "${requestedRange}"`,
       ``,
-      `   But actual imported version is: ${dep}@${resolvedDepVersion}`,
-      `     (resolved from ${resolvedFrom})`,
+      isAlreadyImported 
+        ? `   But actual imported version is: ${dep}@${resolvedDepVersion}`
+        : `   But your workspace will resolve to: ${dep}@${resolvedDepVersion}`,
+      `     (from ${resolvedFrom})`,
       ``,
-      isBreaking ? `⚠️ MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
+      isBreaking && isPeerDep ? `⚠️  PEER DEPENDENCY MISMATCH - This WILL cause compilation failures!` : '',
+      isBreaking && !isPeerDep ? `⚠️  MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
       isBreaking ? `` : '',
       `💡 To fix, update your workspace package.json:`,
       `     "${dep}": "${requestedRange}"`,
+      isPeerDep ? `   (Peer dependencies must be satisfied for ${packageName} to work correctly)` : '',
       ``
     ].filter(line => line !== '').join('\n')
     
