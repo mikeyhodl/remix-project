@@ -1,5 +1,6 @@
 export { Compiler } from './compiler/compiler'
 export { ImportResolver } from './compiler/import-resolver'
+export { DependencyResolver } from './compiler/dependency-resolver'
 export { IImportResolver } from './compiler/import-resolver-interface'
 export { ResolutionIndex } from './compiler/resolution-index'
 export { compile } from './compiler/compiler-helpers'

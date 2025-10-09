@@ -57,6 +57,21 @@ export class ImportResolver implements IImportResolver {
   }
 
   /**
+   * Set the package context for resolution
+   * This is called by DependencyResolver to inform the resolver which package
+   * the current file belongs to, enabling context-aware resolution
+   */
+  public setPackageContext(packageContext: string | null): void {
+    if (packageContext) {
+      console.log(`[ImportResolver] 📦 Setting package context: ${packageContext}`)
+      // Store the current package context - this will be used by findParentPackageContext()
+      // We can make the parent lookup smarter by explicitly setting context
+      const mappingKey = `__CONTEXT__`
+      this.importMappings.set(mappingKey, packageContext)
+    }
+  }
+
+  /**
    * Initialize workspace-level resolution rules
    * Priority: 1) package.json resolutions/overrides, 2) lock files
    */
@@ -492,13 +507,22 @@ export class ImportResolver implements IImportResolver {
    */
   /**
    * Find the parent package context for dependency resolution
-   * Uses LIFO (most recently mapped package) as the parent context
+   * First checks for explicitly set context (from DependencyResolver),
+   * then falls back to LIFO (most recently mapped package)
    */
   private findParentPackageContext(): string | null {
+    // Priority 1: Check for explicitly set context (from DependencyResolver)
+    const explicitContext = this.importMappings.get('__CONTEXT__')
+    if (explicitContext && this.parentPackageDependencies.has(explicitContext)) {
+      console.log(`[ImportResolver]    📍 Using explicit context: ${explicitContext}`)
+      return explicitContext
+    }
+    
+    // Priority 2: Fall back to LIFO approach
     // Look through all mapped packages to find a potential parent
     // The most recently mapped package is likely the parent we're resolving from
     const mappedPackages = Array.from(this.importMappings.values())
-      .filter(v => v.includes('@')) // Only versioned packages
+      .filter(v => v !== explicitContext && v.includes('@')) // Only versioned packages, exclude context marker
       .map(v => {
         // Extract package@version from versioned package name
         const match = v.match(/^(@?[^@]+)@(.+)$/)
@@ -929,5 +953,9 @@ export class ImportResolver implements IImportResolver {
 
   public getTargetFile(): string {
     return this.targetFile
+  }
+
+  public getResolution(originalImport: string): string | null {
+    return this.resolutions.get(originalImport) || null
   }
 }

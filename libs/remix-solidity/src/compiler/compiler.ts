@@ -165,8 +165,11 @@ export class Compiler {
       this.state.compileJSON = (source: SourceWithTarget) => {
         const missingInputs: string[] = []
         const missingInputsCallback = (path: string) => {
+          console.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
+          console.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
           missingInputs.push(path)
-          return { error: 'Deferred import' }
+          // Instead of deferring, throw an error to stop compilation immediately
+          throw new Error(`Missing import: ${path}`)
         }
         let result: CompilationResult = {}
         let input = ""
@@ -267,8 +270,11 @@ export class Compiler {
         this.state.compileJSON = (source: SourceWithTarget) => {
           const missingInputs: string[] = []
           const missingInputsCallback = (path: string) => {
+            console.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
+            console.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
             missingInputs.push(path)
-            return { error: 'Deferred import' }
+            // Instead of deferring, throw an error to stop compilation immediately
+            throw new Error(`Missing import: ${path}`)
           }
           let result: CompilationResult = {}
           let input = ""
