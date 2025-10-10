@@ -23,19 +23,19 @@ export function extendProvider (provider) { // Provider should be ethers.js prov
   if (!provider.debug) provider.debug = {}
 
   provider.debug.preimage = (key, cb) => {
-    this.send('debug_preimage', [key])
+    provider.send('debug_preimage', [key])
       .then(result => cb(null, result))
       .catch(error => cb(error))
   }
 
   provider.debug.traceTransaction = (txHash, options, cb) => {
-    this.send('debug_traceTransaction', [txHash, options])
+    provider.send('debug_traceTransaction', [txHash, options])
       .then(result => cb(null, result))
       .catch(error => cb(error))
   }
 
   provider.debug.storageRangeAt = (txBlockHash, txIndex, address, start, maxSize, cb) => {
-    this.send('debug_storageRangeAt', [txBlockHash, toNumber(txIndex), address, start, maxSize])
+    provider.send('debug_storageRangeAt', [txBlockHash, toNumber(txIndex), address, start, maxSize])
       .then(result => cb(null, result))
       .catch(error => cb(error))
   }
