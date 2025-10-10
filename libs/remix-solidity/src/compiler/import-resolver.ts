@@ -15,38 +15,26 @@ export class ImportResolver implements IImportResolver {
   private importedFiles: Map<string, string> = new Map() // Track imported files: "pkg/path/to/file.sol" -> "version"
   private packageSources: Map<string, string> = new Map() // Track which package.json resolved each dependency: "pkg" -> "source-package"
   private parentPackageDependencies: Map<string, Map<string, string>> = new Map() // Track dependencies of each parent package: "parent@version" -> { "dep" -> "version" }
-  private workspaceName: string | null = null
   private debug: boolean = false
-  private static currentWorkspace: string | null = null
 
   // Shared resolution index across all ImportResolver instances
-  private static resolutionIndex: ResolutionIndex | null = null
-  private static resolutionIndexInitialized: boolean = false
+  private resolutionIndex: ResolutionIndex | null = null
+  private resolutionIndexInitialized: boolean = false
 
   constructor(pluginApi: Plugin, targetFile: string, debug: boolean = false) {
     this.pluginApi = pluginApi
     this.targetFile = targetFile
     this.debug = debug
     this.importMappings = new Map()
-    
+
     this.log(`[ImportResolver] 🆕 Created new resolver instance for: "${targetFile}"`)
-    
-    // Initialize shared resolution index on first use
-    if (!ImportResolver.resolutionIndexInitialized) {
-      ImportResolver.resolutionIndexInitialized = true
-      ImportResolver.resolutionIndex = new ResolutionIndex(this.pluginApi, this.debug)
-      ImportResolver.resolutionIndex.load().catch(err => {
-        this.log(`[ImportResolver] ⚠️  Failed to load resolution index:`, err)
-      })
-      
-      // Set up workspace change listeners after a short delay to ensure plugin system is ready
-      setTimeout(() => {
-        if (ImportResolver.resolutionIndex) {
-          ImportResolver.resolutionIndex.onActivation()
-        }
-      }, 100)
-    }
-    
+
+    this.resolutionIndexInitialized = true
+    this.resolutionIndex = new ResolutionIndex(this.pluginApi, this.debug)
+    this.resolutionIndex.load().catch(err => {
+      this.log(`[ImportResolver] ⚠️  Failed to load resolution index:`, err)
+    })
+
     // Initialize workspace resolution rules
     this.initializeWorkspaceResolutions().catch(err => {
       this.log(`[ImportResolver] ⚠️  Failed to initialize workspace resolutions:`, err)
@@ -90,10 +78,10 @@ export class ImportResolver implements IImportResolver {
     try {
       // 1. Check for workspace package.json resolutions/overrides
       await this.loadWorkspaceResolutions()
-      
+
       // 2. Parse lock files for installed versions
       await this.loadLockFileVersions()
-      
+
       this.log(`[ImportResolver] 📋 Workspace resolutions loaded:`, this.workspaceResolutions.size)
       this.log(`[ImportResolver] 🔒 Lock file versions loaded:`, this.lockFileVersions.size)
     } catch (err) {
@@ -114,14 +102,14 @@ export class ImportResolver implements IImportResolver {
 
       // Yarn resolutions or npm overrides
       const resolutions = packageJson.resolutions || packageJson.overrides || {}
-      
+
       for (const [pkg, version] of Object.entries(resolutions)) {
         if (typeof version === 'string') {
           this.workspaceResolutions.set(pkg, version)
           this.log(`[ImportResolver] 📌 Workspace resolution: ${pkg} → ${version}`)
         }
       }
-      
+
       // Also check dependencies and peerDependencies for version hints
       // These are lower priority than explicit resolutions/overrides
       const allDeps = {
@@ -129,7 +117,7 @@ export class ImportResolver implements IImportResolver {
         ...(packageJson.peerDependencies || {}),
         ...(packageJson.devDependencies || {})
       }
-      
+
       for (const [pkg, versionRange] of Object.entries(allDeps)) {
         // Only store if not already set by resolutions/overrides
         if (!this.workspaceResolutions.has(pkg) && typeof versionRange === 'string') {
@@ -170,7 +158,7 @@ export class ImportResolver implements IImportResolver {
     if (this.lockFileVersions.size > 0) {
       return
     }
-    
+
     // Try yarn.lock first
     try {
       const yarnLockExists = await this.pluginApi.call('fileManager', 'exists', 'yarn.lock')
@@ -200,11 +188,11 @@ export class ImportResolver implements IImportResolver {
   private async parseYarnLock(): Promise<void> {
     try {
       const content = await this.pluginApi.call('fileManager', 'readFile', 'yarn.lock')
-      
+
       // Simple yarn.lock parsing - look for package@version entries
       const lines = content.split('\n')
       let currentPackage = null
-      
+
       for (const line of lines) {
         // Match: "@openzeppelin/contracts@^5.0.0": or "lodash@^4.17.0":
         // For scoped packages: "@scope/package@version"
@@ -213,7 +201,7 @@ export class ImportResolver implements IImportResolver {
         if (packageMatch) {
           currentPackage = packageMatch[1]
         }
-        
+
         // Match:   version "5.4.0"
         const versionMatch = line.match(/^\s+version\s+"([^"]+)"/)
         if (versionMatch && currentPackage) {
@@ -221,7 +209,7 @@ export class ImportResolver implements IImportResolver {
           currentPackage = null
         }
       }
-      
+
       this.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from yarn.lock`)
     } catch (err) {
       this.log(`[ImportResolver] ⚠️  Failed to parse yarn.lock:`, err)
@@ -235,7 +223,7 @@ export class ImportResolver implements IImportResolver {
     try {
       const content = await this.pluginApi.call('fileManager', 'readFile', 'package-lock.json')
       const lockData = JSON.parse(content)
-      
+
       // npm v1/v2 format
       if (lockData.dependencies) {
         for (const [pkg, data] of Object.entries(lockData.dependencies)) {
@@ -244,14 +232,14 @@ export class ImportResolver implements IImportResolver {
           }
         }
       }
-      
+
       // npm v3 format
       if (lockData.packages) {
         for (const [path, data] of Object.entries(lockData.packages)) {
           if (data && typeof data === 'object' && 'version' in data) {
             // Skip root package (path is empty string "")
             if (path === '') continue
-            
+
             // Extract package name from path
             // Format: "node_modules/@openzeppelin/contracts" -> "@openzeppelin/contracts"
             const pkg = path.replace(/^node_modules\//, '')
@@ -261,7 +249,7 @@ export class ImportResolver implements IImportResolver {
           }
         }
       }
-      
+
       this.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from package-lock.json`)
     } catch (err) {
       this.log(`[ImportResolver] ⚠️  Failed to parse package-lock.json:`, err)
@@ -284,12 +272,12 @@ export class ImportResolver implements IImportResolver {
     if (scopedMatch) {
       return scopedMatch[1]
     }
-    
+
     const regularMatch = url.match(/^([^/@]+)/)
     if (regularMatch) {
       return regularMatch[1]
     }
-    
+
     return null
   }
 
@@ -310,26 +298,16 @@ export class ImportResolver implements IImportResolver {
     if (versionedMatch) {
       return versionedMatch[1]
     }
-    
+
     const unversionedPattern = new RegExp(`^${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`)
     const unversionedMatch = url.match(unversionedPattern)
     if (unversionedMatch) {
       return unversionedMatch[1]
     }
-    
+
     return null
   }
 
-  /**
-   * Compare major versions between requested and resolved versions
-   * Returns true if they're different major versions
-   */
-  private hasMajorVersionMismatch(requestedVersion: string, resolvedVersion: string): boolean {
-    const requestedMajor = parseInt(requestedVersion.split('.')[0])
-    const resolvedMajor = parseInt(resolvedVersion.split('.')[0])
-    
-    return !isNaN(requestedMajor) && !isNaN(resolvedMajor) && requestedMajor !== resolvedMajor
-  }
 
   /**
    * Basic semver compatibility check
@@ -339,56 +317,56 @@ export class ImportResolver implements IImportResolver {
     // Extract major.minor.patch from resolved version
     const resolvedMatch = resolvedVersion.match(/^(\d+)\.(\d+)\.(\d+)/)
     if (!resolvedMatch) return false
-    
+
     const [, resolvedMajor, resolvedMinor, resolvedPatch] = resolvedMatch.map(Number)
-    
+
     // Handle caret ranges: ^5.4.0 means >=5.4.0 <6.0.0
     const caretMatch = requestedRange.match(/^\^(\d+)\.(\d+)\.(\d+)/)
     if (caretMatch) {
       const [, reqMajor, reqMinor, reqPatch] = caretMatch.map(Number)
-      
+
       // Must be same major version
       if (resolvedMajor !== reqMajor) return true
-      
+
       // If major > 0, minor can be >= requested
       if (resolvedMajor > 0) {
         if (resolvedMinor < reqMinor) return true
         if (resolvedMinor === reqMinor && resolvedPatch < reqPatch) return true
       }
-      
+
       return false
     }
-    
+
     // Handle tilde ranges: ~5.4.0 means >=5.4.0 <5.5.0
     const tildeMatch = requestedRange.match(/^~(\d+)\.(\d+)\.(\d+)/)
     if (tildeMatch) {
       const [, reqMajor, reqMinor, reqPatch] = tildeMatch.map(Number)
-      
+
       if (resolvedMajor !== reqMajor) return true
       if (resolvedMinor !== reqMinor) return true
       if (resolvedPatch < reqPatch) return true
-      
+
       return false
     }
-    
+
     // Handle exact version: 5.4.0
     const exactMatch = requestedRange.match(/^(\d+)\.(\d+)\.(\d+)$/)
     if (exactMatch) {
       return requestedRange !== resolvedVersion
     }
-    
+
     // Handle >= ranges
     const gteMatch = requestedRange.match(/^>=(\d+)\.(\d+)\.(\d+)/)
     if (gteMatch) {
       const [, reqMajor, reqMinor, reqPatch] = gteMatch.map(Number)
-      
+
       if (resolvedMajor < reqMajor) return true
       if (resolvedMajor === reqMajor && resolvedMinor < reqMinor) return true
       if (resolvedMajor === reqMajor && resolvedMinor === reqMinor && resolvedPatch < reqPatch) return true
-      
+
       return false
     }
-    
+
     // For complex ranges or wildcards, we can't reliably determine - don't warn
     return false
   }
@@ -401,12 +379,12 @@ export class ImportResolver implements IImportResolver {
     const resolvedMatch = resolvedVersion.match(/^(\d+)/)
     if (!resolvedMatch) return false
     const resolvedMajor = parseInt(resolvedMatch[1])
-    
+
     // Extract major version from requested range
     const rangeMatch = requestedRange.match(/(\d+)/)
     if (!rangeMatch) return false
     const requestedMajor = parseInt(rangeMatch[1])
-    
+
     return resolvedMajor !== requestedMajor
   }
 
@@ -418,14 +396,14 @@ export class ImportResolver implements IImportResolver {
       ...(packageJson.dependencies || {}),
       ...(packageJson.peerDependencies || {})
     }
-    
+
     if (Object.keys(allDeps).length === 0) return
-    
+
     const depTypes = []
     if (packageJson.dependencies) depTypes.push('dependencies')
     if (packageJson.peerDependencies) depTypes.push('peerDependencies')
     this.log(`[ImportResolver] 🔗 Found ${depTypes.join(' & ')} for ${packageName}:`, Object.keys(allDeps))
-    
+
     for (const [dep, requestedRange] of Object.entries(allDeps)) {
       await this.checkDependencyConflict(packageName, resolvedVersion, dep, requestedRange as string, packageJson.peerDependencies)
     }
@@ -435,19 +413,19 @@ export class ImportResolver implements IImportResolver {
    * Check a single dependency for version conflicts
    */
   private async checkDependencyConflict(
-    packageName: string, 
-    packageVersion: string, 
-    dep: string, 
+    packageName: string,
+    packageVersion: string,
+    dep: string,
     requestedRange: string,
     peerDependencies: any
   ): Promise<void> {
     const isPeerDep = peerDependencies && dep in peerDependencies
-    
+
     // For peer dependencies, check against workspace/lock file versions even if not yet imported
     // For regular dependencies, only check if already mapped (don't recursively fetch entire tree)
     const depMappingKey = `__PKG__${dep}`
     let resolvedDepVersion: string | null = null
-    
+
     if (this.importMappings.has(depMappingKey)) {
       // Dependency already imported - get its mapped version
       const resolvedDepPackage = this.importMappings.get(depMappingKey)
@@ -465,18 +443,18 @@ export class ImportResolver implements IImportResolver {
       // Regular dependency not yet imported - skip check
       return
     }
-    
+
     if (!resolvedDepVersion || typeof requestedRange !== 'string') return
-    
+
     const conflictKey = `${isPeerDep ? 'peer' : 'dep'}:${packageName}→${dep}:${requestedRange}→${resolvedDepVersion}`
-    
+
     // Check if it looks like a potential conflict (basic semver check)
     if (this.conflictWarnings.has(conflictKey) || !this.isPotentialVersionConflict(requestedRange, resolvedDepVersion)) {
       return
     }
-    
+
     this.conflictWarnings.add(conflictKey)
-    
+
     // Determine where the resolved version came from
     let resolvedFrom = 'npm registry'
     const sourcePackage = this.packageSources.get(dep)
@@ -487,21 +465,21 @@ export class ImportResolver implements IImportResolver {
     } else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') {
       resolvedFrom = `${sourcePackage}/package.json`
     }
-    
+
     // Check if this is a BREAKING change (different major versions)
     const isBreaking = this.isBreakingVersionConflict(requestedRange, resolvedDepVersion)
     const severity = isBreaking ? 'error' : 'warn'
     const emoji = isBreaking ? '🚨' : '⚠️'
-    
+
     const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
     const isAlreadyImported = this.importMappings.has(depMappingKey)
-    
+
     const warningMsg = [
       `${emoji} ${isPeerDep ? 'Peer Dependency' : 'Dependency'} version mismatch detected:`,
       `   Package ${packageName}@${packageVersion} requires in ${depType}:`,
       `     "${dep}": "${requestedRange}"`,
       ``,
-      isAlreadyImported 
+      isAlreadyImported
         ? `   But actual imported version is: ${dep}@${resolvedDepVersion}`
         : `   But your workspace will resolve to: ${dep}@${resolvedDepVersion}`,
       `     (from ${resolvedFrom})`,
@@ -514,11 +492,11 @@ export class ImportResolver implements IImportResolver {
       isPeerDep ? `   (Peer dependencies must be satisfied for ${packageName} to work correctly)` : '',
       ``
     ].filter(line => line !== '').join('\n')
-    
-    this.pluginApi.call('terminal', 'log', { 
-      type: severity, 
-      value: warningMsg 
-    }).catch(err => {
+
+    this.pluginApi.call('terminal', 'log', {
+      type: severity,
+      value: warningMsg
+    }).catch(() => {
       console.warn(warningMsg)
     })
   }
@@ -540,7 +518,7 @@ export class ImportResolver implements IImportResolver {
       this.log(`[ImportResolver]    📍 Using explicit context: ${explicitContext}`)
       return explicitContext
     }
-    
+
     // Priority 2: Fall back to LIFO approach
     // Look through all mapped packages to find a potential parent
     // The most recently mapped package is likely the parent we're resolving from
@@ -552,7 +530,7 @@ export class ImportResolver implements IImportResolver {
         return match ? `${match[1]}@${match[2]}` : null
       })
       .filter(Boolean)
-    
+
     // Return the most recently added parent package (LIFO - last in, first out)
     for (let i = mappedPackages.length - 1; i >= 0; i--) {
       const pkg = mappedPackages[i]
@@ -560,7 +538,7 @@ export class ImportResolver implements IImportResolver {
         return pkg
       }
     }
-    
+
     return null
   }
 
@@ -570,7 +548,7 @@ export class ImportResolver implements IImportResolver {
    */
   private checkForConflictingParentDependencies(packageName: string): void {
     const conflictingParents: Array<{ parent: string, version: string }> = []
-    
+
     // Check all parent packages to see if they depend on this package
     for (const [parentPkg, deps] of this.parentPackageDependencies.entries()) {
       if (deps.has(packageName)) {
@@ -580,17 +558,17 @@ export class ImportResolver implements IImportResolver {
         })
       }
     }
-    
+
     // If 2+ parent packages have different versions of the same dependency, warn the user
     if (conflictingParents.length >= 2) {
       const uniqueVersions = new Set(conflictingParents.map(p => p.version))
-      
+
       if (uniqueVersions.size > 1) {
         const conflictKey = `multi-parent:${packageName}:${Array.from(uniqueVersions).sort().join('↔')}`
-        
+
         if (!this.conflictWarnings.has(conflictKey)) {
           this.conflictWarnings.add(conflictKey)
-          
+
           const warningMsg = [
             `⚠️  MULTI-PARENT DEPENDENCY CONFLICT`,
             ``,
@@ -599,11 +577,11 @@ export class ImportResolver implements IImportResolver {
             ...conflictingParents.map(p => `   • ${p.parent} requires ${packageName}@${p.version}`),
             ``
           ].join('\n')
-          
+
           this.pluginApi.call('terminal', 'log', {
             type: 'warn',
             value: warningMsg
-          }).catch(err => {
+          }).catch(() => {
             console.warn(warningMsg)
           })
         }
@@ -616,16 +594,16 @@ export class ImportResolver implements IImportResolver {
    */
   private async resolvePackageVersion(packageName: string): Promise<{ version: string | null, source: string }> {
     this.log(`[ImportResolver] 🔍 Resolving version for: ${packageName}`)
-    
+
     // Check if multiple parent packages have conflicting dependencies
     this.checkForConflictingParentDependencies(packageName)
-    
+
     // PRIORITY 1: Workspace resolutions/overrides - ALWAYS reload fresh
     await this.loadWorkspaceResolutions()
-    
+
     if (this.workspaceResolutions.has(packageName)) {
       const resolution = this.workspaceResolutions.get(packageName)
-      
+
       // Handle npm aliases like "alias:@openzeppelin/contracts@4.8.3"
       if (resolution?.startsWith('alias:')) {
         const aliasTarget = resolution.substring(6) // Remove "alias:" prefix
@@ -642,7 +620,7 @@ export class ImportResolver implements IImportResolver {
       }
     }
     this.log(`[ImportResolver]    ⏭️  Priority 1 (workspace): Not found`)
-    
+
     // PRIORITY 2: Parent package dependencies
     // Check if we're resolving from within a parent package (e.g., @chainlink/contracts-ccip@1.6.1)
     const parentPackage = this.findParentPackageContext()
@@ -659,18 +637,18 @@ export class ImportResolver implements IImportResolver {
     } else {
       this.log(`[ImportResolver]    ⏭️  Priority 2 (parent): No parent package context`)
     }
-    
+
     // PRIORITY 3: Lock file (if no workspace override or parent dependency)
     // Reload lock files fresh each time to pick up changes
     await this.loadLockFileVersions()
-    
+
     if (this.lockFileVersions.has(packageName)) {
       const version = this.lockFileVersions.get(packageName)
       this.log(`[ImportResolver] ✅ PRIORITY 3 - Lock file: ${packageName} → ${version}`)
       return { version, source: 'lock-file' }
     }
     this.log(`[ImportResolver]    ⏭️  Priority 3 (lock file): Not found`)
-    
+
     // PRIORITY 4: Fetch package.json (fallback)
     this.log(`[ImportResolver]    🌐 Priority 4 (NPM): Fetching latest...`)
     return await this.fetchPackageVersionFromNpm(packageName)
@@ -682,15 +660,15 @@ export class ImportResolver implements IImportResolver {
   private async fetchPackageVersionFromNpm(packageName: string): Promise<{ version: string | null, source: string }> {
     try {
       this.log(`[ImportResolver] 📦 Fetching package.json for: ${packageName}`)
-      
+
       const packageJsonUrl = `${packageName}/package.json`
       const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
-      
+
       const packageJson = JSON.parse(content.content || content)
       if (!packageJson.version) {
         return { version: null, source: 'fetched' }
       }
-      
+
       // Save package.json to file system for visibility and debugging
       // Use the actual package name from package.json, not the potentially aliased packageName parameter
       const realPackageName = packageJson.name || packageName
@@ -701,10 +679,10 @@ export class ImportResolver implements IImportResolver {
       } catch (saveErr) {
         this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
       }
-      
+
       // Store parent's dependencies for future lookups
       this.storePackageDependencies(`${packageName}@${packageJson.version}`, packageJson)
-      
+
       return { version: packageJson.version, source: 'package-json' }
     } catch (err) {
       this.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
@@ -719,9 +697,9 @@ export class ImportResolver implements IImportResolver {
     if (!packageJson.dependencies && !packageJson.peerDependencies) {
       return
     }
-    
+
     const deps = new Map<string, string>()
-    
+
     // Store regular dependencies
     if (packageJson.dependencies) {
       for (const [dep, versionRange] of Object.entries(packageJson.dependencies)) {
@@ -730,7 +708,7 @@ export class ImportResolver implements IImportResolver {
         deps.set(dep, cleanVersion)
       }
     }
-    
+
     // Store peer dependencies
     if (packageJson.peerDependencies) {
       for (const [dep, versionRange] of Object.entries(packageJson.peerDependencies)) {
@@ -740,7 +718,7 @@ export class ImportResolver implements IImportResolver {
         }
       }
     }
-    
+
     this.parentPackageDependencies.set(packageKey, deps)
     this.log(`[ImportResolver] 📚 Stored ${deps.size} dependencies for ${packageKey}:`)
     deps.forEach((version, dep) => {
@@ -750,18 +728,18 @@ export class ImportResolver implements IImportResolver {
 
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
-    
+
     if (this.importMappings.has(mappingKey)) {
       return
     }
-    
+
     // Resolve version from workspace, lock file, or npm
     const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
-    
+
     if (!resolvedVersion) {
       return
     }
-    
+
     // Handle npm aliases: if this is an alias, use the real package name
     let actualPackageName = packageName
     if (source.startsWith('alias:')) {
@@ -771,22 +749,22 @@ export class ImportResolver implements IImportResolver {
         this.log(`[ImportResolver] 🔄 Using real package name: ${packageName} → ${actualPackageName}`)
       }
     }
-    
+
     const versionedPackageName = `${actualPackageName}@${resolvedVersion}`
     this.importMappings.set(mappingKey, versionedPackageName)
-    
+
     // Record the source of this resolution
     if (source === 'workspace-resolution' || source === 'lock-file') {
       this.packageSources.set(packageName, 'workspace')
     } else {
       this.packageSources.set(packageName, packageName) // Direct fetch from npm
     }
-    
+
     this.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
-    
+
     // Check dependencies for conflicts
     await this.checkPackageDependenciesIfNeeded(packageName, resolvedVersion, source)
-    
+
     this.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
   }
 
@@ -798,7 +776,7 @@ export class ImportResolver implements IImportResolver {
       const packageJsonUrl = `${packageName}/package.json`
       const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
       const packageJson = JSON.parse(content.content || content)
-      
+
       // Save package.json if we haven't already (when using lock file or workspace resolutions)
       if (source !== 'package-json') {
         try {
@@ -811,10 +789,10 @@ export class ImportResolver implements IImportResolver {
           this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
         }
       }
-      
+
       // Store dependencies for future parent context resolution
       this.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
-      
+
       // Check dependencies for conflicts
       await this.checkPackageDependencies(packageName, resolvedVersion, packageJson)
     } catch (err) {
@@ -827,26 +805,26 @@ export class ImportResolver implements IImportResolver {
     const originalUrl = url
     let finalUrl = url
     const packageName = this.extractPackageName(url)
-    
+
     if (!skipResolverMappings && packageName) {
       const hasVersion = url.includes(`${packageName}@`)
-      
+
       if (!hasVersion) {
         const mappingKey = `__PKG__${packageName}`
-        
+
         if (!this.importMappings.has(mappingKey)) {
           this.log(`[ImportResolver] 🔍 First import from ${packageName}, resolving version...`)
           await this.fetchAndMapPackage(packageName)
         }
-        
+
         if (this.importMappings.has(mappingKey)) {
           const versionedPackageName = this.importMappings.get(mappingKey)
           const mappedUrl = url.replace(packageName, versionedPackageName)
           this.log(`[ImportResolver] 🔀 Mapped: ${packageName} → ${versionedPackageName}`)
-          
+
           finalUrl = mappedUrl
           this.resolutions.set(originalUrl, finalUrl)
-          
+
           return this.resolveAndSave(mappedUrl, targetPath, true)
         } else {
           this.log(`[ImportResolver] ⚠️  No mapping available for ${mappingKey}`)
@@ -855,26 +833,26 @@ export class ImportResolver implements IImportResolver {
         // CONFLICT DETECTION: URL has explicit version, check if it conflicts with our resolution
         const requestedVersion = this.extractVersion(url)
         const mappingKey = `__PKG__${packageName}`
-        
+
         if (this.importMappings.has(mappingKey)) {
           const versionedPackageName = this.importMappings.get(mappingKey)
           const resolvedVersion = this.extractVersion(versionedPackageName)
-          
+
           if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
             // Extract the relative file path to check for actual duplicate imports
             const relativePath = this.extractRelativePath(url, packageName)
             const fileKey = relativePath ? `${packageName}/${relativePath}` : null
-            
+
             // Check if we've already imported this EXACT file from a different version
             const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
-            
+
             if (previousVersion && previousVersion !== requestedVersion) {
               // REAL CONFLICT: Same file imported from two different versions
               const conflictKey = `${fileKey}:${previousVersion}↔${requestedVersion}`
-              
+
               if (!this.conflictWarnings.has(conflictKey)) {
                 this.conflictWarnings.add(conflictKey)
-                
+
                 const warningMsg = [
                   `🚨 DUPLICATE FILE DETECTED - Will cause compilation errors!`,
                   `   File: ${relativePath}`,
@@ -890,27 +868,27 @@ export class ImportResolver implements IImportResolver {
                   `     import "${packageName}@${requestedVersion}/${relativePath}";`,
                   ``
                 ].join('\n')
-                
-                this.pluginApi.call('terminal', 'log', { 
-                  type: 'error', 
-                  value: warningMsg 
-                }).catch(err => {
+
+                this.pluginApi.call('terminal', 'log', {
+                  type: 'error',
+                  value: warningMsg
+                }).catch(() => {
                   console.warn(warningMsg)
                 })
               }
             }
-            
+
             // Record this file import (even if different version)
             if (fileKey) {
               this.importedFiles.set(fileKey, requestedVersion)
               this.log(`[ImportResolver] 📝 Tracking: ${fileKey} @ ${requestedVersion}`)
             }
-            
+
             // IMPORTANT: Don't force version mapping! Allow explicit version to be used
             // This allows: contracts@4.8.0/ERC20.sol + contracts@5.2.0/StorageSlot.sol
             // (different files, no conflict)
             this.log(`[ImportResolver] ✅ Explicit version: ${packageName}@${requestedVersion}`)
-            
+
             // Fetch and save package.json for this version (if not already done)
             const versionedPackageName = `${packageName}@${requestedVersion}`
             if (!this.parentPackageDependencies.has(versionedPackageName)) {
@@ -918,22 +896,22 @@ export class ImportResolver implements IImportResolver {
                 const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
                 const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
                 const packageJson = JSON.parse(content.content || content)
-                
+
                 const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
                 await this.pluginApi.call('fileManager', 'setFile', pkgJsonPath, JSON.stringify(packageJson, null, 2))
                 this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
-                
+
                 // Store dependencies for future parent context resolution
                 this.storePackageDependencies(versionedPackageName, packageJson)
               } catch (err) {
                 this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
               }
             }
-            
+
             // Use the URL as-is (with explicit version)
             finalUrl = url
             this.resolutions.set(originalUrl, finalUrl)
-            
+
             return this.resolveAndSave(url, targetPath, true)
           } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
             // Versions MATCH - normalize to canonical path to prevent duplicate declarations
@@ -943,7 +921,7 @@ export class ImportResolver implements IImportResolver {
             if (mappedUrl !== url) {
               finalUrl = mappedUrl
               this.resolutions.set(originalUrl, finalUrl)
-              
+
               return this.resolveAndSave(mappedUrl, targetPath, true)
             }
           }
@@ -953,17 +931,17 @@ export class ImportResolver implements IImportResolver {
           if (requestedVersion) {
             const versionedPackageName = `${packageName}@${requestedVersion}`
             this.importMappings.set(mappingKey, versionedPackageName)
-            
+
             // Fetch and save package.json for this version
             try {
               const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
               const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
               const packageJson = JSON.parse(content.content || content)
-              
+
               const targetPath = `.deps/npm/${versionedPackageName}/package.json`
               await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
               this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-              
+
               // Store dependencies for future parent context resolution
               this.storePackageDependencies(versionedPackageName, packageJson)
             } catch (err) {
@@ -973,34 +951,34 @@ export class ImportResolver implements IImportResolver {
         }
       }
     }
-    
+
     this.log(`[ImportResolver] 📥 Fetching: ${url}`)
     const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
-    
+
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) {
         this.resolutions.set(originalUrl, url)
       }
     }
-    
+
     return content
   }
 
   public async saveResolutionsToIndex(): Promise<void> {
     this.log(`[ImportResolver] 💾 Saving ${this.resolutions.size} resolution(s) to index for: ${this.targetFile}`)
-    
-    if (!ImportResolver.resolutionIndex) {
+
+    if (!this.resolutionIndex) {
       this.log(`[ImportResolver] ⚠️  Resolution index not initialized, skipping save`)
       return
     }
-    
-    ImportResolver.resolutionIndex.clearFileResolutions(this.targetFile)
-    
+
+    this.resolutionIndex.clearFileResolutions(this.targetFile)
+
     this.resolutions.forEach((resolvedPath, originalImport) => {
-      ImportResolver.resolutionIndex!.recordResolution(this.targetFile, originalImport, resolvedPath)
+      this.resolutionIndex!.recordResolution(this.targetFile, originalImport, resolvedPath)
     })
-    
-    await ImportResolver.resolutionIndex.save()
+
+    await this.resolutionIndex.save()
   }
 
   public getTargetFile(): string {

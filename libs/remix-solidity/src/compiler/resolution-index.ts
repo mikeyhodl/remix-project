@@ -26,7 +26,7 @@ export class ResolutionIndex {
 
   constructor(pluginApi: Plugin, debug: boolean = false) {
     this.pluginApi = pluginApi
-    this.debug = debug
+    this.debug = true
   }
 
   /**
@@ -35,22 +35,6 @@ export class ResolutionIndex {
   private log(message: string, ...args: any[]): void {
     if (this.debug) {
       console.log(message, ...args)
-    }
-  }
-
-  /**
-   * Set up event listeners after plugin activation
-   * Should be called after the plugin system is ready
-   */
-  onActivation(): void {
-    // Listen for workspace changes and reload the index
-    if (this.pluginApi && this.pluginApi.on) {
-      this.pluginApi.on('filePanel', 'setWorkspace', () => {
-        this.log(`[ResolutionIndex] 🔄 Workspace changed, reloading index...`)
-        this.reload().catch(err => {
-          this.log(`[ResolutionIndex] ⚠️  Failed to reload index after workspace change:`, err)
-        })
-      })
     }
   }
 
