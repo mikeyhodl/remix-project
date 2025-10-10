@@ -36,9 +36,7 @@ export class CompileTabLogic {
     this.compiler = new SmartCompiler(
       this.api as any,
       (url, cb) => {
-        console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
-        console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
-        cb(new Error(`File not found: ${url} - Missing from pre-built dependency tree`))
+       
       },
       null, // importResolverFactory - not used by SmartCompiler
       this.debug

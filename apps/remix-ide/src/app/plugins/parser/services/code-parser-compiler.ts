@@ -12,26 +12,26 @@ import { lastCompilationResult } from '@remixproject/plugin-api';
 import { monacoTypes } from '@remix-ui/editor';
 
 enum MarkerSeverity {
-    Hint = 1,
-    Info = 2,
-    Warning = 4,
-    Error = 8
+  Hint = 1,
+  Info = 2,
+  Warning = 4,
+  Error = 8
 }
 
 type errorMarker = {
-    message: string
-    severity: monacoTypes.MarkerSeverity
-    position: {
-        start: {
-            line: number
-            column: number
-        },
-        end: {
-            line: number
-            column: number
-        }
+  message: string
+  severity: monacoTypes.MarkerSeverity
+  position: {
+    start: {
+      line: number
+      column: number
     },
-    file: string
+    end: {
+      line: number
+      column: number
+    }
+  },
+  file: string
 }
 export default class CodeParserCompiler {
   plugin: CodeParser
@@ -122,9 +122,6 @@ export default class CodeParserCompiler {
     this.compiler = new SmartCompiler(
       this.plugin,
       (url, cb) => {
-        console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
-        console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
-        cb(new Error(`File not found: ${url} - Missing from pre-built dependency tree`))
       },
       null, // importResolverFactory - not used by SmartCompiler
       false // debug - set to false for code-parser to reduce noise
@@ -171,7 +168,7 @@ export default class CodeParserCompiler {
               }
             }
 
-        this.compiler.set('configFileContent', state.useFileConfiguration? configFileContent: JSON.stringify(configFileContent))
+        this.compiler.set('configFileContent', state.useFileConfiguration ? configFileContent : JSON.stringify(configFileContent))
 
         if (await this.plugin.call('fileManager', 'exists', 'remappings.txt')) {
           const remappings = await this.plugin.call('fileManager', 'readFile', 'remappings.txt')
