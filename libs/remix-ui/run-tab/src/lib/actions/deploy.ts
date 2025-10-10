@@ -217,7 +217,7 @@ export const createInstance = async (
 
         setTimeout(async () => {
           await plugin.call('contract-verification', 'verifyOnDeploy', verificationData)
-        }, 1000)
+        }, 1500)
 
       } catch (e) {
         const errorMsg = `Verification setup failed: ${e.message}`
