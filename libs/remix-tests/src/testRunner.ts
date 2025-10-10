@@ -1,6 +1,6 @@
 import async from 'async'
 import * as changeCase from 'change-case'
-import {keccak256, AbiCoder, ContractTransactionResponse, toUtf8Bytes, Interface } from 'ethers'
+import { keccak256, AbiCoder, ContractTransactionResponse, toUtf8Bytes, Interface } from 'ethers'
 import assertionEvents from './assertionEvents'
 import {
   RunListInterface, TestCbInterface, TestResultInterface, ResultCbInterface,
@@ -232,32 +232,123 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
     filename: testObject.filename
   }
   testCallback(undefined, resp)
-  async.eachOfLimit(runList, 1, function (func, index, next) {
+  async.eachOfLimit(runList, 1, async function (func, index) {
     let sender: string | null = null
     let hhLogs
-    if (func.signature) {
-      sender = getOverriddenSender(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
-      if (opts.accounts && sender) {
-        sender = opts.accounts[sender]
-      }
-    }
     let sendParams: Record<string, any> | null = null
-    if (sender) sendParams = { from: sender }
-    if (func.inputs && func.inputs.length > 0) { return resultsCallback(new Error(`Method '${func.name}' can not have parameters inside a test contract`), { passingNum, failureNum, timePassed }) }
-   
     const startTime = Date.now()
+    if (func.inputs && func.inputs.length > 0) { return resultsCallback(new Error(`Method '${func.name}' can not have parameters inside a test contract`), { passingNum, failureNum, timePassed }) }
     let debugTxHash:string
     if (func.constant) {
       sendParams = {}
       const tagTimestamp = 'remix_tests_tag' + Date.now()
       if (provider.remix && provider.remix.registerCallId) provider.remix.registerCallId(tagTimestamp)
-      testObject[func.name](sendParams).then(async (result) => {
-        const time = (Date.now() - startTime) / 1000.0
-        let tagTxHash
-        if (provider.remix && provider.remix.getHashFromTagBySimulator) tagTxHash = await provider.remix.getHashFromTagBySimulator(tagTimestamp)
-        if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(tagTxHash)
-        debugTxHash = tagTxHash
-        if (result) {
+      const result = await testObject[func.name](sendParams)
+      const time = (Date.now() - startTime) / 1000.0
+      let tagTxHash
+      if (provider.remix && provider.remix.getHashFromTagBySimulator) tagTxHash = await provider.remix.getHashFromTagBySimulator(tagTimestamp)
+      if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(tagTxHash)
+      debugTxHash = tagTxHash
+      if (result) {
+        const resp: TestResultInterface = {
+          type: 'testPass',
+          value: changeCase.sentenceCase(func.name),
+          filename: testObject.filename,
+          time: time,
+          context: testName,
+          provider,
+          debugTxHash
+        }
+        if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
+        testCallback(undefined, resp)
+        passingNum += 1
+        timePassed += time
+      } else {
+        const resp: TestResultInterface = {
+          type: 'testFailure',
+          value: changeCase.sentenceCase(func.name),
+          filename: testObject.filename,
+          time: time,
+          errMsg: 'function returned false',
+          context: testName,
+          provider,
+          debugTxHash
+        }
+        if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
+        testCallback(undefined, resp)
+        failureNum += 1
+        timePassed += time
+      }
+    } else {
+      if (func.signature) {
+        sender = getOverriddenSender(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
+        if (opts.accounts && sender) {
+          sender = opts.accounts[sender]
+        }
+      }
+      if (sender) {
+        sendParams = { from: sender }
+        const signer = await provider.getSigner(sender)
+        testObject = testObject.connect(signer)
+      }
+      if (func.payable) {
+        const value = getProvidedValue(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
+        if (value) {
+          if (sendParams) sendParams.value = value
+          else sendParams = { value }
+        }
+      }
+      if (!sendParams) sendParams = {}
+      sendParams.gasLimit = 10000000 * 8
+      try {
+        const txResponse: ContractTransactionResponse = await testObject[func.name](sendParams)
+        const receipt = await provider.getTransactionReceipt(txResponse.hash)
+        debugTxHash = receipt.hash
+        if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(receipt.hash)
+        const time: number = (Date.now() - startTime) / 1000.0
+        const assertionEventHashes = assertionEvents.map(e => keccak256(toUtf8Bytes(e.name + '(' + e.params.join() + ')')))
+        let testPassed = false
+        for (const i in receipt.logs) {
+          let events = receipt.logs[i]
+          if (!Array.isArray(events)) events = [events]
+          for (const event of events) {
+            const eIndex = assertionEventHashes.indexOf(event.topics[0]) // event name topic will always be at index 0
+            if (eIndex >= 0) {
+              const testEventArray = AbiCoder.defaultAbiCoder().decode(assertionEvents[eIndex].params, event.data)
+              const testEvent = [...testEventArray] // Make it mutable
+              if (!testEvent[0]) {
+                const assertMethod = testEvent[2]
+                if (assertMethod === 'ok') { // for 'Assert.ok' method
+                  testEvent[3] = 'false'
+                  testEvent[4] = 'true'
+                }
+                const location = getAssertMethodLocation(fileAST, testName, func.name, assertMethod)
+                const resp: TestResultInterface = {
+                  type: 'testFailure',
+                  value: changeCase.sentenceCase(func.name),
+                  filename: testObject.filename,
+                  time: time,
+                  errMsg: testEvent[1],
+                  context: testName,
+                  assertMethod,
+                  returned: testEvent[3],
+                  expected: testEvent[4],
+                  location,
+                  provider,
+                  debugTxHash
+                }
+                if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
+                testCallback(undefined, resp)
+                failureNum += 1
+                timePassed += time
+                return
+              }
+              testPassed = true
+            }
+          }
+        }
+
+        if (testPassed) {
           const resp: TestResultInterface = {
             type: 'testPass',
             value: changeCase.sentenceCase(func.name),
@@ -271,117 +362,27 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           testCallback(undefined, resp)
           passingNum += 1
           timePassed += time
-        } else {
+        } else if (hhLogs && hhLogs.length) {
           const resp: TestResultInterface = {
-            type: 'testFailure',
+            type: 'logOnly',
             value: changeCase.sentenceCase(func.name),
             filename: testObject.filename,
             time: time,
-            errMsg: 'function returned false',
             context: testName,
-            provider,
-            debugTxHash
+            hhLogs
           }
-          if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
           testCallback(undefined, resp)
-          failureNum += 1
           timePassed += time
         }
-        next()
-      })
-    } else {
-      if (func.payable) {
-        const value = getProvidedValue(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
-        if (value) {
-          if (sendParams) sendParams.value = value
-          else sendParams = { value }
-        }
-      }
-      if (!sendParams) sendParams = {}
-      sendParams.gas = 10000000 * 8
-      testObject[func.name](sendParams).then(async (txResponse: ContractTransactionResponse) => {
-        try {
-          const receipt = await provider.getTransactionReceipt(txResponse.hash)
-          debugTxHash = receipt.hash
-          if (provider.remix && provider.remix.getHHLogsForTx) hhLogs = await provider.remix.getHHLogsForTx(receipt.hash)
-          const time: number = (Date.now() - startTime) / 1000.0
-          const assertionEventHashes = assertionEvents.map(e => keccak256(toUtf8Bytes(e.name + '(' + e.params.join() + ')')))
-          let testPassed = false
-          for (const i in receipt.logs) {
-            let events = receipt.logs[i]
-            if (!Array.isArray(events)) events = [events]
-            for (const event of events) {
-              const eIndex = assertionEventHashes.indexOf(event.topics[0]) // event name topic will always be at index 0
-              if (eIndex >= 0) {
-                const testEventArray = AbiCoder.defaultAbiCoder().decode(assertionEvents[eIndex].params, event.data)
-                const testEvent = [...testEventArray] // Make it mutable
-                if (!testEvent[0]) {
-                  const assertMethod = testEvent[2]
-                  if (assertMethod === 'ok') { // for 'Assert.ok' method
-                    testEvent[3] = 'false'
-                    testEvent[4] = 'true'
-                  }
-                  const location = getAssertMethodLocation(fileAST, testName, func.name, assertMethod)
-                  const resp: TestResultInterface = {
-                    type: 'testFailure',
-                    value: changeCase.sentenceCase(func.name),
-                    filename: testObject.filename,
-                    time: time,
-                    errMsg: testEvent[1],
-                    context: testName,
-                    assertMethod,
-                    returned: testEvent[3],
-                    expected: testEvent[4],
-                    location,
-                    provider,
-                    debugTxHash
-                  }
-                  if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
-                  testCallback(undefined, resp)
-                  failureNum += 1
-                  timePassed += time
-                  return next()
-                }
-                testPassed = true
-              }
-            }
-          }
 
-          if (testPassed) {
-            const resp: TestResultInterface = {
-              type: 'testPass',
-              value: changeCase.sentenceCase(func.name),
-              filename: testObject.filename,
-              time: time,
-              context: testName,
-              provider,
-              debugTxHash
-            }
-            if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
-            testCallback(undefined, resp)
-            passingNum += 1
-            timePassed += time
-          } else if (hhLogs && hhLogs.length) {
-            const resp: TestResultInterface = {
-              type: 'logOnly',
-              value: changeCase.sentenceCase(func.name),
-              filename: testObject.filename,
-              time: time,
-              context: testName,
-              hhLogs
-            }
-            testCallback(undefined, resp)
-            timePassed += time
-          }
-
-          return next()
-        } catch (err) {
+        return
+      } catch (err) {
+        if (!err.receipt) {
           console.error(err)
-          return next(err)
+          return
         }
-      }).catch(async (err) => {
         const time: number = (Date.now() - startTime) / 1000.0
-        if (!err.receipt || failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
+        if (failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
         failedTransactions[err.receipt.transactionHash] = time
         let errMsg = err.message
         let txHash
@@ -405,8 +406,8 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         testCallback(undefined, resp)
         failureNum += 1
         timePassed += time
-        return next()
-      })
+        return
+      }
     }
   }, function (error) {
     resultsCallback(error, { passingNum, failureNum, timePassed })

@@ -57,7 +57,7 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
       next(null, contractsToDeploy)
     },
     function deployContracts (contractsToDeploy: string[], next) {
-      const deployRunner = (deployObject, {abi, signer}, contractName, filename, callback) => {
+      const deployRunner = (deployObject, { abi, signer }, contractName, filename, callback) => {
         deployObject.getDeployTransaction().then((tx: TransactionResponse) => {
           provider.estimateGas(tx).then((gasValue) => {
             const gasBase = Math.ceil(Number(gasValue) * 1.2)
@@ -90,7 +90,7 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
           if (error) return nextEach(error)
           provider.getSigner().then((signer) => {
             const deployObject: ContractFactory = new ethers.ContractFactory(contract.abi, '0x' + contractDeployData.dataHex, signer)
-            deployRunner(deployObject, {abi: contract.abi, signer}, contractName, contract.filename, (error) => { nextEach(error) })
+            deployRunner(deployObject, { abi: contract.abi, signer }, contractName, contract.filename, (error) => { nextEach(error) })
           })
         }
 
@@ -101,7 +101,7 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
           const code = compiledObject[libData.data.contractName].code
           provider.getSigner().then((signer) => {
             const deployObject: ContractFactory = new ethers.ContractFactory(abi, '0x' + code, signer)
-            deployRunner(deployObject, {abi, signer}, libData.data.contractName, contract.filename, callback)
+            deployRunner(deployObject, { abi, signer }, libData.data.contractName, contract.filename, callback)
           })
         }
 
