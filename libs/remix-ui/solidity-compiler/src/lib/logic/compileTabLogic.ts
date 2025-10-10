@@ -36,7 +36,11 @@ export class CompileTabLogic {
     this.compiler = new SmartCompiler(
       this.api as any,
       (url, cb) => {
-       
+        // This callback should match content-import plugin behavior for unresolved URLs
+        // For now, return error since SmartCompiler handles dependency resolution internally
+        // Create Error object but pass the message to match existing patterns
+        const error = new Error(`not found ${url}`)
+        cb(error.message as any)
       },
       null, // importResolverFactory - not used by SmartCompiler
       this.debug
