@@ -20,7 +20,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     this._web3 = new Web3(this.web3Provider)
     // this._web3 can be overwritten and reset to initial value in 'debug' method
     this.initialWeb3 = this._web3
-    init.extendWeb3(this._web3)
+    init.extendProvider(this._web3)
 
     this.offsetToLineColumnConverter = {
       async offsetToLineColumn (rawLocation, file, sources, asts) {
@@ -116,7 +116,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       const webDebugNode = init.web3DebugNode(network.name)
       web3 = !webDebugNode ? this.web3() : webDebugNode
     }
-    init.extendWeb3(web3)
+    init.extendProvider(web3)
     return web3
   }
 
@@ -159,7 +159,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     }
     if (web3) this._web3 = web3
     else this._web3 = this.initialWeb3
-    init.extendWeb3(this._web3)
+    init.extendProvider(this._web3)
     if (this.onDebugRequestedListener) {
       this.onDebugRequestedListener(hash, this._web3).then((debuggerBackend) => {
         this.debuggerBackend = debuggerBackend

@@ -1,7 +1,7 @@
 import { Web3, FMT_BYTES, FMT_NUMBER, LegacySendAsyncProvider, LegacyRequestProvider } from 'web3'
 import { fromWei, toBigInt } from 'web3-utils'
 import { privateToAddress, hashPersonalMessage, isHexString, bytesToHex } from '@ethereumjs/util'
-import { extend, JSONRPCRequestPayload, JSONRPCResponseCallback } from '@remix-project/remix-simulator'
+import { extendProvider, JSONRPCRequestPayload, JSONRPCResponseCallback } from '@remix-project/remix-simulator'
 import { ExecutionContext } from '../execution-context'
 
 export class VMProvider {
@@ -76,7 +76,7 @@ export class VMProvider {
             }
             this.web3 = new Web3(this.provider as (LegacySendAsyncProvider | LegacyRequestProvider))
             this.web3.setConfig({ defaultTransactionType: '0x0' })
-            extend(this.web3)
+            extendProvider(this.web3)
             this.executionContext.setWeb3(this.executionContext.getProvider(), this.web3)
             resolve({})
           } else {
