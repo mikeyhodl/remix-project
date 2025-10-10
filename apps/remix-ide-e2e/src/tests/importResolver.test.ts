@@ -356,6 +356,20 @@ module.exports = {
             .perform(function() {
                 browser.assert.ok(true, 'Multi-line imports should be parsed and resolved correctly');
             })
+    },
+
+    'Test proper error handling for unresolvable imports #group11': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('UnresolvableImportTest.sol', unresolvableImportSource['UnresolvableImportTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            // Verify that compilation shows proper error message instead of crashing
+            .waitForElementVisible('*[data-id="compiledErrors"]', 10000)
+            .waitForElementContainsText('*[data-id="compiledErrors"]', 'not found @openzeppelin/contracts/utils/math/SafeMath.sol')
+            .perform(function() {
+                browser.assert.ok(true, 'Unresolvable imports should show proper error messages without crashing');
+            })
             .end()
     },
 
@@ -665,6 +679,20 @@ import {
     }
 }
 
+const unresolvableImportSource = {
+    'UnresolvableImportTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// This import should fail because SafeMath was removed in OpenZeppelin v4.0+
+import * as SafeMath from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+// This import should work fine
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -682,5 +710,6 @@ const sources = [
     resolutionIndexSource,
     debugLoggingSource,
     importParsingEdgeCasesSource,
-    multiLineImportsSource
+    multiLineImportsSource,
+    unresolvableImportSource
 ]

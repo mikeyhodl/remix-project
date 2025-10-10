@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites errors="1"
+            failures="0"
+            tests="0">
+
+  <testsuite name="importResolver.test"
+    errors="1" failures="0" hostname="" id="" package="importResolver.test" skipped="19"
+    tests="0" time="0.000" timestamp="">
+  
+
+  
+    <system-err>
+      
+┌────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                    │
+│   ChromeDriver cannot be found in the current project.                                             │
+│                                                                                                    │
+│    You can either install chromedriver from NPM with:                                              │
+│                                                                                                    │
+│       npm install chromedriver --save-dev                                                          │
+│                                                                                                    │
+│    or download it from https://sites.google.com/chromium.org/driver/downloads,                     │
+│   extract the archive and set &#34;webdriver.server_path&#34; config option to point to the binary file.   │
+│                                                                                                    │
+│                                                                                                    │
+│                                                                                                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+    </system-err>
+  
+
+    
+    <error message="ChromeDriver cannot be found in the current project."><![CDATA[
+      Error: ChromeDriver cannot be found in the current project.
+    at ChromeServiceBuilder.getStartupErrorMessage (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/transport/selenium-webdriver/service-builders/base-service.js:197:26)
+    at new BaseService (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/transport/selenium-webdriver/service-builders/base-service.js:81:18)
+    at new ChromeServiceBuilder (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/transport/selenium-webdriver/service-builders/chrome.js:4:1)
+    at ChromeDriver.createDriverService (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/transport/selenium-webdriver/index.js:171:28)
+    at ChromeDriver.createSession (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/transport/selenium-webdriver/index.js:223:18)
+    at NightwatchClient.createSession (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/core/client.js:672:27)
+    at TestSuite.createSession (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/testsuite/index.js:438:24)
+    at TestSuite.startTestSuite (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/testsuite/index.js:452:17)
+    at TestSuite.runTestSuite (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/testsuite/index.js:477:17)
+    at TestSuite.run (/Users/filipmertens/projects/remix-project/node_modules/nightwatch/lib/testsuite/index.js:932:17)
+      ]]></error>  
+
+  
+    
+    <testcase
+      name="@sources" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test NPM Import with Versioned Folders #group1" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Verify package.json in versioned folder #group1" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test workspace package.json version resolution #group2" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Verify canonical version is used consistently #group2" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test explicit versioned imports #group3" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Verify deduplication works correctly #group3" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test explicit version override #group4" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test yarn.lock version resolution #group5" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test package-lock.json version resolution #group6" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test Chainlink CCIP parent dependency resolution #group7" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test npm alias syntax imports #group8" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test GitHub URL imports #group8" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test resolution index mapping for Go to Definition #group9" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test resolution index persistence across workspace changes #group9" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test debug logging with localStorage flag #group10" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test debug logging disabled by default #group10" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test enhanced import parsing edge cases #group11" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Test multi-line import parsing specifically #group11" classname="importResolver.test">
+      <skipped />
+    </testcase>
+    
+  
+  </testsuite>
+</testsuites>
