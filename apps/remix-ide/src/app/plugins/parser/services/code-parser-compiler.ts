@@ -121,10 +121,10 @@ export default class CodeParserCompiler {
 
     this.compiler = new SmartCompiler(
       this.plugin,
-      (url, cb) => { 
-        return this.plugin.call('contentImport', 'resolveAndSave', url)
-          .then((result) => cb(null, result))
-          .catch((error: Error) => cb(error))
+      (url, cb) => {
+        console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
+        console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
+        cb(new Error(`File not found: ${url} - Missing from pre-built dependency tree`))
       },
       null, // importResolverFactory - not used by SmartCompiler
       false // debug - set to false for code-parser to reduce noise

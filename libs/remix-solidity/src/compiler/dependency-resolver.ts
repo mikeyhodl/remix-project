@@ -206,22 +206,52 @@ export class DependencyResolver {
 
   /**
    * Extract import statements from Solidity source code
+   * Handles multi-line imports, ignores commented imports, and avoids string literals
    */
   private extractImports(content: string): string[] {
     const imports: string[] = []
     
-    // Match: import "path/to/file.sol";
-    // Match: import 'path/to/file.sol';
-    // Match: import {Symbol} from "path/to/file.sol";
-    // Match: import * as Name from "path/to/file.sol";
-    const importRegex = /import\s+(?:{[^}]*}\s+from\s+)?(?:\*\s+as\s+\w+\s+from\s+)?["']([^"']+)["']/g
+    // Step 1: Remove all comments to avoid false positives
+    // Remove single-line comments: // comment
+    let cleanContent = content.replace(/\/\/.*$/gm, '')
     
-    let match
-    while ((match = importRegex.exec(content)) !== null) {
-      const importPath = match[1]
-      if (importPath) {
-        imports.push(importPath)
+    // Remove multi-line comments: /* comment */
+    cleanContent = cleanContent.replace(/\/\*[\s\S]*?\*\//g, '')
+    
+    // Step 2: Match import statements directly from the cleaned content
+    // Match various import patterns across multiple lines
+    const importPatterns = [
+      // import "path/to/file.sol";
+      /import\s+["']([^"']+)["']\s*;/g,
+      
+      // import {Symbol1, Symbol2} from "path/to/file.sol";
+      /import\s*{\s*[^}]*}\s*from\s+["']([^"']+)["']\s*;/g,
+      
+      // import * as Name from "path/to/file.sol";
+      /import\s+\*\s+as\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,
+      
+      // import Name from "path/to/file.sol";
+      /import\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,
+      
+      // import Name, {Symbol} from "path/to/file.sol";  
+      /import\s+\w+\s*,\s*{\s*[^}]*}\s*from\s+["']([^"']+)["']\s*;/g
+    ]
+    
+    // Apply each pattern to the cleaned content
+    for (const pattern of importPatterns) {
+      let match
+      while ((match = pattern.exec(cleanContent)) !== null) {
+        const importPath = match[1]
+        if (importPath && !imports.includes(importPath)) {
+          imports.push(importPath)
+        }
       }
+      // Reset regex state for next pattern
+      pattern.lastIndex = 0
+    }
+    
+    if (this.debug && imports.length > 0) {
+      this.log(`[DependencyResolver]   📝 Extracted imports:`, imports)
     }
     
     return imports
