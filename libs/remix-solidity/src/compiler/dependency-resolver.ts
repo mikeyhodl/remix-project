@@ -22,10 +22,21 @@ export class DependencyResolver {
   private processedFiles: Set<string> = new Set() // Track already processed files
   private importGraph: Map<string, Set<string>> = new Map() // file -> files it imports
   private fileToPackageContext: Map<string, string> = new Map() // file -> package@version it belongs to
+  private debug: boolean = false
 
-  constructor(pluginApi: Plugin, targetFile: string) {
+  constructor(pluginApi: Plugin, targetFile: string, debug: boolean = false) {
     this.pluginApi = pluginApi
-    this.resolver = new ImportResolver(pluginApi, targetFile)
+    this.debug = debug
+    this.resolver = new ImportResolver(pluginApi, targetFile, debug)
+  }
+
+  /**
+   * Internal debug logging method
+   */
+  private log(message: string, ...args: any[]): void {
+    if (this.debug) {
+      console.log(message, ...args)
+    }
   }
 
   /**
@@ -33,7 +44,7 @@ export class DependencyResolver {
    * Returns a map of resolved paths to their contents
    */
   public async buildDependencyTree(entryFile: string): Promise<Map<string, string>> {
-    console.log(`[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
+    this.log(`[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
     
     this.sourceFiles.clear()
     this.processedFiles.clear()
@@ -43,7 +54,7 @@ export class DependencyResolver {
     // Start recursive import resolution
     await this.processFile(entryFile, null)
     
-    console.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
+    this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
     
     return this.sourceFiles
   }
@@ -90,7 +101,7 @@ export class DependencyResolver {
     }
     
     const resolvedPath = currentParts.join('/')
-    console.log(`[DependencyResolver]   🔗 Resolved relative import: ${importPath} → ${resolvedPath}`)
+    this.log(`[DependencyResolver]   🔗 Resolved relative import: ${importPath} → ${resolvedPath}`)
     return resolvedPath
   }
 
@@ -104,15 +115,15 @@ export class DependencyResolver {
   ): Promise<void> {
     // Avoid processing the same file twice
     if (this.processedFiles.has(importPath)) {
-      console.log(`[DependencyResolver]   ⏭️  Already processed: ${importPath}`)
+      this.log(`[DependencyResolver]   ⏭️  Already processed: ${importPath}`)
       return
     }
 
-    console.log(`[DependencyResolver] 📄 Processing: ${importPath}`)
-    console.log(`[DependencyResolver]   📍 Requested by: ${requestingFile || 'entry point'}`)
+    this.log(`[DependencyResolver] 📄 Processing: ${importPath}`)
+    this.log(`[DependencyResolver]   📍 Requested by: ${requestingFile || 'entry point'}`)
     
     if (packageContext) {
-      console.log(`[DependencyResolver]   📦 Package context: ${packageContext}`)
+      this.log(`[DependencyResolver]   📦 Package context: ${packageContext}`)
       this.fileToPackageContext.set(importPath, packageContext)
       
       // Tell the resolver about this context so it can make context-aware decisions
@@ -126,7 +137,7 @@ export class DependencyResolver {
 
       // Handle local files differently from npm packages
       if (this.isLocalFile(importPath)) {
-        console.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
+        this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
         // For local files, read directly from file system
         content = await this.pluginApi.call('fileManager', 'readFile', importPath)
       } else {
@@ -135,7 +146,7 @@ export class DependencyResolver {
       }
       
       if (!content) {
-        console.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
+        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
         return
       }
 
@@ -149,7 +160,7 @@ export class DependencyResolver {
       if (!this.isLocalFile(importPath) && importPath.includes('@') && importPath.match(/@[^/]+@\d+\.\d+\.\d+\//)) {
         const unversionedPath = importPath.replace(/@([^@/]+(?:\/[^@/]+)?)@\d+\.\d+\.\d+\//, '@$1/')
         this.sourceFiles.set(unversionedPath, content)
-        console.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
+        this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
       }
       
 
@@ -159,7 +170,7 @@ export class DependencyResolver {
         const filePackageContext = this.extractPackageContext(importPath)
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
-          console.log(`[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
+          this.log(`[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
         }
       }
 
@@ -167,7 +178,7 @@ export class DependencyResolver {
       const imports = this.extractImports(content)
       
       if (imports.length > 0) {
-        console.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
+        this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
         this.importGraph.set(resolvedPath, new Set(imports))
         
         // Determine the package context to pass to child imports
@@ -175,21 +186,21 @@ export class DependencyResolver {
         
         // Recursively process each import
         for (const importedPath of imports) {
-          console.log(`[DependencyResolver]   ➡️  Processing import: ${importedPath}`)
+          this.log(`[DependencyResolver]   ➡️  Processing import: ${importedPath}`)
           
           // Resolve relative imports against the original import path (not the resolved path)
           // This ensures the resolved import matches what the compiler expects
           let resolvedImportPath = importedPath
           if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
             resolvedImportPath = this.resolveRelativeImport(importPath, importedPath)
-            console.log(`[DependencyResolver]   🔗 Resolving import via ImportResolver: "${resolvedImportPath}"`)
+            this.log(`[DependencyResolver]   🔗 Resolving import via ImportResolver: "${resolvedImportPath}"`)
           }
           
           await this.processFile(resolvedImportPath, resolvedPath, currentFilePackageContext)
         }
       }
     } catch (err) {
-      console.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
+      this.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
     }
   }
 
@@ -283,7 +294,7 @@ export class DependencyResolver {
    * This should be called after buildDependencyTree() completes successfully
    */
   public async saveResolutionIndex(): Promise<void> {
-    console.log(`[DependencyResolver] 💾 Saving resolution index...`)
+    this.log(`[DependencyResolver] 💾 Saving resolution index...`)
     await this.resolver.saveResolutionsToIndex()
   }
 }

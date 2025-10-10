@@ -23,17 +23,20 @@ export class Compiler {
   workerHandler: EsWebWorkerHandlerInterface
   importResolverFactory: ((target: string) => IImportResolver) | null // Factory to create resolvers per compilation
   currentResolver: IImportResolver | null // Current compilation's import resolver
+  private debug: boolean = false
   
   constructor(
     handleImportCall?: (fileurl: string, cb) => void, 
-    importResolverFactory?: (target: string) => IImportResolver
+    importResolverFactory?: (target: string) => IImportResolver,
+    debug: boolean = false
   ) {
     this.event = new EventManager()
     this.handleImportCall = handleImportCall
     this.importResolverFactory = importResolverFactory || null
     this.currentResolver = null
+    this.debug = debug
     
-    console.log(`[Compiler] 🏗️  Constructor: importResolverFactory provided:`, !!importResolverFactory)
+    this.log(`[Compiler] 🏗️  Constructor: importResolverFactory provided:`, !!importResolverFactory)
     
     this.state = {
       viaIR: false,
@@ -70,6 +73,15 @@ export class Compiler {
   }
 
   /**
+   * Internal debug logging method
+   */
+  private log(message: string, ...args: any[]): void {
+    if (this.debug) {
+      console.log(message, ...args)
+    }
+  }
+
+  /**
    * @dev Setter function for CompilerState's properties (used by IDE)
    * @param key key
    * @param value value of key in CompilerState
@@ -100,15 +112,15 @@ export class Compiler {
     }
     const fileCount = Object.keys(files).length
     const missingCount = missingInputs?.length || 0
-    console.log(`[Compiler] 🔄 internalCompile called with ${fileCount} file(s), ${missingCount} missing input(s) to resolve`)
+    this.log(`[Compiler] 🔄 internalCompile called with ${fileCount} file(s), ${missingCount} missing input(s) to resolve`)
     
     this.gatherImports(files, missingInputs, (error, input) => {
       if (error) {
-        console.log(`[Compiler] ❌ gatherImports failed:`, error)
+        this.log(`[Compiler] ❌ gatherImports failed:`, error)
         this.state.lastCompilationResult = null
         this.event.trigger('compilationFinished', [false, { error: { formattedMessage: error, severity: 'error' } }, files, input, this.state.currentVersion])
       } else if (this.state.compileJSON && input) { 
-        console.log(`[Compiler] ✅ All imports gathered, sending ${Object.keys(input.sources).length} file(s) to compiler`)
+        this.log(`[Compiler] ✅ All imports gathered, sending ${Object.keys(input.sources).length} file(s) to compiler`)
         this.state.compileJSON(input, timeStamp) 
       }
     })
@@ -121,22 +133,22 @@ export class Compiler {
    */
 
   compile(files: Source, target: string): void {
-    console.log(`\n${'='.repeat(80)}`)
-    console.log(`[Compiler] 🚀 Starting NEW compilation for target: "${target}"`)
-    console.log(`[Compiler] 📁 Initial files provided: ${Object.keys(files).length}`)
-    console.log(`[Compiler] 🔌 importResolverFactory available:`, !!this.importResolverFactory)
+    this.log(`\n${'='.repeat(80)}`)
+    this.log(`[Compiler] 🚀 Starting NEW compilation for target: "${target}"`)
+    this.log(`[Compiler] 📁 Initial files provided: ${Object.keys(files).length}`)
+    this.log(`[Compiler] 🔌 importResolverFactory available:`, !!this.importResolverFactory)
     
     // Create a fresh ImportResolver instance for this compilation
     // This ensures complete isolation of import mappings per compilation
     if (this.importResolverFactory) {
       this.currentResolver = this.importResolverFactory(target)
-      console.log(`[Compiler] 🆕 Created new resolver instance for this compilation`)
+      this.log(`[Compiler] 🆕 Created new resolver instance for this compilation`)
     } else {
       this.currentResolver = null
-      console.log(`[Compiler] ⚠️  No resolver factory - import resolution will use legacy callback`)
+      this.log(`[Compiler] ⚠️  No resolver factory - import resolution will use legacy callback`)
     }
     
-    console.log(`${'='.repeat(80)}\n`)
+    this.log(`${'='.repeat(80)}\n`)
     
     this.state.target = target
     this.state.compilationStartTime = new Date().getTime()
@@ -165,8 +177,8 @@ export class Compiler {
       this.state.compileJSON = (source: SourceWithTarget) => {
         const missingInputs: string[] = []
         const missingInputsCallback = (path: string) => {
-          console.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
-          console.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
+          this.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
+          this.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
           missingInputs.push(path)
           // Instead of deferring, throw an error to stop compilation immediately
           throw new Error(`Missing import: ${path}`)
@@ -213,11 +225,11 @@ export class Compiler {
     if (data.errors) data.errors.forEach((err) => checkIfFatalError(err))
     if (!noFatalErrors) {
       // There are fatal errors, abort here
-      console.log(`[Compiler] ❌ Compilation failed with errors for target: "${this.state.target}"`)
+      this.log(`[Compiler] ❌ Compilation failed with errors for target: "${this.state.target}"`)
       
       // Clean up resolver on error
       if (this.currentResolver) {
-        console.log(`[Compiler] 🧹 Compilation failed, discarding resolver`)
+        this.log(`[Compiler] 🧹 Compilation failed, discarding resolver`)
         this.currentResolver = null
       }
       
@@ -225,16 +237,16 @@ export class Compiler {
       this.event.trigger('compilationFinished', [false, data, source, input, version])
     } else if (missingInputs !== undefined && missingInputs.length > 0 && source && source.sources) {
       // try compiling again with the new set of inputs
-      console.log(`[Compiler] 🔄 Compilation round complete, but found ${missingInputs.length} missing input(s):`, missingInputs)
-      console.log(`[Compiler] 🔁 Re-compiling with new imports (sequential resolution will start)...`)
+      this.log(`[Compiler] 🔄 Compilation round complete, but found ${missingInputs.length} missing input(s):`, missingInputs)
+      this.log(`[Compiler] 🔁 Re-compiling with new imports (sequential resolution will start)...`)
       // Keep resolver alive for next round
       this.internalCompile(source.sources, missingInputs, timeStamp)
     } else {
-      console.log(`[Compiler] ✅ 🎉 Compilation successful for target: "${this.state.target}"`)
+      this.log(`[Compiler] ✅ 🎉 Compilation successful for target: "${this.state.target}"`)
       
       // Clean up resolver (no longer needed - DependencyResolver handles resolution index)
       if (this.currentResolver) {
-        console.log(`[Compiler] 🧹 Compilation successful, discarding resolver`)
+        this.log(`[Compiler] 🧹 Compilation successful, discarding resolver`)
         this.currentResolver = null
       }
       
@@ -256,7 +268,7 @@ export class Compiler {
    */
 
   loadRemoteVersion(version: string): void {
-    console.log(`Loading remote solc version ${version} ...`)
+    this.log(`Loading remote solc version ${version} ...`)
     const compiler: any = require('solc') // eslint-disable-line
     compiler.loadRemoteVersion(version, (err, remoteCompiler) => {
       if (err) {
@@ -266,8 +278,8 @@ export class Compiler {
         this.state.compileJSON = (source: SourceWithTarget) => {
           const missingInputs: string[] = []
           const missingInputsCallback = (path: string) => {
-            console.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
-            console.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
+            this.log(`[Compiler] 🚨 MISSING IMPORT DETECTED: "${path}"`)
+            this.log(`[Compiler] ⛔ Stopping compilation at first missing import for debugging`)
             missingInputs.push(path)
             // Instead of deferring, throw an error to stop compilation immediately
             throw new Error(`Missing import: ${path}`)
@@ -303,7 +315,7 @@ export class Compiler {
    */
 
   loadVersion(usingWorker: boolean, url: string): void {
-    console.log('Loading ' + url + ' ' + (usingWorker ? 'with worker' : 'without worker'))
+    this.log('Loading ' + url + ' ' + (usingWorker ? 'with worker' : 'without worker'))
     this.event.trigger('loadingCompiler', [url, usingWorker])
     if (this.state.worker) {
       this.state.worker.terminate()
@@ -437,58 +449,58 @@ export class Compiler {
     const remainingCount = importHints.length
     
     if (remainingCount > 0) {
-      console.log(`[Compiler] 📦 gatherImports: ${remainingCount} import(s) remaining in queue`)
+      this.log(`[Compiler] 📦 gatherImports: ${remainingCount} import(s) remaining in queue`)
     }
     
     while (importHints.length > 0) {
       const m: string = importHints.pop() as string
       if (m && m in files) {
-        console.log(`[Compiler] ⏭️  Skipping "${m}" - already loaded`)
+        this.log(`[Compiler] ⏭️  Skipping "${m}" - already loaded`)
         continue
       }
 
       // Try to use the ImportResolver first, fall back to legacy handleImportCall
       if (this.currentResolver) {
         const position = remainingCount - importHints.length
-        console.log(`[Compiler] 🔍 [${position}/${remainingCount}] Resolving import via ImportResolver: "${m}"`)
+        this.log(`[Compiler] 🔍 [${position}/${remainingCount}] Resolving import via ImportResolver: "${m}"`)
         
         this.currentResolver.resolveAndSave(m)
           .then(content => {
-            console.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
+            this.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
             files[m] = { content }
-            console.log(`[Compiler] � Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
+            this.log(`[Compiler] � Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
             this.gatherImports(files, importHints, cb)
           })
           .catch(err => {
-            console.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}"`)
+            this.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}"`)
             // Format error message to match handleImportCall pattern
             const errorMessage = err && typeof err === 'object' && err.message 
               ? err.message 
               : (typeof err === 'string' ? err : String(err))
-            console.log(`[Compiler] ❌ Error details:`, errorMessage)
+            this.log(`[Compiler] ❌ Error details:`, errorMessage)
             if (cb) cb(errorMessage)
           })
         return
       } else if (this.handleImportCall) {
         const position = remainingCount - importHints.length
-        console.log(`[Compiler] �🔍 [${position}/${remainingCount}] Resolving import via legacy callback: "${m}"`)
+        this.log(`[Compiler] �🔍 [${position}/${remainingCount}] Resolving import via legacy callback: "${m}"`)
         
         this.handleImportCall(m, (err, content: string) => {
           if (err) {
-            console.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}" - Error: ${err}`)
+            this.log(`[Compiler] ❌ [${position}/${remainingCount}] Failed to resolve: "${m}" - Error: ${err}`)
             if (cb) cb(err)
           } else {
-            console.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
+            this.log(`[Compiler] ✅ [${position}/${remainingCount}] Successfully resolved: "${m}" (${content?.length || 0} bytes)`)
             files[m] = { content }
             
-            console.log(`[Compiler] 🔄 Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
+            this.log(`[Compiler] 🔄 Recursively calling gatherImports for remaining ${importHints.length} import(s)`)
             this.gatherImports(files, importHints, cb)
           }
         })
       }
       return
     }
-    console.log(`[Compiler] ✨ All imports resolved! Total files: ${Object.keys(files).length}`)
+    this.log(`[Compiler] ✨ All imports resolved! Total files: ${Object.keys(files).length}`)
     
     // Don't clean up resolver here - it needs to survive across multiple compilation rounds
     // The resolver will be cleaned up in onCompilationFinished when compilation truly completes

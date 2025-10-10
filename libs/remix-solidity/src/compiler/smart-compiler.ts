@@ -25,19 +25,24 @@ import { CompilerState, Source } from './types'
 export class SmartCompiler {
   private compiler: Compiler
   private pluginApi: Plugin
+  private debug: boolean = false
 
   constructor(
     pluginApi: Plugin,
     importCallback?: (url: string, cb: (err: Error | null, result?: any) => void) => void,
-    importResolverFactory?: (target: string) => any
+    importResolverFactory?: (target: string) => any,
+    debug: boolean = false
   ) {
     this.pluginApi = pluginApi
+    this.debug = debug
     
     // Create the underlying compiler
     // Note: We can pass null for importResolverFactory since we handle imports differently
-    this.compiler = new Compiler(importCallback, null)
+    this.compiler = new Compiler(importCallback, null, this.debug)
     
-    console.log(`[SmartCompiler] 🧠 Created smart compiler wrapper`)
+    if (this.debug) {
+      console.log(`[SmartCompiler] 🧠 Created smart compiler wrapper`)
+    }
     
     // Create a proxy that transparently forwards all method calls to the underlying compiler
     // except for the ones we explicitly override (compile)
@@ -66,14 +71,18 @@ export class SmartCompiler {
    * Smart compile method - performs dependency resolution first, then compiles
    */
   public compile(sources: Source, target: string): void {
-    console.log(`[SmartCompiler] 🚀 Starting smart compilation for: ${target}`)
+    if (this.debug) {
+      console.log(`[SmartCompiler] 🚀 Starting smart compilation for: ${target}`)
+    }
     
     // Perform dependency resolution asynchronously, then compile
     this.performSmartCompilation(sources, target).catch(error => {
-      console.log(`[SmartCompiler] ❌ Smart compilation failed:`, error)
-      
-      // Fallback: try to compile with original sources if dependency resolution fails  
-      console.log(`[SmartCompiler] 🔄 Falling back to direct compilation...`)
+      if (this.debug) {
+        console.log(`[SmartCompiler] ❌ Smart compilation failed:`, error)
+        
+        // Fallback: try to compile with original sources if dependency resolution fails  
+        console.log(`[SmartCompiler] 🔄 Falling back to direct compilation...`)
+      }
       this.compiler.compile(sources, target)
     })
   }
@@ -84,26 +93,32 @@ export class SmartCompiler {
   private async performSmartCompilation(sources: Source, target: string): Promise<void> {
     try {
       // Step 1: Build dependency tree BEFORE compilation
-      console.log(`[SmartCompiler] 🌳 Building dependency tree...`)
-      const depResolver = new DependencyResolver(this.pluginApi, target)
+      if (this.debug) {
+        console.log(`[SmartCompiler] 🌳 Building dependency tree...`)
+      }
+      const depResolver = new DependencyResolver(this.pluginApi, target, this.debug)
       
       // Build complete source bundle with context-aware resolution
       const sourceBundle = await depResolver.buildDependencyTree(target)
       
-      console.log(`[SmartCompiler] ✅ Dependency tree built successfully`)
-      console.log(`[SmartCompiler] 📦 Source bundle contains ${sourceBundle.size} files`)
+      if (this.debug) {
+        console.log(`[SmartCompiler] ✅ Dependency tree built successfully`)
+        console.log(`[SmartCompiler] 📦 Source bundle contains ${sourceBundle.size} files`)
+      }
       
       // Step 2: Save resolution index for "Go to Definition" functionality
       await depResolver.saveResolutionIndex()
       
       // Step 3: Get import graph for debugging/logging
-      const importGraph = depResolver.getImportGraph()
-      if (importGraph.size > 0) {
-        console.log(`[SmartCompiler] 📊 Import graph:`)
-        importGraph.forEach((imports, file) => {
-          console.log(`[SmartCompiler]   ${file}`)
-          imports.forEach(imp => console.log(`[SmartCompiler]     → ${imp}`))
-        })
+      if (this.debug) {
+        const importGraph = depResolver.getImportGraph()
+        if (importGraph.size > 0) {
+          console.log(`[SmartCompiler] 📊 Import graph:`)
+          importGraph.forEach((imports, file) => {
+            console.log(`[SmartCompiler]   ${file}`)
+            imports.forEach(imp => console.log(`[SmartCompiler]     → ${imp}`))
+          })
+        }
       }
       
       // Step 4: Convert to compiler input format
@@ -114,15 +129,18 @@ export class SmartCompiler {
         resolvedSources[target] = sources[target]
       }
       
-      console.log(`[SmartCompiler] 🔨 Passing ${Object.keys(resolvedSources).length} files to underlying compiler`)
-      
-      // Log all files that will be compiled
-      Object.keys(resolvedSources).forEach((filePath, index) => {
-        console.log(`[SmartCompiler]   ${index + 1}. ${filePath}`)
-      })
+      if (this.debug) {
+        console.log(`[SmartCompiler] 🔨 Passing ${Object.keys(resolvedSources).length} files to underlying compiler`)
+        
+        // Log all files that will be compiled
+        Object.keys(resolvedSources).forEach((filePath, index) => {
+          console.log(`[SmartCompiler]   ${index + 1}. ${filePath}`)
+        })
+        
+        console.log(`[SmartCompiler] ⚡ Starting compilation with resolved sources...`)
+      }
       
       // Step 6: Delegate to the underlying compiler with pre-built sources
-      console.log(`[SmartCompiler] ⚡ Starting compilation with resolved sources...`)
       this.compiler.compile(resolvedSources, target)
       
     } catch (error) {

@@ -4,9 +4,9 @@ import { CompilerAbstract } from './compiler-abstract'
 import { Compiler } from './compiler'
 import type { CompilerSettings, Language, Source } from './types'
 
-export const compile = (compilationTargets: Source, settings: CompilerSettings, language: Language, version: string, contentResolverCallback): Promise<CompilerAbstract> => {
+export const compile = (compilationTargets: Source, settings: CompilerSettings, language: Language, version: string, contentResolverCallback, debug: boolean = false): Promise<CompilerAbstract> => {
   return new Promise((resolve, reject) => {
-    const compiler = new Compiler(contentResolverCallback)
+    const compiler = new Compiler(contentResolverCallback, null, debug)
     compiler.set('evmVersion', settings?.evmVersion)
     compiler.set('optimize', settings?.optimizer?.enabled)
     compiler.set('language', language)

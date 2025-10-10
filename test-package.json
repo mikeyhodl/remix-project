@@ -1,0 +1,16 @@
+{
+  "name": "remix-dependency-test",
+  "version": "1.0.0",
+  "description": "Test package for dependency resolution with npm aliases",
+  "dependencies": {
+    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
+    "@openzeppelin/contracts-5.0.2": "npm:@openzeppelin/contracts@5.0.2",
+    "@chainlink/contracts": "1.4.0"
+  },
+  "devDependencies": {
+    "hardhat": "^2.19.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0"
+  },
+  "resolutions": {
+  }
+}

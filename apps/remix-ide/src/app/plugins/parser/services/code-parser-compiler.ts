@@ -125,7 +125,9 @@ export default class CodeParserCompiler {
         return this.plugin.call('contentImport', 'resolveAndSave', url)
           .then((result) => cb(null, result))
           .catch((error: Error) => cb(error))
-      }
+      },
+      null, // importResolverFactory - not used by SmartCompiler
+      false // debug - set to false for code-parser to reduce noise
     )
     this.compiler.event.register('compilationFinished', this.onAstFinished)
   }

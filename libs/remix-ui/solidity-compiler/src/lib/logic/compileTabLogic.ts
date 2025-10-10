@@ -22,9 +22,12 @@ export class CompileTabLogic {
   public event
   public evmVersions: Array<string>
   public useFileConfiguration: boolean
+  private debug: boolean = false
 
-  constructor (api: ICompilerApi) {
+  constructor (api: ICompilerApi, debug?: boolean) {
     this.api = api
+    // Enable debug logging if explicitly set, or if localStorage flag is set
+    this.debug = debug !== undefined ? debug : (localStorage.getItem('remix-debug-resolver') === 'true')
 
     this.event = new EventEmitter()
     
@@ -36,7 +39,9 @@ export class CompileTabLogic {
         console.error(`[CompileTabLogic] ❌ File missing - could not resolve: ${url}`)
         console.error(`[CompileTabLogic] 🔍 This indicates a bug in our dependency resolution system`)
         cb(new Error(`File not found: ${url} - Missing from pre-built dependency tree`))
-      }
+      },
+      null, // importResolverFactory - not used by SmartCompiler
+      this.debug
     )
     
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
