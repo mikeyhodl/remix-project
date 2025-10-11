@@ -804,6 +804,22 @@ export class ImportResolver implements IImportResolver {
   public async resolveAndSave(url: string, targetPath?: string, skipResolverMappings = false): Promise<string> {
     const originalUrl = url
     
+    // Validate that URL points to a .sol file (unless it's package.json)
+    if (!url.endsWith('.sol') && !url.endsWith('package.json')) {
+      const errorMsg = `Invalid import: "${url}" does not end with .sol extension. All Solidity imports must be .sol files.`
+      this.log(`[ImportResolver] ❌ ${errorMsg}`)
+      
+      // Log to terminal for user visibility
+      this.pluginApi.call('terminal', 'log', {
+        type: 'error',
+        value: `❌ ${errorMsg}`
+      }).catch(() => {
+        console.error(errorMsg)
+      })
+      
+      throw new Error(errorMsg)
+    }
+    
     // If this is an external URL, check if it's a CDN serving an npm package
     if (url.startsWith('http://') || url.startsWith('https://')) {
       this.log(`[ImportResolver] 🌐 External URL detected: ${url}`)
