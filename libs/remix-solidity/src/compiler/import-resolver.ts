@@ -873,8 +873,75 @@ export class ImportResolver implements IImportResolver {
         
         return content
       }
+    }
+
+    // Handle IPFS URLs: ipfs://QmHash/path or ipfs://ipfs/QmHash/path
+    if (url.startsWith('ipfs://')) {
+      this.log(`[ImportResolver] 🌐 IPFS URL detected: ${url}`)
       
-      // For other external URLs (not npm CDN, not GitHub raw), fetch directly
+      // Extract hash and path
+      const ipfsMatch = url.match(/^ipfs:\/\/(?:ipfs\/)?([^/]+)(?:\/(.+))?$/)
+      if (ipfsMatch) {
+        const hash = ipfsMatch[1]
+        const filePath = ipfsMatch[2] || ''
+        
+        // Create a normalized path
+        const normalizedPath = filePath ? `ipfs/${hash}/${filePath}` : `ipfs/${hash}`
+        const normalizedTargetPath = `.deps/${normalizedPath}`
+        
+        this.log(`[ImportResolver]   🔄 Normalizing IPFS URL:`)
+        this.log(`[ImportResolver]      From: ${url}`)
+        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
+        
+        // Fetch the content using the IPFS URL
+        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
+        
+        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
+        
+        // Record the mapping from original URL to normalized path
+        if (!this.resolutions.has(originalUrl)) {
+          this.resolutions.set(originalUrl, normalizedPath)
+        }
+        
+        return content
+      }
+    }
+
+    // Handle Swarm URLs: bzz-raw://hash/path or bzz://hash/path
+    if (url.startsWith('bzz-raw://') || url.startsWith('bzz://')) {
+      this.log(`[ImportResolver] 🌐 Swarm URL detected: ${url}`)
+      
+      // Extract hash and path
+      const swarmMatch = url.match(/^(bzz-raw?):\/\/([^/]+)(?:\/(.+))?$/)
+      if (swarmMatch) {
+        const protocol = swarmMatch[1]
+        const hash = swarmMatch[2]
+        const filePath = swarmMatch[3] || ''
+        
+        // Create a normalized path
+        const normalizedPath = filePath ? `swarm/${hash}/${filePath}` : `swarm/${hash}`
+        const normalizedTargetPath = `.deps/${normalizedPath}`
+        
+        this.log(`[ImportResolver]   🔄 Normalizing Swarm URL:`)
+        this.log(`[ImportResolver]      From: ${url}`)
+        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
+        
+        // Fetch the content using the Swarm URL
+        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
+        
+        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
+        
+        // Record the mapping from original URL to normalized path
+        if (!this.resolutions.has(originalUrl)) {
+          this.resolutions.set(originalUrl, normalizedPath)
+        }
+        
+        return content
+      }
+    }
+
+    // For other external HTTP/HTTPS URLs (not npm CDN, not GitHub raw), fetch directly
+    if (url.startsWith('http://') || url.startsWith('https://')) {
       this.log(`[ImportResolver]   ⬇️  Fetching directly from URL: ${url}`)
       const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
       

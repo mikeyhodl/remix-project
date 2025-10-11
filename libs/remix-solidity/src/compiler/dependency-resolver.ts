@@ -332,6 +332,27 @@ export class DependencyResolver {
    * Returns the base up to the version/tag segment so children can be resolved beneath it.
    */
   private extractUrlContext(path: string): string | null {
+    // IPFS pattern: ipfs://QmHash/path or ipfs://ipfs/QmHash/path
+    if (path.startsWith('ipfs://')) {
+      // Extract the hash (everything after ipfs:// up to the first / or end of string)
+      const ipfsMatch = path.match(/^ipfs:\/\/(?:ipfs\/)?([^/]+)/)
+      if (ipfsMatch) {
+        const hash = ipfsMatch[1]
+        this.log(`[DependencyResolver]   🌐 Extracted IPFS context: ipfs://${hash}`)
+        return `ipfs://${hash}`
+      }
+    }
+
+    // Swarm pattern: bzz-raw://hash/path or bzz://hash/path
+    if (path.startsWith('bzz-raw://') || path.startsWith('bzz://')) {
+      const swarmMatch = path.match(/^(bzz-raw?:\/\/[^/]+)/)
+      if (swarmMatch) {
+        const baseUrl = swarmMatch[1]
+        this.log(`[DependencyResolver]   🌐 Extracted Swarm context: ${baseUrl}`)
+        return baseUrl
+      }
+    }
+
     if (!path.startsWith('http://') && !path.startsWith('https://')) return null
 
     // unpkg pattern: https://unpkg.com/@scope/pkg@version/...
