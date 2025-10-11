@@ -803,6 +803,102 @@ export class ImportResolver implements IImportResolver {
 
   public async resolveAndSave(url: string, targetPath?: string, skipResolverMappings = false): Promise<string> {
     const originalUrl = url
+    
+    // If this is an external URL, check if it's a CDN serving an npm package
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      this.log(`[ImportResolver] 🌐 External URL detected: ${url}`)
+      
+      // Convert GitHub blob URLs to raw.githubusercontent.com for direct file access
+      const githubBlobMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/)
+      if (githubBlobMatch) {
+        const owner = githubBlobMatch[1]
+        const repo = githubBlobMatch[2]
+        const ref = githubBlobMatch[3]
+        const filePath = githubBlobMatch[4]
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${filePath}`
+        this.log(`[ImportResolver]   🔄 Converting GitHub blob URL to raw: ${rawUrl}`)
+        url = rawUrl
+      }
+      
+      // Check if this CDN URL is serving an npm package
+      // unpkg.com/@scope/pkg@version/... → @scope/pkg@version/...
+      // cdn.jsdelivr.net/npm/@scope/pkg@version/... → @scope/pkg@version/...
+      const npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)@([^/]+)\/(.+)$/)
+      
+      if (npmCdnMatch) {
+        const packageName = npmCdnMatch[1]
+        const version = npmCdnMatch[2]
+        const filePath = npmCdnMatch[3]
+        const npmPath = `${packageName}@${version}/${filePath}`
+        
+        this.log(`[ImportResolver]   🔄 CDN URL is serving npm package, normalizing:`)
+        this.log(`[ImportResolver]      From: ${url}`)
+        this.log(`[ImportResolver]      To:   ${npmPath}`)
+        
+        // Record the mapping from original URL to npm path
+        if (!this.resolutions.has(originalUrl)) {
+          this.resolutions.set(originalUrl, npmPath)
+        }
+        
+        // Now resolve it as a regular npm import (this will use our existing npm resolution logic)
+        return await this.resolveAndSave(npmPath, targetPath, skipResolverMappings)
+      }
+      
+      // For raw.githubusercontent.com URLs, normalize to a cleaner path structure
+      // raw.githubusercontent.com/owner/repo/ref/path → github/owner/repo@ref/path
+      const rawGithubMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/)
+      if (rawGithubMatch) {
+        const owner = rawGithubMatch[1]
+        const repo = rawGithubMatch[2]
+        const ref = rawGithubMatch[3]
+        const filePath = rawGithubMatch[4]
+        
+        // Create a normalized path without the full URL
+        const normalizedPath = `github/${owner}/${repo}@${ref}/${filePath}`
+        const normalizedTargetPath = `.deps/${normalizedPath}`
+        
+        this.log(`[ImportResolver]   🔄 Normalizing raw.githubusercontent.com URL:`)
+        this.log(`[ImportResolver]      From: ${url}`)
+        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
+        
+        // Fetch the content using the full URL but save to normalized path
+        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
+        
+        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
+        
+        // Record the mapping from original URL to normalized path
+        if (!this.resolutions.has(originalUrl)) {
+          this.resolutions.set(originalUrl, normalizedPath)
+        }
+        
+        return content
+      }
+      
+      // For other external URLs (not npm CDN, not GitHub raw), fetch directly
+      this.log(`[ImportResolver]   ⬇️  Fetching directly from URL: ${url}`)
+      const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
+      
+      this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
+      if (!content) {
+        this.log(`[ImportResolver]   ⚠️  WARNING: Empty content returned from contentImport`)
+      } else if (content.length < 200) {
+        this.log(`[ImportResolver]   ⚠️  WARNING: Suspiciously short content: "${content.substring(0, 100)}"`)
+      }
+      
+      // Record a simple mapping for traceability (original -> resolved URL)
+      if (!this.resolutions.has(originalUrl)) {
+        this.resolutions.set(originalUrl, url)
+      }
+      
+      return content
+    }
+    
+    // Handle npm: alias in import paths directly, e.g., "npm:@openzeppelin/contracts@4.9.0/..."
+    if (url.startsWith('npm:')) {
+      this.log(`[ImportResolver] 🔗 Detected npm: alias in URL, normalizing: ${url}`)
+      url = url.substring(4)
+    }
+    
     let finalUrl = url
     const packageName = this.extractPackageName(url)
 

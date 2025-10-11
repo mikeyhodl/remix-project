@@ -26,7 +26,7 @@ export class DependencyResolver {
 
   constructor(pluginApi: Plugin, targetFile: string, debug: boolean = false) {
     this.pluginApi = pluginApi
-    this.debug = debug
+    this.debug = true
     this.resolver = new ImportResolver(pluginApi, targetFile, debug)
   }
 
@@ -68,6 +68,8 @@ export class DependencyResolver {
     // - Don't start with @ or contain package-like structure
     // - Are relative paths or simple filenames
     // - But NOT relative paths within npm packages (those should be resolved via ImportResolver)
+    // Also treat external URLs and npm: alias as non-local
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules') && !path.startsWith('../') && !path.startsWith('./')
   }
 
@@ -76,6 +78,11 @@ export class DependencyResolver {
    * E.g., if currentFile is "@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPClientExample.sol"
    * and importPath is "../libraries/Client.sol", 
    * result should be "@chainlink/contracts-ccip@1.6.1/contracts/libraries/Client.sol"
+   * 
+   * Also handles CDN URLs like:
+   * - currentFile: "https://unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol"
+   * - importPath: "./IERC20.sol"
+   * - result: "https://unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"
    */
   private resolveRelativeImport(currentFile: string, importPath: string): string {
     if (!importPath.startsWith('./') && !importPath.startsWith('../')) {
@@ -135,13 +142,13 @@ export class DependencyResolver {
     try {
       let content: string
 
-      // Handle local files differently from npm packages
+      // Handle local files differently from npm/npm-alias/external urls
       if (this.isLocalFile(importPath)) {
         this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
         // For local files, read directly from file system
         content = await this.pluginApi.call('fileManager', 'readFile', importPath)
       } else {
-        // For npm packages, use the resolver
+        // For npm packages and external URLs (http/https/npm:), use the resolver
         content = await this.resolver.resolveAndSave(importPath, undefined, false)
       }
       
@@ -165,11 +172,12 @@ export class DependencyResolver {
       
 
       
-      // Determine package context for this file (only for npm packages)
+      // Determine context for this file (npm packages or external URL bases)
       if (!this.isLocalFile(importPath)) {
-        const filePackageContext = this.extractPackageContext(importPath)
+        const filePackageContext = this.extractPackageContext(importPath) || this.extractUrlContext(importPath)
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
+          this.resolver.setPackageContext(filePackageContext)
           this.log(`[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
         }
       }
@@ -181,19 +189,19 @@ export class DependencyResolver {
         this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
         this.importGraph.set(resolvedPath, new Set(imports))
         
-        // Determine the package context to pass to child imports
-        const currentFilePackageContext = this.isLocalFile(importPath) ? null : this.extractPackageContext(importPath)
+  // Determine the package/url context to pass to child imports
+  const currentFilePackageContext = this.isLocalFile(importPath) ? null : (this.extractPackageContext(importPath) || this.extractUrlContext(importPath))
         
         // Recursively process each import
         for (const importedPath of imports) {
-          this.log(`[DependencyResolver]   ➡️  Processing import: ${importedPath}`)
+          this.log(`[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
           
           // Resolve relative imports against the original import path (not the resolved path)
           // This ensures the resolved import matches what the compiler expects
           let resolvedImportPath = importedPath
           if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
             resolvedImportPath = this.resolveRelativeImport(importPath, importedPath)
-            this.log(`[DependencyResolver]   🔗 Resolving import via ImportResolver: "${resolvedImportPath}"`)
+            this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${resolvedImportPath}"`)
           }
           
           await this.processFile(resolvedImportPath, resolvedPath, currentFilePackageContext)
@@ -209,14 +217,65 @@ export class DependencyResolver {
    * Handles multi-line imports, ignores commented imports, and avoids string literals
    */
   private extractImports(content: string): string[] {
+    this.log(`[DependencyResolver]   📝 Extracting imports from content (${content.length} chars)`)
     const imports: string[] = []
     
     // Step 1: Remove all comments to avoid false positives
-    // Remove single-line comments: // comment
-    let cleanContent = content.replace(/\/\/.*$/gm, '')
+    // But be careful not to remove // inside strings (like URLs!)
     
-    // Remove multi-line comments: /* comment */
-    cleanContent = cleanContent.replace(/\/\*[\s\S]*?\*\//g, '')
+    // First, remove multi-line comments: /* comment */
+    let cleanContent = content.replace(/\/\*[\s\S]*?\*\//g, '')
+    
+    // For single-line comments, we need to be smarter
+    // Split by lines and only remove // if it's not inside quotes
+    const lines = cleanContent.split('\n')
+    const cleanedLines = lines.map(line => {
+      // Find all quoted strings in the line
+      const stringMatches: Array<{start: number, end: number}> = []
+      let inString = false
+      let stringChar = ''
+      let escaped = false
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        
+        if (escaped) {
+          escaped = false
+          continue
+        }
+        
+        if (char === '\\') {
+          escaped = true
+          continue
+        }
+        
+        if ((char === '"' || char === "'") && !inString) {
+          inString = true
+          stringChar = char
+          stringMatches.push({start: i, end: -1})
+        } else if (char === stringChar && inString) {
+          inString = false
+          stringMatches[stringMatches.length - 1].end = i
+        }
+      }
+      
+      // Find // that's not inside a string
+      const commentIndex = line.indexOf('//')
+      if (commentIndex === -1) return line
+      
+      // Check if this // is inside any string
+      const isInsideString = stringMatches.some(match => 
+        match.start < commentIndex && (match.end === -1 || match.end > commentIndex)
+      )
+      
+      if (isInsideString) {
+        return line // Keep the line as-is, // is part of a string
+      } else {
+        return line.substring(0, commentIndex) // Remove the comment
+      }
+    })
+    
+    cleanContent = cleanedLines.join('\n')
     
     // Step 2: Match import statements directly from the cleaned content
     // Match various import patterns across multiple lines
@@ -250,11 +309,77 @@ export class DependencyResolver {
       pattern.lastIndex = 0
     }
     
-    if (this.debug && imports.length > 0) {
-      this.log(`[DependencyResolver]   📝 Extracted imports:`, imports)
+    if (imports.length > 0) {
+      this.log(`[DependencyResolver]   📝 Extracted ${imports.length} imports:`, imports)
+    } else {
+      this.log(`[DependencyResolver]   📝 No imports found`)
     }
     
     return imports
+  }
+
+  /**
+   * Extract a URL-based "package" context from an external source path so that
+   * relative imports fetched from CDNs can stay scoped under the same base.
+   *
+   * Supported forms:
+   * - https://unpkg.com/@scope/pkg@1.2.3/...
+   * - https://cdn.jsdelivr.net/npm/@scope/pkg@1.2.3/...
+   * - https://cdn.jsdelivr.net/gh/owner/repo@tag/...
+   * - https://raw.githubusercontent.com/owner/repo/v1.2.3/...
+   * - https://github.com/owner/repo/blob/v1.2.3/... (will be converted to raw.githubusercontent.com)
+   *
+   * Returns the base up to the version/tag segment so children can be resolved beneath it.
+   */
+  private extractUrlContext(path: string): string | null {
+    if (!path.startsWith('http://') && !path.startsWith('https://')) return null
+
+    // unpkg pattern: https://unpkg.com/@scope/pkg@version/...
+    const unpkgMatch = path.match(/^(https?:\/\/unpkg\.com\/(@?[^/]+(?:\/[^@/]+)?)@([^/]+))\//)
+    if (unpkgMatch) {
+      const baseUrl = unpkgMatch[1]
+      this.log(`[DependencyResolver]   🌐 Extracted unpkg context: ${baseUrl}`)
+      return baseUrl
+    }
+
+    // jsDelivr npm pattern: https://cdn.jsdelivr.net/npm/@scope/pkg@version/...
+    const jsDelivrNpmMatch = path.match(/^(https?:\/\/cdn\.jsdelivr\.net\/npm\/(@?[^/]+(?:\/[^@/]+)?)@([^/]+))\//)
+    if (jsDelivrNpmMatch) {
+      const baseUrl = jsDelivrNpmMatch[1]
+      this.log(`[DependencyResolver]   🌐 Extracted jsDelivr npm context: ${baseUrl}`)
+      return baseUrl
+    }
+
+    // jsDelivr GitHub pattern: https://cdn.jsdelivr.net/gh/owner/repo@tag/...
+    const jsDelivrGhMatch = path.match(/^(https?:\/\/cdn\.jsdelivr\.net\/gh\/([^/]+)\/([^/@]+)@([^/]+))\//)
+    if (jsDelivrGhMatch) {
+      const baseUrl = jsDelivrGhMatch[1]
+      this.log(`[DependencyResolver]   🌐 Extracted jsDelivr GitHub context: ${baseUrl}`)
+      return baseUrl
+    }
+
+    // raw.githubusercontent.com pattern: https://raw.githubusercontent.com/owner/repo/tag/...
+    const rawMatch = path.match(/^(https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+))\//)
+    if (rawMatch) {
+      const baseUrl = rawMatch[1]
+      this.log(`[DependencyResolver]   🌐 Extracted raw.githubusercontent.com context: ${baseUrl}`)
+      return baseUrl
+    }
+
+    // GitHub blob URL pattern: https://github.com/owner/repo/blob/tag/...
+    // We should convert this to raw.githubusercontent.com for actual file fetching
+    const githubBlobMatch = path.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\//)
+    if (githubBlobMatch) {
+      const owner = githubBlobMatch[1]
+      const repo = githubBlobMatch[2]
+      const ref = githubBlobMatch[3]
+      const baseUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}`
+      this.log(`[DependencyResolver]   🌐 Converted GitHub blob to raw context: ${baseUrl}`)
+      return baseUrl
+    }
+
+    this.log(`[DependencyResolver]   ⚠️  Could not extract URL context from: ${path}`)
+    return null
   }
 
   /**
