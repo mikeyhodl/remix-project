@@ -855,13 +855,14 @@ export class ImportResolver implements IImportResolver {
         
         // Create a normalized path without the full URL
         const normalizedPath = `github/${owner}/${repo}@${ref}/${filePath}`
-        const normalizedTargetPath = `.deps/${normalizedPath}`
+        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
         
         this.log(`[ImportResolver]   🔄 Normalizing raw.githubusercontent.com URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
         this.log(`[ImportResolver]      To:   ${normalizedPath}`)
         
         // Fetch the content using the full URL but save to normalized path
+        // Note: contentImport will prepend .deps/ automatically
         const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
         
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
@@ -887,13 +888,14 @@ export class ImportResolver implements IImportResolver {
         
         // Create a normalized path
         const normalizedPath = filePath ? `ipfs/${hash}/${filePath}` : `ipfs/${hash}`
-        const normalizedTargetPath = `.deps/${normalizedPath}`
+        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
         
         this.log(`[ImportResolver]   🔄 Normalizing IPFS URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
         this.log(`[ImportResolver]      To:   ${normalizedPath}`)
         
         // Fetch the content using the IPFS URL
+        // Note: contentImport will prepend .deps/ automatically
         const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
         
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
@@ -920,13 +922,14 @@ export class ImportResolver implements IImportResolver {
         
         // Create a normalized path
         const normalizedPath = filePath ? `swarm/${hash}/${filePath}` : `swarm/${hash}`
-        const normalizedTargetPath = `.deps/${normalizedPath}`
+        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
         
         this.log(`[ImportResolver]   🔄 Normalizing Swarm URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
         this.log(`[ImportResolver]      To:   ${normalizedPath}`)
         
         // Fetch the content using the Swarm URL
+        // Note: contentImport will prepend .deps/ automatically
         const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
         
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)

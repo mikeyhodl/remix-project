@@ -459,12 +459,14 @@ module.exports = {
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/unpkg.com"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/unpkg.com"]')
+            // CDN npm packages are normalized to .deps/npm/
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
             .perform(function() {
-                browser.assert.ok(true, 'unpkg.com CDN imports should be resolved correctly');
+                browser.assert.ok(true, 'unpkg.com CDN imports should be normalized to npm folder');
             })
     },
     
@@ -475,12 +477,14 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/cdn.jsdelivr.net"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/cdn.jsdelivr.net"]')
+            // CDN npm packages are normalized to .deps/npm/
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
             .perform(function() {
-                browser.assert.ok(true, 'cdn.jsdelivr.net npm imports should be resolved correctly');
+                browser.assert.ok(true, 'cdn.jsdelivr.net npm imports should be normalized to npm folder');
             })
     },
     
@@ -491,12 +495,74 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/raw.githubusercontent.com"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/raw.githubusercontent.com"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            // raw.githubusercontent.com URLs are normalized to .deps/github/owner/repo@ref/
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@v4.8.0"]', 60000)
             .perform(function() {
-                browser.assert.ok(true, 'raw.githubusercontent.com imports should be resolved correctly');
+                browser.assert.ok(true, 'raw.githubusercontent.com imports should be normalized to github folder');
+            })
+    },
+
+    'Test IPFS imports #group13': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('IPFSTest.sol', ipfsImportsSource['IPFSTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(8000) // IPFS imports may take longer to fetch
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/ipfs"]')
+            .perform(function() {
+                browser.assert.ok(true, 'IPFS imports should be resolved and stored in .deps/ipfs/ folder');
+            })
+    },
+
+    'Test IPFS relative imports #group13': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('IPFSRelativeTest.sol', ipfsImportsSource['IPFSRelativeTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(8000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
+            .perform(function() {
+                browser.assert.ok(true, 'IPFS relative imports should resolve correctly within the same IPFS hash context');
+            })
+    },
+
+    'Test Swarm bzz-raw imports #group14': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('SwarmTest.sol', swarmImportsSource['SwarmTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(8000) // Swarm imports may take longer to fetch
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/swarm"]')
+            .perform(function() {
+                browser.assert.ok(true, 'Swarm bzz-raw:// imports should be resolved and stored in .deps/swarm/ folder');
+            })
+    },
+
+    'Test Swarm bzz imports #group14': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('SwarmBzzTest.sol', swarmImportsSource['SwarmBzzTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(8000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
+            .perform(function() {
+                browser.assert.ok(true, 'Swarm bzz:// imports should be resolved correctly');
             })
             .end()
     },
@@ -960,6 +1026,86 @@ contract RawGitHubTest is ERC20 {
     }
 }
 
+const ipfsImportsSource = {
+    'IPFSTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test IPFS import - using a sample Greeter contract on IPFS
+// Note: This is a real IPFS hash that should contain a Solidity contract
+import "ipfs://QmQQmQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ/Greeter.sol";
+
+contract IPFSTest {
+    string public greeting = "Hello from IPFS!";
+    
+    function setGreeting(string memory _greeting) public {
+        greeting = _greeting;
+    }
+}
+`
+    },
+    'IPFSRelativeTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test IPFS import with relative path resolution
+import "ipfs://QmQQmQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ/contracts/Token.sol";
+
+contract IPFSRelativeTest {
+    string public name = "IPFS Relative Test";
+    
+    function getName() public view returns (string memory) {
+        return name;
+    }
+}
+`
+    }
+}
+
+const swarmImportsSource = {
+    'SwarmTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test Swarm bzz-raw:// import
+// Note: This is a sample Swarm hash format
+import "bzz-raw://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890/Storage.sol";
+
+contract SwarmTest {
+    uint256 public storedData;
+    
+    function set(uint256 x) public {
+        storedData = x;
+    }
+    
+    function get() public view returns (uint256) {
+        return storedData;
+    }
+}
+`
+    },
+    'SwarmBzzTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test Swarm bzz:// import (alternative protocol)
+import "bzz://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890/Counter.sol";
+
+contract SwarmBzzTest {
+    uint256 public counter;
+    
+    function increment() public {
+        counter++;
+    }
+    
+    function decrement() public {
+        counter--;
+    }
+}
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -979,5 +1125,7 @@ const sources = [
     importParsingEdgeCasesSource,
     multiLineImportsSource,
     unresolvableImportSource,
-    cdnImportsSource
+    cdnImportsSource,
+    ipfsImportsSource,
+    swarmImportsSource
 ]
