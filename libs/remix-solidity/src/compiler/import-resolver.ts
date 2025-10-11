@@ -821,9 +821,12 @@ export class ImportResolver implements IImportResolver {
       }
       
       // Check if this CDN URL is serving an npm package
-      // unpkg.com/@scope/pkg@version/... → @scope/pkg@version/...
+      // Versioned: unpkg.com/@scope/pkg@version/... → @scope/pkg@version/...
+      // Unversioned: unpkg.com/@scope/pkg/... → @scope/pkg/... (will resolve version later)
       // cdn.jsdelivr.net/npm/@scope/pkg@version/... → @scope/pkg@version/...
-      const npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)@([^/]+)\/(.+)$/)
+      
+      // Try versioned pattern first
+      let npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)@([^/]+)\/(.+)$/)
       
       if (npmCdnMatch) {
         const packageName = npmCdnMatch[1]
@@ -831,7 +834,7 @@ export class ImportResolver implements IImportResolver {
         const filePath = npmCdnMatch[3]
         const npmPath = `${packageName}@${version}/${filePath}`
         
-        this.log(`[ImportResolver]   🔄 CDN URL is serving npm package, normalizing:`)
+        this.log(`[ImportResolver]   🔄 CDN URL is serving versioned npm package, normalizing:`)
         this.log(`[ImportResolver]      From: ${url}`)
         this.log(`[ImportResolver]      To:   ${npmPath}`)
         
@@ -841,6 +844,27 @@ export class ImportResolver implements IImportResolver {
         }
         
         // Now resolve it as a regular npm import (this will use our existing npm resolution logic)
+        return await this.resolveAndSave(npmPath, targetPath, skipResolverMappings)
+      }
+      
+      // Try unversioned pattern (unpkg without @version)
+      npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)\/(.+)$/)
+      
+      if (npmCdnMatch) {
+        const packageName = npmCdnMatch[1]
+        const filePath = npmCdnMatch[2]
+        const npmPath = `${packageName}/${filePath}`
+        
+        this.log(`[ImportResolver]   🔄 CDN URL is serving unversioned npm package, normalizing:`)
+        this.log(`[ImportResolver]      From: ${url}`)
+        this.log(`[ImportResolver]      To:   ${npmPath}`)
+        
+        // Record the mapping from original URL to npm path
+        if (!this.resolutions.has(originalUrl)) {
+          this.resolutions.set(originalUrl, npmPath)
+        }
+        
+        // Now resolve it as a regular npm import (version will be resolved from workspace)
         return await this.resolveAndSave(npmPath, targetPath, skipResolverMappings)
       }
       

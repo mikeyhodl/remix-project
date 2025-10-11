@@ -488,6 +488,44 @@ module.exports = {
             })
     },
     
+    'Test unpkg unversioned CDN imports #group12': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('UnpkgUnversionedTest.sol', cdnImportsSource['UnpkgUnversionedTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+            // Unversioned CDN npm packages are normalized to .deps/npm/ with version from workspace
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            // Should have versioned folder (version resolved from workspace/lock file/npm)
+            .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
+            .perform(function() {
+                browser.assert.ok(true, 'unpkg.com unversioned imports should be normalized to npm folder with resolved version');
+            })
+    },
+    
+    'Test jsdelivr unversioned CDN imports #group12': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('JsdelivrUnversionedTest.sol', cdnImportsSource['JsdelivrUnversionedTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+            // Unversioned CDN npm packages are normalized to .deps/npm/ with version from workspace
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            // Should have versioned folder (version resolved from workspace/lock file/npm)
+            .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
+            .perform(function() {
+                browser.assert.ok(true, 'cdn.jsdelivr.net unversioned imports should be normalized to npm folder with resolved version');
+            })
+    },
+    
     'Test raw.githubusercontent.com imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('RawGitHubTest.sol', cdnImportsSource['RawGitHubTest.sol'])
@@ -986,7 +1024,7 @@ const cdnImportsSource = {
         content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Test unpkg.com CDN import
+// Test unpkg.com CDN import (versioned)
 import "https://unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol";
 
 contract UnpkgTest is ERC20 {
@@ -996,15 +1034,43 @@ contract UnpkgTest is ERC20 {
 }
 `
     },
+    'UnpkgUnversionedTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test unpkg.com CDN import (unversioned - version resolved from workspace)
+import "https://unpkg.com/@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract UnpkgUnversionedTest is ERC20 {
+    constructor() ERC20("UnpkgUnver", "UUV") {
+        _mint(msg.sender, 1000000 * 10 ** decimals());
+    }
+}
+`
+    },
     'JsdelivrNpmTest.sol': {
         content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Test cdn.jsdelivr.net npm import
+// Test cdn.jsdelivr.net npm import (versioned)
 import "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol";
 
 contract JsdelivrNpmTest is ERC20 {
     constructor() ERC20("Jsdelivr", "JSD") {
+        _mint(msg.sender, 1000000 * 10 ** decimals());
+    }
+}
+`
+    },
+    'JsdelivrUnversionedTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Test cdn.jsdelivr.net npm import (unversioned - version resolved from workspace)
+import "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract JsdelivrUnversionedTest is ERC20 {
+    constructor() ERC20("JsdelivrUnver", "JUV") {
         _mint(msg.sender, 1000000 * 10 ** decimals());
     }
 }
