@@ -339,20 +339,40 @@ module.exports = {
     'Test resolution index mapping for Go to Definition #group9': function (browser: NightwatchBrowser) {
         browser
             .addFile('ResolutionIndexTest.sol', resolutionIndexSource['ResolutionIndexTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(2000)
-            .clickLaunchIcon('filePanel')
             .openFile('.deps/npm/.resolution-index.json')
             .pause(1000)
             .getEditorValue((content) => {
                 try {
                     const idx = JSON.parse(content)
-                    const files = Object.keys(idx || {})
-                    // Should have at least one source file entry with mappings
-                    browser.assert.ok(files.length > 0, 'Resolution index should contain at least one source file')
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    // Verify structure: index should map source files to their import resolutions
+                    browser.assert.ok(sourceFiles.length > 0, 'Resolution index should contain at least one source file')
+                    
+                    // Check that our test file is in the index
+                    const hasTestFile = sourceFiles.some(file => file.includes('ResolutionIndexTest.sol'))
+                    browser.assert.ok(hasTestFile, 'Resolution index should contain ResolutionIndexTest.sol')
+                    
+                    // Verify each entry has import mappings
+                    const testFileEntry = sourceFiles.find(file => file.includes('ResolutionIndexTest.sol'))
+                    if (testFileEntry) {
+                        const mappings = idx[testFileEntry]
+                        browser.assert.ok(typeof mappings === 'object' && mappings !== null, 'Each source file should have an object of import mappings')
+                        
+                        // Verify the mappings contain resolved paths for @openzeppelin imports
+                        const importKeys = Object.keys(mappings)
+                        const hasOpenzeppelinImport = importKeys.some(key => key.includes('@openzeppelin/contracts'))
+                        browser.assert.ok(hasOpenzeppelinImport, 'Resolution index should map @openzeppelin imports to their resolved paths')
+                        
+                        // Verify resolved paths point to .deps/npm/
+                        if (hasOpenzeppelinImport) {
+                            const ozImport = importKeys.find(key => key.includes('@openzeppelin/contracts'))
+                            const resolvedPath = mappings[ozImport]
+                            browser.assert.ok(resolvedPath && resolvedPath.includes('.deps/npm/'), 'Resolved paths should point to .deps/npm/ folder')
+                        }
+                    }
                 } catch (e) {
-                    browser.assert.ok(false, 'Resolution index JSON should be valid')
+                    browser.assert.ok(false, 'Resolution index JSON should be valid: ' + e.message)
                 }
             })
     },
@@ -391,10 +411,32 @@ module.exports = {
             .getEditorValue((content) => {
                 try {
                     const idx = JSON.parse(content)
-                    const files = Object.keys(idx || {})
-                    browser.assert.ok(files.length > 0, 'Resolution index should persist after workspace changes')
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    browser.assert.ok(sourceFiles.length > 0, 'Resolution index should persist after workspace changes')
+                    
+                    // Verify the new workspace file is in the index
+                    const hasNewFile = sourceFiles.some(file => file.includes('IndexAfterWS.sol'))
+                    browser.assert.ok(hasNewFile, 'Resolution index should contain the new file from new workspace')
+                    
+                    // Verify it has proper import mappings
+                    const newFileEntry = sourceFiles.find(file => file.includes('IndexAfterWS.sol'))
+                    if (newFileEntry) {
+                        const mappings = idx[newFileEntry]
+                        browser.assert.ok(typeof mappings === 'object', 'New workspace file should have import mappings')
+                        
+                        const importKeys = Object.keys(mappings)
+                        browser.assert.ok(importKeys.length > 0, 'Import mappings should exist for the new file')
+                        
+                        // Verify mappings point to resolved dependencies
+                        const hasResolvedPath = importKeys.some(key => {
+                            const resolved = mappings[key]
+                            return resolved && resolved.includes('.deps/npm/')
+                        })
+                        browser.assert.ok(hasResolvedPath, 'Import mappings should resolve to .deps/npm/ paths in new workspace')
+                    }
                 } catch (e) {
-                    browser.assert.ok(false, 'Resolution index JSON should be valid after workspace changes')
+                    browser.assert.ok(false, 'Resolution index JSON should be valid after workspace changes: ' + e.message)
                 }
             })
             
