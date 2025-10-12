@@ -9,7 +9,7 @@
 
 TEST_NAME=""
 GROUP_NAME=""
-ENV_NAME="chromeDesktop"
+ENV_NAME="chrome"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do

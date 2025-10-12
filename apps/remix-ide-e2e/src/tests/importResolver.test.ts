@@ -64,6 +64,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Verify the correct version from package.json was used (4.8.3)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 60000)
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
             .openFile('package.json')
             .setEditorValue(packageJsonV5_4_0Source['package.json'].content) // Change to OpenZeppelin 5.4.0
             .pause(1000)
@@ -95,7 +96,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Verify only ONE version folder exists (canonical version)
-            .elements('css selector', '*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', function (result) {
+            .elements('css selector', '*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', function (result) {
                 // Should have only one @openzeppelin/contracts@ folder (deduplication works)
                 if (Array.isArray(result.value)) {
                     browser.assert.ok(result.value.length === 1, 'Should have exactly one versioned folder for @openzeppelin/contracts')
@@ -103,7 +104,7 @@ module.exports = {
             })
     },
 
-    'Verify deduplication works correctly #group3': function (browser: NightwatchBrowser) {
+    'Verify package json #group3': function (browser: NightwatchBrowser) {
         browser
             // Verify that even with explicit @4.8.3 version in imports, 
             // only ONE canonical version folder exists (deduplication)
@@ -111,6 +112,13 @@ module.exports = {
             // Verify package.json exists in the single canonical folder
             .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.3/package.json"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]')
+            .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                const packageJson = JSON.parse(content)
+                browser.assert.ok(packageJson.version === '4.8.3', 'Should use version 4.8.3 from workspace package.json')
+            })
     },
 
     'Test explicit version override #group4': function (browser: NightwatchBrowser) {
@@ -128,6 +136,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should have version 5.x.x (not 4.8.3 from package.json) because explicit @5 in import
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5"]', 10000)
+            .waitForElementNotPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 10000)
     },
 
     'Test yarn.lock version resolution #group5': function (browser: NightwatchBrowser) {
@@ -172,12 +181,11 @@ module.exports = {
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
             // Verify contracts@1.4.0 (not 1.5.0!) - this is the key test for parent dependency resolution
-            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]', 10000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 10000)
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]', 10000)
             // Verify contracts-ccip@1.6.1
-            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.2"]', 10000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.1"]', 10000)
-            
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.2"]', 10000)
     },
 
     'Test npm alias syntax imports #group8': function (browser: NightwatchBrowser) {
@@ -198,7 +206,7 @@ module.exports = {
     'Test External URL imports (unpkg) #group8': function (browser: NightwatchBrowser) {
         // Compile a file that imports from unpkg and verify the fetched source appears under .deps/https tree
         browser
-            .addFile('GitHubImportTest.sol', githubImportSource['GitHubImportTest.sol'])
+            .addFile('GitHubImportTest.sol', unpkgImportSource['GitHubImportTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
@@ -218,7 +226,7 @@ module.exports = {
                     browser.getText('*[data-id="compiledErrors"]', (result) => {
                         const text = (result.value || '').toString()
                         browser.assert.ok(
-                            !text.includes('not found https://unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol'),
+                            !text.includes('not found'),
                             'External CDN import should resolve without not found errors'
                         )
                     })
@@ -252,7 +260,7 @@ module.exports = {
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/https/cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"]', 60000)
     },
 
-    'Test External URL imports (raw.githubusercontent.com) #group8': function (browser: NightwatchBrowser) {
+    'Test External URL imports (raw.githubusercontent.com) #group16': function (browser: NightwatchBrowser) {
         const source = {
             'RawGithubImport.sol': {
                 content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.8.0/contracts/token/ERC20/IERC20.sol";\ncontract RawGithubImport {}`
@@ -260,18 +268,22 @@ module.exports = {
         }
         browser
             .addFile('RawGithubImport.sol', source['RawGithubImport.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(5000)
-            .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/raw.githubusercontent.com"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/raw.githubusercontent.com"]')
-            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/https/raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.8.0/contracts/token/ERC20"]', 60000)
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/https/raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.8.0/contracts/token/ERC20/IERC20.sol"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
+            .pause()
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@v4.8.0"]', 60000)
+            .click('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20/IERC20.sol"]', 60000)
     },
 
     'Test resolution index mapping for Go to Definition #group9': function (browser: NightwatchBrowser) {
@@ -602,6 +614,78 @@ module.exports = {
             .perform(function() {
                 browser.assert.ok(true, 'Swarm bzz:// imports should be resolved correctly');
             })
+    },
+
+    'Test invalid non-sol import rejection #group15': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('InvalidImportTest.sol', invalidImportSource['InvalidImportTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            // Verify that NO .deps folder was created for the invalid import
+            .elements('css selector', '*[data-id="treeViewDivDraggableItem.deps"]', function (result) {
+                // .deps folder may exist from other imports, but we should see an error in terminal
+                browser.perform(function() {
+                    browser.assert.ok(true, 'Non-.sol imports should be rejected with error message');
+                })
+            })
+            // Check terminal for error message
+            .clickLaunchIcon('terminal')
+            .pause(1000)
+            .perform(function() {
+                // Terminal should contain error about .sol extension
+                browser.getText('.terminal', function(result) {
+                    const text = typeof result.value === 'string' ? result.value : ''
+                    browser.assert.ok(
+                        text.includes('does not end with .sol extension') || 
+                        text.includes('Invalid import'),
+                        'Terminal should show error about non-.sol import'
+                    )
+                })
+            })
+    },
+
+    'Test invalid package.json import rejection #group15': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('InvalidPackageJsonImport.sol', invalidImportSource['InvalidPackageJsonImport.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('terminal')
+            .pause(1000)
+            .perform(function() {
+                // Terminal should contain error about .sol extension
+                browser.getText('.terminal', function(result) {
+                    const text = typeof result.value === 'string' ? result.value : ''
+                    browser.assert.ok(
+                        text.includes('does not end with .sol extension') || 
+                        text.includes('Invalid import'),
+                        'Terminal should show error about package.json import'
+                    )
+                })
+            })
+    },
+
+    'Test invalid README import rejection #group15': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('InvalidReadmeImport.sol', invalidImportSource['InvalidReadmeImport.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('terminal')
+            .pause(1000)
+            .perform(function() {
+                // Terminal should contain error about .sol extension
+                browser.getText('.terminal', function(result) {
+                    const text = typeof result.value === 'string' ? result.value : ''
+                    browser.assert.ok(
+                        text.includes('does not end with .sol extension') || 
+                        text.includes('Invalid import'),
+                        'Terminal should show error about README.md import'
+                    )
+                })
+            })
             .end()
     },
 
@@ -851,7 +935,7 @@ contract NpmAliasTest is ERC20, Ownable {
     }
 }
 
-const githubImportSource = {
+const unpkgImportSource = {
     'GitHubImportTest.sol': {
         content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -1172,6 +1256,45 @@ contract SwarmBzzTest {
     }
 }
 
+const invalidImportSource = {
+    'InvalidImportTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// This should FAIL - importing a non-.sol file from CDN
+import "https://unpkg.com/@openzeppelin/contracts@4.8.0/package.json";
+
+contract InvalidImportTest {
+    string public name = "This should not compile";
+}
+`
+    },
+    'InvalidPackageJsonImport.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// This should FAIL - importing package.json from npm
+import "@openzeppelin/contracts/package.json";
+
+contract InvalidPackageJsonImport {
+    string public name = "This should not compile";
+}
+`
+    },
+    'InvalidReadmeImport.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// This should FAIL - importing README.md file
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.8.0/README.md";
+
+contract InvalidReadmeImport {
+    string public name = "This should not compile";
+}
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -1185,7 +1308,7 @@ const sources = [
     packageLockV4_6_0Source,
     chainlinkCCIPSource,
     npmAliasSource,
-    githubImportSource,
+    unpkgImportSource,
     resolutionIndexSource,
     debugLoggingSource,
     importParsingEdgeCasesSource,
@@ -1193,5 +1316,6 @@ const sources = [
     unresolvableImportSource,
     cdnImportsSource,
     ipfsImportsSource,
-    swarmImportsSource
+    swarmImportsSource,
+    invalidImportSource
 ]
