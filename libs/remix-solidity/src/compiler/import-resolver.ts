@@ -726,6 +726,42 @@ export class ImportResolver implements IImportResolver {
     })
   }
 
+  /**
+   * Fetch and save package.json from GitHub repository (if it exists)
+   * This provides metadata and dependency information for raw GitHub imports
+   */
+  private async fetchGitHubPackageJson(owner: string, repo: string, ref: string): Promise<void> {
+    try {
+      // Construct package.json URL for this GitHub repo
+      const packageJsonUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/package.json`
+      
+      this.log(`[ImportResolver] 📦 Attempting to fetch GitHub package.json: ${packageJsonUrl}`)
+      
+      // Try to fetch package.json
+      const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+      const packageJson = JSON.parse(content.content || content)
+      
+      if (packageJson && packageJson.name) {
+        // Save package.json to normalized GitHub path
+        const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
+        await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+        
+        this.log(`[ImportResolver] ✅ Saved GitHub package.json to: ${targetPath}`)
+        this.log(`[ImportResolver]    Package: ${packageJson.name}@${packageJson.version || 'unknown'}`)
+        
+        // Store dependencies for future reference
+        if (packageJson.version) {
+          const packageKey = `${owner}/${repo}@${ref}`
+          this.storePackageDependencies(packageKey, packageJson)
+        }
+      }
+    } catch (err) {
+      // Package.json doesn't exist or failed to fetch - this is not an error
+      // Many GitHub repos don't have package.json at root
+      this.log(`[ImportResolver] ℹ️  No package.json found for ${owner}/${repo}@${ref} (this is normal for non-npm repos)`)
+    }
+  }
+
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
 
@@ -885,13 +921,35 @@ export class ImportResolver implements IImportResolver {
       }
       
       // For raw.githubusercontent.com URLs, normalize to a cleaner path structure
-      // raw.githubusercontent.com/owner/repo/ref/path → github/owner/repo@ref/path
-      const rawGithubMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/)
+      // Handle both versioned (refs/heads/master, refs/tags/v1.0, v4.8.0) and keep the path clean
+      // raw.githubusercontent.com/owner/repo/ref.../path → github/owner/repo@ref/path
+      const rawGithubMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(.+)$/)
       if (rawGithubMatch) {
         const owner = rawGithubMatch[1]
         const repo = rawGithubMatch[2]
-        const ref = rawGithubMatch[3]
-        const filePath = rawGithubMatch[4]
+        const restOfPath = rawGithubMatch[3] // Everything after repo: could be "refs/heads/master/file.sol" or "v4.8.0/file.sol"
+        
+        // Split the rest of the path to extract ref and filePath
+        // Check if it starts with refs/heads/ or refs/tags/
+        let ref: string
+        let filePath: string
+        
+        if (restOfPath.startsWith('refs/heads/') || restOfPath.startsWith('refs/tags/')) {
+          // Extract: refs/heads/master/path/to/file.sol → ref=master, filePath=path/to/file.sol
+          const parts = restOfPath.split('/')
+          if (restOfPath.startsWith('refs/heads/')) {
+            ref = parts[2] // Get the branch name (master, main, etc.)
+            filePath = parts.slice(3).join('/') // Everything after refs/heads/master
+          } else {
+            ref = parts[2] // Get the tag name
+            filePath = parts.slice(3).join('/') // Everything after refs/tags/v1.0.0
+          }
+        } else {
+          // Direct version tag or branch: v4.8.0/path/to/file.sol
+          const firstSlash = restOfPath.indexOf('/')
+          ref = restOfPath.substring(0, firstSlash)
+          filePath = restOfPath.substring(firstSlash + 1)
+        }
         
         // Create a normalized path without the full URL
         const normalizedPath = `github/${owner}/${repo}@${ref}/${filePath}`
@@ -900,6 +958,9 @@ export class ImportResolver implements IImportResolver {
         this.log(`[ImportResolver]   🔄 Normalizing raw.githubusercontent.com URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
         this.log(`[ImportResolver]      To:   ${normalizedPath}`)
+        
+        // Try to fetch and save package.json for this GitHub repo (if it exists)
+        await this.fetchGitHubPackageJson(owner, repo, ref)
         
         // Fetch the content using the full URL but save to normalized path
         // Note: contentImport will prepend .deps/ automatically

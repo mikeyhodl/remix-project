@@ -263,7 +263,7 @@ module.exports = {
     'Test External URL imports (raw.githubusercontent.com) #group16': function (browser: NightwatchBrowser) {
         const source = {
             'RawGithubImport.sol': {
-                content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.8.0/contracts/token/ERC20/IERC20.sol";\ncontract RawGithubImport {}`
+                content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts-upgradeable/v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol";\ncontract RawGithubImport {}`
             }
         }
         browser
@@ -274,16 +274,66 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
-            .pause()
-            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@v4.8.0"]', 60000)
-            .click('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0"]')
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts"]')
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token"]')
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20"]')
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts@4.8.0/contracts/token/ERC20/IERC20.sol"]', 60000)
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0"]', 60000)
+            .click('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0"]')
+            // Verify package.json was fetched from GitHub
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/package.json"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol"]', 60000)
+            // Verify package.json content
+            .openFile('.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/package.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const packageJson = JSON.parse(content)
+                    browser.assert.ok(packageJson.name && packageJson.name.includes('openzeppelin'), 'Package.json should contain OpenZeppelin package name')
+                    browser.assert.ok(packageJson.version === '5.4.0', 'Package.json should contain correct version 5.4.0')
+                    browser.assert.ok(packageJson.description, 'Package.json should contain description')
+                } catch (e) {
+                    browser.assert.ok(false, 'Package.json should be valid JSON: ' + e.message)
+                }
+            })
+    },
+
+    'Test unversioned GitHub raw import (master/main branch) #group17': function (browser: NightwatchBrowser) {
+        const source = {
+            'UnversionedGithubImport.sol': {
+                content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://raw.githubusercontent.com/remix-project-org/remix-project/refs/heads/master/apps/remix-ide/contracts/app/ethereum/constitution.sol";\ncontract UnversionedGithubImport {}`
+            }
+        }
+        browser
+            .addFile('UnversionedGithubImport.sol', source['UnversionedGithubImport.sol'])
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/remix-project-org"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/github/remix-project-org"]')
+            // refs/heads/master should normalize to just @master
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/remix-project-org/remix-project@master"]', 60000)
+            .click('*[data-id^="treeViewDivDraggableItem.deps/github/remix-project-org/remix-project@master"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum"]', 60000)
+            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum"]')
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum/constitution.sol"]', 60000)
+            // Verify the imported file exists and can be opened
+            .openFile('.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum/constitution.sol')
+            .pause(1000)
+            .getEditorValue((content) => {
+                browser.assert.ok(content.length > 0, 'Constitution.sol should have content')
+                browser.assert.ok(content.includes('pragma solidity') || content.includes('contract') || content.includes('SPDX'), 'Constitution.sol should be a Solidity file')
+            })
     },
 
     'Test resolution index mapping for Go to Definition #group9': function (browser: NightwatchBrowser) {
