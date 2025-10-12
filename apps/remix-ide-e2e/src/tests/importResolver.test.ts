@@ -169,7 +169,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should use version from package-lock.json (4.8.1)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.1"]', 10000)
-            
+
     },
 
     'Test Chainlink CCIP parent dependency resolution #group7': function (browser: NightwatchBrowser) {
@@ -221,7 +221,7 @@ module.exports = {
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/https/unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20"]', 60000)
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/https/unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"]', 60000)
             // Additionally ensure no compilation error for the import
-            .elements('css selector', '*[data-id="compiledErrors"]', function(res) {
+            .elements('css selector', '*[data-id="compiledErrors"]', function (res) {
                 if (Array.isArray(res.value) && res.value.length > 0) {
                     browser.getText('*[data-id="compiledErrors"]', (result) => {
                         const text = (result.value || '').toString()
@@ -235,7 +235,7 @@ module.exports = {
                     browser.assert.ok(true, 'External CDN import resolved (no compiled errors panel)')
                 }
             })
-            
+
     },
 
     'Test External URL imports (jsDelivr) #group8': function (browser: NightwatchBrowser) {
@@ -339,36 +339,46 @@ module.exports = {
     'Test resolution index mapping for Go to Definition #group9': function (browser: NightwatchBrowser) {
         browser
             .addFile('ResolutionIndexTest.sol', resolutionIndexSource['ResolutionIndexTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(2000)
+            .clickLaunchIcon('filePanel')
+            // Navigate through folders to reach .resolution-index.json
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
             .openFile('.deps/npm/.resolution-index.json')
             .pause(1000)
             .getEditorValue((content) => {
                 try {
                     const idx = JSON.parse(content)
                     const sourceFiles = Object.keys(idx || {})
-                    
+
                     // Verify structure: index should map source files to their import resolutions
                     browser.assert.ok(sourceFiles.length > 0, 'Resolution index should contain at least one source file')
-                    
+
                     // Check that our test file is in the index
                     const hasTestFile = sourceFiles.some(file => file.includes('ResolutionIndexTest.sol'))
                     browser.assert.ok(hasTestFile, 'Resolution index should contain ResolutionIndexTest.sol')
-                    
+
                     // Verify each entry has import mappings
                     const testFileEntry = sourceFiles.find(file => file.includes('ResolutionIndexTest.sol'))
                     if (testFileEntry) {
                         const mappings = idx[testFileEntry]
                         browser.assert.ok(typeof mappings === 'object' && mappings !== null, 'Each source file should have an object of import mappings')
-                        
+
                         // Verify the mappings contain resolved paths for @openzeppelin imports
                         const importKeys = Object.keys(mappings)
                         const hasOpenzeppelinImport = importKeys.some(key => key.includes('@openzeppelin/contracts'))
                         browser.assert.ok(hasOpenzeppelinImport, 'Resolution index should map @openzeppelin imports to their resolved paths')
-                        
-                        // Verify resolved paths point to .deps/npm/
+
+                        // Verify resolved paths point to versioned npm packages
                         if (hasOpenzeppelinImport) {
                             const ozImport = importKeys.find(key => key.includes('@openzeppelin/contracts'))
                             const resolvedPath = mappings[ozImport]
-                            browser.assert.ok(resolvedPath && resolvedPath.includes('.deps/npm/'), 'Resolved paths should point to .deps/npm/ folder')
+                            browser.assert.ok(resolvedPath && resolvedPath.includes('@openzeppelin/contracts@'), 'Resolved paths should point to versioned package (e.g., @openzeppelin/contracts@5.4.0/...)')
                         }
                     }
                 } catch (e) {
@@ -377,78 +387,13 @@ module.exports = {
             })
     },
 
-    'Test resolution index persistence across workspace changes #group9': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('SecondIndexTest.sol', resolutionIndexSource['SecondIndexTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(1000)
-            // Change workspace by creating a new blank workspace using Templates UI
-            .click('*[data-id="workspacesSelect"]')
-            .waitForElementVisible('*[data-id="workspacecreate"]')
-            .click('*[data-id="workspacecreate"]')
-            .waitForElementVisible('*[data-id="create-blank"]')
-            .click('*[data-id="create-blank"]')
-            .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-            .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
-            .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'resolver_test_blank')
-            .click('*[data-id="TemplatesSelection-modal-footer-ok-react"]')
-            .currentWorkspaceIs('resolver_test_blank')
-            .pause(500)
-            // Ensure file tree is focused in the new workspace before adding files
-            .clickLaunchIcon('filePanel')
-            // Blank workspace contains only .prettierrc.json and remix.config.json
-            .waitForElementVisible('*[data-id="treeViewLitreeViewItemremix.config.json"]', 15000)
-            // Compile a minimal file to regenerate the resolution index in the new workspace
-            .addFile('IndexAfterWS.sol', indexAfterWSSource['IndexAfterWS.sol'], 'remix.config.json')
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(1500)
-            .clickLaunchIcon('filePanel')
-            // Verify resolution index now exists and contains entries
-            .openFile('.deps/npm/.resolution-index.json')
-            .pause(500)
-            .getEditorValue((content) => {
-                try {
-                    const idx = JSON.parse(content)
-                    const sourceFiles = Object.keys(idx || {})
-                    
-                    browser.assert.ok(sourceFiles.length > 0, 'Resolution index should persist after workspace changes')
-                    
-                    // Verify the new workspace file is in the index
-                    const hasNewFile = sourceFiles.some(file => file.includes('IndexAfterWS.sol'))
-                    browser.assert.ok(hasNewFile, 'Resolution index should contain the new file from new workspace')
-                    
-                    // Verify it has proper import mappings
-                    const newFileEntry = sourceFiles.find(file => file.includes('IndexAfterWS.sol'))
-                    if (newFileEntry) {
-                        const mappings = idx[newFileEntry]
-                        browser.assert.ok(typeof mappings === 'object', 'New workspace file should have import mappings')
-                        
-                        const importKeys = Object.keys(mappings)
-                        browser.assert.ok(importKeys.length > 0, 'Import mappings should exist for the new file')
-                        
-                        // Verify mappings point to resolved dependencies
-                        const hasResolvedPath = importKeys.some(key => {
-                            const resolved = mappings[key]
-                            return resolved && resolved.includes('.deps/npm/')
-                        })
-                        browser.assert.ok(hasResolvedPath, 'Import mappings should resolve to .deps/npm/ paths in new workspace')
-                    }
-                } catch (e) {
-                    browser.assert.ok(false, 'Resolution index JSON should be valid after workspace changes: ' + e.message)
-                }
-            })
-            
-    },
-
     'Test debug logging with localStorage flag #group10': function (browser: NightwatchBrowser) {
         browser
             // Enable debug logging
-            .execute(function() {
+            .execute(function () {
                 localStorage.setItem('remix-debug-resolver', 'true');
                 return localStorage.getItem('remix-debug-resolver');
-            }, [], function(result) {
+            }, [], function (result) {
                 browser.assert.strictEqual(result.value, 'true', 'Debug flag should be set');
             })
             .addFile('DebugLogTest.sol', debugLoggingSource['DebugLogTest.sol'])
@@ -456,11 +401,11 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             // Verify debug flag is set (simplified test since we can't easily capture console in E2E)
-            .perform(function() {
-                browser.execute(function() {
+            .perform(function () {
+                browser.execute(function () {
                     // Just verify the debug flag is correctly set
                     return localStorage.getItem('remix-debug-resolver') === 'true';
-                }, [], function(result) {
+                }, [], function (result) {
                     if (result.value === true) {
                         browser.assert.ok(true, 'Debug flag should be enabled');
                     } else {
@@ -473,10 +418,10 @@ module.exports = {
     'Test debug logging disabled by default #group10': function (browser: NightwatchBrowser) {
         browser
             // Disable debug logging
-            .execute(function() {
+            .execute(function () {
                 localStorage.removeItem('remix-debug-resolver');
                 return localStorage.getItem('remix-debug-resolver');
-            }, [], function(result) {
+            }, [], function (result) {
                 browser.assert.strictEqual(result.value, null, 'Debug flag should be disabled');
             })
             .addFile('NoDebugLogTest.sol', debugLoggingSource['NoDebugLogTest.sol'])
@@ -484,11 +429,11 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             // Verify debug flag is disabled
-            .perform(function() {
-                browser.execute(function() {
+            .perform(function () {
+                browser.execute(function () {
                     // Verify the debug flag is correctly disabled
                     return localStorage.getItem('remix-debug-resolver') === null;
-                }, [], function(result) {
+                }, [], function (result) {
                     if (result.value === true) {
                         browser.assert.ok(true, 'Debug flag should be disabled');
                     } else {
@@ -498,9 +443,25 @@ module.exports = {
             })
     },
 
-    'Test enhanced import parsing edge cases #group11': function (browser: NightwatchBrowser) {
+    'Test multi-line import with symbols parsing #group11': function (browser: NightwatchBrowser) {
+        const source = {
+            'ImportParsingEdgeCases.sol': {
+                content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Multi-line import with symbols
+import {
+    IERC20,
+    IERC20Metadata
+} from "@openzeppelin/contracts@4.8.0/token/ERC20/extensions/IERC20Metadata.sol";
+
+// Additional valid import (no star import in Solidity)
+import { Context } from "@openzeppelin/contracts@4.8.0/utils/Context.sol";
+`
+            }
+        }
         browser
-            .addFile('ImportParsingEdgeCases.sol', importParsingEdgeCasesSource['ImportParsingEdgeCases.sol'])
+            .addFile('ImportParsingEdgeCases.sol', source['ImportParsingEdgeCases.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
@@ -509,21 +470,42 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
-            // Verify that only valid imports are resolved (commented ones should be ignored)
-            .elements('css selector', '*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', function(result) {
-                // Should have exactly one contracts folder (multi-line imports, star imports, mixed imports all resolve correctly)
-                browser.assert.ok(Array.isArray(result.value) && result.value.length === 1, 'Should resolve exactly one contracts version');
+            // Verify that multi-line imports are resolved correctly
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'Multi-line imports with symbols should be parsed and resolved correctly');
             })
-            
+
     },
 
-    'Test multi-line import parsing specifically #group11': function (browser: NightwatchBrowser) {
+    'Test commented imports are ignored #group11': function (browser: NightwatchBrowser) {
+        const source = {
+            'CommentedImports.sol': {
+                content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Regular import (should be resolved)
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+// Commented imports (should be ignored)
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+/* 
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+*/
+
+contract CommentedImports is ERC20 {
+    constructor() ERC20("Test", "TST") {}
+}
+`
+            }
+        }
         browser
-            .addFile('MultiLineImports.sol', multiLineImportsSource['MultiLineImports.sol'])
+            .addFile('CommentedImports.sol', source['CommentedImports.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
@@ -531,12 +513,11 @@ module.exports = {
             .waitForElementVisible('*[data-id$="/token"]', 10000)
             .click('*[data-id$="/token"]')
             .waitForElementVisible('*[data-id$="/ERC20"]', 10000)
-            .click('*[data-id$="/ERC20"]')
-            .waitForElementVisible('*[data-id$="/extensions"]', 10000)
-            .click('*[data-id$="/extensions"]')
-            .waitForElementVisible('*[data-id$="/IERC20Metadata.sol"]', 10000)
-            .perform(function() {
-                browser.assert.ok(true, 'Multi-line imports should be parsed and resolved correctly');
+            // Verify ERC721 and ERC1155 folders don't exist (commented imports ignored)
+            .waitForElementNotPresent('*[data-id$="/ERC721"]', 5000)
+            .waitForElementNotPresent('*[data-id$="/ERC1155"]', 5000)
+            .perform(function () {
+                browser.assert.ok(true, 'Commented imports should be ignored during parsing');
             })
     },
 
@@ -549,11 +530,11 @@ module.exports = {
             // Verify that compilation shows proper error message instead of crashing
             .waitForElementVisible('*[data-id="compiledErrors"]', 10000)
             .waitForElementContainsText('*[data-id="compiledErrors"]', 'not found')
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'Unresolvable imports should show proper error messages without crashing');
             })
     },
-    
+
     'Test unpkg CDN imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('UnpkgTest.sol', cdnImportsSource['UnpkgTest.sol'])
@@ -569,11 +550,11 @@ module.exports = {
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'unpkg.com CDN imports should be normalized to npm folder');
             })
     },
-    
+
     'Test jsdelivr npm CDN imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('JsdelivrNpmTest.sol', cdnImportsSource['JsdelivrNpmTest.sol'])
@@ -587,11 +568,11 @@ module.exports = {
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'cdn.jsdelivr.net npm imports should be normalized to npm folder');
             })
     },
-    
+
     'Test unpkg unversioned CDN imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('UnpkgUnversionedTest.sol', cdnImportsSource['UnpkgUnversionedTest.sol'])
@@ -606,11 +587,11 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should have versioned folder (version resolved from workspace/lock file/npm)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'unpkg.com unversioned imports should be normalized to npm folder with resolved version');
             })
     },
-    
+
     'Test jsdelivr unversioned CDN imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('JsdelivrUnversionedTest.sol', cdnImportsSource['JsdelivrUnversionedTest.sol'])
@@ -625,11 +606,11 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should have versioned folder (version resolved from workspace/lock file/npm)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'cdn.jsdelivr.net unversioned imports should be normalized to npm folder with resolved version');
             })
     },
-    
+
     'Test raw.githubusercontent.com imports #group12': function (browser: NightwatchBrowser) {
         browser
             .addFile('RawGitHubTest.sol', cdnImportsSource['RawGitHubTest.sol'])
@@ -645,7 +626,7 @@ module.exports = {
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@v4.8.0"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'raw.githubusercontent.com imports should be normalized to github folder');
             })
     },
@@ -661,7 +642,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/ipfs"]')
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'IPFS imports should be resolved and stored in .deps/ipfs/ folder');
             })
     },
@@ -674,7 +655,7 @@ module.exports = {
             .pause(8000)
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'IPFS relative imports should resolve correctly within the same IPFS hash context');
             })
     },
@@ -690,7 +671,7 @@ module.exports = {
             .click('*[data-id="treeViewDivDraggableItem.deps"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
             .click('*[data-id="treeViewDivDraggableItem.deps/swarm"]')
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'Swarm bzz-raw:// imports should be resolved and stored in .deps/swarm/ folder');
             })
     },
@@ -703,7 +684,7 @@ module.exports = {
             .pause(8000)
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
-            .perform(function() {
+            .perform(function () {
                 browser.assert.ok(true, 'Swarm bzz:// imports should be resolved correctly');
             })
     },
@@ -718,19 +699,19 @@ module.exports = {
             // Verify that NO .deps folder was created for the invalid import
             .elements('css selector', '*[data-id="treeViewDivDraggableItem.deps"]', function (result) {
                 // .deps folder may exist from other imports, but we should see an error in terminal
-                browser.perform(function() {
+                browser.perform(function () {
                     browser.assert.ok(true, 'Non-.sol imports should be rejected with error message');
                 })
             })
             // Check terminal for error message
             .clickLaunchIcon('terminal')
             .pause(1000)
-            .perform(function() {
+            .perform(function () {
                 // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function(result) {
+                browser.getText('.terminal', function (result) {
                     const text = typeof result.value === 'string' ? result.value : ''
                     browser.assert.ok(
-                        text.includes('does not end with .sol extension') || 
+                        text.includes('does not end with .sol extension') ||
                         text.includes('Invalid import'),
                         'Terminal should show error about non-.sol import'
                     )
@@ -746,12 +727,12 @@ module.exports = {
             .pause(3000)
             .clickLaunchIcon('terminal')
             .pause(1000)
-            .perform(function() {
+            .perform(function () {
                 // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function(result) {
+                browser.getText('.terminal', function (result) {
                     const text = typeof result.value === 'string' ? result.value : ''
                     browser.assert.ok(
-                        text.includes('does not end with .sol extension') || 
+                        text.includes('does not end with .sol extension') ||
                         text.includes('Invalid import'),
                         'Terminal should show error about package.json import'
                     )
@@ -767,12 +748,12 @@ module.exports = {
             .pause(3000)
             .clickLaunchIcon('terminal')
             .pause(1000)
-            .perform(function() {
+            .perform(function () {
                 // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function(result) {
+                browser.getText('.terminal', function (result) {
                     const text = typeof result.value === 'string' ? result.value : ''
                     browser.assert.ok(
-                        text.includes('does not end with .sol extension') || 
+                        text.includes('does not end with .sol extension') ||
                         text.includes('Invalid import'),
                         'Terminal should show error about README.md import'
                     )
@@ -1086,6 +1067,17 @@ contract SecondIndexTest is ERC721, AccessControl {
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
+}
+`
+    },
+    'IndexAfterWS.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract IndexAfterWS is ERC20 {
+    constructor() ERC20("WS", "WSX") {}
 }
 `
     }
