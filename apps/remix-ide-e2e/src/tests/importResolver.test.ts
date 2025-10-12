@@ -472,8 +472,24 @@ import { Context } from "@openzeppelin/contracts@4.8.0/utils/Context.sol";
             .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Verify that multi-line imports are resolved correctly
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
+            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]')
+            // Verify the imported files actually exist - check IERC20Metadata.sol
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/token"]', 10000)
+            .click('*[data-id$="contracts@4.8.0/token"]')
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20"]', 10000)
+            .click('*[data-id$="contracts@4.8.0/token/ERC20"]')
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20/extensions"]', 10000)
+            .click('*[data-id$="contracts@4.8.0/token/ERC20/extensions"]')
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20/extensions/IERC20Metadata.sol"]', 10000)
+            // Collapse and re-expand to check Context.sol in utils folder
+            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]') // Collapse
+            .pause(500)
+            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]') // Re-expand
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/utils"]', 10000)
+            .click('*[data-id$="contracts@4.8.0/utils"]')
+            .waitForElementVisible('*[data-id$="contracts@4.8.0/utils/Context.sol"]', 10000)
             .perform(function () {
-                browser.assert.ok(true, 'Multi-line imports with symbols should be parsed and resolved correctly');
+                browser.assert.ok(true, 'All imported files exist in the correct folder structure');
             })
 
     },
