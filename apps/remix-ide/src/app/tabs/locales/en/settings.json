@@ -67,6 +67,6 @@
   "settings.viewPrivacyPolicy": "View Privacy Policy",
   "settings.ollamaConfig": "Ollama URL Configuration",
   "settings.ollamaConfigDescription": "Configure Ollama endpoint for local AI model integration",
-  "settings.ollama-endpoint": "ENDPOINT URL"
+  "settings.ollama-endpoint": "ENDPOINT URL",
   "settings.aiPrivacyPolicyDescription": "Understand how RemixAI processes your data."
 }
