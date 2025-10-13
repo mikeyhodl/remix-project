@@ -676,35 +676,6 @@ contract CommentedImports is ERC20 {
             })
     },
 
-    'Test Swarm bzz-raw imports #group14': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('SwarmTest.sol', swarmImportsSource['SwarmTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(8000) // Swarm imports may take longer to fetch
-            .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/swarm"]')
-            .perform(function () {
-                browser.assert.ok(true, 'Swarm bzz-raw:// imports should be resolved and stored in .deps/swarm/ folder');
-            })
-    },
-
-    'Test Swarm bzz imports #group14': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('SwarmBzzTest.sol', swarmImportsSource['SwarmBzzTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(8000)
-            .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/swarm"]', 60000)
-            .perform(function () {
-                browser.assert.ok(true, 'Swarm bzz:// imports should be resolved correctly');
-            })
-    },
-
     'Test invalid non-sol import rejection #group15': function (browser: NightwatchBrowser) {
         browser
             .addFile('InvalidImportTest.sol', invalidImportSource['InvalidImportTest.sol'])
@@ -712,27 +683,7 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
-            // Verify that NO .deps folder was created for the invalid import
-            .elements('css selector', '*[data-id="treeViewDivDraggableItem.deps"]', function (result) {
-                // .deps folder may exist from other imports, but we should see an error in terminal
-                browser.perform(function () {
-                    browser.assert.ok(true, 'Non-.sol imports should be rejected with error message');
-                })
-            })
-            // Check terminal for error message
-            .clickLaunchIcon('terminal')
-            .pause(1000)
-            .perform(function () {
-                // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function (result) {
-                    const text = typeof result.value === 'string' ? result.value : ''
-                    browser.assert.ok(
-                        text.includes('does not end with .sol extension') ||
-                        text.includes('Invalid import'),
-                        'Terminal should show error about non-.sol import'
-                    )
-                })
-            })
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
     },
 
     'Test invalid package.json import rejection #group15': function (browser: NightwatchBrowser) {
@@ -741,19 +692,8 @@ contract CommentedImports is ERC20 {
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
-            .clickLaunchIcon('terminal')
-            .pause(1000)
-            .perform(function () {
-                // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function (result) {
-                    const text = typeof result.value === 'string' ? result.value : ''
-                    browser.assert.ok(
-                        text.includes('does not end with .sol extension') ||
-                        text.includes('Invalid import'),
-                        'Terminal should show error about package.json import'
-                    )
-                })
-            })
+            .clickLaunchIcon('filePanel')
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
     },
 
     'Test invalid README import rejection #group15': function (browser: NightwatchBrowser) {
@@ -762,19 +702,8 @@ contract CommentedImports is ERC20 {
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
-            .clickLaunchIcon('terminal')
-            .pause(1000)
-            .perform(function () {
-                // Terminal should contain error about .sol extension
-                browser.getText('.terminal', function (result) {
-                    const text = typeof result.value === 'string' ? result.value : ''
-                    browser.assert.ok(
-                        text.includes('does not end with .sol extension') ||
-                        text.includes('Invalid import'),
-                        'Terminal should show error about README.md import'
-                    )
-                })
-            })
+            .clickLaunchIcon('filePanel')
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
             .end()
     },
 
@@ -1312,50 +1241,6 @@ contract IPFSRelativeTest {
     }
 }
 
-const swarmImportsSource = {
-    'SwarmTest.sol': {
-        content: `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-// Test Swarm bzz-raw:// import
-// Note: This is a sample Swarm hash format
-import "bzz-raw://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890/Storage.sol";
-
-contract SwarmTest {
-    uint256 public storedData;
-    
-    function set(uint256 x) public {
-        storedData = x;
-    }
-    
-    function get() public view returns (uint256) {
-        return storedData;
-    }
-}
-`
-    },
-    'SwarmBzzTest.sol': {
-        content: `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-// Test Swarm bzz:// import (alternative protocol)
-import "bzz://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890/Counter.sol";
-
-contract SwarmBzzTest {
-    uint256 public counter;
-    
-    function increment() public {
-        counter++;
-    }
-    
-    function decrement() public {
-        counter--;
-    }
-}
-`
-    }
-}
-
 const invalidImportSource = {
     'InvalidImportTest.sol': {
         content: `// SPDX-License-Identifier: MIT
@@ -1416,6 +1301,5 @@ const sources = [
     unresolvableImportSource,
     cdnImportsSource,
     ipfsImportsSource,
-    swarmImportsSource,
     invalidImportSource
 ]

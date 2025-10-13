@@ -122,17 +122,7 @@ export class DependencyResolver {
   ): Promise<void> {
     // Validate that import path points to a .sol file
     if (!importPath.endsWith('.sol')) {
-      const errorMsg = `Invalid import: "${importPath}" does not end with .sol extension. All Solidity imports must be .sol files.`
-      this.log(`[DependencyResolver] ❌ ${errorMsg}`)
-      
-      // Log to terminal for user visibility
-      this.pluginApi.call('terminal', 'log', {
-        type: 'error',
-        value: `❌ ${errorMsg}\n   Requested by: ${requestingFile || 'entry point'}`
-      }).catch(() => {
-        console.error(errorMsg)
-      })
-      
+      this.log(`[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
       return
     }
     
