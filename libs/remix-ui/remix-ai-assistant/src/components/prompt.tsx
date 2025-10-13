@@ -40,6 +40,8 @@ export interface PromptAreaProps {
   maximizePanel: () => Promise<void>
   aiMode: 'ask' | 'edit'
   setAiMode: React.Dispatch<React.SetStateAction<'ask' | 'edit'>>
+  isMaximized: boolean
+  setIsMaximized: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const _paq = (window._paq = window._paq || [])
@@ -77,7 +79,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   textareaRef,
   maximizePanel,
   aiMode,
-  setAiMode
+  setAiMode,
+  isMaximized,
+  setIsMaximized
 }) => {
 
   return (
@@ -118,7 +122,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             <div className="btn-group btn-group-sm" role="group">
               <button
                 type="button"
-                className={`btn ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
+                className={`btn btn-sm ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('ask')
                   _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'ask'])
@@ -129,7 +133,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               </button>
               <button
                 type="button"
-                className={`btn ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
+                className={`btn btn-sm ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('edit')
                   _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'edit'])
@@ -155,11 +159,11 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             value={input}
             disabled={isStreaming}
             onFocus={() => {
-              dispatchActivity('typing', input)
-              maximizePanel()
+              if (!isMaximized) {
+                maximizePanel()
+              }
             }}
             onChange={e => {
-              dispatchActivity('typing', e.target.value)
               setInput(e.target.value)
             }}
             onKeyDown={e => {

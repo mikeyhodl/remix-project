@@ -4,7 +4,6 @@ import { resetOllamaHostOnSettingsChange } from '@remix/remix-ai-core';
 const config = Registry.getInstance().get('config').api
 const settingsConfig = Registry.getInstance().get('settingsConfig').api
 const defaultTheme = config.get('settings/theme') ? settingsConfig.themes.find((theme) => theme.name.toLowerCase() === config.get('settings/theme').toLowerCase()) : settingsConfig.themes[0]
-const defaultLocale = config.get('settings/locale') ? settingsConfig.locales.find((locale) => (locale.code === config.get('settings/locale')) || locale.localeName.toLowerCase() === config.get('settings/locale').toLowerCase()) : settingsConfig.locales.find((locale) => locale.code === 'en')
 const gistAccessToken = config.get('settings/gist-access-token') || ''
 const githubUserName = config.get('settings/github-user-name') || ''
 const githubEmail = config.get('settings/github-email') || ''
@@ -94,7 +93,7 @@ export const initialState: SettingsState = {
     isLoading: false
   },
   'matomo-analytics': {
-    value: config.get('settings/matomo-analytics') || false,
+    value: config.get('settings/matomo-analytics') || true,
     isLoading: false
   },
   'auto-completion': {
@@ -119,10 +118,6 @@ export const initialState: SettingsState = {
   },
   'theme': {
     value: defaultTheme ? defaultTheme.name : "Dark",
-    isLoading: false
-  },
-  'locale': {
-    value: defaultLocale ? defaultLocale.localeName : "English",
     isLoading: false
   },
   'github-config': {

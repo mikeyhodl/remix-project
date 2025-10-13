@@ -1,12 +1,12 @@
 const domains = {
-  'remix-alpha.ethereum.org': 27,
-  'remix-beta.ethereum.org': 25,
+  'alpha.remix.live': 27,
+  'beta.remix.live': 25,
   'remix.ethereum.org': 23,
   'localhost': 35 // remix desktop
 }
 const domainsOnPrem = {
-  'remix-alpha.ethereum.org': 1,
-  'remix-beta.ethereum.org': 2,
+  'alpha.remix.live': 1,
+  'beta.remix.live': 2,
   'remix.ethereum.org': 3,
   'localhost': 4 // remix desktop
 }
@@ -32,11 +32,13 @@ function trackDomain(domainToTrack, u, paqName) {
     _paq.push(['setTrackerUrl', u + 'matomo.php']);
     _paq.push(['setSiteId', domainToTrack]);
 
+    /* unplug from the EF matomo instance
     if (cloudDomainToTrack) {
       const secondaryTrackerUrl = 'https://ethereumfoundation.matomo.cloud/matomo.php'
       const secondaryWebsiteId = cloudDomainToTrack
       _paq.push(['addTracker', secondaryTrackerUrl, secondaryWebsiteId])
     }
+    */
 
     var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
     g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);

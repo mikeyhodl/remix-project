@@ -52,6 +52,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [aiMode, setAiMode] = useState<'ask' | 'edit'>('ask')
+  const [themeTracker, setThemeTracker] = useState(null)
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const historyRef = useRef<HTMLDivElement | null>(null)
   const modelBtnRef = useRef(null)
@@ -204,6 +206,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   //   }
   //   fetchAssistantChoice()
   // }, [props.plugin])
+
+  useEffect(() => {
+    props.plugin.on('theme', 'themeChanged', (theme) => {
+      setThemeTracker(theme)
+    })
+    return () => {
+      props.plugin.off('theme', 'themeChanged')
+    }
+  })
 
   // bubble messages up to parent
   useEffect(() => {
@@ -656,6 +667,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   const maximizePanel = async () => {
     await props.plugin.call('layout', 'maximisePinnedPanel')
+    setIsMaximized(true) // ensured that expansion of the panel is stateful
   }
 
   return (
@@ -749,6 +761,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           textareaRef={textareaRef}
           aiMode={aiMode}
           setAiMode={setAiMode}
+          isMaximized={isMaximized}
+          setIsMaximized={setIsMaximized}
         />
       </section>
     </div>
