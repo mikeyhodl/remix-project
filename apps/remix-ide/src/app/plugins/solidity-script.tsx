@@ -2,7 +2,6 @@ import React from 'react' // eslint-disable-line
 import { format } from 'util'
 import { Plugin } from '@remixproject/engine'
 import { compile, CompilerSettings } from '@remix-project/remix-solidity'
-import { Transaction } from 'web3-types'
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 
 const profile = {
@@ -82,7 +81,7 @@ export class SolidityScript extends Plugin {
     }
 
     // deploy the contract
-    let tx: Transaction = {
+    let tx: any = {
       from: accounts[0],
       data: bytecode
     }

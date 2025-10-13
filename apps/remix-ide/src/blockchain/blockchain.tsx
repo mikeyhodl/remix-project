@@ -1,5 +1,4 @@
 import React from 'react' // eslint-disable-line
-import { fromWei, toBigInt, toWei } from 'web3-utils'
 import { Plugin } from '@remixproject/engine'
 import { toBytes, addHexPrefix } from '@ethereumjs/util'
 import { EventEmitter } from 'events'
@@ -18,6 +17,7 @@ const { txFormat, txExecution, typeConversion, txListener: Txlistener, TxRunner,
 const { txResultHelper } = helpers
 const { resultToRemixTx } = txResultHelper
 import * as packageJson from '../../../../package.json'
+import { formatUnits, parseUnits } from 'ethers'
 
 const _paq = (window._paq = window._paq || []) //eslint-disable-line
 
@@ -574,17 +574,17 @@ export class Blockchain extends Plugin {
 
   fromWei(value, doTypeConversion, unit) {
     if (doTypeConversion) {
-      return fromWei(typeConversion.toInt(value), unit || 'ether')
+      return formatUnits(typeConversion.toInt(value), unit || 'ether')
     }
-    return fromWei(value.toString(10), unit || 'ether')
+    return formatUnits(value.toString(10), unit || 'ether')
   }
 
   toWei(value, unit) {
-    return toWei(value, unit || 'gwei')
+    return parseUnits(value, unit || 'gwei')
   }
 
   calculateFee(gas, gasPrice, unit?) {
-    return toBigInt(gas) * toBigInt(toWei(gasPrice.toString(10) as string, unit || 'gwei'))
+    return BigInt(gas) * BigInt(parseUnits(gasPrice.toString(10) as string, unit || 'gwei'))
   }
 
   determineGasFees(tx) {

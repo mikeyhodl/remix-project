@@ -1,6 +1,5 @@
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../../package.json'
-import {isBigInt} from 'web3-validator'
 import { addressToString } from "@remix-ui/helper"
 
 export const profile = {
@@ -13,7 +12,7 @@ export const profile = {
 }
 
 const replacer = (key, value) => {
-  if (isBigInt(value)) value = value.toString()
+  if (typeof value === 'bigint') value = value.toString()
   return value
 }
 
