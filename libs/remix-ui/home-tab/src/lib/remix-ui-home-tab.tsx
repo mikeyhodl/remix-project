@@ -83,7 +83,7 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     })
   }
 
-  function openGenericModal(event): void {
+  async function openGenericModal(event): Promise<void> {
     appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
       payload: true

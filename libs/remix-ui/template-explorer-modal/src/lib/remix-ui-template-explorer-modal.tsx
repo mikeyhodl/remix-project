@@ -25,7 +25,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
         <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: props.appState.genericModalState.width, height: props.appState.genericModalState.height }}>
           <div className="template-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">
-            {state.wizardStep === 'template' ? <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
+            {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
               <input
                 type="text"
                 placeholder="Search"
@@ -48,6 +48,12 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div>}
             <button className="template-explorer-modal-close-button" onClick={() => props.dispatch({ type: appActionTypes.showGenericModal, payload: false })}>
               <i className="fa-solid fa-xmark text-dark"></i>
+            </button>
+            <button className="template-explorer-modal-close-button" onClick={async () => {
+              const result = await props.plugin.call('remix-templates', 'getTemplate', 'remixDefault')
+              console.log('what is result', result)
+            }}>
+              <i className="fa-solid fa-plus text-dark"></i>
             </button>
           </div>
           {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <TemplateExplorerBody plugin={props.plugin} /> : null}

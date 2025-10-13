@@ -5,16 +5,25 @@ import { PluginViewWrapper } from '@remix-ui/helper'
 import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
 import { ThemeModule } from '../tabs/theme-module'
+import * as packageJson from '../../../../../package.json'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
+import { ViewPlugin } from '@remixproject/engine-web'
 
 const pluginProfile = {
-  name: 'remix-template-explorer-modal',
-  displayName: 'Remix Generic Modal',
-  description: 'Remix Generic Modal for every type of content meant for a modal',
-  methods: ['openModal']
+  name: 'templateexplorermodal',
+  displayName: 'Template Explorer Modal',
+  description: 'Template Explorer Modal',
+  methods: ['openModal'],
+  events: [],
+  maintainedBy: 'Remix',
+  kind: 'templateexplorermodal',
+  location: 'mainPanel',
+  version: packageJson.version,
+  permission: true,
+  documentation: 'https://remix-ide.readthedocs.io/en/latest/template-explorer-modal.html'
 }
 
-export class TemplateExplorerModalPlugin extends Plugin {
+export class TemplateExplorerModalPlugin extends ViewPlugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
   event: any
@@ -30,13 +39,18 @@ export class TemplateExplorerModalPlugin extends Plugin {
   }
 
   async onActivation(): Promise<void> {
+    console.trace()
     this.on('theme', 'themeChanged', (theme: any) => {
       this.theme = theme
     })
   }
 
+  openModal() {
+    console.log('This is openModal')
+  }
+
   onDeactivation(): void {
-    this.element.remove()
+
   }
 
   setDispatch(dispatch: React.Dispatch<any>) {
@@ -58,13 +72,14 @@ export class TemplateExplorerModalPlugin extends Plugin {
 
   renderComponent(): void {
     this.dispatch({
-      plugins: this,
+      ...this
     })
   }
 
-  updateComponent() {
+  updateComponent(state: any) {
+    console.log('what is state', state)
     return (
-      <TemplateExplorerProvider plugin={this} />
+      <TemplateExplorerProvider plugin={state} />
     )
   }
 }

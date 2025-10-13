@@ -55,7 +55,7 @@ const RemixApp = (props: IRemixAppUi) => {
       cancelFn: () => { },
       width: '720px',
       height: '720px',
-      showModal: true
+      showModal: false
     }
   })
 
@@ -228,7 +228,8 @@ const RemixApp = (props: IRemixAppUi) => {
             <AppDialogs></AppDialogs>
             <DialogViewPlugin></DialogViewPlugin>
             {appState.genericModalState.showModal &&
-              <TemplateExplorerProvider plugin={props.app.templateExplorerModal}></TemplateExplorerProvider>
+              // <TemplateExplorerProvider plugin={props.app.templateExplorerModal}></TemplateExplorerProvider>
+              props.app.templateExplorerModal.render()
             }
           </AppProvider>
         </onLineContext.Provider>

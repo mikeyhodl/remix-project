@@ -464,7 +464,7 @@ class AppComponent {
       scriptRunnerUI,
       remixAI,
       remixAiAssistant,
-      templateExplorerModal,
+      // templateExplorerModal,
       walletConnect
     ])
 
@@ -577,6 +577,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder
     ])
+    this.engine.register([templateExplorerModal])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },

@@ -15,6 +15,7 @@ import { UpdateInfo } from 'libs/remix-ui/home-tab/src/lib/components/types/caro
 import { GitPlugin } from '../plugins/git'
 import { createWorkspace, deleteWorkspace, getWorkspaces, renameWorkspace, WorkspaceType } from 'libs/remix-ui/workspace/src/lib/actions'
 import { Registry } from '@remix-project/remix-lib'
+import { ViewPlugin } from '@remixproject/engine-web'
 
 const TopBarProfile = {
   name: 'topbar',
@@ -22,11 +23,12 @@ const TopBarProfile = {
   description: '',
   version: packageJson.version,
   icon: '',
+  location: 'mainPanel',
   methods: ['getWorkspaces', 'createWorkspace', 'renameWorkspace', 'deleteWorkspace', 'getCurrentWorkspace', 'setWorkspace'],
   events: ['setWorkspace', 'workspaceRenamed', 'workspaceDeleted', 'workspaceCreated'],
 }
 
-export class Topbar extends Plugin {
+export class Topbar extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => { }
   appStateDispatch: React.Dispatch<AppAction> = () => { }
   htmlElement: HTMLDivElement
