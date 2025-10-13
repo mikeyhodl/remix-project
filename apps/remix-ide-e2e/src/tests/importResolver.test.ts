@@ -707,6 +707,81 @@ contract CommentedImports is ERC20 {
             .end()
     },
 
+    'Test npm alias with multiple package versions #group18': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('package.json', npmAliasMultiVersionSource['package.json'])
+            .addFile('eee.sol', npmAliasMultiVersionSource['eee.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            // Verify both versions are present
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present')
+            })
+            // Verify contracts@4.9.6 structure
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20/ERC20.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@4.9.6 should contain token/ERC20/ERC20.sol')
+            })
+            // Verify contracts@5.0.2 structure
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol')
+            })
+            // Check resolution index
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    // Find eee.sol entry
+                    const eeeSolEntry = sourceFiles.find(file => file.includes('eee.sol'))
+                    browser.assert.ok(!!eeeSolEntry, 'Resolution index should contain eee.sol')
+                    
+                    if (eeeSolEntry) {
+                        const mappings = idx[eeeSolEntry]
+                        
+                        // Check that both imports are mapped correctly
+                        const hasV4Import = Object.keys(mappings).some(key => 
+                            key.includes('@openzeppelin/contracts/token/ERC20/ERC20.sol') &&
+                            mappings[key].includes('@openzeppelin/contracts@4.9.6')
+                        )
+                        const hasV5Import = Object.keys(mappings).some(key => 
+                            key.includes('@openzeppelin/contracts-5/token/ERC20/ERC20.sol') &&
+                            mappings[key].includes('@openzeppelin/contracts@5.0.2')
+                        )
+                        
+                        browser.assert.ok(hasV4Import, 'Resolution index should map @openzeppelin/contracts to version 4.9.6')
+                        browser.assert.ok(hasV5Import, 'Resolution index should map @openzeppelin/contracts-5 to version 5.0.2')
+                    }
+                } catch (e) {
+                    browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
+                }
+            })
+    },
+
 }
 
 // Named source objects for each test group
@@ -1280,6 +1355,34 @@ contract InvalidReadmeImport {
     }
 }
 
+const npmAliasMultiVersionSource = {
+    'package.json': {
+        content: `{
+  "name": "oz-multi-version-mre",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.9"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.9.6",
+    "@openzeppelin/contracts-5": "npm:@openzeppelin/contracts@5.0.2"
+  }
+}`
+    },
+    'eee.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Same library, two versions, imported under different npm package names
+import {ERC20 as ERC20v4} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20 as ERC20v5} from "@openzeppelin/contracts-5/token/ERC20/ERC20.sol";
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -1301,5 +1404,6 @@ const sources = [
     unresolvableImportSource,
     cdnImportsSource,
     ipfsImportsSource,
-    invalidImportSource
+    invalidImportSource,
+    npmAliasMultiVersionSource
 ]
