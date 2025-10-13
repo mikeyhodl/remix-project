@@ -550,18 +550,18 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     fetchAssistantChoice()
   }, [assistantChoice, isOllamaFailureFallback])
 
-  // Initialize MCP enhancement state
-  useEffect(() => {
-    const initMCPState = async () => {
-      try {
-        const mcpStatus = await props.plugin.call('remixAI', 'isMCPEnabled')
-        setMcpEnhanced(mcpStatus)
-      } catch (error) {
-        console.warn('Failed to get MCP status:', error)
-      }
-    }
-    initMCPState()
-  }, [])
+  // // Initialize MCP enhancement state
+  // useEffect(() => {
+  //   const initMCPState = async () => {
+  //     try {
+  //       const mcpStatus = await props.plugin.call('remixAI', 'isMCPEnabled')
+  //       setMcpEnhanced(mcpStatus)
+  //     } catch (error) {
+  //       console.warn('Failed to get MCP status:', error)
+  //     }
+  //   }
+  //   initMCPState()
+  // }, [])
 
   // Handle MCP enhancement toggle
   useEffect(() => {
