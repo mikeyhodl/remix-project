@@ -1,13 +1,13 @@
-import { Web3 } from 'web3'
 import { init , traceHelper, TransactionDebugger as Debugger } from '@remix-project/remix-debug'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import { lineText } from '@remix-ui/editor'
 import { util } from '@remix-project/remix-lib'
+import { BrowserProvider, ethers } from 'ethers'
 const { toHexPaddedString } = util
 
 export const DebuggerApiMixin = (Base) => class extends Base {
 
-  initialWeb3
+  initialWeb3: BrowserProvider
   debuggerBackend
 
   initDebuggerApi () {
@@ -17,7 +17,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
         return self.call('web3Provider', 'sendAsync', payload)
       }
     }
-    this._web3 = new Web3(this.web3Provider)
+    this._web3 = new ethers.BrowserProvider(this.web3Provider)
     // this._web3 can be overwritten and reset to initial value in 'debug' method
     this.initialWeb3 = this._web3
     init.extendProvider(this._web3)
@@ -104,7 +104,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     return null
   }
 
-  async getDebugWeb3 () {
+  async getDebugProvider () {
     let web3
     let network
     try {
@@ -122,10 +122,10 @@ export const DebuggerApiMixin = (Base) => class extends Base {
 
   async getTrace (hash) {
     if (!hash) return
-    const web3 = await this.getDebugWeb3()
-    const currentReceipt = await web3.eth.getTransactionReceipt(hash)
+    const provider = await this.getDebugProvider()
+    const currentReceipt = await provider.getTransactionReceipt(hash)
     const debug = new Debugger({
-      web3,
+      provider,
       offsetToLineColumnConverter: this.offsetToLineColumnConverter,
       compilationResult: async (address) => {
         try {
@@ -151,13 +151,13 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     return trace
   }
 
-  debug (hash, web3?) {
+  debug (hash, provider?: BrowserProvider) {
     try {
       this.call('fetchAndCompile', 'clearCache')
     } catch (e) {
       console.error(e)
     }
-    if (web3) this._web3 = web3
+    if (provider) this._web3 = provider
     else this._web3 = this.initialWeb3
     init.extendProvider(this._web3)
     if (this.onDebugRequestedListener) {

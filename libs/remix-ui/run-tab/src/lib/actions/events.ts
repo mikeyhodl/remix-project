@@ -6,10 +6,10 @@ import { addDeployOption, clearAllInstances, clearRecorderCount, fetchContractLi
 import { updateInstanceBalance } from './deploy'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import BN from 'bn.js'
-import { Web3 } from 'web3'
 import { Plugin } from "@remixproject/engine"
 import { getNetworkProxyAddresses } from "./deploy"
 import { shortenAddress } from "@remix-ui/helper"
+import { parseUnits } from "ethers"
 
 const _paq = window._paq = window._paq || []
 let dispatch: React.Dispatch<any> = () => {}
@@ -287,7 +287,7 @@ export const resetAndInit = (plugin: RunTab) => {
         const number = plugin.REACT_API.sendValue
         const unit = plugin.REACT_API.sendUnit
 
-        cb(null, Web3.utils.toWei(number, unit))
+        cb(null, parseUnits(number, unit))
       } catch (e) {
         cb(e)
       }
