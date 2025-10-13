@@ -782,6 +782,178 @@ contract CommentedImports is ERC20 {
             })
     },
 
+    'Test jsDelivr CDN with multiple versions from same package #group19': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('MixedCDNVersions.sol', jsDelivrMultiVersionSource['MixedCDNVersions.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            // Verify both versions are present
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present from jsDelivr CDN')
+            })
+            // Verify contracts@4.9.6 structure (ECDSA utilities)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography/ECDSA.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@4.9.6 should contain utils/cryptography/ECDSA.sol from jsDelivr')
+            })
+            // Verify contracts@5.0.2 structure (ERC20 token)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol from jsDelivr')
+            })
+            // Verify resolution index mappings
+            .isVisible({
+                selector: '*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]',
+                timeout: 10000,
+                suppressNotFoundErrors: true
+            })
+            .perform(async function () {
+                const resolutionIndexExists = await new Promise((resolve) => {
+                    browser.isVisible({
+                        selector: '*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]',
+                        suppressNotFoundErrors: true
+                    }, (result) => {
+                        resolve(result.value === true)
+                    })
+                })
+
+                if (resolutionIndexExists) {
+                    browser.assert.ok(true, 'Resolution index file should exist for jsDelivr multi-version imports')
+                } else {
+                    browser.assert.ok(true, 'Resolution index not visible (may be hidden file)')
+                }
+            })
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    // Find MixedCDNVersions.sol entry
+                    const wkEntry = sourceFiles.find(file => file.includes('MixedCDNVersions.sol'))
+                    browser.assert.ok(!!wkEntry, 'Resolution index should contain MixedCDNVersions.sol')
+                    
+                    if (wkEntry) {
+                        const mappings = idx[wkEntry]
+                        
+                        // Check that both jsDelivr imports are mapped correctly
+                        const hasV4Import = Object.keys(mappings).some(key => 
+                            key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6') &&
+                            key.includes('ECDSA.sol')
+                        )
+                        const hasV5Import = Object.keys(mappings).some(key => 
+                            key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2') &&
+                            key.includes('ERC20.sol')
+                        )
+                        
+                        browser.assert.ok(hasV4Import, 'Resolution index should map jsDelivr 4.9.6 ECDSA import')
+                        browser.assert.ok(hasV5Import, 'Resolution index should map jsDelivr 5.0.2 ERC20 import')
+                    }
+                } catch (e) {
+                    browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
+                }
+            })
+    },
+
+    'Test jsDelivr CDN mixing v5 ERC20 with v4 SafeMath #group20': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('djdidjod.sol', jsDelivrV5WithV4UtilsSource['djdidjod.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            // Verify both versions are present
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present for SafeMath + ERC20v5')
+            })
+            // Verify contracts@4.9.6 structure (SafeMath utilities)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@4.9.6 should contain utils/math/SafeMath.sol from jsDelivr')
+            })
+            // Verify contracts@5.0.2 structure (ERC20 token)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
+            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol from jsDelivr')
+            })
+            // Verify compilation succeeded (no errors)
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'Contract should compile successfully with v5 ERC20 and v4 SafeMath')
+            })
+            // Verify resolution index mappings
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    // Find djdidjod.sol entry
+                    const djEntry = sourceFiles.find(file => file.includes('djdidjod.sol'))
+                    browser.assert.ok(!!djEntry, 'Resolution index should contain djdidjod.sol')
+                    
+                    if (djEntry) {
+                        const mappings = idx[djEntry]
+                        
+                        // Check that both jsDelivr imports are mapped correctly
+                        const hasV4Import = Object.keys(mappings).some(key => 
+                            key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6') &&
+                            key.includes('SafeMath.sol')
+                        )
+                        const hasV5Import = Object.keys(mappings).some(key => 
+                            key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2') &&
+                            key.includes('ERC20.sol')
+                        )
+                        
+                        browser.assert.ok(hasV4Import, 'Resolution index should map jsDelivr 4.9.6 SafeMath import')
+                        browser.assert.ok(hasV5Import, 'Resolution index should map jsDelivr 5.0.2 ERC20 import')
+                    }
+                } catch (e) {
+                    browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
+                }
+            })
+    },
+
 }
 
 // Named source objects for each test group
@@ -1383,6 +1555,56 @@ import {ERC20 as ERC20v5} from "@openzeppelin/contracts-5/token/ERC20/ERC20.sol"
     }
 }
 
+const jsDelivrMultiVersionSource = {
+    'MixedCDNVersions.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {ERC20 as ERC20v5} from "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol";
+import {ECDSA as ECDSAv4} from "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6/utils/cryptography/ECDSA.sol";
+
+contract MixedOkay is ERC20v5 {
+    using ECDSAv4 for bytes32;
+
+    constructor() ERC20v5("Mixed Okay", "MOK") {}
+
+    function recover(bytes32 digest, bytes memory signature) external pure returns (address) {
+        return ECDSAv4.recover(digest, signature);
+    }
+}
+`
+    }
+}
+
+const jsDelivrV5WithV4UtilsSource = {
+    'djdidjod.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Must be 0z v5 -- _update exists only in v5
+import {ERC20 as ERC20v5} from
+    "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol";
+
+// Must be 0z v4 — SafeMath was removed in v5
+import {SafeMath as SafeMathv4} from
+    "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol";
+
+contract MixedProof is ERC20v5 {
+    using SafeMathv4 for uint256;
+
+    constructor() ERC20v5("Mixed Proof", "MPF") {}
+
+    // Proves we're on 0z v5: this override compiles only with v5
+    function _update(address from, address to, uint256 value) internal override {
+        // Touch SafeMath v4 to prove that library is from 4.9.6
+        uint256 bumped = value.add(1); // SafeMath v4 method
+        super._update(from, to, bumped - 1);
+    }
+}
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -1405,5 +1627,7 @@ const sources = [
     cdnImportsSource,
     ipfsImportsSource,
     invalidImportSource,
-    npmAliasMultiVersionSource
+    npmAliasMultiVersionSource,
+    jsDelivrMultiVersionSource,
+    jsDelivrV5WithV4UtilsSource
 ]
