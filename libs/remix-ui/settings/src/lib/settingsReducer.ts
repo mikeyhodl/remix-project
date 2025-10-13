@@ -210,7 +210,6 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
   switch (action.type) {
   case 'SET_VALUE':
     config.set('settings/' + action.payload.name, action.payload.value)
-    
     // Reset Ollama host cache when endpoint is changed
     if (action.payload.name === 'ollama-endpoint') {
       try {
@@ -219,7 +218,7 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
         // Ignore errors - Ollama functionality is optional
       }
     }
-    
+
     return { ...state, [action.payload.name]: { ...state[action.payload.name], value: action.payload.value, isLoading: false } }
   case 'SET_LOADING':
     return { ...state, [action.payload.name]: { ...state[action.payload.name], isLoading: true } }
