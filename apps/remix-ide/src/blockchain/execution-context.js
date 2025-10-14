@@ -1,21 +1,19 @@
 /* global ethereum */
 'use strict'
-import { Web3 } from 'web3'
+import { ethers, toNumber } from 'ethers'
 import { execution } from '@remix-project/remix-lib'
 import EventManager from '../lib/events'
 import { bytesToHex } from '@ethereumjs/util'
 const _paq = window._paq = window._paq || []
 
-let web3
+let provider
 
-const config  = { defaultTransactionType: '0x0' }
 if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
   var injectedProvider = window.ethereum
-  web3 = new Web3(injectedProvider)
+  provider = new ethers.BrowserProvider(injectedProvider)
 } else {
-  web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
+  provider = new ethers.JsonRpcProvider('http://localhost:8545')
 }
-web3.eth.setConfig(config)
 
 /*
   trigger contextChanged, web3EndpointChanged
@@ -59,13 +57,12 @@ export class ExecutionContext {
   }
 
   setWeb3 (context, web3) {
-    web3.setConfig(config)
     this.customWeb3[context] = web3
   }
 
   web3 () {
     if (this.customWeb3[this.executionContext]) return this.customWeb3[this.executionContext]
-    return web3
+    return provider
   }
 
   detectNetwork (callback) {
@@ -74,7 +71,7 @@ export class ExecutionContext {
         callback && callback(null, { id: '-', name: 'VM' })
         return resolve({ id: '-', name: 'VM' })
       } else {
-        if (!web3.currentProvider) {
+        if (!provider) {
           callback && callback('No provider set')
           return reject('No provider set')
         }
@@ -108,7 +105,7 @@ export class ExecutionContext {
           }
         
           if (id === 1) {
-            web3.eth.getBlock(0).then((block) => {
+            provider.getBlock(0).then((block) => {
               if (block && block.hash !== this.mainNetGenesisHash) name = 'Custom'
               callback && callback(err, { id, name, lastBlock: this.lastBlock, currentFork: this.currentFork, networkNativeCurrency })
               return resolve({ id, name, lastBlock: this.lastBlock, currentFork: this.currentFork, networkNativeCurrency })
@@ -122,7 +119,7 @@ export class ExecutionContext {
             return resolve({ id, name, lastBlock: this.lastBlock, currentFork: this.currentFork, networkNativeCurrency })
           }
         }
-        web3.eth.net.getId().then(async (id) => await cb(null, parseInt(id))).catch(err => cb(err))
+        provider.getNetwork().then(async (network) => await cb(null, parseInt(network.chainId))).catch(err => cb(err))
       }
     })
   }
@@ -146,7 +143,7 @@ export class ExecutionContext {
   }
 
   internalWeb3 () {
-    return web3
+    return provider
   }
 
   setContext (context, endPointUrl, confirmCb, infoCb) {
@@ -167,7 +164,7 @@ export class ExecutionContext {
         await network.init()
         this.currentFork = network.config.fork
         // injected
-        web3.setProvider(network.provider)
+        provider = new ethers.BrowserProvider(network.provider)
         this.executionContext = context
         this.isConnected = await this._updateChainContext()
         this.event.trigger('contextChanged', [context])
@@ -191,12 +188,12 @@ export class ExecutionContext {
   async _updateChainContext () {
     if (!this.isVM()) {
       try {
-        const block = await web3.eth.getBlock('latest')
+        const block = await provider.getBlock('latest')
         // we can't use the blockGasLimit cause the next blocks could have a lower limit : https://github.com/ethereum/remix/issues/506
-        this.blockGasLimit = (block && block.gasLimit) ? Math.floor(web3.utils.toNumber(block.gasLimit) - (5 * web3.utils.toNumber(block.gasLimit) / 1024)) : web3.utils.toNumber(this.blockGasLimitDefault)
+        this.blockGasLimit = (block && block.gasLimit) ? Math.floor(toNumber(block.gasLimit) - (5 * toNumber(block.gasLimit) / 1024)) : toNumber(this.blockGasLimitDefault)
         this.lastBlock = block
         try {
-          this.currentFork = execution.forkAt(await web3.eth.net.getId(), block.number)
+          this.currentFork = execution.forkAt((await provider.getNetwork()).chainId, block.number)
         } catch (e) {
           this.currentFork = 'prague'
           console.log(`unable to detect fork, defaulting to ${this.currentFork}..`)

@@ -580,7 +580,7 @@ export class Blockchain extends Plugin {
   }
 
   toWei(value, unit) {
-    return parseUnits(value, unit || 'gwei')
+    return (parseUnits(value, unit || 'gwei')).toString()
   }
 
   calculateFee(gas, gasPrice, unit?) {

@@ -3,7 +3,7 @@ import { ConsoleLogs, hash, util, helpers } from '@remix-project/remix-lib'
 const { toHexPaddedString, formatMemory, padHexToEven } = util
 const { normalizeHexAddress } = helpers.ui
 import { toChecksumAddress, bytesToHex, toBytes, createAddressFromString, PrefixedHexString } from '@ethereumjs/util'
-import { Interface, zeroPadValue, keccak256, hexlify, toUtf8String, toUtf8Bytes, formatEther, parseEther, isAddress } from 'ethers'
+import { Interface, zeroPadValue, keccak256, hexlify, toUtf8String, toUtf8Bytes, formatEther, parseEther, isAddress, formatUnits, parseUnits } from 'ethers'
 import { VMContext } from './vm-context'
 import type { StateManagerInterface } from '@ethereumjs/common'
 import type { InterpreterStep } from '@ethereumjs/evm'
@@ -78,8 +78,8 @@ export class VmProxy {
     this.toHex = (...args) => hexlify.apply(this, args)
     this.toAscii = (...args) => toUtf8String.apply(this, args)
     this.fromAscii = (...args) => toUtf8Bytes.apply(this, args)
-    this.fromWei = (...args) => formatEther.apply(this, args)
-    this.toWei = (...args) => parseEther.apply(this, args)
+    this.fromWei = (...args) => formatUnits.apply(this, args)
+    this.toWei = (...args) => parseUnits.apply(this, args)
     this.toBigNumber = (...args) => BigInt.apply(this, args)
     this.isAddress = (...args) => isAddress.apply(this, args)
     this.txsMapBlock = {}
