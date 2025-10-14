@@ -7,12 +7,13 @@ import * as ethJSUtil from '@ethereumjs/util'
 import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents } from '@remix-api'
+import { UdappEvent } from '@remix-api'
 import { VerificationSettingsUI } from './verificationSettingsUI'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
   const intl = useIntl()
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends UdappEvent = UdappEvent>(event: T) => baseTrackEvent?.<T>(event)
   const [abiLabel, setAbiLabel] = useState<{
     display: string
     content: string
@@ -444,7 +445,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             >
               <i style={{ cursor: 'pointer' }} onClick={(_) => {
                 props.syncContracts()
-                trackMatomoEvent?.(UdappEvents.syncContracts(compilationSource ? compilationSource : 'compilationSourceNotYetSet'))
+                trackMatomoEvent({ category: 'udapp', action: 'syncContracts', name: compilationSource ? compilationSource : 'compilationSourceNotYetSet', isClick: true })
               }} className="udapp_syncFramework udapp_icon fa fa-refresh" aria-hidden="true"></i>
             </CustomTooltip>
           ) : null}

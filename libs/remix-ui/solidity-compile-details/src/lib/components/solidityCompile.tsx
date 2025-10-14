@@ -5,13 +5,14 @@ import React, { useContext } from 'react'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { useIntl } from 'react-intl'
 import { TrackingContext } from '@remix-ide/tracking'
-import { CompilerEvents } from '@remix-api'
+import { CompilerEvent } from '@remix-api'
 
 export default function SolidityCompile({ contractProperties, selectedContract, help, insertValue, saveAs, plugin }: any) {
   const intl = useIntl()
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends CompilerEvent = CompilerEvent>(event: T) => baseTrackEvent?.<T>(event)
   const downloadFn = () => {
-    trackMatomoEvent?.(CompilerEvents.compilerDetails('download'))
+    trackMatomoEvent({ category: 'compiler', action: 'compilerDetails', name: 'download', isClick: true })
     saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
   }
   return (

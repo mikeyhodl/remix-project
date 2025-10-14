@@ -2,7 +2,7 @@ import React, {useState, useEffect, useContext, useRef, ReactNode} from 'react' 
 import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
-import { GridViewEvents } from '@remix-api'
+import { GridViewEvents, MatomoEvent, GridViewEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface RemixUIGridViewProps {
@@ -24,7 +24,10 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
   const [filter, setFilter] = useState("")
   const showUntagged = props.showUntagged || false
   const showPin = props.showPin || false
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = GridViewEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const updateValue = (key: string, enabled: boolean, color?: string) => {
     if (!color || color === '') color = setKeyValueMap[key].color
     setKeyValueMap((prevMap) => ({
@@ -107,7 +110,7 @@ export const RemixUIGridView = (props: RemixUIGridViewProps) => {
                     className="remixui_grid_view_btn text-secondary form-control bg-light border d-flex align-items-center p-2 justify-content-center fas fa-filter bg-light"
                     onClick={(e) => {
                       setFilter(searchInputRef.current.value)
-                      trackMatomoEvent?.(GridViewEvents.filterWithTitle(props.title || '', searchInputRef.current.value))
+                      trackMatomoEvent({ category: 'gridView', action: 'filterWithTitle', name: props.title || '', value: searchInputRef.current.value, isClick: true })
                     }}
                   ></button>
                   <input

@@ -8,13 +8,14 @@ import { shortenAddress, CustomMenu, CustomToggle, CustomTooltip } from '@remix-
 import { eip7702Constants } from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents } from '@remix-api'
+import { UdappEvent } from '@remix-api'
 
 export function AccountUI(props: AccountProps) {
   const { selectedAccount, loadedAccounts } = props.accounts
   const { selectExEnv, personalMode, networkName } = props
   const accounts = Object.keys(loadedAccounts)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends UdappEvent = UdappEvent>(event: T) => baseTrackEvent?.<T>(event)
   const [plusOpt, setPlusOpt] = useState({
     classList: '',
     title: ''
@@ -191,7 +192,7 @@ export function AccountUI(props: AccountProps) {
             href="https://docs.safe.global/advanced/smart-account-overview#safe-smart-account"
             target="_blank"
             rel="noreferrer noopener"
-            onClick={() => trackMatomoEvent?.(UdappEvents.safeSmartAccount('learnMore'))}
+            onClick={() => trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'learnMore', isClick: true })}
             className="mb-3 d-inline-block link-primary"
           >
             Learn more
@@ -229,12 +230,12 @@ export function AccountUI(props: AccountProps) {
       ),
       intl.formatMessage({ id: 'udapp.continue' }),
       () => {
-        trackMatomoEvent?.(UdappEvents.safeSmartAccount('createClicked'))
+        trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'createClicked', isClick: true })
         props.createNewSmartAccount()
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {
-        trackMatomoEvent?.(UdappEvents.safeSmartAccount('cancelClicked'))
+        trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'cancelClicked', isClick: true })
       }
     )
   }
@@ -264,7 +265,7 @@ export function AccountUI(props: AccountProps) {
         try {
           await props.delegationAuthorization(delegationAuthorizationAddressRef.current)
           setContractHasDelegation(true)
-          trackMatomoEvent?.(UdappEvents.contractDelegation('create'))
+          trackMatomoEvent({ category: 'udapp', action: 'contractDelegation', name: 'create', isClick: false })
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -290,7 +291,7 @@ export function AccountUI(props: AccountProps) {
           await props.delegationAuthorization('0x0000000000000000000000000000000000000000')
           delegationAuthorizationAddressRef.current = ''
           setContractHasDelegation(false)
-          trackMatomoEvent?.(UdappEvents.contractDelegation('remove'))
+          trackMatomoEvent({ category: 'udapp', action: 'contractDelegation', name: 'remove', isClick: false })
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -305,7 +306,7 @@ export function AccountUI(props: AccountProps) {
   }
 
   const signMessage = () => {
-    trackMatomoEvent?.(UdappEvents.signUsingAccount(`selectExEnv: ${selectExEnv}`))
+    trackMatomoEvent({ category: 'udapp', action: 'signUsingAccount', name: `selectExEnv: ${selectExEnv}`, isClick: false })
     if (!accounts[0]) {
       return props.tooltip(intl.formatMessage({ id: 'udapp.tooltipText1' }))
     }

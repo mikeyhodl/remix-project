@@ -4,7 +4,7 @@ import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { FileExplorerEvents } from '@remix-api'
+import { FileExplorerEvents, MatomoEvent, FileExplorerEvent } from '@remix-api'
 
 export interface HamburgerMenuItemProps {
   hideOption: boolean
@@ -17,7 +17,10 @@ export interface HamburgerMenuItemProps {
 export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
   const platform = useContext(platformContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = FileExplorerEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -29,7 +32,7 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
               key={uid + '-fe-ws'}
               onClick={() => {
                 props.actionOnClick()
-                trackMatomoEvent?.(FileExplorerEvents.workspaceMenu(uid))
+                trackMatomoEvent({ category: 'fileExplorer', action: 'workspaceMenu', name: uid, isClick: true })
               }}
             >
               <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>
@@ -46,7 +49,10 @@ export function HamburgerMenuItem(props: HamburgerMenuItemProps) {
 // keeping the following for a later use:
 export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
   const { hideOption } = props
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = FileExplorerEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const uid = 'workspace' + props.kind
   return (
     <>
@@ -57,7 +63,7 @@ export function NavHamburgerMenuItem(props: HamburgerMenuItemProps) {
             key={uid + '-fe-ws'}
             onClick={() => {
               props.actionOnClick()
-              trackMatomoEvent?.(FileExplorerEvents.workspaceMenu(uid))
+              trackMatomoEvent({ category: 'fileExplorer', action: 'workspaceMenu', name: uid, isClick: true })
             }}
           >
             <span hidden={hideOption} id={uid} data-id={uid} className={props.fa + ' ps-2'} style={{ width: '1.4rem' }}></span>

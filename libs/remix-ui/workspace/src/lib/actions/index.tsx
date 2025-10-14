@@ -3,7 +3,7 @@ import React from 'react'
 import { extractNameFromKey, createNonClashingNameAsync } from '@remix-ui/helper'
 import Gists from 'gists'
 import { customAction } from '@remixproject/plugin-api'
-import { trackMatomoEventAsync, StorageEvents, BackupEvents } from '@remix-api'
+import { trackMatomoEventAsync } from '@remix-api'
 import { displayNotification, displayPopUp, fetchDirectoryError, fetchDirectoryRequest, fetchDirectorySuccess, focusElement, fsInitializationCompleted, hidePopUp, removeInputFieldSuccess, setCurrentLocalFilePath, setCurrentWorkspace, setExpandPath, setMode, setWorkspaces } from './payload'
 import { listenOnPluginEvents, listenOnProviderEvents } from './events'
 import { createWorkspaceTemplate, getWorkspaces, loadWorkspacePreset, setPlugin, workspaceExists } from './workspace'
@@ -732,9 +732,9 @@ export const handleDownloadFiles = async () => {
       const time = today.getHours() + 'h' + today.getMinutes() + 'min'
 
       saveAs(blob, `remix-backup-at-${time}-${date}.zip`)
-      await trackMatomoEventAsync(plugin, BackupEvents.download('home'));
+      await trackMatomoEventAsync(plugin, { category: 'Backup', action: 'download', name: 'home', isClick: true });
     }).catch(async (e) => {
-      await trackMatomoEventAsync(plugin, BackupEvents.error(e.message));
+      await trackMatomoEventAsync(plugin, { category: 'Backup', action: 'error', name: e.message, isClick: false });
       plugin.call('notification', 'toast', e.message)
     })
   } catch (e) {
@@ -760,7 +760,7 @@ export const handleDownloadWorkspace = async () => {
 export const restoreBackupZip = async () => {
   await plugin.appManager.activatePlugin(['restorebackupzip'])
   await plugin.call('mainPanel', 'showContent', 'restorebackupzip')
-  await trackMatomoEventAsync(plugin, BackupEvents.userActivate('restorebackupzip'));
+  await trackMatomoEventAsync(plugin, { category: 'Backup', action: 'userActivate', name: 'restorebackupzip', isClick: true });
 }
 
 const packageGistFiles = async (directory) => {

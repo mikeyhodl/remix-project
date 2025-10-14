@@ -4,7 +4,7 @@ import { StatusBar } from 'apps/remix-ide/src/app/components/status-bar'
 import '../../css/statusbar.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
-import { trackMatomoEvent, GitEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 export interface GitStatusProps {
   plugin: StatusBar
@@ -21,7 +21,7 @@ export default function GitStatus({ plugin, gitBranchName, setGitBranchName }: G
 
   const initializeNewGitRepo = async () => {
     await plugin.call('dgit', 'init')
-    trackMatomoEvent(plugin, GitEvents.INIT('initNewRepo'));
+    trackMatomoEvent(plugin, { category: 'git', action: 'INIT', name: 'initNewRepo', isClick: false });
   }
 
   if (!appContext.appState.canUseGit) return null

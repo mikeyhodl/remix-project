@@ -7,10 +7,13 @@ import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents } from '@remix-api'
+import { UdappEvents, MatomoEvent, UdappEvent } from '@remix-api'
 
 export function EnvironmentUI(props: EnvironmentProps) {
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = UdappEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const vmStateName = useRef('')
   const providers = props.providers.providerList
   const [isSwitching, setIsSwitching] = useState(false)
@@ -105,7 +108,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const forkState = async () => {
-    trackMatomoEvent?.(UdappEvents.forkState(`forkState clicked`))
+    trackMatomoEvent({ category: 'udapp', action: 'forkState', name: 'forkState clicked', isClick: true })
     let context = currentProvider.name
     context = context.replace('vm-fs-', '')
 
@@ -142,7 +145,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
             await props.runTabPlugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${currentProvider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + vmStateName.current)
           }
         }
-        trackMatomoEvent?.(UdappEvents.forkState(`forked from ${context}`))
+        trackMatomoEvent({ category: 'udapp', action: 'forkState', name: `forked from ${context}`, isClick: false })
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {}
@@ -150,7 +153,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
   }
 
   const resetVmState = async() => {
-    trackMatomoEvent?.(UdappEvents.deleteState(`deleteState clicked`))
+    trackMatomoEvent({ category: 'udapp', action: 'deleteState', name: 'deleteState clicked', isClick: true })
     const context = currentProvider.name
     const contextExists = await props.runTabPlugin.call('fileManager', 'exists', `.states/${context}/state.json`)
     if (contextExists) {
@@ -170,7 +173,7 @@ export function EnvironmentUI(props: EnvironmentProps) {
           const isPinnedContracts = await props.runTabPlugin.call('fileManager', 'exists', `.deploys/pinned-contracts/${context}`)
           if (isPinnedContracts) await props.runTabPlugin.call('fileManager', 'remove', `.deploys/pinned-contracts/${context}`)
           props.runTabPlugin.call('notification', 'toast', `VM state reset successfully.`)
-          trackMatomoEvent?.(UdappEvents.deleteState(`VM state reset`))
+          trackMatomoEvent({ category: 'udapp', action: 'deleteState', name: 'VM state reset', isClick: false })
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
         null

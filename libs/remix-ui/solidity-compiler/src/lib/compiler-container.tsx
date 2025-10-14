@@ -12,7 +12,7 @@ import { CopyToClipboard } from '@remix-ui/clipboard'
 import { configFileContent } from './compilerConfiguration'
 import { appPlatformTypes, platformContext, onLineContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { CompilerEvents, CompilerContainerEvents } from '@remix-api'
+import { CompilerEvent, CompilerContainerEvent } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import './css/style.css'
@@ -23,7 +23,8 @@ const remixConfigPath = 'remix.config.json'
 export const CompilerContainer = (props: CompilerContainerProps) => {
   const online = useContext(onLineContext)
   const platform = useContext(platformContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends CompilerEvent | CompilerContainerEvent = CompilerEvent | CompilerContainerEvent>(event: T) => baseTrackEvent?.<T>(event)
   const {
     api,
     compileTabLogic,
@@ -203,7 +204,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const toggleConfigType = () => {
     setState((prevState) => {
       // Track configuration file toggle
-      trackMatomoEvent?.(CompilerContainerEvents.useConfigurationFile(!state.useFileConfiguration ? 'enabled' : 'disabled'))
+      trackMatomoEvent({ category: 'compilerContainer', action: 'useConfigurationFile', name: !state.useFileConfiguration ? 'enabled' : 'disabled', isClick: false })
 
       api.setAppParameter('useFileConfiguration', !state.useFileConfiguration)
       return { ...prevState, useFileConfiguration: !state.useFileConfiguration }
@@ -403,8 +404,8 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     compileIcon.current.classList.remove('remixui_bouncingIcon')
     if (!state.autoCompile || (state.autoCompile && state.matomoAutocompileOnce)) {
       // trackMatomoEvent?.('compiler', 'compiled', 'solCompilationFinishedTriggeredByUser')
-      trackMatomoEvent?.(CompilerEvents.compiled('with_config_file_' + state.useFileConfiguration))
-      trackMatomoEvent?.(CompilerEvents.compiled('with_version_' + _retrieveVersion()))
+      trackMatomoEvent({ category: 'compiler', action: 'compiled', name: 'with_config_file_' + state.useFileConfiguration, isClick: false })
+      trackMatomoEvent({ category: 'compiler', action: 'compiled', name: 'with_version_' + _retrieveVersion(), isClick: false })
       if (state.autoCompile && state.matomoAutocompileOnce) {
         setState((prevState) => {
           return { ...prevState, matomoAutocompileOnce: false }
@@ -431,7 +432,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (!isSolFileSelected()) return
 
     // Track compile button click
-    trackMatomoEvent?.(CompilerContainerEvents.compile(currentFile))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'compile', name: currentFile, isClick: true })
 
     if (state.useFileConfiguration) await createNewConfigFile()
     _setCompilerVersionFromPragma(currentFile)
@@ -455,7 +456,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (!isSolFileSelected()) return
 
     // Track compile and run button click
-    trackMatomoEvent?.(CompilerContainerEvents.compileAndRun(currentFile))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'compileAndRun', name: currentFile, isClick: true })
 
     _setCompilerVersionFromPragma(currentFile)
     let externalCompType
@@ -528,7 +529,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const promptCompiler = () => {
     // Track custom compiler addition prompt
-    trackMatomoEvent?.(CompilerContainerEvents.addCustomCompiler())
+    trackMatomoEvent({ category: 'compilerContainer', action: 'addCustomCompiler', name: '', isClick: true })
 
     // custom url https://solidity-blog.s3.eu-central-1.amazonaws.com/data/08preview/soljson.js
     modal(
@@ -546,7 +547,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const showCompilerLicense = () => {
     // Track compiler license view
-    trackMatomoEvent?.(CompilerContainerEvents.viewLicense())
+    trackMatomoEvent({ category: 'compilerContainer', action: 'viewLicense', name: '', isClick: true })
 
     modal(
       intl.formatMessage({ id: 'solidity.compilerLicense' }),
@@ -578,7 +579,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (value !== 'builtin' && !pathToURL[value]) return
 
     // Track compiler selection
-    trackMatomoEvent?.(CompilerContainerEvents.compilerSelection(value))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'compilerSelection', name: value, isClick: false })
 
     setState((prevState) => {
       return { ...prevState, selectedVersion: value, matomoAutocompileOnce: true }
@@ -600,7 +601,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = e.target.checked
 
     // Track auto-compile toggle
-    trackMatomoEvent?.(CompilerContainerEvents.autoCompile(checked ? 'enabled' : 'disabled'))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'autoCompile', name: checked ? 'enabled' : 'disabled', isClick: false })
 
     api.setAppParameter('autoCompile', checked)
     checked && compile()
@@ -617,7 +618,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = !!value
 
     // Track optimization toggle
-    trackMatomoEvent?.(CompilerContainerEvents.optimization(checked ? 'enabled' : 'disabled'))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'optimization', name: checked ? 'enabled' : 'disabled', isClick: false })
 
     api.setAppParameter('optimize', checked)
     compileTabLogic.setOptimize(checked)
@@ -646,7 +647,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = e.target.checked
 
     // Track hide warnings toggle
-    trackMatomoEvent?.(CompilerContainerEvents.hideWarnings(checked ? 'enabled' : 'disabled'))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'hideWarnings', name: checked ? 'enabled' : 'disabled', isClick: false })
 
     api.setAppParameter('hideWarnings', checked)
     state.autoCompile && compile()
@@ -659,7 +660,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = e.target.checked
 
     // Track include nightlies toggle
-    trackMatomoEvent?.(CompilerContainerEvents.includeNightlies(checked ? 'enabled' : 'disabled'))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'includeNightlies', name: checked ? 'enabled' : 'disabled', isClick: false })
 
     if (!checked) handleLoadVersion(state.defaultVersion)
     api.setAppParameter('includeNightlies', checked)
@@ -672,7 +673,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = e.target.checked
 
     // Track downloaded compilers only toggle - we can use compilerSelection for this
-    trackMatomoEvent?.(CompilerContainerEvents.compilerSelection(checked ? 'downloadedOnly' : 'allVersions'))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'compilerSelection', name: checked ? 'downloadedOnly' : 'allVersions', isClick: false })
 
     if (!checked) handleLoadVersion(state.defaultVersion)
     setState((prevState) => {
@@ -682,7 +683,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
   const handleLanguageChange = (value) => {
     // Track language selection
-    trackMatomoEvent?.(CompilerContainerEvents.languageSelection(value))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'languageSelection', name: value, isClick: false })
 
     compileTabLogic.setLanguage(value)
     state.autoCompile && compile()
@@ -695,7 +696,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (!value) return
 
     // Track EVM version selection
-    trackMatomoEvent?.(CompilerContainerEvents.evmVersionSelection(value))
+    trackMatomoEvent({ category: 'compilerContainer', action: 'evmVersionSelection', name: value, isClick: false })
 
     let v = value
     if (v === 'default') {
@@ -880,7 +881,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
         </div>
         <div className="d-flex px-4 remixui_compilerConfigSection justify-content-between" onClick={() => {
           // Track advanced configuration toggle
-          trackMatomoEvent?.(CompilerContainerEvents.advancedConfigToggle(!toggleExpander ? 'expanded' : 'collapsed'))
+          trackMatomoEvent({ category: 'compilerContainer', action: 'advancedConfigToggle', name: !toggleExpander ? 'expanded' : 'collapsed', isClick: true })
           toggleConfigurations()
         }}>
           <div className="d-flex">
@@ -891,7 +892,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
           <div>
             <span data-id="scConfigExpander" onClick={() => {
               // Track advanced configuration toggle
-              trackMatomoEvent?.(CompilerContainerEvents.advancedConfigToggle(!toggleExpander ? 'expanded' : 'collapsed'))
+              trackMatomoEvent({ category: 'compilerContainer', action: 'advancedConfigToggle', name: !toggleExpander ? 'expanded' : 'collapsed', isClick: true })
               toggleConfigurations()
             }}>
               <i className={!toggleExpander ? 'fas fa-angle-right' : 'fas fa-angle-down'} aria-hidden="true"></i>

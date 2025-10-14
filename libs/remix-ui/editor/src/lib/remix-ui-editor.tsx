@@ -4,7 +4,7 @@ import { diffLines } from 'diff'
 import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
 import { AppContext, AppModal } from '@remix-ui/app'
-import { AIEvents, EditorEvents } from '@remix-api'
+import { AIEvents, EditorEvents, MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
 import { reducerActions, reducerListener, initialState } from './actions/editor'
@@ -160,7 +160,10 @@ const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
   const intl = useIntl()
   const appContext = useContext(AppContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = EditorEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const [, setCurrentBreakpoints] = useState({})
@@ -791,7 +794,7 @@ export const EditorUI = (props: EditorUIProps) => {
               setTimeout(async () => {
                 props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
               }, 500)
-              trackMatomoEvent?.(AIEvents.vulnerabilityCheckPastedCode())
+              trackMatomoEvent<AIEvent>({ category: 'ai', action: 'vulnerability_check_pasted_code', isClick: true })
             })();
           }
         };
@@ -848,7 +851,7 @@ export const EditorUI = (props: EditorUIProps) => {
           )
         }
         props.plugin.call('notification', 'modal', modalContent)
-        trackMatomoEvent?.(EditorEvents.onDidPaste('more_than_10_lines'))
+        trackMatomoEvent({ category: 'editor', action: 'onDidPaste', name: 'more_than_10_lines', isClick: false })
       }
     })
 
@@ -859,7 +862,7 @@ export const EditorUI = (props: EditorUIProps) => {
         if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
           inlineCompletionProvider.currentCompletion.onAccepted()
           inlineCompletionProvider.currentCompletion.accepted = true
-          trackMatomoEvent?.(AIEvents.copilotCompletionAccepted())
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'Copilot_Completion_Accepted', isClick: true })
         }
       }
     });
@@ -995,7 +998,7 @@ export const EditorUI = (props: EditorUIProps) => {
               }, 150)
             }
           }
-          trackMatomoEvent?.(AIEvents.generateDocumentation())
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'generateDocumentation', isClick: true })
         },
       }
     }
@@ -1014,7 +1017,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
-        trackMatomoEvent?.(AIEvents.explainFunction())
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'explainFunction', isClick: true })
       },
     }
 
@@ -1038,7 +1041,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
-        trackMatomoEvent?.(AIEvents.explainFunction())
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'explainFunction', isClick: true })
       },
     }
 

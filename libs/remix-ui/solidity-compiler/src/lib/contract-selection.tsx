@@ -7,7 +7,7 @@ import {CopyToClipboard} from '@remix-ui/clipboard' // eslint-disable-line
 import { saveAs } from 'file-saver'
 import { AppModal } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { CompilerEvents, SolidityCompilerEvents } from '@remix-api'
+import { CompilerEvent, SolidityCompilerEvent } from '@remix-api'
 
 import './css/style.css'
 import { CustomTooltip, handleSolidityScan } from '@remix-ui/helper'
@@ -16,7 +16,8 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   const { api, compiledFileName, contractsDetails, contractList, compilerInput, modal } = props
   const [selectedContract, setSelectedContract] = useState('')
   const [storage, setStorage] = useState(null)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends CompilerEvent | SolidityCompilerEvent = CompilerEvent | SolidityCompilerEvent>(event: T) => baseTrackEvent?.<T>(event)
 
   const intl = useIntl()
 
@@ -167,7 +168,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const details = () => {
-    trackMatomoEvent?.(CompilerEvents.compilerDetails('display'))
+    trackMatomoEvent({ category: 'compiler', action: 'compilerDetails', name: 'display', isClick: false })
     if (!selectedContract) throw new Error('No contract compiled yet')
 
     const help = {
@@ -236,7 +237,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       </div>
     )
     const downloadFn = () => {
-      trackMatomoEvent?.(CompilerEvents.compilerDetails('download'))
+      trackMatomoEvent({ category: 'compiler', action: 'compilerDetails', name: 'download', isClick: true })
       saveAs(new Blob([JSON.stringify(contractProperties, null, '\t')]), `${selectedContract}_compData.json`)
     }
     // modal(selectedContract, log, intl.formatMessage({id: 'solidity.download'}), downloadFn, true, intl.formatMessage({id: 'solidity.close'}), null)
@@ -248,7 +249,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runStaticAnalysis = async () => {
-    trackMatomoEvent?.(SolidityCompilerEvents.runStaticAnalysis('initiate'))
+    trackMatomoEvent({ category: 'solidityCompiler', action: 'runStaticAnalysis', name: 'initiate', isClick: false })
     const plugin = api as any
     const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
     if (!isStaticAnalyzersActive) {
@@ -262,7 +263,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
   }
 
   const runSolidityScan = async () => {
-    trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
+    trackMatomoEvent({ category: 'solidityCompiler', action: 'solidityScan', name: 'askPermissionToScan', isClick: false })
     const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -270,7 +271,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
+            onClick={() => trackMatomoEvent({ category: 'solidityCompiler', action: 'solidityScan', name: 'learnMore', isClick: true })}>
               Learn more
           </a>
         </span>
@@ -280,7 +281,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
       okLabel: <FormattedMessage id="solidity.solScan.modalOkLabel" />,
       okFn: handleScanContinue,
       cancelLabel: <FormattedMessage id="solidity.solScan.modalCancelLabel" />,
-      cancelFn:() => { trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('cancelClicked'))}
+      cancelFn:() => { trackMatomoEvent({ category: 'solidityCompiler', action: 'solidityScan', name: 'cancelClicked', isClick: true })}
     }
     await (api as any).call('notification', 'modal', modal)
   }

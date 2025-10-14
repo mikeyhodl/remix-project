@@ -5,7 +5,7 @@ import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-soli
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
 import { TrackingContext } from '@remix-ide/tracking';
-import { ScriptRunnerPluginEvents } from '@remix-api';
+import { ScriptRunnerPluginEvents, MatomoEvent, ScriptRunnerPluginEvent } from '@remix-api';
 
 export interface ConfigSectionProps {
   activeKey: string
@@ -18,7 +18,10 @@ export interface ConfigSectionProps {
 
 export default function ConfigSection(props: ConfigSectionProps) {
   const [isVisible, setIsVisible] = useState(true)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = ScriptRunnerPluginEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   const handleAnimationEnd = () => {
     setIsVisible(false);
@@ -39,7 +42,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               if (!props.config.errorStatus) {
                 props.setActiveKey(props.config.name)
               }
-              trackMatomoEvent?.(ScriptRunnerPluginEvents.loadScriptRunnerConfig(props.config.name))
+              trackMatomoEvent({ category: 'scriptRunnerPlugin', action: 'loadScriptRunnerConfig', name: props.config.name, isClick: true })
             }}
             checked={(props.activeConfig && props.activeConfig.name === props.config.name)}
           />
@@ -110,7 +113,7 @@ export default function ConfigSection(props: ConfigSectionProps) {
               <div
                 onClick={() => {
                   props.loadScriptRunner(props.config)
-                  trackMatomoEvent?.(ScriptRunnerPluginEvents.error_reloadScriptRunnerConfig(props.config.name))
+                  trackMatomoEvent({ category: 'scriptRunnerPlugin', action: 'error_reloadScriptRunnerConfig', name: props.config.name, isClick: true })
                 }}
                 className="pointer text-danger d-flex flex-row"
               >

@@ -3,7 +3,7 @@ import React, { Fragment, Ref, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
-import { SolidityUMLGenEvents, SolUmlGenEvents } from '@remix-api'
+import { SolidityUMLGenEvents, SolUmlGenEvents, MatomoEvent, SolidityUMLGenEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 export const Markup = React.forwardRef(
@@ -65,7 +65,10 @@ interface UmlDownloadProps {
 }
 
 export default function UmlDownload(props: UmlDownloadProps) {
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = SolidityUMLGenEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   return (
     <Fragment>
       <CustomTooltip
@@ -78,7 +81,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
           <Dropdown.Menu as={UmlCustomMenu} className="form-select">
             <Dropdown.Item
               onClick={() => {
-                trackMatomoEvent?.(SolidityUMLGenEvents.umlpngdownload('downloadAsPng'))
+                trackMatomoEvent({ category: 'solidityUMLGen', action: 'umlpngdownload', name: 'downloadAsPng', isClick: true })
                 props.download('png')
               }}
               data-id="umlPngDownload"
@@ -100,7 +103,7 @@ export default function UmlDownload(props: UmlDownloadProps) {
             <Dropdown.Divider />
             <Dropdown.Item
               onClick={() => {
-                trackMatomoEvent?.(SolUmlGenEvents.umlpdfdownload('downloadAsPdf'))
+                trackMatomoEvent({ category: 'solidityUMLGen', action: 'umlpdfdownload', name: 'downloadAsPdf', isClick: true })
                 props.download('pdf')
               }}
               data-id="umlPdfDownload"

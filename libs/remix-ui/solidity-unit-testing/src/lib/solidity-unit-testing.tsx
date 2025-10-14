@@ -11,7 +11,7 @@ import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { SolidityUnitTestingEvents } from '@remix-api'
+import { SolidityUnitTestingEvents, MatomoEvent, SolidityUnitTestingEvent } from '@remix-api'
 
 interface TestObject {
   fileName: string
@@ -45,7 +45,10 @@ interface FinalResult {
 export const SolidityUnitTesting = (props: Record<string, any>) => {
   // eslint-disable-line @typescript-eslint/no-explicit-any
   const platform = useContext(platformContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = SolidityUnitTestingEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const { helper, testTab, initialPath } = props
   const { testTabLogic } = testTab
 
@@ -277,7 +280,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       }
       finalLogs = finalLogs + '&emsp;' + formattedLog + '\n'
     }
-    trackMatomoEvent?.(SolidityUnitTestingEvents.hardhat('console.log'))
+    trackMatomoEvent({ category: 'solidityUnitTesting', action: 'hardhat', name: 'console.log', isClick: true })
     testTab.call('terminal', 'logHtml', { type: 'log', value: finalLogs })
   }
 
@@ -663,7 +666,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     const tests: string[] = selectedTests.current
     if (!tests || !tests.length) return
     else setProgressBarHidden(false)
-    trackMatomoEvent?.(SolidityUnitTestingEvents.runTests('nbTestsRunning' + tests.length))
+    trackMatomoEvent({ category: 'solidityUnitTesting', action: 'runTests', name: 'nbTestsRunning' + tests.length, isClick: true })
     eachOfSeries(tests, (value: string, key: string, callback: any) => {
       // eslint-disable-line @typescript-eslint/no-explicit-any
       if (hasBeenStopped.current) return

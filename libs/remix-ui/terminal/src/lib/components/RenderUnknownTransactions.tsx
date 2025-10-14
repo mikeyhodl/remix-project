@@ -4,10 +4,13 @@ import CheckTxStatus from './ChechTxStatus' // eslint-disable-line
 import Context from './Context' // eslint-disable-line
 import showTable from './Table'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents } from '@remix-api'
+import { UdappEvents, MatomoEvent, UdappEvent } from '@remix-api'
 
 const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, txDetails, modal, provider }) => {
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = UdappEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const intl = useIntl()
   const debug = (event, tx) => {
     event.stopPropagation()
@@ -29,7 +32,7 @@ const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, 
   let to = tx.to
 
   if (tx.isUserOp) {
-    trackMatomoEvent?.(UdappEvents.safeSmartAccount('txExecuted', 'successfully'))
+    trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'txExecuted', value: 'successfully', isClick: false })
     // Track event with signature: ExecutionFromModuleSuccess (index_topic_1 address module)
     // to get sender smart account address
     const fromAddrLog = receipt.logs.find(e => e.topics[0] === "0x6895c13664aa4f67288b25d7a21d7aaa34916e355fb9b6fae0a139a9085becb8")

@@ -2,7 +2,7 @@
 import React, { useContext } from 'react'
 import parse from 'html-react-parser'
 import { ScanReport } from '@remix-ui/helper'
-import { SolidityCompilerEvents } from '@remix-api'
+import { SolidityCompilerEvents, MatomoEvent, CompilerEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface SolScanTableProps {
@@ -12,7 +12,10 @@ interface SolScanTableProps {
 
 export function SolScanTable(props: SolScanTableProps) {
   const { scanReport, fileName } = props
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = CompilerEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const { multi_file_scan_details, multi_file_scan_summary } = scanReport
 
   return (
@@ -58,7 +61,7 @@ export function SolScanTable(props: SolScanTableProps) {
           <p>For more details,&nbsp;
             <a href="https://solidityscan.com/?utm_campaign=remix&utm_source=remix"
               target='_blank'
-              onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('goToSolidityScan'))}>
+              onClick={() => trackMatomoEvent({ category: 'solidityCompiler', action: 'solidityScan', name: 'goToSolidityScan', isClick: true })}>
               go to SolidityScan.
             </a>
           </p>
