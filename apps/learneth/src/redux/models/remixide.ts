@@ -9,6 +9,11 @@ function getFilePath(file: string): string {
   return name.length > 1 ? `${name[name.length - 1]}` : ''
 }
 
+// Type-safe Matomo tracking helper for Learneth events
+function trackLearnethEvent(event: ReturnType<typeof LearnethEvents[keyof typeof LearnethEvents]>) {
+  trackMatomoEvent(remixClient, event);
+}
+
 const Model: ModelType = {
   namespace: 'remixide',
   state: {
@@ -47,29 +52,6 @@ const Model: ModelType = {
         },
       });
 
-      // Type-safe Matomo tracking helper
-      const trackLearnethEvent = (event: ReturnType<typeof LearnethEvents[keyof typeof LearnethEvents]>) => {
-        trackMatomoEvent(remixClient, event);
-      };
-
-      // Legacy _paq compatibility layer for existing learneth tracking calls
-      (window as any)._paq = {
-        push: (args: any[]) => {
-          if (args[0] === 'trackEvent' && args.length >= 3) {
-            // Convert legacy _paq.push(['trackEvent', 'category', 'action', 'name'])
-            // to matomo plugin call with legacy string signature
-            const [, category, action, name, value] = args;
-            remixClient.call('matomo' as any, 'trackEvent', category, action, name, value);
-          } else {
-            // For other _paq commands, pass through as-is
-            console.warn('Learneth: Unsupported _paq command:', args);
-          }
-        }
-      };
-
-      // Make trackLearnethEvent available globally for the effects
-      (window as any).trackLearnethEvent = trackLearnethEvent;
-
       yield router.navigate('/home')
     },
     *displayFile({ payload: step }, { select, put }) {
@@ -92,7 +74,7 @@ const Model: ModelType = {
         return
       }
 
-      (<any>window).trackLearnethEvent(LearnethEvents.displayFile(`${(step && step.name)}/${path}`))
+      trackLearnethEvent(LearnethEvents.displayFile(`${(step && step.name)}/${path}`))
 
       toast.info(`loading ${path} into IDE`)
       yield put({
@@ -119,7 +101,7 @@ const Model: ModelType = {
         })
         toast.dismiss()
       } catch (error) {
-        (<any>window).trackLearnethEvent(LearnethEvents.displayFileError(error.message))
+        trackLearnethEvent(LearnethEvents.displayFileError(error.message))
         toast.dismiss()
         toast.error('File could not be loaded. Please try again.')
         yield put({
@@ -169,7 +151,7 @@ const Model: ModelType = {
             type: 'remixide/save',
             payload: { errors: ['Compiler failed to test this file']},
           });
-          (<any>window).trackLearnethEvent(LearnethEvents.testStepError('Compiler failed to test this file'))
+          trackLearnethEvent(LearnethEvents.testStepError('Compiler failed to test this file'))
         } else {
           const success = result.totalFailing === 0;
           if (success) {
@@ -185,14 +167,14 @@ const Model: ModelType = {
               },
             })
           }
-          (<any>window).trackLearnethEvent(LearnethEvents.testStep(String(success)))
+          trackLearnethEvent(LearnethEvents.testStep(String(success)))
         }
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        (<any>window).trackLearnethEvent(LearnethEvents.testStepError(String(err)))
+        trackLearnethEvent(LearnethEvents.testStepError(String(err)))
       }
       yield put({
         type: 'loading/save',
@@ -222,13 +204,13 @@ const Model: ModelType = {
         yield remixClient.call('fileManager', 'setFile', path, content)
         yield remixClient.call('fileManager', 'switchFile', `${path}`);
 
-        (<any>window).trackLearnethEvent(LearnethEvents.showAnswer(path))
+        trackLearnethEvent(LearnethEvents.showAnswer(path))
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        (<any>window).trackLearnethEvent(LearnethEvents.showAnswerError(err.message))
+        trackLearnethEvent(LearnethEvents.showAnswerError(err.message))
       }
 
       toast.dismiss()
@@ -242,7 +224,7 @@ const Model: ModelType = {
     *testSolidityCompiler(_, { put, select }) {
       try {
         yield remixClient.call('solidity', 'getCompilationResult');
-        (<any>window).trackLearnethEvent(LearnethEvents.testSolidityCompiler())
+        trackLearnethEvent(LearnethEvents.testSolidityCompiler())
       } catch (err) {
         const errors = yield select((state) => state.remixide.errors)
         yield put({
@@ -251,7 +233,7 @@ const Model: ModelType = {
             errors: [...errors, "The `Solidity Compiler` is not yet activated.<br>Please activate it using the `SOLIDITY` button in the `Featured Plugins` section of the homepage.<img class='img-thumbnail mt-3' src='assets/activatesolidity.png'>"],
           },
         });
-        (<any>window).trackLearnethEvent(LearnethEvents.testSolidityCompilerError(err.message))
+        trackLearnethEvent(LearnethEvents.testSolidityCompilerError(err.message))
       }
     }
   },
