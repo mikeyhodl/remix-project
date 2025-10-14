@@ -91,16 +91,12 @@ export interface IMatomoApi {
         deleteMatomoCookies: () => Promise<void>;
         
         // Queue management
-        getPreInitQueue: () => MatomoCommand[];
         getQueueStatus: () => { queueLength: number; initialized: boolean; commands: MatomoCommand[] };
         processPreInitQueue: () => Promise<void>;
         clearPreInitQueue: () => number;
         
         // Utility and diagnostic methods
-        testConsentBehavior: () => Promise<void>;
         getDiagnostics: () => MatomoDiagnostics;
-        inspectPaqArray: () => { length: number; contents: any[]; trackingCommands: any[] };
-        batch: (commands: MatomoCommand[]) => void;
         reset: () => Promise<void>;
         
         // Event system (renamed to avoid Plugin conflicts)

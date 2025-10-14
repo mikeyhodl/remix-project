@@ -10,9 +10,9 @@ const profile = {
     'track', 'getManager', 'initialize', 'switchMode', 'giveConsent', 'revokeConsent',
     'trackEvent', 'trackPageView', 'setCustomDimension', 'getState', 'getStatus',
     'isMatomoLoaded', 'getMatomoCookies', 'deleteMatomoCookies', 'loadScript',
-    'waitForLoad', 'getPreInitQueue', 'getQueueStatus', 'processPreInitQueue',
-    'clearPreInitQueue', 'testConsentBehavior', 'getDiagnostics', 'inspectPaqArray',
-    'batch', 'reset', 'addMatomoListener', 'removeMatomoListener', 'getMatomoManager',
+    'waitForLoad', 'getQueueStatus', 'processPreInitQueue',
+    'clearPreInitQueue', 'getDiagnostics',
+    'reset', 'addMatomoListener', 'removeMatomoListener', 'getMatomoManager',
     'shouldShowConsentDialog', 'getBotDetectionResult', 'isBot', 'getBotType', 'getBotConfidence'
   ],
   events: ['matomo-initialized', 'matomo-consent-changed', 'matomo-mode-switched'],
@@ -110,10 +110,6 @@ export class Matomo extends Plugin {
 
   // ================== QUEUE MANAGEMENT ==================
 
-  getPreInitQueue(): MatomoCommand[] {
-    return matomoManager.getPreInitQueue()
-  }
-
   getQueueStatus(): { queueLength: number; initialized: boolean; commands: MatomoCommand[] } {
     return matomoManager.getQueueStatus()
   }
@@ -128,20 +124,8 @@ export class Matomo extends Plugin {
 
   // ================== UTILITY & DIAGNOSTICS ==================
 
-  async testConsentBehavior(): Promise<void> {
-    return matomoManager.testConsentBehavior()
-  }
-
   getDiagnostics(): MatomoDiagnostics {
     return matomoManager.getDiagnostics()
-  }
-
-  inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] } {
-    return matomoManager.inspectPaqArray()
-  }
-
-  batch(commands: MatomoCommand[]): void {
-    return matomoManager.batch(commands)
   }
 
   async reset(): Promise<void> {

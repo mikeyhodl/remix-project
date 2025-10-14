@@ -192,13 +192,11 @@ export interface IMatomoManager {
   isPluginLoaded(src: string): boolean;
 
   // Queue management
-  getPreInitQueue(): MatomoCommand[];
   getQueueStatus(): { queueLength: number; initialized: boolean; commands: MatomoCommand[] };
   processPreInitQueue(): Promise<void>;
   clearPreInitQueue(): number;
 
   // Utility and diagnostic methods
-  testConsentBehavior(): Promise<void>;
   getDiagnostics(): MatomoDiagnostics;
   
   // Bot detection methods
@@ -206,8 +204,6 @@ export interface IMatomoManager {
   isBot(): boolean;
   getBotType(): string;
   getBotConfidence(): 'high' | 'medium' | 'low' | null;
-  inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] };
-  batch(commands: MatomoCommand[]): void;
   reset(): Promise<void>;
 
   // Event system
@@ -1313,37 +1309,6 @@ export class MatomoManager implements IMatomoManager {
   // ================== UTILITY METHODS ==================
 
   /**
-   * Test a specific consent behavior
-   */
-  async testConsentBehavior(): Promise<void> {
-    this.log('=== TESTING CONSENT BEHAVIOR ===');
-
-    const cookiesBefore = this.getMatomoCookies();
-    this.log('Cookies before requireCookieConsent:', cookiesBefore);
-
-    window._paq.push(['requireCookieConsent']);
-
-    // Check immediately and after delay
-    const cookiesImmediate = this.getMatomoCookies();
-    this.log('Cookies immediately after requireCookieConsent:', cookiesImmediate);
-
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const cookiesAfter = this.getMatomoCookies();
-        this.log('Cookies 2 seconds after requireCookieConsent:', cookiesAfter);
-
-        if (cookiesBefore.length > 0 && cookiesAfter.length === 0) {
-          this.log('🚨 CONFIRMED: requireCookieConsent DELETED existing cookies!');
-        } else if (cookiesBefore.length === cookiesAfter.length) {
-          this.log('✅ requireCookieConsent did NOT delete existing cookies');
-        }
-
-        resolve();
-      }, 2000);
-    });
-  }
-
-  /**
    * Get detailed diagnostic information
    */
   getDiagnostics(): MatomoDiagnostics {
@@ -1432,13 +1397,6 @@ export class MatomoManager implements IMatomoManager {
       this.log('Error in shouldShowConsentDialog:', error);
       return false; // Fail safely
     }
-  }
-
-  /**
-   * Get current pre-initialization queue
-   */
-  getPreInitQueue(): MatomoCommand[] {
-    return [...this.preInitQueue];
   }
 
   /**
@@ -1568,26 +1526,6 @@ export class MatomoManager implements IMatomoManager {
   }
 
   /**
-   * Debug method to inspect current _paq contents
-   */
-  inspectPaqArray(): { length: number; contents: any[]; trackingCommands: any[] } {
-    const contents = [...(window._paq || [])];
-    const trackingCommands = contents.filter(cmd => this.isTrackingCommand(cmd));
-
-    this.log(`🔍 _paq inspection: ${contents.length} total, ${trackingCommands.length} tracking commands`);
-    contents.forEach((cmd, i) => {
-      const isTracking = this.isTrackingCommand(cmd);
-      this.log(`  [${i}] ${isTracking ? '📊' : '⚙️'} ${JSON.stringify(cmd)}`);
-    });
-
-    return {
-      length: contents.length,
-      contents,
-      trackingCommands
-    };
-  }
-
-  /**
    * Wait for Matomo to be loaded
    */
   async waitForLoad(timeout: number = 5000): Promise<void> {
@@ -1606,17 +1544,6 @@ export class MatomoManager implements IMatomoManager {
 
       checkLoaded();
     });
-  }
-
-  /**
-   * Batch execute multiple commands
-   */
-  batch(commands: MatomoCommand[]): void {
-    this.log(`Executing batch of ${commands.length} commands`);
-    commands.forEach(command => {
-      window._paq.push(command);
-    });
-    this.emit('batch-executed', { commands });
   }
 
   // ================== BOT DETECTION METHODS ==================
