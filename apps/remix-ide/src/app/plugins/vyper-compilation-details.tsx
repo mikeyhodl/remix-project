@@ -1,7 +1,7 @@
 import React from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { trackMatomoEvent, PluginEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixUiVyperCompileDetails } from '@remix-ui/vyper-compile-details'
 import { ThemeKeys, ThemeObject } from '@microlink/react-json-view'

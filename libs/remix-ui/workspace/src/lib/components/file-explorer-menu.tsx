@@ -6,7 +6,7 @@ import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { FileExplorerEvents, MatomoEvent, FileExplorerEvent } from '@remix-api'
+import { MatomoEvent, FileExplorerEvent } from '@remix-api'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)

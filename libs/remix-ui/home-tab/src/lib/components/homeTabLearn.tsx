@@ -3,7 +3,7 @@ import React, { useEffect, useState, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext } from '../themeContext'
 import { CustomTooltip } from '@remix-ui/helper'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 enum VisibleTutorial {

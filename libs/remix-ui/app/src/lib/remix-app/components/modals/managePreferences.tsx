@@ -4,7 +4,7 @@ import { useDialogDispatchers } from '../../context/provider'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { AppContext } from '../../context/context'
 import { TrackingContext } from '@remix-ide/tracking'
-import { LandingPageEvents } from '@remix-api'
+import { LandingPageEvent } from '@remix-api'
 
 const ManagePreferencesSwitcher = (prop: {
   setParentState: (state: any) => void
@@ -114,8 +114,8 @@ const ManagePreferencesDialog = (props) => {
     // Consent is managed by cookie consent system in settings
     settings.updateMatomoPerfAnalyticsChoice(switcherState.current.matPerfSwitch) // Enable/Disable Matomo Performance analytics
     settings.updateCopilotChoice(switcherState.current.remixAISwitch) // Enable/Disable RemixAI copilot
-    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal(`MatomoPerfStatus: ${switcherState.current.matPerfSwitch}`))
-    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal(`AICopilotStatus: ${switcherState.current.remixAISwitch}`))
+    trackMatomoEvent?.({ category: 'landingPage', action: 'MatomoAIModal', name: `MatomoPerfStatus: ${switcherState.current.matPerfSwitch}` })
+    trackMatomoEvent?.({ category: 'landingPage', action: 'MatomoAIModal', name: `AICopilotStatus: ${switcherState.current.remixAISwitch}` })
     setVisible(false)
   }
 

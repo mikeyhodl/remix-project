@@ -5,7 +5,7 @@ import axios from 'axios'
 import { HOME_TAB_BASE_URL, HOME_TAB_NEW_UPDATES } from './constant'
 import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 import { CustomTooltip } from '@remix-ui/helper'

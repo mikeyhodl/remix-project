@@ -1,6 +1,6 @@
 import { Plugin, PluginManager } from '@remixproject/engine'
 import { EventEmitter } from 'events'
-import { trackMatomoEvent, PluginManagerEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { QueryParams } from '@remix-project/remix-lib'
 import { IframePlugin } from '@remixproject/engine-web'
 import { Registry } from '@remix-project/remix-lib'

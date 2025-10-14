@@ -7,7 +7,7 @@ import { CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { DropdownLabel } from './dropdownLabel'
 import SubmenuPortal from './subMenuPortal'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents, MatomoEvent, UdappEvent } from '@remix-api'
+import { MatomoEvent, UdappEvent } from '@remix-api'
 
 export function EnvironmentUI(props: EnvironmentProps) {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)

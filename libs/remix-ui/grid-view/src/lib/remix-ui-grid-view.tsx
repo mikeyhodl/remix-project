@@ -2,7 +2,7 @@ import React, {useState, useEffect, useContext, useRef, ReactNode} from 'react' 
 import './remix-ui-grid-view.css'
 import CustomCheckbox from './components/customCheckbox'
 import FiltersContext from "./filtersContext"
-import { GridViewEvents, MatomoEvent, GridViewEvent } from '@remix-api'
+import { MatomoEvent, GridViewEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface RemixUIGridViewProps {

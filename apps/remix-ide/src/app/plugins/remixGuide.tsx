@@ -2,7 +2,7 @@
 import React, {useState} from 'react' // eslint-disable-line
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { trackMatomoEvent, PluginEvents, RemixGuideEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixUIGridView } from '@remix-ui/remix-ui-grid-view'
 import { RemixUIGridSection } from '@remix-ui/remix-ui-grid-section'

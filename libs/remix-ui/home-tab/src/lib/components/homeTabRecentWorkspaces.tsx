@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { ThemeContext } from '../themeContext'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { getTimeAgo } from '@remix-ui/helper'
 

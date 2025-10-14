@@ -1,7 +1,7 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React from 'react' // eslint-disable-line
 import { RunTabUI } from '@remix-ui/run-tab'
-import { trackMatomoEvent, UdappEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { ViewPlugin } from '@remixproject/engine-web'
 import isElectron from 'is-electron'
 import { addressToString } from '@remix-ui/helper'

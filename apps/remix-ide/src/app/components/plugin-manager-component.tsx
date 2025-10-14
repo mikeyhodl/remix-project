@@ -3,7 +3,7 @@ import React from 'react' // eslint-disable-line
 import { RemixUiPluginManager } from '@remix-ui/plugin-manager' // eslint-disable-line
 import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { trackMatomoEvent, ManagerEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { Profile } from '@remixproject/plugin-utils'
 import { RemixAppManager } from '../../remixAppManager'
 import { RemixEngine } from '../../remixEngine'

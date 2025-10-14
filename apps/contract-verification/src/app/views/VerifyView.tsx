@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { trackMatomoEvent, ContractVerificationEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 import { AppContext } from '../AppContext'
 import { SearchableChainDropdown, ContractDropdown, ContractAddressInput } from '../components'
@@ -44,7 +44,12 @@ export const VerifyView = () => {
   }
 
   const sendToMatomo = async (eventName: string) => {
-    await trackMatomoEvent(clientInstance, ContractVerificationEvents.verify(eventName));
+    await trackMatomoEvent(clientInstance, { 
+      category: 'contractVerification', 
+      action: 'verify', 
+      name: eventName, 
+      isClick: true 
+    });
   }
 
   const handleVerify = async (e) => {

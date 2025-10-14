@@ -3,7 +3,7 @@ import React, { Fragment, Ref, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { UmlFileType } from '../utilities/UmlDownloadStrategy'
-import { SolidityUMLGenEvents, SolUmlGenEvents, MatomoEvent, SolidityUMLGenEvent } from '@remix-api'
+import { MatomoEvent, SolidityUMLGenEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 export const Markup = React.forwardRef(

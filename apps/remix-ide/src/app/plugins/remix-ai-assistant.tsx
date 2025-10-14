@@ -4,7 +4,7 @@ import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
-import { trackMatomoEvent, AIEvents, RemixAIEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 const profile = {
   name: 'remixaiassistant',

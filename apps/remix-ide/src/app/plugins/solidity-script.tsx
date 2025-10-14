@@ -3,7 +3,7 @@ import { format } from 'util'
 import { Plugin } from '@remixproject/engine'
 import { compile, CompilerSettings } from '@remix-project/remix-solidity'
 import { Transaction } from 'web3-types'
-import { trackMatomoEvent, SolidityScriptEvents, UdappEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 const profile = {
   name: 'solidity-script',

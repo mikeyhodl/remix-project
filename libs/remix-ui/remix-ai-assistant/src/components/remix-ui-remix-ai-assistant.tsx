@@ -6,7 +6,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
-import { AIEvents, RemixAIEvents, RemixAIAssistantEvents, MatomoEvent, AIEvent, RemixAIEvent, RemixAIAssistantEvent } from '@remix-api'
+import { MatomoEvent, AIEvent, RemixAIEvent, RemixAIAssistantEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'

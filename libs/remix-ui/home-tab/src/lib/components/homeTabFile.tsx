@@ -4,7 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
-import { HomeTabEvent, HomeTabEvents, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 
 interface HomeTabFileProps {
   plugin: any

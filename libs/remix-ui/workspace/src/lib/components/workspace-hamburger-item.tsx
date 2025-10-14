@@ -4,7 +4,7 @@ import { Dropdown, NavDropdown } from 'react-bootstrap'
 import { FormattedMessage } from 'react-intl'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { FileExplorerEvents, MatomoEvent, FileExplorerEvent } from '@remix-api'
+import { MatomoEvent, FileExplorerEvent } from '@remix-api'
 
 export interface HamburgerMenuItemProps {
   hideOption: boolean

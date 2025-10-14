@@ -8,7 +8,7 @@ import {TransactionDebugger as Debugger} from '@remix-project/remix-debug' // es
 import {DebuggerUIProps} from './idebugger-api' // eslint-disable-line
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip, isValidHash } from '@remix-ui/helper'
-import { DebuggerEvents, MatomoEvent, DebuggerEvent } from '@remix-api'
+import { DebuggerEvent, MatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 /* eslint-disable-next-line */
 import './debugger-ui.css'

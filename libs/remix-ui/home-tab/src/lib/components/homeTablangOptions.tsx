@@ -3,7 +3,7 @@ import { Dropdown, DropdownButton } from 'react-bootstrap'
 import DropdownItem from 'react-bootstrap/DropdownItem'
 import { localeLang } from './types/carouselTypes'
 import { FormattedMessage } from 'react-intl'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {

@@ -1,7 +1,7 @@
 import { hashMessage } from "ethers"
 import JSZip from "jszip"
 import { fileSystem } from "../fileSystem"
-import { MigrateEvents, BackupEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 import type { MatomoEvent } from '@remix-api'
 

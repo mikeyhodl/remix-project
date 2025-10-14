@@ -4,7 +4,7 @@ import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
 import { handleSolidityScan } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
-import { SolidityCompilerEvents } from '@remix-api'
+
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
 
@@ -138,7 +138,12 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runRemixAnalysis = async () => {
-    trackMatomoEvent?.(SolidityCompilerEvents.staticAnalysis('initiate'))
+    trackMatomoEvent?.({ 
+      category: 'solidityCompiler', 
+      action: 'staticAnalysis', 
+      name: 'initiate', 
+      isClick: true 
+    })
     await compileThen(async () => {
       const isStaticAnalyzersActive = await plugin.call('manager', 'isActive', 'solidityStaticAnalysis')
       if (!isStaticAnalyzersActive) {
@@ -157,7 +162,12 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const runSolidityScan = async () => {
-    trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('askPermissionToScan'))
+    trackMatomoEvent?.({ 
+      category: 'solidityCompiler', 
+      action: 'solidityScan', 
+      name: 'askPermissionToScan', 
+      isClick: true 
+    })
     const modal: AppModal = {
       id: 'SolidityScanPermissionHandler',
       title: <FormattedMessage id="solidity.solScan.modalTitle" />,
@@ -165,7 +175,12 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
         <span><FormattedMessage id="solidity.solScan.modalMessage" />
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
-            onClick={() => trackMatomoEvent?.(SolidityCompilerEvents.solidityScan('learnMore'))}>
+            onClick={() => trackMatomoEvent?.({ 
+              category: 'solidityCompiler', 
+              action: 'solidityScan', 
+              name: 'learnMore', 
+              isClick: true 
+            })}>
               Learn more
           </a>
         </span><br/>
@@ -179,7 +194,11 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
   }
 
   const openConfiguration = async () => {
-    trackMatomoEvent?.(SolidityCompilerEvents.initiate())
+    trackMatomoEvent?.({ 
+      category: 'solidityCompiler', 
+      action: 'initiate', 
+      isClick: true 
+    })
     const isSolidityCompilerActive = await plugin.call('manager', 'isActive', 'solidity')
     if (!isSolidityCompilerActive) {
       await plugin.call('manager', 'activatePlugin', 'solidity')

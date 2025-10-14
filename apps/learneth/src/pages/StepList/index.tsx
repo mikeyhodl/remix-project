@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import BackButton from '../../components/BackButton'
 import SlideIn from '../../components/SlideIn'
 import { useAppSelector } from '../../redux/hooks'
-import { trackMatomoEvent, LearnethEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import remixClient from '../../remix-client'
 import './index.scss'
 
@@ -97,7 +97,12 @@ export default function StepListPage(): JSX.Element {
               type="button"
               className="btn btn-primary no-wiggle-btn btn-sm w-100 d-flex align-items-center justify-content-center mt-3"
               onClick={() => {
-                trackMatomoEvent(remixClient, LearnethEvents.start_course(id))
+                trackMatomoEvent(remixClient, { 
+                  category: 'learneth', 
+                  action: 'start_course', 
+                  name: id, 
+                  isClick: true 
+                })
                 navigate(`/detail?id=${id}&stepId=0`)
               }}
             >
@@ -138,7 +143,12 @@ export default function StepListPage(): JSX.Element {
                 key={i}
                 to={`/detail?id=${id}&stepId=${i}`}
                 className="list-group-item list-group-item-action d-flex align-items-center justify-content-between syllabus-item"
-                onClick={() => trackMatomoEvent(remixClient, LearnethEvents.step_slide_in(`${id}/${i}/${step.name}`))}
+                onClick={() => trackMatomoEvent(remixClient, { 
+                  category: 'learneth', 
+                  action: 'step_slide_in', 
+                  name: `${id}/${i}/${step.name}`, 
+                  isClick: true 
+                })}
               >
                 <span className="text-truncate">{step.name}</span>
                 <span className="d-flex align-items-center text-muted">

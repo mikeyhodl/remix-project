@@ -3,7 +3,7 @@ import { FormattedMessage } from 'react-intl'
 import { AppContext } from '../../context/context'
 import { useDialogDispatchers } from '../../context/provider'
 import { TrackingContext } from '@remix-ide/tracking'
-import { LandingPageEvents } from '@remix-api'
+import { LandingPageEvent } from '@remix-api'
 
 interface MatomoDialogProps {
   managePreferencesFn: () => void
@@ -65,12 +65,12 @@ const MatomoDialog = (props: MatomoDialogProps) => {
     // Consent is managed by cookie consent system in settings
     settings.updateMatomoPerfAnalyticsChoice(true) // Enable Matomo Performance analytics
     settings.updateCopilotChoice(true) // Enable RemixAI copilot
-    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal('AcceptClicked'))
+    trackMatomoEvent?.({ category: 'landingPage', action: 'MatomoAIModal', name: 'AcceptClicked' })
     setVisible(false)
   }
 
   const handleManagePreferencesClick = async () => {
-    trackMatomoEvent?.(LandingPageEvents.MatomoAIModal('ManagePreferencesClicked'))
+    trackMatomoEvent?.({ category: 'landingPage', action: 'MatomoAIModal', name: 'ManagePreferencesClicked' })
     setVisible(false)
     props.managePreferencesFn()
   }

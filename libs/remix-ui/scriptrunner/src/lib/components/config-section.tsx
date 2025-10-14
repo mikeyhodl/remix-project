@@ -5,7 +5,7 @@ import { faCheck, faTimes, faCaretDown, faCaretUp } from '@fortawesome/free-soli
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CustomTooltip } from '@remix-ui/helper';
 import { TrackingContext } from '@remix-ide/tracking';
-import { ScriptRunnerPluginEvents, MatomoEvent, ScriptRunnerPluginEvent } from '@remix-api';
+import { MatomoEvent, ScriptRunnerPluginEvent } from '@remix-api';
 
 export interface ConfigSectionProps {
   activeKey: string

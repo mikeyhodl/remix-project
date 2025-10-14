@@ -94,7 +94,7 @@ import Config from './config'
 import FileManager from './app/files/fileManager'
 import FileProvider from "./app/files/fileProvider"
 import { appPlatformTypes } from '@remix-ui/app'
-import { MatomoEvent, AppEvents, MatomoManagerEvents } from '@remix-api'
+import { MatomoEvent } from '@remix-api'
 
 import DGitProvider from './app/files/dgitProvider'
 import WorkspaceFileProvider from './app/files/workspaceFileProvider'

@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext, themes } from '../themeContext'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'

@@ -7,7 +7,7 @@ import { FormattedMessage } from 'react-intl'
 import { HOME_TAB_PLUGIN_LIST } from './constant'
 import axios from 'axios'
 import { LoadingCard } from './LoaderPlaceholder'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface HomeTabFeaturedPluginsProps {

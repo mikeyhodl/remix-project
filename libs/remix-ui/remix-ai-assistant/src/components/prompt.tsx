@@ -4,7 +4,7 @@ import GroupListMenu from "./contextOptMenu"
 import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
-import { RemixAIEvents, MatomoEvent, RemixAIEvent } from '@remix-api'
+import { RemixAIEvent, MatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 
 // PromptArea component

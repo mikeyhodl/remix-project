@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { CustomTooltip } from "@remix-ui/helper"
-import { trackMatomoEvent, PluginEvents, TemplateSelectionEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { AlertModal, AppModal } from '@remix-ui/app'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'

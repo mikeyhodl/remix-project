@@ -3,7 +3,7 @@ import axios from 'axios'
 import { FormattedMessage } from 'react-intl'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ScanReport, SolScanTable } from '@remix-ui/helper'
-import { trackMatomoEvent, SolidityCompilerEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { CustomTooltip } from './components/custom-tooltip'

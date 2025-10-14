@@ -1,7 +1,7 @@
 /* eslint-disable no-control-regex */
 import { EditorUIProps, monacoTypes } from '@remix-ui/editor';
 import { CompletionParams } from '@remix/remix-ai-core';
-import { AIEvents, MatomoEvent } from '@remix-api';
+import { trackMatomoEvent, AIEvent, MatomoEvent } from '@remix-api'
 import * as monaco from 'monaco-editor';
 import {
   AdaptiveRateLimiter,
@@ -15,13 +15,13 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
   completionEnabled: boolean
   task: string = 'code_completion'
   currentCompletion: any
-  trackMatomoEvent?: (event: MatomoEvent) => void
+  trackMatomoEvent?: (event: AIEvent) => void
 
   private rateLimiter: AdaptiveRateLimiter;
   private contextDetector: SmartContextDetector;
   private cache: CompletionCache;
 
-  constructor(props: any, monaco: any, trackMatomoEvent?: (event: MatomoEvent) => void) {
+  constructor(props: any, monaco: any, trackMatomoEvent?: (event: AIEvent) => void) {
     this.props = props
     this.monaco = monaco
     this.trackMatomoEvent = trackMatomoEvent

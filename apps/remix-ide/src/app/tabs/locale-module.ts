@@ -2,7 +2,7 @@ import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
 import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
-import { trackMatomoEvent, LocaleModuleEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { Registry } from '@remix-project/remix-lib'
 
 interface Locale {

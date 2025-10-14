@@ -18,10 +18,10 @@
  * { category: 'udapp', action: 'DeployAndPublish', isClick: true }, { category: 'udapp', action: 'sendTransactionFromGui', isClick: true }
  * 
  * // Editor
- * EditorEvents.save(), EditorEvents.format()
+ * { category: 'editor', action: 'save', isClick: true }, { category: 'editor', action: 'format', isClick: true }
  * 
  * // Files
- * FileExplorerEvents.contextMenu(), WorkspaceEvents.create()
+ * { category: 'fileExplorer', action: 'contextMenu', isClick: true }, { category: 'workspace', action: 'create', isClick: true }
  * ```
  * 
  * @example Add New Event

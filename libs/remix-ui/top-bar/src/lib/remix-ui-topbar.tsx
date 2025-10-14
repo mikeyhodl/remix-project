@@ -16,7 +16,7 @@ import { GitHubCallback } from '../topbarUtils/gitOauthHandler'
 import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { TrackingContext } from '@remix-ide/tracking'
-import { TopBarEvents, WorkspaceEvents, MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
+import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
 
 export function RemixUiTopbar() {
   const intl = useIntl()

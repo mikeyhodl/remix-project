@@ -2,7 +2,7 @@
 import React from 'react'
 import { Plugin } from '@remixproject/engine'
 import { ElectronPlugin } from '@remixproject/engine-electron'
-import { trackMatomoEvent, PluginEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 const profile = {
   name: 'desktopHost',

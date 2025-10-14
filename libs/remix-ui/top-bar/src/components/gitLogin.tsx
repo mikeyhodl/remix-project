@@ -3,7 +3,7 @@ import React, { useContext, useCallback } from 'react'
 import { Button, ButtonGroup, Dropdown } from 'react-bootstrap'
 import { CustomTopbarMenu } from '@remix-ui/helper'
 import { AppContext } from '@remix-ui/app'
-import { TopBarEvents, MatomoEvent, TopbarEvent } from '@remix-api'
+import { MatomoEvent, TopbarEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface GitHubLoginProps {

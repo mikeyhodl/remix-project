@@ -6,7 +6,7 @@ import { ThemeContext } from '../themeContext'
 import WorkspaceTemplate from './workspaceTemplate'
 import 'react-multi-carousel/lib/styles.css'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
-import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { Plugin } from "@remixproject/engine";
 import { CustomRemixApi } from '@remix-api'

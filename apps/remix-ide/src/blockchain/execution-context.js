@@ -4,7 +4,7 @@ import { Web3 } from 'web3'
 import { execution } from '@remix-project/remix-lib'
 import EventManager from '../lib/events'
 import { bytesToHex } from '@ethereumjs/util'
-import { UdappEvents } from '@remix-api'
+
 
 let web3
 

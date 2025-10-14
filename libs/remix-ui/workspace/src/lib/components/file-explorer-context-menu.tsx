@@ -7,7 +7,7 @@ import { customAction } from '@remixproject/plugin-api'
 import UploadFile from './upload-file'
 import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { FileExplorerEvent, FileExplorerEvents, MatomoEvent } from '@remix-api'
+import { FileExplorerEvent, MatomoEvent } from '@remix-api'
 
 export const FileExplorerContextMenu = (props: FileExplorerContextMenuProps) => {
   const platform = useContext(platformContext)

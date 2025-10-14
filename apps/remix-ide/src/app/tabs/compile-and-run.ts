@@ -1,6 +1,6 @@
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../../package.json'
-import { trackMatomoEvent, ScriptExecutorEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 export const profile = {
   name: 'compileAndRun',

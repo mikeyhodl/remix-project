@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { trackMatomoEvent, ContractVerificationEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { SearchableChainDropdown, ContractAddressInput } from '../components'
 import { mergeChainSettingsWithDefaults, validConfiguration } from '../utils'
 import type { LookupResponse, VerifierIdentifier } from '../types'
@@ -61,7 +61,12 @@ export const LookupView = () => {
   }
 
   const sendToMatomo = async (eventName: string) => {
-    await trackMatomoEvent(clientInstance, ContractVerificationEvents.lookup(eventName));
+    await trackMatomoEvent(clientInstance, { 
+      category: 'contractVerification', 
+      action: 'lookup', 
+      name: eventName, 
+      isClick: true 
+    });
   }
 
   const handleOpenInRemix = async (lookupResponse: LookupResponse) => {

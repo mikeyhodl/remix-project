@@ -1,7 +1,7 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { ViewPlugin } from '@remixproject/engine-web'
 import React from 'react'
-import { trackMatomoEvent, SolidityUMLGenEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { RemixUiSolidityUmlGen } from '@remix-ui/solidity-uml-gen'
 import { ISolidityUmlGen, ThemeQualityType, ThemeSummary } from 'libs/remix-ui/solidity-uml-gen/src/types'

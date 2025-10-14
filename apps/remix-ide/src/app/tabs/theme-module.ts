@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
 import { Registry } from '@remix-project/remix-lib'
-import { trackMatomoEvent, ThemeModuleEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import isElectron from 'is-electron'
 
 interface Theme {

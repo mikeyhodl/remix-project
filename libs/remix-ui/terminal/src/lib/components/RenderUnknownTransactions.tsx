@@ -4,7 +4,7 @@ import CheckTxStatus from './ChechTxStatus' // eslint-disable-line
 import Context from './Context' // eslint-disable-line
 import showTable from './Table'
 import { TrackingContext } from '@remix-ide/tracking'
-import { UdappEvents, MatomoEvent, UdappEvent } from '@remix-api'
+import { MatomoEvent, UdappEvent } from '@remix-api'
 
 const RenderUnKnownTransactions = ({ tx, receipt, index, plugin, showTableHash, txDetails, modal, provider }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)

@@ -11,7 +11,7 @@ import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { SolidityUnitTestingEvents, MatomoEvent, SolidityUnitTestingEvent } from '@remix-api'
+import { MatomoEvent, SolidityUnitTestingEvent } from '@remix-api'
 
 interface TestObject {
   fileName: string
