@@ -175,10 +175,7 @@ export const createInstance = async (
     const data = await plugin.compilersArtefacts.getCompilerAbstract(contractObject.contract.file)
     plugin.compilersArtefacts.addResolvedContract(addressToString(address), data)
 
-    if (plugin.REACT_API.ipfsChecked) {
-      trackMatomoEvent(plugin, UdappEvents.DeployAndPublish(plugin.REACT_API.networkName))
-      publishToStorage('ipfs', selectedContract)
-    } else if (isVerifyChecked) {
+    if (isVerifyChecked) {
       trackMatomoEvent(plugin, UdappEvents.DeployAndPublish(plugin.REACT_API.networkName))
 
       try {
