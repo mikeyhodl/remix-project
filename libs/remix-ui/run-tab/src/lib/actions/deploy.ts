@@ -9,7 +9,7 @@ import { DeployMode, MainnetPrompt } from "../types"
 import { displayNotification, fetchProxyDeploymentsSuccess, setDecodedResponse, updateInstancesBalance } from "./payload"
 import { addInstance } from "./actions"
 import { addressToString, logBuilder } from "@remix-ui/helper"
-import { Web3 } from "web3"
+import { isAddress } from "ethers"
 
 declare global {
   interface Window {
@@ -407,8 +407,8 @@ export const isValidContractAddress = async (plugin: RunTab, address: string) =>
   if (!address) {
     return false
   } else {
-    if (Web3.utils.isAddress(address)) {
-      return await plugin.blockchain.web3().eth.getCode(address) !== '0x'
+    if (isAddress(address)) {
+      return await plugin.blockchain.web3().getCode(address) !== '0x'
     } else {
       return false
     }
