@@ -4,6 +4,7 @@ import Markdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import BackButton from '../../components/BackButton'
 import { useAppSelector, useAppDispatch } from '../../redux/hooks'
+import { trackMatomoEvent, LearnethEvents } from '@remix-api'
 import './index.scss'
 import remixClient from '../../remix-client'
 
@@ -273,7 +274,7 @@ function StepDetailPage() {
                 className="w-100 btn btn-success mt-3"
                 onClick={() => {
                   navigate(`/detail?id=${id}&stepId=${stepId + 1}`);
-                  (window as any)._paq.push(['trackEvent', 'learneth', 'navigate_next', `${id}/${stepId + 1}`])
+                  trackMatomoEvent(remixClient, LearnethEvents.navigate_next(`${id}/${stepId + 1}`))
                 }}
               >
                 Next
@@ -284,7 +285,7 @@ function StepDetailPage() {
                 className="w-100 btn btn-success"
                 onClick={() => {
                   navigate(`/list?id=${id}`);
-                  (window as any)._paq.push(['trackEvent', 'learneth', 'navigate_finish', id])
+                  trackMatomoEvent(remixClient, LearnethEvents.navigate_finish(id))
                 }}
               >
                 Finish tutorial

@@ -716,7 +716,17 @@ export interface LearnethEvent extends MatomoEventBase {
     | 'showAnswer'
     | 'showAnswerError'
     | 'testSolidityCompiler'
-    | 'testSolidityCompilerError';
+    | 'testSolidityCompilerError'
+    | 'start_workshop'
+    | 'select_repo'
+    | 'import_repo'
+    | 'navigate_next'
+    | 'navigate_finish'
+    | 'start_course'
+    | 'step_slide_in'
+    | 'load_repo'
+    | 'load_repo_error'
+    | 'reset_all';
 }
 
 export const LearnethEvents = {
@@ -822,6 +832,86 @@ export const LearnethEvents = {
     name,
     value,
     isClick: false // Error testing Solidity compiler
+  }),
+  
+  start_workshop: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'start_workshop',
+    name,
+    value,
+    isClick: true // User starts a workshop
+  }),
+  
+  select_repo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'select_repo',
+    name,
+    value,
+    isClick: true // User selects a repository
+  }),
+  
+  import_repo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'import_repo',
+    name,
+    value,
+    isClick: true // User imports a repository
+  }),
+  
+  navigate_next: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'navigate_next',
+    name,
+    value,
+    isClick: true // User navigates to next step
+  }),
+  
+  navigate_finish: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'navigate_finish',
+    name,
+    value,
+    isClick: true // User finishes the workshop
+  }),
+  
+  start_course: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'start_course',
+    name,
+    value,
+    isClick: true // User starts a course
+  }),
+  
+  step_slide_in: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'step_slide_in',
+    name,
+    value,
+    isClick: true // User opens step details in slide-in
+  }),
+  
+  load_repo: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'load_repo',
+    name,
+    value,
+    isClick: false // Repository loading is a system event
+  }),
+  
+  load_repo_error: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'load_repo_error',
+    name,
+    value,
+    isClick: false // Error loading repository
+  }),
+  
+  reset_all: (name?: string, value?: string | number): LearnethEvent => ({
+    category: 'learneth',
+    action: 'reset_all',
+    name,
+    value,
+    isClick: true // User resets all data
   })
 } as const;
 
