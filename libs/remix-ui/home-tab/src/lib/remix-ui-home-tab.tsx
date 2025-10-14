@@ -6,7 +6,7 @@ import HomeTabRecentWorkspaces from './components/homeTabRecentWorkspaces'
 import HomeTabScamAlert from './components/homeTabScamAlert'
 import HomeTabFeaturedPlugins from './components/homeTabFeaturedPlugins'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { HomeTabFileElectron } from './components/homeTabFileElectron'
 import HomeTabUpdates from './components/homeTabUpdates'
@@ -22,8 +22,13 @@ export interface RemixUiHomeTabProps {
 export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const platform = useContext(platformContext)
   const appContext = useContext(AppContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const { plugin } = props
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   const [state, setState] = useState<{
     themeQuality: { filter: string; name: string }
@@ -59,13 +64,23 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
       await plugin.appManager.activatePlugin(['LearnEth', 'solidity', 'solidityUnitTesting'])
       plugin.verticalIcons.select('LearnEth')
     }
-    trackMatomoEvent?.(HomeTabEvents.header('Start Learning'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'header',
+      name: 'Start Learning',
+      isClick: true
+    })
   }
 
   const openTemplateSelection = async () => {
     await plugin.call('manager', 'activatePlugin', 'templateSelection')
     await plugin.call('tabs', 'focus', 'templateSelection')
-    trackMatomoEvent?.(HomeTabEvents.header('Create a new workspace'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'header',
+      name: 'Create a new workspace',
+      isClick: true
+    })
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {

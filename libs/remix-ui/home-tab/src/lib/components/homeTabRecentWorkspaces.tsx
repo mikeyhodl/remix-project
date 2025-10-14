@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useReducer, useEffect, useContext } from 'react'
 import { ThemeContext } from '../themeContext'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { getTimeAgo } from '@remix-ui/helper'
 
@@ -10,7 +10,12 @@ interface HomeTabFileProps {
 }
 
 function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const [state, setState] = useState<{
     recentWorkspaces: Array<string | { name: string, timestamp: number }>
   }>({
@@ -64,7 +69,12 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
     setLoadingWorkspace(workspaceName)
     plugin.call('sidePanel', 'showContent', 'filePanel')
     plugin.verticalIcons.select('filePanel')
-    trackMatomoEvent?.(HomeTabEvents.recentWorkspacesCard('loadRecentWorkspace'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'recentWorkspacesCard',
+      name: 'loadRecentWorkspace',
+      isClick: true
+    })
     await plugin.call('filePanel', 'switchToWorkspace', { name: workspaceName, isLocalhost: false })
     const workspaceFiles = await plugin.call('fileManager', 'readdir', '/')
 

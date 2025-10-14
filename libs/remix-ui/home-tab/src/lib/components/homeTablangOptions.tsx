@@ -3,12 +3,17 @@ import { Dropdown, DropdownButton } from 'react-bootstrap'
 import DropdownItem from 'react-bootstrap/DropdownItem'
 import { localeLang } from './types/carouselTypes'
 import { FormattedMessage } from 'react-intl'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 export function LanguageOptions({ plugin }: { plugin: any }) {
   const [langOptions, setLangOptions] = useState<string>()
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   const changeLanguage = async (lang: string) => {
     await plugin.call('locale', 'switchLocale', lang)
@@ -42,7 +47,12 @@ export function LanguageOptions({ plugin }: { plugin: any }) {
               {
                 changeLanguage(lang.toLowerCase())
                 setLangOptions(lang)
-                trackMatomoEvent?.(HomeTabEvents.switchTo(lang))
+                trackMatomoEvent({
+                  category: 'hometab',
+                  action: 'switchTo',
+                  name: lang,
+                  isClick: true
+                })
               }}
               style={{ color: 'var(--text)', cursor: 'pointer' }}
               key={index}

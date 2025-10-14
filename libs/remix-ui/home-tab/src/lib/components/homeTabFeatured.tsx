@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { ThemeContext, themes } from '../themeContext'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import Carousel from 'react-multi-carousel'
 import 'react-multi-carousel/lib/styles.css'
@@ -26,14 +26,29 @@ export type HomeTabFeaturedProps = {
 
 function HomeTabFeatured(props:HomeTabFeaturedProps) {
   const themeFilter = useContext(ThemeContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const handleStartLearneth = async () => {
     await props.plugin.appManager.activatePlugin(['LearnEth', 'solidityUnitTesting'])
     props.plugin.verticalIcons.select('LearnEth')
-    trackMatomoEvent?.(HomeTabEvents.featuredSection('LearnEth'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'featuredSection',
+      name: 'LearnEth',
+      isClick: true
+    })
   }
   const handleStartRemixGuide = async () => {
-    trackMatomoEvent?.(HomeTabEvents.featuredSection('watchOnRemixGuide'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'featuredSection',
+      name: 'watchOnRemixGuide',
+      isClick: true
+    })
     await props.plugin.appManager.activatePlugin(['remixGuide'])
     await props.plugin.call('tabs', 'focus', 'remixGuide')
   }
@@ -78,7 +93,12 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Please take a few minutes of your time to
                     <a
                       className="mx-1"
-                      onClick={() => trackMatomoEvent?.(HomeTabEvents.featuredSection('soliditySurvey24'))}
+                      onClick={() => trackMatomoEvent({
+                        category: 'hometab',
+                        action: 'featuredSection',
+                        name: 'soliditySurvey24',
+                        isClick: true
+                      })}
                       target="__blank"
                       href="https://cryptpad.fr/form/#/2/form/view/9xjPVmdv8z0Cyyh1ejseMQ0igmx-TedH5CPST3PhRUk/"
                     >
@@ -89,7 +109,12 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                     Thank you for your support! Read the full announcement
                     <a
                       className="remixui_home_text mx-1"
-                      onClick={() => trackMatomoEvent?.(HomeTabEvents.featuredSection('soliditySurvey24'))}
+                      onClick={() => trackMatomoEvent({
+                        category: 'hometab',
+                        action: 'featuredSection',
+                        name: 'soliditySurvey24',
+                        isClick: true
+                      })}
                       target="__blank"
                       href="https://soliditylang.org/blog/2024/12/27/solidity-developer-survey-2024-announcement/"
                     >
@@ -114,7 +139,12 @@ function HomeTabFeatured(props:HomeTabFeaturedProps) {
                   </div>
                   <a
                     className="remixui_home_text btn-sm btn-secondary mt-2 text-decoration-none mb-3"
-                    onClick={() => trackMatomoEvent?.(HomeTabEvents.featuredSection('seeFullChangelog'))}
+                    onClick={() => trackMatomoEvent({
+                      category: 'hometab',
+                      action: 'featuredSection',
+                      name: 'seeFullChangelog',
+                      isClick: true
+                    })}
                     target="__blank"
                     href={releaseDetails.moreLink}
                   >

@@ -5,7 +5,7 @@ import axios from 'axios'
 import { HOME_TAB_BASE_URL, HOME_TAB_NEW_UPDATES } from './constant'
 import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 import { CustomTooltip } from '@remix-ui/helper'
@@ -35,8 +35,13 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   const [pluginList, setPluginList] = useState<UpdateInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   useEffect(() => {
     async function getLatestUpdates() {
@@ -53,7 +58,12 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   }, [])
 
   const handleUpdatesActionClick = (updateInfo: UpdateInfo) => {
-    trackMatomoEvent?.(HomeTabEvents.updatesActionClick(updateInfo.title))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'updatesActionClick',
+      name: updateInfo.title,
+      isClick: true
+    })
     if (updateInfo.action.type === 'link') {
       window.open(updateInfo.action.url, '_blank')
     } else if (updateInfo.action.type === 'methodCall') {

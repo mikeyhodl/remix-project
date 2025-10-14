@@ -2,14 +2,14 @@ import { MatomoEvent } from '@remix-api'
 import React, { createContext, useContext, ReactNode } from 'react'
 
 export interface TrackingContextType {
-  trackMatomoEvent?: (event: MatomoEvent) => void
+  trackMatomoEvent?: <T extends MatomoEvent>(event: T) => void
 }
 
 const TrackingContext = createContext<TrackingContextType>({})
 
 interface TrackingProviderProps {
   children: ReactNode
-  trackingFunction?: (event: MatomoEvent) => void
+  trackingFunction?: <T extends MatomoEvent>(event: T) => void
 }
 
 export const TrackingProvider: React.FC<TrackingProviderProps> = ({

@@ -4,7 +4,7 @@ import { FormattedMessage } from 'react-intl'
 import { ModalDialog } from '@remix-ui/modal-dialog' // eslint-disable-line
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 
 interface HomeTabFileProps {
@@ -12,7 +12,12 @@ interface HomeTabFileProps {
 }
 
 function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+
+  // Component-specific tracker with default HomeTabEvent type
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   const loadTemplate = async () => {
     plugin.call('filePanel', 'loadTemplate')
@@ -23,7 +28,12 @@ function HomeTabFileElectron({ plugin }: HomeTabFileProps) {
   }
 
   const importFromGist = () => {
-    trackMatomoEvent?.(HomeTabEvents.filesSection('importFromGist'))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'filesSection',
+      name: 'importFromGist',
+      isClick: true
+    })
     plugin.call('gistHandler', 'load', '')
     plugin.verticalIcons.select('filePanel')
   }

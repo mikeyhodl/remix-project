@@ -6,7 +6,7 @@ import { ThemeContext } from '../themeContext'
 import WorkspaceTemplate from './workspaceTemplate'
 import 'react-multi-carousel/lib/styles.css'
 import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
-import { HomeTabEvents } from '@remix-api'
+import { HomeTabEvents, HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { Plugin } from "@remixproject/engine";
 import { CustomRemixApi } from '@remix-api'
@@ -73,7 +73,12 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
   const platform = useContext(platformContext)
   const themeFilter = useContext(ThemeContext)
   const appContext = useContext(AppContext)
-  const { trackMatomoEvent } = useContext(TrackingContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  
+  // Component-specific tracker with default type, but allows overrides
+  const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const intl = useIntl()
   const carouselRef = useRef<any>({})
   const carouselRefDiv = useRef(null)
@@ -145,7 +150,12 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
       await plugin.call('filePanel', 'setWorkspace', templateDisplayName)
       plugin.verticalIcons.select('filePanel')
     }
-    trackMatomoEvent?.(HomeTabEvents.homeGetStarted(templateName))
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'homeGetStarted',
+      name: templateName,
+      isClick: true
+    })
   }
 
   return (
@@ -176,7 +186,6 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
                     }
                     onClick={async (e) => {
                       createWorkspace(template.templateName)
-                      trackMatomoEvent?.(HomeTabEvents.homeGetStarted(template.templateName))
                     }}
                     data-id={`homeTabGetStarted${template.templateName}`}
                   >
