@@ -120,7 +120,7 @@ export class ThemeModule extends Plugin {
     }
     const next = themeName || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    trackMatomoEvent(this, ThemeModuleEvents.switchThemeTo(next))
+    trackMatomoEvent(this, { category: 'theme', action: 'switchThemeTo', name: next, isClick: true })
     const nextTheme = this.themes[next] // Theme
     if (!this.forced) this._deps.config.set('settings/theme', next)
     document.getElementById('theme-link') ? document.getElementById('theme-link').remove() : null

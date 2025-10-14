@@ -1,6 +1,6 @@
 import { shortenAddress } from "@remix-ui/helper"
 import { RunTab } from "../types/run-tab"
-import { trackMatomoEvent, UdappEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { clearInstances, setAccount, setExecEnv } from "./actions"
 import { displayNotification, fetchAccountsListFailed, fetchAccountsListRequest, fetchAccountsListSuccess, setMatchPassphrase, setPassphrase } from "./payload"
 import { toChecksumAddress, bytesToHex, isZeroAddress } from '@ethereumjs/util'
@@ -274,10 +274,10 @@ export const createSmartAccount = async (plugin: RunTab, dispatch: React.Dispatc
     smartAccountsObj[chainId] = plugin.REACT_API.smartAccounts
     localStorage.setItem(aaLocalStorageKey, JSON.stringify(smartAccountsObj))
     await fillAccountsList(plugin, dispatch)
-    await trackMatomoEvent(plugin, UdappEvents.safeSmartAccount(`createdSuccessfullyForChainID:${chainId}`))
+    await trackMatomoEvent(plugin, { category: 'udapp', action: 'safeSmartAccount', name: `createdSuccessfullyForChainID:${chainId}`, isClick: false })
     return plugin.call('notification', 'toast', `Safe account ${safeAccount.address} created for owner ${account}`)
   } catch (error) {
-    await trackMatomoEvent(plugin, UdappEvents.safeSmartAccount(`creationFailedWithError:${error.message}`))
+    await trackMatomoEvent(plugin, { category: 'udapp', action: 'safeSmartAccount', name: `creationFailedWithError:${error.message}`, isClick: false })
     console.error('Failed to create safe smart account: ', error)
     if (error.message.includes('User rejected the request')) return plugin.call('notification', 'toast', `User rejected the request to create safe smart account !!!`)
     else return plugin.call('notification', 'toast', `Failed to create safe smart account !!!`)

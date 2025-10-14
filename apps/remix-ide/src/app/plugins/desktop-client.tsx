@@ -54,7 +54,7 @@ export class DesktopClient extends ViewPlugin {
 
   onActivation() {
     console.log('DesktopClient activated')
-    trackMatomoEvent(this, PluginEvents.activated('DesktopClient'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'DesktopClient', isClick: true })
 
     this.connectToWebSocket()
 

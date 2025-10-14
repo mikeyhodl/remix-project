@@ -325,9 +325,9 @@ export class Recorder extends Plugin {
   }
 
   runScenario (liveMode, json, continueCb, promptCb, alertCb, confirmationCb, logCallBack, cb) {
-    trackMatomoEvent(this, RunEvents.recorder('start'))
+    trackMatomoEvent(this, { category: 'run', action: 'recorder', name: 'start', isClick: true })
     if (!json) {
-      trackMatomoEvent(this, RunEvents.recorder('wrong-json'))
+      trackMatomoEvent(this, { category: 'run', action: 'recorder', name: 'wrong-json', isClick: false })
       return cb('a json content must be provided')
     }
     if (typeof json === 'string') {

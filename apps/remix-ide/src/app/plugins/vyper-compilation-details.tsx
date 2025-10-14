@@ -42,7 +42,7 @@ export class VyperCompilationDetailsPlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'vyperCompilationDetails')
     this.renderComponent()
-    trackMatomoEvent(this, PluginEvents.activated('vyperCompilationDetails'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'vyperCompilationDetails', isClick: true })
   }
 
   onDeactivation(): void {

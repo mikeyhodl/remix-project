@@ -8,10 +8,10 @@
  *   import { trackMatomoEvent } from '@remix-api';
  *   
  *   // Instead of: plugin.call('matomo', 'trackEvent', 'category', 'action', 'name')
- *   trackMatomoEvent(plugin, HomeTabEvents.WORKSPACE_LOADED('workspaceName'));
+ *   trackMatomoEvent(plugin, { category: 'homeTab', action: 'WORKSPACE_LOADED', name: 'workspaceName', isClick: false });
  * 
  *   // Instead of: await api.call('matomo', 'trackEvent', 'ai', 'chat', 'user-input')
- *   await trackMatomoEvent(api, AIEvents.CHAT('user-input'));
+ *   await trackMatomoEvent(api, { category: 'ai', action: 'CHAT', name: 'user-input', isClick: false });
  */
 
 import { MatomoEvent } from './matomo-events';

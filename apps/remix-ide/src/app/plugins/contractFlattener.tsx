@@ -2,7 +2,7 @@
 import React from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { trackMatomoEvent, PluginEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import type { CompilerInput, CompilationSource } from '@remix-project/remix-solidity'
 import { Plugin } from '@remixproject/engine'
 import { customAction } from '@remixproject/plugin-api'
@@ -32,7 +32,7 @@ export class ContractFlattener extends Plugin {
         }
       }
     })
-    trackMatomoEvent(this, PluginEvents.activated('contractFlattener'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'contractFlattener', isClick: false })
   }
 
   onDeactivation(): void {
@@ -69,7 +69,7 @@ export class ContractFlattener extends Plugin {
       console.warn(err)
     }
     await this.call('fileManager', 'writeFile', path, result)
-    trackMatomoEvent(this, PluginEvents.contractFlattener('flattenAContract'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'contractFlattener', name: 'flattenAContract', isClick: false })
     // clean up memory references & return result
     sorted = null
     sources = null

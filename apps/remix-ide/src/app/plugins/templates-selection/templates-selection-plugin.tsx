@@ -39,7 +39,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
     this.handleThemeChange()
     await this.call('tabs', 'focus', 'templateSelection')
     this.renderComponent()
-    trackMatomoEvent(this, PluginEvents.activated('remixGuide'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'remixGuide', isClick: true })
   }
 
   onDeactivation(): void {
@@ -168,7 +168,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
       const modalResult = await this.call('notification', 'modal', modal)
       if (!modalResult) return
-      trackMatomoEvent(this, TemplateSelectionEvents.createWorkspace(item.value))
+      trackMatomoEvent(this, { category: 'templateSelection', action: 'createWorkspace', name: item.value, isClick: true })
       this.emit('createWorkspaceReducerEvent', workspaceName, item.value, this.opts, false, errorCallback, initGit)
     }
 
@@ -178,7 +178,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
     const addToCurrentWorkspace = async (item: Template, templateGroup: TemplateGroup) => {
       this.opts = {}
-      trackMatomoEvent(this, TemplateSelectionEvents.addToCurrentWorkspace(item.value))
+      trackMatomoEvent(this, { category: 'templateSelection', action: 'addToCurrentWorkspace', name: item.value, isClick: true })
       if (templateGroup.hasOptions) {
         const modal: AppModal = {
           id: 'TemplatesSelection',

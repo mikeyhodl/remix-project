@@ -1,6 +1,6 @@
 import { envChangeNotification } from "@remix-ui/helper"
 import { RunTab } from "../types/run-tab"
-import { trackMatomoEvent, UdappEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 import { setExecutionContext, setFinalContext, updateAccountBalances, fillAccountsList } from "./account"
 import { addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider, setPinnedChainId, setExecEnv } from "./actions"
 import { addDeployOption, clearAllInstances, clearRecorderCount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess, fetchAccountsListRequest } from "./payload"
@@ -238,7 +238,7 @@ const migrateSavedContracts = async (plugin) => {
 }
 
 const broadcastCompilationResult = async (compilerName: string, plugin: RunTab, dispatch: React.Dispatch<any>, file, source, languageVersion, data, input?) => {
-  await trackMatomoEvent(plugin, UdappEvents.broadcastCompilationResult(compilerName))
+  await trackMatomoEvent(plugin, { category: 'udapp', action: 'broadcastCompilationResult', name: compilerName, isClick: false })
   // TODO check whether the tab is configured
   const compiler = new CompilerAbstract(languageVersion, data, source, input)
   plugin.compilersArtefacts[languageVersion] = compiler

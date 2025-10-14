@@ -18,7 +18,7 @@ export class SolidityScript extends Plugin {
   }
 
   async execute(path: string, functionName: string = 'run') {
-    trackMatomoEvent(this, SolidityScriptEvents.execute('script'))
+    trackMatomoEvent(this, { category: 'solidityScript', action: 'execute', name: 'script', isClick: true })
     this.call('terminal', 'log', `Running free function '${functionName}' from ${path}...`)
     let content = await this.call('fileManager', 'readFile', path)
     const params = await this.call('solidity', 'getCompilerQueryParameters')
@@ -131,7 +131,7 @@ export class SolidityScript extends Plugin {
           })}
         </div>
       )
-      trackMatomoEvent(this, UdappEvents.hardhat('console.log'))
+      trackMatomoEvent(this, { category: 'udapp', action: 'hardhat', name: 'console.log', isClick: false })
       this.call('terminal', 'logHtml', finalLogs)
     }
   }

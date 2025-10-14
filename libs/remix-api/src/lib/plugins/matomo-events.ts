@@ -3,19 +3,19 @@
  * 
  * @example Usage
  * ```ts
- * import { trackMatomoEvent, AIEvents, UdappEvents } from '@remix-api'
+ * import { trackMatomoEvent } from '@remix-api'
  * 
- * trackMatomoEvent(plugin, AIEvents.remixAI('code_generation'))
- * trackMatomoEvent(plugin, UdappEvents.DeployAndPublish('mainnet'))
+ * trackMatomoEvent(plugin, { category: 'ai', action: 'remixAI', name: 'code_generation', isClick: true })
+ * trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployAndPublish', name: 'mainnet', isClick: true })
  * ```
  * 
  * @example Common Events
  * ```ts
  * // AI
- * AIEvents.remixAI(), AIEvents.explainFunction()
+ * { category: 'ai', action: 'remixAI', isClick: true }, { category: 'ai', action: 'explainFunction', isClick: true }
  * 
  * // Contracts  
- * UdappEvents.DeployAndPublish(), UdappEvents.sendTransactionFromGui()
+ * { category: 'udapp', action: 'DeployAndPublish', isClick: true }, { category: 'udapp', action: 'sendTransactionFromGui', isClick: true }
  * 
  * // Editor
  * EditorEvents.save(), EditorEvents.format()

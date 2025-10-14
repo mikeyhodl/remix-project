@@ -64,7 +64,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   activateP = (name) => {
     this.appManager.activatePlugin(name)
-    trackMatomoEvent(this, ManagerEvents.activate(name))
+    trackMatomoEvent(this, { category: 'manager', action: 'activate', name: name, isClick: true })
   }
 
   /**
@@ -90,7 +90,7 @@ export class PluginManagerComponent extends ViewPlugin {
    */
   deactivateP = (name) => {
     this.call('manager', 'deactivatePlugin', name)
-    trackMatomoEvent(this, ManagerEvents.deactivate(name))
+    trackMatomoEvent(this, { category: 'manager', action: 'deactivate', name: name, isClick: true })
   }
 
   setDispatch (dispatch) {

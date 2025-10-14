@@ -34,7 +34,7 @@ export class CompilationDetailsPlugin extends ViewPlugin {
   }
 
   async onActivation() {
-    trackMatomoEvent(this, PluginEvents.activated('compilationDetails'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'compilationDetails', isClick: true })
   }
 
   onDeactivation(): void {

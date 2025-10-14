@@ -200,7 +200,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-        await trackMatomoEventAsync(plugin, StorageEvents.error(`Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`));
+        await trackMatomoEventAsync(plugin, { category: 'Storage', action: 'error', name: `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`, isClick: false });
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {
@@ -367,7 +367,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         plugin.setWorkspace({ name: name, isLocalhost: false })
         dispatch(setCurrentWorkspace({ name: name, isGitRepo: false }))
       } else {
-        await trackMatomoEventAsync(plugin, StorageEvents.error(`Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`));
+        await trackMatomoEventAsync(plugin, { category: 'Storage', action: 'error', name: `Workspace in localstorage not found: ${localStorage.getItem("currentWorkspace")}`, isClick: false });
         await basicWorkspaceInit(workspaces, workspaceProvider)
       }
     } else {

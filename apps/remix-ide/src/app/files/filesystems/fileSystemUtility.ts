@@ -39,14 +39,14 @@ export class fileSystemUtility {
         console.log('file migration successful')
         return true
       } else {
-        track(MigrateEvents.error('hash mismatch'))
+        track({ category: 'migrate', action: 'error', name: 'hash mismatch', isClick: false })
         console.log('file migration failed falling back to ' + fsFrom.name)
         fsTo.loaded = false
         return false
       }
     } catch (err) {
       console.log(err)
-      track(MigrateEvents.error(err && err.message))
+      track({ category: 'migrate', action: 'error', name: err && err.message, isClick: false })
       console.log('file migration failed falling back to ' + fsFrom.name)
       fsTo.loaded = false
       return false
@@ -66,9 +66,9 @@ export class fileSystemUtility {
       const date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate()
       const time = today.getHours() + 'h' + today.getMinutes() + 'min'
       this.saveAs(blob, `remix-backup-at-${time}-${date}.zip`)
-      track(BackupEvents.download('preload'))
+      track({ category: 'Backup', action: 'download', name: 'preload', isClick: true })
     } catch (err) {
-      track(BackupEvents.error(err && err.message))
+      track({ category: 'Backup', action: 'error', name: err && err.message, isClick: false })
       console.log(err)
     }
   }

@@ -53,7 +53,7 @@ export const Preload = (props: PreloadProps) => {
         })
       })
       .catch((err) => {
-        trackMatomoEvent?.(AppEvents.PreloadError(err && err.message))
+        trackMatomoEvent?.({ category: 'App', action: 'PreloadError', name: err && err.message, isClick: false })
         console.error('Error loading Remix:', err)
         setError(true)
       })
@@ -70,7 +70,7 @@ export const Preload = (props: PreloadProps) => {
     setShowDownloader(false)
     const fsUtility = new fileSystemUtility()
     const migrationResult = await fsUtility.migrate(localStorageFileSystem.current, remixIndexedDB.current)
-    trackMatomoEvent?.(MigrateEvents.result(migrationResult ? 'success' : 'fail'))
+    trackMatomoEvent?.({ category: 'migrate', action: 'result', name: migrationResult ? 'success' : 'fail', isClick: false })
     await setFileSystems()
   }
 
@@ -81,10 +81,10 @@ export const Preload = (props: PreloadProps) => {
     ])
     if (fsLoaded) {
       console.log(fsLoaded.name + ' activated')
-      trackMatomoEvent?.(StorageEvents.activate(fsLoaded.name))
+      trackMatomoEvent?.({ category: 'Storage', action: 'activate', name: fsLoaded.name, isClick: false })
       loadAppComponent()
     } else {
-      trackMatomoEvent?.(StorageEvents.error('no supported storage'))
+      trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'no supported storage', isClick: false })
       setSupported(false)
     }
   }
@@ -102,8 +102,8 @@ export const Preload = (props: PreloadProps) => {
       return
     }
     async function loadStorage() {
-      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || trackMatomoEvent?.(StorageEvents.error('indexedDB not supported'))
-      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || trackMatomoEvent?.(StorageEvents.error('localstorage not supported'))
+      ;(await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'indexedDB not supported', isClick: false })
+      ;(await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'localstorage not supported', isClick: false })
       await testmigration()
       remixIndexedDB.current.loaded && (await remixIndexedDB.current.checkWorkspaces())
       localStorageFileSystem.current.loaded && (await localStorageFileSystem.current.checkWorkspaces())

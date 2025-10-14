@@ -6,10 +6,10 @@
  * organizing the code into manageable modules.
  * 
  * Usage:
- *   import { AIEvents, GitEvents, trackMatomoEvent } from '@remix-api'
+ *   import { trackMatomoEvent } from '@remix-api'
  *   
- *   trackMatomoEvent(AIEvents.remixAI('code_generation'))
- *   trackMatomoEvent(GitEvents.COMMIT('success'))
+ *   trackMatomoEvent(plugin, { category: 'ai', action: 'remixAI', name: 'code_generation', isClick: true })
+ *   trackMatomoEvent(plugin, { category: 'git', action: 'COMMIT', name: 'success', isClick: true })
  */
 
 // Core types and categories

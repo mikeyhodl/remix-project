@@ -91,7 +91,7 @@ export class LocaleModule extends Plugin {
     }
     const next = localeCode || this.active // Name
     if (next === this.active) return // --> exit out of this method
-    trackMatomoEvent(this, LocaleModuleEvents.switchTo(next))
+    trackMatomoEvent(this, { category: 'locale', action: 'switchTo', name: next, isClick: true })
 
     const nextLocale = this.locales[next] // Locale
     if (!this.forced) this._deps.config.set('settings/locale', next)

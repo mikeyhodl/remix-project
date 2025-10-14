@@ -131,7 +131,7 @@ export class RunTab extends ViewPlugin {
   }
 
   sendTransaction(tx) {
-    trackMatomoEvent(this, UdappEvents.sendTx('udappTransaction'))
+    trackMatomoEvent(this, { category: 'udapp', action: 'sendTx', name: 'udappTransaction', isClick: true })
     return this.blockchain.sendTransaction(tx)
   }
 

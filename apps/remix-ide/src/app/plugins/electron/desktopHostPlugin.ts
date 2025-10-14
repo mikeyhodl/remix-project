@@ -22,7 +22,7 @@ export class DesktopHost extends ElectronPlugin {
 
   onActivation() {
     console.log('DesktopHost activated')
-    trackMatomoEvent(this, PluginEvents.activated('DesktopHost'))
+    trackMatomoEvent(this, { category: 'plugin', action: 'activated', name: 'DesktopHost', isClick: true })
   }
 
 }

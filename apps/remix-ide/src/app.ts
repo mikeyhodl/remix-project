@@ -230,7 +230,7 @@ class AppComponent {
     this.workspace = pluginLoader.get()
     if (pluginLoader.current === 'queryParams') {
       this.workspace.map((workspace) => {
-        this.track(AppEvents.queryParamsActivated(workspace))
+        this.track({ category: 'App', action: 'queryParams-activated', name: workspace, isClick: false })
       })
     }
     this.engine = new RemixEngine()
@@ -246,7 +246,7 @@ class AppComponent {
     this.matomoCurrentSetting = configApi.get('settings/matomo-perf-analytics');
 
     if (this.showMatomo) {
-      this.track(MatomoManagerEvents.showConsentDialog());
+      this.track({ category: 'MatomoManager', action: 'showConsentDialog', isClick: false });
     }
 
     this.walkthroughService = new WalkthroughService(appManager)
@@ -685,7 +685,7 @@ class AppComponent {
               if (callDetails.length > 1) {
                 this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
                 // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                this.track(AppEvents.queryParamsCalls(this.params.call))
+                this.track({ category: 'App', action: 'queryParamsCalls', name: this.params.call, isClick: false })
                 //@ts-ignore
                 await this.appManager.call(...callDetails).catch(console.error)
               }
@@ -696,7 +696,7 @@ class AppComponent {
 
               // call all functions in the list, one after the other
               for (const call of calls) {
-                this.track(AppEvents.queryParamsCalls(call))
+                this.track({ category: 'App', action: 'queryParamsCalls', name: call, isClick: false })
                 const callDetails = call.split('//')
                 if (callDetails.length > 1) {
                   this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)

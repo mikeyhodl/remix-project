@@ -2,17 +2,14 @@ import { toast } from 'react-toastify'
 import { type ModelType } from '../store'
 import remixClient from '../../remix-client'
 import { router } from '../../App'
-import { trackMatomoEvent, LearnethEvents } from '@remix-api'
+import { trackMatomoEvent } from '@remix-api'
 
 function getFilePath(file: string): string {
   const name = file.split('/')
   return name.length > 1 ? `${name[name.length - 1]}` : ''
 }
 
-// Type-safe Matomo tracking helper for Learneth events
-function trackLearnethEvent(event: ReturnType<typeof LearnethEvents[keyof typeof LearnethEvents]>) {
-  trackMatomoEvent(remixClient, event);
-}
+
 
 const Model: ModelType = {
   namespace: 'remixide',
@@ -74,7 +71,7 @@ const Model: ModelType = {
         return
       }
 
-      trackLearnethEvent(LearnethEvents.displayFile(`${(step && step.name)}/${path}`))
+      trackMatomoEvent(remixClient, { category: 'learneth', action: 'displayFile', name: `${(step && step.name)}/${path}`, isClick: true })
 
       toast.info(`loading ${path} into IDE`)
       yield put({
@@ -101,7 +98,7 @@ const Model: ModelType = {
         })
         toast.dismiss()
       } catch (error) {
-        trackLearnethEvent(LearnethEvents.displayFileError(error.message))
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'displayFileError', name: error.message, isClick: false })
         toast.dismiss()
         toast.error('File could not be loaded. Please try again.')
         yield put({
@@ -151,7 +148,7 @@ const Model: ModelType = {
             type: 'remixide/save',
             payload: { errors: ['Compiler failed to test this file']},
           });
-          trackLearnethEvent(LearnethEvents.testStepError('Compiler failed to test this file'))
+          trackMatomoEvent(remixClient, { category: 'learneth', action: 'testStepError', name: 'Compiler failed to test this file', isClick: false })
         } else {
           const success = result.totalFailing === 0;
           if (success) {
@@ -167,14 +164,14 @@ const Model: ModelType = {
               },
             })
           }
-          trackLearnethEvent(LearnethEvents.testStep(String(success)))
+          trackMatomoEvent(remixClient, { category: 'learneth', action: 'testStep', name: String(success), isClick: true })
         }
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        trackLearnethEvent(LearnethEvents.testStepError(String(err)))
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'testStepError', name: String(err), isClick: false })
       }
       yield put({
         type: 'loading/save',
@@ -204,13 +201,13 @@ const Model: ModelType = {
         yield remixClient.call('fileManager', 'setFile', path, content)
         yield remixClient.call('fileManager', 'switchFile', `${path}`);
 
-        trackLearnethEvent(LearnethEvents.showAnswer(path))
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'showAnswer', name: path, isClick: true })
       } catch (err) {
         yield put({
           type: 'remixide/save',
           payload: { errors: [String(err)]},
         });
-        trackLearnethEvent(LearnethEvents.showAnswerError(err.message))
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'showAnswerError', name: err.message, isClick: false })
       }
 
       toast.dismiss()
@@ -224,7 +221,7 @@ const Model: ModelType = {
     *testSolidityCompiler(_, { put, select }) {
       try {
         yield remixClient.call('solidity', 'getCompilationResult');
-        trackLearnethEvent(LearnethEvents.testSolidityCompiler())
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'testSolidityCompiler', isClick: true })
       } catch (err) {
         const errors = yield select((state) => state.remixide.errors)
         yield put({
@@ -233,7 +230,7 @@ const Model: ModelType = {
             errors: [...errors, "The `Solidity Compiler` is not yet activated.<br>Please activate it using the `SOLIDITY` button in the `Featured Plugins` section of the homepage.<img class='img-thumbnail mt-3' src='assets/activatesolidity.png'>"],
           },
         });
-        trackLearnethEvent(LearnethEvents.testSolidityCompilerError(err.message))
+        trackMatomoEvent(remixClient, { category: 'learneth', action: 'testSolidityCompilerError', name: err.message, isClick: false })
       }
     }
   },
