@@ -559,13 +559,21 @@ export class RemixAIPlugin extends Plugin {
 
   getMCPConnectionStatus(): IMCPConnectionStatus[] {
     console.log(`[RemixAI Plugin] Getting MCP connection status (provider: ${this.assistantProvider})`);
-    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+
+    // If MCP inferencer exists, get statuses from it
+    if (this.mcpInferencer) {
       const statuses = this.mcpInferencer.getConnectionStatuses();
       console.log(`[RemixAI Plugin] Found ${statuses.length} MCP server statuses:`, statuses.map(s => `${s.serverName}: ${s.status}`));
       return statuses;
     }
-    console.log(`[RemixAI Plugin] No MCP inferencer active or wrong provider`);
-    return [];
+
+    // Otherwise, return default statuses for all configured servers
+    console.log(`[RemixAI Plugin] No MCP inferencer active, returning default statuses for ${this.mcpServers.length} servers`);
+    return this.mcpServers.map(server => ({
+      serverName: server.name,
+      status: server.enabled ? 'disconnected' : 'disconnected',
+      lastAttempt: Date.now()
+    }));
   }
 
   async getMCPResources(): Promise<Record<string, any[]>> {
@@ -622,19 +630,33 @@ export class RemixAIPlugin extends Plugin {
           }
         ];
 
-        // Add built-in servers if they don't exist
+        // Add built-in servers if they don't exist, or ensure they're enabled if they do
         for (const builtInServer of builtInServers) {
-          if (!loadedServers.find(s => s.name === builtInServer.name)) {
+          const existingServer = loadedServers.find(s => s.name === builtInServer.name);
+          if (!existingServer) {
             console.log(`[RemixAI Plugin] Adding missing built-in server: ${builtInServer.name}`);
             loadedServers.push(builtInServer);
+          } else if (!existingServer.enabled || !existingServer.isBuiltIn) {
+            // Force enable and mark as built-in
+            console.log(`[RemixAI Plugin] Ensuring built-in server is enabled: ${builtInServer.name}`);
+            existingServer.enabled = true;
+            existingServer.isBuiltIn = true;
           }
         }
 
         this.mcpServers = loadedServers;
         console.log(`[RemixAI Plugin] Loaded ${this.mcpServers.length} MCP servers from settings:`, this.mcpServers.map(s => s.name));
 
-        // Save back to settings if we added built-in servers
-        if (loadedServers.length > JSON.parse(savedServers).length) {
+        // Save back to settings if we added/modified built-in servers
+        const originalServers = JSON.parse(savedServers);
+        const serversChanged = loadedServers.length !== originalServers.length ||
+                               loadedServers.some(server => {
+                                 const original = originalServers.find(s => s.name === server.name);
+                                 return !original || (server.isBuiltIn && (!original.enabled || !original.isBuiltIn));
+                               });
+
+        if (serversChanged) {
+          console.log(`[RemixAI Plugin] Saving corrected MCP servers to settings`);
           await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(loadedServers));
         }
       } else {
@@ -665,6 +687,25 @@ export class RemixAIPlugin extends Plugin {
         console.log(`[RemixAI Plugin] Saving default MCP servers to settings:`, defaultServers);
         await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(defaultServers));
         console.log(`[RemixAI Plugin] Default MCP servers saved to settings successfully`);
+      }
+
+      // Initialize MCP inferencer if we have servers and it's not already initialized
+      if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer) {
+        console.log(`[RemixAI Plugin] Initializing MCP inferencer for connection tracking`);
+        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
+        this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+          console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
+        });
+        this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+          console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
+        });
+
+        // Connect to enabled servers for status tracking
+        const enabledServers = this.mcpServers.filter(s => s.enabled);
+        if (enabledServers.length > 0) {
+          console.log(`[RemixAI Plugin] Connecting to ${enabledServers.length} enabled MCP servers for status tracking`);
+          await this.mcpInferencer.connectAllServers();
+        }
       }
     } catch (error) {
       console.warn(`[RemixAI Plugin] Failed to load MCP servers from settings:`, error);
@@ -723,58 +764,4 @@ export class RemixAIPlugin extends Plugin {
       console.log(`[RemixAI Plugin] clearing mcp inference resource cache `)
     }
   }
-
-  // private async enrichWithMCPContext(prompt: string, params: IParams): Promise<string> {
-  //   if (!this.mcpEnabled || !this.mcpInferencer) {
-  //     console.log(`[RemixAI Plugin] MCP context enrichment skipped (enabled: ${this.mcpEnabled}, inferencer: ${!!this.mcpInferencer})`);
-  //     return prompt;
-  //   }
-
-  //   try {
-  //     console.log(`[RemixAI Plugin] Enriching prompt with MCP context...`);
-  //     // Get MCP resources and tools context
-  //     const resources = await this.mcpInferencer.getAllResources();
-  //     const tools = await this.mcpInferencer.getAllTools();
-
-  //     let mcpContext = '';
-
-  //     // Add available resources context
-  //     if (Object.keys(resources).length > 0) {
-  //       console.log(`[RemixAI Plugin] Adding resources from ${Object.keys(resources).length} servers to context`);
-  //       mcpContext += '\n--- Available MCP Resources ---\n';
-  //       for (const [serverName, serverResources] of Object.entries(resources)) {
-  //         if (serverResources.length > 0) {
-  //           mcpContext += `Server: ${serverName}\n`;
-  //           for (const resource of serverResources.slice(0, 3)) { // Limit to first 3
-  //             mcpContext += `- ${resource.name}: ${resource.description || resource.uri}\n`;
-  //           }
-  //         }
-  //       }
-  //       mcpContext += '--- End Resources ---\n';
-  //     }
-
-  //     // Add available tools context
-  //     if (Object.keys(tools).length > 0) {
-  //       console.log(`[RemixAI Plugin] Adding tools from ${Object.keys(tools).length} servers to context`);
-  //       mcpContext += '\n--- Available MCP Tools ---\n';
-  //       for (const [serverName, serverTools] of Object.entries(tools)) {
-  //         if (serverTools.length > 0) {
-  //           mcpContext += `Server: ${serverName}\n`;
-  //           for (const tool of serverTools) {
-  //             mcpContext += `- ${tool.name}: ${tool.description || 'No description'}\n`;
-  //           }
-  //         }
-  //       }
-  //       mcpContext += '--- End Tools ---\n';
-  //     }
-
-  //     const enrichedPrompt = mcpContext ? `${mcpContext}\n${prompt}` : prompt;
-  //     console.log(`[RemixAI Plugin] MCP context enrichment completed (added ${mcpContext.length} characters)`);
-  //     return enrichedPrompt;
-  //   } catch (error) {
-  //     console.warn(`[RemixAI Plugin] Failed to enrich with MCP context:`, error);
-  //     return prompt;
-  //   }
-  // }
-
 }

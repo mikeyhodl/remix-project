@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { FormattedMessage } from 'react-intl'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { IMCPServer } from '@remix/remix-ai-core'
 
@@ -113,6 +112,13 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
 
   const deleteServer = async (serverName: string) => {
     try {
+      // Prevent deleting built-in servers
+      const serverToDelete = servers.find(s => s.name === serverName)
+      if (serverToDelete?.isBuiltIn) {
+        console.error('Cannot delete built-in MCP server:', serverName)
+        return
+      }
+
       const newServers = servers.filter(s => s.name !== serverName)
       setServers(newServers)
       await plugin.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(newServers))
@@ -125,6 +131,12 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
 
   const toggleServer = async (server: IMCPServer) => {
     try {
+      // Prevent disabling built-in servers
+      if (server.isBuiltIn) {
+        console.warn('Cannot disable built-in MCP server:', server.name)
+        return
+      }
+
       const updatedServer = { ...server, enabled: !server.enabled }
       const newServers = servers.map(s => s.name === server.name ? updatedServer : s)
       setServers(newServers)
@@ -326,7 +338,11 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                     <div className="d-flex align-items-center mb-1">
                       {getStatusIcon(connectionStatuses[server.name])}
                       <strong className="ms-2">{server.name}</strong>
-                      {!server.enabled && <span className="badge bg-secondary ms-2">Disabled</span>}
+                      {server.enabled ? (
+                        <span className="badge bg-success ms-2">Enabled</span>
+                      ) : (
+                        <span className="badge bg-secondary ms-2">Disabled</span>
+                      )}
                       {server.isBuiltIn && <span className="badge bg-primary ms-2">Built-in</span>}
                     </div>
                     {server.description && (
@@ -348,12 +364,14 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                     </div>
                   </div>
                   <div className="d-flex flex-column gap-1">
-                    <button
-                      className={`btn btn-sm ${server.enabled ? 'btn-warning' : 'btn-success'}`}
-                      onClick={() => toggleServer(server)}
-                    >
-                      {server.enabled ? 'Disable' : 'Enable'}
-                    </button>
+                    {!server.isBuiltIn && (
+                      <button
+                        className={`btn btn-sm ${server.enabled ? 'btn-warning' : 'btn-success'}`}
+                        onClick={() => toggleServer(server)}
+                      >
+                        {server.enabled ? 'Disable' : 'Enable'}
+                      </button>
+                    )}
                     {!server.isBuiltIn && (
                       <button
                         className="btn btn-sm btn-outline-secondary"
@@ -375,7 +393,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                       </button>
                     )}
                     {server.isBuiltIn && (
-                      <small className="text-muted">Built-in server cannot be edited or deleted</small>
+                      <small className="text-muted">Built-in server is always enabled</small>
                     )}
                   </div>
                 </div>
