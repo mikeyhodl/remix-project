@@ -438,7 +438,15 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     let externalCompType
     if (hhCompilation) externalCompType = 'hardhat'
     else if (truffleCompilation) externalCompType = 'truffle'
-    compileTabLogic.runCompiler(externalCompType)
+    compileTabLogic.runCompiler(externalCompType).catch((error) => {
+      tooltip(error.message)
+      compileIcon.current.classList.remove('remixui_bouncingIcon')
+      compileIcon.current.classList.remove('remixui_spinningIcon')
+      // @ts-ignore
+      props.setCompileErrors({ [currentFile]: { error: error.message } })
+      // @ts-ignore
+      props.setBadgeStatus({ [currentFile]: { key: 1, title: error.message, type: 'error' } })
+    })
   }
 
   const compileAndRun = () => {
@@ -454,7 +462,15 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (hhCompilation) externalCompType = 'hardhat'
     else if (truffleCompilation) externalCompType = 'truffle'
     api.runScriptAfterCompilation(currentFile)
-    compileTabLogic.runCompiler(externalCompType)
+    compileTabLogic.runCompiler(externalCompType).catch((error) => {
+      tooltip(error.message)
+      compileIcon.current.classList.remove('remixui_bouncingIcon')
+      compileIcon.current.classList.remove('remixui_spinningIcon')
+      // @ts-ignore
+      props.setCompileErrors({ [currentFile]: { error: error.message } })
+      // @ts-ignore
+      props.setBadgeStatus({ [currentFile]: { key: 1, title: error.message, type: 'error' } })
+    })
   }
 
   const _updateVersionSelector = (version, customUrl = '', setQueryParameter = true) => {

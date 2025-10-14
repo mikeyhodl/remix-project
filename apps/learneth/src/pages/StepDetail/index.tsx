@@ -72,6 +72,40 @@ function StepDetailPage() {
     )
   }
 
+  const VideoRenderer = ({
+    node,
+    src,
+    alt,
+    ...props
+  }: {
+    node?: any;
+    src?: string;
+    alt?: string;
+    [key: string]: any;
+  }) => {
+    if (alt === 'youtube') {
+      /*
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/Eh1qgOurDxU?si=lz1JypmIJZ15OY4g" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      */
+      return (
+        <div className="position-relative overflow-hidden" style={{ paddingBottom: '56.25%', maxWidth: '100%', height: '0' }}>
+          <iframe
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+            src={src}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+    if (alt === 'video') {
+      return <video controls src={src} style={{ maxWidth: '100%' }} />;
+    }
+    return <img src={src} alt={alt} {...props} />;
+  };
+
   return (
     <div className='pb-4'>
       <div className="fixed-top">
@@ -104,7 +138,7 @@ function StepDetailPage() {
         </>
       )}
       <div className="container-fluid">
-        <Markdown rehypePlugins={[rehypeRaw]}>{clonedStep.markdown?.content}</Markdown>
+        <Markdown components={{ img:VideoRenderer }} rehypePlugins={[rehypeRaw]}>{clonedStep.markdown?.content}</Markdown>
       </div>
       {clonedStep.test?.content ? (
         <>

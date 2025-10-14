@@ -8,6 +8,7 @@ import { ContractGUI } from './contractGUI'
 import { CustomTooltip, deployWithProxyMsg, upgradeWithProxyMsg } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvents } from '@remix-api'
+import { VerificationSettingsUI } from './verificationSettingsUI'
 
 export function ContractDropdownUI(props: ContractDropdownProps) {
   const intl = useIntl()
@@ -42,6 +43,26 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const contractsRef = useRef<HTMLSelectElement>(null)
   const atAddressValue = useRef<HTMLInputElement>(null)
   const { contractList, loadType, currentFile, compilationSource, currentContract, compilationCount, deployOptions } = props.contracts
+  const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
+  const [isNetworkSupported, setNetworkSupported] = useState<boolean>(false)
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      if (props.plugin) {
+        const supportedChain = await getSupportedChain(props.plugin)
+        const isSupported = !!supportedChain
+        setNetworkSupported(isSupported)
+
+        if (isSupported) {
+          const saved = window.localStorage.getItem('deploy-verify-contract-checked')
+          setVerifyChecked(saved !== null ? JSON.parse(saved) : true)
+        } else {
+          setVerifyChecked(false)
+        }
+      }
+    };
+    checkSupport()
+  }, [props.networkName])
 
   useEffect(() => {
     enableContractNames(Object.keys(props.contracts.contractList).length > 0)
@@ -215,7 +236,8 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             props.mainnetPrompt,
             isOverSizePrompt,
             args,
-            deployMode
+            deployMode,
+            isVerifyChecked
           )
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
@@ -235,14 +257,15 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             props.mainnetPrompt,
             isOverSizePrompt,
             args,
-            deployMode
+            deployMode,
+            isVerifyChecked
           )
         },
         intl.formatMessage({ id: 'udapp.cancel' }),
         () => {}
       )
     } else {
-      props.createInstance(loadedContractData, props.gasEstimationPrompt, props.passphrasePrompt, props.publishToStorage, props.mainnetPrompt, isOverSizePrompt, args, deployMode)
+      props.createInstance(loadedContractData, props.gasEstimationPrompt, props.passphrasePrompt, props.publishToStorage, props.mainnetPrompt, isOverSizePrompt, args, deployMode, isVerifyChecked)
     }
   }
 
@@ -277,11 +300,9 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
     setaddressIsValid(true)
   }
 
-  const handleCheckedIPFS = () => {
-    const checkedState = !props.ipfsCheckedState
-
-    props.setIpfsCheckedState(checkedState)
-    window.localStorage.setItem(`ipfs/${props.exEnvironment}/${props.networkName}`, checkedState.toString())
+  const handleVerifyCheckedChange = (isChecked: boolean) => {
+    setVerifyChecked(isChecked)
+    window.localStorage.setItem('deploy-verify-contract-checked', JSON.stringify(isChecked))
   }
 
   const updateCompilerName = () => {
@@ -313,6 +334,23 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
   const isValidProxyUpgrade = (proxyAddress: string) => {
     const solcVersion = loadedContractData.metadata ? JSON.parse(loadedContractData.metadata).compiler.version : ''
     return props.isValidProxyUpgrade(proxyAddress, loadedContractData.contractName || loadedContractData.name, loadedContractData.compiler.source, loadedContractData.compiler.data, solcVersion)
+  }
+
+  const getSupportedChain = async (plugin: any): Promise<any> => {
+    try {
+      const response = await fetch('https://chainid.network/chains.json')
+      if (!response.ok) return null
+      const allChains = await response.json()
+
+      const status = plugin.blockchain.getCurrentNetworkStatus()
+      if (status.error || !status.network) return null
+
+      const currentChainId = parseInt(status.network.id)
+      return allChains.find(chain => chain.chainId === currentChainId) || null
+    } catch (e) {
+      console.error(e)
+      return null
+    }
   }
 
   const checkSumWarning = () => {
@@ -489,30 +527,12 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
                 plugin={props.plugin}
                 runTabState={props.runTabState}
               />
-              <div className="d-flex py-1 align-items-center form-check">
-                <input
-                  id="deployAndRunPublishToIPFS"
-                  data-id="contractDropdownIpfsCheckbox"
-                  className="form-check-input"
-                  type="checkbox"
-                  onChange={handleCheckedIPFS}
-                  checked={props.ipfsCheckedState}
+              {isNetworkSupported && (
+                <VerificationSettingsUI
+                  isVerifyChecked={isVerifyChecked}
+                  onVerifyCheckedChange={handleVerifyCheckedChange}
                 />
-                <CustomTooltip
-                  placement={'auto-end'}
-                  tooltipClasses="text-wrap text-start"
-                  tooltipId="remixIpfsUdappTooltip"
-                  tooltipText={
-                    <span className="text-start">
-                      <FormattedMessage id="udapp.remixIpfsUdappTooltip" values={{ br: <br /> }} />
-                    </span>
-                  }
-                >
-                  <label htmlFor="deployAndRunPublishToIPFS" data-id="contractDropdownIpfsCheckboxLabel" className="m-0 form-check-label udapp_checkboxAlign ms-1">
-                    <FormattedMessage id="udapp.publishTo" /> IPFS
-                  </label>
-                </CustomTooltip>
-              </div>
+              )}
             </div>
           )}
         </div>
