@@ -616,7 +616,8 @@ export interface CircuitCompilerEvent extends MatomoEventBase {
     | 'generateProof'
     | 'error'
     | 'generateR1cs'
-    | 'computeWitness';
+    | 'computeWitness'
+    | 'runSetupAndExport';
 }
 
 export const CircuitCompilerEvents = {
@@ -658,6 +659,14 @@ export const CircuitCompilerEvents = {
     name,
     value,
     isClick: true // User computes witness
+  }),
+  
+  runSetupAndExport: (name?: string, value?: string | number): CircuitCompilerEvent => ({
+    category: 'circuitCompiler',
+    action: 'runSetupAndExport',
+    name,
+    value,
+    isClick: true // User runs setup and export
   })
 } as const;
 

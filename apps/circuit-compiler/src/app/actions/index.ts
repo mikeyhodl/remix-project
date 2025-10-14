@@ -3,6 +3,7 @@ import type { CircomPluginClient } from "../services/circomPluginClient"
 import { ActionPayloadTypes, AppState, ICircuitAppContext } from "../types"
 import { GROTH16_VERIFIER, PLONK_VERIFIER } from './constant'
 import { extractNameFromKey, extractParentFromKey } from '@remix-ui/helper'
+import { CircuitCompilerEvents } from '@remix-api'
 import isElectron from 'is-electron'
 
 export const compileCircuit = async (plugin: CircomPluginClient, appState: AppState) => {
@@ -32,7 +33,7 @@ export const computeWitness = async (plugin: CircomPluginClient, appState: AppSt
         const writePath = extractParentFromKey(appState.filePath) + `/.bin/${fileName.replace('.circom', '_js')}/${fileName.replace('.circom', '.wtn.json')}`
 
         await plugin.call('fileManager', 'writeFile', writePath, JSON.stringify(wtnsJson, null, 2))
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'computeWitness', 'wtns.exportJson', writePath])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.computeWitness('wtns.exportJson', writePath))
       }
     } else {
       console.log('Existing witness computation in progress')
@@ -61,38 +62,38 @@ export const runSetupAndExport = async (plugin: CircomPluginClient, appState: Ap
     const zkey_final = { type: "mem" }
 
     if (appState.provingScheme === 'groth16') {
-      plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'provingScheme', 'groth16'])
+      plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('provingScheme', 'groth16'))
       await snarkjs.zKey.newZKey(r1cs, ptau_final, zkey_final, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
       const vKey = await snarkjs.zKey.exportVerificationKey(zkey_final, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
 
       if (appState.exportVerificationKey) {
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/groth16/zk/keys/verification_key.json`, JSON.stringify(vKey, null, 2))
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'zKey.exportVerificationKey', `${extractParentFromKey(appState.filePath)}/groth16/zk/keys/verification_key.json`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('zKey.exportVerificationKey', `${extractParentFromKey(appState.filePath)}/groth16/zk/keys/verification_key.json`))
       }
       if (appState.exportVerificationContract) {
         const templates = { groth16: GROTH16_VERIFIER }
         const solidityContract = await snarkjs.zKey.exportSolidityVerifier(zkey_final, templates, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
 
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/zk_verifier.sol`, solidityContract)
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'zKey.exportSolidityVerifier', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/zk_verifier.sol`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('zKey.exportSolidityVerifier', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/zk_verifier.sol`))
       }
       dispatch({ type: 'SET_ZKEY', payload: zkey_final })
       dispatch({ type: 'SET_VERIFICATION_KEY', payload: vKey })
     } else if (appState.provingScheme === 'plonk') {
-      plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'provingScheme', 'plonk'])
+      plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('provingScheme', 'plonk'))
       await snarkjs.plonk.setup(r1cs, ptau_final, zkey_final, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
       const vKey = await snarkjs.zKey.exportVerificationKey(zkey_final, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
 
       if (appState.exportVerificationKey) {
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/plonk/zk/keys/verification_key.json`, JSON.stringify(vKey, null, 2))
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'zKey.exportVerificationKey', `${extractParentFromKey(appState.filePath)}/plonk/zk/keys/verification_key.json`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('zKey.exportVerificationKey', `${extractParentFromKey(appState.filePath)}/plonk/zk/keys/verification_key.json`))
       }
       if (appState.exportVerificationContract) {
         const templates = { plonk: PLONK_VERIFIER }
         const solidityContract = await snarkjs.zKey.exportSolidityVerifier(zkey_final, templates, zkLogger(plugin, dispatch, 'SET_SETUP_EXPORT_FEEDBACK'))
 
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/zk_verifier.sol`, solidityContract)
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'zKey.exportSolidityVerifier', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/zk_verifier.sol`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('zKey.exportSolidityVerifier', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/zk_verifier.sol`))
       }
       dispatch({ type: 'SET_ZKEY', payload: zkey_final })
       dispatch({ type: 'SET_VERIFICATION_KEY', payload: vKey })
@@ -100,7 +101,7 @@ export const runSetupAndExport = async (plugin: CircomPluginClient, appState: Ap
     dispatch({ type: 'SET_COMPILER_STATUS', payload: 'idle' })
     dispatch({ type: 'SET_SETUP_EXPORT_STATUS', payload: 'done' })
   } catch (e) {
-    plugin._paq.push(['trackEvent', 'circuit-compiler', 'runSetupAndExport', 'error', e.message])
+    plugin.trackCircuitEvent(CircuitCompilerEvents.runSetupAndExport('error', e.message))
     dispatch({ type: 'SET_COMPILER_STATUS', payload: 'errored' })
     console.error(e)
   }
@@ -132,12 +133,12 @@ export const generateProof = async (plugin: CircomPluginClient, appState: AppSta
 
       plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/proof.json`, JSON.stringify(proof, null, 2))
       plugin.call('terminal', 'log', { type: 'log', value: 'zk proof validity ' + verified })
-      plugin._paq.push(['trackEvent', 'circuit-compiler', 'generateProof', 'groth16.prove', verified])
+      plugin.trackCircuitEvent(CircuitCompilerEvents.generateProof('groth16.prove', verified))
       if (appState.exportVerifierCalldata) {
         const calldata = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals)
 
         plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/verifierCalldata.json`, calldata)
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'generateProof', 'groth16.exportSolidityCallData', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/verifierCalldata.json`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.generateProof('groth16.exportSolidityCallData', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/verifierCalldata.json`))
       }
     } else if (appState.provingScheme === 'plonk') {
       const { proof, publicSignals } = await snarkjs.plonk.prove(zkey_final, wtns, zkLogger(plugin, dispatch, 'SET_PROOF_FEEDBACK'))
@@ -145,12 +146,12 @@ export const generateProof = async (plugin: CircomPluginClient, appState: AppSta
 
       plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/proof.json`, JSON.stringify(proof, null, 2))
       plugin.call('terminal', 'log', { type: 'log', value: 'zk proof validity ' + verified })
-      plugin._paq.push(['trackEvent', 'circuit-compiler', 'generateProof', 'plonk.prove', verified])
+      plugin.trackCircuitEvent(CircuitCompilerEvents.generateProof('plonk.prove', verified))
       if (appState.exportVerifierCalldata) {
         const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals)
 
         plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/verifierCalldata.json`, calldata)
-        plugin._paq.push(['trackEvent', 'circuit-compiler', 'generateProof', 'plonk.exportSolidityCallData', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/verifierCalldata.json`])
+        plugin.trackCircuitEvent(CircuitCompilerEvents.generateProof('plonk.exportSolidityCallData', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/verifierCalldata.json`))
       }
     }
     dispatch({ type: 'SET_COMPILER_STATUS', payload: 'idle' })
