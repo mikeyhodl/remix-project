@@ -40,18 +40,18 @@ export const setPlugin = (p: Plugin, dispatcher: React.Dispatch<gitActionDispatc
 }
 
 // Helper function for tracking git events from library functions
-const trackGitEvent = (action: GitEvent['action'], name?: string) => {
+const trackGitEvent = (action: GitEvent['action'], name?: string, isClick: boolean = false) => {
   if (!plugin) return
   trackMatomoEvent(plugin, {
     category: 'git',
     action,
     name,
-    isClick: false // Library actions are not direct user clicks
+    isClick
   })
 }
 
 export const init = async () => {
-  trackGitEvent("INIT")
+  trackGitEvent("INIT", undefined, true)
   await plugin.call('dgitApi', 'init');
   dispatch(setTimestamp(Date.now()))
   await getBranches();
@@ -163,7 +163,7 @@ export const currentBranch = async () => {
 }
 
 export const createBranch = async (name: string = "") => {
-  trackGitEvent("BRANCH", "CREATE")
+  trackGitEvent("BRANCH", "CREATE", true)
   dispatch(setLoading(true))
   if (name) {
     await plugin.call('dgitApi', 'branch', { ref: name, force: true, checkout: true });
@@ -194,7 +194,7 @@ const settingsWarning = async () => {
 
 export const commit = async (message: string = "") => {
 
-  trackGitEvent("COMMIT")
+  trackGitEvent("COMMIT", undefined, true)
   try {
     const credentials = await settingsWarning()
     if (!credentials) {
@@ -222,7 +222,7 @@ export const commit = async (message: string = "") => {
 }
 
 export const addall = async (files: fileStatusResult[]) => {
-  trackGitEvent("ADD_ALL")
+  trackGitEvent("ADD_ALL", undefined, true)
   try {
     const filesToAdd = files
       .filter(f => !f.statusNames.includes('deleted'))
@@ -248,7 +248,7 @@ export const addall = async (files: fileStatusResult[]) => {
 }
 
 export const add = async (filepath: addInputType) => {
-  trackGitEvent("ADD")
+  trackGitEvent("ADD", undefined, true)
   try {
     if (typeof filepath.filepath === "string") {
       filepath.filepath = removeSlash(filepath.filepath)
@@ -275,7 +275,7 @@ const getLastCommit = async () => {
 }
 
 export const rm = async (args: rmInputType) => {
-  trackGitEvent("RM")
+  trackGitEvent("RM", undefined, true)
   await plugin.call('dgitApi', 'rm', {
     filepath: removeSlash(args.filepath),
   });
@@ -312,7 +312,7 @@ export const checkoutfile = async (filename: string) => {
 }
 
 export const checkout = async (cmd: checkoutInputType) => {
-  trackGitEvent("CHECKOUT")
+  trackGitEvent("CHECKOUT", undefined, true)
   await disableCallBacks();
   await plugin.call('fileManager', 'closeAllFiles')
   try {
@@ -326,7 +326,7 @@ export const checkout = async (cmd: checkoutInputType) => {
 
 export const clone = async (input: cloneInputType) => {
 
-  trackGitEvent("CLONE")
+  trackGitEvent("CLONE", undefined, true)
   dispatch(setLoading(true))
   const urlParts = input.url.split("/");
   const lastPart = urlParts[urlParts.length - 1];
@@ -355,7 +355,7 @@ export const clone = async (input: cloneInputType) => {
 }
 
 export const fetch = async (input: fetchInputType) => {
-  trackGitEvent("FETCH")
+  trackGitEvent("FETCH", undefined, true)
   dispatch(setLoading(true))
   await disableCallBacks()
   try {
@@ -373,7 +373,7 @@ export const fetch = async (input: fetchInputType) => {
 }
 
 export const pull = async (input: pullInputType) => {
-  trackGitEvent("PULL")
+  trackGitEvent("PULL", undefined, true)
   dispatch(setLoading(true))
   await disableCallBacks()
   try {
@@ -388,7 +388,7 @@ export const pull = async (input: pullInputType) => {
 }
 
 export const push = async (input: pushInputType) => {
-  trackGitEvent("PUSH")
+  trackGitEvent("PUSH", undefined, true)
   dispatch(setLoading(true))
   await disableCallBacks()
   try {
@@ -712,7 +712,7 @@ export const resolveRef = async (ref: string) => {
 }
 
 export const diff = async (commitChange: commitChange) => {
-  trackGitEvent("DIFF")
+  trackGitEvent("DIFF", undefined, true)
   if (!commitChange.hashModified) {
     const newcontent = await plugin.call(
       "fileManager",
@@ -883,12 +883,12 @@ export const getBranchCommits = async (branch: branch, page: number) => {
 }
 
 export const setDefaultRemote = async (remote: remote) => {
-  trackGitEvent("SET_DEFAULT_REMOTE")
+  trackGitEvent("SET_DEFAULT_REMOTE", undefined, true)
   dispatch(setRemoteAsDefault(remote))
 }
 
 export const addRemote = async (remote: remote) => {
-  trackGitEvent("ADDREMOTE")
+  trackGitEvent("ADDREMOTE", undefined, true)
   try {
     await plugin.call('dgitApi', 'addremote', remote)
     await getRemotes()
@@ -903,7 +903,7 @@ export const addRemote = async (remote: remote) => {
 }
 
 export const removeRemote = async (remote: remote) => {
-  trackGitEvent("RMREMOTE")
+  trackGitEvent("RMREMOTE", undefined, true)
   try {
     await plugin.call('dgitApi', 'delremote', remote)
     await getRemotes()

@@ -13,13 +13,13 @@ export const setLoginPlugin = (pluginInstance: any) => {
 };
 
 // Helper function for tracking git events from library functions
-const trackGitEvent = (action: GitEvent['action'], name?: string) => {
+const trackGitEvent = (action: GitEvent['action'], name?: string, isClick: boolean = false) => {
   if (!plugin) return
   trackMatomoEvent(plugin, {
     category: 'git',
     action,
     name,
-    isClick: false
+    isClick
   })
 }
 
@@ -46,7 +46,7 @@ export const startGitHubLogin = async (): Promise<void> => {
   }
 
   try {
-    trackGitEvent("CONNECT_TO_GITHUB");
+    trackGitEvent("CONNECT_TO_GITHUB", undefined, true);
 
     if (isElectron()) {
       // For desktop/electron, use the githubAuthHandler plugin
@@ -68,7 +68,7 @@ const startWebPopupLogin = async (): Promise<void> => {
   const scope = 'repo gist user:email read:user';
 
   const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
-  trackGitEvent("OPEN_LOGIN_MODAL")
+  trackGitEvent("OPEN_LOGIN_MODAL", undefined, true)
   const popup = window.open(url, '_blank', 'width=600,height=700');
   if (!popup) {
     trackGitEvent("LOGIN_MODAL_FAIL");
@@ -117,7 +117,7 @@ const startWebPopupLogin = async (): Promise<void> => {
 
 // Device code flow fallback (can be called from components if needed)
 export const getDeviceCodeFromGitHub = async (): Promise<any> => {
-  trackGitEvent("GET_GITHUB_DEVICECODE");
+  trackGitEvent("GET_GITHUB_DEVICECODE", undefined, true);
   try {
     const response = await axios({
       method: 'post',
@@ -144,7 +144,7 @@ export const getDeviceCodeFromGitHub = async (): Promise<any> => {
 
 // Connect using device code
 export const connectWithDeviceCode = async (deviceCode: string): Promise<void> => {
-  trackGitEvent("DEVICE_CODE_AUTH");
+  trackGitEvent("DEVICE_CODE_AUTH", undefined, true);
   try {
     const response = await axios({
       method: 'post',
@@ -180,7 +180,7 @@ export const connectWithDeviceCode = async (deviceCode: string): Promise<void> =
 // Disconnect from GitHub
 export const disconnectFromGitHub = async (): Promise<void> => {
   try {
-    trackGitEvent("DISCONNECT_FROM_GITHUB");
+    trackGitEvent("DISCONNECT_FROM_GITHUB", undefined, true);
     await saveToken(null);
     await loadGitHubUserFromToken();
   } catch (error) {
