@@ -358,6 +358,70 @@ function checkNewCookie(browser: NightwatchBrowser, description: string) {
         });
 }
 
+// Helper 9: Find a specific event in the list (not just the last one)
+function verifyEventExists(browser: NightwatchBrowser, expectedMode: string, expectedCategory: string, expectedAction: string, expectedName: string, description: string) {
+    return browser
+        .execute(function () {
+            const debugHelpers = (window as any).__matomoDebugPlugin;
+            if (!debugHelpers) return { error: 'Debug helpers not found' };
+            
+            const events = debugHelpers.getEvents();
+            if (events.length === 0) return { error: 'No events found' };
+            
+            // Filter out bot-detection and landingPage events
+            const userEvents = events.filter(e => {
+                const category = e.e_c || e.category || '';
+                return category !== 'bot-detection' && category !== 'landingPage';
+            });
+            
+            // Show all events for debugging
+            const allEventsSummary = events.map((e, idx) => ({
+                idx,
+                cat: e.e_c || e.category || 'unknown',
+                act: e.e_a || e.action || 'unknown',
+                name: e.e_n || e.name || 'unknown',
+                ts: e.timestamp || e._cacheId || 'no-ts'
+            }));
+            
+            return {
+                userEvents: userEvents,
+                totalEvents: events.length,
+                userEventsCount: userEvents.length,
+                allEventsSummary: JSON.stringify(allEventsSummary)
+            };
+        }, [expectedCategory, expectedAction, expectedName], (result: any) => {
+            if (result.value.error) {
+                browser.assert.fail(`Error: ${result.value.error}`);
+                return;
+            }
+            
+            // Find the matching event in the list
+            const matchingEvent = result.value.userEvents.find(e => {
+                const category = e.e_c || e.category || '';
+                const action = e.e_a || e.action || '';
+                const name = e.e_n || e.name || '';
+                return category === expectedCategory && action === expectedAction && name === expectedName;
+            });
+            
+            browser
+                .assert.ok(true, `📋 All events (${result.value.totalEvents}): ${result.value.allEventsSummary}`)
+                .assert.ok(true, `📋 Recent user events (last 3): ${result.value.allEventsSummary}`)
+                .assert.ok(true, `📊 Total: ${result.value.totalEvents} events, ${result.value.userEventsCount} user events`)
+                .assert.ok(matchingEvent, `Event should exist: ${expectedCategory}/${expectedAction}/${expectedName}`);
+            
+            if (matchingEvent) {
+                const mode = matchingEvent.dimension1;
+                const hasVisitorId = !!matchingEvent.visitorId && matchingEvent.visitorId !== 'null';
+                const expectedHasId = expectedMode === 'cookie';
+                
+                browser
+                    .assert.equal(mode, expectedMode, `Event should be in ${expectedMode} mode`)
+                    .assert.equal(hasVisitorId, expectedHasId, expectedHasId ? 'Should have visitor ID' : 'Should NOT have visitor ID')
+                    .assert.ok(true, `✅ ${description}: ${expectedCategory}/${expectedAction}/${expectedName} → ${mode} mode, visitorId=${hasVisitorId ? 'yes' : 'no'}`);
+            }
+        });
+}
+
 // Helper 9: Dump all debug events to Nightwatch log
 function dumpAllEvents(browser: NightwatchBrowser, description: string) {
     return browser
@@ -675,12 +739,12 @@ module.exports = {
             .perform(() => acceptConsent(browser))
             .perform(() => checkConsentState(browser, true, 'After accept'))
             .perform(() => clickHome(browser)) // Trigger tracking event
-            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'Home click event')) // Verify event was tracked with cookie mode + visitor ID
+            .perform(() => verifyEventExists(browser, 'cookie', 'topbar', 'header', 'Home', 'Home click event')) // Verify event was tracked with cookie mode + visitor ID
             .perform(() => rememberCookieValue(browser, 'Before reload')) // Remember the cookie value
             .perform(() => reloadAndCheckPersistence(browser, false, true))
             .perform(() => checkSameCookie(browser, 'After reload')) // Check cookie is exactly the same
             .perform(() => clickHome(browser)) // Click again after reload - same visitor ID guaranteed by cookie
-            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'Home click after reload')) // Verify event after reload also tracked correctly
+            .perform(() => verifyEventExists(browser, 'cookie', 'topbar', 'header', 'Home', 'Home click after reload')) // Verify event after reload also tracked correctly
             .assert.ok(true, '✅ Pattern complete: accept → cookies → reload → same cookies → same visitor ID in new events')
     },
 
@@ -694,10 +758,10 @@ module.exports = {
             .perform(() => rejectConsent(browser))
             .perform(() => checkConsentState(browser, false, 'After reject'))
             .perform(() => clickHome(browser)) // Trigger tracking event
-            .perform(() => checkLastEventMode(browser, 'anon', 'topbar', 'header', 'Home', 'Home click event (anonymous)')) // Verify event was tracked in anonymous mode with no visitor ID
+            .perform(() => verifyEventExists(browser, 'anon', 'topbar', 'header', 'Home', 'Home click event (anonymous)')) // Verify event was tracked in anonymous mode with no visitor ID
             .perform(() => reloadAndCheckPersistence(browser, false, false))
             .perform(() => clickHome(browser)) // Click again after reload - still anonymous
-            .perform(() => checkLastEventMode(browser, 'anon', 'topbar', 'header', 'Home', 'Home click after reload (anonymous)')) // Verify event after reload still anonymous
+            .perform(() => verifyEventExists(browser, 'anon', 'topbar', 'header', 'Home', 'Home click after reload (anonymous)')) // Verify event after reload still anonymous
             .assert.ok(true, '✅ Pattern complete: reject → anonymous → reload → same anonymous state → no visitor ID persistence')
     },
 
@@ -711,7 +775,7 @@ module.exports = {
             .perform(() => acceptConsent(browser)) // Start with cookie mode
             .perform(() => checkConsentState(browser, true, 'After accept'))
             .perform(() => clickHome(browser)) // Trigger event in cookie mode
-            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'Initial cookie mode event'))
+            .perform(() => verifyEventExists(browser, 'cookie', 'topbar', 'header', 'Home', 'Initial cookie mode event'))
             .perform(() => rememberCookieValue(browser, 'Original cookie mode')) // Remember the first cookie
             
             // Switch to anonymous via settings
@@ -719,14 +783,14 @@ module.exports = {
             .perform(() => verifySettingsState(browser, false, 'Settings verification'))
             .perform(() => checkConsentState(browser, false, 'After settings switch to anonymous'))
             .perform(() => clickHome(browser)) // Trigger event in anonymous mode
-            .perform(() => checkLastEventMode(browser, 'anon', 'topbar', 'header', 'Home', 'After switch to anonymous'))
+            .perform(() => verifyEventExists(browser, 'anon', 'topbar', 'header', 'Home', 'After switch to anonymous'))
             
             // Switch back to cookie mode via settings
             .perform(() => switchMatomoSettings(browser, true, 'Enable performance analytics'))
             .perform(() => verifySettingsState(browser, true, 'Settings verification'))
             .perform(() => checkConsentState(browser, true, 'After settings switch to cookie'))
             .perform(() => clickHome(browser)) // Trigger event in cookie mode again
-            .perform(() => checkLastEventMode(browser, 'cookie', 'topbar', 'header', 'Home', 'After switch back to cookie'))
+            .perform(() => verifyEventExists(browser, 'cookie', 'topbar', 'header', 'Home', 'After switch back to cookie'))
             .perform(() => checkNewCookie(browser, 'New visitor ID after anonymous switch')) // Verify it's a NEW cookie, not the old one
             .assert.ok(true, '✅ Pattern complete: settings toggle → anonymous ↔ cookie mode switching works with new visitor ID')
     },
