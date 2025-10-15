@@ -9,8 +9,6 @@ function getFilePath(file: string): string {
   return name.length > 1 ? `${name[name.length - 1]}` : ''
 }
 
-
-
 const Model: ModelType = {
   namespace: 'remixide',
   state: {
