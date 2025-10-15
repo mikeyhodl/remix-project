@@ -58,7 +58,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [aiMode, setAiMode] = useState<'ask' | 'edit'>('ask')
   const [themeTracker, setThemeTracker] = useState(null)
   const [isMaximized, setIsMaximized] = useState(false)
-
   const historyRef = useRef<HTMLDivElement | null>(null)
   const modelBtnRef = useRef(null)
   const modelSelectorBtnRef = useRef(null)
@@ -693,6 +692,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           sendPrompt={sendPrompt}
           recordFeedback={recordFeedback}
           historyRef={historyRef}
+          theme={themeTracker?.name}
         />
       </section>
       <section id="remix-ai-prompt-area" className="mt-1" style={{ flex: 1 }}
