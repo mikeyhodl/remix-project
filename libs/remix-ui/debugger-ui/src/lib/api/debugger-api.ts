@@ -9,11 +9,12 @@ export const DebuggerApiMixin = (Base) => class extends Base {
 
   initialWeb3: BrowserProvider
   debuggerBackend
+  web3Provider: any
 
   initDebuggerApi () {
     const self = this
     this.web3Provider = {
-      sendAsync (payload, callback) {
+      request (payload) {
         return self.call('web3Provider', 'sendAsync', payload)
       }
     }
