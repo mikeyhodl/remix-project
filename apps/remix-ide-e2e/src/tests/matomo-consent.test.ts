@@ -362,7 +362,7 @@ function checkNewCookie(browser: NightwatchBrowser, description: string) {
 function verifyEventExists(browser: NightwatchBrowser, expectedMode: string, expectedCategory: string, expectedAction: string, expectedName: string, description: string) {
     return browser
         .execute(function () {
-            const debugHelpers = (window as any).__matomoDebugPlugin;
+            const debugHelpers = (window as any).__matomoDebugHelpers;
             if (!debugHelpers) return { error: 'Debug helpers not found' };
             
             const events = debugHelpers.getEvents();
