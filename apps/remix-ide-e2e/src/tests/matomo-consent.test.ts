@@ -395,13 +395,15 @@ function verifyEventExists(browser: NightwatchBrowser, expectedMode: string, exp
                 return;
             }
             
-            // Find the matching event in the list
-            const matchingEvent = result.value.userEvents.find(e => {
+            // Find ALL matching events, then take the LAST one (for mode switching tests)
+            const matchingEvents = result.value.userEvents.filter(e => {
                 const category = e.e_c || e.category || '';
                 const action = e.e_a || e.action || '';
                 const name = e.e_n || e.name || '';
                 return category === expectedCategory && action === expectedAction && name === expectedName;
             });
+            
+            const matchingEvent = matchingEvents.length > 0 ? matchingEvents[matchingEvents.length - 1] : null;
             
             browser
                 .assert.ok(true, `📋 All events (${result.value.totalEvents}): ${result.value.allEventsSummary}`)
