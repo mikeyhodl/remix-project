@@ -198,7 +198,7 @@ export interface IMatomoManager {
 
   // Utility and diagnostic methods
   getDiagnostics(): MatomoDiagnostics;
-  
+
   // Bot detection methods
   getBotDetectionResult(): BotDetectionResult | null;
   isBot(): boolean;
@@ -456,10 +456,10 @@ export class MatomoManager implements IMatomoManager {
     // Determine site ID based on bot detection
     const isBot = this.botDetectionResult?.isBot || false;
     const siteId = getSiteIdForTracking(isBot);
-    
+
     if (siteId !== this.config.siteId) {
       this.log(`🤖 Bot detected - routing to bot tracking site ID: ${siteId} (human site ID: ${this.config.siteId})`);
-      
+
       // Update custom dimensions if bot site has different dimension IDs
       const botDimensions = getDomainCustomDimensions(true);
       if (botDimensions !== this.customDimensions) {
@@ -489,12 +489,12 @@ export class MatomoManager implements IMatomoManager {
 
     // Set bot detection dimension
     if (this.botDetectionResult) {
-      const botTypeValue = this.botDetectionResult.isBot 
+      const botTypeValue = this.botDetectionResult.isBot
         ? this.botDetectionResult.botType || 'unknown-bot'
         : 'human';
       this.log(`Setting bot detection dimension ${this.customDimensions.isBot}: ${botTypeValue} (confidence: ${this.botDetectionResult.confidence})`);
       window._paq.push(['setCustomDimension', this.customDimensions.isBot, botTypeValue]);
-      
+
       // Log bot detection reasons in debug mode
       if (this.botDetectionResult.reasons.length > 0) {
         this.log('Bot detection reasons:', this.botDetectionResult.reasons);
@@ -555,7 +555,7 @@ export class MatomoManager implements IMatomoManager {
   private trackBotDetectionEvent(detection: BotDetectionResult): void {
     const category = 'bot-detection';
     const action = detection.isBot ? 'bot-detected' : 'human-detected';
-    
+
     // Name: Primary detection reason (most important one)
     let name = '';
     if (detection.isBot && detection.reasons.length > 0) {
@@ -588,15 +588,15 @@ export class MatomoManager implements IMatomoManager {
         name = 'human-no-bot-signals';
       }
     }
-    
+
     // Value: encode detection confidence + number of detection signals
     // High confidence = 100, Medium = 50, Low = 10
     // Add number of reasons as bonus (capped at 9)
-    const baseConfidence = detection.confidence === 'high' ? 100 : 
-                          detection.confidence === 'medium' ? 50 : 10;
+    const baseConfidence = detection.confidence === 'high' ? 100 :
+      detection.confidence === 'medium' ? 50 : 10;
     const reasonCount = Math.min(detection.reasons.length, 9);
     const value = baseConfidence + reasonCount;
-    
+
     // Track the event
     window._paq.push([
       'trackEvent',
@@ -605,9 +605,9 @@ export class MatomoManager implements IMatomoManager {
       name,
       value
     ]);
-    
+
     this.log(`📊 Bot detection event tracked: ${action} → ${name} (confidence: ${detection.confidence}, reasons: ${detection.reasons.length}, value: ${value})`);
-    
+
     // Log all reasons for debugging
     if (this.config.debug && detection.reasons.length > 0) {
       this.log(`   Detection reasons:`);
@@ -615,7 +615,7 @@ export class MatomoManager implements IMatomoManager {
         this.log(`     ${i + 1}. ${reason}`);
       });
     }
-    
+
     // Log mouse analysis if available
     if (detection.mouseAnalysis) {
       this.log(`   Mouse: ${detection.mouseAnalysis.movements} movements, likelihood: ${detection.mouseAnalysis.humanLikelihood}`);
@@ -629,14 +629,14 @@ export class MatomoManager implements IMatomoManager {
   private async waitForMouseData(): Promise<void> {
     const delay = this.config.mouseTrackingDelay || 2000;
     this.log(`⏳ Waiting ${delay}ms for mouse movements to determine human/bot status...`);
-    
+
     // Wait for the configured delay
     await new Promise(resolve => setTimeout(resolve, delay));
-    
+
     // Re-run bot detection with mouse tracking data
     this.botDetectionResult = BotDetector.detect(true); // Include mouse analysis
     this.log('✅ Bot detection complete with mouse data:', this.botDetectionResult);
-    
+
     if (this.botDetectionResult.mouseAnalysis) {
       this.log('🖱️ Mouse analysis:', {
         movements: this.botDetectionResult.mouseAnalysis.movements,
@@ -789,11 +789,11 @@ export class MatomoManager implements IMatomoManager {
   async giveConsent(options: { processQueue?: boolean } = {}): Promise<void> {
     this.log('=== GIVING CONSENT ===');
     window._paq.push(['rememberConsentGiven']);
-    
+
     // Update trackingMode dimension from 'pending' to 'cookie' when consent given
     window._paq.push(['setCustomDimension', this.customDimensions.trackingMode, 'cookie']);
     this.log('Updated trackingMode dimension: cookie (consent given)');
-    
+
     this.state.consentGiven = true;
     this.emit('consent-given');
 
@@ -1125,10 +1125,10 @@ export class MatomoManager implements IMatomoManager {
     };
 
     this.log('Debug plugin loaded for E2E testing with enhanced helpers');
-    
+
     // Set E2E marker for debug plugin loaded
     this.setE2EStateMarker('matomo-debug-plugin-loaded');
-    
+
     this.emit('debug-plugin-e2e-ready', helpers);
 
     return helpers;
@@ -1584,7 +1584,7 @@ export class MatomoManager implements IMatomoManager {
   /**
    * Set E2E state marker on DOM for reliable test assertions
    * Similar to 'compilerloaded' pattern - creates empty div with data-id
-   * 
+   *
    * @param markerId - Unique identifier for the state (e.g., 'matomo-initialized')
    */
   private setE2EStateMarker(markerId: string): void {

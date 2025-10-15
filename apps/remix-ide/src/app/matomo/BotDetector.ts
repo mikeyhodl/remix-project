@@ -1,13 +1,13 @@
 /**
  * BotDetector - Comprehensive bot and automation detection utility
- * 
+ *
  * Detects various types of bots including:
  * - Search engine crawlers (Google, Bing, etc.)
  * - Social media bots (Facebook, Twitter, etc.)
  * - Monitoring services (UptimeRobot, Pingdom, etc.)
  * - Headless browsers (Puppeteer, Playwright, Selenium)
  * - AI scrapers (ChatGPT, Claude, etc.)
- * 
+ *
  * Detection methods:
  * 1. User Agent string analysis
  * 2. Browser automation flags (navigator.webdriver)
@@ -41,7 +41,7 @@ export interface MouseBehaviorAnalysis {
 
 /**
  * MouseTracker - Analyzes mouse movement patterns to detect bots
- * 
+ *
  * Tracks:
  * - Movement frequency and speed
  * - Acceleration/deceleration patterns
@@ -70,7 +70,7 @@ class MouseTracker {
 
     this.mouseMoveHandler = (e: MouseEvent) => {
       const now = Date.now();
-      
+
       // Throttle to sampling interval
       const lastMovement = this.movements[this.movements.length - 1];
       if (lastMovement && now - lastMovement.timestamp < this.SAMPLING_INTERVAL) {
@@ -159,7 +159,7 @@ class MouseTracker {
       const distance = Math.sqrt(dx * dx + dy * dy);
       const time = (curr.timestamp - prev.timestamp) / 1000;
       const speed = time > 0 ? distance / time : 0;
-      
+
       speeds.push(speed);
       totalSpeed += speed;
       if (speed > maxSpeed) maxSpeed = speed;
@@ -171,7 +171,7 @@ class MouseTracker {
     let hasAcceleration = false;
     let accelerationChanges = 0;
     const threshold = averageSpeed * 0.3;
-    
+
     for (let i = 1; i < speeds.length; i++) {
       if (Math.abs(speeds[i] - speeds[i - 1]) > threshold) {
         accelerationChanges++;
@@ -230,12 +230,12 @@ class MouseTracker {
       for (let i = 1; i < this.clicks.length; i++) {
         clickIntervals.push(this.clicks[i].timestamp - this.clicks[i - 1].timestamp);
       }
-      
+
       // Check if clicks are too evenly spaced (bot pattern)
       const avgInterval = clickIntervals.reduce((a, b) => a + b, 0) / clickIntervals.length;
-      const intervalVariance = clickIntervals.reduce((sum, interval) => 
+      const intervalVariance = clickIntervals.reduce((sum, interval) =>
         sum + Math.pow(interval - avgInterval, 2), 0) / clickIntervals.length;
-      
+
       if (intervalVariance < 100) {
         // Less than 100ms² variance = too consistent
         suspiciousPatterns.push('robotic-click-timing');
@@ -294,7 +294,7 @@ export class BotDetector {
     /yandexbot/i,
     /sogou/i,
     /exabot/i,
-    
+
     // Social media bots
     /facebookexternalhit/i,
     /twitterbot/i,
@@ -302,21 +302,21 @@ export class BotDetector {
     /pinterest/i,
     /whatsapp/i,
     /telegrambot/i,
-    
+
     // Monitoring services
     /uptimerobot/i,
     /pingdom/i,
     /newrelic/i,
     /gtmetrix/i,
     /lighthouse/i,
-    
+
     // SEO tools
     /ahrefsbot/i,
     /semrushbot/i,
     /mj12bot/i,
     /dotbot/i,
     /screaming frog/i,
-    
+
     // AI scrapers
     /chatgpt-user/i,
     /gptbot/i,
@@ -324,7 +324,7 @@ export class BotDetector {
     /anthropic-ai/i,
     /cohere-ai/i,
     /perplexity/i,
-    
+
     // Generic bot indicators
     /bot/i,
     /crawler/i,
@@ -335,7 +335,7 @@ export class BotDetector {
     /python-requests/i,
     /go-http-client/i,
     /axios/i,
-    
+
     // Headless browsers
     /headlesschrome/i,
     /phantomjs/i,
@@ -416,9 +416,9 @@ export class BotDetector {
         this.mouseTracker = new MouseTracker();
         this.mouseTracker.start();
       }
-      
+
       mouseAnalysis = this.mouseTracker.analyze();
-      
+
       // Adjust bot detection based on mouse behavior
       if (mouseAnalysis.hasMoved && mouseAnalysis.humanLikelihood === 'high') {
         // Strong evidence of human behavior
@@ -544,7 +544,7 @@ export class BotDetector {
         if (debugInfo) {
           const vendor = (gl as any).getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
           const renderer = (gl as any).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-          
+
           // Headless browsers often have 'SwiftShader' or generic renderers
           if (vendor?.includes('Google') && renderer?.includes('SwiftShader')) {
             isHeadless = true;
@@ -602,7 +602,7 @@ export class BotDetector {
 
     // Check for touch support (many bots don't emulate this properly)
     const isMobileUA = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (!('ontouchstart' in window) && 
+    if (!('ontouchstart' in window) &&
         !('maxTouchPoints' in navigator) &&
         isMobileUA) {
       missing.push('touch-support-mobile');

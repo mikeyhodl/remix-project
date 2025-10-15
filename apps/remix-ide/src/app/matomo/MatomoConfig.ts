@@ -106,25 +106,25 @@ export const MATOMO_BOT_CUSTOM_DIMENSIONS: BotCustomDimensionsConfig = {
   'alpha.remix.live': null, // TODO: Configure if bot site has different dimension IDs
   'beta.remix.live': null, // TODO: Configure if bot site has different dimension IDs
   'remix.ethereum.org': {
-    trackingMode: 1, 
-    clickAction: 3, 
-    isBot: 2 
+    trackingMode: 1,
+    clickAction: 3,
+    isBot: 2
   },
   'localhost': {
-    trackingMode: 1, 
-    clickAction: 3, 
+    trackingMode: 1,
+    clickAction: 3,
     isBot: 2
   },
   '127.0.0.1': {
-    trackingMode: 1, 
-    clickAction: 3, 
+    trackingMode: 1,
+    clickAction: 3,
     isBot: 2
   }
 };
 
 /**
  * Get the appropriate site ID for the current domain and bot status
- * 
+ *
  * @param isBot - Whether the visitor is detected as a bot
  * @returns Site ID to use for tracking
  */
@@ -142,7 +142,7 @@ export function getSiteIdForTracking(isBot: boolean): number {
 
 /**
  * Get custom dimensions configuration for current domain
- * 
+ *
  * @param isBot - Whether the visitor is detected as a bot (to use bot-specific dimensions if configured)
  */
 export function getDomainCustomDimensions(isBot: boolean = false): DomainCustomDimensions {

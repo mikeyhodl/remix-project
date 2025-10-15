@@ -167,7 +167,13 @@ export class ExecutionContext {
   }
 
   async executionContextChange (value, endPointUrl, confirmCb, infoCb, cb) {
-    track(UdappEvents.providerChanged(value.context))
+    // Track provider change event
+    track({
+      category: 'udapp',
+      action: 'providerChanged',
+      name: value.context,
+      isClick: false
+    })
     const context = value.context
     if (!cb) cb = () => { /* Do nothing. */ }
     if (!confirmCb) confirmCb = () => { /* Do nothing. */ }

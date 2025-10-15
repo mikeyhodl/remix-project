@@ -12,7 +12,6 @@ import { fileSystemUtility, migrationTestData } from '../files/filesystems/fileS
 import './styles/preload.css'
 import isElectron from 'is-electron'
 
-
 // _paq.push(['trackEvent', 'App', 'Preload', 'start'])
 
 interface PreloadProps {

@@ -4,7 +4,6 @@ import React from 'react' //eslint-disable-line
 import { AnalysisTab, RemixUiStaticAnalyserReducerActionType, RemixUiStaticAnalyserState, SolHintReport, SlitherAnalysisResults } from '../../staticanalyser'
 import { RemixUiStaticAnalyserProps } from '@remix-ui/static-analyser'
 
-
 /**
  *
  * @param analysisModule { AnalysisTab } AnalysisTab ViewPlugin

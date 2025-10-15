@@ -74,7 +74,7 @@ function HomeTabGetStarted({ plugin }: HomeTabGetStartedProps) {
   const themeFilter = useContext(ThemeContext)
   const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
-  
+
   // Component-specific tracker with default type, but allows overrides
   const trackMatomoEvent = <T extends MatomoEvent = HomeTabEvent>(event: T) => {
     baseTrackEvent?.<T>(event)

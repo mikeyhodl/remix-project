@@ -259,11 +259,11 @@ export const TabsUI = (props: TabsUIProps) => {
     await props.plugin.call('menuicons', 'select', 'solidity')
     try {
       await props.plugin.call('solidity', 'compile', active().substr(active().indexOf('/') + 1, active().length))
-      trackMatomoEvent?.({ 
-        category: 'editor', 
-        action: 'publishFromEditor', 
-        name: storageType, 
-        isClick: true 
+      trackMatomoEvent?.({
+        category: 'editor',
+        action: 'publishFromEditor',
+        name: storageType,
+        isClick: true
       })
 
       setTimeout(async () => {
@@ -321,11 +321,11 @@ export const TabsUI = (props: TabsUIProps) => {
 })()`
 
         await props.plugin.call('fileManager', 'writeFile', newScriptPath, boilerplateContent)
-        trackMatomoEvent?.({ 
-          category: 'editor', 
-          action: 'runScript', 
-          name: 'new_script', 
-          isClick: true 
+        trackMatomoEvent?.({
+          category: 'editor',
+          action: 'runScript',
+          name: 'new_script',
+          isClick: true
         })
       } catch (e) {
         console.error(e)
@@ -356,11 +356,11 @@ export const TabsUI = (props: TabsUIProps) => {
       await props.plugin.call('scriptRunnerBridge', 'execute', content, path)
 
       setCompileState('compiled')
-      trackMatomoEvent?.({ 
-        category: 'editor', 
-        action: 'runScriptWithEnv', 
-        name: runnerKey, 
-        isClick: true 
+      trackMatomoEvent?.({
+        category: 'editor',
+        action: 'runScriptWithEnv',
+        name: runnerKey,
+        isClick: true
       })
     } catch (e) {
       console.error(e)
@@ -442,11 +442,11 @@ export const TabsUI = (props: TabsUIProps) => {
   const handleCompileClick = async () => {
     setCompileState('compiling')
     console.log('Compiling from editor')
-    trackMatomoEvent?.({ 
-      category: 'editor', 
-      action: 'clickRunFromEditor', 
-      name: tabsState.currentExt, 
-      isClick: true 
+    trackMatomoEvent?.({
+      category: 'editor',
+      action: 'clickRunFromEditor',
+      name: tabsState.currentExt,
+      isClick: true
     })
 
     try {

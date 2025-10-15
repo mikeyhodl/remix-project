@@ -1,6 +1,5 @@
 
 import { fileStatusResult, gitActionDispatch, gitState } from "../types"
-import { gitMatomoEventTypes } from "../types"
 import { fileDecoration, fileDecorationType } from "@remix-ui/file-decorators"
 import { removeSlash } from "../utils"
 import { getFilesByStatus } from "./fileHelpers"
@@ -103,69 +102,10 @@ export const openFolderInSameWindow = async (path: string) => {
   await plugin.call('fs', 'openFolderInSameWindow', path)
 }
 
-import { trackMatomoEvent, GitEvent } from '@remix-api';
-
 export const openCloneDialog = async () => {
   plugin.call('filePanel', 'clone')
-}
-export const sendToMatomo = async (event: gitMatomoEventTypes, args?: string[]) => {
-  // Convert gitMatomoEventTypes to object-based Matomo event
-  const eventName = args && args.length > 0 ? args[0] : undefined;
-  const eventValue = args && args.length > 1 ? args[1] : undefined;
-  
-  // Map enum values to GitEvent actions
-  let action: GitEvent['action'];
-  switch (event) {
-    case gitMatomoEventTypes.INIT:
-      action = 'INIT';
-      break;
-    case gitMatomoEventTypes.COMMIT:
-      action = 'COMMIT';
-      break;
-    case gitMatomoEventTypes.PUSH:
-      action = 'PUSH';
-      break;
-    case gitMatomoEventTypes.PULL:
-      action = 'PULL';
-      break;
-    case gitMatomoEventTypes.CLONE:
-      action = 'CLONE';
-      break;
-    case gitMatomoEventTypes.CHECKOUT:
-    case gitMatomoEventTypes.CHECKOUT_LOCAL_BRANCH:
-    case gitMatomoEventTypes.CHECKOUT_REMOTE_BRANCH:
-      action = 'CHECKOUT';
-      break;
-    case gitMatomoEventTypes.BRANCH:
-    case gitMatomoEventTypes.CREATEBRANCH:
-      action = 'BRANCH';
-      break;
-    case gitMatomoEventTypes.OPENPANEL:
-      action = 'OPEN_PANEL';
-      break;
-    case gitMatomoEventTypes.CONNECTTOGITHUB:
-    case gitMatomoEventTypes.CONNECTTOGITHUBBUTTON:
-    case gitMatomoEventTypes.CONNECTTOGITHUBSUCCESS:
-      action = 'CONNECT_TO_GITHUB';
-      break;
-    default:
-      // For other events, use a generic git action
-      action = 'INIT'; // Default fallback
-      break;
-  }
-
-  const matomoEvent: GitEvent = {
-    category: 'git',
-    action: action,
-    name: eventName,
-    value: eventValue,
-    isClick: true // Git actions are typically user-initiated clicks
-  };
-  
-  plugin && trackMatomoEvent(plugin, matomoEvent);
 }
 
 export const loginWithGitHub = async () => {
   plugin && await plugin.call('githubAuthHandler', 'login');
 }
-
