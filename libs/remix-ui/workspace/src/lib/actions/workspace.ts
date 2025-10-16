@@ -142,7 +142,7 @@ export const createWorkspace = async (
   createCommit: boolean = true
 ) => {
   console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit })
-  return
+  // return
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
       await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts)
@@ -445,6 +445,11 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
 
       await trackMatomoEventAsync(plugin, { category: 'Workspace', action: 'switchWorkspace', name: template, isClick: false })
       // @ts-ignore
+      if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
+        const f = await templateWithContent[template](opts, 'testing Contract Name')
+        console.log(`Testing the OpenZeppelin Templates ${template}`, f)
+        return
+      }
       const files = await templateWithContent[template](opts, plugin)
       for (const file in files) {
         try {

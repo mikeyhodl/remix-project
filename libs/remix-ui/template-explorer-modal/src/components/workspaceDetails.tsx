@@ -10,7 +10,7 @@ interface WorkspaceDetailsProps {
 }
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
-  const { state, dispatch, makeWorkspace } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade } = useContext(TemplateExplorerContext)
 
   return (
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
@@ -52,7 +52,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
 
         <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
           console.log('about to create workspace')
-          await makeWorkspace.createWorkspace({
+          await facade.createWorkspace({
             workspaceName: state.workspaceTemplateChosen.displayName,
             workspaceTemplateName: state.workspaceTemplateChosen.value,
             opts: { },

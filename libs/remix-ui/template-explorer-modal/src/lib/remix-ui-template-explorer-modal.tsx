@@ -6,7 +6,7 @@ import { ContractWizard } from '../components/contract-wizard'
 import { WorkspaceDetails } from '../components/workspaceDetails'
 import { initialState, templateExplorerReducer } from '../../reducers/template-explorer-reducer'
 import { TemplateExplorerBody } from '../components/template-explorer-body'
-import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
+import { TemplateExplorerWizardAction, TemplateExplorerWizardState } from '../../types/template-explorer-types'
 import { GenericWorkspaceTemplate } from '../components/genericWorkspaceTemplate'
 import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
 
@@ -18,7 +18,7 @@ export interface RemixUiTemplateExplorerModalProps {
 
 export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModalProps) {
 
-  const { plugin, setSearchTerm, state, dispatch } = useContext(TemplateExplorerContext)
+  const { plugin, setSearchTerm, state, dispatch, facade } = useContext(TemplateExplorerContext)
 
   return (
     <section>
@@ -36,10 +36,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div> : <div>
               <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
                 <button className="btn" onClick={() => {
-                  dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'reset' })
-                  dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: '' })
-                  dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: '' })
-                  dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' })
+                  facade.resetExplorerWizard(dispatch as any)
                 }}>
                   <i className="fa-solid fa-chevron-left me-2"></i>
                   Template List
@@ -48,12 +45,6 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div>}
             <button className="template-explorer-modal-close-button" onClick={() => props.dispatch({ type: appActionTypes.showGenericModal, payload: false })}>
               <i className="fa-solid fa-xmark text-dark"></i>
-            </button>
-            <button className="template-explorer-modal-close-button" onClick={async () => {
-              const result = await props.plugin.call('remix-templates', 'getTemplate', 'remixDefault')
-              console.log('what is result', result)
-            }}>
-              <i className="fa-solid fa-plus text-dark"></i>
             </button>
           </div>
           {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <TemplateExplorerBody plugin={props.plugin} /> : null}
@@ -66,3 +57,4 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
     </section>
   )
 }
+

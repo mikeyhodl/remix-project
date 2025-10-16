@@ -1,12 +1,18 @@
-import React from 'react'
+import React, { useContext } from 'react'
+import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 
 export function TopCards() {
+  const { state, dispatch } = useContext(TemplateExplorerContext)
+
   return (
     <div className="title">
       <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
         <div
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {}}
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'generic' })
+          }}
           style={{
             borderRadius: '10px',
             height: '76px',
@@ -31,7 +37,9 @@ export function TopCards() {
         </div>
         <div
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {}}
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
+          }}
           style={{
             borderRadius: '10px',
             height: '76px',
@@ -56,7 +64,9 @@ export function TopCards() {
         </div>
         <div
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {}}
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'wizard' })
+          }}
           style={{
             borderRadius: '10px',
             height: '76px',
@@ -81,7 +91,9 @@ export function TopCards() {
         </div>
         <div
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {}}
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'import' })
+          }}
           style={{
             borderRadius: '10px',
             height: '76px',

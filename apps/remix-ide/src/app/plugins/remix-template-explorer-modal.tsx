@@ -39,7 +39,6 @@ export class TemplateExplorerModalPlugin extends ViewPlugin {
   }
 
   async onActivation(): Promise<void> {
-    console.trace()
     this.on('theme', 'themeChanged', (theme: any) => {
       this.theme = theme
     })

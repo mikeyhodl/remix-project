@@ -27,6 +27,12 @@ export class TemplatesPlugin extends Plugin {
     const files = await templateWithContent[template](opts, this)
     return files
   }
+
+  async getTemplateReadMeFile(templateName: string) {
+    const files = await templateWithContent[templateName]({}, this)
+    const readMe = files['README.md'] || files['README.txt']
+    return readMe
+  }
   // electron only method
 
   async addToCurrentElectronFolder(template: string, opts?: any) {

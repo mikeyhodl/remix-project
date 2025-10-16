@@ -29,7 +29,7 @@ const defaultStrategy: ContractTypeStrategy = {
 
 export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
-  const { state, dispatch, theme, makeWorkspace } = useContext(TemplateExplorerContext)
+  const { state, dispatch, theme, facade } = useContext(TemplateExplorerContext)
   const strategy = state
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
@@ -70,7 +70,7 @@ export function ContractWizard () {
       <div className="row g-3">
         <div className="col-12 d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            {showEditModal ? <input className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span className={`fw-semibold fs-6 ${theme.currentTheme().name === 'Light' ? 'text-dark' : 'text-light'}`}>
+            {showEditModal ? <input className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span className={`fw-semibold fs-6 ${theme.currentTheme().name === 'Light' ? 'text-dark' : 'text-white'}`}>
               {state.tokenName}
             </span>}
             <i className="fas fa-edit" onClick={() => setShowEditModal(true)}></i>
@@ -165,7 +165,7 @@ export function ContractWizard () {
 
             <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
               console.log('about to create workspace')
-              await makeWorkspace.createWorkspace({
+              await facade.createWorkspace({
                 workspaceName: state.workspaceTemplateChosen.displayName,
                 workspaceTemplateName: state.workspaceTemplateChosen.value,
                 opts: { mintable: state.contractOptions.mintable, burnable: state.contractOptions.burnable, pausable: state.contractOptions.pausable, uups: state.contractUpgradability.uups, transparent: state.contractUpgradability.transparent },

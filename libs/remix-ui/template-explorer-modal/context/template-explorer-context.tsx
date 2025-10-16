@@ -15,7 +15,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const appContext = useContext(AppContext)
   const { plugin } = props
-  const makeWorkspace = new TemplateExplorerModalFacade(plugin)
+  const facade = new TemplateExplorerModalFacade(plugin)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme: plugin.theme, makeWorkspace, templateCategoryStrategy }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme: plugin.theme, facade, templateCategoryStrategy }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

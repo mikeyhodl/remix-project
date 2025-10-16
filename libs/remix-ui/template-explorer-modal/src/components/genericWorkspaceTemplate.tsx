@@ -5,7 +5,7 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 
 export function GenericWorkspaceTemplate() {
 
-  const { state, dispatch, makeWorkspace } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade } = useContext(TemplateExplorerContext)
 
   return (
     <section className="mx-3 p-2">
@@ -28,7 +28,7 @@ export function GenericWorkspaceTemplate() {
 
           <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
             console.log('about to create workspace generic')
-            await makeWorkspace.createWorkspace({
+            await facade.createWorkspace({
               workspaceName: state.workspaceTemplateChosen.displayName,
               workspaceTemplateName: state.workspaceTemplateChosen.value,
               opts: { },

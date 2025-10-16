@@ -2,11 +2,11 @@ import isElectron from 'is-electron'
 import React, { useContext, useEffect } from 'react'
 import { TemplateCategory, TemplateExplorerProps, TemplateExplorerWizardAction, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { CookbookStrategy, GenAiStrategy, GenericStrategy, RemixDefaultStrategy, WizardStrategy } from '../../stategies/templateCategoryStrategy'
+import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, addRecentTemplate, plugin, dispatch, state, templateCategoryStrategy } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
 
   return (
     <div className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
@@ -55,29 +55,7 @@ export function TemplateExplorer() {
                     flexDirection: 'column'
                   }}
                   onClick={() => {
-                    dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: item })
-                    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
-                    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.value })
-                    if (template.name.toLowerCase() === 'generic' && !item.value.toLowerCase().includes('remixaitemplate') && item.value !== 'remixDefault') {
-                      templateCategoryStrategy.setStrategy(new GenericStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    } else if (template.name.toLowerCase() === 'generic' && item.value.toLowerCase().includes('remixaitemplate')) {
-                      templateCategoryStrategy.setStrategy(new GenAiStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    } else if (template.name.toLowerCase() === 'generic' && item.value === 'remixDefault') {
-                      console.log('remixdefault')
-                      templateCategoryStrategy.setStrategy(new RemixDefaultStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    } else if (template.name.toLowerCase().includes('zeppelin')) {
-                      templateCategoryStrategy.setStrategy(new WizardStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    } else if (template.name.toLowerCase().includes('cookbook')) {
-                      templateCategoryStrategy.setStrategy(new CookbookStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    } else if (template.name.toLowerCase() !== 'generic' && template.name.toLowerCase() !== 'zeppelin' && template.name.toLowerCase() !== 'cookbook') {
-                      templateCategoryStrategy.setStrategy(new GenericStrategy())
-                      templateCategoryStrategy.switchScreen(dispatch)
-                    }
+                    facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'

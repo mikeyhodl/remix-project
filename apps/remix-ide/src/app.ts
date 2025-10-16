@@ -535,7 +535,7 @@ class AppComponent {
 
     const bottomBarPanel = new BottomBarPanel()
 
-    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, this.topBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
+    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
 
     // CONTENT VIEWS & DEFAULT PLUGINS
     const openZeppelinProxy = new OpenZeppelinProxy(blockchain)
@@ -577,7 +577,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder
     ])
-    this.engine.register([templateExplorerModal])
+    this.engine.register([templateExplorerModal, this.topBar])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },
@@ -616,7 +616,7 @@ class AppComponent {
     ])
 
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
-    await this.appManager.activatePlugin(['topbar'])
+    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal'])
     await this.appManager.activatePlugin(['statusBar'])
     // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])

@@ -55,7 +55,7 @@ export interface TemplateExplorerContextType {
   dispatch: (action: any) => void
   state: TemplateExplorerWizardState
   theme: any
-  makeWorkspace: TemplateExplorerModalFacade
+  facade: TemplateExplorerModalFacade
   templateCategoryStrategy: TemplateCategoryStrategy
 }
 

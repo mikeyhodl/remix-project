@@ -6,7 +6,7 @@ pragma solidity ^0.8.27;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract ${contractName} is ERC20 {
-    constructor() ERC20("MyToken", "MTK") {}
+    constructor() ERC20("${contractName}", "MTK") {}
 }
 `
 
@@ -20,7 +20,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC20, Ownable {
     constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -42,14 +42,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
@@ -98,7 +98,7 @@ import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/toke
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
@@ -112,7 +112,7 @@ contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, E
         public
         initializer
     {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __AccessControl_init();
@@ -166,14 +166,14 @@ import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/toke
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __AccessManaged_init(initialAuthority);
@@ -221,7 +221,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC20, ERC20Burnable, Ownable {
     constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -243,7 +243,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
     constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 
@@ -281,7 +281,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract ${contractName} is ERC20, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    constructor(address defaultAdmin, address minter) ERC20("MyToken", "MTK") {
+    constructor(address defaultAdmin, address minter) ERC20("${contractName}", "MTK") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
     }
@@ -304,7 +304,7 @@ import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 contract ${contractName} is ERC20, ERC20Burnable, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    constructor(address defaultAdmin, address minter) ERC20("MyToken", "MTK") {
+    constructor(address defaultAdmin, address minter) ERC20("${contractName}", "MTK") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
     }
@@ -330,7 +330,7 @@ contract ${contractName} is ERC20, ERC20Burnable, ERC20Pausable, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(address defaultAdmin, address pauser, address minter)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
     {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, pauser);
@@ -370,7 +370,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract ${contractName} is ERC20, AccessManaged {
     constructor(address initialAuthority)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         AccessManaged(initialAuthority)
     {}
 
@@ -391,7 +391,7 @@ import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 
 contract ${contractName} is ERC20, ERC20Burnable, AccessManaged {
     constructor(address initialAuthority)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         AccessManaged(initialAuthority)
     {}
 
@@ -413,7 +413,7 @@ import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 
 contract ${contractName} is ERC20, ERC20Burnable, ERC20Pausable, AccessManaged {
     constructor(address initialAuthority)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         AccessManaged(initialAuthority)
     {}
 
@@ -455,7 +455,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable {
     }
 
     function initialize() public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
     }
 }
 `
@@ -476,7 +476,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init(${contractName}, "MTK");
         __AccessManaged_init(initialAuthority);
     }
 
@@ -503,7 +503,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init(${contractName}, "MTK");
         __ERC20Burnable_init();
         __AccessManaged_init(initialAuthority);
     }
@@ -532,7 +532,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __AccessManaged_init(initialAuthority);
@@ -580,7 +580,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __AccessManaged_init(initialAuthority);
@@ -634,7 +634,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
@@ -669,7 +669,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
     }
@@ -703,7 +703,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgrad
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
     }
@@ -735,7 +735,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessControlUpgrad
     }
 
     function initialize(address defaultAdmin, address upgrader) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
@@ -774,7 +774,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessControlUpgrad
         public
         initializer
     {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
@@ -819,7 +819,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
         public
         initializer
     {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -867,7 +867,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
         public
         initializer
     {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __AccessControl_init();
@@ -925,7 +925,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
     }
@@ -955,7 +955,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init(${contractName}, "MTK");
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
     }
@@ -990,7 +990,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1027,7 +1027,7 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
@@ -1074,14 +1074,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1111,14 +1111,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1144,14 +1144,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1192,9 +1192,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MyToken is ERC20, ERC20Burnable, Ownable {
+contract ${contractName} is ERC20, ERC20Burnable, Ownable {
     constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+        ERC20("${contractName}", "MTK")
         Ownable(initialOwner)
     {}
 }
@@ -1211,14 +1211,14 @@ import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/toke
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __Ownable_init(initialOwner);
     }
@@ -1236,14 +1236,14 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, AccessManagedUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, AccessManagedUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Burnable_init();
         __AccessManaged_init(initialAuthority);
     }
@@ -1260,9 +1260,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MyToken is ERC20, ERC20Burnable, Ownable {
+contract ${contractName} is ERC20, ERC20Burnable, Ownable {
     constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+        ERC20(${contractName}, "MTK")
         Ownable(initialOwner)
     {}
 
@@ -1284,14 +1284,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
@@ -1333,7 +1333,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -1342,7 +1342,7 @@ contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, A
     }
 
     function initialize(address defaultAdmin, address pauser) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Pausable_init();
         __AccessControl_init();
 
@@ -1381,7 +1381,7 @@ import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/toke
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -1394,7 +1394,7 @@ contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, A
         public
         initializer
     {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init(${contractName}, "MTK");
         __ERC20Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -1441,14 +1441,14 @@ import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/toke
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MyToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC20_init("MyToken", "MTK");
+        __ERC20_init("${contractName}", "MTK");
         __ERC20Pausable_init();
         __AccessManaged_init(initialAuthority);
         __UUPSUpgradeable_init();
