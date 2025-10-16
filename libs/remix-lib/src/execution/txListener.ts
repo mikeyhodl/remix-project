@@ -94,7 +94,7 @@ export class TxListener {
       // in web3 mode && listen remix txs only
       if (!this._isListening) return // we don't listen
       if (this._loopId) return // we seems to already listen on a "web3" network
-      this.executionContext.web3().eth.getTransaction(txResult.transactionHash).then(async tx=>{
+      this.executionContext.web3().getTransaction(txResult.transactionHash).then(async tx=>{
         let execResult
         if (this.executionContext.isVM()) {
           execResult = await this.executionContext.web3().remix.getExecutionResultFromSimulator(txResult.transactionHash)
