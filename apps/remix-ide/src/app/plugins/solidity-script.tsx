@@ -87,7 +87,7 @@ export class SolidityScript extends Plugin {
     }
     let receipt
     try {
-      receipt = await web3.eth.sendTransaction(tx, null, { checkRevertBeforeSending: false, ignoreGasPricing: true })
+      receipt = await web3.sendTransaction(tx)
     } catch (e) {
       this.call('terminal', 'logHtml', e.message)
       return
@@ -101,13 +101,13 @@ export class SolidityScript extends Plugin {
     let receiptCall
 
     try {
-      receiptCall = await web3.eth.sendTransaction(tx, null, { checkRevertBeforeSending: false, ignoreGasPricing: true })
+      receiptCall = await web3.sendTransaction(tx)
     } catch (e) {
       this.call('terminal', 'logHtml', e.message)
       return
     }
 
-    const hhlogs = await web3.remix.getHHLogsForTx(receiptCall.transactionHash)
+    const hhlogs = await web3.remix.getHHLogsForTx(receiptCall.hash)
 
     if (hhlogs && hhlogs.length) {
       const finalLogs = (

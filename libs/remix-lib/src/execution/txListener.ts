@@ -203,7 +203,7 @@ export class TxListener {
 
   async _manageBlock (blockNumber) {
     try {
-      const result = await this.executionContext.web3().eth.getBlock(blockNumber, true)
+      const result = await this.executionContext.web3().getBlock(blockNumber, true)
       return await this._newBlock(Object.assign({ type: 'web3' }, result))
     } catch (e) {}
   }
@@ -312,7 +312,8 @@ export class TxListener {
       return
     }
     const abi = contract.object.abi
-    const inputData = tx.data.replace('0x', '')
+    const txInput = tx.data || tx.input
+    const inputData = txInput.replace('0x', '')
     if (!isCtor) {
       const methodIdentifiers = contract.object.evm.methodIdentifiers
       for (const fn in methodIdentifiers) {

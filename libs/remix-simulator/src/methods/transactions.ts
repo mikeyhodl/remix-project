@@ -145,7 +145,7 @@ export class Transactions {
   }
 
   eth_getTransactionReceipt (payload, cb) {
-    this.vmContext.web3().eth.getTransactionReceipt(payload.params[0], (error, receipt) => {
+    this.vmContext.web3().getTransactionReceipt(payload.params[0], (error, receipt) => {
       if (error) {
         return cb(error)
       }
@@ -217,7 +217,7 @@ export class Transactions {
   eth_getCode (payload, cb) {
     const address = payload.params[0]
 
-    this.vmContext.web3().eth.getCode(address, (error, result) => {
+    this.vmContext.web3().getCode(address, (error, result) => {
       if (error) {
         console.dir('error getting code')
         console.dir(error)
@@ -306,7 +306,7 @@ export class Transactions {
   eth_getTransactionByHash (payload, cb) {
     const address = payload.params[0]
 
-    this.vmContext.web3().eth.getTransactionReceipt(address, (error, receipt) => {
+    this.vmContext.web3().getTransactionReceipt(address, (error, receipt) => {
       if (error) {
         return cb(error)
       }
@@ -354,7 +354,7 @@ export class Transactions {
     const txBlock = this.vmContext.blocks[payload.params[0]]
     const txHash = bytesToHex(txBlock.transactions[toNumber(txIndex) as number].hash())
 
-    this.vmContext.web3().eth.getTransactionReceipt(txHash, (error, receipt) => {
+    this.vmContext.web3().getTransactionReceipt(txHash, (error, receipt) => {
       if (error) {
         return cb(error)
       }
@@ -399,7 +399,7 @@ export class Transactions {
     const txBlock = this.vmContext.blocks[payload.params[0]]
     const txHash = bytesToHex(txBlock.transactions[toNumber(txIndex) as number].hash())
 
-    this.vmContext.web3().eth.getTransactionReceipt(txHash, (error, receipt) => {
+    this.vmContext.web3().getTransactionReceipt(txHash, (error, receipt) => {
       if (error) {
         return cb(error)
       }

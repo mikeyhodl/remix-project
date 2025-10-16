@@ -191,7 +191,7 @@ export class Blocks {
   }
 
   eth_getStorageAt (payload, cb) {
-    return this.vmContext.web3().eth.getStorageAt(
+    return this.vmContext.web3().getStorageAt(
       payload.params[0],
       payload.params[1],
       payload.params[2],
