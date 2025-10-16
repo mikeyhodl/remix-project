@@ -1006,52 +1006,23 @@ contract CommentedImports is ERC20 {
                 browser.assert.ok(true, 'Contract should compile successfully with Chainlink and transitive multi-version OpenZeppelin dependencies')
             })
             // Check build info to verify actual sources sent to compiler
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItemartifacts"]', 60000)
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItemartifacts/build-info"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItemartifacts/build-info"]')
-            .pause(1000)
-            // Click any .json file in the build-info directory using XPath
-            .useXpath()
-            .waitForElementVisible('//li[starts-with(@data-id, "treeViewLitreeViewItemartifacts/build-info/") and substring(@data-id, string-length(@data-id) - 4) = ".json"]', 10000)
-            .click('//li[starts-with(@data-id, "treeViewLitreeViewItemartifacts/build-info/") and substring(@data-id, string-length(@data-id) - 4) = ".json"]')
-            .useCss()
-            .pause(2000)
-            .getEditorValue((content) => {
-                try {
-                    const buildInfo = JSON.parse(content)
-                        
-                    const sources = buildInfo.input.sources
-                    const sourceFiles = Object.keys(sources)
-                    
-                    // Check for key OpenZeppelin version indicators that prove correct loading
-                    // 1. Look for versioned path with v4.8.x content
-                    const ozV4VersionedPath = sourceFiles.find(file => 
-                        file.includes('@openzeppelin/contracts@4.8.3/utils/Address.sol') && 
-                        sources[file].content.includes('4.8.0')
-                    )
-                    browser.assert.ok(!!ozV4VersionedPath, 'Should find OpenZeppelin v4.8.x Address.sol with version comment')
-                    
-                    // 2. Look for non-versioned path but with v4.8.0 content 
-                    const ozV4NonVersionedPath = sourceFiles.find(file => 
-                        file.includes('@openzeppelin/contracts@4.8.3/utils/structs/EnumerableSet.sol') 
-                         && sources[file].content.includes('4.8.0')
-                    )
-
-                    browser.assert.ok(!!ozV4NonVersionedPath, 'Should find OpenZeppelin EnumerableSet.sol with v4.8.0 comment')
-                    
-                    // 3. Look for IERC165 with v4.4.1 version indicator
-                    const ozV4IERC165Path = sourceFiles.find(file => 
-                        file.includes('@openzeppelin/contracts@5.0.2/utils/introspection/IERC165.sol') &&
-                        sources[file].content.includes('5.0.0')
-                    )
-                    browser.assert.ok(!!ozV4IERC165Path, 'Should find OpenZeppelin IERC165.sol with v4.4.1 comment')
-                    
-                    browser.assert.ok(true, 'OpenZeppelin contracts loaded correctly with proper version indicators')
-                    
-                } catch (e) {
-                    browser.assert.fail('Build info should be valid JSON: ' + e.message)
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.8.3/utils/Address.sol',
+                    versionComment: '4.8.0',
+                    description: 'Should find OpenZeppelin v4.8.x Address.sol with version comment'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@4.8.3/utils/structs/EnumerableSet.sol',
+                    versionComment: '4.8.0',
+                    description: 'Should find OpenZeppelin EnumerableSet.sol with v4.8.0 comment'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/utils/introspection/IERC165.sol',
+                    versionComment: '5.0.0',
+                    description: 'Should find OpenZeppelin IERC165.sol with v5.0.0 comment'
                 }
-            })
+            ])
     },
 
 }
