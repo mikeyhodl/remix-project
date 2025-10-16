@@ -59,12 +59,6 @@ export class VmProxy {
     this.previousDepth = 0
     this.incr = 0
     this.debug = {}
-    this.getCode = (address, cb) => this.getCode(address, cb)
-    this.getTransaction = (txHash, cb) => this.getTransaction(txHash, cb)
-    this.getTransactionReceipt = (txHash, cb) => this.getTransactionReceipt(txHash, cb)
-    this.getTransactionFromBlock = (blockNumber, txIndex, cb) => this.getTransactionFromBlock(blockNumber, txIndex, cb)
-    this.getBlockNumber = (cb) => this.getBlockNumber(cb)
-    this.getStorageAt = (address: string, position: string, blockNumber: string, cb) => this.getStorageAt(address, position, blockNumber, cb)
     this.debug.traceTransaction = (txHash, options, cb) => this.traceTransaction(txHash, options, cb)
     this.debug.storageRangeAt = (blockNumber, txIndex, address, start, maxLength, cb) => this.storageRangeAt(blockNumber, txIndex, address, start, maxLength, cb)
     this.debug.preimage = (hashedKey, cb) => this.preimage(hashedKey, cb)
