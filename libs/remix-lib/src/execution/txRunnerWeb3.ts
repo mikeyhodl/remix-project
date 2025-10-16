@@ -117,7 +117,7 @@ export class TxRunnerWeb3 {
           const { txHash, contractAddress } = await this.sendUserOp(tx, network.id)
           cb(null, txHash, isCreation, true, contractAddress)
         } else {
-          const res = await (await this.getWeb3().getSigner()).sendTransaction(tx)
+          const res = await (await this.getWeb3().getSigner(tx.from)).sendTransaction(tx)
           cb(null, res.hash, isCreation, false, null)
         }
       } catch (e) {
