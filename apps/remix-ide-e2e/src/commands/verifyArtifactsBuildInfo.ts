@@ -23,7 +23,7 @@ function verifyBuildInfo (browser: NightwatchBrowser, versionChecks: BuildInfoVe
   browser
     .waitForElementVisible('*[data-id="treeViewDivDraggableItemartifacts"]', 60000)
     // Expand all folders in artifacts to ensure build-info is visible
-    .expandAllFolders()
+    .expandAllFolders('artifacts')
     .waitForElementVisible('*[data-id="treeViewDivDraggableItemartifacts/build-info"]', 60000)
     // Click any .json file in the build-info directory using XPath
     .pause(1000)

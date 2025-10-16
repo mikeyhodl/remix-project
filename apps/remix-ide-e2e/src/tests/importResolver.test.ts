@@ -785,6 +785,13 @@ contract CommentedImports is ERC20 {
     'Test jsDelivr CDN with multiple versions from same package #group19': function (browser: NightwatchBrowser) {
         browser
             .addFile('MixedCDNVersions.sol', jsDelivrMultiVersionSource['MixedCDNVersions.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
@@ -874,11 +881,31 @@ contract CommentedImports is ERC20 {
                     browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
                 }
             })
+            // Verify build-info artifacts contain both versions
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.9.6/utils/cryptography/ECDSA.sol',
+                    versionComment: '4.9.0',
+                    description: 'Should find OpenZeppelin v4.9.6 ECDSA.sol with version comment'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol',
+                    versionComment: '5.0.0',
+                    description: 'Should find OpenZeppelin v5.0.2 ERC20.sol with version comment'
+                }
+            ])
     },
 
     'Test jsDelivr CDN mixing v5 ERC20 with v4 SafeMath #group20': function (browser: NightwatchBrowser) {
         browser
             .addFile('djdidjod.sol', jsDelivrV5WithV4UtilsSource['djdidjod.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
@@ -952,6 +979,19 @@ contract CommentedImports is ERC20 {
                     browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
                 }
             })
+            // Verify build-info artifacts contain both versions
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol',
+                    versionComment: '4.9.0',
+                    description: 'Should find OpenZeppelin v4.9.6 SafeMath.sol with version comment'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol',
+                    versionComment: '5.0.0',
+                    description: 'Should find OpenZeppelin v5.0.2 ERC20.sol with version comment'
+                }
+            ])
     },
 
     'Test Chainlink contracts with transitive multi-version OpenZeppelin dependencies #group21': function (browser: NightwatchBrowser) {
