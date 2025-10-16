@@ -269,7 +269,7 @@ export class TxListener {
       // contract creation / resolve using the creation bytes code
       // if web3: we have to call getTransactionReceipt to get the created address
       // if VM: created address already included
-      const code = tx.input
+      const code = tx.data
       contract = this._tryResolveContract(code, contracts, true)
       if (contract) {
         const address = receipt.contractAddress
@@ -285,7 +285,7 @@ export class TxListener {
       // first check known contract, resolve against the `runtimeBytecode` if not known
       contract = this._resolvedContracts[tx.to]
       if (!contract) {
-        this.executionContext.web3().eth.getCode(tx.to).then(code=>{
+        this.executionContext.web3().getCode(tx.to).then(code=>{
           if (code) {
             const contract = this._tryResolveContract(code, contracts, false)
             if (contract) {
@@ -312,7 +312,7 @@ export class TxListener {
       return
     }
     const abi = contract.object.abi
-    const inputData = tx.input.replace('0x', '')
+    const inputData = tx.data.replace('0x', '')
     if (!isCtor) {
       const methodIdentifiers = contract.object.evm.methodIdentifiers
       for (const fn in methodIdentifiers) {

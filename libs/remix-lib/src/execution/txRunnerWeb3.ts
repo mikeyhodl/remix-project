@@ -82,7 +82,7 @@ export class TxRunnerWeb3 {
           resolve({
             receipt,
             tx,
-            transactionHash: receipt ? receipt['transactionHash'] : null
+            transactionHash: receipt ? receipt['hash'] : null
           })
         })
       }
@@ -103,7 +103,7 @@ export class TxRunnerWeb3 {
             console.log(`Send transaction failed: ${e.message || e.error} . if you use an injected provider, please check it is properly unlocked. `)
             // in case the receipt is available, we consider that only the execution failed but the transaction went through.
             // So we don't consider this to be an error.
-            if (e.receipt) cb(null, e.receipt.transactionHash, isCreation, false, null)
+            if (e.receipt) cb(null, e.receipt.hash, isCreation, false, null)
             else cb(e, null, isCreation, false, null)
           }
         },
@@ -128,7 +128,7 @@ export class TxRunnerWeb3 {
         console.log(`Send transaction failed: ${e.message} . if you use an injected provider, please check it is properly unlocked. `)
         // in case the receipt is available, we consider that only the execution failed but the transaction went through.
         // So we don't consider this to be an error.
-        if (e.receipt) cb(null, e.receipt.transactionHash, isCreation, false, null)
+        if (e.receipt) cb(null, e.receipt.hash, isCreation, false, null)
         else cb(e, null, isCreation, false, null)
       }
     }
