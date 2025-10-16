@@ -16,6 +16,8 @@ import {
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
+
+const CORSPROXY = "https://corsproxy.io/?url=";
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
@@ -25,6 +27,9 @@ export class MCPClient {
   private tools: IMCPTool[] = [];
   private remixMCPServer?: RemixMCPServer; // Will be injected for internal transport
   private requestId: number = 1;
+  private sseEventSource?: EventSource; // For SSE transport
+  private wsConnection?: WebSocket; // For WebSocket transport
+  private httpAbortController?: AbortController; // For HTTP request cancellation
 
   constructor(server: IMCPServer, remixMCPServer?: any) {
     this.server = server;
@@ -38,23 +43,17 @@ export class MCPClient {
       this.eventEmitter.emit('connecting', this.server.name);
 
       if (this.server.transport === 'internal') {
-        // Handle internal transport using RemixMCPServer
-        if (!this.remixMCPServer) {
-          throw new Error(`Internal RemixMCPServer not available for ${this.server.name}`);
-        }
-
-        console.log(`[MCP] Connecting to internal RemixMCPServer: ${this.server.name}`);
-        const result = await this.remixMCPServer.initialize();
-        this.connected = true;
-        this.capabilities = result.capabilities;
-        
-        console.log(`[MCP] Successfully connected to internal server ${this.server.name} with capabilities ${this.capabilities}`);
-        this.eventEmitter.emit('connected', this.server.name, result);
-        return result;
-
+        return await this.connectInternal();
+      } else if (this.server.transport === 'http') {
+        return await this.connectHTTP();
+      } else if (this.server.transport === 'sse') {
+        return await this.connectSSE();
+      } else if (this.server.transport === 'websocket') {
+        return await this.connectWebSocket();
+      } else if (this.server.transport === 'stdio') {
+        throw new Error(`stdio transport is not supported in browser environment. Please use http, sse, or websocket instead.`);
       } else {
-        console.log(`[MCP] Transport ${this.server.transport} not yet implemented, using placeholder for ${this.server.name}...`);
-        return null;
+        throw new Error(`Unknown transport type: ${this.server.transport}`);
       }
 
     } catch (error) {
@@ -64,16 +63,293 @@ export class MCPClient {
     }
   }
 
+  private async connectInternal(): Promise<IMCPInitializeResult> {
+    if (!this.remixMCPServer) {
+      throw new Error(`Internal RemixMCPServer not available for ${this.server.name}`);
+    }
+
+    console.log(`[MCP] Connecting to internal RemixMCPServer: ${this.server.name}`);
+    const result = await this.remixMCPServer.initialize();
+    this.connected = true;
+    this.capabilities = result.capabilities;
+
+    console.log(`[MCP] Successfully connected to internal server ${this.server.name}`);
+    this.eventEmitter.emit('connected', this.server.name, result);
+    return result;
+  }
+
+  private async connectHTTP(): Promise<IMCPInitializeResult> {
+    if (!this.server.url) {
+      throw new Error(`HTTP URL not specified for ${this.server.name}`);
+    }
+
+    console.log(`[MCP] Connecting to HTTP MCP server at ${this.server.url}`);
+    this.httpAbortController = new AbortController();
+
+    // Send initialize request
+    const response = await this.sendHTTPRequest({
+      jsonrpc: '2.0',
+      id: this.getNextRequestId(),
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          resources: { subscribe: true },
+          sampling: {}
+        },
+        clientInfo: {
+          name: 'Remix IDE',
+          version: '1.0.0'
+        }
+      }
+    });
+
+    if (response.error) {
+      throw new Error(`HTTP initialization failed: ${response.error.message}`);
+    }
+
+    const result: IMCPInitializeResult = response.result;
+    this.connected = true;
+    this.capabilities = result.capabilities;
+    
+    console.log(`[MCP] Successfully connected to HTTP server ${this.server.name}`);
+    this.eventEmitter.emit('connected', this.server.name, result);
+    return result;
+  }
+
+  private async connectSSE(): Promise<IMCPInitializeResult> {
+    if (!this.server.url) {
+      throw new Error(`SSE URL not specified for ${this.server.name}`);
+    }
+
+    console.log(`[MCP] Connecting to SSE MCP server at ${this.server.url}`);
+
+    return new Promise((resolve, reject) => {
+      try {
+        this.sseEventSource = new EventSource(this.server.url!);
+        let initialized = false;
+
+        this.sseEventSource.onmessage = (event) => {
+          try {
+            const response = JSON.parse(event.data);
+
+            if (!initialized && response.method === 'initialize') {
+              const result: IMCPInitializeResult = response.result;
+              this.connected = true;
+              this.capabilities = result.capabilities;
+              initialized = true;
+
+              console.log(`[MCP] Successfully connected to SSE server ${this.server.name}`);
+              this.eventEmitter.emit('connected', this.server.name, result);
+              resolve(result);
+            } else {
+              // Handle other SSE messages (resource updates, notifications, etc.)
+              this.handleSSEMessage(response);
+            }
+          } catch (error) {
+            console.error(`[MCP] Error parsing SSE message:`, error);
+          }
+        };
+
+        this.sseEventSource.onerror = (error) => {
+          console.error(`[MCP] SSE connection error:`, error);
+          if (!initialized) {
+            reject(new Error(`SSE connection failed for ${this.server.name}`));
+          }
+          this.eventEmitter.emit('error', this.server.name, error);
+        };
+
+        // Send initialize request via POST (SSE is one-way, so we use HTTP POST for requests)
+        this.sendSSEInitialize().catch(reject);
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private async connectWebSocket(): Promise<IMCPInitializeResult> {
+    if (!this.server.url) {
+      throw new Error(`WebSocket URL not specified for ${this.server.name}`);
+    }
+
+    console.log(`[MCP] Connecting to WebSocket MCP server at ${this.server.url}`);
+
+    return new Promise((resolve, reject) => {
+      try {
+        this.wsConnection = new WebSocket(this.server.url!);
+        let initialized = false;
+
+        this.wsConnection.onopen = () => {
+          console.log(`[MCP] WebSocket connection opened to ${this.server.name}`);
+
+          // Send initialize message
+          const initMessage = {
+            jsonrpc: '2.0',
+            id: this.getNextRequestId(),
+            method: 'initialize',
+            params: {
+              protocolVersion: '2024-11-05',
+              capabilities: {
+                resources: { subscribe: true },
+                sampling: {}
+              },
+              clientInfo: {
+                name: 'Remix IDE',
+                version: '1.0.0'
+              }
+            }
+          };
+
+          this.wsConnection!.send(JSON.stringify(initMessage));
+        };
+
+        this.wsConnection.onmessage = (event) => {
+          try {
+            const response = JSON.parse(event.data);
+
+            if (!initialized && response.result) {
+              const result: IMCPInitializeResult = response.result;
+              this.connected = true;
+              this.capabilities = result.capabilities;
+              initialized = true;
+
+              console.log(`[MCP] Successfully connected to WebSocket server ${this.server.name}`);
+              this.eventEmitter.emit('connected', this.server.name, result);
+              resolve(result);
+            } else {
+              // Handle other WebSocket messages
+              this.handleWebSocketMessage(response);
+            }
+          } catch (error) {
+            console.error(`[MCP] Error parsing WebSocket message:`, error);
+          }
+        };
+
+        this.wsConnection.onerror = (error) => {
+          console.error(`[MCP] WebSocket error:`, error);
+          if (!initialized) {
+            reject(new Error(`WebSocket connection failed for ${this.server.name}`));
+          }
+          this.eventEmitter.emit('error', this.server.name, error);
+        };
+
+        this.wsConnection.onclose = () => {
+          console.log(`[MCP] WebSocket connection closed for ${this.server.name}`);
+          this.connected = false;
+          this.eventEmitter.emit('disconnected', this.server.name);
+        };
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private async sendHTTPRequest(request: any): Promise<any> {
+    const response = await fetch(CORSPROXY + this.server.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream', // Required by some MCP servers
+      },
+      body: JSON.stringify(request),
+      signal: this.httpAbortController!.signal
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[MCP] HTTP error response:`, errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+
+    // Check if response is SSE format (some MCP servers return SSE even for POST)
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/event-stream')) {
+      // Parse SSE response format: "event: message\ndata: {...}\n\n"
+      const text = await response.text();
+      const dataMatch = text.match(/data: (.+)/);
+      if (dataMatch && dataMatch[1]) {
+        return JSON.parse(dataMatch[1]);
+      }
+      throw new Error('Invalid SSE response format');
+    }
+
+    return response.json();
+  }
+
+  private async sendSSEInitialize(): Promise<void> {
+    // For SSE, send initialize request via HTTP POST
+    const initUrl = this.server.url!.replace('/sse', '/initialize');
+
+    // Use commonCorsProxy to bypass CORS restrictions
+    // The proxy expects the target URL in the 'proxy' header
+    console.log(`[MCP] Using CORS proxy for SSE init target: ${initUrl}`);
+
+    await fetch(CORSPROXY + this.server.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream', // Required by some MCP servers
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: this.getNextRequestId(),
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {
+            resources: { subscribe: true },
+            sampling: {}
+          },
+          clientInfo: {
+            name: 'Remix IDE',
+            version: '1.0.0'
+          }
+        }
+      })
+    });
+  }
+
+  private handleSSEMessage(message: any): void {
+    console.log(`[MCP] SSE message received:`, message);
+    // Handle SSE notifications (resource updates, etc.)
+    if (message.method === 'notifications/resources/list_changed') {
+      this.eventEmitter.emit('resourcesChanged', this.server.name);
+    } else if (message.method === 'notifications/tools/list_changed') {
+      this.eventEmitter.emit('toolsChanged', this.server.name);
+    }
+  }
+
+  private handleWebSocketMessage(message: any): void {
+    console.log(`[MCP] WebSocket message received:`, message);
+    // Handle WebSocket responses and notifications
+    if (message.method === 'notifications/resources/list_changed') {
+      this.eventEmitter.emit('resourcesChanged', this.server.name);
+    } else if (message.method === 'notifications/tools/list_changed') {
+      this.eventEmitter.emit('toolsChanged', this.server.name);
+    }
+  }
+
 
   async disconnect(): Promise<void> {
     if (this.connected) {
       console.log(`[MCP] Disconnecting from server: ${this.server.name}`);
-      
+
       // Handle different transport types
       if (this.server.transport === 'internal' && this.remixMCPServer) {
         await this.remixMCPServer.stop();
+      } else if (this.server.transport === 'http' && this.httpAbortController) {
+        this.httpAbortController.abort();
+        this.httpAbortController = undefined;
+      } else if (this.server.transport === 'sse' && this.sseEventSource) {
+        this.sseEventSource.close();
+        this.sseEventSource = undefined;
+      } else if (this.server.transport === 'websocket' && this.wsConnection) {
+        this.wsConnection.close();
+        this.wsConnection = undefined;
       }
-      
+
       this.connected = false;
       this.resources = [];
       this.tools = [];
@@ -88,39 +364,75 @@ export class MCPClient {
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    // Check if server supports resources capability
+    if (!this.capabilities?.resources) {
+      console.log(`[MCP] Server ${this.server.name} does not support resources capability`);
+      return [];
+    }
+
     console.log(`[MCP] Listing resources from ${this.server.name}...`);
-    
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
-      // Use internal RemixMCPServer
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
         method: 'resources/list',
         params: {}
       });
-      
+
       if (response.error) {
         throw new Error(`Failed to list resources: ${response.error.message}`);
       }
-      
+
       this.resources = response.result.resources || [];
-      console.log(`[MCP] Found ${this.resources.length} resources from internal server ${this.server.name}:`, this.resources.map(r => r.name));
+      console.log(`[MCP] Found ${this.resources.length} resources from internal server`);
       return this.resources;
 
-    } else {
-      // TODO: Implement actual resource listing for external servers
-      // Placeholder implementation
-      const mockResources: IMCPResource[] = [
-        {
-          uri: `file://${this.server.name}/README.md`,
-          name: "README",
-          description: "Project documentation",
-          mimeType: "text/markdown"
-        }
-      ];
+    } else if (this.server.transport === 'http') {
+      const response = await this.sendHTTPRequest({
+        jsonrpc: '2.0',
+        id: this.getNextRequestId(),
+        method: 'resources/list',
+        params: {}
+      });
 
-      this.resources = mockResources;
-      console.log(`[MCP] Found ${mockResources.length} resources from ${this.server.name}:`, mockResources.map(r => r.name));
-      return mockResources;
+      if (response.error) {
+        throw new Error(`Failed to list resources: ${response.error.message}`);
+      }
+
+      this.resources = response.result.resources || [];
+      console.log(`[MCP] Found ${this.resources.length} resources from HTTP server`);
+      return this.resources;
+
+    } else if (this.server.transport === 'websocket' && this.wsConnection) {
+      return new Promise((resolve, reject) => {
+        const requestId = this.getNextRequestId();
+
+        const handleMessage = (event: MessageEvent) => {
+          const response = JSON.parse(event.data);
+          if (response.id === requestId) {
+            this.wsConnection!.removeEventListener('message', handleMessage);
+
+            if (response.error) {
+              reject(new Error(`Failed to list resources: ${response.error.message}`));
+            } else {
+              this.resources = response.result.resources || [];
+              console.log(`[MCP] Found ${this.resources.length} resources from WebSocket server`);
+              resolve(this.resources);
+            }
+          }
+        };
+
+        this.wsConnection.addEventListener('message', handleMessage);
+        this.wsConnection.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: requestId,
+          method: 'resources/list',
+          params: {}
+        }));
+      });
+
+    } else {
+      throw new Error(`SSE transport requires HTTP fallback for listing resources`);
     }
   }
 
@@ -131,31 +443,65 @@ export class MCPClient {
     }
 
     console.log(`[MCP] Reading resource: ${uri} from ${this.server.name}`);
-    
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
-      // Use internal RemixMCPServer
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
         method: 'resources/read',
         params: { uri }
       });
-      
+
       if (response.error) {
         throw new Error(`Failed to read resource: ${response.error.message}`);
       }
-      
-      console.log(`[MCP] Resource read successfully from internal server: ${uri}`);
+
+      console.log(`[MCP] Resource read successfully from internal server`);
       return response.result;
 
+    } else if (this.server.transport === 'http') {
+      const response = await this.sendHTTPRequest({
+        jsonrpc: '2.0',
+        id: this.getNextRequestId(),
+        method: 'resources/read',
+        params: { uri }
+      });
+
+      if (response.error) {
+        throw new Error(`Failed to read resource: ${response.error.message}`);
+      }
+
+      console.log(`[MCP] Resource read successfully from HTTP server`);
+      return response.result;
+
+    } else if (this.server.transport === 'websocket' && this.wsConnection) {
+      return new Promise((resolve, reject) => {
+        const requestId = this.getNextRequestId();
+
+        const handleMessage = (event: MessageEvent) => {
+          const response = JSON.parse(event.data);
+          if (response.id === requestId) {
+            this.wsConnection!.removeEventListener('message', handleMessage);
+
+            if (response.error) {
+              reject(new Error(`Failed to read resource: ${response.error.message}`));
+            } else {
+              console.log(`[MCP] Resource read successfully from WebSocket server`);
+              resolve(response.result);
+            }
+          }
+        };
+
+        this.wsConnection.addEventListener('message', handleMessage);
+        this.wsConnection.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: requestId,
+          method: 'resources/read',
+          params: { uri }
+        }));
+      });
+
     } else {
-      // TODO: Implement actual resource reading for external servers
-      const content: IMCPResourceContent = {
-        uri,
-        mimeType: "text/plain",
-        text: `Content from ${uri} via ${this.server.name}`
-      };
-      console.log(`[MCP] Resource read successfully: ${uri}`);
-      return content;
+      throw new Error(`SSE transport requires HTTP fallback for reading resources`);
     }
   }
 
@@ -165,43 +511,75 @@ export class MCPClient {
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    // Check if server supports tools capability
+    if (!this.capabilities?.tools) {
+      console.log(`[MCP] Server ${this.server.name} does not support tools capability`);
+      return [];
+    }
+
     console.log(`[MCP] Listing tools from ${this.server.name}...`);
-    
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
-      // Use internal RemixMCPServer
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
         method: 'tools/list',
         params: {}
       });
-      
+
       if (response.error) {
         throw new Error(`Failed to list tools: ${response.error.message}`);
       }
-      
+
       this.tools = response.result.tools || [];
-      console.log(`[MCP] Found ${this.tools.length} tools from internal server ${this.server.name}:`, this.tools.map(t => t.name));
+      console.log(`[MCP] Found ${this.tools.length} tools from ${this.server.name}`);
       return this.tools;
 
-    } else {
-      // TODO: Implement actual tool listing for external servers
-      const mockTools: IMCPTool[] = [
-        {
-          name: "file_read",
-          description: "Read file contents",
-          inputSchema: {
-            type: "object",
-            properties: {
-              path: { type: "string" }
-            },
-            required: ["path"]
-          }
-        }
-      ];
+    } else if (this.server.transport === 'http') {
+      const response = await this.sendHTTPRequest({
+        jsonrpc: '2.0',
+        id: this.getNextRequestId(),
+        method: 'tools/list',
+        params: {}
+      });
 
-      this.tools = mockTools;
-      console.log(`[MCP] Found ${mockTools.length} tools from ${this.server.name}:`, mockTools.map(t => t.name));
-      return mockTools;
+      if (response.error) {
+        throw new Error(`Failed to list tools: ${response.error.message}`);
+      }
+
+      this.tools = response.result.tools || [];
+      console.log(`[MCP] Found ${this.tools.length} tools from  ${this.server.name}`);
+      return this.tools;
+
+    } else if (this.server.transport === 'websocket' && this.wsConnection) {
+      return new Promise((resolve, reject) => {
+        const requestId = this.getNextRequestId();
+
+        const handleMessage = (event: MessageEvent) => {
+          const response = JSON.parse(event.data);
+          if (response.id === requestId) {
+            this.wsConnection!.removeEventListener('message', handleMessage);
+
+            if (response.error) {
+              reject(new Error(`Failed to list tools: ${response.error.message}`));
+            } else {
+              this.tools = response.result.tools || [];
+              console.log(`[MCP] Found ${this.tools.length} tools from WebSocket server`);
+              resolve(this.tools);
+            }
+          }
+        };
+
+        this.wsConnection.addEventListener('message', handleMessage);
+        this.wsConnection.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: requestId,
+          method: 'tools/list',
+          params: {}
+        }));
+      });
+
+    } else {
+      throw new Error(`SSE transport requires HTTP fallback for listing tools`);
     }
   }
 
@@ -214,7 +592,6 @@ export class MCPClient {
     console.log(`[MCP] Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
 
     if (this.server.transport === 'internal' && this.remixMCPServer) {
-      // Use internal RemixMCPServer
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
         method: 'tools/call',
@@ -228,16 +605,50 @@ export class MCPClient {
       console.log(`[MCP] Tool ${toolCall.name} executed successfully on internal server`);
       return response.result;
 
+    } else if (this.server.transport === 'http') {
+      const response = await this.sendHTTPRequest({
+        jsonrpc: '2.0',
+        id: this.getNextRequestId(),
+        method: 'tools/call',
+        params: toolCall
+      });
+
+      if (response.error) {
+        throw new Error(`Failed to call tool: ${response.error.message}`);
+      }
+
+      console.log(`[MCP] Tool ${toolCall.name} executed successfully on HTTP server`);
+      return response.result;
+
+    } else if (this.server.transport === 'websocket' && this.wsConnection) {
+      return new Promise((resolve, reject) => {
+        const requestId = this.getNextRequestId();
+
+        const handleMessage = (event: MessageEvent) => {
+          const response = JSON.parse(event.data);
+          if (response.id === requestId) {
+            this.wsConnection!.removeEventListener('message', handleMessage);
+
+            if (response.error) {
+              reject(new Error(`Failed to call tool: ${response.error.message}`));
+            } else {
+              console.log(`[MCP] Tool ${toolCall.name} executed successfully on WebSocket server`);
+              resolve(response.result);
+            }
+          }
+        };
+
+        this.wsConnection.addEventListener('message', handleMessage);
+        this.wsConnection.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: requestId,
+          method: 'tools/call',
+          params: toolCall
+        }));
+      });
+
     } else {
-      // TODO: Implement actual tool execution for external servers
-      const result: IMCPToolResult = {
-        content: [{
-          type: 'text',
-          text: `Tool ${toolCall.name} executed with args: ${JSON.stringify(toolCall.arguments)}`
-        }]
-      };
-      console.log(`[MCP] Tool ${toolCall.name} executed successfully`);
-      return result;
+      throw new Error(`SSE transport requires HTTP fallback for calling tools`);
     }
   }
 
@@ -257,9 +668,6 @@ export class MCPClient {
     this.eventEmitter.off(event, listener);
   }
 
-  /**
-   * Check if the server has a specific capability
-   */
   hasCapability(capability: string): boolean {
     if (!this.capabilities) return false;
     
@@ -274,16 +682,10 @@ export class MCPClient {
     return !!current;
   }
 
-  /**
-   * Get server capabilities
-   */
   getCapabilities(): any {
     return this.capabilities;
   }
 
-  /**
-   * Utility methods for future use
-   */
   private getNextRequestId(): number {
     return this.requestId++;
   }
