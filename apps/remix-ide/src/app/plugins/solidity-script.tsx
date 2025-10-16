@@ -2,7 +2,8 @@ import React from 'react' // eslint-disable-line
 import { format } from 'util'
 import { Plugin } from '@remixproject/engine'
 import { compile, CompilerSettings } from '@remix-project/remix-solidity'
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
+import { Transaction } from 'web3-types'
+import { trackMatomoEvent } from '@remix-api'
 
 const profile = {
   name: 'solidity-script',
@@ -17,7 +18,7 @@ export class SolidityScript extends Plugin {
   }
 
   async execute(path: string, functionName: string = 'run') {
-    _paq.push(['trackEvent', 'SolidityScript', 'execute', 'script'])
+    trackMatomoEvent(this, { category: 'solidityScript', action: 'execute', name: 'script', isClick: true })
     this.call('terminal', 'log', `Running free function '${functionName}' from ${path}...`)
     let content = await this.call('fileManager', 'readFile', path)
     const params = await this.call('solidity', 'getCompilerQueryParameters')
@@ -130,7 +131,7 @@ export class SolidityScript extends Plugin {
           })}
         </div>
       )
-      _paq.push(['trackEvent', 'udapp', 'hardhat', 'console.log'])
+      trackMatomoEvent(this, { category: 'udapp', action: 'hardhat', name: 'console.log', isClick: false })
       this.call('terminal', 'logHtml', finalLogs)
     }
   }

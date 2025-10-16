@@ -4,10 +4,20 @@ import { ethers, toNumber } from 'ethers'
 import { execution } from '@remix-project/remix-lib'
 import EventManager from '../lib/events'
 import { bytesToHex } from '@ethereumjs/util'
-const _paq = window._paq = window._paq || []
 
 let provider
 
+// Helper function to track events using MatomoManager
+function track(event) {
+  try {
+    const matomoManager = window._matomoManagerInstance
+    if (matomoManager && matomoManager.trackEvent) {
+      matomoManager.trackEvent(event)
+    }
+  } catch (error) {
+    console.debug('Tracking error:', error)
+  }
+}
 if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
   var injectedProvider = window.ethereum
   provider = new ethers.BrowserProvider(injectedProvider)
@@ -152,7 +162,13 @@ export class ExecutionContext {
   }
 
   async executionContextChange (value, endPointUrl, confirmCb, infoCb, cb) {
-    _paq.push(['trackEvent', 'udapp', 'providerChanged', value.context])
+    // Track provider change event
+    track({
+      category: 'udapp',
+      action: 'providerChanged',
+      name: value.context,
+      isClick: false
+    })
     const context = value.context
     if (!cb) cb = () => { /* Do nothing. */ }
     if (!confirmCb) confirmCb = () => { /* Do nothing. */ }
