@@ -32,7 +32,7 @@ export class Web3ProviderModule extends Plugin {
       this.askUserPermission('sendAsync', `Calling ${payload.method} with parameters ${JSON.stringify(payload.params, replacer, '\t')}`).then(
         async (result) => {
           if (result) {
-            const provider = this.blockchain.web3().currentProvider
+            const provider = this.blockchain.web3()
             const resultFn = async (error, message) => {
               if (error) {
                 // Handle 'The method "debug_traceTransaction" does not exist / is not available.' error
@@ -83,7 +83,7 @@ export class Web3ProviderModule extends Plugin {
               resolve(message)
             }
             try {
-              resultFn(null, await provider.sendAsync(payload))
+              resultFn(null, await provider.send(payload.method, payload.params))
             } catch (e) {
               resultFn(e.error ? e.error : e)
             }
