@@ -1065,6 +1065,114 @@ contract CommentedImports is ERC20 {
             ])
     },
 
+    'Test complex local imports with external dependencies #group22': function (browser: NightwatchBrowser) {
+        browser
+            // Create a realistic project structure with multiple folders and contracts
+            .addFile('contracts/interfaces/IStorage.sol', localImportsProjectSource['contracts/interfaces/IStorage.sol'])
+            .addFile('contracts/libraries/Math.sol', localImportsProjectSource['contracts/libraries/Math.sol'])
+            .addFile('contracts/base/BaseContract.sol', localImportsProjectSource['contracts/base/BaseContract.sol'])
+            .addFile('contracts/TokenVault.sol', localImportsProjectSource['contracts/TokenVault.sol'])
+            .addFile('contracts/main/Staking.sol', localImportsProjectSource['contracts/main/Staking.sol'])
+            // Enable generate-contract-metadata to verify compilation artifacts
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
+            // Open the main contract which imports everything
+            .openFile('contracts/main/Staking.sol')
+            // Switch to Solidity compiler panel
+            .clickLaunchIcon('solidity')
+            // Compile the contract
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000) // Longer pause for multiple external imports
+            .clickLaunchIcon('filePanel')
+            // Verify external dependencies were resolved
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'External OpenZeppelin dependencies should be resolved')
+            })
+            // Verify compilation succeeded with mixed local and external imports
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'Complex project with local and external imports should compile successfully')
+            })
+            // Verify all local contracts are in the workspace (not in .deps)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItemcontracts/interfaces"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItemcontracts/libraries"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItemcontracts/base"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItemcontracts/main"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/TokenVault.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'All local contract folders should be present in workspace')
+            })
+            // Open resolution index to verify local imports are mapped correctly
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const sourceFiles = Object.keys(idx || {})
+                    
+                    // Find Staking.sol entry (main contract)
+                    const stakingEntry = sourceFiles.find(file => file.includes('Staking.sol'))
+                    browser.assert.ok(!!stakingEntry, 'Resolution index should contain Staking.sol')
+                    
+                    if (stakingEntry) {
+                        const mappings = idx[stakingEntry]
+                        const mappingKeys = Object.keys(mappings)
+                        
+                        // Verify that local imports are NOT in the mappings (they should be direct)
+                        const hasLocalImport = mappingKeys.some(key => 
+                            key.includes('../base/BaseContract.sol') || 
+                            key.includes('../TokenVault.sol')
+                        )
+                        browser.assert.ok(!hasLocalImport, 'Local relative imports should not be in resolution index')
+                        
+                        // Verify that external imports ARE in the mappings
+                        const hasExternalImport = mappingKeys.some(key => 
+                            key.includes('@openzeppelin/contracts')
+                        )
+                        browser.assert.ok(hasExternalImport, 'External imports should be mapped in resolution index')
+                    }
+                } catch (e) {
+                    browser.assert.fail('Resolution index should be valid JSON: ' + e.message)
+                }
+            })
+            // Verify build-info artifacts contain both local and external contracts
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: 'contracts/main/Staking.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local Staking.sol contract in build-info'
+                },
+                {
+                    packagePath: 'contracts/base/BaseContract.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local BaseContract.sol in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts',
+                    versionComment: 'Ownable.sol',
+                    description: 'Should find external OpenZeppelin Ownable.sol in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts',
+                    versionComment: 'Pausable.sol',
+                    description: 'Should find external OpenZeppelin Pausable.sol in build-info'
+                }
+            ])
+    },
+
 }
 
 // Named source objects for each test group
@@ -1735,6 +1843,164 @@ contract ChainlinkMultiVersion {
     }
 }
 
+const localImportsProjectSource = {
+    'contracts/interfaces/IStorage.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title IStorage
+ * @dev Interface for storage operations
+ */
+interface IStorage {
+    function store(uint256 value) external;
+    function retrieve() external view returns (uint256);
+}
+`
+    },
+    'contracts/libraries/Math.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title Math
+ * @dev Basic math operations library
+ */
+library Math {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+    
+    function multiply(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a * b;
+    }
+}
+`
+    },
+    'contracts/base/BaseContract.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Local import from interfaces folder
+import "../interfaces/IStorage.sol";
+
+// External import from OpenZeppelin
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title BaseContract
+ * @dev Base contract with storage and access control
+ */
+abstract contract BaseContract is IStorage, Ownable {
+    uint256 private storedValue;
+    
+    constructor() Ownable(msg.sender) {}
+    
+    function store(uint256 value) external override onlyOwner {
+        storedValue = value;
+    }
+    
+    function retrieve() external view override returns (uint256) {
+        return storedValue;
+    }
+}
+`
+    },
+    'contracts/TokenVault.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Local import from libraries
+import "./libraries/Math.sol";
+
+// External imports from OpenZeppelin
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+/**
+ * @title TokenVault
+ * @dev Manages ERC20 token deposits
+ */
+contract TokenVault {
+    using SafeERC20 for IERC20;
+    using Math for uint256;
+    
+    mapping(address => mapping(address => uint256)) public deposits;
+    
+    event Deposited(address indexed user, address indexed token, uint256 amount);
+    
+    function deposit(address token, uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        deposits[msg.sender][token] = Math.add(deposits[msg.sender][token], amount);
+        
+        emit Deposited(msg.sender, token, amount);
+    }
+    
+    function getDeposit(address user, address token) external view returns (uint256) {
+        return deposits[user][token];
+    }
+}
+`
+    },
+    'contracts/main/Staking.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Local imports - relative paths from different folders
+import "../base/BaseContract.sol";
+import "../TokenVault.sol";
+import "../libraries/Math.sol";
+
+// External imports from OpenZeppelin
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+
+/**
+ * @title Staking
+ * @dev Main staking contract that combines local and external dependencies
+ */
+contract Staking is BaseContract, Pausable {
+    using Math for uint256;
+    
+    TokenVault public vault;
+    IERC20 public stakingToken;
+    
+    mapping(address => uint256) public stakedBalance;
+    
+    event Staked(address indexed user, uint256 amount);
+    
+    constructor(address _stakingToken, address _vault) {
+        stakingToken = IERC20(_stakingToken);
+        vault = TokenVault(_vault);
+    }
+    
+    function stake(uint256 amount) external whenNotPaused {
+        require(amount > 0, "Cannot stake 0");
+        
+        stakingToken.transferFrom(msg.sender, address(this), amount);
+        stakedBalance[msg.sender] = Math.add(stakedBalance[msg.sender], amount);
+        
+        emit Staked(msg.sender, amount);
+    }
+    
+    function getStakedBalance(address user) external view returns (uint256) {
+        return stakedBalance[user];
+    }
+    
+    function pause() external onlyOwner {
+        _pause();
+    }
+    
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+}
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -1761,5 +2027,6 @@ const sources = [
     jsDelivrMultiVersionSource,
     jsDelivrV5WithV4UtilsSource,
     chainlinkMultiVersionSource,
+    localImportsProjectSource,
 ]
 
