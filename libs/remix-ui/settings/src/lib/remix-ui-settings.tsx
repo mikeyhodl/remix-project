@@ -6,7 +6,6 @@ import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredent
 import { initialState, settingReducer } from './settingsReducer'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { ThemeModule } from '@remix-ui/theme-module'
-import { LocaleModule } from '@remix-ui/locale-module'
 import { ThemeContext, themes } from '@remix-ui/home-tab'
 import { FormattedMessage } from 'react-intl'
 import { Registry } from '@remix-project/remix-lib'
@@ -23,10 +22,8 @@ export interface RemixUiSettingsProps {
   useMatomoPerfAnalytics: boolean
   useCopilot: boolean
   themeModule: ThemeModule
-  localeModule: LocaleModule
 }
 
-const _paq = (window._paq = window._paq || [])
 const settingsConfig = Registry.getInstance().get('settingsConfig').api
 
 const settingsSections: SettingsSection[] = [
@@ -73,14 +70,6 @@ const settingsSections: SettingsSection[] = [
       {
         title: 'Appearance',
         options: [{
-          name: 'locale',
-          label: 'settings.locales',
-          type: 'select',
-          selectOptions: settingsConfig.locales.map((locale) => ({
-            label: locale.name.toLocaleUpperCase() + '-' + locale.localeName,
-            value: locale.code
-          }))
-        }, {
           name: 'theme',
           label: 'settings.theme',
           type: 'select',
@@ -242,6 +231,10 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
 
     props.plugin.on('settings', 'copilotChoiceUpdated', (isChecked) => {
       dispatch({ type: 'SET_VALUE', payload: { name: 'copilot/suggest/activate', value: isChecked } })
+    })
+
+    props.plugin.on('settings', 'matomoPerfAnalyticsChoiceUpdated', (isChecked) => {
+      dispatch({ type: 'SET_VALUE', payload: { name: 'matomo-perf-analytics', value: isChecked } })
     })
 
   }, [])
