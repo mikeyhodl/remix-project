@@ -262,7 +262,7 @@ export const FileSystemProvider = (props: WorkspaceProps) => {
 
   const dispatchRevealElectronFolderInExplorer = async (path: string | null) => {
     try {
-      await plugin.call('fs', 'revealInExplorer', { path: [path] }, true)
+      await plugin.call('fs', 'revealInExplorer', { path: [path]}, true)
     } catch (error) {
       console.error('Error revealing folder in explorer:', error)
     }

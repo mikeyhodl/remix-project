@@ -13,11 +13,11 @@ interface ElectronWorkspaceMenuProps {
   createWorkspace: () => void
 }
 
-export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({ 
-  showMain, 
-  setShowMain, 
-  openFolder, 
-  createWorkspace 
+export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
+  showMain,
+  setShowMain,
+  openFolder,
+  createWorkspace
 }) => {
   const [showAllRecent, setShowAllRecent] = useState(false)
   const global = useContext(TopbarContext)
@@ -55,10 +55,10 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
             {(showAllRecent ? recentFolders : recentFolders.slice(0, 8)).map((folder, index) => {
               const folderName = path.basename(folder)
               return (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="d-flex align-items-center mb-1 px-1 py-1 rounded"
-                  style={{ 
+                  style={{
                     cursor: 'pointer'
                   }}
                   onMouseEnter={(e) => {
@@ -69,9 +69,9 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
                   }}
                 >
                   <div className="flex-grow-1 d-flex align-items-center">
-                    <CustomTooltip 
-                      placement="top" 
-                      tooltipId="recent-folder-open-tooltip" 
+                    <CustomTooltip
+                      placement="top"
+                      tooltipId="recent-folder-open-tooltip"
                       tooltipText={`Open ${folder}`}
                     >
                       <Button
@@ -93,9 +93,9 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
                         <span className="text-truncate">{folderName}</span>
                       </Button>
                     </CustomTooltip>
-                    <CustomTooltip 
-                      placement="top" 
-                      tooltipId="recent-folder-new-window-tooltip" 
+                    <CustomTooltip
+                      placement="top"
+                      tooltipId="recent-folder-new-window-tooltip"
                       tooltipText="Open in new window"
                     >
                       <Button
@@ -118,9 +118,9 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
                         <i className="fas fa-clone"></i>
                       </Button>
                     </CustomTooltip>
-                    <CustomTooltip 
-                      placement="top" 
-                      tooltipId="recent-folder-reveal-tooltip" 
+                    <CustomTooltip
+                      placement="top"
+                      tooltipId="recent-folder-reveal-tooltip"
                       tooltipText="Show in Folder"
                     >
                       <Button
@@ -143,9 +143,9 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
                       </Button>
                     </CustomTooltip>
                   </div>
-                  <CustomTooltip 
-                    placement="top" 
-                    tooltipId="recent-folder-remove-tooltip" 
+                  <CustomTooltip
+                    placement="top"
+                    tooltipId="recent-folder-remove-tooltip"
                     tooltipText="Remove from recent"
                   >
                     <Button
@@ -200,7 +200,7 @@ export const ElectronWorkspaceMenu: React.FC<ElectronWorkspaceMenuProps> = ({
           <Dropdown.Divider className="border mb-2 mt-1" />
         </>
       )}
-      
+
       <div className="d-grid gap-2">
         <Dropdown.Item
           data-id="workspaceOpenFolder"

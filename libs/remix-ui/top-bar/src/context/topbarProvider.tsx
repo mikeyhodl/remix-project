@@ -119,7 +119,7 @@ export const TopbarProvider = (props: TopbarProviderProps) => {
 
   const revealRecentFolderInExplorer = async (path: string) => {
     try {
-      await plugin.call('fs', 'revealInExplorer', { path: [path] }, true)
+      await plugin.call('fs', 'revealInExplorer', { path: [path]}, true)
     } catch (error) {
       console.error('Error revealing folder in explorer:', error)
     }

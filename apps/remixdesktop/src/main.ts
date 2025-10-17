@@ -288,7 +288,8 @@ ipcMain.handle('config:isE2E', async () => {
 
 ipcMain.handle('matomo:trackEvent', async (event, data) => {
   if (data && data[0] && data[0] === 'trackEvent') {
-    trackEvent(data[1], data[2], data[3], data[4]);
+    // data[5] is isClick (optional)
+    trackEvent(data[1], data[2], data[3], data[4], 0, data[5]);
   }
 })
 

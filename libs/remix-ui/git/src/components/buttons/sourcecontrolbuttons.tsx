@@ -96,10 +96,10 @@ export const SourceControlButtons = (props: SourceControlButtonsProps) => {
     <span className="d-flex justify-content-end align-items-center">
       {props.panel === gitUIPanels.COMMITS || props.panel === gitUIPanels.SOURCECONTROL ? (
         <>
-          <GitUIButton 
-            data-id="sourcecontrol-button-pull" 
-            disabledCondition={buttonsDisabled()} 
-            onClick={pull} 
+          <GitUIButton
+            data-id="sourcecontrol-button-pull"
+            disabledCondition={buttonsDisabled()}
+            onClick={pull}
             className="btn btn-sm ps-0 pe-2"
             tooltip={getTooltipText('git.pull')}
           >
@@ -108,10 +108,10 @@ export const SourceControlButtons = (props: SourceControlButtonsProps) => {
               <FontAwesomeIcon icon={faArrowDown} className="" />
             </div>
           </GitUIButton>
-          <GitUIButton 
-            data-id="sourcecontrol-button-push" 
-            disabledCondition={buttonsDisabled()} 
-            onClick={push} 
+          <GitUIButton
+            data-id="sourcecontrol-button-push"
+            disabledCondition={buttonsDisabled()}
+            onClick={push}
             className="btn btn-sm ps-0 pe-2"
             tooltip={getTooltipText('git.push')}
           >
@@ -120,10 +120,10 @@ export const SourceControlButtons = (props: SourceControlButtonsProps) => {
               <FontAwesomeIcon icon={faArrowUp} className="" />
             </div>
           </GitUIButton>
-          <GitUIButton 
-            data-id="sourcecontrol-button-sync" 
-            disabledCondition={buttonsDisabled()} 
-            onClick={sync} 
+          <GitUIButton
+            data-id="sourcecontrol-button-sync"
+            disabledCondition={buttonsDisabled()}
+            onClick={sync}
             className="btn btn-sm ps-0 pe-2"
             tooltip={getTooltipText('git.sync')}
           >
@@ -131,8 +131,8 @@ export const SourceControlButtons = (props: SourceControlButtonsProps) => {
           </GitUIButton>
         </>
       ) : null}
-      <GitUIButton 
-        onClick={refresh} 
+      <GitUIButton
+        onClick={refresh}
         className="btn btn-sm"
         tooltip={<FormattedMessage id="git.refresh" />}
       >

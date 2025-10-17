@@ -57,7 +57,7 @@ export const ElectronMenu = (props: {
                             <div className="recentfolder_path text-muted small" data-id={`recent_folder_${folder}`}>{folder}</div>
                           </CustomTooltip>
                         </div>
-                        
+
                         <div className="recentfolder_actions gap-1">
                           <CustomTooltip tooltipText="Open in New Window" placement="top">
                             <div

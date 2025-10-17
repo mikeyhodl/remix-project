@@ -323,7 +323,7 @@ export class MatomoManager implements IMatomoManager {
    * Check if running in Electron environment
    */
   private isElectronApp(): boolean {
-    return typeof window !== 'undefined' && 
+    return typeof window !== 'undefined' &&
            (window as any).electronAPI !== undefined;
   }
 
@@ -847,7 +847,7 @@ export class MatomoManager implements IMatomoManager {
       eventName = eventObjOrCategory.name;
       eventValue = eventObjOrCategory.value;
       isClick = eventObjOrCategory.isClick;
-      
+
       this.log(`Tracking type-safe event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue} / isClick: ${isClick}`);
     } else {
       // Legacy string-based approach
@@ -855,22 +855,23 @@ export class MatomoManager implements IMatomoManager {
       eventAction = action!;
       eventName = name;
       eventValue = value;
-      
+
       this.log(`Tracking legacy event ${eventId}: ${category} / ${eventAction} / ${eventName} / ${eventValue} (⚠️ no click dimension)`);
     }
 
     // Check if running in Electron - use IPC bridge instead of _paq
     if (this.isElectronApp()) {
       this.log(`Electron detected - routing event through IPC bridge`);
-      
+
       const electronAPI = (window as any).electronAPI;
       if (electronAPI && electronAPI.trackEvent) {
-        const eventData = ['trackEvent', category, eventAction, eventName || '', eventValue];
+        // Pass isClick as the 6th parameter
+        const eventData = ['trackEvent', category, eventAction, eventName || '', eventValue, isClick];
         electronAPI.trackEvent(eventData).catch((err: any) => {
           console.error('[Matomo] Failed to send event to Electron:', err);
         });
       }
-      
+
       this.emit('event-tracked', { eventId, category, action: eventAction, name: eventName, value: eventValue, isClick });
       return eventId;
     }

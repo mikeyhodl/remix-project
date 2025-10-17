@@ -189,10 +189,6 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
   const toggleSub = (idx: number) =>
     setOpenSub(prev => (prev === idx ? null : idx))
 
-
-
-
-
   const openFolder = async () => {
     console.log('Opening folder...')
     try {
@@ -201,8 +197,6 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
       console.error('Error opening folder:', error)
     }
   }
-
-
 
   // Render simplified dropdown for desktop
   if (platform === appPlatformTypes.desktop) {
@@ -227,7 +221,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
             {togglerText}
           </div>
         </Dropdown.Toggle>
-        <ElectronWorkspaceMenu 
+        <ElectronWorkspaceMenu
           showMain={showMain}
           setShowMain={setShowMain}
           openFolder={openFolder}

@@ -56,7 +56,7 @@ function HomeTabRecentWorkspacesElectron({ plugin }: HomeTabFileProps) {
   const handleRevealInExplorer = async (folderPath: string) => {
     try {
       _paq.push(['trackEvent', 'hometab', 'recentWorkspacesElectron', 'revealInExplorer'])
-      await plugin.call('fs', 'revealInExplorer', { path: [folderPath] }, true)
+      await plugin.call('fs', 'revealInExplorer', { path: [folderPath]}, true)
     } catch (error) {
       console.error('Error revealing folder in explorer:', error)
     }
@@ -89,41 +89,41 @@ function HomeTabRecentWorkspacesElectron({ plugin }: HomeTabFileProps) {
           <div className={showAll ? "overflow-auto" : ""} style={{ maxHeight: showAll ? '300px' : 'auto' }}>
             {
               Array.isArray(state.recentFolders) && state.recentFolders.slice(0, showAll ? state.recentFolders.length : 3).map((folderPath: string, index) => {
-              const workspaceName = getWorkspaceName(folderPath)
+                const workspaceName = getWorkspaceName(folderPath)
 
-              return (
-                <div key={index} className="d-flex flex-row align-items-center mb-2">
-                  { loadingWorkspace === folderPath ? <i className="fad fa-spinner fa-spin me-2"></i> : <i className="fas fa-folder-tree me-2"></i> }
-                  <div className="d-flex flex-row justify-content-between w-100 flex-wrap">
-                    <a className="cursor-pointer text-decoration-none d-inline-block" href="#" onClick={(e) => {
-                      e.preventDefault()
-                      handleOpenRecentWorkspace(folderPath)
-                    }}>
-                      <span>{workspaceName}</span>
-                    </a>
-                    <div className="d-flex">
-                      <CustomTooltip tooltipText="Open in new window" placement="top">
-                        <i className="fas fa-clone me-2 cursor-pointer" onClick={() => handleOpenInNewWindow(folderPath)}></i>
-                      </CustomTooltip>
-                      <CustomTooltip tooltipText="Show in folder" placement="top">
-                        <i className="fas fa-eye me-2 cursor-pointer" onClick={() => handleRevealInExplorer(folderPath)}></i>
-                      </CustomTooltip>
-                      <CustomTooltip tooltipText="Remove from recents" placement="top">
-                        <i className="fas fa-times cursor-pointer me-2" onClick={() => handleRemoveFromRecents(folderPath)}></i>
-                      </CustomTooltip>
+                return (
+                  <div key={index} className="d-flex flex-row align-items-center mb-2">
+                    { loadingWorkspace === folderPath ? <i className="fad fa-spinner fa-spin me-2"></i> : <i className="fas fa-folder-tree me-2"></i> }
+                    <div className="d-flex flex-row justify-content-between w-100 flex-wrap">
+                      <a className="cursor-pointer text-decoration-none d-inline-block" href="#" onClick={(e) => {
+                        e.preventDefault()
+                        handleOpenRecentWorkspace(folderPath)
+                      }}>
+                        <span>{workspaceName}</span>
+                      </a>
+                      <div className="d-flex">
+                        <CustomTooltip tooltipText="Open in new window" placement="top">
+                          <i className="fas fa-clone me-2 cursor-pointer" onClick={() => handleOpenInNewWindow(folderPath)}></i>
+                        </CustomTooltip>
+                        <CustomTooltip tooltipText="Show in folder" placement="top">
+                          <i className="fas fa-eye me-2 cursor-pointer" onClick={() => handleRevealInExplorer(folderPath)}></i>
+                        </CustomTooltip>
+                        <CustomTooltip tooltipText="Remove from recents" placement="top">
+                          <i className="fas fa-times cursor-pointer me-2" onClick={() => handleRemoveFromRecents(folderPath)}></i>
+                        </CustomTooltip>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })
+                )
+              })
             }
           </div>
-          
+
           {state.recentFolders && state.recentFolders.length > 3 && (
             <div className="text-center mt-2">
-              <a 
-                href="#" 
-                className="text-decoration-none small" 
+              <a
+                href="#"
+                className="text-decoration-none small"
                 onClick={(e) => {
                   e.preventDefault()
                   setShowAll(!showAll)

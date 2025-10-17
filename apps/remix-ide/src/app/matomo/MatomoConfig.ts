@@ -132,7 +132,6 @@ export const MATOMO_BOT_CUSTOM_DIMENSIONS: BotCustomDimensionsConfig = {
   'electron': null // Electron app uses same custom dimensions as human traffic
 };
 
-
 /**
  * Get the appropriate domain key for tracking
  * Returns 'electron' for Electron app, otherwise returns the hostname
@@ -141,7 +140,7 @@ export function getDomainKey(): MatomotDomain {
   if (isElectron()) {
     return 'electron';
   }
-  
+
   const hostname = window.location.hostname as MatomotDomain;
   // Return hostname if it's a known domain, otherwise default to localhost
   return MATOMO_DOMAINS[hostname] !== undefined ? hostname : 'localhost';
