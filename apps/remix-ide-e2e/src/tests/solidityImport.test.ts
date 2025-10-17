@@ -99,25 +99,23 @@ module.exports = {
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('Untitled9.sol', sources[8]['Untitled9.sol'])
-      // avoid invalid source issues
-      .expandAllFolders()
-      .isVisible({
-        selector: '*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"]',
-        timeout: 120000,
-        suppressNotFoundErrors: true
-      })
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
+      .pause(5000) // Wait for compilation and import resolution
       .clickLaunchIcon('filePanel')
-      .expandAllFolders()
-      .isVisible({
-        selector: '*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"]',
-        timeout: 120000,
-      })
+      // Manually expand .deps folder structure
+      .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+      .click('*[data-id="treeViewDivDraggableItem.deps"]')
+      .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+      .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+      .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
+      .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+      // Check if versioned OpenZeppelin folder exists
+      .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
       .verifyContracts(['test13', 'ERC20'], { wait: 30000 })
   },
 
-  'Test NPM Import (with unpkg.com) and the package.json contains a module remapping #group3': function (browser: NightwatchBrowser) {
+  'Test NPM Import (with unpkg.com) and the package.json contains a module remapping #group13': function (browser: NightwatchBrowser) {
     browser
       .setSolidityCompilerVersion('soljson-v0.8.7+commit.e28d00a7.js')
       .waitForElementPresent({
@@ -129,21 +127,13 @@ module.exports = {
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('package.json', sources[9]['package.json'])
       .addFile('Untitled10.sol', sources[9]['Untitled10.sol'])
-      .expandAllFolders()
-      // avoid invalid source issues
-      .isVisible({
-        selector: '*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"]',
-        timeout: 120000,
-        suppressNotFoundErrors: true
-      })
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
-      .clickLaunchIcon('filePanel')
+           .pause(5000)
       .expandAllFolders()
-      .isVisible({
-        selector: '*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"]',
-        timeout: 120000,
-      })
+           .pause()
+      // Check if versioned OpenZeppelin folder exists (remapped via package.json)
+      .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
       .verifyContracts(['test15', 'ERC20'], { wait: 30000 })
   },
 
@@ -223,7 +213,7 @@ const sources = [
     'Untitled10.sol': { content: 'pragma solidity ^0.8.0; import "@module_remapping/token/ERC20/ERC20.sol"; contract test15 {}' },
     'package.json': { content: `{
     "dependencies": {
-      "@module_remapping": "npm:@openzeppelin/contracts@^4.9.0"
+      "@module_remapping": "npm:@openzeppelin/contracts@4.9.0"
   }
 }` }
   },
