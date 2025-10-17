@@ -7,7 +7,7 @@ const profile = {
   name: 'remix-templates',
   displayName: 'remix-templates',
   description: 'Remix Templates plugin',
-  methods: ['getTemplate', 'loadTemplateInNewWindow', 'addToCurrentElectronFolder', 'loadFilesInNewWindow'],
+  methods: ['getTemplate', 'loadTemplateInNewWindow', 'addToCurrentElectronFolder', 'loadFilesInNewWindow', 'getTemplateReadMeFile'],
 }
 
 export class TemplatesPlugin extends Plugin {
@@ -30,8 +30,8 @@ export class TemplatesPlugin extends Plugin {
 
   async getTemplateReadMeFile(templateName: string) {
     const files = await templateWithContent[templateName]({}, this)
-    const readMe = files['README.md'] || files['README.txt']
-    return readMe
+    const readMe = files['README.md'] || files['README.txt'] || 'No ReadMe file found'
+    return { readMe, type: files['README.md'] ? 'md' : files['README.txt'] ? 'txt' : 'none' }
   }
   // electron only method
 

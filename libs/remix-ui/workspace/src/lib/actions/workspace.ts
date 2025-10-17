@@ -139,7 +139,9 @@ export const createWorkspace = async (
   isEmpty = false,
   cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
   isGitRepo: boolean = false,
-  createCommit: boolean = true
+  createCommit: boolean = true,
+  contractContent?: string,
+  contractName?: string,
 ) => {
   console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit })
   // return
@@ -291,7 +293,7 @@ export const decodePercentEscapedBase64 = (b64Payload: string) => {
   return decodeURIComponent(percentEscapedString);
 }
 
-export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?) => {
+export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string) => {
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
@@ -445,12 +447,14 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
 
       await trackMatomoEventAsync(plugin, { category: 'Workspace', action: 'switchWorkspace', name: template, isClick: false })
       // @ts-ignore
+      let files = {}
       if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
-        const f = await templateWithContent[template](opts, 'testing Contract Name')
-        console.log(`Testing the OpenZeppelin Templates ${template}`, f)
-        return
+        files = await templateWithContent[template](opts, contractContent, contractName)
+        console.log(`Testing the OpenZeppelin Templates ${template}`, files)
       }
-      const files = await templateWithContent[template](opts, plugin)
+      else {
+        files = await templateWithContent[template](opts, plugin)
+      }
       for (const file in files) {
         try {
           const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)

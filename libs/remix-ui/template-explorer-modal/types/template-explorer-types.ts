@@ -36,7 +36,7 @@ export interface TemplateExplorerWizardState {
   tokenName?: string
 }
 
-export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'zkp'
+export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'zkp' | 'confirm'
 
 export interface TemplateExplorerContextType {
   plugin: any
@@ -201,5 +201,7 @@ export interface CreateWorkspaceDeps {
   isEmpty?: boolean,
   cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
   isGitRepo?: boolean,
-  createCommit?: boolean
+  createCommit?: boolean,
+  contractContent?: string,
+  contractName?: string
 }

@@ -49,7 +49,8 @@ export class TemplateExplorerModalFacade {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' })
   }
 
-  async getozerc20Workspace() {
-
+  async getTemplateReadMeFile(templateName: string) {
+    const readMe = await this.plugin.call('remix-templates', 'getTemplateReadMeFile', templateName)
+    return { readMe: readMe.readMe, type: readMe.type }
   }
 }

@@ -9,6 +9,7 @@ import { TemplateExplorerBody } from '../components/template-explorer-body'
 import { TemplateExplorerWizardAction, TemplateExplorerWizardState } from '../../types/template-explorer-types'
 import { GenericWorkspaceTemplate } from '../components/genericWorkspaceTemplate'
 import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
+import { FinalScreen } from '../components/finalScreen'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
@@ -52,6 +53,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
           {state.wizardStep === 'genAI' ? <GenerateWorkspaceWithAi /> : null}
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}
           {state.wizardStep === 'remixdefault' ? <WorkspaceDetails strategy={state} /> : null}
+          {state.wizardStep === 'confirm' ? <FinalScreen /> : null}
         </div>
       </section>
     </section>

@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react'
 import * as erc20 from '../contractCode/erc20'
 import * as erc721 from '../contractCode/erc721'
 import * as erc1155 from '../contractCode/erc1155'
-import { AccessControlType, ContractTypeStrategy, ContractWizardAction } from '../../types/template-explorer-types'
+import { AccessControlType, ContractTypeStrategy, ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from '../utils/contractWizardUtils'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { CustomTooltip } from '@remix-ui/helper'
@@ -164,15 +164,8 @@ export function ContractWizard () {
             </div>
 
             <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-              console.log('about to create workspace')
-              await facade.createWorkspace({
-                workspaceName: state.workspaceTemplateChosen.displayName,
-                workspaceTemplateName: state.workspaceTemplateChosen.value,
-                opts: { mintable: state.contractOptions.mintable, burnable: state.contractOptions.burnable, pausable: state.contractOptions.pausable, uups: state.contractUpgradability.uups, transparent: state.contractUpgradability.transparent },
-                isEmpty: false,
-                isGitRepo: state.initializeAsGitRepo,
-                createCommit: true
-              })
+              console.log('about to confirm workspace creation')
+              dispatch({ type: TemplateExplorerWizardAction.END_WORKSPACE_WIZARD })
             }}>Validate workspace</button>
           </div>
         </div>

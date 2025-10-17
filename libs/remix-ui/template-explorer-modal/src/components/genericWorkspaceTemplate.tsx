@@ -1,15 +1,27 @@
-import React, { useContext, useReducer } from 'react'
+import React, { useContext, useEffect, useReducer, useState } from 'react'
 import { initialState, templateExplorerReducer } from '../../reducers/template-explorer-reducer'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export function GenericWorkspaceTemplate() {
 
   const { state, dispatch, facade } = useContext(TemplateExplorerContext)
+  const [readMe, setReadMe] = useState(null)
+
+  useEffect(() => {
+    const run = async () => {
+      const readMe = await facade.getTemplateReadMeFile(state.workspaceTemplateChosen.value)
+      console.log('readMe', readMe)
+      setReadMe(readMe)
+    }
+    run()
+  }, [])
 
   return (
     <section className="mx-3 p-2">
-      <div className="d-flex flex-column p-3 bg-light" style={{ minHeight: '80%' }}>
+      <div className="d-flex flex-column p-3 bg-light" style={{ height: '50%' }}>
         <div>
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>
@@ -37,6 +49,9 @@ export function GenericWorkspaceTemplate() {
               createCommit: true
             })
           }}>Create workspace</button>
+        </div>
+        <div className="mt-3 overflow-y-auto" style={{ maxHeight: '90%' }}>
+          { readMe && readMe?.type === 'md' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{readMe?.readMe}</ReactMarkdown> : <p>{readMe?.readMe}</p> }
         </div>
       </div>
     </section>

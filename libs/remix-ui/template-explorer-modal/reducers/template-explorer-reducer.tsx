@@ -61,7 +61,10 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   case TemplateExplorerWizardAction.SET_WORKSPACE_GENERATED_WITH_AI:
     return { ...state, workspaceGeneratedWithAi: action.payload }
   case TemplateExplorerWizardAction.END_WORKSPACE_WIZARD:
-    return { ...state, wizardStep: 'finishSetup' }
+    return { ...state, wizardStep: 'confirm' }
+  case TemplateExplorerWizardAction.FINALIZE_WORKSPACE_CREATION: {
+    return initialState
+  }
   case TemplateExplorerWizardAction.SET_SELECTED_TAG: {
     return { ...state, selectedTag: action.payload }
   }

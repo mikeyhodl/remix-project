@@ -17,13 +17,13 @@ const pluginProfile = {
   events: [],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
-  location: 'mainPanel',
+  location: 'none',
   version: packageJson.version,
   permission: true,
   documentation: 'https://remix-ide.readthedocs.io/en/latest/template-explorer-modal.html'
 }
 
-export class TemplateExplorerModalPlugin extends ViewPlugin {
+export class TemplateExplorerModalPlugin extends Plugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
   event: any

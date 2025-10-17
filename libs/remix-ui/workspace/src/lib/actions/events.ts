@@ -14,6 +14,7 @@ export const listenOnPluginEvents = (filePanelPlugin) => {
   plugin = filePanelPlugin
 
   plugin.on('templateSelection', 'createWorkspaceReducerEvent', (name: string, workspaceTemplateName: WorkspaceTemplate, opts: any, isEmpty = false, cb: (err: Error, result?: string | number | boolean | Record<string, any>) => void, isGitRepo: boolean) => {
+    console.log('createWorkspaceReducerEvent fired from templateSelection', name, workspaceTemplateName, opts, isEmpty, cb, isGitRepo)
     createWorkspace(name, workspaceTemplateName, opts, isEmpty, cb, isGitRepo)
   })
 
@@ -26,6 +27,7 @@ export const listenOnPluginEvents = (filePanelPlugin) => {
   })
 
   plugin.on('filePanel', 'createWorkspaceReducerEvent', (name: string, workspaceTemplateName: WorkspaceTemplate, isEmpty = false, cb: (err: Error, result?: string | number | boolean | Record<string, any>) => void, isGitRepo: boolean) => {
+    console.log('createWorkspaceReducerEvent fired from filePanel', name, workspaceTemplateName, isEmpty, cb, isGitRepo)
     createWorkspace(name, workspaceTemplateName, null, isEmpty, cb, isGitRepo)
   })
 
