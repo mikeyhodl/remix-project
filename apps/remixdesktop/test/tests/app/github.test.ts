@@ -47,6 +47,7 @@ const tests = {
   'login to github #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="github-panel"]')
+      .click('*[data-id="github-panel"]')
       .waitForElementVisible('*[data-id="gitubUsername"]')
       .setValue('*[data-id="githubToken"]', process.env.DGIT_TOKEN)
       .pause(1000)
