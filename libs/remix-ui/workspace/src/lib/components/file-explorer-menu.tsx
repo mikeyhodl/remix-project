@@ -207,7 +207,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                         trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.importFromHttps('Https', 'http/https raw content', ['https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/token/ERC20/ERC20.sol'])
                       } else if (action === 'revealInExplorer') {
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.revealInExplorer()
                       } else {
                         state.actions[action]()
