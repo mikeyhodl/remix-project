@@ -1383,11 +1383,16 @@ export class MatomoManager implements IMatomoManager {
    */
   shouldShowConsentDialog(configApi?: any): boolean {
     try {
+      // Electron doesn't need cookie consent (uses server-side HTTP tracking)
+      const isElectron = (window as any).electronAPI !== undefined;
+      if (isElectron) {
+        return false;
+      }
+
       // Use domains from constructor config or fallback to empty object
       const matomoDomains = this.config.matomoDomains || {};
 
-      const isElectron = (window as any).electronAPI !== undefined;
-      const isSupported = matomoDomains[window.location.hostname] || isElectron;
+      const isSupported = matomoDomains[window.location.hostname];
 
       if (!isSupported) {
         return false;
