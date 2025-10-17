@@ -59,9 +59,7 @@ class DesktopTestRunner {
       const testName = file.replace('.test.ts', '');
       const builtPath = path.join(this.testDir, file.replace('.ts', '.js'));
       const exists = fs.existsSync(builtPath);
-      
-      // Debug: show what we're checking
-      console.log(`Checking: ${builtPath} - exists: ${exists}`);
+    
       
       tests.push({
         index: index + 1,
