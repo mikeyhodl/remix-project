@@ -8,8 +8,6 @@
         "build/**/*",
         "node_modules/node-pty-prebuilt-multiarch/**/*"
     ],
-    "afterSign": "aftersign.js",
-    "afterAllArtifactBuild": "afterbuild.js",
     "publish": [
         {
             "provider": "github",
@@ -23,15 +21,11 @@
         "category": "public.app-category.productivity",
         "icon": "assets/icon.png",
         "darkModeSupport": true,
-        "hardenedRuntime": true,
-        "gatekeeperAssess": false,
-        "entitlements": "entitlements.mac.plist",
-        "entitlementsInherit": "entitlements.mac.plist",
-        "extendInfo": "Info.plist"
+        "target": "dir"
     },
     "dmg": {
         "writeUpdateInfo": true,
-        "sign": true
+        "sign": false
     },
     "nsis": {
         "createDesktopShortcut": "always",
