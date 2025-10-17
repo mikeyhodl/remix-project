@@ -438,7 +438,6 @@ workflows:
       - remix-ide-browser:
           requires:
             - build
-          name: chrome-tests
           matrix:
             alias: chrome-tests
             parameters:
@@ -451,7 +450,6 @@ workflows:
       - remix-ide-browser:
           requires:
             - build
-          name: firefox-tests
           matrix:
             alias: firefox-tests
             parameters:
