@@ -1,0 +1,46 @@
+name: Build and Cache to NX Cloud
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+      - feat/**
+      - fix/**
+  pull_request:
+    branches:
+      - master
+      - main
+      - develop
+
+jobs:
+  build:
+    name: Build and upload to NX Cloud cache
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      
+      - name: Build all projects
+        run: yarn build
+        env:
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      
+      - name: Build summary
+        run: |
+          echo "✅ Build completed successfully"
+          echo "📦 Artifacts cached to NX Cloud"
+          echo "🔗 View run details in the NX Cloud dashboard"
