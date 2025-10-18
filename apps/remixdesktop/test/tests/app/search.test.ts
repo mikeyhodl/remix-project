@@ -14,6 +14,7 @@ module.exports = {
     },
     'open default template': function (browser: NightwatchBrowser) {
         browser
+            .hideToolTips()
             .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
 
         openTemplatesExplorer(browser)
@@ -23,8 +24,10 @@ module.exports = {
             .pause(3000)
             .windowHandles(function (result) {
                 console.log(result.value)
-                browser.hideToolTips()
+                browser
+                    .hideToolTips()
                     .switchWindow(result.value[1])
+                    .hideToolTips()
                     .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
                     .click('*[data-id="treeViewLitreeViewItemtests"]')
                     .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
@@ -199,6 +202,7 @@ module.exports = {
     },
     'Should hide button when edited content is the same #group2': function (browser: NightwatchBrowser) {
         browser.refresh()
+            .hideToolTips()
             .waitForElementVisible('*[data-id="remixIdeSidePanel"]')
             .addFile('test.sol', { content: '123' })
             .pause(4000)

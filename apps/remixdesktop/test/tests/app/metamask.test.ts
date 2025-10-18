@@ -14,6 +14,7 @@ const tests = {
   },
   'open default template': function (browser: NightwatchBrowser) {
     browser
+      .hideToolTips()
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
 
     openTemplatesExplorer(browser)
@@ -25,6 +26,7 @@ const tests = {
         console.log(result.value)
         browser.hideToolTips()
           .switchWindow(result.value[1])
+          .hideToolTips()
           .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
           .click('*[data-id="treeViewLitreeViewItemtests"]')
           .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')

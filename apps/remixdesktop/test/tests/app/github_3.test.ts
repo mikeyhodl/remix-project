@@ -18,6 +18,7 @@ const tests = {
 
   'open default template': function (browser: NightwatchBrowser) {
     browser
+      .hideToolTips()
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
 
     openTemplatesExplorer(browser)
@@ -27,7 +28,8 @@ const tests = {
       .pause(3000)
       .windowHandles(function (result) {
         console.log(result.value)
-        browser.switchWindow(result.value[1])
+        browser.hideToolTips().switchWindow(result.value[1])
+          .hideToolTips()
           .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       })
 
@@ -94,7 +96,8 @@ const tests = {
       .pause(5000)
       .windowHandles(function (result) {
         console.log(result.value)
-        browser.switchWindow(result.value[2])
+        browser.hideToolTips().switchWindow(result.value[2])
+          .hideToolTips()
           .pause(1000)
           .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
       })

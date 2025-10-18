@@ -15,7 +15,7 @@ const tests = {
    done()
   },
   open: function (browser: NightwatchBrowser) {
-    browser.waitForElementVisible('*[data-id="openFolderButton"]', 10000).click('*[data-id="openFolderButton"]')
+    browser.hideToolTips().waitForElementVisible('*[data-id="openFolderButton"]', 10000).click('*[data-id="openFolderButton"]')
   },
 
   'open default template': function (browser: NightwatchBrowser) {
@@ -30,6 +30,7 @@ const tests = {
       .windowHandles(function (result) {
         console.log(result.value)
          browser.hideToolTips().switchWindow(result.value[1])
+        .hideToolTips()
         .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
         .click('*[data-id="treeViewLitreeViewItemtests"]')
         .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
