@@ -56,8 +56,11 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build for tests (with local URLs)
-          command: NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build
+          name: Build for tests
+          command: yarn build
+      - run:
+          name: Inject E2E test configuration
+          command: yarn inject-e2e-config
       - run: yarn run build:e2e
 
   build-plugin:
@@ -178,8 +181,11 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build from NX Cloud cache (for tests with local URLs)
-          command: NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build
+          name: Build from NX Cloud cache
+          command: yarn build
+      - run:
+          name: Inject E2E test configuration
+          command: yarn inject-e2e-config
       - run: yarn run build:e2e
       - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
       - restore_cache:
