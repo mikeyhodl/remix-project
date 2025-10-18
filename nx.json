@@ -16,7 +16,8 @@
       "options": {
         "cacheableOperations": [
           "build"
-        ]
+        ],
+        "accessToken": "N2YxYzVmYjEtMmQ4OC00ZTlkLTliNWMtNGYwZGRjOTk2MDM0fHJlYWQtd3JpdGU="
       }
     }
   },
