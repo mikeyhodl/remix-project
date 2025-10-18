@@ -45,7 +45,6 @@ jobs:
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     steps:
-      - run: sudo apt update && sudo apt install zstd
       - checkout
       - run: git fetch origin master:master || true
       - restore_cache:
@@ -57,30 +56,9 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build:production
-            else
-              NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build
-            fi
+          name: Build for tests (with local URLs)
+          command: NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build
       - run: yarn run build:e2e
-      
-      - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
-      - restore_cache:
-          keys:
-            - soljson-v7-{{ checksum "soljson-versions.txt" }}
-      - run: yarn run downloadsolc_assets_e2e
-      - save_cache:
-          key: soljson-v7-{{ checksum "soljson-versions.txt" }}
-          paths:
-            - dist/apps/remix-ide/assets/js/soljson
-
-      - run: mkdir persist && tar -cf - dist | zstd -1 -o persist/dist.tar.zst
-      - persist_to_workspace:
-          root: .
-          paths:
-            - "persist"
 
   build-plugin:
       docker:
@@ -101,11 +79,7 @@ jobs:
             paths:
               - node_modules
         - run: yarn nx build << parameters.plugin >> --configuration=production
-        - run: mkdir persist && zip -0 -r persist/plugin-<< parameters.plugin >>.zip dist
-        - persist_to_workspace:
-            root: .
-            paths:
-              - "persist"  
+  
   lint:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -128,8 +102,6 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
-      - attach_workspace:
-          at: .
       - run: git fetch origin master:master || true
       - restore_cache:
           keys:
@@ -196,11 +168,28 @@ jobs:
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
-      - attach_workspace:
-          at: .
-      - run: sudo apt update && sudo apt install python3-pip -y zstd
-      - run: zstd -d persist/dist.tar.zst -o persist/dist.tar
-      - run: tar -xf persist/dist.tar
+      - run: git fetch origin master:master || true
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - save_cache:
+          key: v1-deps-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+      - run:
+          name: Build from NX Cloud cache (for tests with local URLs)
+          command: NX_BIN_URL=http://127.0.0.1:8080/assets/js/soljson NX_WASM_URL=http://127.0.0.1:8080/assets/js/soljson NX_NPM_URL=http://127.0.0.1:9090/ yarn build
+      - run: yarn run build:e2e
+      - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
+      - restore_cache:
+          keys:
+            - soljson-v7-{{ checksum "soljson-versions.txt" }}
+      - run: yarn run downloadsolc_assets_e2e
+      - save_cache:
+          key: soljson-v7-{{ checksum "soljson-versions.txt" }}
+          paths:
+            - dist/apps/remix-ide/assets/js/soljson
       - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
       - run: mkdir node_modules/hardhat && wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       - run: ls -la ./dist/apps/remix-ide/assets/js
@@ -275,12 +264,19 @@ jobs:
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
-      - attach_workspace:
-          at: .
-      - run: sudo apt update && sudo apt install zstd
-      - run: zstd -d persist/dist.tar.zst -o persist/dist.tar
-      - run: tar -xf persist/dist.tar
-      - run: unzip ./persist/plugin-<< parameters.plugin >>.zip
+      - run: git fetch origin master:master || true
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - save_cache:
+          key: v1-deps-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+      - run:
+          name: Build from NX Cloud cache
+          command: yarn build
+      - run: yarn nx build << parameters.plugin >> --configuration=production
       - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
       - browser-tools/install-browser-tools:
           install-firefox: false
@@ -312,11 +308,6 @@ jobs:
           paths:
             - node_modules
       - run: yarn build:production
-      - run: mkdir persist && zip -0 -r persist/predeploy.zip dist
-      - persist_to_workspace:
-          root: .
-          paths:
-            - "persist"
 
   deploy-build:
     docker:
@@ -335,9 +326,15 @@ jobs:
 
     steps:
       - checkout
-      - attach_workspace:
-          at: .
-      - run: unzip ./persist/predeploy.zip
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - save_cache:
+          key: v1-deps-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+      - run: yarn build:production
       - run: ./apps/remix-ide/ci/deploy_from_travis_remix-<< parameters.script >>.sh
     
 workflows:
