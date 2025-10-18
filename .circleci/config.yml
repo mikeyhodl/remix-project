@@ -46,6 +46,19 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
+      - run:
+          name: Nx Cloud diagnostics
+          command: |
+            echo "CI branch: ${CIRCLE_BRANCH:-unknown}"
+            echo "PR URL: ${CIRCLE_PULL_REQUEST:-none}"
+            echo "NX_VERBOSE_LOGGING=${NX_VERBOSE_LOGGING:-0}"
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "Nx Cloud token present: yes"
+            else
+              echo "Nx Cloud token present: no (fork PRs often hide secrets)"
+              echo "export NXCI_SKIP_NX_CACHE=1" >> "$BASH_ENV"
+            fi
+            mkdir -p logs
       - run: git fetch origin master:master || true
       - restore_cache:
           keys:
@@ -56,14 +69,35 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build for tests
-          command: yarn build
-          environment:
-            NX_VERBOSE_LOGGING: true
+          name: Build for tests (Nx verbose, conditional remote cache)
+          command: |
+            # Load any flags set in previous steps
+            source "$BASH_ENV" 2>/dev/null || true
+            set -e
+            echo "Starting build at $(date -u)"
+            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ] || [ -n "${NXCI_SKIP_NX_CACHE:-}" ]; then
+              echo "Running: yarn build --skip-nx-cache (no Nx Cloud token)"
+              (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee logs/nx-build.log
+            else
+              echo "Running: yarn build (with Nx Cloud)"
+              # First attempt with cloud; if we encounter cache download issues, retry without remote cache
+              set +e
+              (NX_VERBOSE_LOGGING=1 yarn build) 2>&1 | tee logs/nx-build.log
+              BUILD_STATUS=${PIPESTATUS[0]}
+              set -e
+              if grep -q "Nx Cloud encountered some problems" logs/nx-build.log; then
+                echo "⚠️  Nx Cloud cache download issue detected — retrying without cache"
+                (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee -a logs/nx-build.log
+              fi
+              exit ${BUILD_STATUS}
+            fi
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
       - run: yarn run build:e2e
+      - store_artifacts:
+          path: logs
+          destination: nx-logs
 
   build-plugin:
       docker:
