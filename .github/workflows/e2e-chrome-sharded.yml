@@ -56,17 +56,6 @@ jobs:
         with:
           path: dist/apps/remix-ide/assets/js/soljson
           key: soljson-v7-${{ hashFiles('soljson-versions.txt') }}
-      
-      - name: Archive dist folder
-        run: |
-          mkdir -p persist
-          tar -czf persist/dist.tar.gz dist
-      
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: remix-dist
-          path: persist/dist.tar.gz
   
   remix-ide-chrome:
     needs: build
@@ -79,6 +68,8 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - uses: actions/setup-node@v4
         with:
@@ -92,15 +83,24 @@ jobs:
       
       - run: yarn install
       
-      - uses: actions/download-artifact@v4
-        with:
-          name: remix-dist
-          path: dist/
+      - name: Build from NX Cloud cache
+        run: yarn build
+        env:
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
       
-      - name: Extract dist archive
-        run: |
-          mkdir -p dist
-          tar -xzf dist/dist.tar.gz -C .
+      - run: yarn inject-e2e-config
+      
+      - run: yarn run build:e2e
+      
+      - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
+      
+      - name: Cache soljson assets
+        uses: actions/cache@v4
+        with:
+          path: dist/apps/remix-ide/assets/js/soljson
+          key: soljson-v7-${{ hashFiles('soljson-versions.txt') }}
+      
+      - run: yarn run downloadsolc_assets_e2e
       
       - run: |
           mkdir -p node_modules/hardhat
