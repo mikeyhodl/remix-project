@@ -60,8 +60,16 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'yarn'
       
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+      
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --prefer-offline
       
       - name: Build from NX Cloud cache
         run: yarn build
