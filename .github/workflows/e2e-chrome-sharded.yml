@@ -130,16 +130,16 @@ jobs:
           echo "$TESTS_TO_RUN" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
-      - name: Start test services
+      - name: Run Nightwatch E2E tests for this shard
+        if: steps.get-tests.outputs.tests != ''
         run: |
+          # Start services in background
           npx ganache &
           npx http-server -p 9090 --cors='*' ./node_modules &
           yarn run serve:production &
           sleep 5
-      
-      - name: Run Nightwatch E2E tests for this shard
-        if: steps.get-tests.outputs.tests != ''
-        run: |
+          
+          # Run tests
           TESTS="${{ steps.get-tests.outputs.tests }}"
           if [ -n "$TESTS" ]; then
             echo "Running tests: $TESTS"
