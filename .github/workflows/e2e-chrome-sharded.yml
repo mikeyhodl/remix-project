@@ -39,30 +39,14 @@ env:
   TEST_FILTER: ${{ inputs.test_filter || '' }}
 
 jobs:
-  prepare:
-    name: Prepare shard matrix
-    runs-on: ubuntu-latest
-    outputs:
-      shards: ${{ steps.set-matrix.outputs.shards }}
-    steps:
-      - id: set-matrix
-        run: |
-          TOTAL="${{ inputs.total_shards }}"
-          if [ -z "$TOTAL" ]; then
-            TOTAL="10"
-          fi
-          SHARDS=$(seq 1 $TOTAL | jq -R -s 'split("\n")[:-1]')
-          echo "shards=$SHARDS" >> $GITHUB_OUTPUT
-  
   e2e-chrome-sharded:
     name: E2E Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    needs: prepare
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJson(needs.prepare.outputs.shards) }}
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     
     steps:
       - name: Checkout code
