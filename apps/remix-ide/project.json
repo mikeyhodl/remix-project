@@ -9,19 +9,6 @@
       "executor": "@nrwl/webpack:webpack",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "development",
-      "inputs": [
-        "default",
-        "^production",
-        {
-          "env": "NX_BIN_URL"
-        },
-        {
-          "env": "NX_WASM_URL"
-        },
-        {
-          "env": "NX_NPM_URL"
-        }
-      ],
       "options": {
         "compiler": "babel",
         "outputPath": "dist/apps/remix-ide",
