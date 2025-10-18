@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: e2e-build-only-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build and upload to NX Cloud cache
