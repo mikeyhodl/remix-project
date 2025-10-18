@@ -1,94 +1,102 @@
 name: E2E Chrome Tests - Sharded
 
 on:
-
   push:
     branches:
-      - master
-      - main
-      - develop
       - feat/**
-      - fix/**
-  pull_request:
-    branches:
-      - master
-      - main
-      - develop
-
+      - test/**
   workflow_dispatch:
-    inputs:
-      total_shards:
-        description: 'Number of shards to split tests across'
-        required: false
-        default: '4'
-        type: choice
-        options:
-          - '2'
-          - '4'
-          - '6'
-          - '8'
-          - '10'
-      test_filter:
-        description: 'Test filter pattern (optional, e.g., "importResolver" or leave empty for all)'
-        required: false
-        default: ''
-        type: string
-
-env:
-  TOTAL_SHARDS: ${{ inputs.total_shards || '4' }}
-  TEST_FILTER: ${{ inputs.test_filter || '' }}
 
 jobs:
-  e2e-chrome-sharded:
-    name: E2E Shard ${{ matrix.shard }}
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: 'yarn'
       
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
+          key: v1-deps-${{ hashFiles('yarn.lock') }}
       
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile --prefer-offline
+      - run: yarn install
       
       - name: Build from NX Cloud cache
         run: yarn build
         env:
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
       
-      - name: Inject E2E test configuration
-        run: yarn inject-e2e-config
+      - run: yarn run build:e2e
       
-      - name: Build E2E tests
-        run: yarn run build:e2e
+      - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
       
-      - name: Download Solidity compiler assets
+      - name: Cache soljson assets
+        uses: actions/cache@v4
+        with:
+          path: dist/apps/remix-ide/assets/js/soljson
+          key: soljson-v7-${{ hashFiles('soljson-versions.txt') }}
+      
+      - run: yarn run downloadsolc_assets_e2e
+      
+      - name: Save soljson cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: dist/apps/remix-ide/assets/js/soljson
+          key: soljson-v7-${{ hashFiles('soljson-versions.txt') }}
+      
+      - name: Archive dist folder
         run: |
-          grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
-          yarn run downloadsolc_assets_e2e
+          mkdir -p persist
+          tar -czf persist/dist.tar.gz dist
       
-      - name: Install system dependencies
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remix-dist
+          path: persist/dist.tar.gz
+  
+  remix-ide-chrome:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: v1-deps-${{ hashFiles('yarn.lock') }}
+      
+      - run: yarn install
+      
+      - uses: actions/download-artifact@v4
+        with:
+          name: remix-dist
+          path: dist/
+      
+      - name: Extract dist archive
         run: |
+          mkdir -p dist
+          tar -xzf dist/dist.tar.gz -C .
+      
+      - run: |
           mkdir -p node_modules/hardhat
           wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       
@@ -100,102 +108,22 @@ jobs:
       - name: Install ChromeDriver
         run: |
           yarn install_webdriver
-          # Move chromedriver to the path expected by nightwatch config
           if [ -f "./tmp/webdrivers/chromedriver-linux64/chromedriver" ]; then
             mv ./tmp/webdrivers/chromedriver-linux64/chromedriver ./tmp/webdrivers/chromedriver
           fi
       
-      - name: Get test files for this shard
-        id: get-tests
-        run: |
-          # Get all enabled test files
-          if [ -n "${{ inputs.test_filter }}" ]; then
-            TEST_FILES=$(grep -IRiL "'@disabled': \?true" "dist/apps/remix-ide-e2e/src/tests" | grep "${{ inputs.test_filter }}" | sort)
-          else
-            TEST_FILES=$(grep -IRiL "'@disabled': \?true" "dist/apps/remix-ide-e2e/src/tests" | sort)
-          fi
-          
-          # Convert to array
-          readarray -t ALL_TESTS <<< "$TEST_FILES"
-          TOTAL_TESTS=${#ALL_TESTS[@]}
-          
-          # Calculate tests per shard (hardcoded 10 shards)
-          TOTAL_SHARDS=10
-          CURRENT_SHARD=${{ matrix.shard }}
-          TESTS_PER_SHARD=$(( (TOTAL_TESTS + TOTAL_SHARDS - 1) / TOTAL_SHARDS ))
-          
-          # Get tests for this shard
-          START_IDX=$(( (CURRENT_SHARD - 1) * TESTS_PER_SHARD ))
-          END_IDX=$(( START_IDX + TESTS_PER_SHARD ))
-          
-          SHARD_TESTS=("${ALL_TESTS[@]:$START_IDX:$TESTS_PER_SHARD}")
-          
-          # Join array with spaces
-          TESTS_TO_RUN="${SHARD_TESTS[*]}"
-          
-          echo "Total tests: $TOTAL_TESTS"
-          echo "Tests per shard: $TESTS_PER_SHARD"
-          echo "Shard $CURRENT_SHARD will run $(echo $TESTS_TO_RUN | wc -w) tests"
-          echo "Tests: $TESTS_TO_RUN"
-          
-          # Save to output (handle multiline)
-          echo "tests<<EOF" >> $GITHUB_OUTPUT
-          echo "$TESTS_TO_RUN" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - run: ./apps/remix-ide/ci/browser_test_github.sh chromeDesktop 10 ${{ matrix.job }}
       
-      - name: Run Nightwatch E2E tests for this shard
-        if: steps.get-tests.outputs.tests != ''
-        run: |
-          set -e
-          
-          # Start services in background
-          npx ganache &
-          npx http-server -p 9090 --cors='*' ./node_modules &
-          yarn run serve:production &
-          sleep 5
-          
-          # Run tests one by one with retry logic
-          TEST_EXITCODE=0
-          TESTS="${{ steps.get-tests.outputs.tests }}"
-          
-          for TESTFILE in $TESTS; do
-            echo "Running test: $TESTFILE"
-            if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-chrome.js $TESTFILE --env=chromeDesktop; then
-              echo "Test failed, retrying once..."
-              if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-chrome.js $TESTFILE --env=chromeDesktop; then
-                TEST_EXITCODE=1
-                break
-              fi
-            fi
-          done
-          
-          if [ "$TEST_EXITCODE" -eq 1 ]; then
-            echo "❌ Test failed"
-            exit 1
-          fi
-        env:
-          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-      
-      - name: Upload test screenshots on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-screenshots-shard-${{ matrix.shard }}
-          path: reports/screenshots/
-          retention-days: 7
-      
-      - name: Upload test reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-reports-shard-${{ matrix.shard }}
-          path: reports/tests/
-          retention-days: 7
-      
-      - name: Test summary
+      - name: Upload test results
         if: always()
-        run: |
-          echo "✅ Shard ${{ matrix.shard }} completed"
-          if [ -f reports/tests/*.xml ]; then
-            echo "📊 Test results available in artifacts"
-          fi
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-chrome-${{ matrix.job }}
+          path: reports/tests
+      
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-chrome-${{ matrix.job }}
+          path: reports/screenshots
