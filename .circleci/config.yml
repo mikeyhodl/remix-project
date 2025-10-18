@@ -86,8 +86,7 @@ jobs:
               BUILD_STATUS=${PIPESTATUS[0]}
               set -e
               if grep -q "Nx Cloud encountered some problems" logs/nx-build.log; then
-                echo "⚠️  Nx Cloud cache download issue detected — retrying without cache"
-                (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee -a logs/nx-build.log
+                echo "⚠️  Nx Cloud cache download issue detected"
               fi
               exit ${BUILD_STATUS}
             fi
