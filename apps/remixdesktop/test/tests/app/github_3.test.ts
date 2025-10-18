@@ -67,6 +67,13 @@ const tests = {
       .waitForElementVisible('*[data-id="connected-link-bunsenstraat"]')
       .waitForElementVisible('*[data-id="remotes-panel"]')
   },
+  'check the FE shows logged in user #group1 #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible({
+        selector: '//*[@data-id="github-dropdown-toggle-login"]//span[contains(text(), "bunsenstraat")]',
+        locateStrategy: 'xpath'
+      })
+  },
   // 'check the FE for the auth user #group1 #group2': function (browser: NightwatchBrowser) {
   //   browser
   //     .clickLaunchIcon('filePanel')
@@ -75,7 +82,6 @@ const tests = {
   // pagination test
   'clone repo #group3': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('dgit')
       .waitForElementVisible('*[data-id="clone-panel"]')
       .click('*[data-id="clone-panel"]')
       .waitForElementVisible('*[data-id="clone-url"]')

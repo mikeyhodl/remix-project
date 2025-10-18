@@ -88,19 +88,53 @@ class DesktopTestRunner {
     this.log('  [number] - Run specific test', 'cyan');
     this.log('  all      - Run all built tests', 'cyan');
     this.log('  build    - Run yarn build:e2e', 'cyan');
+    this.log('  env      - Check environment variables', 'cyan');
     this.log('  refresh  - Refresh test list', 'cyan');
     this.log('  quit     - Exit', 'cyan');
     this.log('');
   }
 
+  checkEnvironment() {
+    this.log('\n🔍 Environment Variables Check:', 'bright');
+    this.log('=' .repeat(40), 'cyan');
+    
+    const dgitToken = process.env.DGIT_TOKEN;
+    if (dgitToken) {
+      this.log(`✅ DGIT_TOKEN: Set (${dgitToken.substring(0, 4)}...)`, 'green');
+    } else {
+      this.log('❌ DGIT_TOKEN: Not set', 'red');
+      this.log('   Required for GitHub tests', 'yellow');
+      this.log('   Set with: export DGIT_TOKEN=your_github_token', 'cyan');
+    }
+    
+    this.log('');
+  }
+
   async runTest(testPath) {
-    this.log(`\n🚀 Running test: ${testPath}`, 'yellow');
+    // Check if this is a GitHub test and DGIT_TOKEN is required
+    if (testPath.includes('github') && !process.env.DGIT_TOKEN) {
+      this.log('\n⚠️  WARNING: DGIT_TOKEN environment variable not set!', 'yellow');
+      this.log('GitHub tests require a valid GitHub token.', 'yellow');
+      this.log('Set it with: export DGIT_TOKEN=your_github_token\n', 'cyan');
+    }
+
+    this.log(`\n� Building tests first...`, 'yellow');
+    
+    // First build the tests
+    const buildCode = await this.buildTests();
+    if (buildCode !== 0) {
+      this.log('❌ Build failed, cannot run test', 'red');
+      return buildCode;
+    }
+
+    this.log(`\n�🚀 Running test: ${testPath}`, 'yellow');
     this.log('Command: yarn test --test ' + testPath, 'cyan');
     this.log('-'.repeat(60), 'cyan');
 
     return new Promise((resolve) => {
       const child = spawn('yarn', ['test', '--test', testPath], {
-        stdio: 'inherit'
+        stdio: 'inherit',
+        env: process.env
       });
 
       child.on('close', (code) => {
@@ -146,7 +180,8 @@ class DesktopTestRunner {
     
     return new Promise((resolve) => {
       const child = spawn('yarn', ['build:e2e'], {
-        stdio: 'inherit'
+        stdio: 'inherit',
+        env: process.env
       });
 
       child.on('close', (code) => {
@@ -191,6 +226,11 @@ class DesktopTestRunner {
 
       if (userInput === 'build' || userInput === 'b') {
         await this.buildTests();
+        continue;
+      }
+
+      if (userInput === 'env' || userInput === 'e') {
+        this.checkEnvironment();
         continue;
       }
 

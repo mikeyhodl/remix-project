@@ -64,6 +64,13 @@ const tests = {
       .waitForElementVisible('*[data-id="connected-link-bunsenstraat"]')
       .waitForElementVisible('*[data-id="remotes-panel"]')
   },
+  'check the FE shows logged in user #group1 #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible({
+        selector: '//*[@data-id="github-dropdown-toggle-login"]//span[contains(text(), "bunsenstraat")]',
+        locateStrategy: 'xpath'
+      })
+  },
   // 'check the FE for the auth user #group1 #group2': function (browser: NightwatchBrowser) {
   //   browser
   //     .clickLaunchIcon('filePanel')
@@ -71,7 +78,6 @@ const tests = {
   // },
   'clone a repository #group1': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('dgit')
       .click('*[data-id="clone-panel"]')
       .click({
         selector: '//*[@data-id="clone-panel-content"]//*[@data-id="fetch-repositories"]',
@@ -119,6 +125,13 @@ const tests = {
         browser.switchWindow(result.value[2])
           .pause(1000)
           .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
+      })
+  },
+  'check if user is still logged in after cloning #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible({
+        selector: '//*[@data-id="github-dropdown-toggle-login"]//span[contains(text(), "bunsenstraat")]',
+        locateStrategy: 'xpath'
       })
   },
   'check if there is a README.md file #group1': function (browser: NightwatchBrowser) {
@@ -240,20 +253,23 @@ const tests = {
       })
   },
   'disconnect github #group1': function (browser: NightwatchBrowser) {
-    browser
+
+    browser      
       .waitForElementVisible('*[data-id="github-panel"]')
       .pause(1000)
       .click('*[data-id="github-panel"]')
       .waitForElementVisible('*[data-id="disconnect-github"]')
       .pause(1000)
       .click('*[data-id="disconnect-github"]')
+
       .waitForElementNotPresent('*[data-id="connected-as-bunsenstraat"]')
   },
   'check the FE for the disconnected auth user #group1': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('filePanel')
-      .waitForElementNotPresent('*[data-id="filepanel-connected-img-bunsenstraat"]')
-      .waitForElementVisible('*[data-id="filepanel-login-github"]')
+      .waitForElementNotPresent({
+        selector: '//*[@data-id="github-dropdown-toggle-login"]//span[contains(text(), "bunsenstraat")]',
+        locateStrategy: 'xpath'
+      })
   },
 }
 
