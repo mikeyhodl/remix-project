@@ -56,7 +56,10 @@ jobs:
               echo "Nx Cloud token present: yes"
               # Persist the token for subsequent shells opened by later steps
               # (CircleCI runs each 'run' step in a fresh login shell.)
-              echo 'export NX_CLOUD_ACCESS_TOKEN=${NX_CLOUD_ACCESS_TOKEN}' >> "$BASH_ENV"
+              # Use double quotes to expand and single quotes to preserve the exact value
+              # Also strip any accidental newlines that could break the token parsing
+              CLEAN_TOKEN=$(printf %s "${NX_CLOUD_ACCESS_TOKEN}" | tr -d '\r\n')
+              echo "export NX_CLOUD_ACCESS_TOKEN='${CLEAN_TOKEN}'" >> "$BASH_ENV"
               echo "Token exported to job environment"
             else
               echo "Nx Cloud token present: no (fork PRs often hide secrets)"
