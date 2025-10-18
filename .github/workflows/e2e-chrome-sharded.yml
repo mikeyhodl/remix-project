@@ -7,6 +7,10 @@ on:
       - test/**
   workflow_dispatch:
 
+concurrency:
+  group: e2e-chrome-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -71,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        job: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +118,7 @@ jobs:
             mv ./tmp/webdrivers/chromedriver-linux64/chromedriver ./tmp/webdrivers/chromedriver
           fi
       
-      - run: ./apps/remix-ide/ci/browser_test_github.sh chrome 10 ${{ matrix.job }}
+      - run: ./apps/remix-ide/ci/browser_test_github.sh chrome 20 ${{ matrix.job }}
       
       - name: Upload test results
         if: always()
