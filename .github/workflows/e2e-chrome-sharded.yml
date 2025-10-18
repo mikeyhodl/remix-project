@@ -106,8 +106,8 @@ jobs:
           readarray -t ALL_TESTS <<< "$TEST_FILES"
           TOTAL_TESTS=${#ALL_TESTS[@]}
           
-          # Calculate tests per shard
-          TOTAL_SHARDS=${{ inputs.total_shards }}
+          # Calculate tests per shard (hardcoded 10 shards)
+          TOTAL_SHARDS=10
           CURRENT_SHARD=${{ matrix.shard }}
           TESTS_PER_SHARD=$(( (TOTAL_TESTS + TOTAL_SHARDS - 1) / TOTAL_SHARDS ))
           
