@@ -58,6 +58,8 @@ jobs:
       - run:
           name: Build for tests
           command: yarn build
+          environment:
+            NX_VERBOSE_LOGGING: true
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
@@ -183,6 +185,8 @@ jobs:
       - run:
           name: Build from NX Cloud cache
           command: yarn build
+          environment:
+            NX_VERBOSE_LOGGING: true
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
