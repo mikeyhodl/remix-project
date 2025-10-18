@@ -14,7 +14,7 @@ on:
       - master
       - main
       - develop
-      
+
   workflow_dispatch:
     inputs:
       total_shards:
@@ -47,8 +47,11 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          TOTAL=${{ env.TOTAL_SHARDS }}
-          SHARDS=$(seq 1 $TOTAL | jq -R . | jq -s .)
+          TOTAL="${{ inputs.total_shards }}"
+          if [ -z "$TOTAL" ]; then
+            TOTAL="10"
+          fi
+          SHARDS=$(seq 1 $TOTAL | jq -R -s 'split("\n")[:-1]')
           echo "shards=$SHARDS" >> $GITHUB_OUTPUT
   
   e2e-chrome-sharded:
