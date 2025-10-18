@@ -112,7 +112,7 @@ jobs:
             mv ./tmp/webdrivers/chromedriver-linux64/chromedriver ./tmp/webdrivers/chromedriver
           fi
       
-      - run: ./apps/remix-ide/ci/browser_test_github.sh chromeDesktop 10 ${{ matrix.job }}
+      - run: ./apps/remix-ide/ci/browser_test_github.sh chrome 10 ${{ matrix.job }}
       
       - name: Upload test results
         if: always()
