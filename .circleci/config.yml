@@ -40,7 +40,7 @@ jobs:
 
   build:
     docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     steps:
@@ -82,7 +82,7 @@ jobs:
 
   build-plugin:
       docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
       resource_class: << pipeline.parameters.resource_class >>
       working_directory: ~/remix-project
       parameters:
@@ -106,7 +106,7 @@ jobs:
               - "persist"  
   lint:
     docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     steps:
@@ -121,7 +121,7 @@ jobs:
           command: node ./apps/remix-ide/ci/lint-targets.js
   remix-libs:
     docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     steps:
@@ -295,7 +295,7 @@ jobs:
 
   predeploy:
     docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     steps:
@@ -317,7 +317,7 @@ jobs:
 
   deploy-build:
     docker:
-      - image: cimg/node:20.0.0-browsers
+      - image: cimg/node:20.19.0-browsers
 
     resource_class:
       xlarge
