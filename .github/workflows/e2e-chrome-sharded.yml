@@ -1,0 +1,188 @@
+name: E2E Chrome Tests - Sharded
+
+on:
+
+  push:
+    branches:
+      - master
+      - main
+      - develop
+      - feat/**
+      - fix/**
+  pull_request:
+    branches:
+      - master
+      - main
+      - develop
+      
+  workflow_dispatch:
+    inputs:
+      total_shards:
+        description: 'Number of shards to split tests across'
+        required: false
+        default: '4'
+        type: choice
+        options:
+          - '2'
+          - '4'
+          - '6'
+          - '8'
+          - '10'
+      test_filter:
+        description: 'Test filter pattern (optional, e.g., "importResolver" or leave empty for all)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  TOTAL_SHARDS: ${{ inputs.total_shards || '4' }}
+  TEST_FILTER: ${{ inputs.test_filter || '' }}
+
+jobs:
+  prepare:
+    name: Prepare shard matrix
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.set-matrix.outputs.shards }}
+    steps:
+      - id: set-matrix
+        run: |
+          TOTAL=${{ env.TOTAL_SHARDS }}
+          SHARDS=$(seq 1 $TOTAL | jq -R . | jq -s .)
+          echo "shards=$SHARDS" >> $GITHUB_OUTPUT
+  
+  e2e-chrome-sharded:
+    name: E2E Shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.prepare.outputs.shards) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      
+      - name: Build from NX Cloud cache
+        run: yarn build
+        env:
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      
+      - name: Inject E2E test configuration
+        run: yarn inject-e2e-config
+      
+      - name: Build E2E tests
+        run: yarn run build:e2e
+      
+      - name: Download Solidity compiler assets
+        run: |
+          grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
+          yarn run downloadsolc_assets_e2e
+      
+      - name: Install system dependencies
+        run: |
+          mkdir -p node_modules/hardhat
+          wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
+      
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      
+      - name: Install ChromeDriver
+        run: yarn install_webdriver
+      
+      - name: Get test files for this shard
+        id: get-tests
+        run: |
+          # Get all enabled test files
+          if [ -n "${{ inputs.test_filter }}" ]; then
+            TEST_FILES=$(grep -IRiL "'@disabled': \?true" "dist/apps/remix-ide-e2e/src/tests" | grep "${{ inputs.test_filter }}" | sort)
+          else
+            TEST_FILES=$(grep -IRiL "'@disabled': \?true" "dist/apps/remix-ide-e2e/src/tests" | sort)
+          fi
+          
+          # Convert to array
+          readarray -t ALL_TESTS <<< "$TEST_FILES"
+          TOTAL_TESTS=${#ALL_TESTS[@]}
+          
+          # Calculate tests per shard
+          TOTAL_SHARDS=${{ inputs.total_shards }}
+          CURRENT_SHARD=${{ matrix.shard }}
+          TESTS_PER_SHARD=$(( (TOTAL_TESTS + TOTAL_SHARDS - 1) / TOTAL_SHARDS ))
+          
+          # Get tests for this shard
+          START_IDX=$(( (CURRENT_SHARD - 1) * TESTS_PER_SHARD ))
+          END_IDX=$(( START_IDX + TESTS_PER_SHARD ))
+          
+          SHARD_TESTS=("${ALL_TESTS[@]:$START_IDX:$TESTS_PER_SHARD}")
+          
+          # Join array with spaces
+          TESTS_TO_RUN="${SHARD_TESTS[*]}"
+          
+          echo "Total tests: $TOTAL_TESTS"
+          echo "Tests per shard: $TESTS_PER_SHARD"
+          echo "Shard $CURRENT_SHARD will run $(echo $TESTS_TO_RUN | wc -w) tests"
+          echo "Tests: $TESTS_TO_RUN"
+          
+          # Save to output (handle multiline)
+          echo "tests<<EOF" >> $GITHUB_OUTPUT
+          echo "$TESTS_TO_RUN" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Start test services
+        run: |
+          npx ganache &
+          npx http-server -p 9090 --cors='*' ./node_modules &
+          yarn run serve:production &
+          sleep 5
+      
+      - name: Run Nightwatch E2E tests for this shard
+        if: steps.get-tests.outputs.tests != ''
+        run: |
+          TESTS="${{ steps.get-tests.outputs.tests }}"
+          if [ -n "$TESTS" ]; then
+            echo "Running tests: $TESTS"
+            yarn nightwatch --config dist/apps/remix-ide-e2e/nightwatch-chrome.js $TESTS --env=chromeDesktop
+          else
+            echo "No tests to run in this shard"
+          fi
+        env:
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      
+      - name: Upload test screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots-shard-${{ matrix.shard }}
+          path: reports/screenshots/
+          retention-days: 7
+      
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports-shard-${{ matrix.shard }}
+          path: reports/tests/
+          retention-days: 7
+      
+      - name: Test summary
+        if: always()
+        run: |
+          echo "✅ Shard ${{ matrix.shard }} completed"
+          if [ -f reports/tests/*.xml ]; then
+            echo "📊 Test results available in artifacts"
+          fi
