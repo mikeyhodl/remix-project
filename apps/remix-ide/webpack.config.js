@@ -15,18 +15,59 @@ const versionData = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development'
 }
 
-const loadLocalSolJson = async () => {
-  //execute apps/remix-ide/ci/downloadsoljson.sh
-  console.log('loading local soljson')
-  const child = require('child_process').execSync('bash ' + __dirname + '/ci/downloadsoljson.sh', { encoding: 'utf8', cwd: process.cwd(), shell: true })
-  // show output
-  console.log(child)
+// Emit the soljson.js compiler into the output without touching source files
+class EmitSoljsonPlugin {
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('EmitSoljsonPlugin', (compilation) => {
+      const { sources, Compilation } = compiler.webpack
+      const RawSource = sources && sources.RawSource
+      compilation.hooks.processAssets.tapPromise(
+        { name: 'EmitSoljsonPlugin', stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL },
+        async () => {
+          try {
+            const defaultVersion = require('../../package.json').defaultVersion
+            const url = `https://binaries.soliditylang.org/bin/${defaultVersion}`
+            const data = await new Promise((resolve, reject) => {
+              const https = require('https')
+              https
+                .get(url, (res) => {
+                  if (res.statusCode !== 200) {
+                    reject(new Error(`Failed to download soljson.js (${res.statusCode})`))
+                    return
+                  }
+                  const chunks = []
+                  res.on('data', (c) => chunks.push(c))
+                  res.on('end', () => resolve(Buffer.concat(chunks)))
+                })
+                .on('error', reject)
+            })
+            if (RawSource) {
+              // Match previous public path: assets/js/soljson.js
+              compilation.emitAsset('assets/js/soljson.js', new RawSource(data))
+            }
+          } catch (e) {
+            console.warn('EmitSoljsonPlugin: skipping emit due to error:', e.message)
+          }
+        }
+      )
+    })
+  }
 }
 
-fs.writeFileSync(__dirname + '/src/assets/version.json', JSON.stringify(versionData))
+// Emit version.json as part of the build instead of writing to source
+class EmitVersionJsonPlugin {
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('EmitVersionJsonPlugin', (compilation) => {
+      const json = JSON.stringify(versionData)
+      const RawSource = compiler.webpack && compiler.webpack.sources && compiler.webpack.sources.RawSource
+      if (RawSource) {
+        compilation.emitAsset('assets/version.json', new RawSource(json))
+      }
+    })
+  }
+}
 
-
-loadLocalSolJson()
+// No-op external writes; emit soljson during compilation instead
 
 const project = fs.readFileSync(__dirname + '/project.json', 'utf8')
 
@@ -106,9 +147,9 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
     config.output.publicPath = '/'
   }
 
-  // set filename
-  config.output.filename = `[name].${versionData.version}.${versionData.timestamp}.js`
-  config.output.chunkFilename = `[name].${versionData.version}.${versionData.timestamp}.js`
+  // set deterministic filenames for better caching
+  config.output.filename = `[name].[contenthash].js`
+  config.output.chunkFilename = `[name].[contenthash].js`
 
   // add copy & provide plugin
   config.plugins.push(
@@ -121,6 +162,8 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
         ...copyPatterns
       ].filter(Boolean)
     }),
+    new EmitSoljsonPlugin(),
+    new EmitVersionJsonPlugin(),
     new CopyFileAfterBuild(),
     new webpack.ProvidePlugin({
       Buffer: ['buffer', 'Buffer'],

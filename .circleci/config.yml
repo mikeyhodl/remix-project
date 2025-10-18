@@ -79,14 +79,14 @@ jobs:
               echo "Running: yarn build --skip-nx-cache (no Nx Cloud token)"
               (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee logs/nx-build.log
             else
-              echo "Running: yarn build (with Nx Cloud)"
-              # First attempt with cloud; if we encounter cache download issues, retry without remote cache
+              echo "Running: nx build (with Nx Cloud)"
+              # Use explicit nx invocation with --cloud and pass token via env to avoid shell/env propagation issues
               set +e
-              (NX_VERBOSE_LOGGING=1 yarn build) 2>&1 | tee logs/nx-build.log
+              (NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose) 2>&1 | tee logs/nx-build.log
               BUILD_STATUS=${PIPESTATUS[0]}
               set -e
               if grep -q "Nx Cloud encountered some problems" logs/nx-build.log; then
-                echo "⚠️  Nx Cloud cache download issue detected"
+                echo "⚠️  Nx Cloud cache download/upload issue detected"
               fi
               exit ${BUILD_STATUS}
             fi
@@ -217,9 +217,15 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
-          command: yarn build
-          environment:
-            NX_VERBOSE_LOGGING: true
+          command: |
+            source "$BASH_ENV" 2>/dev/null || true
+            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build with cache skipped."
+              NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
+            else
+              echo "Running with Nx Cloud token (masked)."
+              NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
+            fi
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
@@ -318,7 +324,15 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
-          command: yarn build
+          command: |
+            source "$BASH_ENV" 2>/dev/null || true
+            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build with cache skipped."
+              NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
+            else
+              echo "Running with Nx Cloud token (masked)."
+              NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
+            fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
       - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
       - browser-tools/install-browser-tools:
