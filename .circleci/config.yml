@@ -54,6 +54,10 @@ jobs:
             echo "NX_VERBOSE_LOGGING=${NX_VERBOSE_LOGGING:-0}"
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
               echo "Nx Cloud token present: yes"
+              # Persist the token for subsequent shells opened by later steps
+              # (CircleCI runs each 'run' step in a fresh login shell.)
+              echo 'export NX_CLOUD_ACCESS_TOKEN=${NX_CLOUD_ACCESS_TOKEN}' >> "$BASH_ENV"
+              echo "Token exported to job environment"
             else
               echo "Nx Cloud token present: no (fork PRs often hide secrets)"
               echo "export NXCI_SKIP_NX_CACHE=1" >> "$BASH_ENV"
@@ -70,6 +74,9 @@ jobs:
             - node_modules
       - run:
           name: Build for tests (Nx verbose, conditional remote cache)
+          environment:
+            NX_VERBOSE_LOGGING: "1"
+            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
             # Load any flags set in previous steps
             source "$BASH_ENV" 2>/dev/null || true
@@ -217,6 +224,9 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
+          environment:
+            NX_VERBOSE_LOGGING: "1"
+            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
             source "$BASH_ENV" 2>/dev/null || true
             if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
@@ -324,6 +334,9 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
+          environment:
+            NX_VERBOSE_LOGGING: "1"
+            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
             source "$BASH_ENV" 2>/dev/null || true
             if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
