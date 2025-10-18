@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - master
-      - main
-      - develop
-      - feat/**
-      - fix/**
   pull_request:
     branches:
       - master
-      - main
-      - develop
 
 jobs:
   build:
