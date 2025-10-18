@@ -1,6 +1,9 @@
 name: E2E Tests - Chrome (On Demand)
 
 on:
+  push:
+    branches:
+      - feat/nx-cloud/setup  # Temporary: just to register the workflow
   workflow_dispatch:
     inputs:
       test_pattern:
