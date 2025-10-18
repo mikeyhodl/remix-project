@@ -12,7 +12,6 @@ module.exports = {
     start_process: true,
     port: 9515,
     server_path: './tmp/webdrivers/chromedriver',
-    log_path: false,
   },
 
   test_settings: {
@@ -27,9 +26,7 @@ module.exports = {
         on_failure: true,
         on_error: true
       },
-      exclude: ['dist/apps/remix-ide-e2e/src/tests/runAndDeploy.test.js', 'dist/apps/remix-ide-e2e/src/tests/pluginManager.test.ts'],
-      silent: true,
-      output: false
+      exclude: ['dist/apps/remix-ide-e2e/src/tests/runAndDeploy.test.js', 'dist/apps/remix-ide-e2e/src/tests/pluginManager.test.ts']
     },
 
     'chrome': {

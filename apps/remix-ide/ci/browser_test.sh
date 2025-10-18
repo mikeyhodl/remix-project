@@ -7,9 +7,9 @@ set -e
 BUILD_ID=${CIRCLE_BUILD_NUM:-${TRAVIS_JOB_NUMBER}}
 echo "$BUILD_ID"
 TEST_EXITCODE=0
-npx ganache &
-npx http-server -p 9090 --cors='*' ./node_modules &
-yarn run serve:production &
+npx ganache 2> &1 &
+npx http-server -p 9090 --cors='*' ./node_modules 2>&1 &
+yarn run serve:production 2>&1 &
 sleep 5
 
 # grep -IRiL "@disabled" "dist/apps/remix-ide-e2e/src/tests" | grep "\.spec\|\.test" | xargs -I {} basename {} .test.js | grep -E "\b[${2}]"
