@@ -54,16 +54,8 @@ jobs:
             echo "NX_VERBOSE_LOGGING=${NX_VERBOSE_LOGGING:-0}"
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
               echo "Nx Cloud token present: yes"
-              # Persist the token for subsequent shells opened by later steps
-              # (CircleCI runs each 'run' step in a fresh login shell.)
-              # Use double quotes to expand and single quotes to preserve the exact value
-              # Also strip any accidental newlines that could break the token parsing
-              CLEAN_TOKEN=$(printf %s "${NX_CLOUD_ACCESS_TOKEN}" | tr -d '\r\n')
-              echo "export NX_CLOUD_ACCESS_TOKEN='${CLEAN_TOKEN}'" >> "$BASH_ENV"
-              echo "Token exported to job environment"
             else
               echo "Nx Cloud token present: no (fork PRs often hide secrets)"
-              echo "export NXCI_SKIP_NX_CACHE=1" >> "$BASH_ENV"
             fi
             mkdir -p logs
       - run: git fetch origin master:master || true
@@ -77,27 +69,22 @@ jobs:
             - node_modules
       - run:
           name: Build for tests (Nx verbose, conditional remote cache)
-          environment:
-            NX_VERBOSE_LOGGING: "1"
-            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
-            # Load any flags set in previous steps
-            source "$BASH_ENV" 2>/dev/null || true
             set -e
             echo "Starting build at $(date -u)"
-            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ] || [ -n "${NXCI_SKIP_NX_CACHE:-}" ]; then
-              echo "Running: yarn build --skip-nx-cache (no Nx Cloud token)"
-              (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee logs/nx-build.log
-            else
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
               echo "Running: nx build (with Nx Cloud)"
               set +e
-              (NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose) 2>&1 | tee logs/nx-build.log
+              (NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose) 2>&1 | tee logs/nx-build.log
               BUILD_STATUS=${PIPESTATUS[0]}
               set -e
               if grep -q "Nx Cloud encountered some problems" logs/nx-build.log; then
                 echo "⚠️  Nx Cloud cache download/upload issue detected"
               fi
               exit ${BUILD_STATUS}
+            else
+              echo "Running: yarn build --skip-nx-cache (no Nx Cloud token)"
+              (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee logs/nx-build.log
             fi
       - run:
           name: Inject E2E test configuration
@@ -215,18 +202,6 @@ jobs:
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
-      - run:
-          name: Nx Cloud token export (browser job)
-          command: |
-            echo "NX_VERBOSE_LOGGING=${NX_VERBOSE_LOGGING:-0}"
-            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              CLEAN_TOKEN=$(printf %s "${NX_CLOUD_ACCESS_TOKEN}" | tr -d '\r\n')
-              echo "export NX_CLOUD_ACCESS_TOKEN='${CLEAN_TOKEN}'" >> "$BASH_ENV"
-              echo "Token exported to job environment"
-            else
-              echo "No NX_CLOUD_ACCESS_TOKEN present (likely fork PR). Disabling remote cache."
-              echo "export NXCI_SKIP_NX_CACHE=1" >> "$BASH_ENV"
-            fi
       - run: git fetch origin master:master || true
       - restore_cache:
           keys:
@@ -238,17 +213,13 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
-          environment:
-            NX_VERBOSE_LOGGING: "1"
-            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
-            source "$BASH_ENV" 2>/dev/null || true
-            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "Running with Nx Cloud token (masked)."
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
+            else
               echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build."
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
-            else
-              echo "Running with Nx Cloud token (masked)."
-              NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
             fi
       - run:
           name: Inject E2E test configuration
@@ -348,17 +319,13 @@ jobs:
             - node_modules
       - run:
           name: Build from NX Cloud cache
-          environment:
-            NX_VERBOSE_LOGGING: "1"
-            NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN
           command: |
-            source "$BASH_ENV" 2>/dev/null || true
-            if [ -z "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "Running with Nx Cloud token (masked)."
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
+            else
               echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build."
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
-            else
-              echo "Running with Nx Cloud token (masked)."
-              NX_VERBOSE_LOGGING=1 NX_CLOUD_ACCESS_TOKEN="$NX_CLOUD_ACCESS_TOKEN" node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
             fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
       - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
