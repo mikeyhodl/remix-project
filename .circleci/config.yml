@@ -153,6 +153,7 @@ jobs:
   check-flaky-or-pr-tests:
     docker:
       - image: cimg/node:24.3.0
+    resource_class: "small"
     working_directory: ~/remix-project
     parameters:
       pattern:
@@ -230,7 +231,7 @@ jobs:
           key: soljson-v7-{{ checksum "soljson-versions.txt" }}
           paths:
             - dist/apps/remix-ide/assets/js/soljson
-      - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
+      - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
       - run: mkdir node_modules/hardhat && wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       - run: ls -la ./dist/apps/remix-ide/assets/js
 
@@ -324,7 +325,7 @@ jobs:
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
             fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
-      - run: yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules || yarn install --cwd ./apps/remix-ide-e2e --modules-folder ../../node_modules
+      - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
       - browser-tools/install-browser-tools:
           install-firefox: false
           install-chrome: true
