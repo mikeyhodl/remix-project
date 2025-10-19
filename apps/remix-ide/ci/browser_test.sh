@@ -12,10 +12,14 @@ npx http-server -p 9090 --cors='*' ./node_modules > /dev/null 2>&1 &
 yarn run serve:production > /dev/null 2>&1 &
 sleep 5
 
-# grep -IRiL "@disabled" "dist/apps/remix-ide-e2e/src/tests" | grep "\.spec\|\.test" | xargs -I {} basename {} .test.js | grep -E "\b[${2}]"
-# TESTFILES=$(grep -IRiL "@disabled" "dist/apps/remix-ide-e2e/src/tests" | grep "\.spec\|\.test" | xargs -I {} basename {} .test.js | grep -E "\b[$2]" | circleci tests split --split-by=timings )
-node apps/remix-ide/ci/splice_tests.js $2 $3
-TESTFILES=$(node apps/remix-ide/ci/splice_tests.js $2 $3 | grep -v 'metamask' | circleci tests split --split-by=timings)
+# Build the list of enabled test files and let CircleCI split them by historical timings across parallel workers.
+# Produces basenames without the trailing .js so nightwatch invocation can append it.
+TESTFILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js" -o -name "*.spec.js" \) -print0 \
+  | xargs -0 grep -IL "@disabled" \
+  | xargs -I {} basename {} \
+  | sed 's/\.js$//' \
+  | grep -v 'metamask' \
+  | circleci tests split --split-by=timings)
 
 # If this batch includes remixd (slither) tests, prepare pip3/slither toolchain on-demand
 if echo "$TESTFILES" | grep -q "remixd"; then

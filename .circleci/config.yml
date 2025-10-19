@@ -20,6 +20,9 @@ parameters:
   run_build_only:
     type: boolean
     default: false
+  e2e_parallelism:
+    type: integer
+    default: 8
   resource_class:
     type: enum
     enum: ["medium", "medium+", "large", "xlarge", "2xlarge"]
@@ -189,10 +192,6 @@ jobs:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
-      - save_cache:
-          key: v1-deps-{{ checksum "yarn.lock" }}
-          paths:
-            - node_modules
       - run:
           name: Unpack dist from workspace
           command: |
@@ -238,10 +237,6 @@ jobs:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
-      - save_cache:
-          key: v1-deps-{{ checksum "yarn.lock" }}
-          paths:
-            - node_modules
       - run: yarn nx build << parameters.plugin >> --configuration=production
       - browser-tools/install-browser-tools:
           install-chrome: true
@@ -406,9 +401,9 @@ workflows:
             parameters:
               browser: ["chrome"]
               script: ["browser_test.sh"]
-              job: ["0","1","2","3","4","5","6","7","8","9"]
-              jobsize: ["10"]
-              parallelism: [15]
+              job: ["nogroup"]
+              jobsize: ["1"]
+              parallelism: [<< pipeline.parameters.e2e_parallelism >>]
               scriptparameter: [""]
       - tests-passed:
           requires:
