@@ -16,6 +16,22 @@ sleep 5
 # TESTFILES=$(grep -IRiL "@disabled" "dist/apps/remix-ide-e2e/src/tests" | grep "\.spec\|\.test" | xargs -I {} basename {} .test.js | grep -E "\b[$2]" | circleci tests split --split-by=timings )
 node apps/remix-ide/ci/splice_tests.js $2 $3
 TESTFILES=$(node apps/remix-ide/ci/splice_tests.js $2 $3 | grep -v 'metamask' | circleci tests split --split-by=timings)
+
+# If this batch includes remixd (slither) tests, prepare pip3/slither toolchain on-demand
+if echo "$TESTFILES" | grep -q "remixd"; then
+  echo "Preparing pip3/slither for remixd tests"
+  if ! command -v pip3 >/dev/null 2>&1; then
+    echo "Installing python3 and pip3..."
+    sudo apt-get update
+    sudo apt-get install -y python3 python3-pip
+  fi
+  pip3 --version || true
+  # Ensure user installs are on PATH
+  mkdir -p "$HOME/.local/bin"
+  export PATH="$HOME/.local/bin:$PATH"
+  pip3 install --user slither-analyzer solc-select || true
+  slither --version || true
+fi
 for TESTFILE in $TESTFILES; do
     if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
       if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
