@@ -37,7 +37,6 @@ const RemixApp = (props: IRemixAppUi) => {
   const sidePanelRef = useRef(null)
   const pinnedPanelRef = useRef(null)
 
-
   // randomcchange to force rerender when appState changes some more
   const [appState, appStateDispatch] = useReducer(appReducer, {
     ...appInitialState,
