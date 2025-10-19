@@ -38,7 +38,7 @@ const RemixApp = (props: IRemixAppUi) => {
   const pinnedPanelRef = useRef(null)
 
 
-  // randomcchange to force rerender when appState changes
+  // randomcchange to force rerender when appState changes some more
   const [appState, appStateDispatch] = useReducer(appReducer, {
     ...appInitialState,
     showPopupPanel: !window.localStorage.getItem('did_show_popup_panel') && !isElectron(),
