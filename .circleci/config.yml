@@ -233,14 +233,13 @@ jobs:
           condition:
             equal: [ << parameters.browser >>, "chrome" ]
           steps:
+            - browser-tools/install-browser-tools:
+                install-chrome: true
+                install-chromedriver: false
+                install-firefox: false
+                install-geckodriver: false
             - run: yarn install_webdriver
             - run: google-chrome --version
-      - when:
-          condition:
-            equal: [ << parameters.browser >>, "firefox" ]
-          steps:
-            - run: yarn install_webdriver
-            - run: firefox --version
       - run: ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
       - store_test_results:
           path: ./reports/tests
@@ -290,6 +289,11 @@ jobs:
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
             fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
+      - browser-tools/install-browser-tools:
+          install-chrome: true
+          install-chromedriver: false
+          install-firefox: false
+          install-geckodriver: false
       - run: yarn install_webdriver
       - run: google-chrome --version
       - run: ./apps/remix-ide/ci/browser_test_plugin.sh << parameters.plugin >>
@@ -443,28 +447,12 @@ workflows:
               jobsize: ["10"]
               parallelism: [15]
               scriptparameter: [""]
-      - remix-ide-browser:
-          requires:
-            - build
-          matrix:
-            alias: firefox-tests
-            parameters:
-              browser: ["firefox"]
-              script: ["browser_test.sh"]
-              job: ["0","1","2","3","4","5","6","7","8","9"]
-              jobsize: ["10"]
-              parallelism: [15]
-              scriptparameter: [""]
-          filters:
-            branches:
-              only: ['master', 'remix_live', 'remix_beta', 'remix_alpha']
       
       - tests-passed:
           requires:
             - lint
             - remix-libs
             - chrome-tests
-            - firefox-tests
             - plugins
             
       - predeploy:
@@ -478,7 +466,6 @@ workflows:
             - lint
             - remix-libs
             - chrome-tests
-            - firefox-tests
             - plugins
             - predeploy
           filters:
@@ -491,7 +478,6 @@ workflows:
             - lint
             - remix-libs
             - chrome-tests
-            - firefox-tests
             - plugins
             - predeploy
           filters:
@@ -504,7 +490,6 @@ workflows:
             - lint
             - remix-libs
             - chrome-tests
-            - firefox-tests
             - plugins
             - predeploy
           filters:
