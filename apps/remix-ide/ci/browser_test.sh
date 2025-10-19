@@ -21,8 +21,11 @@ TESTFILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js" 
   | grep -v 'metamask' \
   | circleci tests split --split-by=timings)
 
+echo "==> Shard test files (after timings split):"
+printf '%s\n' "$TESTFILES"
+
 # If this batch includes remixd (slither) tests, prepare pip3/slither toolchain on-demand
-if echo "$TESTFILES" | grep -q "remixd"; then
+if printf '%s\n' "$TESTFILES" | grep -Eiq '^(remixd|remixd_)'; then
   echo "Preparing pip3/slither for remixd tests"
   if ! command -v pip3 >/dev/null 2>&1; then
     echo "Installing python3 and pip3..."
@@ -35,8 +38,11 @@ if echo "$TESTFILES" | grep -q "remixd"; then
   export PATH="$HOME/.local/bin:$PATH"
   pip3 install --user slither-analyzer solc-select || true
   slither --version || true
+else
+  echo "No remixd tests detected in this shard; skipping slither setup"
 fi
 for TESTFILE in $TESTFILES; do
+    echo "Running test: ${TESTFILE}.js"
     if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
       if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
         TEST_EXITCODE=1
