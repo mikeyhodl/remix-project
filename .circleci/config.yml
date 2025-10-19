@@ -29,7 +29,7 @@ parameters:
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "xlarge"
+    default: "small"
   web:
     type: boolean
     default: true
@@ -42,7 +42,7 @@ jobs:
   build:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: << pipeline.parameters.resource_class >>
+    resource_class: "medium+"
     working_directory: ~/remix-project
     steps:
       - checkout
@@ -134,7 +134,6 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
-      - run: git fetch origin master:master || true
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
@@ -200,7 +199,6 @@ jobs:
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
-      - run: git fetch origin master:master || true
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
