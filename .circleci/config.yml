@@ -58,7 +58,6 @@ jobs:
               echo "Nx Cloud token present: no (fork PRs often hide secrets)"
             fi
             mkdir -p logs
-      - run: git fetch origin master:master || true
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}

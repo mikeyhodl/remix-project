@@ -3,8 +3,7 @@ name: E2E Chrome Tests - Sharded
 on:
   push:
     branches:
-      - feat/**
-      - test/**
+      - master
   workflow_dispatch:
 
 concurrency:
