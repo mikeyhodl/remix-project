@@ -34,7 +34,7 @@ jobs:
         run: yarn install --frozen-lockfile
       
       - name: Build all projects
-        run: yarn build
+        run: (NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose) 2>&1 | tee logs/nx-build.log
         env:
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
       
