@@ -14,9 +14,6 @@ parameters:
   run_file_tests:
     type: string
     default: ""  
-  run_metamask_tests:
-    type: boolean
-    default: false
   run_flaky_tests:
     type: boolean
     default: false
@@ -234,46 +231,16 @@ jobs:
       - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
       - run: mkdir node_modules/hardhat && wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       - run: ls -la ./dist/apps/remix-ide/assets/js
-
       - when:
           condition:
-              equal: [ "chrome", << parameters.browser >> ]
+            equal: [ << parameters.browser >>, "chrome" ]
           steps:
-            - browser-tools/install-browser-tools:
-                install-firefox: false
-                install-chrome: true
-                install-chromedriver: false
-                install-geckodriver: false
             - run: yarn install_webdriver
             - run: google-chrome --version
       - when:
           condition:
-              equal: [ "chromeMetamask", << parameters.browser >> ]
+            equal: [ << parameters.browser >>, "firefox" ]
           steps:
-            - browser-tools/install-browser-tools:
-                install-firefox: false
-                install-chrome: true
-                install-chromedriver: false
-                install-geckodriver: false
-            - run:
-                name: "📦 Downgrading Chrome to version 135"
-                command: |
-                  echo "📦 Downgrading Chrome to version 135"
-                  wget -q https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_135.0.7049.114-1_amd64.deb -O /tmp/chrome135.deb
-                  sudo dpkg -i /tmp/chrome135.deb || true
-                  sudo apt-get install -f -y
-                  google-chrome --version
-            - run: yarn install_webdriver
-            - run: google-chrome --version
-      - when:
-          condition:
-              equal: [ "firefox", << parameters.browser >> ]
-          steps:
-            - browser-tools/install-browser-tools:
-                install-firefox: true
-                install-chrome: false
-                install-geckodriver: false
-                install-chromedriver: false
             - run: yarn install_webdriver
             - run: firefox --version
       - run: ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
@@ -326,11 +293,6 @@ jobs:
             fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
       - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
-      - browser-tools/install-browser-tools:
-          install-firefox: false
-          install-chrome: true
-          install-geckodriver: false
-          install-chromedriver: false
       - run: yarn install_webdriver
       - run: google-chrome --version
       - run: ./apps/remix-ide/ci/browser_test_plugin.sh << parameters.plugin >>
@@ -361,8 +323,7 @@ jobs:
     docker:
       - image: cimg/node:20.19.0-browsers
 
-    resource_class:
-      xlarge
+    resource_class: xlarge
     environment:
       COMMIT_AUTHOR_EMAIL: "yann@ethereum.org"
       COMMIT_AUTHOR: "Circle CI"
@@ -447,20 +408,6 @@ workflows:
               parallelism: [5]
               scriptparameter: ["\\.flaky"]
 
-  run_metamask_tests:
-    when: << pipeline.parameters.run_metamask_tests >>
-    jobs:
-      - build
-      - remix-ide-browser:
-          requires:
-            - build
-          matrix:
-            parameters:
-              browser: ["chromeMetamask"]
-              script: ["metamask.sh"]
-              job: ["0"]
-              jobsize: ["1"]
-              parallelism: [1]
   web:
     when: << pipeline.parameters.run_all_tests >>
     jobs:
@@ -514,28 +461,13 @@ workflows:
           filters:
             branches:
               only: ['master', 'remix_live', 'remix_beta', 'remix_alpha']
-      - remix-ide-browser:
-          requires:
-            - build
-          matrix:
-            alias: metamask
-            parameters:
-              browser: ["chromeMetamask"]
-              script: ["metamask.sh"]
-              job: ["0"]
-              jobsize: ["10"]
-              parallelism: [1]
-              scriptparameter: [""]
-          filters:
-            branches:
-              only: [/.*metamask.*/, 'master', 'remix_live', 'remix_beta']
+      
       - tests-passed:
           requires:
             - lint
             - remix-libs
             - chrome-tests
             - firefox-tests
-            - metamask
             - plugins
             
       - predeploy:
@@ -550,7 +482,6 @@ workflows:
             - remix-libs
             - chrome-tests
             - firefox-tests
-            - metamask
             - plugins
             - predeploy
           filters:
@@ -564,7 +495,6 @@ workflows:
             - remix-libs
             - chrome-tests
             - firefox-tests
-            - metamask
             - plugins
             - predeploy
           filters:
@@ -578,7 +508,6 @@ workflows:
             - remix-libs
             - chrome-tests
             - firefox-tests
-            - metamask
             - plugins
             - predeploy
           filters:
