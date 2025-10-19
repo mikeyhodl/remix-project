@@ -39,7 +39,7 @@ module.exports = {
       .click('*[data-id="treeViewLitreeViewItemcontracts/2_Owner.sol"]')
       .clickLaunchIcon('solidity')
       .click('*[id="compileBtn"]')
-      .saveScreenshot('./reports/staticAnalysis/compile2_Owner.png')
+      .saveScreenshot('./reports/screenshots/compile2_Owner.png')
       .pause(10000)
       .clickLaunchIcon('solidityStaticAnalysis')
       .useXpath()
