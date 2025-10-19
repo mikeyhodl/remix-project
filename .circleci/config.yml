@@ -25,8 +25,8 @@ parameters:
     default: false
   resource_class:
     type: enum
-    enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "small"
+    enum: ["medium+", "medium", "medium+", "large", "xlarge", "2xlarge"]
+    default: "medium+"
   web:
     type: boolean
     default: true
@@ -150,7 +150,7 @@ jobs:
   check-flaky-or-pr-tests:
     docker:
       - image: cimg/node:24.3.0
-    resource_class: "small"
+    resource_class: "medium+"
     working_directory: ~/remix-project
     parameters:
       pattern:
