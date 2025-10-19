@@ -255,12 +255,6 @@ class CopyFileAfterBuild {
         // This copy the raw-loader files used by the etherscan plugin to the remix-ide root folder.
         // This is needed because by default the etherscan resources are served from the /plugins/etherscan/ folder,
         // but the raw-loader try to access the resources from the root folder.
-        const files = fs.readdirSync('./dist/apps/etherscan')
-        files.forEach((file) => {
-          if (file.includes('plugin-etherscan')) {
-            fs.copyFileSync('./dist/apps/etherscan/' + file, './dist/apps/remix-ide/' + file)
-          }
-        })
       } catch (e) {
         console.error('running CopyFileAfterBuild failed with error: ' + e.message)
       }

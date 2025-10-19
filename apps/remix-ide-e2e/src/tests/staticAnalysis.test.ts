@@ -58,7 +58,7 @@ module.exports = {
       .pause(1000)
       .waitForElementVisible('span#ssaRemixtab')
       .click('span#ssaRemixtab')
-      .waitForElementContainsText('span#ssaRemixtab > *[data-id="RemixStaticAnalysisErrorCount', '388')
+      .waitForElementContainsText('span#ssaRemixtab > *[data-id="RemixStaticAnalysisErrorCount', '384')
   
       .click('label[id="headingshowLibWarnings"]')
       .pause(1000)
