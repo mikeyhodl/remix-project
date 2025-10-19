@@ -1,1 +1,6 @@
-{ "extends": "../../.eslintrc", "rules": {}, "ignorePatterns": ["!**/*"] }
+{ "extends": "../../.eslintrc", "rules": {}, "ignorePatterns": [
+	"node_modules/**",
+	"dist/**",
+	"coverage/**",
+	"tmp/**"
+] }

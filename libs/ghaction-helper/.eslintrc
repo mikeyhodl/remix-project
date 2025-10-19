@@ -11,5 +11,10 @@
         "node": true,
         "es6": true
     },
-    "ignorePatterns": ["!**/*"] 
+    "ignorePatterns": [
+        "node_modules/**",
+        "dist/**",
+        "coverage/**",
+        "tmp/**"
+    ] 
 }
