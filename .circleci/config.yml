@@ -228,7 +228,6 @@ jobs:
           key: soljson-v7-{{ checksum "soljson-versions.txt" }}
           paths:
             - dist/apps/remix-ide/assets/js/soljson
-      - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
       - run: mkdir node_modules/hardhat && wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       - run: ls -la ./dist/apps/remix-ide/assets/js
       - when:
@@ -292,7 +291,6 @@ jobs:
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
             fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
-      - run:  --modules-folder ../../node_modules ||  --modules-folder ../../node_modules
       - run: yarn install_webdriver
       - run: google-chrome --version
       - run: ./apps/remix-ide/ci/browser_test_plugin.sh << parameters.plugin >>
