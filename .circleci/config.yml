@@ -1,9 +1,6 @@
-# NX Cloud Configuration:
-# - NX_CLOUD_ACCESS_TOKEN environment variable must be set in CircleCI project settings
-# - NX Cloud provides remote caching for all nx commands (build, build:libs, etc)
-# - Caching happens automatically - no code changes needed
-# - View analytics and cache hits at https://nx.app
 version: 2.1
+
+# Only the build job uses Nx Cloud; other jobs consume its dist via workspace
 parameters:
   run_all_tests:
     type: boolean
@@ -13,7 +10,7 @@ parameters:
     default: false
   run_file_tests:
     type: string
-    default: ""  
+    default: ""
   run_flaky_tests:
     type: boolean
     default: false
@@ -25,36 +22,20 @@ parameters:
     default: false
   resource_class:
     type: enum
-    enum: ["medium+", "medium", "medium+", "large", "xlarge", "2xlarge"]
+    enum: ["medium", "medium+", "large", "xlarge", "2xlarge"]
     default: "medium+"
-  web:
-    type: boolean
-    default: true
+
 orbs:
   browser-tools: circleci/browser-tools@1.5.2
-  node: circleci/node@7.0.0
 
 jobs:
-
   build:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: "medium+"
+    resource_class: medium+
     working_directory: ~/remix-project
     steps:
       - checkout
-      - run:
-          name: Nx Cloud diagnostics
-          command: |
-            echo "CI branch: ${CIRCLE_BRANCH:-unknown}"
-            echo "PR URL: ${CIRCLE_PULL_REQUEST:-none}"
-            echo "NX_VERBOSE_LOGGING=${NX_VERBOSE_LOGGING:-0}"
-            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Nx Cloud token present: yes"
-            else
-              echo "Nx Cloud token present: no (fork PRs often hide secrets)"
-            fi
-            mkdir -p logs
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
@@ -64,51 +45,56 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build for tests (Nx verbose, conditional remote cache)
+          name: Nx build (Cloud if token)
           command: |
-            set -e
-            echo "Starting build at $(date -u)"
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Running: nx build (with Nx Cloud)"
-              set +e
-              (NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose) 2>&1 | tee logs/nx-build.log
-              BUILD_STATUS=${PIPESTATUS[0]}
-              set -e
-              if grep -q "Nx Cloud encountered some problems" logs/nx-build.log; then
-                echo "⚠️  Nx Cloud cache download/upload issue detected"
-              fi
-              exit ${BUILD_STATUS}
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
             else
-              echo "Running: yarn build --skip-nx-cache (no Nx Cloud token)"
-              (NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache) 2>&1 | tee logs/nx-build.log
+              NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
             fi
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
-      - store_artifacts:
-          path: logs
-          destination: nx-logs
+      - run:
+          name: Compile E2E tests once
+          command: yarn run build:e2e
+      - run:
+          name: Compute soljson version list
+          command: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt || true
+      - run:
+          name: Download solc wasm assets (once)
+          command: yarn run downloadsolc_assets_e2e
+      - run:
+          name: Package dist for workspace
+          command: |
+            set -e
+            tar -cf remix-dist.tar dist/apps/remix-ide dist/apps/remix-ide-e2e dist/apps/remix-ide/assets/js/soljson 2>/dev/null || true
+            gzip -1 remix-dist.tar
+      - persist_to_workspace:
+          root: .
+          paths:
+            - remix-dist.tar.gz
 
   build-plugin:
-      docker:
+    docker:
       - image: cimg/node:20.19.0-browsers
-      resource_class: << pipeline.parameters.resource_class >>
-      working_directory: ~/remix-project
-      parameters:
-        plugin:
-          type: string
-      steps:
-        - checkout
-        - restore_cache:
-            keys:
-              - v1-deps-{{ checksum "yarn.lock" }}
-        - run: yarn
-        - save_cache:
-            key: v1-deps-{{ checksum "yarn.lock" }}
-            paths:
-              - node_modules
-        - run: yarn nx build << parameters.plugin >> --configuration=production
-  
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    parameters:
+      plugin:
+        type: string
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - save_cache:
+          key: v1-deps-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+      - run: yarn nx build << parameters.plugin >> --configuration=production
+
   lint:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -120,10 +106,11 @@ jobs:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
-      - run: yarn nx graph --file=./projects.json 
+      - run: yarn nx graph --file=./projects.json
       - run:
           name: Remix Libs Linting
           command: node ./apps/remix-ide/ci/lint-targets.js
+
   remix-libs:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -146,11 +133,10 @@ jobs:
       - run: node dist/libs/remix-tests/bin/remix-tests ./libs/remix-tests/tests/examples_0/assert_ok_test.sol
       - run: yarn run test:libs
 
-
   check-flaky-or-pr-tests:
     docker:
       - image: cimg/node:24.3.0
-    resource_class: "medium+"
+    resource_class: medium+
     working_directory: ~/remix-project
     parameters:
       pattern:
@@ -173,7 +159,7 @@ jobs:
             else
               echo "⚠️ No enabled .$PATTERN tests found. Skipping workflow."
               exit 1
-            fi   
+            fi
 
   remix-ide-browser:
     docker:
@@ -197,6 +183,8 @@ jobs:
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/remix-project
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
@@ -206,60 +194,24 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Build from NX Cloud cache
+          name: Unpack dist from workspace
           command: |
-            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Running with Nx Cloud token (masked)."
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
-            else
-              echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build."
-              NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
+            if [ -f remix-dist.tar.gz ]; then
+              tar -xzf remix-dist.tar.gz
             fi
-      - run:
-          name: Inject E2E test configuration
-          command: yarn inject-e2e-config
-      - run: yarn run build:e2e
-      - run: grep -ir "[0-9]+commit" apps/* libs/* --include \*.ts --include \*.tsx --include \*.json > soljson-versions.txt
-      - restore_cache:
-          keys:
-            - soljson-v7-{{ checksum "soljson-versions.txt" }}
-      - run: yarn run downloadsolc_assets_e2e
-      - save_cache:
-          key: soljson-v7-{{ checksum "soljson-versions.txt" }}
-          paths:
-            - dist/apps/remix-ide/assets/js/soljson
-      - run: ls -la ./dist/apps/remix-ide/assets/js
-      - run:
-          name: Ensure Slither toolchain is available (best effort)
-          command: |
-            set -e
-            if ! command -v slither >/dev/null 2>&1; then
-              echo "Installing slither and solc-select via pip3 (user install)"
-              pip3 install --user slither-analyzer solc-select || true
-              echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
-              source "$BASH_ENV"
-            fi
-            slither --version || true
-            solc-select --help >/dev/null 2>&1 || true
-      - when:
-          condition:
-            equal: [ << parameters.browser >>, "chrome" ]
-          steps:
-            - browser-tools/install-browser-tools:
-                install-chrome: true
-                install-chromedriver: false
-                install-firefox: false
-                install-geckodriver: false
-            - run: yarn install_webdriver
-            - run: google-chrome --version
+      - run: ls -la ./dist/apps/remix-ide/assets/js || true
+      - browser-tools/install-browser-tools:
+          install-chrome: true
+          install-chromedriver: false
+          install-firefox: false
+          install-geckodriver: false
+      - run: yarn install_webdriver
+      - run: google-chrome --version
       - run: ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
       - store_test_results:
           path: ./reports/tests
       - store_artifacts:
           path: ./reports/screenshots
-      - store_artifacts:
-          path: /home/circleci/remix-project/logs
-          destination: logs
 
   tests-passed:
     machine:
@@ -290,16 +242,6 @@ jobs:
           key: v1-deps-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-      - run:
-          name: Build from NX Cloud cache
-          command: |
-            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Running with Nx Cloud token (masked)."
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
-            else
-              echo "No NX_CLOUD_ACCESS_TOKEN in this job. Running local-only build."
-              NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
-            fi
       - run: yarn nx build << parameters.plugin >> --configuration=production
       - browser-tools/install-browser-tools:
           install-chrome: true
@@ -313,7 +255,6 @@ jobs:
           path: ./reports/tests
       - store_artifacts:
           path: ./reports/screenshots
-
 
   predeploy:
     docker:
@@ -335,27 +276,22 @@ jobs:
           name: Production build (Nx Cloud if token available)
           command: |
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Running production build with Nx Cloud cache"
               NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
             else
-              echo "No NX_CLOUD_ACCESS_TOKEN, running local-only production build"
               NODE_ENV=production yarn nx build remix-ide --configuration=production
             fi
 
   deploy-build:
     docker:
       - image: cimg/node:20.19.0-browsers
-
     resource_class: xlarge
     environment:
       COMMIT_AUTHOR_EMAIL: "yann@ethereum.org"
       COMMIT_AUTHOR: "Circle CI"
     working_directory: ~/remix-project
-
     parameters:
       script:
         type: string
-
     steps:
       - checkout
       - restore_cache:
@@ -370,21 +306,18 @@ jobs:
           name: Production build (Nx Cloud if token available)
           command: |
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              echo "Running production build with Nx Cloud cache"
               NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
             else
-              echo "No NX_CLOUD_ACCESS_TOKEN, running local-only production build"
               NODE_ENV=production yarn nx build remix-ide --configuration=production
             fi
       - run: ./apps/remix-ide/ci/deploy_from_travis_remix-<< parameters.script >>.sh
-    
-workflows:
 
+workflows:
   run_file_tests:
     when: << pipeline.parameters.run_file_tests >>
     jobs:
       - check-flaky-or-pr-tests:
-          pattern: << pipeline.parameters.run_file_tests >>
+          pattern: '<< pipeline.parameters.run_file_tests >>'
       - build:
           requires:
             - check-flaky-or-pr-tests
@@ -398,7 +331,7 @@ workflows:
               job: ["nogroup"]
               jobsize: ["1"]
               parallelism: [1]
-              scriptparameter: [<< pipeline.parameters.run_file_tests >>]
+              scriptparameter: ["<< pipeline.parameters.run_file_tests >>"]
 
   run_pr_tests:
     when: << pipeline.parameters.run_pr_tests >>
@@ -462,10 +395,9 @@ workflows:
             parameters:
               plugin: ["plugin_api"]
               parallelism: [1, 9]
-            exclude: 
+            exclude:
               - plugin: plugin_api
                 parallelism: 1
-
       - remix-ide-browser:
           requires:
             - build
@@ -478,54 +410,12 @@ workflows:
               jobsize: ["10"]
               parallelism: [15]
               scriptparameter: [""]
-      
       - tests-passed:
           requires:
             - lint
             - remix-libs
             - chrome-tests
             - plugins
-            
-      - predeploy:
-          filters:
-            branches:
-              only: ['master', 'remix_live', 'remix_beta']
-      - deploy-build:
-          script: "live"
-          name: "deploy-live"
-          requires:
-            - lint
-            - remix-libs
-            - chrome-tests
-            - plugins
-            - predeploy
-          filters:
-            branches:
-              only: remix_live
-      - deploy-build:
-          script: "alpha"
-          name: "deploy-alpha"
-          requires:
-            - lint
-            - remix-libs
-            - chrome-tests
-            - plugins
-            - predeploy
-          filters:
-            branches:
-              only: master
-      - deploy-build:
-          script: "beta"
-          name: "deploy-beta"
-          requires:
-            - lint
-            - remix-libs
-            - chrome-tests
-            - plugins
-            - predeploy
-          filters:
-            branches:
-              only: remix_beta
 
   lint_only:
     when: << pipeline.parameters.run_lint_only >>
@@ -536,5 +426,3 @@ workflows:
     when: << pipeline.parameters.run_build_only >>
     jobs:
       - build
-
-# VS Code Extension Version: 1.5.1
