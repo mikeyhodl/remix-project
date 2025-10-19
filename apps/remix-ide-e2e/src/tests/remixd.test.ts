@@ -49,7 +49,7 @@ const sources = [
   }
 ]
 
-module.exports = {
+const tests = {
   '@disabled': true,
   before: function (browser, done) {
     init(browser, done)
@@ -641,3 +641,6 @@ function resetGitToHead() {
     console.log(`Git reset to HEAD successfully.\n${stdout}`);
   });
 }
+
+
+module.exports = {} // tests
