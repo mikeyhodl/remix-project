@@ -22,7 +22,7 @@ parameters:
     default: false
   e2e_parallelism:
     type: integer
-    default: 8
+    default: 20
   resource_class:
     type: enum
     enum: ["medium", "medium+", "large", "xlarge", "2xlarge"]
