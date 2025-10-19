@@ -228,7 +228,6 @@ jobs:
           key: soljson-v7-{{ checksum "soljson-versions.txt" }}
           paths:
             - dist/apps/remix-ide/assets/js/soljson
-      - run: mkdir node_modules/hardhat && wget https://unpkg.com/hardhat/console.sol -O node_modules/hardhat/console.sol
       - run: ls -la ./dist/apps/remix-ide/assets/js
       - when:
           condition:
