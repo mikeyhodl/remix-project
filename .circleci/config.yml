@@ -88,7 +88,6 @@ jobs:
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
-      - run: yarn run build:e2e
       - store_artifacts:
           path: logs
           destination: nx-logs

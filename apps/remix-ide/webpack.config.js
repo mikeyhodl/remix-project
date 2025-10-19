@@ -104,6 +104,7 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
     timers: false, // require.resolve("timers-browserify"),
     zlib: require.resolve('browserify-zlib'),
     'assert/strict': require.resolve('assert/'),
+    async_hooks: false,
     fs: false,
     module: false,
     tls: false,
@@ -118,6 +119,8 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
   config.externals = {
     ...config.externals,
     solc: 'solc',
+    // Do not bundle Monaco: it's copied as static assets and loaded by @monaco-editor/react
+    'monaco-editor': 'monaco'
   }
 
   // uncomment this to enable react profiling
@@ -134,8 +137,18 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
   pkgVerkle = pkgVerkle.replace('"main": "./nodejs/rust_verkle_wasm.js",', '"main": "./web/rust_verkle_wasm.js",')
   fs.writeFileSync(path.resolve(__dirname, '../../node_modules/rust-verkle-wasm/package.json'), pkgVerkle)
 
+  // Prefer browser/Esm entry points where available
+  config.resolve.mainFields = ['browser', 'module', 'main']
+
   config.resolve.alias = {
     ...config.resolve.alias,
+    // Avoid bundling server-only deps or optional node paths
+    ws: false,
+    express: false,
+    'express-ws': false,
+    'web3-rpc-providers': false,
+    'async-limiter': false,
+    '@so-ric/colorspace': false,
     // 'rust-verkle-wasm$': path.resolve(__dirname, '../../node_modules/rust-verkle-wasm/web/run_verkle_wasm.js')
   }
 
@@ -170,8 +183,20 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
       url: ['url', 'URL'],
       process: 'process/browser'
     })
-    //,new BundleAnalyzerPlugin()
   )
+
+  // Optional: generate static bundle analysis when ANALYZE env var is set
+  if (process.env.ANALYZE) {
+    config.plugins.push(
+      new BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        openAnalyzer: false,
+        reportFilename: 'bundle-report.html',
+        generateStatsFile: true,
+        statsFilename: 'bundle-stats.json',
+      })
+    )
+  }
 
   // set the define plugin to load the WALLET_CONNECT_PROJECT_ID
   config.plugins.push(
