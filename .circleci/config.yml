@@ -319,6 +319,16 @@ jobs:
           paths:
             - node_modules
       - run: yarn build:production
+      - run:
+          name: Production build (Nx Cloud if token available)
+          command: |
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "Running production build with Nx Cloud cache"
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
+            else
+              echo "No NX_CLOUD_ACCESS_TOKEN, running local-only production build"
+              NODE_ENV=production yarn nx build remix-ide --configuration=production
+            fi
 
   deploy-build:
     docker:
@@ -344,7 +354,16 @@ jobs:
           key: v1-deps-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-      - run: yarn build:production
+      - run:
+          name: Production build (Nx Cloud if token available)
+          command: |
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              echo "Running production build with Nx Cloud cache"
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
+            else
+              echo "No NX_CLOUD_ACCESS_TOKEN, running local-only production build"
+              NODE_ENV=production yarn nx build remix-ide --configuration=production
+            fi
       - run: ./apps/remix-ide/ci/deploy_from_travis_remix-<< parameters.script >>.sh
     
 workflows:
