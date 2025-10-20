@@ -15,6 +15,7 @@
   Quick examples
     node scripts/circleci-timings.js --slug gh/remix-project-org/remix-project --workflow web --branch master --jobs "remix-ide-browser" --limit 10
     CIRCLECI_TOKEN=... yarn ci:timings --slug gh/remix-project-org/remix-project --workflow run_pr_tests --branch feat/my-branch --jobs "remix-ide-browser" --limit 5 --json timings.json
+      # Note: use 'gh/' for GitHub (not 'github/')
 
   Notes
   - The endpoint /project/{project-slug}/{job-number}/tests returns JUnit-parsed tests with fields {name, file, run_time, result}
@@ -24,8 +25,15 @@
 const axios = require('axios');
 const { program } = require('commander');
 const fs = require('fs');
+const child_process = require('child_process');
 
 const BASE = 'https://circleci.com/api/v2';
+
+function normalizeSlug(slug) {
+  if (slug.startsWith('github/')) return slug.replace(/^github\//, 'gh/');
+  if (slug.startsWith('bitbucket/')) return slug.replace(/^bitbucket\//, 'bb/');
+  return slug;
+}
 
 function getToken() {
   const token = process.env.CIRCLECI_TOKEN || process.env.CIRCLE_TOKEN || '';
@@ -53,19 +61,19 @@ async function getJson(url, token, params = {}, retries = 3) {
 }
 
 async function listWorkflowRuns({ slug, workflowName, branch, limit = 10, token }) {
-  // GET /insights/{project-slug}/workflows/{workflow-name}
+  // GET /insights/{project-slug}/workflows/{workflow-name}/runs
   const runs = [];
   let pageToken = undefined;
   while (runs.length < limit) {
-    const params = { branch };
+    const params = {};
+    if (branch) params.branch = branch;
     if (pageToken) params['page-token'] = pageToken;
-    const url = `${BASE}/insights/${slug}/workflows/${workflowName}`;
+    const url = `${BASE}/insights/${slug}/workflows/${workflowName}/runs`;
     const data = await getJson(url, token, params);
-    const items = data.items || data.workflow_runs || [];
+    const items = data.items || [];
     for (const it of items) {
       if (runs.length >= limit) break;
-      // it.id is the workflow id in modern responses; fallback to workflow-id
-      runs.push({ id: it.id || it.workflow_id || it.workflow_job_id || it['workflow-id'], created_at: it.created_at, status: it.status, duration: it.duration });
+      runs.push({ id: it.id, created_at: it.created_at, status: it.status, duration: it.duration });
     }
     if (!data.next_page_token) break;
     pageToken = data.next_page_token;
@@ -73,9 +81,97 @@ async function listWorkflowRuns({ slug, workflowName, branch, limit = 10, token 
   return runs;
 }
 
+async function listPipelines({ slug, branch, limit = 10, token }) {
+  // GET /project/{project-slug}/pipeline?branch=...
+  const results = [];
+  let pageToken = undefined;
+  while (results.length < limit) {
+    const params = {};
+    if (branch) params.branch = branch;
+    if (pageToken) params['page-token'] = pageToken;
+    const url = `${BASE}/project/${slug}/pipeline`;
+    const data = await getJson(url, token, params);
+    const items = data.items || [];
+    for (const it of items) {
+      if (results.length >= limit) break;
+      results.push({ id: it.id, number: it.number, created_at: it.created_at, state: it.state, trigger: it.trigger });
+    }
+    if (!data.next_page_token) break;
+    pageToken = data.next_page_token;
+  }
+  return results;
+}
+
+async function listPipelineWorkflows({ pipelineId, token }) {
+  // GET /pipeline/{id}/workflow
+  const url = `${BASE}/pipeline/${pipelineId}/workflow`;
+  const data = await getJson(url, token);
+  return data.items || [];
+}
+
+async function listWorkflows({ slug, branch, token }) {
+  // GET /insights/{project-slug}/workflows
+  const url = `${BASE}/insights/${slug}/workflows`;
+  const data = await getJson(url, token, branch ? { branch } : {});
+  const items = data.items || [];
+  return items.map((w) => ({ name: w.name || w.workflow_name || 'unknown', metrics: w.metrics || {} }));
+}
+
+async function whoAmI(token) {
+  const url = `${BASE}/me`;
+  const data = await getJson(url, token);
+  return data;
+}
+
+function parseRepoUrl(url) {
+  if (!url) return null;
+  // Examples:
+  //  - git@github.com:org/repo.git
+  //  - https://github.com/org/repo.git
+  //  - git+https://github.com/org/repo.git
+  const httpsMatch = url.match(/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/);
+  if (httpsMatch) {
+    const parts = httpsMatch[0].split('/');
+    const org = parts[1];
+    const repo = parts[2].replace(/\.git$/, '');
+    return { org, repo };
+  }
+  const sshMatch = url.match(/github\.com:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\.git/);
+  if (sshMatch) {
+    return { org: sshMatch[1], repo: sshMatch[2] };
+  }
+  return null;
+}
+
+function getGitOriginUrlCwd() {
+  try {
+    const out = child_process.execSync('git config --get remote.origin.url', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return out || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function deriveSlugCandidates({ providedSlug, repoUrl, pkgRepoUrl }) {
+  const cands = new Set();
+  if (providedSlug) cands.add(normalizeSlug(providedSlug));
+  const tryAdd = (org, repo) => {
+    if (!org || !repo) return;
+    cands.add(`gh/${org}/${repo}`);
+    if (org.endsWith('-org')) {
+      cands.add(`gh/${org.replace(/-org$/, '')}/${repo}`);
+    }
+  };
+  const fromGit = parseRepoUrl(repoUrl || '');
+  const fromPkg = parseRepoUrl(pkgRepoUrl || '');
+  if (fromGit) tryAdd(fromGit.org, fromGit.repo);
+  if (fromPkg) tryAdd(fromPkg.org, fromPkg.repo);
+  return Array.from(cands);
+}
+
 async function listWorkflowJobs({ workflowId, token }) {
-  // GET /workflow/{id}/jobs
-  const url = `${BASE}/workflow/${workflowId}/jobs`;
+  // GET /workflow/{id}/job (returns list of jobs)
+  const url = `${BASE}/workflow/${workflowId}/job`;
   const data = await getJson(url, token);
   return data.items || [];
 }
@@ -142,21 +238,106 @@ function proposeSplits(arr, shards = 20) {
 
 async function main() {
   program
-    .requiredOption('--slug <projectSlug>', 'CircleCI project slug, e.g., gh/org/repo')
-    .requiredOption('--workflow <name>', 'Workflow name, e.g., web or run_pr_tests')
+    .option('--slug <projectSlug>', 'CircleCI project slug, e.g., gh/org/repo (optional with --guess-slugs)')
+    .option('--workflow <name>', 'Workflow name, e.g., web or run_pr_tests')
     .option('--branch <name>', 'Branch to filter by (optional)')
     .option('--jobs <name>', 'Only include job names matching this substring (default: remix-ide-browser)', 'remix-ide-browser')
     .option('--limit <n>', 'Max workflow runs to scan (default: 10)', (v) => parseInt(v, 10), 10)
     .option('--top <n>', 'How many rows to print (default: 25)', (v) => parseInt(v, 10), 25)
     .option('--shards <n>', 'Print a shard proposal for N shards', (v) => parseInt(v, 10), 0)
     .option('--json <path>', 'Path to write full JSON results (optional)')
+    .option('--list-workflows', 'List available workflows for the given project slug and exit')
+    .option('--whoami', 'Print token identity and exit')
+    .option('--guess-slugs', 'Try to guess project slugs from git origin and package.json if the slug fails')
+  .option('--verbose', 'Verbose logging for debugging', false)
     .parse(process.argv);
 
   const opts = program.opts();
   const token = getToken();
 
-  console.log(`Fetching timings from CircleCI: slug=${opts.slug} workflow=${opts.workflow} branch=${opts.branch || 'all'} limit=${opts.limit}`);
-  const runs = await listWorkflowRuns({ slug: opts.slug, workflowName: opts.workflow, branch: opts.branch, limit: opts.limit, token });
+    // Normalize common mistakes in slug prefix and allow env var fallback
+    if (!opts.slug && process.env.CIRCLECI_PROJECT_SLUG) {
+      opts.slug = process.env.CIRCLECI_PROJECT_SLUG;
+    }
+    if (opts.slug) {
+      opts.slug = normalizeSlug(opts.slug);
+    }
+
+  if (opts.whoami) {
+    const me = await whoAmI(token);
+    console.log('Token identity:', JSON.stringify(me, null, 2));
+    return;
+  }
+
+  if (opts.listWorkflows) {
+    console.log(`Listing workflows for slug=${opts.slug} branch=${opts.branch || 'all'}`);
+    const workflows = await listWorkflows({ slug: opts.slug, branch: opts.branch, token });
+    if (!workflows.length) {
+      console.log('No workflows found (check slug/token).');
+    } else {
+      console.log('Workflows:');
+      workflows.forEach((w) => console.log(` - ${w.name}`));
+    }
+    return;
+  }
+
+  if (!opts.workflow) {
+    console.error('Missing --workflow. Use --list-workflows to discover names.');
+    process.exit(2);
+  }
+
+  const candSlugs = deriveSlugCandidates({
+    providedSlug: opts.slug,
+    repoUrl: getGitOriginUrlCwd(),
+    pkgRepoUrl: (function () { try { const p = JSON.parse(fs.readFileSync('package.json', 'utf-8')); return p?.repository?.url || null; } catch { return null; } })()
+  });
+
+  if (!candSlugs.length) {
+    console.error('No candidate slugs could be derived. Provide --slug gh/<org>/<repo> or set CIRCLECI_PROJECT_SLUG, or run with --guess-slugs in a Git repo.');
+    process.exit(2);
+  }
+
+  let pickedSlug = null;
+  let runs = [];
+  let tried = [];
+  for (const slug of candSlugs) {
+    try {
+      console.log(`Fetching timings from CircleCI: slug=${slug} workflow=${opts.workflow} branch=${opts.branch || 'all'} limit=${opts.limit}`);
+      try {
+        runs = await listWorkflowRuns({ slug, workflowName: opts.workflow, branch: opts.branch, limit: opts.limit, token });
+      } catch (insightsErr) {
+        // Fallback via pipelines API (works even if Insights workflow runs are unavailable)
+        const pipelines = await listPipelines({ slug, branch: opts.branch, limit: Math.max(50, opts.limit * 5), token });
+        const wfRuns = [];
+        for (const p of pipelines) {
+          const wfs = await listPipelineWorkflows({ pipelineId: p.id, token });
+          for (const w of wfs) {
+            if (w.name === opts.workflow) {
+              wfRuns.push({ id: w.id, created_at: p.created_at, status: w.status });
+            }
+            if (wfRuns.length >= opts.limit) break;
+          }
+          if (wfRuns.length >= opts.limit) break;
+        }
+        runs = wfRuns;
+      }
+      pickedSlug = slug;
+      break;
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message;
+      tried.push(`${slug} -> ${msg}`);
+      if (!(opts.guessSlugs)) break; // do not continue if guessing is disabled
+    }
+  }
+
+  if (!pickedSlug) {
+    console.error('Unable to access workflow runs for any candidate slug.');
+    console.error('Tried:');
+    tried.forEach((t) => console.error(' -', t));
+    console.error("Hint: run with '--whoami' to verify token, and '--list-workflows --guess-slugs' to discover valid workflow names.");
+    process.exit(1);
+  }
+
   if (!runs.length) {
     console.error('No workflow runs found.');
     process.exit(2);
@@ -166,7 +347,13 @@ async function main() {
   let scannedJobs = 0;
   for (const run of runs) {
     if (!run || !run.id) continue;
-    const jobs = await listWorkflowJobs({ workflowId: run.id, token });
+    let jobs = [];
+    try {
+      jobs = await listWorkflowJobs({ workflowId: run.id, token });
+    } catch (e) {
+      if (opts.verbose) console.warn(`Warn: could not fetch jobs for workflow ${run.id}:`, e.response?.data || e.message);
+      continue;
+    }
     for (const job of jobs) {
       const name = job.name || '';
       const status = job.status || '';
@@ -174,8 +361,13 @@ async function main() {
       if (!name.includes(opts.jobs)) continue;
       if (status && status !== 'success') continue; // only successful jobs contribute timings
       if (!jobNumber) continue;
-
-      const tests = await getJobTests({ slug: opts.slug, jobNumber, token });
+      let tests = [];
+      try {
+        tests = await getJobTests({ slug: pickedSlug, jobNumber, token });
+      } catch (e) {
+        if (opts.verbose) console.warn(`Warn: could not fetch tests for job #${jobNumber}:`, e.response?.data || e.message);
+        continue;
+      }
       scannedJobs++;
       for (const t of tests) {
         // t.file may be null if the reporter didn't provide it; fallback to classname
@@ -211,6 +403,15 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Failed to fetch timings:', err.response?.data || err.message || err);
+  const data = err.response?.data;
+  if (data?.message === 'Project not found') {
+    console.error('Failed to fetch timings: Project not found.');
+    console.error('Tips:');
+    console.error(" - Use slug starting with 'gh/' for GitHub, e.g., gh/<org>/<repo> (not 'github/...')");
+    console.error(' - Ensure CIRCLECI_TOKEN has access to this project');
+    console.error(' - Slug you passed:', process.argv.join(' '));
+  } else {
+    console.error('Failed to fetch timings:', data || err.message || err);
+  }
   process.exit(1);
 });

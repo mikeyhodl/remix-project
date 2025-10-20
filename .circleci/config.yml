@@ -206,11 +206,28 @@ jobs:
           install-geckodriver: false
       - run: yarn install_webdriver
       - run: google-chrome --version
-      - run: ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
+      - run:
+          name: Fetch CircleCI timings snapshot (best effort)
+          command: |
+            if [ -n "${CIRCLECI_TOKEN:-}" ]; then
+              echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
+              yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
+            else
+              echo "CIRCLECI_TOKEN not set; skipping timings fetch. Self-split will fall back to median weights."
+            fi
+      - run:
+          name: Run E2E shard (self-split)
+          command: |
+            SELF_SPLIT=1 TIMINGS_JSON=timings-current.json \
+            ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
       - store_test_results:
           path: ./reports/tests
       - store_artifacts:
           path: ./reports/screenshots
+      - store_artifacts:
+          path: ./reports/shards
+      - store_artifacts:
+          path: ./timings-current.json
 
   tests-passed:
     machine:

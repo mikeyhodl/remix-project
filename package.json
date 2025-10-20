@@ -87,7 +87,8 @@
     "reinstall": "rm ./node-modules/ -rf && rm yarn.lock && rm ./build/ -rf && yarn install & yarn run build",
     "ganache": "npx ganache",
     "build-contracts": "find ./node_modules/@openzeppelin/contracts | grep -i '.sol' > libs/remix-ui/editor/src/lib/providers/completion/contracts/contracts.txt && find ./node_modules/@uniswap/v3-core/contracts | grep -i '.sol' >> libs/remix-ui/editor/src/lib/providers/completion/contracts/contracts.txt",
-    "ci:timings": "node scripts/circleci-timings.js"
+    "ci:timings": "node scripts/circleci-timings.js",
+    "ci:plan-shard": "node scripts/plan-shards.js"
   },
   "dependencies": {
     "@apollo/client": "^3.9.5",

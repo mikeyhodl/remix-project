@@ -12,16 +12,37 @@ npx http-server -p 9090 --cors='*' ./node_modules > /dev/null 2>&1 &
 yarn run serve:production > /dev/null 2>&1 &
 sleep 5
 
-# Build the list of enabled test files and let CircleCI split them by historical timings across parallel workers.
-# Produces basenames without the trailing .js so nightwatch invocation can append it.
-TESTFILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js" -o -name "*.spec.js" \) -print0 \
+PARALLEL_TOTAL=${CIRCLE_NODE_TOTAL:-1}
+PARALLEL_INDEX=${CIRCLE_NODE_INDEX:-0}
+SELF_SPLIT=${SELF_SPLIT:-0}
+TIMINGS_JSON=${TIMINGS_JSON:-timings-current.json}
+
+# Build the list of enabled test files
+BASE_FILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js" -o -name "*.spec.js" \) -print0 \
   | xargs -0 grep -IL "@disabled" \
   | xargs -I {} basename {} \
   | sed 's/\.js$//' \
-  | grep -v 'metamask' \
-  | circleci tests split --split-by=timings)
+  | grep -v 'metamask')
 
-echo "==> Shard test files (after timings split):"
+if [ "$SELF_SPLIT" = "1" ]; then
+  echo "==> Using self shard planner (shards=$PARALLEL_TOTAL index=$PARALLEL_INDEX)"
+  echo "ENV: CIRCLE_BRANCH=${CIRCLE_BRANCH:-local} CIRCLE_NODE_TOTAL=$PARALLEL_TOTAL CIRCLE_NODE_INDEX=$PARALLEL_INDEX"
+  mkdir -p reports/shards
+  TESTFILES=$(printf '%s\n' "$BASE_FILES" | node scripts/plan-shards.js --shards "$PARALLEL_TOTAL" --index "$PARALLEL_INDEX" --timings "$TIMINGS_JSON" --verbose --manifest-out reports/shards/manifest-$PARALLEL_INDEX.json)
+else
+  echo "==> Using CircleCI timings split"
+  mkdir -p reports/shards
+  TESTFILES=$(printf '%s\n' "$BASE_FILES" | circleci tests split --split-by=timings)
+fi
+
+printf '%s\n' "$TESTFILES" > reports/shards/files-$PARALLEL_INDEX.txt
+COUNT=$(printf '%s\n' "$TESTFILES" | wc -l | awk '{print $1}')
+echo "==> Shard $PARALLEL_INDEX selected $COUNT test files"
+echo "==> Preview (first 20):"
+printf '%s\n' "$TESTFILES" | head -n 20
+echo "==> Preview (last 10):"
+printf '%s\n' "$TESTFILES" | tail -n 10
+echo "==> Full list (for grepability):"
 printf '%s\n' "$TESTFILES"
 
 # # If this batch includes remixd (slither) tests, prepare pip3/slither toolchain on-demand

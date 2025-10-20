@@ -1,0 +1,1195 @@
+{
+  "meta": {
+    "slug": "gh/remix-project-org/remix-project",
+    "workflow": "web",
+    "branch": "feat/nx-cloud/setup",
+    "limit": 20,
+    "jobsFilter": "remix-ide-browser"
+  },
+  "files": [
+    {
+      "file": "terminal_group8.test",
+      "total": 248.94000000000003,
+      "count": 4,
+      "min": 61.99,
+      "max": 62.74,
+      "avg": 62.23500000000001
+    },
+    {
+      "file": "terminal_group3.test",
+      "total": 541.99,
+      "count": 9,
+      "min": 12.59,
+      "max": 112.3,
+      "avg": 60.221111111111114
+    },
+    {
+      "file": "stressEditor.test",
+      "total": 122.03,
+      "count": 3,
+      "min": 39.74,
+      "max": 42.19,
+      "avg": 40.67666666666667
+    },
+    {
+      "file": "vm_state_group1.test",
+      "total": 522.024,
+      "count": 16,
+      "min": 0.183,
+      "max": 81.72,
+      "avg": 32.6265
+    },
+    {
+      "file": "solidityImport_group3.test",
+      "total": 809.1930000000001,
+      "count": 25,
+      "min": 0,
+      "max": 55.46,
+      "avg": 32.367720000000006
+    },
+    {
+      "file": "circom_group2.test",
+      "total": 515.3509999999999,
+      "count": 16,
+      "min": 2.058,
+      "max": 47.83,
+      "avg": 32.20943749999999
+    },
+    {
+      "file": "compile_run_widget_group4.test",
+      "total": 241.55100000000002,
+      "count": 8,
+      "min": 0,
+      "max": 60.85,
+      "avg": 30.193875000000002
+    },
+    {
+      "file": "eip1153_group1.test",
+      "total": 301.04999999999995,
+      "count": 10,
+      "min": 26.21,
+      "max": 35.41,
+      "avg": 30.104999999999997
+    },
+    {
+      "file": "terminal_group11.test",
+      "total": 85.05000000000001,
+      "count": 3,
+      "min": 27.87,
+      "max": 28.92,
+      "avg": 28.350000000000005
+    },
+    {
+      "file": "txListener_group1.test",
+      "total": 223.554,
+      "count": 8,
+      "min": 0.001,
+      "max": 56.52,
+      "avg": 27.94425
+    },
+    {
+      "file": "providers_group1.test",
+      "total": 554.3800000000001,
+      "count": 20,
+      "min": 25.41,
+      "max": 33.26,
+      "avg": 27.719000000000005
+    },
+    {
+      "file": "transactionExecution_group1.test",
+      "total": 317.693,
+      "count": 12,
+      "min": 0,
+      "max": 43.93,
+      "avg": 26.474416666666666
+    },
+    {
+      "file": "compile_run_widget_group3.test",
+      "total": 192.272,
+      "count": 8,
+      "min": 0,
+      "max": 48.52,
+      "avg": 24.034
+    },
+    {
+      "file": "editor_line_text.test",
+      "total": 120.09,
+      "count": 5,
+      "min": 23.74,
+      "max": 24.37,
+      "avg": 24.018
+    },
+    {
+      "file": "compile_run_widget_group1.test",
+      "total": 190.733,
+      "count": 8,
+      "min": 0,
+      "max": 48.02,
+      "avg": 23.841625
+    },
+    {
+      "file": "compiler_api_group4.test",
+      "total": 233.55200000000002,
+      "count": 10,
+      "min": 0,
+      "max": 46.93,
+      "avg": 23.355200000000004
+    },
+    {
+      "file": "workspace_git_group4.test",
+      "total": 578.3389999999999,
+      "count": 25,
+      "min": 0,
+      "max": 59.59,
+      "avg": 23.13356
+    },
+    {
+      "file": "url_group2.test",
+      "total": 459.956,
+      "count": 20,
+      "min": 0,
+      "max": 94.79,
+      "avg": 22.9978
+    },
+    {
+      "file": "recorder_group2.test",
+      "total": 68.911,
+      "count": 3,
+      "min": 0.001,
+      "max": 35.27,
+      "avg": 22.970333333333333
+    },
+    {
+      "file": "providers_group2.test",
+      "total": 44.36,
+      "count": 2,
+      "min": 16.75,
+      "max": 27.61,
+      "avg": 22.18
+    },
+    {
+      "file": "editor_error_marker.test",
+      "total": 216.35,
+      "count": 10,
+      "min": 19.07,
+      "max": 24.29,
+      "avg": 21.634999999999998
+    },
+    {
+      "file": "terminal_group4.test",
+      "total": 316.02299999999997,
+      "count": 15,
+      "min": 0.169,
+      "max": 34.29,
+      "avg": 21.068199999999997
+    },
+    {
+      "file": "solidityUnittests_group7.test",
+      "total": 313.341,
+      "count": 15,
+      "min": 0,
+      "max": 68.26,
+      "avg": 20.889400000000002
+    },
+    {
+      "file": "terminal_group5.test",
+      "total": 61.94,
+      "count": 3,
+      "min": 20.33,
+      "max": 20.97,
+      "avg": 20.646666666666665
+    },
+    {
+      "file": "runAndDeploy_group4.test",
+      "total": 102.769,
+      "count": 5,
+      "min": 0.001,
+      "max": 46.09,
+      "avg": 20.553800000000003
+    },
+    {
+      "file": "debugger_group2.test",
+      "total": 294.63300000000004,
+      "count": 15,
+      "min": 0,
+      "max": 35.04,
+      "avg": 19.642200000000003
+    },
+    {
+      "file": "file_explorer_multiselect_group1.test",
+      "total": 192.767,
+      "count": 10,
+      "min": 2.738,
+      "max": 35.83,
+      "avg": 19.276699999999998
+    },
+    {
+      "file": "matomo-consent_group3.test",
+      "total": 93.67,
+      "count": 5,
+      "min": 17.96,
+      "max": 20.49,
+      "avg": 18.734
+    },
+    {
+      "file": "matomo-consent_group2.test",
+      "total": 91.3,
+      "count": 5,
+      "min": 16.54,
+      "max": 23.42,
+      "avg": 18.259999999999998
+    },
+    {
+      "file": "compile_run_widget_group2.test",
+      "total": 142.981,
+      "count": 8,
+      "min": 0,
+      "max": 36.16,
+      "avg": 17.872625
+    },
+    {
+      "file": "circom_group5.test",
+      "total": 209.921,
+      "count": 12,
+      "min": 1.105,
+      "max": 35.98,
+      "avg": 17.493416666666665
+    },
+    {
+      "file": "transactionExecution_group2.test",
+      "total": 345.8859999999999,
+      "count": 20,
+      "min": 0.001,
+      "max": 37.25,
+      "avg": 17.294299999999996
+    },
+    {
+      "file": "debugger_group3.test",
+      "total": 168.62400000000002,
+      "count": 10,
+      "min": 0,
+      "max": 34.29,
+      "avg": 16.8624
+    },
+    {
+      "file": "terminal_group10.test",
+      "total": 50.2,
+      "count": 3,
+      "min": 16.23,
+      "max": 17.41,
+      "avg": 16.733333333333334
+    },
+    {
+      "file": "matomo-consent_group1.test",
+      "total": 82.6,
+      "count": 5,
+      "min": 15.34,
+      "max": 19.66,
+      "avg": 16.52
+    },
+    {
+      "file": "ballot_group1.test",
+      "total": 383.78900000000004,
+      "count": 24,
+      "min": 0,
+      "max": 28.49,
+      "avg": 15.991208333333335
+    },
+    {
+      "file": "staticAnalysis.test",
+      "total": 142.702,
+      "count": 9,
+      "min": 0,
+      "max": 30.88,
+      "avg": 15.855777777777778
+    },
+    {
+      "file": "runAndDeploy_group3.test",
+      "total": 62.53,
+      "count": 4,
+      "min": 0,
+      "max": 35.89,
+      "avg": 15.6325
+    },
+    {
+      "file": "runAndDeploy_group5.test",
+      "total": 309.74199999999996,
+      "count": 20,
+      "min": 0,
+      "max": 47.1,
+      "avg": 15.487099999999998
+    },
+    {
+      "file": "solidityImport_group1.test",
+      "total": 379.107,
+      "count": 25,
+      "min": 0,
+      "max": 29.53,
+      "avg": 15.164280000000002
+    },
+    {
+      "file": "debugger_group4.test",
+      "total": 295.363,
+      "count": 20,
+      "min": 0,
+      "max": 30.97,
+      "avg": 14.76815
+    },
+    {
+      "file": "solidityImport_group4.test",
+      "total": 220.20399999999998,
+      "count": 15,
+      "min": 0,
+      "max": 24.41,
+      "avg": 14.680266666666665
+    },
+    {
+      "file": "debugger_group5.test",
+      "total": 146.68400000000003,
+      "count": 10,
+      "min": 0,
+      "max": 29.67,
+      "avg": 14.668400000000002
+    },
+    {
+      "file": "eip7702_group1.test",
+      "total": 218.272,
+      "count": 15,
+      "min": 5.387,
+      "max": 29.18,
+      "avg": 14.551466666666666
+    },
+    {
+      "file": "solidityImport_group2.test",
+      "total": 216.333,
+      "count": 15,
+      "min": 0,
+      "max": 22.41,
+      "avg": 14.4222
+    },
+    {
+      "file": "fileManager_api_group4.test",
+      "total": 142.36,
+      "count": 10,
+      "min": 11.09,
+      "max": 17.77,
+      "avg": 14.236
+    },
+    {
+      "file": "terminal_group6.test",
+      "total": 42.27,
+      "count": 3,
+      "min": 13.9,
+      "max": 14.2,
+      "avg": 14.090000000000002
+    },
+    {
+      "file": "solidityUnittests_group1.test",
+      "total": 346.41999999999996,
+      "count": 25,
+      "min": 0,
+      "max": 53.89,
+      "avg": 13.856799999999998
+    },
+    {
+      "file": "matomo-consent_group7.test",
+      "total": 69.08999999999999,
+      "count": 5,
+      "min": 12.95,
+      "max": 16.41,
+      "avg": 13.817999999999998
+    },
+    {
+      "file": "libraryDeployment.test",
+      "total": 275.508,
+      "count": 20,
+      "min": 0,
+      "max": 34.37,
+      "avg": 13.7754
+    },
+    {
+      "file": "fileManager_api_group2.test",
+      "total": 205.783,
+      "count": 15,
+      "min": 9.338,
+      "max": 20.62,
+      "avg": 13.718866666666665
+    },
+    {
+      "file": "file_decorator.test",
+      "total": 204.569,
+      "count": 15,
+      "min": 9.809,
+      "max": 21.19,
+      "avg": 13.637933333333333
+    },
+    {
+      "file": "transactionExecution_group3.test",
+      "total": 217.52800000000002,
+      "count": 16,
+      "min": 0,
+      "max": 23.25,
+      "avg": 13.595500000000001
+    },
+    {
+      "file": "terminal_group1.test",
+      "total": 202.252,
+      "count": 15,
+      "min": 0.359,
+      "max": 27.58,
+      "avg": 13.483466666666667
+    },
+    {
+      "file": "specialFunctions_group5.test",
+      "total": 80.721,
+      "count": 6,
+      "min": 0,
+      "max": 27.22,
+      "avg": 13.4535
+    },
+    {
+      "file": "recorder_group1.test",
+      "total": 39.041,
+      "count": 3,
+      "min": 0.001,
+      "max": 25.38,
+      "avg": 13.013666666666666
+    },
+    {
+      "file": "solidityUnittests_group2.test",
+      "total": 385.42600000000004,
+      "count": 30,
+      "min": 0,
+      "max": 53.78,
+      "avg": 12.847533333333335
+    },
+    {
+      "file": "erc721.test",
+      "total": 128.455,
+      "count": 10,
+      "min": 0.001,
+      "max": 26.45,
+      "avg": 12.845500000000001
+    },
+    {
+      "file": "fileManager_api_group1.test",
+      "total": 320.5899999999999,
+      "count": 25,
+      "min": 9.124,
+      "max": 18.09,
+      "avg": 12.823599999999997
+    },
+    {
+      "file": "transactionExecution_group4.test",
+      "total": 99.952,
+      "count": 8,
+      "min": 0,
+      "max": 25.28,
+      "avg": 12.494
+    },
+    {
+      "file": "blockchain_group1.test",
+      "total": 99.804,
+      "count": 8,
+      "min": 0.001,
+      "max": 25.09,
+      "avg": 12.4755
+    },
+    {
+      "file": "generalSettings.test",
+      "total": 243.70100000000002,
+      "count": 20,
+      "min": 0.333,
+      "max": 42.92,
+      "avg": 12.18505
+    },
+    {
+      "file": "matomo-consent_group5.test",
+      "total": 60.35000000000001,
+      "count": 5,
+      "min": 11.4,
+      "max": 13.64,
+      "avg": 12.070000000000002
+    },
+    {
+      "file": "uniswap_v4_core_group1.test",
+      "total": 480.28200000000004,
+      "count": 40,
+      "min": 0.473,
+      "max": 63.99,
+      "avg": 12.007050000000001
+    },
+    {
+      "file": "specialFunctions_group4.test",
+      "total": 71.422,
+      "count": 6,
+      "min": 0,
+      "max": 24.3,
+      "avg": 11.903666666666666
+    },
+    {
+      "file": "circom_group6.test",
+      "total": 138.25900000000001,
+      "count": 12,
+      "min": 1.537,
+      "max": 18.5,
+      "avg": 11.521583333333334
+    },
+    {
+      "file": "fileManager_api_group3.test",
+      "total": 113.01600000000002,
+      "count": 10,
+      "min": 9.449,
+      "max": 13.34,
+      "avg": 11.301600000000002
+    },
+    {
+      "file": "matomo-consent_group4.test",
+      "total": 55.05,
+      "count": 5,
+      "min": 10.28,
+      "max": 13.2,
+      "avg": 11.01
+    },
+    {
+      "file": "matomo-consent_group6.test",
+      "total": 54.92,
+      "count": 5,
+      "min": 10.39,
+      "max": 12.47,
+      "avg": 10.984
+    },
+    {
+      "file": "ballot_group2.test",
+      "total": 255.33599999999998,
+      "count": 24,
+      "min": 0.001,
+      "max": 24.48,
+      "avg": 10.639
+    },
+    {
+      "file": "specialFunctions_group6.test",
+      "total": 93.73100000000001,
+      "count": 9,
+      "min": 0,
+      "max": 28.03,
+      "avg": 10.414555555555557
+    },
+    {
+      "file": "vyper_api_group1.test",
+      "total": 243.038,
+      "count": 24,
+      "min": 0.537,
+      "max": 20.01,
+      "avg": 10.126583333333334
+    },
+    {
+      "file": "pinned_contracts_group1.test",
+      "total": 344.079,
+      "count": 35,
+      "min": 0.132,
+      "max": 23.57,
+      "avg": 9.830828571428572
+    },
+    {
+      "file": "ballot_0_4_14_group1.test",
+      "total": 262.92699999999996,
+      "count": 28,
+      "min": 0,
+      "max": 25.73,
+      "avg": 9.390249999999998
+    },
+    {
+      "file": "terminal_group2.test",
+      "total": 55.312,
+      "count": 6,
+      "min": 5.474,
+      "max": 13.39,
+      "avg": 9.218666666666666
+    },
+    {
+      "file": "ballot_0_4_14_group2.test",
+      "total": 183.85000000000002,
+      "count": 20,
+      "min": 0,
+      "max": 21.69,
+      "avg": 9.1925
+    },
+    {
+      "file": "search_group2.test",
+      "total": 137.452,
+      "count": 15,
+      "min": 1.12,
+      "max": 15.11,
+      "avg": 9.163466666666666
+    },
+    {
+      "file": "matomo-consent_group8.test",
+      "total": 44.477000000000004,
+      "count": 5,
+      "min": 7.684,
+      "max": 11.96,
+      "avg": 8.8954
+    },
+    {
+      "file": "specialFunctions_group3.test",
+      "total": 79.871,
+      "count": 9,
+      "min": 0,
+      "max": 24,
+      "avg": 8.874555555555554
+    },
+    {
+      "file": "signingMessage.test",
+      "total": 130.88500000000002,
+      "count": 15,
+      "min": 0.001,
+      "max": 23.59,
+      "avg": 8.725666666666667
+    },
+    {
+      "file": "gist_group1.test",
+      "total": 86.056,
+      "count": 10,
+      "min": 2.494,
+      "max": 17.35,
+      "avg": 8.605599999999999
+    },
+    {
+      "file": "specialFunctions_group2.test",
+      "total": 76.95200000000001,
+      "count": 9,
+      "min": 0.001,
+      "max": 23.73,
+      "avg": 8.550222222222224
+    },
+    {
+      "file": "search_group1.test",
+      "total": 378.931,
+      "count": 45,
+      "min": 5.137,
+      "max": 18.51,
+      "avg": 8.420688888888888
+    },
+    {
+      "file": "solidityUnittests_group4.test",
+      "total": 203.63,
+      "count": 25,
+      "min": 0,
+      "max": 16.98,
+      "avg": 8.145199999999999
+    },
+    {
+      "file": "script-runner.test",
+      "total": 388.15,
+      "count": 50,
+      "min": 0.008,
+      "max": 34.79,
+      "avg": 7.763
+    },
+    {
+      "file": "circom_group4.test",
+      "total": 154.881,
+      "count": 20,
+      "min": 0.483,
+      "max": 33.76,
+      "avg": 7.74405
+    },
+    {
+      "file": "compiler_api_group3.test",
+      "total": 74.585,
+      "count": 10,
+      "min": 0.001,
+      "max": 15.51,
+      "avg": 7.458499999999999
+    },
+    {
+      "file": "compiler_api_group2.test",
+      "total": 72.90299999999999,
+      "count": 10,
+      "min": 0,
+      "max": 15.57,
+      "avg": 7.290299999999999
+    },
+    {
+      "file": "contract_flattener.test",
+      "total": 144.479,
+      "count": 20,
+      "min": 0,
+      "max": 20.23,
+      "avg": 7.22395
+    },
+    {
+      "file": "url_group3.test",
+      "total": 143.57999999999998,
+      "count": 20,
+      "min": 0,
+      "max": 20.43,
+      "avg": 7.178999999999999
+    },
+    {
+      "file": "solidityUnittests_group6.test",
+      "total": 105.60500000000002,
+      "count": 15,
+      "min": 0.001,
+      "max": 21.42,
+      "avg": 7.040333333333335
+    },
+    {
+      "file": "debugger_group1.test",
+      "total": 208.738,
+      "count": 30,
+      "min": 0,
+      "max": 16.43,
+      "avg": 6.957933333333333
+    },
+    {
+      "file": "compiler_api_group1.test",
+      "total": 55.352,
+      "count": 8,
+      "min": 0,
+      "max": 14.26,
+      "avg": 6.919
+    },
+    {
+      "file": "usingWebWorker_group1.test",
+      "total": 53.532000000000004,
+      "count": 8,
+      "min": 0,
+      "max": 13.96,
+      "avg": 6.6915000000000004
+    },
+    {
+      "file": "editor_group1.test",
+      "total": 188.538,
+      "count": 30,
+      "min": 0.054,
+      "max": 21.58,
+      "avg": 6.2846
+    },
+    {
+      "file": "specialFunctions_group1.test",
+      "total": 180.07000000000002,
+      "count": 30,
+      "min": 0,
+      "max": 23.65,
+      "avg": 6.002333333333334
+    },
+    {
+      "file": "solidityUnittests_group3.test",
+      "total": 147.43400000000003,
+      "count": 25,
+      "min": 0,
+      "max": 11.8,
+      "avg": 5.897360000000001
+    },
+    {
+      "file": "workspace_git_group2.test",
+      "total": 142.443,
+      "count": 25,
+      "min": 0.001,
+      "max": 14.98,
+      "avg": 5.69772
+    },
+    {
+      "file": "editorReferences.test",
+      "total": 77.08500000000002,
+      "count": 15,
+      "min": 0.257,
+      "max": 14.35,
+      "avg": 5.139000000000001
+    },
+    {
+      "file": "workspace_group1.test",
+      "total": 355.614,
+      "count": 70,
+      "min": 0.015,
+      "max": 22.6,
+      "avg": 5.0802
+    },
+    {
+      "file": "solidityUnittests_group5.test",
+      "total": 75.42599999999999,
+      "count": 15,
+      "min": 0.001,
+      "max": 16.14,
+      "avg": 5.0283999999999995
+    },
+    {
+      "file": "proxy_oz_v5_non_shanghai_runtime_group1.test",
+      "total": 58.24599999999999,
+      "count": 12,
+      "min": 0.001,
+      "max": 11.14,
+      "avg": 4.853833333333332
+    },
+    {
+      "file": "proxy_oz_v4_group1.test",
+      "total": 62.892,
+      "count": 13,
+      "min": 0.001,
+      "max": 10.69,
+      "avg": 4.837846153846154
+    },
+    {
+      "file": "dgit_local_group2.test",
+      "total": 255.95599999999996,
+      "count": 55,
+      "min": 0.004,
+      "max": 11.52,
+      "avg": 4.6537454545454535
+    },
+    {
+      "file": "proxy_oz_v5_group1.test",
+      "total": 55.120000000000005,
+      "count": 12,
+      "min": 0,
+      "max": 9.662,
+      "avg": 4.593333333333334
+    },
+    {
+      "file": "circom_group1.test",
+      "total": 53.687,
+      "count": 12,
+      "min": 2.055,
+      "max": 8.129,
+      "avg": 4.473916666666667
+    },
+    {
+      "file": "importFromGithub_group2.test",
+      "total": 41.423,
+      "count": 10,
+      "min": 2.292,
+      "max": 6.283,
+      "avg": 4.1423000000000005
+    },
+    {
+      "file": "workspace_git_group5.test",
+      "total": 163.18400000000003,
+      "count": 40,
+      "min": 0.001,
+      "max": 9.567,
+      "avg": 4.079600000000001
+    },
+    {
+      "file": "dgit_github_group3.test",
+      "total": 99.08399999999997,
+      "count": 25,
+      "min": 0.634,
+      "max": 6.786,
+      "avg": 3.963359999999999
+    },
+    {
+      "file": "fileExplorer_group3.test",
+      "total": 19.714,
+      "count": 5,
+      "min": 3.434,
+      "max": 4.311,
+      "avg": 3.9427999999999996
+    },
+    {
+      "file": "sol2uml_group1.test",
+      "total": 77.17800000000001,
+      "count": 20,
+      "min": 0,
+      "max": 9.662,
+      "avg": 3.8589000000000007
+    },
+    {
+      "file": "compiler_api_group5.test",
+      "total": 38.422000000000004,
+      "count": 10,
+      "min": 0,
+      "max": 8.286,
+      "avg": 3.8422000000000005
+    },
+    {
+      "file": "dgit_local_group3.test",
+      "total": 151.05300000000005,
+      "count": 40,
+      "min": 0.143,
+      "max": 10.26,
+      "avg": 3.7763250000000013
+    },
+    {
+      "file": "editorHoverContext_group1.test",
+      "total": 279.71500000000003,
+      "count": 75,
+      "min": 1.499,
+      "max": 8.723,
+      "avg": 3.729533333333334
+    },
+    {
+      "file": "layout.test",
+      "total": 127.917,
+      "count": 35,
+      "min": 0,
+      "max": 13.6,
+      "avg": 3.654771428571429
+    },
+    {
+      "file": "url_group1.test",
+      "total": 105.687,
+      "count": 32,
+      "min": 0,
+      "max": 5.519,
+      "avg": 3.30271875
+    },
+    {
+      "file": "dgit_local_group1.test",
+      "total": 242.422,
+      "count": 75,
+      "min": 0.004,
+      "max": 9.781,
+      "avg": 3.2322933333333332
+    },
+    {
+      "file": "contract_verification_group1.test",
+      "total": 32.316,
+      "count": 10,
+      "min": 0.727,
+      "max": 5.831,
+      "avg": 3.2316000000000003
+    },
+    {
+      "file": "workspace_git_group3.test",
+      "total": 141.11300000000003,
+      "count": 45,
+      "min": 0.001,
+      "max": 11.26,
+      "avg": 3.135844444444445
+    },
+    {
+      "file": "file_explorer_multiselect_group3.test",
+      "total": 15.617999999999999,
+      "count": 5,
+      "min": 2.978,
+      "max": 3.415,
+      "avg": 3.1235999999999997
+    },
+    {
+      "file": "code_format.test",
+      "total": 83.21600000000001,
+      "count": 28,
+      "min": 0.114,
+      "max": 7.143,
+      "avg": 2.9720000000000004
+    },
+    {
+      "file": "verticalIconsPanel.test",
+      "total": 23.294,
+      "count": 8,
+      "min": 0.462,
+      "max": 5.308,
+      "avg": 2.91175
+    },
+    {
+      "file": "url_group4.test",
+      "total": 45.513,
+      "count": 16,
+      "min": 0,
+      "max": 8.134,
+      "avg": 2.8445625
+    },
+    {
+      "file": "environment-account_group1.test",
+      "total": 26.625,
+      "count": 10,
+      "min": 1.539,
+      "max": 3.311,
+      "avg": 2.6625
+    },
+    {
+      "file": "learneth_group1.test",
+      "total": 26.474,
+      "count": 10,
+      "min": 1.095,
+      "max": 6.65,
+      "avg": 2.6474
+    },
+    {
+      "file": "deploy_vefiry_group1.test",
+      "total": 13.063,
+      "count": 5,
+      "min": 2.49,
+      "max": 2.872,
+      "avg": 2.6126
+    },
+    {
+      "file": "dgit_github_group2.test",
+      "total": 98.61799999999997,
+      "count": 40,
+      "min": 0.071,
+      "max": 4.969,
+      "avg": 2.4654499999999993
+    },
+    {
+      "file": "workspace_group2.test",
+      "total": 72.86,
+      "count": 30,
+      "min": 0,
+      "max": 5.846,
+      "avg": 2.4286666666666665
+    },
+    {
+      "file": "dgit_local_group4.test",
+      "total": 172.63900000000007,
+      "count": 75,
+      "min": 0.011,
+      "max": 9.606,
+      "avg": 2.301853333333334
+    },
+    {
+      "file": "pinned_plugin_group1.test",
+      "total": 42.67100000000001,
+      "count": 20,
+      "min": 0.205,
+      "max": 8.169,
+      "avg": 2.1335500000000005
+    },
+    {
+      "file": "pluginManager_group1.test",
+      "total": 41.795,
+      "count": 20,
+      "min": 0.424,
+      "max": 3.039,
+      "avg": 2.08975
+    },
+    {
+      "file": "file_explorer_context_menu_group1.test",
+      "total": 88.69399999999999,
+      "count": 45,
+      "min": 0.427,
+      "max": 4.135,
+      "avg": 1.9709777777777775
+    },
+    {
+      "file": "dgit_github_group1.test",
+      "total": 124.91299999999998,
+      "count": 70,
+      "min": 0.023,
+      "max": 5.043,
+      "avg": 1.7844714285714283
+    },
+    {
+      "file": "fileExplorer_group1.test",
+      "total": 49.67100000000001,
+      "count": 30,
+      "min": 0.358,
+      "max": 2.742,
+      "avg": 1.6557000000000002
+    },
+    {
+      "file": "circom_group3.test",
+      "total": 12.543999999999999,
+      "count": 8,
+      "min": 0.856,
+      "max": 2.437,
+      "avg": 1.5679999999999998
+    },
+    {
+      "file": "workspace_git_group1.test",
+      "total": 34.052,
+      "count": 25,
+      "min": 0,
+      "max": 3.414,
+      "avg": 1.36208
+    },
+    {
+      "file": "runAndDeploy_group2.test",
+      "total": 3.7880000000000003,
+      "count": 3,
+      "min": 0.001,
+      "max": 3.611,
+      "avg": 1.2626666666666668
+    },
+    {
+      "file": "importFromGithub_group1.test",
+      "total": 12.135,
+      "count": 10,
+      "min": 0.161,
+      "max": 2.279,
+      "avg": 1.2135
+    },
+    {
+      "file": "file_explorer_dragdrop_group1.test",
+      "total": 23.968999999999998,
+      "count": 25,
+      "min": 0.333,
+      "max": 1.37,
+      "avg": 0.95876
+    },
+    {
+      "file": "runAndDeploy_group1.test",
+      "total": 2.3019999999999996,
+      "count": 3,
+      "min": 0.001,
+      "max": 2.131,
+      "avg": 0.7673333333333332
+    },
+    {
+      "file": "defaultLayout.test",
+      "total": 16.837,
+      "count": 35,
+      "min": 0.031,
+      "max": 2.37,
+      "avg": 0.48105714285714285
+    },
+    {
+      "file": "fileExplorer_group2.test",
+      "total": 2.3850000000000002,
+      "count": 5,
+      "min": 0.44,
+      "max": 0.575,
+      "avg": 0.47700000000000004
+    },
+    {
+      "file": "walkthrough.test",
+      "total": 0.992,
+      "count": 4,
+      "min": 0.228,
+      "max": 0.275,
+      "avg": 0.248
+    },
+    {
+      "file": "workspace_group4.test",
+      "total": 1.5519999999999998,
+      "count": 10,
+      "min": 0.001,
+      "max": 0.482,
+      "avg": 0.15519999999999998
+    },
+    {
+      "file": "workspace_group3.test",
+      "total": 1.3289999999999997,
+      "count": 10,
+      "min": 0.001,
+      "max": 0.306,
+      "avg": 0.13289999999999996
+    },
+    {
+      "file": "terminal_group9.test",
+      "total": 0.012,
+      "count": 12,
+      "min": 0,
+      "max": 0.002,
+      "avg": 0.001
+    },
+    {
+      "file": "transactionExecution_group5.test",
+      "total": 0.015000000000000003,
+      "count": 16,
+      "min": 0,
+      "max": 0.002,
+      "avg": 0.0009375000000000002
+    },
+    {
+      "file": "terminal_group7.test",
+      "total": 0.002,
+      "count": 3,
+      "min": 0,
+      "max": 0.001,
+      "avg": 0.0006666666666666666
+    }
+  ]
+}
