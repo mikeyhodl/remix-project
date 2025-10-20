@@ -9,6 +9,8 @@ import { createRoot, Root } from 'react-dom/client';
 import { TrackingProvider } from '../contexts/TrackingContext';
 import { Preload } from '../components/preload';
 import { GitHubPopupCallback } from '../pages/GitHubPopupCallback';
+import { SubscriptionPopupCallback } from '../pages/SubscriptionPopupCallback';
+import { SubscriptionPage } from '../pages/SubscriptionPage';
 import { TrackingFunction } from './TrackingFunction';
 
 export interface RenderAppOptions {
@@ -33,6 +35,20 @@ export function renderApp(options: RenderAppOptions): Root | null {
     root.render(
       <TrackingProvider trackingFunction={trackingFunction}>
         <GitHubPopupCallback />
+      </TrackingProvider>
+    );
+  } else if (window.location.hash.includes('source=subscription-checkout')) {
+    // Show Paddle checkout page
+    root.render(
+      <TrackingProvider trackingFunction={trackingFunction}>
+        <SubscriptionPage />
+      </TrackingProvider>
+    );
+  } else if (window.location.hash.includes('source=subscription')) {
+    // Callback after successful payment to get JWT token
+    root.render(
+      <TrackingProvider trackingFunction={trackingFunction}>
+        <SubscriptionPopupCallback />
       </TrackingProvider>
     );
   } else {

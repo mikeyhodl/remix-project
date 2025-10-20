@@ -201,7 +201,8 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
   // set the define plugin to load the WALLET_CONNECT_PROJECT_ID
   config.plugins.push(
     new webpack.DefinePlugin({
-      WALLET_CONNECT_PROJECT_ID: JSON.stringify(process.env.WALLET_CONNECT_PROJECT_ID)
+      WALLET_CONNECT_PROJECT_ID: JSON.stringify(process.env.WALLET_CONNECT_PROJECT_ID),
+      'process.env.NX_ENDPOINTS_URL': JSON.stringify(process.env.NX_ENDPOINTS_URL)
     })
   )
 
@@ -244,6 +245,20 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
   }
 
   console.log('config', process.env.NX_DESKTOP_FROM_DIST)
+
+  // Dev-server settings: allow ngrok hostnames (avoids "Invalid Host header")
+  // This only affects `yarn serve` (webpack dev server), not production builds.
+  config.devServer = {
+    ...(config.devServer || {}),
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    headers: {
+      ...(config.devServer && config.devServer.headers ? config.devServer.headers : {}),
+      'ngrok-skip-browser-warning': '1',
+    },
+    historyApiFallback: true,
+  }
+
   return config;
 });
 

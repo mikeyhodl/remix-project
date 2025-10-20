@@ -551,6 +551,36 @@ export function RemixUiTopbar() {
               publishToGist={publishToGist}
               loginWithGitHub={loginWithGitHub}
             />
+            <Button
+              className="btn btn-topbar btn-sm ms-2"
+              variant="warning"
+              data-id="topbar-go-pro"
+              onClick={() => {
+                const w = 720, h = 760
+                const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
+                const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
+                const width = window.innerWidth
+                  ? window.innerWidth
+                  : document.documentElement.clientWidth
+                    ? document.documentElement.clientWidth
+                    : (window as any).screen.width
+                const height = window.innerHeight
+                  ? window.innerHeight
+                  : document.documentElement.clientHeight
+                    ? document.documentElement.clientHeight
+                    : (window as any).screen.height
+                const systemZoom = width / window.screen.availWidth
+                const left = (width - w) / 2 / systemZoom + dualScreenLeft
+                const top = (height - h) / 2 / systemZoom + dualScreenTop
+                const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
+                window.open(`${window.location.origin}/#source=subscription-checkout`, 'remix-pro-subscribe', features)
+                trackMatomoEvent({ category: 'topbar', action: 'header', name: 'GoPro', isClick: true })
+              }}
+              title="Upgrade to Remix Pro"
+            >
+              <i className="fas fa-crown me-2"></i>
+              Go Pro
+            </Button>
           </>
           <Dropdown className="ms-3" data-id="topbar-themeIcon" show={showTheme} ref={themeIconRef}>
             <Dropdown.Toggle
