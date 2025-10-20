@@ -18,57 +18,97 @@ const logo = (
 )
 
 export const SubscriptionPage = () => {
+  console.log('🔵 SubscriptionPage: Component mounted')
+  
   const hasInitialized = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   useEffect(() => {
+    console.log('🔵 SubscriptionPage: useEffect triggered, hasInitialized:', hasInitialized.current)
+    
     if (hasInitialized.current) return
     hasInitialized.current = true
 
     const initPaddle = async () => {
+      console.log('🔵 SubscriptionPage: Starting Paddle initialization')
+      console.log('🔵 SubscriptionPage: window.location.href:', window.location.href)
+      console.log('🔵 SubscriptionPage: window.location.hash:', window.location.hash)
+      
       try {
         // Load Paddle.js script
         if (!window.Paddle) {
+          console.log('🔵 SubscriptionPage: Loading Paddle.js script...')
           const script = document.createElement('script')
           script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
           script.async = true
           document.head.appendChild(script)
           
           await new Promise<void>((resolve, reject) => {
-            script.onload = () => resolve()
+            script.onload = () => {
+              console.log('✅ SubscriptionPage: Paddle.js loaded successfully')
+              resolve()
+            }
             script.onerror = () => reject(new Error('Failed to load Paddle.js'))
           })
+        } else {
+          console.log('🔵 SubscriptionPage: Paddle.js already loaded')
         }
 
         // Initialize Paddle (sandbox mode for testing)
+        console.log('🔵 SubscriptionPage: Initializing Paddle SDK...')
         window.Paddle.Environment.set('sandbox')
         window.Paddle.Initialize({
           token: 'test_aa605484fa99283bb809c6fba32'
         })
+        console.log('✅ SubscriptionPage: Paddle SDK initialized')
 
         // Get GitHub user data from localStorage (set by topbar before opening popup)
         const ghLogin = window.localStorage.getItem('gh_login') || 'user'
         const ghId = window.localStorage.getItem('gh_id') || '0'
         const ghEmail = window.localStorage.getItem('gh_email') || `${ghLogin}@users.noreply.github.com`
 
+        console.log('🔵 SubscriptionPage: GitHub data from localStorage:', { ghLogin, ghId, ghEmail })
+
         // Validate we have a real GitHub ID
         if (ghId === '0' || !ghId) {
           throw new Error('Please log in with GitHub first')
         }
 
+        // Get priceId from URL hash if provided
+        // URL format: #source=subscription-checkout&priceId=pri_xxx
+        const hashParams = window.location.hash.substring(1) // Remove the #
+        const params = new URLSearchParams(hashParams)
+        const priceId = params.get('priceId')
+
+        console.log('🔵 SubscriptionPage: priceId from URL:', priceId)
+
         // Create checkout transaction via backend
-        const { data } = await axios.post(`${endpointUrls.billing}/checkout`, {
+        const checkoutPayload: any = {
           customerEmail: ghEmail,
           customData: { ghId }
-        })
+        }
+        
+        // Include priceId if specified
+        if (priceId) {
+          checkoutPayload.priceId = priceId
+          console.log('🔵 SubscriptionPage: Using specific priceId:', priceId)
+        } else {
+          console.log('🔵 SubscriptionPage: Using default price')
+        }
+
+        console.log('🔵 SubscriptionPage: Creating checkout transaction...', checkoutPayload)
+        const { data } = await axios.post(`${endpointUrls.billing}/checkout`, checkoutPayload)
+        console.log('✅ SubscriptionPage: Checkout transaction created:', data)
 
         if (!data?.id) {
           throw new Error('Failed to create transaction')
         }
 
         const transactionId = data.id
+        console.log('🔵 SubscriptionPage: Opening Paddle checkout with transactionId:', transactionId)
         
         // Open Paddle checkout overlay
         window.Paddle.Checkout.open({
@@ -79,39 +119,68 @@ export const SubscriptionPage = () => {
             locale: 'en'
           },
           eventCallback: (event: any) => {
-            console.log('Paddle event:', event)
+            console.log('🟢 Paddle event:', event.name, event)
+            
             if (event.name === 'checkout.completed') {
+              console.log('✅✅✅ Checkout completed successfully!')
               // Checkout completed successfully
+              setCheckoutOpen(false)
               setLoading(false)
               setSuccess(true)
               
               // Notify parent window about subscription change
-              if (window.opener) {
-                window.opener.postMessage({ 
-                  type: 'SUBSCRIPTION_COMPLETED',
-                  ghId 
-                }, window.location.origin)
+              if (window.opener && !window.opener.closed) {
+                console.log('🔵 Sending SUBSCRIPTION_COMPLETED message to parent window with ghId:', ghId)
+                try {
+                  window.opener.postMessage({ 
+                    type: 'SUBSCRIPTION_COMPLETED',
+                    ghId,
+                    timestamp: Date.now()
+                  }, window.location.origin)
+                  console.log('✅ Message sent successfully to parent')
+                } catch (err) {
+                  console.error('❌ Failed to send message:', err)
+                }
+              } else {
+                console.warn('⚠️ Parent window not available or closed')
               }
               
-              // Close the window after 2 seconds
+              // Close the window after showing success message
               setTimeout(() => {
+                console.log('🔵 Closing popup window in 1.5 seconds...')
                 window.close()
-              }, 2000)
+              }, 1500)
             } else if (event.name === 'checkout.closed') {
-              // User closed checkout without completing
-              window.close()
+              console.log('⚠️ Checkout closed by user')
+              setCheckoutOpen(false)
+              // User closed checkout without completing - close popup after brief delay
+              setTimeout(() => {
+                console.log('🔵 Closing popup window after checkout closed')
+                window.close()
+              }, 500)
+            } else if (event.name === 'checkout.payment.initiated') {
+              console.log('🔵 Payment initiated')
+            } else if (event.name === 'checkout.payment.failed') {
+              console.error('❌ Payment failed:', event.data)
+              setCheckoutOpen(false)
+              setError('Payment failed. Please try again.')
+              setLoading(false)
             }
           }
         })
 
+        console.log('✅ SubscriptionPage: Paddle checkout opened successfully')
         setLoading(false)
+        setCheckoutOpen(true)
       } catch (err: any) {
-        console.error('Paddle initialization error:', err)
+        console.error('❌ SubscriptionPage: Paddle initialization error:', err)
+        console.error('❌ Error stack:', err.stack)
         setError(err?.message || 'Failed to initialize checkout')
         setLoading(false)
       }
     }
 
+    console.log('🔵 SubscriptionPage: Calling initPaddle()')
     initPaddle()
   }, [])
 
@@ -124,6 +193,16 @@ export const SubscriptionPage = () => {
             <div className='text-center'>
               <i className="fas fa-spinner fa-spin fa-2x"></i>
               <p className="mt-3">Loading checkout...</p>
+            </div>
+          )}
+          {checkoutOpen && !loading && !success && !error && (
+            <div className='text-center'>
+              <i className="fas fa-credit-card fa-2x text-primary"></i>
+              <p className="mt-3">Complete your payment in the checkout overlay</p>
+              <p className="text-muted small">You can close this window if you've finished</p>
+              <button className="btn btn-secondary mt-3" onClick={() => window.close()}>
+                Close Window
+              </button>
             </div>
           )}
           {success && (

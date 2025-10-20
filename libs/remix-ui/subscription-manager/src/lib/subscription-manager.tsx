@@ -13,6 +13,12 @@ interface SubscriptionItem {
     interval: string
     frequency: number
   }
+  product?: {
+    id: string
+    name: string
+    description: string
+    imageUrl: string
+  }
 }
 
 interface SubscriptionDetails {
@@ -71,7 +77,19 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
 }) => {
 
   const handleUpgrade = (priceId?: string) => {
-    const w = 720, h = 760
+    console.log('🔵 SubscriptionManagerUI: handleUpgrade called with priceId:', priceId)
+    console.log('🔵 SubscriptionManagerUI: ghId:', ghId)
+    
+    // Store GitHub user data in localStorage for the popup
+    // localStorage is shared across same-origin windows, so the popup can read it
+    if (ghId) {
+      window.localStorage.setItem('gh_id', ghId)
+      console.log('✅ SubscriptionManagerUI: Stored gh_id in localStorage:', ghId)
+    } else {
+      console.warn('⚠️ SubscriptionManagerUI: No ghId available!')
+    }
+    
+    const w = 900, h = 900
     const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
     const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
     const width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth
@@ -83,7 +101,17 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
     const url = priceId 
       ? `${window.location.origin}/#source=subscription-checkout&priceId=${priceId}`
       : `${window.location.origin}/#source=subscription-checkout`
-    window.open(url, 'remix-pro-subscribe', features)
+    
+    console.log('🔵 SubscriptionManagerUI: Opening popup with URL:', url)
+    console.log('🔵 SubscriptionManagerUI: Popup features:', features)
+    
+    const popup = window.open(url, 'remix-pro-subscribe', features)
+    
+    if (popup) {
+      console.log('✅ SubscriptionManagerUI: Popup window opened successfully')
+    } else {
+      console.error('❌ SubscriptionManagerUI: Failed to open popup (might be blocked)')
+    }
   }
 
   const formatDate = (dateStr: string) => {
@@ -156,14 +184,30 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                     const isYearly = plan.billingCycle?.interval === 'year'
                     const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                     const currency = plan.unitPrice?.currencyCode || 'USD'
+                    const productName = plan.product?.name || plan.description
+                    const productDescription = plan.product?.description
                     
                     return (
                       <div key={plan.id} className="col-md-6">
                         <div className="card h-100">
                           <div className="card-body text-center">
-                            <h5 className="card-title mb-3">
-                              {plan.description || 'Pro Plan'}
+                            {plan.product?.imageUrl && (
+                              <div className="mb-3">
+                                <img 
+                                  src={plan.product.imageUrl} 
+                                  alt={productName}
+                                  style={{ maxHeight: '60px', objectFit: 'contain' }}
+                                />
+                              </div>
+                            )}
+                            <h5 className="card-title mb-2">
+                              {productName}
                             </h5>
+                            {productDescription && (
+                              <p className="text-muted small mb-3">
+                                {productDescription}
+                              </p>
+                            )}
                             <div className="mb-3">
                               <span className="h2 fw-bold">
                                 {new Intl.NumberFormat('en-US', {
@@ -227,14 +271,30 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                 const isYearly = plan.billingCycle?.interval === 'year'
                 const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                 const currency = plan.unitPrice?.currencyCode || 'USD'
+                const productName = plan.product?.name || plan.description
+                const productDescription = plan.product?.description
                 
                 return (
                   <div key={plan.id} className="col-md-6">
                     <div className="card h-100">
                       <div className="card-body text-center">
-                        <h5 className="card-title mb-3">
-                          {plan.description || 'Pro Plan'}
+                        {plan.product?.imageUrl && (
+                          <div className="mb-3">
+                            <img 
+                              src={plan.product.imageUrl} 
+                              alt={productName}
+                              style={{ maxHeight: '60px', objectFit: 'contain' }}
+                            />
+                          </div>
+                        )}
+                        <h5 className="card-title mb-2">
+                          {productName}
                         </h5>
+                        {productDescription && (
+                          <p className="text-muted small mb-3">
+                            {productDescription}
+                          </p>
+                        )}
                         <div className="mb-3">
                           <span className="h2 fw-bold">
                             {new Intl.NumberFormat('en-US', {
@@ -322,29 +382,75 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
 
             {subscription?.items && subscription.items.length > 0 && (
               <div className="mb-3">
-                <label className="text-muted small">Plan Details</label>
+                <label className="text-muted small">Current Plan</label>
                 {subscription.items.map((item, idx) => (
-                  <div key={idx} className="mb-2 p-3 bg-light rounded">
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div>
-                        <div className="fw-bold">{item.description || 'Subscription Plan'}</div>
-                        {item.billingCycle && (
-                          <div className="text-muted small">
-                            {formatBillingCycle(item.billingCycle)}
+                  <div key={idx} className="mb-3 p-3 border rounded">
+                    {/* Product card with image */}
+                    {item.product && (
+                      <div className="d-flex align-items-start mb-3">
+                        {item.product.imageUrl && (
+                          <img 
+                            src={item.product.imageUrl} 
+                            alt={item.product.name} 
+                            style={{ 
+                              width: '80px', 
+                              height: '80px', 
+                              objectFit: 'cover',
+                              borderRadius: '8px'
+                            }}
+                            className="me-3"
+                          />
+                        )}
+                        <div className="flex-grow-1">
+                          <div className="d-flex justify-content-between align-items-start">
+                            <div>
+                              <div className="fw-bold fs-5">{item.product.name}</div>
+                              {item.product.description && (
+                                <div className="text-muted small mt-1">
+                                  {item.product.description}
+                                </div>
+                              )}
+                            </div>
+                            {item.unitPrice && (
+                              <div className="text-end ms-3">
+                                <div className="fw-bold fs-5">
+                                  {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
+                                </div>
+                                {item.billingCycle && (
+                                  <div className="text-muted small">
+                                    per {formatBillingCycle(item.billingCycle)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Fallback if no product data */}
+                    {!item.product && (
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <div className="fw-bold">{item.description || 'Subscription Plan'}</div>
+                          {item.billingCycle && (
+                            <div className="text-muted small">
+                              {formatBillingCycle(item.billingCycle)}
+                            </div>
+                          )}
+                        </div>
+                        {item.unitPrice && (
+                          <div className="text-end">
+                            <div className="fw-bold">
+                              {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
+                            </div>
+                            {item.quantity > 1 && (
+                              <div className="text-muted small">Qty: {item.quantity}</div>
+                            )}
                           </div>
                         )}
                       </div>
-                      {item.unitPrice && (
-                        <div className="text-end">
-                          <div className="fw-bold">
-                            {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
-                          </div>
-                          {item.quantity > 1 && (
-                            <div className="text-muted small">Qty: {item.quantity}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -461,15 +567,31 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                 )
                 const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                 const currency = plan.unitPrice?.currencyCode || 'USD'
+                const productName = plan.product?.name || plan.description
+                const productDescription = plan.product?.description
                 
                 return (
                   <div key={plan.id} className="col-md-6">
                     <div className={`card h-100 ${isCurrentPlan ? 'border-success' : ''}`}>
                       <div className="card-body">
                         <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="card-title mb-0">
-                            {plan.description || 'Pro Plan'}
-                          </h6>
+                          <div>
+                            {plan.product?.imageUrl && (
+                              <img 
+                                src={plan.product.imageUrl} 
+                                alt={productName}
+                                style={{ maxHeight: '32px', objectFit: 'contain', marginBottom: '8px' }}
+                              />
+                            )}
+                            <h6 className="card-title mb-0">
+                              {productName}
+                            </h6>
+                            {productDescription && (
+                              <p className="text-muted small mb-0" style={{ fontSize: '0.8rem' }}>
+                                {productDescription}
+                              </p>
+                            )}
+                          </div>
                           {isCurrentPlan && (
                             <span className="badge bg-success">Current Plan</span>
                           )}

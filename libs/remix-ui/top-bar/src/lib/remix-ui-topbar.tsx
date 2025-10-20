@@ -164,10 +164,11 @@ export function RemixUiTopbar() {
   useEffect(() => {
     if (!plugin || !appContext || !appContext.appStateDispatch) return
 
-    const handleSubscriptionChanged = (hasActiveSubscription: boolean) => {
+    const handleSubscriptionChanged = (status: any) => {
+      // status is an object: { hasActiveSubscription, ghId, subscription }
       appContext.appStateDispatch({
         type: 'SET_HAS_ACTIVE_SUBSCRIPTION' as any,
-        payload: hasActiveSubscription
+        payload: status.hasActiveSubscription || false
       })
     }
 
@@ -177,29 +178,6 @@ export function RemixUiTopbar() {
       plugin.off('subscription' as any, 'subscriptionStatusChanged')
     }
   }, [plugin, appContext])
-
-  // Listen for checkout completion messages from popup window
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      // Verify origin
-      if (event.origin !== window.location.origin) return
-      
-      if (event.data?.type === 'SUBSCRIPTION_COMPLETED') {
-        console.log('Subscription completed, refreshing status...')
-        const ghId = event.data.ghId
-        if (ghId && plugin) {
-          // Refresh subscription status
-          await plugin.call('subscription' as any, 'checkSubscription', ghId)
-        }
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-    return () => {
-      window.removeEventListener('message', handleMessage)
-    }
-  }, [plugin])
-
 
   const subItems = useMemo(() => {
     return [
@@ -608,6 +586,7 @@ export function RemixUiTopbar() {
                 variant="warning"
                 data-id="topbar-pro-badge"
                 onClick={async () => {
+                  await plugin.call('manager', 'activatePlugin', 'subscriptionManager')
                   await plugin.call('tabs', 'focus', 'subscriptionManager')
                   trackMatomoEvent({ category: 'topbar', action: 'header', name: 'ProBadge', isClick: true })
                 }}
@@ -621,40 +600,12 @@ export function RemixUiTopbar() {
                 className="btn btn-topbar btn-sm ms-2"
                 variant="warning"
                 data-id="topbar-go-pro"
-                onClick={() => {
-                  // Store GitHub user data in localStorage for the popup
-                  const ghUser = appContext?.appState?.gitHubUser
-                  if (ghUser?.id) {
-                    window.localStorage.setItem('gh_id', ghUser.id.toString())
-                  }
-                  if (ghUser?.login) {
-                    window.localStorage.setItem('gh_login', ghUser.login)
-                  }
-                  if (ghUser?.email) {
-                    window.localStorage.setItem('gh_email', ghUser.email)
-                  }
-
-                  const w = 720, h = 760
-                  const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
-                  const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
-                  const width = window.innerWidth
-                    ? window.innerWidth
-                    : document.documentElement.clientWidth
-                      ? document.documentElement.clientWidth
-                      : (window as any).screen.width
-                  const height = window.innerHeight
-                    ? window.innerHeight
-                    : document.documentElement.clientHeight
-                      ? document.documentElement.clientHeight
-                      : (window as any).screen.height
-                  const systemZoom = width / window.screen.availWidth
-                  const left = (width - w) / 2 / systemZoom + dualScreenLeft
-                  const top = (height - h) / 2 / systemZoom + dualScreenTop
-                  const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
-                  window.open(`${window.location.origin}/#source=subscription-checkout`, 'remix-pro-subscribe', features)
+                onClick={async () => {
+                  await plugin.call('manager', 'activatePlugin', 'subscriptionManager')
+                  await plugin.call('tabs', 'focus', 'subscriptionManager')
                   trackMatomoEvent({ category: 'topbar', action: 'header', name: 'GoPro', isClick: true })
                 }}
-                title="Upgrade to Remix Pro"
+                title="View subscription plans"
               >
                 <i className="fas fa-crown me-2"></i>
                 Go Pro

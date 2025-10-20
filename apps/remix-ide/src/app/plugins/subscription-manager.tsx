@@ -63,11 +63,48 @@ export class SubscriptionManager extends ViewPlugin {
       this.renderComponent()
     })
 
+    // Listen for checkout completion messages from popup window
+    const handleMessage = async (event: MessageEvent) => {
+      // Verify origin
+      if (event.origin !== window.location.origin) return
+      
+      if (event.data?.type === 'SUBSCRIPTION_COMPLETED') {
+        console.log('SubscriptionManager: Received SUBSCRIPTION_COMPLETED message')
+        const ghId = event.data.ghId
+        if (ghId) {
+          console.log('SubscriptionManager: Waiting 2 seconds for Paddle to process...')
+          // Wait for Paddle to process the subscription
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          console.log('SubscriptionManager: Refreshing subscription for ghId:', ghId)
+          try {
+            // Tell SubscriptionPlugin to refresh
+            await this.call('subscription' as any, 'checkSubscription', ghId)
+            console.log('SubscriptionManager: Subscription refreshed successfully')
+          } catch (err) {
+            console.error('SubscriptionManager: Failed to refresh subscription:', err)
+          }
+        }
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    
+    // Store reference for cleanup
+    ;(this as any)._messageHandler = handleMessage
+
     // Initial load - get current status from SubscriptionPlugin
     await this.loadFromSubscriptionPlugin()
     
     // Also load available plans
     await this.loadAvailablePlans()
+  }
+
+  async onDeactivation() {
+    // Clean up message listener
+    if ((this as any)._messageHandler) {
+      window.removeEventListener('message', (this as any)._messageHandler)
+    }
   }
 
   /**
