@@ -84,6 +84,15 @@ export const SubscriptionPage = () => {
               // Checkout completed successfully
               setLoading(false)
               setSuccess(true)
+              
+              // Notify parent window about subscription change
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'SUBSCRIPTION_COMPLETED',
+                  ghId 
+                }, window.location.origin)
+              }
+              
               // Close the window after 2 seconds
               setTimeout(() => {
                 window.close()

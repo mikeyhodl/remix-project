@@ -151,6 +151,15 @@ export function RemixUiTopbar() {
     loadCurrentTheme()
   }, []);
 
+  // Check subscription when GitHub user changes
+  useEffect(() => {
+    if (!plugin || !appContext?.appState?.gitHubUser?.id) return
+    
+    const ghId = appContext.appState.gitHubUser.id.toString()
+    console.log('GitHub user detected, checking subscription for:', ghId)
+    plugin.call('subscription' as any, 'checkSubscription', ghId)
+  }, [plugin, appContext?.appState?.gitHubUser])
+
   // Listen to subscription status changes
   useEffect(() => {
     if (!plugin || !appContext || !appContext.appStateDispatch) return
@@ -168,6 +177,28 @@ export function RemixUiTopbar() {
       plugin.off('subscription' as any, 'subscriptionStatusChanged')
     }
   }, [plugin, appContext])
+
+  // Listen for checkout completion messages from popup window
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Verify origin
+      if (event.origin !== window.location.origin) return
+      
+      if (event.data?.type === 'SUBSCRIPTION_COMPLETED') {
+        console.log('Subscription completed, refreshing status...')
+        const ghId = event.data.ghId
+        if (ghId && plugin) {
+          // Refresh subscription status
+          await plugin.call('subscription' as any, 'checkSubscription', ghId)
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [plugin])
 
 
   const subItems = useMemo(() => {
@@ -571,7 +602,21 @@ export function RemixUiTopbar() {
               publishToGist={publishToGist}
               loginWithGitHub={loginWithGitHub}
             />
-            {!appContext?.appState?.hasActiveSubscription && (
+            {appContext?.appState?.hasActiveSubscription ? (
+              <Button
+                className="btn btn-topbar btn-sm ms-2"
+                variant="warning"
+                data-id="topbar-pro-badge"
+                onClick={async () => {
+                  await plugin.call('tabs', 'focus', 'subscriptionManager')
+                  trackMatomoEvent({ category: 'topbar', action: 'header', name: 'ProBadge', isClick: true })
+                }}
+                title="Manage your Remix Pro subscription"
+              >
+                <i className="fas fa-crown me-2"></i>
+                Pro
+              </Button>
+            ) : (
               <Button
                 className="btn btn-topbar btn-sm ms-2"
                 variant="warning"

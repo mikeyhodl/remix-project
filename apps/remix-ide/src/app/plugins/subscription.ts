@@ -14,6 +14,7 @@ const profile = {
 export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
   private hasActiveSub: boolean = false
   private ghId: string | null = null
+  private subscriptionData: any = null
   private checkingSubscription: boolean = false
 
   constructor() {
@@ -22,10 +23,23 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
 
   async onActivation() {
     console.log('Subscription plugin activated')
+    
+    // Clear subscription on logout
+    this.on('dgitApi' as any, 'loggedOut', () => {
+      console.log('User logged out, clearing subscription')
+      const wasActive = this.hasActiveSub
+      this.hasActiveSub = false
+      this.ghId = null
+      this.subscriptionData = null
+      if (wasActive) {
+        this.emit('subscriptionStatusChanged', this.getSubscriptionStatus())
+      }
+    })
   }
 
   /**
    * Check subscription status for a given GitHub ID
+   * Fetches full subscription data and stores it
    * @param ghId GitHub user ID
    * @returns Promise<boolean> true if user has active subscription
    */
@@ -41,12 +55,13 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
       if (response.ok) {
         const data = await response.json()
         const wasActive = this.hasActiveSub
-        this.hasActiveSub = data.hasActiveSubscription || false
         
-        // Emit event if status changed
-        if (wasActive !== this.hasActiveSub) {
-          this.emit('subscriptionStatusChanged', this.hasActiveSub)
-        }
+        // Store full subscription data
+        this.hasActiveSub = data.hasActiveSubscription || false
+        this.subscriptionData = data.subscription
+        
+        // Emit event with full status (including subscription data)
+        this.emit('subscriptionStatusChanged', this.getSubscriptionStatus())
         
         return this.hasActiveSub
       }
@@ -68,13 +83,14 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
   }
 
   /**
-   * Get full subscription status including GitHub ID
-   * @returns object with hasActiveSubscription and ghId
+   * Get full subscription status including GitHub ID and subscription details
+   * @returns object with hasActiveSubscription, ghId, and subscription data
    */
   getSubscriptionStatus() {
     return {
       hasActiveSubscription: this.hasActiveSub,
-      ghId: this.ghId
+      ghId: this.ghId,
+      subscription: this.subscriptionData
     }
   }
 
