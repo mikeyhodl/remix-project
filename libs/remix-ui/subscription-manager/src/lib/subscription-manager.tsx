@@ -50,6 +50,8 @@ export interface SubscriptionManagerProps {
   subscription: SubscriptionDetails | null
   hasActiveSubscription: boolean
   ghId: string | null
+  availablePlans: any[]
+  loadingPlans: boolean
   onRefresh: () => void
   onManage: () => void
   onCancel: () => void
@@ -61,12 +63,14 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
   subscription, 
   hasActiveSubscription,
   ghId,
+  availablePlans,
+  loadingPlans,
   onRefresh,
   onManage,
   onCancel
 }) => {
 
-  const handleUpgrade = () => {
+  const handleUpgrade = (priceId?: string) => {
     const w = 720, h = 760
     const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
     const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
@@ -76,7 +80,10 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
     const left = (width - w) / 2 / systemZoom + dualScreenLeft
     const top = (height - h) / 2 / systemZoom + dualScreenTop
     const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
-    window.open(`${window.location.origin}/#source=subscription-checkout`, 'remix-pro-subscribe', features)
+    const url = priceId 
+      ? `${window.location.origin}/#source=subscription-checkout&priceId=${priceId}`
+      : `${window.location.origin}/#source=subscription-checkout`
+    window.open(url, 'remix-pro-subscribe', features)
   }
 
   const formatDate = (dateStr: string) => {
@@ -126,9 +133,72 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
           {error}
         </div>
         {!ghId && (
-          <div className="text-center mt-4">
-            <p className="text-muted">Log in with GitHub to manage your subscription</p>
-          </div>
+          <>
+            <div className="text-center mt-4 mb-4">
+              <p className="text-muted">Log in with GitHub to manage your subscription</p>
+            </div>
+
+            {/* Show available plans even when not logged in */}
+            <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <div className="mb-4">
+                <i className="fas fa-crown" style={{ fontSize: '48px', color: '#FDB022' }}></i>
+              </div>
+              <h4 className="mb-3">Available Subscription Plans</h4>
+              
+              {loadingPlans ? (
+                <div className="text-center">
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <p className="text-muted mt-2">Loading plans...</p>
+                </div>
+              ) : availablePlans.length > 0 ? (
+                <div className="row g-4 mb-4">
+                  {availablePlans.map((plan) => {
+                    const isYearly = plan.billingCycle?.interval === 'year'
+                    const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
+                    const currency = plan.unitPrice?.currencyCode || 'USD'
+                    
+                    return (
+                      <div key={plan.id} className="col-md-6">
+                        <div className="card h-100">
+                          <div className="card-body text-center">
+                            <h5 className="card-title mb-3">
+                              {plan.description || 'Pro Plan'}
+                            </h5>
+                            <div className="mb-3">
+                              <span className="h2 fw-bold">
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: currency
+                                }).format(price)}
+                              </span>
+                              <span className="text-muted">
+                                /{plan.billingCycle?.interval || 'month'}
+                              </span>
+                            </div>
+                            {plan.trialPeriod && (
+                              <div className="mb-3">
+                                <span className="badge bg-info">
+                                  {plan.trialPeriod.frequency} {plan.trialPeriod.interval} free trial
+                                </span>
+                              </div>
+                            )}
+                            <button 
+                              className={`btn ${isYearly ? 'btn-primary' : 'btn-warning'} w-100`}
+                              disabled
+                              title="Please log in with GitHub first"
+                            >
+                              <i className="fas fa-lock me-2"></i>
+                              Log in to Subscribe
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </>
         )}
       </div>
     )
@@ -137,21 +207,74 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
   if (!hasActiveSubscription) {
     return (
       <div className="p-4">
-        <div className="text-center" style={{ maxWidth: '600px', margin: '0 auto', paddingTop: '60px' }}>
+        <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '40px' }}>
           <div className="mb-4">
             <i className="fas fa-crown" style={{ fontSize: '64px', color: '#FDB022' }}></i>
           </div>
           <h3 className="mb-3">Upgrade to Remix Pro</h3>
-          <p className="text-muted mb-4">
+          <p className="text-muted mb-5">
             Get access to advanced AI features, priority support, and more.
           </p>
-          <button 
-            className="btn btn-warning btn-lg"
-            onClick={handleUpgrade}
-          >
-            <i className="fas fa-crown me-2"></i>
-            Upgrade to Pro
-          </button>
+
+          {loadingPlans ? (
+            <div className="text-center">
+              <i className="fas fa-spinner fa-spin"></i>
+              <p className="text-muted mt-2">Loading plans...</p>
+            </div>
+          ) : availablePlans.length > 0 ? (
+            <div className="row g-4 mb-4">
+              {availablePlans.map((plan) => {
+                const isYearly = plan.billingCycle?.interval === 'year'
+                const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
+                const currency = plan.unitPrice?.currencyCode || 'USD'
+                
+                return (
+                  <div key={plan.id} className="col-md-6">
+                    <div className="card h-100">
+                      <div className="card-body text-center">
+                        <h5 className="card-title mb-3">
+                          {plan.description || 'Pro Plan'}
+                        </h5>
+                        <div className="mb-3">
+                          <span className="h2 fw-bold">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: currency
+                            }).format(price)}
+                          </span>
+                          <span className="text-muted">
+                            /{plan.billingCycle?.interval || 'month'}
+                          </span>
+                        </div>
+                        {plan.trialPeriod && (
+                          <div className="mb-3">
+                            <span className="badge bg-info">
+                              {plan.trialPeriod.frequency} {plan.trialPeriod.interval} free trial
+                            </span>
+                          </div>
+                        )}
+                        <button 
+                          className={`btn ${isYearly ? 'btn-primary' : 'btn-warning'} w-100`}
+                          onClick={() => handleUpgrade(plan.id)}
+                        >
+                          <i className="fas fa-crown me-2"></i>
+                          Subscribe {isYearly ? 'Yearly' : 'Monthly'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <button 
+              className="btn btn-warning btn-lg"
+              onClick={() => handleUpgrade()}
+            >
+              <i className="fas fa-crown me-2"></i>
+              Upgrade to Pro
+            </button>
+          )}
         </div>
       </div>
     )
@@ -323,6 +446,68 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
             )}
           </button>
         </div>
+
+        {/* Other Available Plans */}
+        {availablePlans.length > 0 && (
+          <div className="mt-5">
+            <h5 className="mb-3">
+              <i className="fas fa-list me-2"></i>
+              Other Available Plans
+            </h5>
+            <div className="row g-3">
+              {availablePlans.map((plan) => {
+                const isCurrentPlan = subscription?.items?.some(
+                  (item: any) => item.priceId === plan.id
+                )
+                const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
+                const currency = plan.unitPrice?.currencyCode || 'USD'
+                
+                return (
+                  <div key={plan.id} className="col-md-6">
+                    <div className={`card h-100 ${isCurrentPlan ? 'border-success' : ''}`}>
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h6 className="card-title mb-0">
+                            {plan.description || 'Pro Plan'}
+                          </h6>
+                          {isCurrentPlan && (
+                            <span className="badge bg-success">Current Plan</span>
+                          )}
+                        </div>
+                        <div className="mb-2">
+                          <span className="h5 fw-bold">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: currency
+                            }).format(price)}
+                          </span>
+                          <span className="text-muted">
+                            /{plan.billingCycle?.interval || 'month'}
+                          </span>
+                        </div>
+                        {plan.trialPeriod && (
+                          <div className="mb-2">
+                            <span className="badge bg-info">
+                              {plan.trialPeriod.frequency} {plan.trialPeriod.interval} trial
+                            </span>
+                          </div>
+                        )}
+                        {!isCurrentPlan && (
+                          <button 
+                            className="btn btn-sm btn-outline-primary w-100"
+                            onClick={() => handleUpgrade(plan.id)}
+                          >
+                            Switch to this plan
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

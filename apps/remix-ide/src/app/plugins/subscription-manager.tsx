@@ -19,6 +19,8 @@ interface SubscriptionData {
   subscription: any
   hasActiveSubscription: boolean
   ghId: string | null
+  availablePlans: any[]
+  loadingPlans: boolean
 }
 
 export class SubscriptionManager extends ViewPlugin {
@@ -28,7 +30,9 @@ export class SubscriptionManager extends ViewPlugin {
     error: null,
     subscription: null,
     hasActiveSubscription: false,
-    ghId: null
+    ghId: null,
+    availablePlans: [],
+    loadingPlans: false
   }
 
   constructor() {
@@ -52,13 +56,49 @@ export class SubscriptionManager extends ViewPlugin {
         error: 'Please log in with GitHub to view your subscription',
         subscription: null,
         hasActiveSubscription: false,
-        ghId: null
+        ghId: null,
+        availablePlans: this.subscriptionData.availablePlans,
+        loadingPlans: false
       }
       this.renderComponent()
     })
 
     // Initial load - get current status from SubscriptionPlugin
     await this.loadFromSubscriptionPlugin()
+    
+    // Also load available plans
+    await this.loadAvailablePlans()
+  }
+
+  /**
+   * Load available subscription plans from API
+   */
+  async loadAvailablePlans() {
+    try {
+      this.subscriptionData = { ...this.subscriptionData, loadingPlans: true }
+      this.renderComponent()
+
+      const response = await fetch(`${endpointUrls.billing}/prices`)
+      if (!response.ok) {
+        throw new Error('Failed to load plans')
+      }
+
+      const data = await response.json()
+      this.subscriptionData = {
+        ...this.subscriptionData,
+        availablePlans: data.prices || [],
+        loadingPlans: false
+      }
+      this.renderComponent()
+    } catch (err: any) {
+      console.error('SubscriptionManager: error loading plans:', err)
+      this.subscriptionData = {
+        ...this.subscriptionData,
+        availablePlans: [],
+        loadingPlans: false
+      }
+      this.renderComponent()
+    }
   }
 
   /**
@@ -91,6 +131,7 @@ export class SubscriptionManager extends ViewPlugin {
   updateSubscriptionData(status: any) {
     if (!status.ghId) {
       this.subscriptionData = {
+        ...this.subscriptionData,
         loading: false,
         error: 'Please log in with GitHub to view your subscription',
         subscription: null,
@@ -99,6 +140,7 @@ export class SubscriptionManager extends ViewPlugin {
       }
     } else {
       this.subscriptionData = {
+        ...this.subscriptionData,
         loading: false,
         error: null,
         subscription: status.subscription,
@@ -173,6 +215,8 @@ export class SubscriptionManager extends ViewPlugin {
         subscription={state.subscription}
         hasActiveSubscription={state.hasActiveSubscription}
         ghId={state.ghId}
+        availablePlans={state.availablePlans}
+        loadingPlans={state.loadingPlans}
         onRefresh={() => this.refresh()}
         onManage={() => this.manageSubscription()}
         onCancel={() => this.cancelSubscription()}
