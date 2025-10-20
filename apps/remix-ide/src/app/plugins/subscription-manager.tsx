@@ -2,6 +2,7 @@ import React from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { SubscriptionManagerUI } from '@remix-ui/subscription-manager'
+import { endpointUrls } from '@remix-endpoints-helper'
 
 const profile = {
   name: 'subscriptionManager',
@@ -114,9 +115,31 @@ export class SubscriptionManager extends ViewPlugin {
   }
 
   async manageSubscription() {
-    if (this.subscriptionData.subscription?.customerId) {
-      const paddleUrl = `https://www.paddle.com/customer/manage/${this.subscriptionData.subscription.customerId}`
-      window.open(paddleUrl, '_blank')
+    try {
+      const { subscription } = this.subscriptionData
+      if (!subscription?.customerId || !subscription?.id) {
+        alert('Unable to open customer portal: missing subscription details')
+        return
+      }
+
+      // Get customer portal URL from backend
+      const response = await fetch(
+        `${endpointUrls.billing}/customer-portal/${subscription.customerId}/${subscription.id}`
+      )
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate customer portal URL')
+      }
+
+      const data = await response.json()
+      if (data.portalUrl) {
+        window.open(data.portalUrl, '_blank')
+      } else {
+        throw new Error('No portal URL returned')
+      }
+    } catch (error: any) {
+      console.error('Error opening customer portal:', error)
+      alert(`Failed to open customer portal: ${error.message}`)
     }
   }
 

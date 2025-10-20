@@ -1,5 +1,20 @@
 import React from 'react'
 
+interface SubscriptionItem {
+  priceId: string
+  productId: string
+  description: string
+  quantity: number
+  unitPrice: {
+    amount: string
+    currencyCode: string
+  }
+  billingCycle: {
+    interval: string
+    frequency: number
+  }
+}
+
 interface SubscriptionDetails {
   id: string
   status: string
@@ -7,6 +22,25 @@ interface SubscriptionDetails {
   currentBillingPeriod: {
     startsAt: string
     endsAt: string
+  }
+  items?: SubscriptionItem[]
+  nextBilledAt?: string
+  scheduledChange?: {
+    action: string
+    effectiveAt: string
+  }
+  createdAt?: string
+  updatedAt?: string
+  firstBilledAt?: string
+  discount?: any
+  currencyCode?: string
+  billingDetails?: {
+    enableCheckout: boolean
+    purchaseOrderNumber?: string
+    paymentTerms?: {
+      interval: string
+      frequency: number
+    }
   }
 }
 
@@ -51,6 +85,24 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
       month: 'long', 
       day: 'numeric' 
     })
+  }
+
+  const formatPrice = (amount: string, currencyCode: string) => {
+    // Paddle stores prices in smallest currency unit (cents for USD)
+    const num = parseFloat(amount) / 100
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode || 'USD'
+    }).format(num)
+  }
+
+  const formatBillingCycle = (billingCycle: { interval: string, frequency: number }) => {
+    if (!billingCycle) return ''
+    const { interval, frequency } = billingCycle
+    if (frequency === 1) {
+      return interval === 'month' ? 'Monthly' : interval === 'year' ? 'Yearly' : `Per ${interval}`
+    }
+    return `Every ${frequency} ${interval}s`
   }
 
   if (loading) {
@@ -145,6 +197,36 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
               </div>
             </div>
 
+            {subscription?.items && subscription.items.length > 0 && (
+              <div className="mb-3">
+                <label className="text-muted small">Plan Details</label>
+                {subscription.items.map((item, idx) => (
+                  <div key={idx} className="mb-2 p-3 bg-light rounded">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <div className="fw-bold">{item.description || 'Subscription Plan'}</div>
+                        {item.billingCycle && (
+                          <div className="text-muted small">
+                            {formatBillingCycle(item.billingCycle)}
+                          </div>
+                        )}
+                      </div>
+                      {item.unitPrice && (
+                        <div className="text-end">
+                          <div className="fw-bold">
+                            {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
+                          </div>
+                          {item.quantity > 1 && (
+                            <div className="text-muted small">Qty: {item.quantity}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="row mb-3">
               <div className="col-md-6">
                 <label className="text-muted small">Billing Period Start</label>
@@ -162,6 +244,40 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
               </div>
             </div>
 
+            {subscription?.nextBilledAt && (
+              <div className="row mb-3">
+                <div className="col-md-6">
+                  <label className="text-muted small">Next Billing Date</label>
+                  <div className="fw-bold">
+                    {formatDate(subscription.nextBilledAt)}
+                  </div>
+                </div>
+                {subscription?.currencyCode && (
+                  <div className="col-md-6">
+                    <label className="text-muted small">Currency</label>
+                    <div>
+                      {subscription.currencyCode}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {subscription?.scheduledChange && (
+              <div className="alert alert-info mb-3">
+                <i className="fas fa-info-circle me-2"></i>
+                <strong>Scheduled Change:</strong> {subscription.scheduledChange.action} on{' '}
+                {formatDate(subscription.scheduledChange.effectiveAt)}
+              </div>
+            )}
+
+            {subscription?.discount && (
+              <div className="alert alert-success mb-3">
+                <i className="fas fa-tag me-2"></i>
+                <strong>Discount Applied</strong>
+              </div>
+            )}
+
             <div className="row">
               <div className="col-md-6">
                 <label className="text-muted small">Customer ID</label>
@@ -169,6 +285,14 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                   {subscription?.customerId}
                 </div>
               </div>
+              {subscription?.createdAt && (
+                <div className="col-md-6">
+                  <label className="text-muted small">Subscription Started</label>
+                  <div className="small">
+                    {formatDate(subscription.createdAt)}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
