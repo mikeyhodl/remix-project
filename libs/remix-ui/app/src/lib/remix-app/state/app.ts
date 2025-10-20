@@ -8,5 +8,6 @@ export const appInitialState: AppState = {
   canUseGit: false,
   showPopupPanel: false,
   connectedToDesktop: desktopConnectionType.disabled,
-  desktopClientConnected: desktopConnectionType.disabled
+  desktopClientConnected: desktopConnectionType.disabled,
+  hasActiveSubscription: false
 }

@@ -5,7 +5,7 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
-import { appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
+import { appPlatformTypes, platformContext, AppContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { TopbarContext } from '../context/topbarContext'
 import { WorkspacesDropdown } from '../components/WorkspaceDropdown'
@@ -23,6 +23,7 @@ export function RemixUiTopbar() {
   const [showDropdown, setShowDropdown] = useState(false)
   const platform = useContext(platformContext)
   const global = useContext(TopbarContext)
+  const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = TopbarEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -149,6 +150,25 @@ export function RemixUiTopbar() {
     }
     loadCurrentTheme()
   }, []);
+
+  // Listen to subscription status changes
+  useEffect(() => {
+    if (!plugin || !appContext || !appContext.appStateDispatch) return
+
+    const handleSubscriptionChanged = (hasActiveSubscription: boolean) => {
+      appContext.appStateDispatch({
+        type: 'SET_HAS_ACTIVE_SUBSCRIPTION' as any,
+        payload: hasActiveSubscription
+      })
+    }
+
+    plugin.on('subscription' as any, 'subscriptionStatusChanged', handleSubscriptionChanged)
+
+    return () => {
+      plugin.off('subscription' as any, 'subscriptionStatusChanged')
+    }
+  }, [plugin, appContext])
+
 
   const subItems = useMemo(() => {
     return [
@@ -551,36 +571,50 @@ export function RemixUiTopbar() {
               publishToGist={publishToGist}
               loginWithGitHub={loginWithGitHub}
             />
-            <Button
-              className="btn btn-topbar btn-sm ms-2"
-              variant="warning"
-              data-id="topbar-go-pro"
-              onClick={() => {
-                const w = 720, h = 760
-                const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
-                const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
-                const width = window.innerWidth
-                  ? window.innerWidth
-                  : document.documentElement.clientWidth
-                    ? document.documentElement.clientWidth
-                    : (window as any).screen.width
-                const height = window.innerHeight
-                  ? window.innerHeight
-                  : document.documentElement.clientHeight
-                    ? document.documentElement.clientHeight
-                    : (window as any).screen.height
-                const systemZoom = width / window.screen.availWidth
-                const left = (width - w) / 2 / systemZoom + dualScreenLeft
-                const top = (height - h) / 2 / systemZoom + dualScreenTop
-                const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
-                window.open(`${window.location.origin}/#source=subscription-checkout`, 'remix-pro-subscribe', features)
-                trackMatomoEvent({ category: 'topbar', action: 'header', name: 'GoPro', isClick: true })
-              }}
-              title="Upgrade to Remix Pro"
-            >
-              <i className="fas fa-crown me-2"></i>
-              Go Pro
-            </Button>
+            {!appContext?.appState?.hasActiveSubscription && (
+              <Button
+                className="btn btn-topbar btn-sm ms-2"
+                variant="warning"
+                data-id="topbar-go-pro"
+                onClick={() => {
+                  // Store GitHub user data in localStorage for the popup
+                  const ghUser = appContext?.appState?.gitHubUser
+                  if (ghUser?.id) {
+                    window.localStorage.setItem('gh_id', ghUser.id.toString())
+                  }
+                  if (ghUser?.login) {
+                    window.localStorage.setItem('gh_login', ghUser.login)
+                  }
+                  if (ghUser?.email) {
+                    window.localStorage.setItem('gh_email', ghUser.email)
+                  }
+
+                  const w = 720, h = 760
+                  const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
+                  const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
+                  const width = window.innerWidth
+                    ? window.innerWidth
+                    : document.documentElement.clientWidth
+                      ? document.documentElement.clientWidth
+                      : (window as any).screen.width
+                  const height = window.innerHeight
+                    ? window.innerHeight
+                    : document.documentElement.clientHeight
+                      ? document.documentElement.clientHeight
+                      : (window as any).screen.height
+                  const systemZoom = width / window.screen.availWidth
+                  const left = (width - w) / 2 / systemZoom + dualScreenLeft
+                  const top = (height - h) / 2 / systemZoom + dualScreenTop
+                  const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
+                  window.open(`${window.location.origin}/#source=subscription-checkout`, 'remix-pro-subscribe', features)
+                  trackMatomoEvent({ category: 'topbar', action: 'header', name: 'GoPro', isClick: true })
+                }}
+                title="Upgrade to Remix Pro"
+              >
+                <i className="fas fa-crown me-2"></i>
+                Go Pro
+              </Button>
+            )}
           </>
           <Dropdown className="ms-3" data-id="topbar-themeIcon" show={showTheme} ref={themeIconRef}>
             <Dropdown.Toggle

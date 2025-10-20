@@ -72,6 +72,7 @@ import { circomPlugin } from './app/plugins/electron/circomElectronPlugin'
 import { GitHubAuthHandler } from './app/plugins/electron/gitHubAuthHandler'
 import { GitPlugin } from './app/plugins/git'
 import { Matomo } from './app/plugins/matomo'
+import { SubscriptionPlugin } from './app/plugins/subscription'
 import { DesktopClient } from './app/plugins/desktop-client'
 import { DesktopHost } from './app/plugins/electron/desktopHostPlugin'
 import { WalletConnect } from './app/plugins/walletconnect'
@@ -310,6 +311,9 @@ class AppComponent {
     //---- matomo
     const matomo = new Matomo()
 
+    //---- subscription
+    const subscription = new SubscriptionPlugin()
+
     //---------------- Solidity UML Generator -------------------------
     const solidityumlgen = new SolidityUmlGen(appManager)
 
@@ -455,6 +459,7 @@ class AppComponent {
       git,
       pluginStateLogger,
       matomo,
+      subscription,
       templateSelection,
       scriptRunnerUI,
       remixAI,
@@ -634,7 +639,7 @@ class AppComponent {
     ])
     await this.appManager.activatePlugin(['settings'])
 
-    await this.appManager.activatePlugin(['walkthrough', 'storage', 'search', 'compileAndRun', 'recorder', 'dgitApi', 'dgit'])
+    await this.appManager.activatePlugin(['walkthrough', 'storage', 'search', 'compileAndRun', 'recorder', 'dgitApi', 'dgit', 'subscription'])
     await this.appManager.activatePlugin(['solidity-script', 'remix-templates'])
 
     if (isElectron()) {

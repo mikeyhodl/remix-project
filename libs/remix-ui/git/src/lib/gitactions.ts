@@ -659,21 +659,14 @@ export const loadGitHubUserFromToken = async () => {
         dispatch(setScopes(data.scopes))
         dispatch(setUserEmails(data.emails))
         
-        // Check subscription status
+        // Check subscription status via subscription plugin
         try {
           const ghId = data.user.id?.toString()
           if (ghId) {
-            const subscriptionResponse = await fetch(`https://endpoints-remix-dev.ngrok.dev/billing/subscription/${ghId}`)
-            if (subscriptionResponse.ok) {
-              const subscriptionData = await subscriptionResponse.json()
-              appDispatcher({ 
-                type: appActionTypes.setHasActiveSubscription, 
-                payload: subscriptionData.hasActiveSubscription 
-              })
-            }
+            await plugin.call('subscription' as any, 'checkSubscription', ghId)
           }
         } catch (e) {
-          console.error('Failed to check subscription status:', e)
+          console.error('Failed to check subscription via plugin:', e)
         }
         
         sendToGitLog({

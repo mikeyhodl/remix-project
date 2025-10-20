@@ -42,5 +42,12 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
       connectedToDesktop: action.payload
     }
   }
+
+  case appActionTypes.setHasActiveSubscription: {
+    return {
+      ...state,
+      hasActiveSubscription: action.payload
+    }
+  }
   }
 }

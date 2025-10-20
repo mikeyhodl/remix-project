@@ -48,13 +48,19 @@ export const SubscriptionPage = () => {
           token: 'test_aa605484fa99283bb809c6fba32'
         })
 
-        // Get test user data
-        const ghLogin = window.localStorage.getItem('gh_login') || 'testuser'
-        const ghId = window.localStorage.getItem('gh_id') || '12345'
+        // Get GitHub user data from localStorage (set by topbar before opening popup)
+        const ghLogin = window.localStorage.getItem('gh_login') || 'user'
+        const ghId = window.localStorage.getItem('gh_id') || '0'
+        const ghEmail = window.localStorage.getItem('gh_email') || `${ghLogin}@users.noreply.github.com`
+
+        // Validate we have a real GitHub ID
+        if (ghId === '0' || !ghId) {
+          throw new Error('Please log in with GitHub first')
+        }
 
         // Create checkout transaction via backend
         const { data } = await axios.post(`${endpointUrls.billing}/checkout`, {
-          customerEmail: 'user@example.com', // TODO: Get from GitHub user profile
+          customerEmail: ghEmail,
           customData: { ghId }
         })
 

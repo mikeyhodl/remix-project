@@ -57,5 +57,6 @@ export interface AppState {
     showPopupPanel: boolean
     connectedToDesktop: desktopConnection
     desktopClientConnected: desktopConnection
+    hasActiveSubscription: boolean
 }
 
