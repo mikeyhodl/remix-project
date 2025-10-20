@@ -17,7 +17,7 @@ import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
 
-const CORSPROXY = "https://corsproxy.io/?url=";
+const CorsProxUrl = "https://mcp.api.remix.live/proxy?url=";
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
@@ -114,6 +114,7 @@ export class MCPClient {
     
     console.log(`[MCP] Successfully connected to HTTP server ${this.server.name}`);
     this.eventEmitter.emit('connected', this.server.name, result);
+    console.log(`[MCP] Successfully emitted event connected`);
     return result;
   }
 
@@ -247,7 +248,7 @@ export class MCPClient {
   }
 
   private async sendHTTPRequest(request: any): Promise<any> {
-    const response = await fetch(CORSPROXY + this.server.url, {
+    const response = await fetch(CorsProxUrl + this.server.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -286,7 +287,7 @@ export class MCPClient {
     // The proxy expects the target URL in the 'proxy' header
     console.log(`[MCP] Using CORS proxy for SSE init target: ${initUrl}`);
 
-    await fetch(CORSPROXY + this.server.url, {
+    await fetch(CorsProxUrl + this.server.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -799,13 +800,44 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
 
     const client = new MCPClient(
-      server, 
+      server,
       server.transport === 'internal' ? this.remixMCPServer : undefined
     );
     this.mcpClients.set(server.name, client);
     this.connectionStatuses.set(server.name, {
       status: 'disconnected',
       serverName: server.name
+    });
+
+    // Set up event listeners for the new client
+    client.on('connected', (serverName: string, result: IMCPInitializeResult) => {
+      console.log(`[MCP Inferencer] Server connected: ${serverName}`);
+      this.connectionStatuses.set(serverName, {
+        status: 'connected',
+        serverName,
+        capabilities: result.capabilities
+      });
+      this.event.emit('mcpServerConnected', serverName, result);
+    });
+
+    client.on('error', (serverName: string, error: Error) => {
+      console.error(`[MCP Inferencer] Server error: ${serverName}:`, error);
+      this.connectionStatuses.set(serverName, {
+        status: 'error',
+        serverName,
+        error: error.message,
+        lastAttempt: Date.now()
+      });
+      this.event.emit('mcpServerError', serverName, error);
+    });
+
+    client.on('disconnected', (serverName: string) => {
+      console.log(`[MCP Inferencer] Server disconnected: ${serverName}`);
+      this.connectionStatuses.set(serverName, {
+        status: 'disconnected',
+        serverName
+      });
+      this.event.emit('mcpServerDisconnected', serverName);
     });
 
     if (server.autoStart !== false) {

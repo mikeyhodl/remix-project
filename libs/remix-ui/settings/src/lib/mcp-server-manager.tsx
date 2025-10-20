@@ -18,6 +18,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
   const [connectionStatuses, setConnectionStatuses] = useState<Record<string, IMCPConnectionStatus>>({})
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingServer, setEditingServer] = useState<IMCPServer | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState<Partial<IMCPServer>>({
     name: '',
     description: '',
@@ -33,6 +34,13 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
   useEffect(() => {
     loadServers()
     loadConnectionStatuses()
+
+    // Set up periodic status refresh every 5 seconds
+    const intervalId = setInterval(() => {
+      loadConnectionStatuses()
+    }, 5000)
+
+    return () => clearInterval(intervalId)
   }, [])
 
   const loadServers = async () => {
@@ -67,14 +75,18 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
       statuses.forEach((status: IMCPConnectionStatus) => {
         statusMap[status.serverName] = status
       })
+
       setConnectionStatuses(statusMap)
     } catch (error) {
-      console.warn('Failed to load MCP connection statuses:', error)
+      console.log('[MCP Settings] Failed to load MCP connection statuses:', error)
     }
   }
 
+
   const saveServer = async () => {
     try {
+      setIsSaving(true)
+
       const server: IMCPServer = {
         name: formData.name!,
         description: formData.description,
@@ -88,25 +100,45 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
         timeout: formData.timeout
       }
 
-      let newServers: IMCPServer[]
       if (editingServer) {
-        newServers = servers.map(s => s.name === editingServer.name ? server : s)
+        console.log(`[MCP Settings] Updating server ${editingServer.name}...`)
+
+        const newServers = servers.map(s => s.name === editingServer.name ? server : s)
+        setServers(newServers)
+        await plugin.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(newServers))
+
+        console.log(`[MCP Settings] Removing old connection for ${editingServer.name}...`)
+        await plugin.call('remixAI', 'removeMCPServer', editingServer.name)
+
+        if (server.enabled) {
+          console.log(`[MCP Settings] Adding updated server ${server.name} with new configuration...`)
+          await plugin.call('remixAI', 'addMCPServer', server)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        console.log(`[MCP Settings] Refreshing UI connection status...`)
+        await loadConnectionStatuses()
       } else {
-        // Add new server
-        newServers = [...servers, server]
-      }
+        console.log(`[MCP Settings] Adding new server ${server.name}...`)
 
-      setServers(newServers)
-      await plugin.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(newServers))
+        const newServers = [...servers, server]
+        setServers(newServers)
+        await plugin.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(newServers))
 
-      // Add server to AI plugin
-      if (!editingServer) {
         await plugin.call('remixAI', 'addMCPServer', server)
+
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        console.log(`[MCP Settings] Refreshing UI connection status...`)
+        await loadConnectionStatuses()
       }
 
       resetForm()
     } catch (error) {
       console.error('Failed to save MCP server:', error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -139,15 +171,30 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
 
       const updatedServer = { ...server, enabled: !server.enabled }
       const newServers = servers.map(s => s.name === server.name ? updatedServer : s)
+
+      console.log(`[MCP Settings] ${updatedServer.enabled ? 'Connecting to' : 'Disconnecting from'} server: ${server.name}`)
+
       setServers(newServers)
       await plugin.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(newServers))
 
       if (updatedServer.enabled) {
+        console.log(`[MCP Settings] Adding server ${server.name} to remixAI plugin...`)
         await plugin.call('remixAI', 'addMCPServer', updatedServer)
+
+        await new Promise(resolve => setTimeout(resolve, 2000))
       } else {
+        console.log(`[MCP Settings] Removing server ${server.name} from remixAI plugin...`)
         await plugin.call('remixAI', 'removeMCPServer', server.name)
+
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
-      loadConnectionStatuses()
+
+      console.log(`[MCP Settings] Refreshing connection status...`)
+      await loadConnectionStatuses()
+
+      setTimeout(() => {
+        loadConnectionStatuses()
+      }, 1000)
     } catch (error) {
       console.error('Failed to toggle MCP server:', error)
     }
@@ -312,10 +359,18 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
             </div>
 
             <div className="d-flex gap-2">
-              <button className="btn btn-sm btn-primary" onClick={saveServer}>
-                {editingServer ? 'Update' : 'Add'} Server
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={saveServer}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : editingServer ? 'Update Server' : 'Add Server'}
               </button>
-              <button className="btn btn-sm btn-secondary" onClick={resetForm}>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={resetForm}
+                disabled={isSaving}
+              >
                 Cancel
               </button>
             </div>
@@ -338,10 +393,16 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                     <div className="d-flex align-items-center mb-1">
                       {getStatusIcon(connectionStatuses[server.name])}
                       <strong className="ms-2">{server.name}</strong>
-                      {server.enabled ? (
-                        <span className="badge bg-success ms-2">Enabled</span>
+                      {connectionStatuses[server.name]?.status === 'connected' ? (
+                        <span className="badge bg-success ms-2">Connected</span>
+                      ) : connectionStatuses[server.name]?.status === 'connecting' ? (
+                        <span className="badge bg-warning ms-2">Connecting</span>
+                      ) : connectionStatuses[server.name]?.status === 'error' ? (
+                        <span className="badge bg-danger ms-2">Error</span>
+                      ) : server.enabled ? (
+                        <span className="badge bg-secondary ms-2">Connecting</span>
                       ) : (
-                        <span className="badge bg-secondary ms-2">Disabled</span>
+                        <span className="badge bg-secondary ms-2">Disconnected</span>
                       )}
                       {server.isBuiltIn && <span className="badge bg-primary ms-2">Built-in</span>}
                     </div>
@@ -368,14 +429,16 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                       <button
                         className={`btn btn-sm ${server.enabled ? 'btn-warning' : 'btn-success'}`}
                         onClick={() => toggleServer(server)}
+                        title={server.enabled ? 'Disconnect from server' : 'Connect to server'}
                       >
-                        {server.enabled ? 'Disable' : 'Enable'}
+                        {server.enabled ? 'Disconnect' : 'Connect'}
                       </button>
                     )}
                     {!server.isBuiltIn && (
                       <button
-                        className="btn btn-sm btn-outline-secondary"
+                        className="btn btn-sm btn-primary"
                         onClick={() => editServer(server)}
+                        title="Edit server configuration"
                       >
                         Edit
                       </button>
@@ -393,7 +456,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                       </button>
                     )}
                     {server.isBuiltIn && (
-                      <small className="text-muted">Built-in server is always enabled</small>
+                      <small className="text-muted">Built-in server is always connected</small>
                     )}
                   </div>
                 </div>
@@ -407,6 +470,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
         <button
           className="btn btn-sm btn-outline-primary"
           onClick={loadConnectionStatuses}
+          title="Refresh connection status display"
         >
           Refresh Status
         </button>

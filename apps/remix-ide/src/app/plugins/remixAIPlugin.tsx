@@ -512,7 +512,7 @@ export class RemixAIPlugin extends Plugin {
       this.mcpServers.push(server);
 
       // If MCP inferencer is active, add the server dynamically
-      if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      if (this.mcpInferencer) {
         console.log(`[RemixAI Plugin] Adding server to active MCP inferencer: ${server.name}`);
         await this.mcpInferencer.addMCPServer(server);
       }
@@ -542,7 +542,7 @@ export class RemixAIPlugin extends Plugin {
       this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
 
       // If MCP inferencer is active, remove the server dynamically
-      if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+      if (this.mcpInferencer) {
         console.log(`[RemixAI Plugin] Removing server from active MCP inferencer: ${serverName}`);
         await this.mcpInferencer.removeMCPServer(serverName);
       }
@@ -558,22 +558,17 @@ export class RemixAIPlugin extends Plugin {
   }
 
   getMCPConnectionStatus(): IMCPConnectionStatus[] {
-    console.log(`[RemixAI Plugin] Getting MCP connection status (provider: ${this.assistantProvider})`);
-
-    // If MCP inferencer exists, get statuses from it
     if (this.mcpInferencer) {
       const statuses = this.mcpInferencer.getConnectionStatuses();
-      console.log(`[RemixAI Plugin] Found ${statuses.length} MCP server statuses:`, statuses.map(s => `${s.serverName}: ${s.status}`));
       return statuses;
     }
 
-    // Otherwise, return default statuses for all configured servers
-    console.log(`[RemixAI Plugin] No MCP inferencer active, returning default statuses for ${this.mcpServers.length} servers`);
-    return this.mcpServers.map(server => ({
+    const defaultStatuses = this.mcpServers.map(server => ({
       serverName: server.name,
-      status: server.enabled ? 'disconnected' : 'disconnected',
+      status: 'disconnected' as 'disconnected',
       lastAttempt: Date.now()
     }));
+    return defaultStatuses;
   }
 
   async getMCPResources(): Promise<Record<string, any[]>> {
@@ -701,10 +696,14 @@ export class RemixAIPlugin extends Plugin {
         });
 
         // Connect to enabled servers for status tracking
-        const enabledServers = this.mcpServers.filter(s => s.enabled);
+        const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
         if (enabledServers.length > 0) {
           console.log(`[RemixAI Plugin] Connecting to ${enabledServers.length} enabled MCP servers for status tracking`);
           await this.mcpInferencer.connectAllServers();
+          console.log(`[RemixAI Plugin] Autostart connections completed`);
+
+          // Emit event to notify UI that connections are ready
+          this.emit('mcpServersLoaded');
         }
       }
     } catch (error) {
