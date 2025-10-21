@@ -253,6 +253,8 @@ export class SubscriptionManager extends ViewPlugin {
   updateComponent(state: SubscriptionData) {
     return (
       <SubscriptionManagerUI 
+        paddleClientToken='test_aa605484fa99283bb809c6fba32'
+        paddleEnvironment='sandbox'
         loading={state.loading}
         error={state.error}
         subscription={state.subscription}

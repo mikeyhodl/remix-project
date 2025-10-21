@@ -1,26 +1,25 @@
 import React from 'react'
-import { InlineCheckout } from './InlineCheckout'
+import { Paddle } from '@paddle/paddle-js'
+import { PaddleInlineCheckout } from './PaddleInlineCheckout'
 
 interface CheckoutModalProps {
   isOpen: boolean
   onClose: () => void
   priceId: string
+  paddle: Paddle | null
   customerEmail?: string
   customData?: Record<string, any>
   onSuccess?: () => void
-  clientToken: string
-  environment?: 'sandbox' | 'production'
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
   priceId,
+  paddle,
   customerEmail,
   customData,
-  onSuccess,
-  clientToken,
-  environment = 'sandbox'
+  onSuccess
 }) => {
   if (!isOpen) return null
 
@@ -53,15 +52,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             ></button>
           </div>
           <div className="modal-body">
-            <InlineCheckout
-              priceId={priceId}
-              customerEmail={customerEmail}
-              customData={customData}
-              onSuccess={handleSuccess}
-              onClose={onClose}
-              clientToken={clientToken}
-              environment={environment}
-            />
+            {paddle ? (
+              <PaddleInlineCheckout
+                paddle={paddle}
+                priceId={priceId}
+                customerEmail={customerEmail}
+                customData={customData}
+                onSuccess={handleSuccess}
+                onClose={onClose}
+              />
+            ) : (
+              <div className="alert alert-warning">
+                <i className="fas fa-exclamation-triangle me-2"></i>
+                Paddle is not initialized. Please wait or refresh the page.
+              </div>
+            )}
           </div>
         </div>
       </div>

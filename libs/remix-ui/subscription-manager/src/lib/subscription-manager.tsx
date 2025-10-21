@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   CheckoutModal,
   CheckoutModeSelector,
@@ -9,7 +9,10 @@ import {
   SubscriptionDetailsCard
 } from './components'
 import { SubscriptionDetails } from './types'
-import { openCheckoutPopup } from './utils/checkout'
+import { openCheckoutOverlay } from './utils/checkout'
+// Prefer non-React singleton init
+import { initPaddle, getPaddle, onPaddleEvent, offPaddleEvent } from './paddleSingleton'
+import type { Paddle } from '@paddle/paddle-js'
 
 export interface SubscriptionManagerProps {
   loading: boolean
@@ -24,6 +27,7 @@ export interface SubscriptionManagerProps {
   onCancel: () => void
   paddleClientToken?: string
   paddleEnvironment?: 'sandbox' | 'production'
+  paddleInstance?: Paddle | null
 }
 
 export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({ 
@@ -38,18 +42,85 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
   onManage,
   onCancel,
   paddleClientToken,
-  paddleEnvironment = 'sandbox'
+  paddleEnvironment = 'sandbox',
+  paddleInstance
 }) => {
-  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>('popup')
+  // Initialize Paddle using singleton if not provided from plugin
+  console.log('🎯 SubscriptionManagerUI - paddleClientToken:', paddleClientToken ? '✅ provided' : '❌ missing')
+
+  const [effectivePaddle, setEffectivePaddle] = useState<Paddle | null>(paddleInstance ?? null)
+  const [paddleLoading, setPaddleLoading] = useState(false)
+  const [paddleError, setPaddleError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    if (paddleInstance) {
+      setEffectivePaddle(paddleInstance)
+      return
+    }
+
+    if (!paddleClientToken) return
+
+    setPaddleLoading(true)
+    console.log('[Paddle][UI] init requested from UI via singleton')
+    initPaddle(paddleClientToken, paddleEnvironment)
+      .then((p) => { if (mounted) setEffectivePaddle(p) })
+      .catch((e) => { if (mounted) setPaddleError(e?.message || 'Failed to initialize Paddle') })
+      .finally(() => { if (mounted) setPaddleLoading(false) })
+
+    return () => { mounted = false }
+  }, [paddleInstance, paddleClientToken, paddleEnvironment])
+
+  useEffect(() => {
+    // If already initialized elsewhere before UI loaded
+    if (!effectivePaddle) {
+      const p = getPaddle()
+      if (p) setEffectivePaddle(p)
+    }
+  }, [effectivePaddle])
+
+  // Refresh subscription when overlay/inline checkout completes or closes
+  useEffect(() => {
+    const listener = (event: any) => {
+      if (event?.name === 'checkout.completed') {
+        console.log('✅ Checkout completed — refreshing subscription')
+        setShowCheckoutModal(false)
+        setTimeout(() => onRefresh(), 1000)
+      }
+      if (event?.name === 'checkout.closed') {
+        console.log('🚪 Checkout closed — refreshing subscription')
+        setShowCheckoutModal(false)
+        setTimeout(() => onRefresh(), 1000)
+      }
+    }
+    onPaddleEvent(listener)
+    return () => offPaddleEvent(listener)
+  }, [onRefresh])
+
+  console.log('🎯 Paddle state - instance:', !!effectivePaddle, 'loading:', paddleLoading, 'error:', paddleError)
+
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>('overlay')
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
   const [selectedPriceId, setSelectedPriceId] = useState<string | undefined>()
 
   const handleUpgrade = (priceId?: string) => {
-    if (checkoutMode === 'popup' || !paddleClientToken) {
-      openCheckoutPopup(priceId, ghId, onRefresh)
+  console.log('🔵 handleUpgrade - mode:', checkoutMode, 'paddle:', !!effectivePaddle, 'priceId:', priceId)
+    
+    if (!effectivePaddle) {
+      console.warn('❌ Paddle not initialized; cannot open checkout')
     } else {
-      setSelectedPriceId(priceId)
-      setShowCheckoutModal(true)
+      if (checkoutMode === 'inline') {
+        console.log('🪟 Using inline checkout modal')
+        setSelectedPriceId(priceId)
+        setShowCheckoutModal(true)
+      } else { // overlay
+        console.log('🪟 Using overlay checkout')
+        if (priceId) {
+          openCheckoutOverlay(effectivePaddle, priceId, { customData: { ghId } })
+        } else {
+          console.warn('⚠️ No priceId provided for overlay checkout; ignoring click')
+        }
+      }
     }
   }
 
@@ -146,6 +217,22 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
           {paddleClientToken && (
             <div className="text-center mb-3">
               <CheckoutModeSelector mode={checkoutMode} onModeChange={setCheckoutMode} />
+              {paddleLoading && (
+                <div className="text-muted small mt-2">
+                  <i className="fas fa-spinner fa-spin me-1"></i>
+                  Initializing Paddle...
+                </div>
+              )}
+              {paddleError && (
+                <div className="alert alert-warning small mt-2">
+                  <i className="fas fa-exclamation-circle me-1"></i>
+                  <strong>Inline checkout unavailable:</strong> {paddleError}
+                  <br />
+                  <small className="text-muted">
+                    Inline/Overlay checkout unavailable. This may be due to network issues, ad blockers, or Content Security Policy.
+                  </small>
+                </div>
+              )}
             </div>
           )}
 
@@ -183,15 +270,14 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
           )}
         </div>
 
-        {paddleClientToken && selectedPriceId && (
+        {selectedPriceId && (
           <CheckoutModal
             isOpen={showCheckoutModal}
             onClose={() => setShowCheckoutModal(false)}
             priceId={selectedPriceId}
+            paddle={effectivePaddle}
             customData={{ ghId }}
             onSuccess={handleCheckoutSuccess}
-            clientToken={paddleClientToken}
-            environment={paddleEnvironment}
           />
         )}
       </>
