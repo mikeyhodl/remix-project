@@ -333,27 +333,18 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/remix-project
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
       - run:
-          name: Build Remix IDE (production)
+          name: Unpack dist from workspace
           command: |
-            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
-            else
-              NODE_ENV=production yarn nx build remix-ide --configuration=production
+            if [ -f remix-dist.tar.gz ]; then
+              tar -xzf remix-dist.tar.gz
             fi
-      - run:
-          name: Inject E2E test configuration
-          command: yarn inject-e2e-config
-      - run:
-          name: Compile E2E tests
-          command: yarn run build:e2e
-      - run:
-          name: Download solc wasm assets (once)
-          command: yarn run downloadsolc_assets_e2e || true
       - browser-tools/install-browser-tools:
           install-chrome: true
           install-chromedriver: false
@@ -625,4 +616,7 @@ workflows:
   rerun_failed:
     when: << pipeline.parameters.run_rerun_failed >>
     jobs:
-      - rerun-failed-e2e
+      - build
+      - rerun-failed-e2e:
+          requires:
+            - build
