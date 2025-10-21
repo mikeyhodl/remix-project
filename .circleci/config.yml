@@ -337,6 +337,23 @@ jobs:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
+      - run:
+          name: Build Remix IDE (production)
+          command: |
+            if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
+              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
+            else
+              NODE_ENV=production yarn nx build remix-ide --configuration=production
+            fi
+      - run:
+          name: Inject E2E test configuration
+          command: yarn inject-e2e-config
+      - run:
+          name: Compile E2E tests
+          command: yarn run build:e2e
+      - run:
+          name: Download solc wasm assets (once)
+          command: yarn run downloadsolc_assets_e2e || true
       - browser-tools/install-browser-tools:
           install-chrome: true
           install-chromedriver: false
@@ -353,13 +370,6 @@ jobs:
               echo "CIRCLECI_TOKEN not set; cannot fetch failed tests." > failed-basenames.txt
             fi
             echo "Failed list (raw):"; cat failed-basenames.txt || true
-      - run:
-          name: Compile E2E tests (if needed)
-          command: |
-            if [ ! -d dist/apps/remix-ide-e2e/src/tests ]; then
-              yarn inject-e2e-config
-              yarn run build:e2e
-            fi
       - run:
           name: Rerun only failed tests
           command: |
