@@ -240,7 +240,7 @@ jobs:
     parameters:
       shards:
         type: integer
-        default: << pipeline.parameters.e2e_parallelism >>
+        default: 20
     steps:
       - checkout
       - restore_cache:
