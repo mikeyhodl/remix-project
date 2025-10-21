@@ -31,7 +31,7 @@ parameters:
     default: 20
   resource_class:
     type: enum
-    enum: ["medium", "medium+", "large", "xlarge", "2xlarge"]
+    enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
     default: "medium+"
 
 orbs:
