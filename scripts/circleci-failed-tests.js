@@ -40,13 +40,23 @@ async function getJson(url, token, params = {}, retries = 3) {
 }
 
 async function listWorkflowRuns({ slug, workflowName, branch, limit = 1, token }) {
+  const results = [];
   let pageToken;
-  const params = {};
-  if (branch) params.branch = branch;
-  const url = `${BASE}/insights/${slug}/workflows/${workflowName}/runs`;
-  const data = await getJson(url, token, params);
-  const items = (data.items || []).filter(Boolean);
-  return items.slice(0, limit).map((it) => ({ id: it.id, status: it.status, created_at: it.created_at }));
+  while (results.length < limit) {
+    const params = {};
+    if (branch) params.branch = branch;
+    if (pageToken) params['page-token'] = pageToken;
+    const url = `${BASE}/insights/${slug}/workflows/${workflowName}/runs`;
+    const data = await getJson(url, token, params);
+    const items = (data.items || []).filter(Boolean);
+    for (const it of items) {
+      if (results.length >= limit) break;
+      results.push({ id: it.id, status: it.status, created_at: it.created_at });
+    }
+    if (!data.next_page_token) break;
+    pageToken = data.next_page_token;
+  }
+  return results;
 }
 
 async function listWorkflowJobs({ workflowId, token }) {
@@ -81,6 +91,7 @@ async function main() {
     .option('--branch <name>', 'Branch to filter by (optional)')
     .option('--jobs <substr>', 'Include only jobs whose name contains this substring', 'remix-ide-browser')
     .option('--limit <n>', 'Number of workflow runs to check (default 1)', (v) => parseInt(v, 10), 1)
+    .option('--mode <m>', "Selection mode: 'first-failed' (default) or 'union' across runs", 'first-failed')
     .option('--verbose', 'Verbose logging', false)
     .parse(process.argv);
 
@@ -96,22 +107,43 @@ async function main() {
   const failing = new Set();
   for (const run of runs) {
     const jobs = await listWorkflowJobs({ workflowId: run.id, token });
-    for (const job of jobs) {
-      const name = job.name || '';
-      const jobNumber = job.job_number || job.number;
-      if (!name.includes(opts.jobs) || !jobNumber) continue;
-      const tests = await getJobTests({ slug, jobNumber, token });
-      for (const t of tests) {
-        const result = (t.result || '').toLowerCase();
-        if (result && result !== 'success' && result !== 'passed') {
-          const file = t.file || t.classname || null;
-          if (!file) continue;
-          failing.add(baseNameNoJs(file));
+    const targetJobs = jobs.filter((j) => (j.name || '').includes(opts.jobs));
+    const failingJobs = targetJobs.filter((j) => (j.status || '') !== 'success');
+    if (opts.mode === 'first-failed') {
+      if (!failingJobs.length) {
+        if (opts.verbose) console.error(`Run ${run.id} has no failing jobs; moving to older run.`);
+        continue; // check older runs until we find failing ones
+      }
+      for (const job of failingJobs) {
+        const jobNumber = job.job_number || job.number;
+        if (!jobNumber) continue;
+        const tests = await getJobTests({ slug, jobNumber, token });
+        for (const t of tests) {
+          const result = (t.result || '').toLowerCase();
+          if (result && result !== 'success' && result !== 'passed') {
+            const file = t.file || t.classname || null;
+            if (!file) continue;
+            failing.add(baseNameNoJs(file));
+          }
+        }
+      }
+      break; // stop at the first run with failures
+    } else {
+      // union mode: collect across up to N runs, only from failing jobs
+      for (const job of failingJobs) {
+        const jobNumber = job.job_number || job.number;
+        if (!jobNumber) continue;
+        const tests = await getJobTests({ slug, jobNumber, token });
+        for (const t of tests) {
+          const result = (t.result || '').toLowerCase();
+          if (result && result !== 'success' && result !== 'passed') {
+            const file = t.file || t.classname || null;
+            if (!file) continue;
+            failing.add(baseNameNoJs(file));
+          }
         }
       }
     }
-    // only last run by default
-    break;
   }
 
   for (const name of failing) {

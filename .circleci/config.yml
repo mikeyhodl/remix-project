@@ -29,6 +29,12 @@ parameters:
   run_rerun_failed:
     type: boolean
     default: false
+  rerun_failed_history:
+    type: integer
+    default: 5
+  rerun_failed_mode:
+    type: string
+    default: "first-failed"
   e2e_parallelism:
     type: integer
     default: 20
@@ -331,6 +337,13 @@ jobs:
       - image: cimg/node:20.19.0-browsers
     resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
+    parameters:
+      history_limit:
+        type: integer
+        default: 5
+      selection_mode:
+        type: string
+        default: "first-failed"
     steps:
       - checkout
       - attach_workspace:
@@ -356,7 +369,7 @@ jobs:
           name: Fetch failed tests from last run
           command: |
             if [ -n "${CIRCLECI_TOKEN:-}" ]; then
-              node scripts/circleci-failed-tests.js --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit 1 > failed-basenames.txt || true
+              node scripts/circleci-failed-tests.js --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit << parameters.history_limit >> --mode "<< parameters.selection_mode >>" > failed-basenames.txt || true
             else
               echo "CIRCLECI_TOKEN not set; cannot fetch failed tests." > failed-basenames.txt
             fi
@@ -620,3 +633,5 @@ workflows:
       - rerun-failed-e2e:
           requires:
             - build
+          history_limit: << pipeline.parameters.rerun_failed_history >>
+          selection_mode: << pipeline.parameters.rerun_failed_mode >>
