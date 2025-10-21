@@ -1,54 +1,13 @@
 import React from 'react'
-
-interface SubscriptionItem {
-  priceId: string
-  productId: string
-  description: string
-  quantity: number
-  unitPrice: {
-    amount: string
-    currencyCode: string
-  }
-  billingCycle: {
-    interval: string
-    frequency: number
-  }
-  product?: {
-    id: string
-    name: string
-    description: string
-    imageUrl: string
-  }
-}
-
-interface SubscriptionDetails {
-  id: string
-  status: string
-  customerId: string
-  currentBillingPeriod: {
-    startsAt: string
-    endsAt: string
-  }
-  items?: SubscriptionItem[]
-  nextBilledAt?: string
-  scheduledChange?: {
-    action: string
-    effectiveAt: string
-  }
-  createdAt?: string
-  updatedAt?: string
-  firstBilledAt?: string
-  discount?: any
-  currencyCode?: string
-  billingDetails?: {
-    enableCheckout: boolean
-    purchaseOrderNumber?: string
-    paymentTerms?: {
-      interval: string
-      frequency: number
-    }
-  }
-}
+import {
+  ActiveSubscriptionView,
+  CurrentPlanBadge,
+  NoSubscriptionView,
+  PricingCard,
+  SubscriptionCard,
+  SubscriptionDetailsCard
+} from './components'
+import { SubscriptionDetails } from './types'
 
 export interface SubscriptionManagerProps {
   loading: boolean
@@ -201,58 +160,28 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                     const isYearly = plan.billingCycle?.interval === 'year'
                     const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                     const currency = plan.unitPrice?.currencyCode || 'USD'
-                    const productName = plan.product?.name || plan.description
-                    const productDescription = plan.product?.description
+                    const features = plan.product?.description ? [plan.product.description] : []
+                    
+                    if (plan.trialPeriod) {
+                      features.push(`${plan.trialPeriod.frequency} ${plan.trialPeriod.interval} free trial`)
+                    }
                     
                     return (
                       <div key={plan.id} className="col-md-6">
-                        <div className="card h-100">
-                          <div className="card-body text-center">
-                            {plan.product?.imageUrl && (
-                              <div className="mb-3">
-                                <img 
-                                  src={plan.product.imageUrl} 
-                                  alt={productName}
-                                  style={{ maxHeight: '60px', objectFit: 'contain' }}
-                                />
-                              </div>
-                            )}
-                            <h5 className="card-title mb-2">
-                              {productName}
-                            </h5>
-                            {productDescription && (
-                              <p className="text-muted small mb-3">
-                                {productDescription}
-                              </p>
-                            )}
-                            <div className="mb-3">
-                              <span className="h2 fw-bold">
-                                {new Intl.NumberFormat('en-US', {
-                                  style: 'currency',
-                                  currency: currency
-                                }).format(price)}
-                              </span>
-                              <span className="text-muted">
-                                /{plan.billingCycle?.interval || 'month'}
-                              </span>
-                            </div>
-                            {plan.trialPeriod && (
-                              <div className="mb-3">
-                                <span className="badge bg-info">
-                                  {plan.trialPeriod.frequency} {plan.trialPeriod.interval} free trial
-                                </span>
-                              </div>
-                            )}
-                            <button 
-                              className={`btn ${isYearly ? 'btn-primary' : 'btn-warning'} w-100`}
-                              disabled
-                              title="Please log in with GitHub first"
-                            >
-                              <i className="fas fa-lock me-2"></i>
-                              Log in to Subscribe
-                            </button>
-                          </div>
-                        </div>
+                        <PricingCard
+                          title={plan.product?.name || plan.description}
+                          price={new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: currency
+                          }).format(price)}
+                          period={`per ${plan.billingCycle?.interval || 'month'}`}
+                          features={features}
+                          highlighted={isYearly}
+                          onSelect={() => {}} // No-op when disabled
+                          buttonText="Log in to Subscribe"
+                          disabled={true}
+                          imageUrl={plan.product?.imageUrl}
+                        />
                       </div>
                     )
                   })}
@@ -268,91 +197,40 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
   if (!hasActiveSubscription) {
     return (
       <div className="p-4">
-        <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '40px' }}>
-          <div className="mb-4">
-            <i className="fas fa-crown" style={{ fontSize: '64px', color: '#FDB022' }}></i>
-          </div>
-          <h3 className="mb-3">Upgrade to Remix Pro</h3>
-          <p className="text-muted mb-5">
-            Get access to advanced AI features, priority support, and more.
-          </p>
+        <NoSubscriptionView onUpgrade={() => handleUpgrade()} />
 
-          {loadingPlans ? (
-            <div className="text-center">
-              <i className="fas fa-spinner fa-spin"></i>
-              <p className="text-muted mt-2">Loading plans...</p>
-            </div>
-          ) : availablePlans.length > 0 ? (
-            <div className="row g-4 mb-4">
-              {availablePlans.map((plan) => {
-                const isYearly = plan.billingCycle?.interval === 'year'
-                const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
-                const currency = plan.unitPrice?.currencyCode || 'USD'
-                const productName = plan.product?.name || plan.description
-                const productDescription = plan.product?.description
-                
-                return (
-                  <div key={plan.id} className="col-md-6">
-                    <div className="card h-100">
-                      <div className="card-body text-center">
-                        {plan.product?.imageUrl && (
-                          <div className="mb-3">
-                            <img 
-                              src={plan.product.imageUrl} 
-                              alt={productName}
-                              style={{ maxHeight: '60px', objectFit: 'contain' }}
-                            />
-                          </div>
-                        )}
-                        <h5 className="card-title mb-2">
-                          {productName}
-                        </h5>
-                        {productDescription && (
-                          <p className="text-muted small mb-3">
-                            {productDescription}
-                          </p>
-                        )}
-                        <div className="mb-3">
-                          <span className="h2 fw-bold">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: currency
-                            }).format(price)}
-                          </span>
-                          <span className="text-muted">
-                            /{plan.billingCycle?.interval || 'month'}
-                          </span>
-                        </div>
-                        {plan.trialPeriod && (
-                          <div className="mb-3">
-                            <span className="badge bg-info">
-                              {plan.trialPeriod.frequency} {plan.trialPeriod.interval} free trial
-                            </span>
-                          </div>
-                        )}
-                        <button 
-                          className={`btn ${isYearly ? 'btn-primary' : 'btn-warning'} w-100`}
-                          onClick={() => handleUpgrade(plan.id)}
-                        >
-                          <i className="fas fa-crown me-2"></i>
-                          Subscribe {isYearly ? 'Yearly' : 'Monthly'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <button 
-              className="btn btn-warning btn-lg"
-              onClick={() => handleUpgrade()}
-            >
-              <i className="fas fa-crown me-2"></i>
-              Upgrade to Pro
-            </button>
-          )}
-        </div>
+        {loadingPlans ? (
+          <div className="text-center mt-4">
+            <i className="fas fa-spinner fa-spin"></i>
+            <p className="text-muted mt-2">Loading plans...</p>
+          </div>
+        ) : availablePlans.length > 0 && (
+          <div className="row g-4 mt-3" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            {availablePlans.map((plan) => {
+              const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
+              const currency = plan.unitPrice?.currencyCode || 'USD'
+              const isYearly = plan.billingCycle?.interval === 'year'
+              
+              return (
+                <div key={plan.id} className="col-md-6">
+                  <PricingCard
+                    title={plan.product?.name || plan.description}
+                    price={new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: currency
+                    }).format(price)}
+                    period={`per ${plan.billingCycle?.interval || 'month'}`}
+                    features={plan.product?.description ? [plan.product.description] : []}
+                    highlighted={isYearly}
+                    onSelect={() => handleUpgrade(plan.id)}
+                    buttonText={`Subscribe ${isYearly ? 'Yearly' : 'Monthly'}`}
+                    badge={isYearly ? 'Best Value' : undefined}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     )
   }
@@ -378,170 +256,10 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
           </button>
         </div>
 
-        <div className="card mb-4">
-          <div className="card-body">
-            <div className="row mb-3">
-              <div className="col-md-6">
-                <label className="text-muted small">Status</label>
-                <div>
-                  <span className={`badge bg-${statusColor}`}>
-                    {subscription?.status?.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <label className="text-muted small">Subscription ID</label>
-                <div className="font-monospace small">
-                  {subscription?.id}
-                </div>
-              </div>
-            </div>
-
-            {subscription?.items && subscription.items.length > 0 && (
-              <div className="mb-3">
-                <label className="text-muted small">Current Plan</label>
-                {subscription.items.map((item, idx) => (
-                  <div key={idx} className="mb-3 p-3 border rounded">
-                    {/* Product card with image */}
-                    {item.product && (
-                      <div className="d-flex align-items-start mb-3">
-                        {item.product.imageUrl && (
-                          <img 
-                            src={item.product.imageUrl} 
-                            alt={item.product.name} 
-                            style={{ 
-                              width: '80px', 
-                              height: '80px', 
-                              objectFit: 'cover',
-                              borderRadius: '8px'
-                            }}
-                            className="me-3"
-                          />
-                        )}
-                        <div className="flex-grow-1">
-                          <div className="d-flex justify-content-between align-items-start">
-                            <div>
-                              <div className="fw-bold fs-5">{item.product.name}</div>
-                              {item.product.description && (
-                                <div className="text-muted small mt-1">
-                                  {item.product.description}
-                                </div>
-                              )}
-                            </div>
-                            {item.unitPrice && (
-                              <div className="text-end ms-3">
-                                <div className="fw-bold fs-5">
-                                  {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
-                                </div>
-                                {item.billingCycle && (
-                                  <div className="text-muted small">
-                                    per {formatBillingCycle(item.billingCycle)}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Fallback if no product data */}
-                    {!item.product && (
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div className="fw-bold">{item.description || 'Subscription Plan'}</div>
-                          {item.billingCycle && (
-                            <div className="text-muted small">
-                              {formatBillingCycle(item.billingCycle)}
-                            </div>
-                          )}
-                        </div>
-                        {item.unitPrice && (
-                          <div className="text-end">
-                            <div className="fw-bold">
-                              {formatPrice(item.unitPrice.amount, item.unitPrice.currencyCode)}
-                            </div>
-                            {item.quantity > 1 && (
-                              <div className="text-muted small">Qty: {item.quantity}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="row mb-3">
-              <div className="col-md-6">
-                <label className="text-muted small">Billing Period Start</label>
-                <div>
-                  {subscription?.currentBillingPeriod?.startsAt && 
-                    formatDate(subscription.currentBillingPeriod.startsAt)}
-                </div>
-              </div>
-              <div className="col-md-6">
-                <label className="text-muted small">Billing Period End</label>
-                <div>
-                  {subscription?.currentBillingPeriod?.endsAt && 
-                    formatDate(subscription.currentBillingPeriod.endsAt)}
-                </div>
-              </div>
-            </div>
-
-            {subscription?.nextBilledAt && (
-              <div className="row mb-3">
-                <div className="col-md-6">
-                  <label className="text-muted small">Next Billing Date</label>
-                  <div className="fw-bold">
-                    {formatDate(subscription.nextBilledAt)}
-                  </div>
-                </div>
-                {subscription?.currencyCode && (
-                  <div className="col-md-6">
-                    <label className="text-muted small">Currency</label>
-                    <div>
-                      {subscription.currencyCode}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {subscription?.scheduledChange && (
-              <div className="alert alert-info mb-3">
-                <i className="fas fa-info-circle me-2"></i>
-                <strong>Scheduled Change:</strong> {subscription.scheduledChange.action} on{' '}
-                {formatDate(subscription.scheduledChange.effectiveAt)}
-              </div>
-            )}
-
-            {subscription?.discount && (
-              <div className="alert alert-success mb-3">
-                <i className="fas fa-tag me-2"></i>
-                <strong>Discount Applied</strong>
-              </div>
-            )}
-
-            <div className="row">
-              <div className="col-md-6">
-                <label className="text-muted small">Customer ID</label>
-                <div className="font-monospace small">
-                  {subscription?.customerId}
-                </div>
-              </div>
-              {subscription?.createdAt && (
-                <div className="col-md-6">
-                  <label className="text-muted small">Subscription Started</label>
-                  <div className="small">
-                    {formatDate(subscription.createdAt)}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <SubscriptionDetailsCard 
+          subscription={subscription}
+          statusColor={statusColor}
+        />
 
         <div className="d-flex gap-2">
           <button 
@@ -584,63 +302,39 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                 )
                 const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                 const currency = plan.unitPrice?.currencyCode || 'USD'
-                const productName = plan.product?.name || plan.description
-                const productDescription = plan.product?.description
+                const isYearly = plan.billingCycle?.interval === 'year'
+                const features = plan.product?.description ? [plan.product.description] : []
+                
+                if (plan.trialPeriod) {
+                  features.push(`${plan.trialPeriod.frequency} ${plan.trialPeriod.interval} free trial`)
+                }
                 
                 return (
                   <div key={plan.id} className="col-md-6">
-                    <div className={`card h-100 ${isCurrentPlan ? 'border-success' : ''}`}>
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div>
-                            {plan.product?.imageUrl && (
-                              <img 
-                                src={plan.product.imageUrl} 
-                                alt={productName}
-                                style={{ maxHeight: '32px', objectFit: 'contain', marginBottom: '8px' }}
-                              />
-                            )}
-                            <h6 className="card-title mb-0">
-                              {productName}
-                            </h6>
-                            {productDescription && (
-                              <p className="text-muted small mb-0" style={{ fontSize: '0.8rem' }}>
-                                {productDescription}
-                              </p>
-                            )}
-                          </div>
-                          {isCurrentPlan && (
-                            <span className="badge bg-success">Current Plan</span>
-                          )}
-                        </div>
-                        <div className="mb-2">
-                          <span className="h5 fw-bold">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: currency
-                            }).format(price)}
-                          </span>
-                          <span className="text-muted">
-                            /{plan.billingCycle?.interval || 'month'}
-                          </span>
-                        </div>
-                        {plan.trialPeriod && (
-                          <div className="mb-2">
-                            <span className="badge bg-info">
-                              {plan.trialPeriod.frequency} {plan.trialPeriod.interval} trial
-                            </span>
-                          </div>
-                        )}
-                        {!isCurrentPlan && (
-                          <button 
-                            className="btn btn-sm btn-outline-primary w-100"
-                            onClick={() => handleUpgrade(plan.id)}
-                          >
-                            Switch to this plan
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    {isCurrentPlan ? (
+                      <CurrentPlanBadge
+                        planName={plan.product?.name || plan.description}
+                        price={new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: currency
+                        }).format(price)}
+                        interval={plan.billingCycle?.interval || 'month'}
+                        imageUrl={plan.product?.imageUrl}
+                      />
+                    ) : (
+                      <PricingCard
+                        title={plan.product?.name || plan.description}
+                        price={new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: currency
+                        }).format(price)}
+                        period={`per ${plan.billingCycle?.interval || 'month'}`}
+                        features={features}
+                        highlighted={false}
+                        onSelect={() => handleUpgrade(plan.id)}
+                        buttonText="Switch to this plan"
+                      />
+                    )}
                   </div>
                 )
               })}
