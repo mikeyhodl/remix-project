@@ -686,7 +686,6 @@ export class RemixAIPlugin extends Plugin {
 
       // Initialize MCP inferencer if we have servers and it's not already initialized
       if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer) {
-        console.log(`[RemixAI Plugin] Initializing MCP inferencer for connection tracking`);
         this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
         this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
           console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
@@ -718,10 +717,8 @@ export class RemixAIPlugin extends Plugin {
       console.warn(`[RemixAI Plugin] No MCP servers configured, cannot enable enhancement`);
       return;
     }
-
     console.log(`[RemixAI Plugin] Enabling MCP enhancement with ${this.mcpServers.length} servers`);
 
-    // Initialize MCP inferencer if not already done
     if (!this.mcpInferencer) {
       console.log(`[RemixAI Plugin] Initializing MCP inferencer`);
       this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
@@ -732,7 +729,6 @@ export class RemixAIPlugin extends Plugin {
         console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
       });
 
-      // Connect to all MCP servers
       console.log(`[RemixAI Plugin] Connecting to all MCP servers...`);
       await this.mcpInferencer.connectAllServers();
     }
