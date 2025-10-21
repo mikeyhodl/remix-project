@@ -26,6 +26,9 @@ parameters:
   run_all_tests_vertical:
     type: boolean
     default: false
+  run_rerun_failed:
+    type: boolean
+    default: false
   e2e_parallelism:
     type: integer
     default: 20
@@ -323,6 +326,54 @@ jobs:
       - store_artifacts:
           path: ./timings-current.json
 
+  rerun-failed-e2e:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - browser-tools/install-browser-tools:
+          install-chrome: true
+          install-chromedriver: false
+          install-firefox: false
+          install-geckodriver: false
+      - run: yarn install_webdriver
+      - run: google-chrome --version
+      - run:
+          name: Fetch failed tests from last run
+          command: |
+            if [ -n "${CIRCLECI_TOKEN:-}" ]; then
+              node scripts/circleci-failed-tests.js --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit 1 > failed-basenames.txt || true
+            else
+              echo "CIRCLECI_TOKEN not set; cannot fetch failed tests." > failed-basenames.txt
+            fi
+            echo "Failed list (raw):"; cat failed-basenames.txt || true
+      - run:
+          name: Compile E2E tests (if needed)
+          command: |
+            if [ ! -d dist/apps/remix-ide-e2e/src/tests ]; then
+              yarn inject-e2e-config
+              yarn run build:e2e
+            fi
+      - run:
+          name: Rerun only failed tests
+          command: |
+            if [ ! -s failed-basenames.txt ]; then
+              echo "No failing tests to rerun. Exiting."; exit 0; fi
+            # Pass browser from Chrome; disable retries for measurement
+            E2E_RETRIES=${E2E_RETRIES:-0} ./apps/remix-ide/ci/rerun_failed.sh chrome
+      - store_test_results:
+          path: ./reports/tests
+      - store_artifacts:
+          path: ./reports/screenshots
+      - store_artifacts:
+          path: ./reports/failed
+
   tests-passed:
     machine:
       image: default
@@ -560,3 +611,8 @@ workflows:
       - plan-e2e-shards:
           name: plan-e2e-shards
           shards: << pipeline.parameters.e2e_parallelism >>
+
+  rerun_failed:
+    when: << pipeline.parameters.run_rerun_failed >>
+    jobs:
+      - rerun-failed-e2e
