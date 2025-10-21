@@ -189,6 +189,9 @@ jobs:
       shard_index:
         type: integer
         default: 0
+      vertical_mode:
+        type: boolean
+        default: false
       parallelism:
         type: integer
         default: 1
@@ -227,9 +230,11 @@ jobs:
       - run:
           name: Run E2E shard (self-split)
           command: |
-            # Export shard index/total for both horizontal (parallelism>1) and vertical (matrix) modes
-            CIRCLE_NODE_TOTAL=${CIRCLE_NODE_TOTAL:-<< pipeline.parameters.e2e_parallelism >>} \
-            CIRCLE_NODE_INDEX=${CIRCLE_NODE_INDEX:-<< parameters.shard_index >>} \
+            # If running in vertical mode (parallelism=1 matrix), force shard env; otherwise let CircleCI provide them
+            if [ "<< parameters.vertical_mode >>" = "true" ]; then
+              export CIRCLE_NODE_TOTAL=<< pipeline.parameters.e2e_parallelism >>
+              export CIRCLE_NODE_INDEX=<< parameters.shard_index >>
+            fi
             SELF_SPLIT=1 TIMINGS_JSON=timings-current.json \
             ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
       - store_test_results:
@@ -545,6 +550,7 @@ workflows:
               parallelism: [1]
               scriptparameter: [""]
               shard_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+              vertical_mode: [true]
       - tests-passed:
           requires:
             - chrome-tests-vertical
