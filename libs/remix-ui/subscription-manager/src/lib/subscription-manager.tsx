@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
-  ActiveSubscriptionView,
+  CheckoutModal,
+  CheckoutModeSelector,
+  CheckoutMode,
   CurrentPlanBadge,
   NoSubscriptionView,
   PricingCard,
-  SubscriptionCard,
   SubscriptionDetailsCard
 } from './components'
 import { SubscriptionDetails } from './types'
+import { openCheckoutPopup } from './utils/checkout'
 
 export interface SubscriptionManagerProps {
   loading: boolean
@@ -20,6 +22,8 @@ export interface SubscriptionManagerProps {
   onRefresh: () => void
   onManage: () => void
   onCancel: () => void
+  paddleClientToken?: string
+  paddleEnvironment?: 'sandbox' | 'production'
 }
 
 export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({ 
@@ -32,88 +36,27 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
   loadingPlans,
   onRefresh,
   onManage,
-  onCancel
+  onCancel,
+  paddleClientToken,
+  paddleEnvironment = 'sandbox'
 }) => {
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>('popup')
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false)
+  const [selectedPriceId, setSelectedPriceId] = useState<string | undefined>()
 
   const handleUpgrade = (priceId?: string) => {
-    console.log('🔵 SubscriptionManagerUI: handleUpgrade called with priceId:', priceId)
-    console.log('🔵 SubscriptionManagerUI: ghId:', ghId)
-    
-    // Store GitHub user data in localStorage for the popup
-    // localStorage is shared across same-origin windows, so the popup can read it
-    if (ghId) {
-      window.localStorage.setItem('gh_id', ghId)
-      console.log('✅ SubscriptionManagerUI: Stored gh_id in localStorage:', ghId)
+    if (checkoutMode === 'popup' || !paddleClientToken) {
+      openCheckoutPopup(priceId, ghId, onRefresh)
     } else {
-      console.warn('⚠️ SubscriptionManagerUI: No ghId available!')
-    }
-    
-    const w = 900, h = 900
-    const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : (window as any).screenX
-    const dualScreenTop = window.screenTop !== undefined ? window.screenTop : (window as any).screenY
-    const width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth
-    const height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight
-    const systemZoom = width / window.screen.availWidth
-    const left = (width - w) / 2 / systemZoom + dualScreenLeft
-    const top = (height - h) / 2 / systemZoom + dualScreenTop
-    const features = `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
-    const url = priceId 
-      ? `${window.location.origin}/#source=subscription-checkout&priceId=${priceId}`
-      : `${window.location.origin}/#source=subscription-checkout`
-    
-    console.log('🔵 SubscriptionManagerUI: Opening popup with URL:', url)
-    console.log('🔵 SubscriptionManagerUI: Popup features:', features)
-    
-    const popup = window.open(url, 'remix-pro-subscribe', features)
-    
-    if (popup) {
-      console.log('✅ SubscriptionManagerUI: Popup window opened successfully')
-      
-      // Check if popup was closed and refresh subscription
-      const checkClosed = setInterval(() => {
-        if (popup.closed) {
-          console.log('🔵 SubscriptionManagerUI: Popup closed, refreshing subscription...')
-          clearInterval(checkClosed)
-          // Refresh subscription after popup closes
-          if (ghId && onRefresh) {
-            setTimeout(() => {
-              console.log('🔵 SubscriptionManagerUI: Calling onRefresh callback')
-              onRefresh()
-            }, 1000) // Wait 1 second for Paddle to process
-          }else{
-            console.warn('⚠️ SubscriptionManagerUI: Cannot refresh subscription, ghId or onRefresh not available')
-          }
-        }
-      }, 1000)
-    } else {
-      console.error('❌ SubscriptionManagerUI: Failed to open popup (might be blocked)')
+      setSelectedPriceId(priceId)
+      setShowCheckoutModal(true)
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })
-  }
-
-  const formatPrice = (amount: string, currencyCode: string) => {
-    // Paddle stores prices in smallest currency unit (cents for USD)
-    const num = parseFloat(amount) / 100
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode || 'USD'
-    }).format(num)
-  }
-
-  const formatBillingCycle = (billingCycle: { interval: string, frequency: number }) => {
-    if (!billingCycle) return ''
-    const { interval, frequency } = billingCycle
-    if (frequency === 1) {
-      return interval === 'month' ? 'Monthly' : interval === 'year' ? 'Yearly' : `Per ${interval}`
-    }
-    return `Every ${frequency} ${interval}s`
+  const handleCheckoutSuccess = () => {
+    console.log('✅ Checkout completed, refreshing subscription...')
+    setShowCheckoutModal(false)
+    setTimeout(() => onRefresh(), 1000)
   }
 
   if (loading) {
@@ -196,42 +139,62 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
 
   if (!hasActiveSubscription) {
     return (
-      <div className="p-4">
-        <NoSubscriptionView onUpgrade={() => handleUpgrade()} />
+      <>
+        <div className="p-4">
+          <NoSubscriptionView onUpgrade={() => handleUpgrade()} />
 
-        {loadingPlans ? (
-          <div className="text-center mt-4">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p className="text-muted mt-2">Loading plans...</p>
-          </div>
-        ) : availablePlans.length > 0 && (
-          <div className="row g-4 mt-3" style={{ maxWidth: '900px', margin: '0 auto' }}>
-            {availablePlans.map((plan) => {
-              const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
-              const currency = plan.unitPrice?.currencyCode || 'USD'
-              const isYearly = plan.billingCycle?.interval === 'year'
-              
-              return (
-                <div key={plan.id} className="col-md-6">
-                  <PricingCard
-                    title={plan.product?.name || plan.description}
-                    price={new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: currency
-                    }).format(price)}
-                    period={`per ${plan.billingCycle?.interval || 'month'}`}
-                    features={plan.product?.description ? [plan.product.description] : []}
-                    highlighted={isYearly}
-                    onSelect={() => handleUpgrade(plan.id)}
-                    buttonText={`Subscribe ${isYearly ? 'Yearly' : 'Monthly'}`}
-                    badge={isYearly ? 'Best Value' : undefined}
-                  />
-                </div>
-              )
-            })}
-          </div>
+          {paddleClientToken && (
+            <div className="text-center mb-3">
+              <CheckoutModeSelector mode={checkoutMode} onModeChange={setCheckoutMode} />
+            </div>
+          )}
+
+          {loadingPlans ? (
+            <div className="text-center mt-4">
+              <i className="fas fa-spinner fa-spin"></i>
+              <p className="text-muted mt-2">Loading plans...</p>
+            </div>
+          ) : availablePlans.length > 0 && (
+            <div className="row g-4 mt-3" style={{ maxWidth: '900px', margin: '0 auto' }}>
+              {availablePlans.map((plan) => {
+                const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
+                const currency = plan.unitPrice?.currencyCode || 'USD'
+                const isYearly = plan.billingCycle?.interval === 'year'
+                
+                return (
+                  <div key={plan.id} className="col-md-6">
+                    <PricingCard
+                      title={plan.product?.name || plan.description}
+                      price={new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency
+                      }).format(price)}
+                      period={`per ${plan.billingCycle?.interval || 'month'}`}
+                      features={plan.product?.description ? [plan.product.description] : []}
+                      highlighted={isYearly}
+                      onSelect={() => handleUpgrade(plan.id)}
+                      buttonText={`Subscribe ${isYearly ? 'Yearly' : 'Monthly'}`}
+                      badge={isYearly ? 'Best Value' : undefined}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {paddleClientToken && selectedPriceId && (
+          <CheckoutModal
+            isOpen={showCheckoutModal}
+            onClose={() => setShowCheckoutModal(false)}
+            priceId={selectedPriceId}
+            customData={{ ghId }}
+            onSuccess={handleCheckoutSuccess}
+            clientToken={paddleClientToken}
+            environment={paddleEnvironment}
+          />
         )}
-      </div>
+      </>
     )
   }
 
