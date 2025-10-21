@@ -388,7 +388,7 @@ jobs:
             if [ ! -s failed-basenames.txt ]; then
               echo "No failing tests to rerun. Exiting."; exit 0; fi
             # Pass browser from Chrome; disable retries for measurement
-            E2E_RETRIES=${E2E_RETRIES:-0} ./apps/remix-ide/ci/rerun_failed.sh chrome
+            E2E_RETRIES=${E2E_RETRIES:-0} bash ./apps/remix-ide/ci/rerun_failed.sh chrome
       - store_test_results:
           path: ./reports/tests
       - store_artifacts:
