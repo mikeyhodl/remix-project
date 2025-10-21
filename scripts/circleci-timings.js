@@ -191,21 +191,25 @@ async function getJobTests({ slug, jobNumber, token }) {
   return items;
 }
 
-function addToAgg(agg, file, sec) {
-  if (!file) return;
-  const key = file;
-  const e = agg.get(key) || { file: key, total: 0, count: 0, min: Number.POSITIVE_INFINITY, max: 0 };
-  e.total += sec || 0;
-  e.count += 1;
-  e.min = Math.min(e.min, sec || 0);
-  e.max = Math.max(e.max, sec || 0);
-  agg.set(key, e);
-}
-
-function toSortedArray(agg) {
-  const arr = Array.from(agg.values()).map((e) => ({ ...e, avg: e.count ? e.total / e.count : 0 }));
-  arr.sort((a, b) => b.avg - a.avg);
-  return arr;
+// Build aggregated file stats from a map of per-file per-job maxima
+function buildAggFromPerJobMax(perJobMax) {
+  const results = [];
+  for (const [file, jobMap] of perJobMax.entries()) {
+    let total = 0;
+    let min = Number.POSITIVE_INFINITY;
+    let max = 0;
+    let count = 0;
+    for (const sec of jobMap.values()) {
+      total += sec;
+      count += 1;
+      if (sec < min) min = sec;
+      if (sec > max) max = sec;
+    }
+    const avg = count ? total / count : 0;
+    results.push({ file, total, count, min, max, avg });
+  }
+  results.sort((a, b) => b.avg - a.avg);
+  return results;
 }
 
 function human(sec) {
@@ -245,6 +249,7 @@ async function main() {
     .option('--limit <n>', 'Max workflow runs to scan (default: 10)', (v) => parseInt(v, 10), 10)
     .option('--top <n>', 'How many rows to print (default: 25)', (v) => parseInt(v, 10), 25)
     .option('--shards <n>', 'Print a shard proposal for N shards', (v) => parseInt(v, 10), 0)
+  .option('--overhead <sec>', 'Assumed per-shard overhead seconds to add to estimates', (v) => parseFloat(v), 0)
     .option('--json <path>', 'Path to write full JSON results (optional)')
     .option('--list-workflows', 'List available workflows for the given project slug and exit')
     .option('--whoami', 'Print token identity and exit')
@@ -343,7 +348,8 @@ async function main() {
     process.exit(2);
   }
 
-  const agg = new Map();
+  // perJobMax: Map<file, Map<jobNumber, maxRuntimeSec>>
+  const perJobMax = new Map();
   let scannedJobs = 0;
   for (const run of runs) {
     if (!run || !run.id) continue;
@@ -372,13 +378,21 @@ async function main() {
       for (const t of tests) {
         // t.file may be null if the reporter didn't provide it; fallback to classname
         const file = t.file || t.classname || null;
+        if (!file) continue;
+        const result = (t.result || '').toLowerCase();
+        // Ignore non-success/skipped tests and near-zero durations (noisy/placeholder entries)
+        if (result && result !== 'success' && result !== 'passed') continue;
         const rt = typeof t.run_time === 'number' ? t.run_time : (typeof t.time === 'number' ? t.time : 0);
-        addToAgg(agg, file, rt);
+        if (!(rt > 0.2)) continue; // drop 0 or sub-200ms to avoid dilution
+        let m = perJobMax.get(file);
+        if (!m) { m = new Map(); perJobMax.set(file, m); }
+        const prev = m.get(jobNumber) || 0;
+        if (rt > prev) m.set(jobNumber, rt);
       }
     }
   }
 
-  const arr = toSortedArray(agg);
+  const arr = buildAggFromPerJobMax(perJobMax);
   console.log(`\nAggregated ${arr.length} files from ${scannedJobs} successful job(s).`);
   if (!arr.length) {
     console.log('No test timing data found.');
@@ -389,7 +403,21 @@ async function main() {
   if (opts.shards && arr.length) {
     const shardPlan = proposeSplits(arr, opts.shards);
     console.log(`\nShard balance proposal for ${opts.shards} shards:`);
-    shardPlan.forEach((b) => console.log(`#${b.shard}: ${human(b.total_sec)} across ${b.count} files`));
+    const totals = shardPlan.map(b => b.total_sec);
+    const sum = totals.reduce((a,b)=>a+b,0);
+    const mean = sum / totals.length;
+    const min = Math.min(...totals);
+    const max = Math.max(...totals);
+    const std = Math.sqrt(totals.reduce((a,b)=>a + (b-mean)*(b-mean),0) / totals.length);
+    shardPlan.forEach((b) => {
+      const t = b.total_sec + (opts.overhead || 0);
+      const label = opts.overhead ? `${human(t)} (incl. overhead)` : human(b.total_sec);
+      console.log(`#${b.shard}: ${label} across ${b.count} files`);
+    });
+    console.log(`Summary: mean=${human(mean)} min=${human(min)} max=${human(max)} stddev=${human(std)}`);
+    if (opts.overhead) {
+      console.log(`Assumed per-shard overhead: ${human(opts.overhead)}`);
+    }
   }
 
   if (opts.json) {
