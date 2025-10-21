@@ -41,7 +41,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
-              <i className="fas fa-crown me-2" style={{ color: '#FDB022' }}></i>
               Subscribe to Remix Pro
             </h5>
             <button 

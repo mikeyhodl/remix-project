@@ -592,7 +592,6 @@ export function RemixUiTopbar() {
                 }}
                 title="Manage your Remix Pro subscription"
               >
-                <i className="fas fa-crown me-2"></i>
                 Pro
               </Button>
             ) : (
@@ -607,7 +606,6 @@ export function RemixUiTopbar() {
                 }}
                 title="View subscription plans"
               >
-                <i className="fas fa-crown me-2"></i>
                 Go Pro
               </Button>
             )}

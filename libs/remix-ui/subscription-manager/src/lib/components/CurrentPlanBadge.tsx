@@ -15,17 +15,17 @@ export const CurrentPlanBadge: React.FC<CurrentPlanBadgeProps> = ({
 }) => {
   return (
     <div className="card h-100 border-success">
-      <div className="card-body text-center">
+      <div className="card-body text-center p-3">
         {imageUrl && (
           <img 
             src={imageUrl} 
             alt={planName}
-            style={{ maxHeight: '32px', objectFit: 'contain', marginBottom: '8px' }}
+            style={{ maxHeight: '28px', objectFit: 'contain', marginBottom: '6px' }}
           />
         )}
-        <h6 className="mb-2">{planName}</h6>
-        <div className="mb-2">
-          <span className="h5 fw-bold">{price}</span>
+        <h6 className="mb-1">{planName}</h6>
+        <div className="mb-2 small">
+          <span className="fw-bold">{price}</span>
           <span className="text-muted">/{interval}</span>
         </div>
         <span className="badge bg-success">Current Plan</span>

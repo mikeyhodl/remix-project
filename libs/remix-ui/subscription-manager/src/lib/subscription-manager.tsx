@@ -158,9 +158,7 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
 
             {/* Show available plans even when not logged in */}
             <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <div className="mb-4">
-                <i className="fas fa-crown" style={{ fontSize: '48px', color: '#FDB022' }}></i>
-              </div>
+              {/* Removed crown icon for a neutral look */}
               <h4 className="mb-3">Available Subscription Plans</h4>
               
               {loadingPlans ? (
@@ -169,7 +167,7 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
                   <p className="text-muted mt-2">Loading plans...</p>
                 </div>
               ) : availablePlans.length > 0 ? (
-                <div className="row g-4 mb-4">
+                <div className="row g-3 mb-3">
                   {availablePlans.map((plan) => {
                     const isYearly = plan.billingCycle?.interval === 'year'
                     const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
@@ -242,7 +240,7 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
               <p className="text-muted mt-2">Loading plans...</p>
             </div>
           ) : availablePlans.length > 0 && (
-            <div className="row g-4 mt-3" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div className="row g-3 mt-2" style={{ maxWidth: '900px', margin: '0 auto' }}>
               {availablePlans.map((plan) => {
                 const price = plan.unitPrice ? parseFloat(plan.unitPrice.amount) / 100 : 0
                 const currency = plan.unitPrice?.currencyCode || 'USD'
@@ -291,10 +289,7 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
     <div className="p-4">
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h4 className="mb-0">
-            <i className="fas fa-crown me-2" style={{ color: '#FDB022' }}></i>
-            Subscription Details
-          </h4>
+          <h4 className="mb-0">Subscription Details</h4>
           <button 
             className="btn btn-sm btn-outline-secondary"
             onClick={onRefresh}
