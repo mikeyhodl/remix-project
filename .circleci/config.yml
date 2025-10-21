@@ -20,6 +20,9 @@ parameters:
   run_build_only:
     type: boolean
     default: false
+  run_plan_shards:
+    type: boolean
+    default: false
   e2e_parallelism:
     type: integer
     default: 20
@@ -224,6 +227,67 @@ jobs:
           path: ./reports/tests
       - store_artifacts:
           path: ./reports/screenshots
+      - store_artifacts:
+          path: ./reports/shards
+      - store_artifacts:
+          path: ./timings-current.json
+
+  plan-e2e-shards:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    parameters:
+      shards:
+        type: integer
+        default: << pipeline.parameters.e2e_parallelism >>
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - run:
+          name: Fetch CircleCI timings snapshot (best effort)
+          command: |
+            if [ -n "${CIRCLECI_TOKEN:-}" ]; then
+              echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
+              yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
+            else
+              echo "CIRCLECI_TOKEN not set; planning will use median default weights."
+            fi
+      - run:
+          name: Compute shard planning overview (no test execution)
+          command: |
+            set -e
+            mkdir -p reports/shards
+            echo "Enumerating enabled test basenames from source..."
+            TEST_NAMES=$(find apps/remix-ide-e2e/src/tests -type f \( -name "*.test.*" -o -name "*.spec.*" \) -print0 \
+              | xargs -0 grep -IL "@disabled" \
+              | xargs -I {} basename {} \
+              | sed -E 's/\.(js|ts)$//' \
+              | grep -v metamask)
+            COUNT=$(printf '%s\n' "$TEST_NAMES" | wc -l | awk '{print $1}')
+            echo "Found $COUNT enabled tests. Planning for << parameters.shards >> shard(s)."
+            # Run planner once to produce a manifest with all bins
+            printf '%s\n' "$TEST_NAMES" | node scripts/plan-shards.js --shards "<< parameters.shards >>" --index 0 --timings timings-current.json --manifest-out reports/shards/manifest.json --verbose > /dev/null
+            # Generate overview and per-shard file lists
+            node -e '
+              const fs = require("fs");
+              const path = require("path");
+              const outDir = path.join("reports","shards");
+              const m = JSON.parse(fs.readFileSync(path.join(outDir, "manifest.json"), "utf8"));
+              const bins = Array.isArray(m.bins) ? m.bins : [];
+              const overview = bins.map((b,i)=>({ shard:i, count:(b.items||[]).length, totalSec:Number(b.total||0) }));
+              const lines = overview.map(o=>`#${o.shard}\tcount=${o.count}\ttotal=${o.totalSec.toFixed(2)}s`);
+              fs.writeFileSync(path.join(outDir, "overview.txt"), lines.join("\n")+"\n");
+              fs.writeFileSync(path.join(outDir, "overview.json"), JSON.stringify({ shards: bins.length, overview, totals: bins.map(b=>b.total), counts: bins.map(b=>(b.items||[]).length) }, null, 2));
+              bins.forEach((b,i)=>{
+                const names = (b.items||[]).map(it => typeof it === "string" ? it : (it && it.name) || it).filter(Boolean);
+                fs.writeFileSync(path.join(outDir, `files-${i}.txt`), names.join("\n") + (names.length?"\n":""));
+              });
+              console.log("Wrote overview.txt, overview.json and files-<i>.txt to", outDir);
+            '
       - store_artifacts:
           path: ./reports/shards
       - store_artifacts:
@@ -438,3 +502,10 @@ workflows:
     when: << pipeline.parameters.run_build_only >>
     jobs:
       - build
+
+  plan_e2e_shards:
+    when: << pipeline.parameters.run_plan_shards >>
+    jobs:
+      - plan-e2e-shards:
+          name: plan-e2e-shards
+          shards: << pipeline.parameters.e2e_parallelism >>
