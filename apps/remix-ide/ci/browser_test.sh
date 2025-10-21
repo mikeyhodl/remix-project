@@ -16,6 +16,7 @@ PARALLEL_TOTAL=${CIRCLE_NODE_TOTAL:-1}
 PARALLEL_INDEX=${CIRCLE_NODE_INDEX:-0}
 SELF_SPLIT=${SELF_SPLIT:-0}
 TIMINGS_JSON=${TIMINGS_JSON:-timings-current.json}
+E2E_RETRIES=${E2E_RETRIES:-0} # number of retries on failure per test (0 = no retry)
 
 # Build the list of enabled test files
 BASE_FILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js" -o -name "*.spec.js" \) -print0 \
@@ -26,7 +27,7 @@ BASE_FILES=$(find dist/apps/remix-ide-e2e/src/tests -type f \( -name "*.test.js"
 
 if [ "$SELF_SPLIT" = "1" ]; then
   echo "==> Using self shard planner (shards=$PARALLEL_TOTAL index=$PARALLEL_INDEX)"
-  echo "ENV: CIRCLE_BRANCH=${CIRCLE_BRANCH:-local} CIRCLE_NODE_TOTAL=$PARALLEL_TOTAL CIRCLE_NODE_INDEX=$PARALLEL_INDEX"
+  echo "ENV: CIRCLE_BRANCH=${CIRCLE_BRANCH:-local} CIRCLE_NODE_TOTAL=$PARALLEL_TOTAL CIRCLE_NODE_INDEX=$PARALLEL_INDEX E2E_RETRIES=$E2E_RETRIES"
   mkdir -p reports/shards
   TESTFILES=$(printf '%s\n' "$BASE_FILES" | node scripts/plan-shards.js --shards "$PARALLEL_TOTAL" --index "$PARALLEL_INDEX" --timings "$TIMINGS_JSON" --verbose --manifest-out reports/shards/manifest-$PARALLEL_INDEX.json)
 else
@@ -63,12 +64,26 @@ printf '%s\n' "$TESTFILES"
 #   echo "No remixd tests detected in this shard; skipping slither setup"
 # fi
 for TESTFILE in $TESTFILES; do
-    echo "Running test: ${TESTFILE}.js"
-    if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
-      if ! npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
+    echo "Running test: ${TESTFILE}.js (retries on fail: $E2E_RETRIES)"
+    attempt=0
+    while true; do
+      if npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
+        # success
+        break
+      fi
+      # failure
+      if [ "$attempt" -lt "$E2E_RETRIES" ]; then
+        attempt=$((attempt+1))
+        echo "Retrying ${TESTFILE}.js (attempt $attempt of $E2E_RETRIES)"
+        continue
+      else
         TEST_EXITCODE=1
         break
       fi
+    done
+    # Stop the shard loop on permanent failure
+    if [ "$TEST_EXITCODE" -eq 1 ]; then
+      break
     fi
 done
 
