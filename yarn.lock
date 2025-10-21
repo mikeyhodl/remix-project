@@ -6271,6 +6271,11 @@
   dependencies:
     array.prototype.flatmap "^1.2.4"
 
+"@paddle/paddle-js@^1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@paddle/paddle-js/-/paddle-js-1.4.2.tgz#be9ce6fa3061abb3ab46652fdef9dc601d87da27"
+  integrity sha512-pY9jYS+g3vk6ecc7GbCsVSuBEo1Yh+hxYE4i2XoY5/ZBAZLuCkQi/80hOmSBkFoaETohOpDmurILlQdgUHUcvw==
+
 "@parcel/watcher-android-arm64@2.4.0":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@parcel/watcher-android-arm64/-/watcher-android-arm64-2.4.0.tgz#9c93763794153e4f76920994a423b6ea3257059d"

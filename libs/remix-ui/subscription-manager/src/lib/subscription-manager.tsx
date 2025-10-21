@@ -109,6 +109,23 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
     
     if (popup) {
       console.log('✅ SubscriptionManagerUI: Popup window opened successfully')
+      
+      // Check if popup was closed and refresh subscription
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          console.log('🔵 SubscriptionManagerUI: Popup closed, refreshing subscription...')
+          clearInterval(checkClosed)
+          // Refresh subscription after popup closes
+          if (ghId && onRefresh) {
+            setTimeout(() => {
+              console.log('🔵 SubscriptionManagerUI: Calling onRefresh callback')
+              onRefresh()
+            }, 1000) // Wait 1 second for Paddle to process
+          }else{
+            console.warn('⚠️ SubscriptionManagerUI: Cannot refresh subscription, ghId or onRefresh not available')
+          }
+        }
+      }, 1000)
     } else {
       console.error('❌ SubscriptionManagerUI: Failed to open popup (might be blocked)')
     }

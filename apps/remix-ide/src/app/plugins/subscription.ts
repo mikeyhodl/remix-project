@@ -6,7 +6,7 @@ const profile = {
   name: 'subscription',
   displayName: 'Subscription Manager',
   description: 'Manages user subscriptions for AI features',
-  methods: ['hasActiveSubscription', 'checkSubscription', 'getSubscriptionStatus'],
+  methods: ['hasActiveSubscription', 'checkSubscription', 'getSubscriptionStatus', 'refreshSubscriptionStatus'],
   events: ['subscriptionStatusChanged'],
   version: '1.0.0'
 }
@@ -44,29 +44,40 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
    * @returns Promise<boolean> true if user has active subscription
    */
   async checkSubscription(ghId: string): Promise<boolean> {
-    if (this.checkingSubscription) return this.hasActiveSub
+    console.log('🔵 SubscriptionPlugin: checkSubscription() called with ghId:', ghId)
+    
+    // Wait for any in-progress check to complete
+    while (this.checkingSubscription) {
+      console.log('⏳ SubscriptionPlugin: Waiting for in-progress check to complete...')
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
     
     this.checkingSubscription = true
     this.ghId = ghId
 
     try {
+      console.log('🔵 SubscriptionPlugin: Making API call to /subscription/' + ghId)
       const response = await fetch(`${endpointUrls.billing}/subscription/${ghId}`)
       
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ SubscriptionPlugin: API returned data:', data)
         const wasActive = this.hasActiveSub
         
         // Store full subscription data
         this.hasActiveSub = data.hasActiveSubscription || false
         this.subscriptionData = data.subscription
         
+        console.log('🔵 SubscriptionPlugin: Emitting subscriptionStatusChanged event')
         // Emit event with full status (including subscription data)
         this.emit('subscriptionStatusChanged', this.getSubscriptionStatus())
         
         return this.hasActiveSub
+      } else {
+        console.error('❌ SubscriptionPlugin: API returned error status:', response.status)
       }
     } catch (e) {
-      console.error('Failed to check subscription:', e)
+      console.error('❌ SubscriptionPlugin: Failed to check subscription:', e)
     } finally {
       this.checkingSubscription = false
     }
@@ -99,9 +110,13 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
    * @returns Promise<boolean>
    */
   async refreshSubscriptionStatus(): Promise<boolean> {
+    console.log('🔵 SubscriptionPlugin: refreshSubscriptionStatus() called, ghId:', this.ghId)
     if (this.ghId) {
-      return await this.checkSubscription(this.ghId)
+      const result = await this.checkSubscription(this.ghId)
+      console.log('✅ SubscriptionPlugin: checkSubscription returned:', result)
+      return result
     }
+    console.warn('⚠️ SubscriptionPlugin: No ghId set, cannot refresh')
     return false
   }
 }

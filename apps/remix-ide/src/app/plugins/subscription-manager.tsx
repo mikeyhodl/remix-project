@@ -190,7 +190,13 @@ export class SubscriptionManager extends ViewPlugin {
 
   async refresh() {
     // Trigger SubscriptionPlugin to refresh (it will emit event when done)
-    await this.call('subscription' as any, 'refreshSubscriptionStatus')
+    console.log('🔵 SubscriptionManager: refresh() called')
+    try {
+      const result = await this.call('subscription' as any, 'refreshSubscriptionStatus')
+      console.log('✅ SubscriptionManager: refreshSubscriptionStatus returned:', result)
+    } catch (err) {
+      console.error('❌ SubscriptionManager: refreshSubscriptionStatus failed:', err)
+    }
   }
 
   async manageSubscription() {
