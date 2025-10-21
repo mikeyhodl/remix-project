@@ -24,17 +24,19 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
   async onActivation() {
     console.log('Subscription plugin activated')
     
-    // Clear subscription on logout
-    this.on('dgitApi' as any, 'loggedOut', () => {
-      console.log('User logged out, clearing subscription')
-      const wasActive = this.hasActiveSub
+    const clearOnLogout = (source: string) => {
+      console.log(`[Subscription] Logout detected from ${source}, clearing subscription state`)
       this.hasActiveSub = false
       this.ghId = null
       this.subscriptionData = null
-      if (wasActive) {
-        this.emit('subscriptionStatusChanged', this.getSubscriptionStatus())
-      }
-    })
+      // Always emit so listeners reset their UI promptly
+      this.emit('subscriptionStatusChanged', this.getSubscriptionStatus())
+    }
+
+    // Clear subscription on logout (compat listeners)
+    this.on('dgitApi' as any, 'loggedOut', () => clearOnLogout('dgitApi.loggedOut'))
+    // Primary logout event from Git plugin
+    this.on('dgit' as any, 'disconnect', () => clearOnLogout('dgit.disconnect'))
   }
 
   /**

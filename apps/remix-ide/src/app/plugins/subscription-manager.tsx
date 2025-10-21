@@ -49,8 +49,8 @@ export class SubscriptionManager extends ViewPlugin {
     })
 
     // Listen for GitHub logout to update UI immediately
-    this.on('dgitApi' as any, 'loggedOut', () => {
-      console.log('SubscriptionManager: user logged out, clearing UI')
+    const resetUI = (source: string) => {
+      console.log(`SubscriptionManager: user logged out via ${source}, clearing UI`)
       this.subscriptionData = {
         loading: false,
         error: 'Please log in with GitHub to view your subscription',
@@ -61,7 +61,11 @@ export class SubscriptionManager extends ViewPlugin {
         loadingPlans: false
       }
       this.renderComponent()
-    })
+    }
+    // Legacy event
+    this.on('dgitApi' as any, 'loggedOut', () => resetUI('dgitApi.loggedOut'))
+    // Primary event from Git plugin
+    this.on('dgit' as any, 'disconnect', () => resetUI('dgit.disconnect'))
 
     // Listen for checkout completion messages from popup window
     const handleMessage = async (event: MessageEvent) => {
