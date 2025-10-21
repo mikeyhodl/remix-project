@@ -10,6 +10,8 @@
 
 const axios = require('axios');
 const { program } = require('commander');
+const fs = require('fs');
+const child_process = require('child_process');
 
 const BASE = 'https://circleci.com/api/v2';
 
@@ -59,6 +61,64 @@ async function listWorkflowRuns({ slug, workflowName, branch, limit = 1, token }
   return results;
 }
 
+async function listPipelines({ slug, branch, limit = 10, token }) {
+  const results = [];
+  let pageToken;
+  while (results.length < limit) {
+    const params = {};
+    if (branch) params.branch = branch;
+    if (pageToken) params['page-token'] = pageToken;
+    const url = `${BASE}/project/${slug}/pipeline`;
+    const data = await getJson(url, token, params);
+    const items = data.items || [];
+    for (const it of items) {
+      if (results.length >= limit) break;
+      results.push({ id: it.id, number: it.number, created_at: it.created_at, state: it.state, trigger: it.trigger });
+    }
+    if (!data.next_page_token) break;
+    pageToken = data.next_page_token;
+  }
+  return results;
+}
+
+async function listPipelineWorkflows({ pipelineId, token }) {
+  const url = `${BASE}/pipeline/${pipelineId}/workflow`;
+  const data = await getJson(url, token);
+  return data.items || [];
+}
+
+function parseRepoUrl(url) {
+  if (!url) return null;
+  const httpsMatch = url.match(/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/);
+  if (httpsMatch) {
+    const parts = httpsMatch[0].split('/');
+    const org = parts[1];
+    const repo = parts[2].replace(/\.git$/, '');
+    return { org, repo };
+  }
+  const sshMatch = url.match(/github\.com:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\.git/);
+  if (sshMatch) return { org: sshMatch[1], repo: sshMatch[2] };
+  return null;
+}
+
+function getGitOriginUrlCwd() {
+  try {
+    const out = child_process.execSync('git config --get remote.origin.url', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return out || null;
+  } catch (_) { return null; }
+}
+
+function deriveSlugCandidates({ providedSlug, repoUrl, pkgRepoUrl }) {
+  const cands = new Set();
+  if (providedSlug) cands.add(normalizeSlug(providedSlug));
+  const add = (org, repo) => { if (org && repo) cands.add(`gh/${org}/${repo}`); };
+  const fromGit = parseRepoUrl(repoUrl || '');
+  const fromPkg = parseRepoUrl(pkgRepoUrl || '');
+  if (fromGit) add(fromGit.org, fromGit.repo);
+  if (fromPkg) add(fromPkg.org, fromPkg.repo);
+  return Array.from(cands);
+}
+
 async function listWorkflowJobs({ workflowId, token }) {
   const url = `${BASE}/workflow/${workflowId}/job`;
   const data = await getJson(url, token);
@@ -97,12 +157,43 @@ async function main() {
 
   const opts = program.opts();
   const token = getToken();
-  let slug = normalizeSlug(opts.slug || process.env.CIRCLECI_PROJECT_SLUG || '');
-  if (!slug) throw new Error('Missing --slug or CIRCLECI_PROJECT_SLUG');
+  const pkgRepoUrl = (() => { try { const p = JSON.parse(fs.readFileSync('package.json','utf-8')); return p?.repository?.url || null; } catch { return null; } })();
+  const candSlugs = deriveSlugCandidates({ providedSlug: opts.slug || process.env.CIRCLECI_PROJECT_SLUG || '', repoUrl: getGitOriginUrlCwd(), pkgRepoUrl });
+  if (!candSlugs.length) throw new Error('Missing --slug and unable to derive CIRCLECI project slug');
   if (!opts.workflow) throw new Error('Missing --workflow');
 
-  const runs = await listWorkflowRuns({ slug, workflowName: opts.workflow, branch: opts.branch, limit: opts.limit, token });
-  if (!runs.length) return;
+  let slug = null;
+  let runs = [];
+  let lastErr = null;
+  for (const s of candSlugs) {
+    try {
+      runs = await listWorkflowRuns({ slug: s, workflowName: opts.workflow, branch: opts.branch, limit: opts.limit, token });
+      slug = s;
+      break;
+    } catch (e) {
+      lastErr = e;
+      // try pipelines fallback
+      try {
+        const pipes = await listPipelines({ slug: s, branch: opts.branch, limit: Math.max(50, opts.limit * 5), token });
+        const wf = [];
+        for (const p of pipes) {
+          const wfs = await listPipelineWorkflows({ pipelineId: p.id, token });
+          for (const w of wfs) {
+            if (w.name === opts.workflow) wf.push({ id: w.id, status: w.status, created_at: p.created_at });
+            if (wf.length >= opts.limit) break;
+          }
+          if (wf.length >= opts.limit) break;
+        }
+        if (wf.length) { runs = wf; slug = s; break; }
+      } catch (e2) {
+        lastErr = e2;
+      }
+    }
+  }
+
+  if (!slug || !runs.length) {
+    throw lastErr || new Error('Unable to find workflow runs via Insights or Pipelines for any candidate slug');
+  }
 
   const failing = new Set();
   for (const run of runs) {
