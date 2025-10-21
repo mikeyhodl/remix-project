@@ -36,7 +36,8 @@ parameters:
     type: string
     default: "first-failed"
   rerun_failed_workflow:
-    type: string
+    type: enum
+    enum: ["web", "web_vertical"]
     default: "web"
   e2e_parallelism:
     type: integer
@@ -348,7 +349,8 @@ jobs:
         type: string
         default: "first-failed"
       workflow_name:
-        type: string
+        type: enum
+        enum: ["web", "web_vertical"]
         default: "web"
     steps:
       - checkout
