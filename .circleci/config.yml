@@ -248,9 +248,6 @@ jobs:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
       - run:
-          name: Inject E2E test configuration
-          command: yarn inject-e2e-config
-      - run:
           name: Compile E2E tests (generate groups)
           command: yarn run build:e2e
       - run:
