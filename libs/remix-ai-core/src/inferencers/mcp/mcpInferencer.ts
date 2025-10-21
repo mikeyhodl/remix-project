@@ -16,8 +16,8 @@ import {
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
+import { endpointUrls } from "@remix-endpoints-helper"
 
-const CorsProxUrl = "https://mcp.api.remix.live/proxy?url=";
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
@@ -248,7 +248,7 @@ export class MCPClient {
   }
 
   private async sendHTTPRequest(request: any): Promise<any> {
-    const response = await fetch(CorsProxUrl + this.server.url, {
+    const response = await fetch(endpointUrls.mcpCorsProxy + this.server.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ export class MCPClient {
     // The proxy expects the target URL in the 'proxy' header
     console.log(`[MCP] Using CORS proxy for SSE init target: ${initUrl}`);
 
-    await fetch(CorsProxUrl + this.server.url, {
+    await fetch(endpointUrls.mcpCorsProxy + this.server.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
