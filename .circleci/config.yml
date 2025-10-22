@@ -23,9 +23,6 @@ parameters:
   run_plan_shards:
     type: boolean
     default: false
-  run_all_tests_vertical:
-    type: boolean
-    default: false
   run_rerun_failed:
     type: boolean
     default: false
@@ -37,7 +34,7 @@ parameters:
     default: "first-failed"
   rerun_failed_workflow:
     type: enum
-    enum: ["web", "web_vertical"]
+    enum: ["web"]
     default: "web"
   e2e_parallelism:
     type: integer
@@ -45,7 +42,7 @@ parameters:
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "medium+"
+    default: "medium"
 
 orbs:
   browser-tools: circleci/browser-tools@1.5.2
@@ -350,7 +347,7 @@ jobs:
         default: "first-failed"
       workflow_name:
         type: enum
-        enum: ["web", "web_vertical"]
+        enum: ["web"]
         default: "web"
     steps:
       - checkout
@@ -403,6 +400,14 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
+      - run:
+          name: Wait for E2E jobs to finish (success or fail)
+          command: |
+            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+              echo "CIRCLECI_TOKEN not set; cannot poll CircleCI API. Skipping wait.";
+            else
+              node scripts/wait-for-e2e-jobs.js;
+            fi
       - run:
           name: Generate HTML failed report for this workflow
           command: |
@@ -607,8 +612,10 @@ workflows:
               script: ["browser_test.sh"]
               job: ["nogroup"]
               jobsize: ["1"]
-              parallelism: [<< pipeline.parameters.e2e_parallelism >>]
+              parallelism: [1]
               scriptparameter: [""]
+              shard_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+              vertical_mode: [true]
       - tests-passed:
           requires:
             - lint
@@ -617,7 +624,7 @@ workflows:
             - plugins
       - post-failed-report:
           requires:
-            - chrome-tests
+            - build
 
   lint_only:
     when: << pipeline.parameters.run_lint_only >>
@@ -629,30 +636,6 @@ workflows:
     jobs:
       - build
 
-  web_vertical:
-    when: << pipeline.parameters.run_all_tests_vertical >>
-    jobs:
-      - build
-      - remix-ide-browser:
-          requires:
-            - build
-          matrix:
-            alias: chrome-tests-vertical
-            parameters:
-              browser: ["chrome"]
-              script: ["browser_test.sh"]
-              job: ["nogroup"]
-              jobsize: ["1"]
-              parallelism: [1]
-              scriptparameter: [""]
-              shard_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
-              vertical_mode: [true]
-      - tests-passed:
-          requires:
-            - chrome-tests-vertical
-      - post-failed-report:
-          requires:
-            - chrome-tests-vertical
   plan_e2e_shards:
     when: << pipeline.parameters.run_plan_shards >>
     jobs:

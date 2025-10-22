@@ -10,14 +10,14 @@
   Usage examples:
     node scripts/generate-failed-report.js \
       --slug gh/remix-project-org/remix-project \
-      --workflow web_vertical \
+      --workflow web \
       --branch feat/nx-cloud/setup \
       --jobs remix-ide-browser \
       --out reports/ci-latest-failed
 
   Options:
     --slug         CircleCI project slug (default: gh/remix-project-org/remix-project)
-    --workflow     Workflow name to search (default: web_vertical). You can also pass a full workflow URL or a raw workflow UUID and it will be detected automatically.
+  --workflow     Workflow name to search (default: web). You can also pass a full workflow URL or a raw workflow UUID and it will be detected automatically.
     --workflow-id  Explicit workflow ID (UUID). If set, branch/workflow name search is skipped.
     --branch       Branch to filter pipelines (default: current git branch or env CIRCLE_BRANCH)
     --limit        Pipelines to scan back (default: 15)
@@ -36,8 +36,8 @@ if (!TOKEN) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const SLUG = args.slug || 'gh/remix-project-org/remix-project';
-const WORKFLOW = args.workflow || 'web_vertical';
+const SLUG = args.slug || inferSlug() || 'gh/remix-project-org/remix-project';
+const WORKFLOW = args.workflow || 'web';
 const WORKFLOW_ID = args['workflow-id'] || args.workflowId || extractWorkflowId(WORKFLOW) || '';
 const LIMIT = Number(args.limit || 15);
 const OUTDIR = args.out || path.join('reports', 'ci-latest-failed');
@@ -186,6 +186,15 @@ function inferBranch() {
   } catch (_) {
     return '';
   }
+}
+
+function inferSlug() {
+  const u = process.env.CIRCLE_PROJECT_USERNAME;
+  const r = process.env.CIRCLE_PROJECT_REPONAME;
+  const s = process.env.CIRCLE_PROJECT_SLUG; // e.g., gh/org/repo
+  if (s && /^(gh|github)\//.test(s)) return s;
+  if (u && r) return `gh/${u}/${r}`;
+  return '';
 }
 
 function ensureDir(dir) {

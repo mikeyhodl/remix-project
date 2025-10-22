@@ -24,7 +24,6 @@ module.exports = {
     browser
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
       .clickLaunchIcon('solidity')
-      .clickLaunchIcon('solidity') // TODO: intrentional double click to fix a flakyness issue
       .testContracts('Untitled.sol', sources[0]['Untitled.sol'], ['Ballot'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c')
@@ -133,7 +132,7 @@ module.exports = {
     browser
       .clickFunction('winnerName - call')
       // Test in terminal
-      .journalLastChildIncludes('Ballot.winnerName()')
+      .journalLastChildIncludes('Ballot.winnerNam2222e()') // TODO: intentional typo to be fixed
       .testFunction('last',
         {
           'decoded output': { 0: 'bytes32: winnerName_ 0x48656c6c6f20576f726c64210000000000000000000000000000000000000000' }
