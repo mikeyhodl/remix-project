@@ -10,10 +10,16 @@ Relies on:
 
 const fs = require('fs');
 const path = require('path');
+const { createAppAuth } = require('@octokit/auth-app');
 
 const CIRCLE_TOKEN = process.env.CIRCLECI_TOKEN || '';
 // Prefer GH_PR_COMMENT_TOKEN; fallback to legacy names for compatibility
 const GH_TOKEN = process.env.GH_PR_COMMENT_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
+// Prefer descriptive env var names; fall back to legacy for compatibility
+const APP_ID_ENV = process.env.CI_PR_BOT_APP_ID || process.env.APP_ID;
+const INSTALLATION_ID_ENV = process.env.CI_PR_BOT_INSTALLATION_ID || process.env.INSTALLATION_ID;
+const APP_PRIVATE_KEY_ENV = process.env.CI_PR_BOT_PRIVATE_KEY || process.env.APP_PRIVATE_KEY;
+const HAS_APP_CREDS = !!(APP_ID_ENV && INSTALLATION_ID_ENV && APP_PRIVATE_KEY_ENV);
 const SLUG = process.env.CIRCLE_PROJECT_USERNAME && process.env.CIRCLE_PROJECT_REPONAME
   ? `gh/${process.env.CIRCLE_PROJECT_USERNAME}/${process.env.CIRCLE_PROJECT_REPONAME}` : (process.env.CIRCLE_PROJECT_SLUG || '');
 const JOB_NUM = process.env.CIRCLE_BUILD_NUM || process.env.CIRCLE_JOB_NUMBER || '';
@@ -28,7 +34,7 @@ function exit(msg) { console.error(`[post-pr-report] ${msg}`); process.exit(2); 
 function log(...a){ console.log('[post-pr-report]', ...a); }
 
 if (!CIRCLE_TOKEN) exit('CIRCLECI_TOKEN missing');
-if (!GH_TOKEN) exit('GH_PR_COMMENT_TOKEN missing');
+if (!HAS_APP_CREDS && !GH_TOKEN) exit('Missing GitHub auth: set GH_PR_COMMENT_TOKEN or APP_ID/INSTALLATION_ID/APP_PRIVATE_KEY');
 if (!SLUG || !JOB_NUM) exit('Missing CircleCI env (slug or job number)');
 
 const summaryPath = path.join(OUTDIR, 'summary.json');
@@ -123,10 +129,11 @@ async function circle(pathname) {
 
 async function gh(pathname, body, extraHeaders) {
   const [method, endpoint] = pathname.includes(' ') ? pathname.split(' ', 2) : ['GET', pathname];
+  const authHeader = await getAuthHeader();
   const res = await fetch(`https://api.github.com${endpoint}`, {
     method,
     headers: {
-      Authorization: `token ${GH_TOKEN}`,
+      Authorization: authHeader,
       'Content-Type': 'application/json',
       ...(extraHeaders || {})
     },
@@ -141,4 +148,21 @@ async function gh(pathname, body, extraHeaders) {
 
 function escapeMd(s) {
   return String(s).replace(/[\[\]()`*_~]/g, '\\$&');
+}
+
+async function getAuthHeader() {
+  const appId = APP_ID_ENV;
+  const instId = INSTALLATION_ID_ENV;
+  const pk = APP_PRIVATE_KEY_ENV;
+  if (appId && instId && pk) {
+    const auth = createAppAuth({
+      appId: String(appId),
+      privateKey: String(pk).includes('\\n') ? String(pk).replace(/\\n/g, '\n') : String(pk),
+      installationId: String(instId)
+    });
+    const { token } = await auth({ type: 'installation' });
+    return `token ${token}`;
+  }
+  if (!GH_TOKEN) throw new Error('GH_PR_COMMENT_TOKEN missing (or configure CI_PR_BOT_APP_ID / CI_PR_BOT_INSTALLATION_ID / CI_PR_BOT_PRIVATE_KEY)');
+  return `token ${GH_TOKEN}`;
 }
