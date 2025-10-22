@@ -104,7 +104,7 @@ const BRANCH = args.branch || inferBranch();
       const rel = a.path.replace(/^.*reports\/screenshots\//, 'screenshots/');
       const dest = path.join(jobOutDir, rel);
       await downloadFile(a.url, dest);
-      downloaded.push({ rel: path.relative(OUTDIR, dest), abs: dest, name: path.basename(dest) });
+      downloaded.push({ rel: path.relative(OUTDIR, dest), abs: dest, name: path.basename(dest), url: a.url });
     }
     log(`Job #${jobNum}: ${shotArtifacts.length} screenshots found, ${downloaded.length} downloaded (filtered by failures/FAILED).`);
   assets.push({ job, images: downloaded });
@@ -339,7 +339,7 @@ function formatFailureItem(ctx, pipeline, wf, f) {
           <div class="sub">Job #${job.job_number} · <a href="${jobLink}" target="_blank" rel="noopener">Open in CircleCI</a></div>
           <div class="msg">${escapeHtml(shortMsg || '(no failure message)')}</div>
         </div>
-        <div class="media">${img ? `<img src="${encodeURI(img.rel)}" alt="screenshot" />` : '<div class="placeholder">No screenshot</div>'}</div>
+        <div class="media">${img ? `<a href="${img.url ? encodeURI(img.url) : '#'}" target="_blank" rel="noopener"><img src="${encodeURI(img.rel)}" alt="screenshot" /></a>` : '<div class="placeholder">No screenshot</div>'}</div>
       </div>
     `
   };
@@ -437,7 +437,7 @@ function renderImageOnlyCard(slug, pipeline, wf, job, img) {
         <div class="sub">Job #${job.job_number} · <a href="${jobLink}" target="_blank" rel="noopener">Open in CircleCI</a></div>
         <div class="msg">No test metadata found for this image.</div>
       </div>
-      <div class="media"><img src="${encodeURI(img.rel)}" alt="screenshot" /></div>
+      <div class="media"><a href="${img.url ? encodeURI(img.url) : '#'}" target="_blank" rel="noopener"><img src="${encodeURI(img.rel)}" alt="screenshot" /></a></div>
     </div>
   `;
 }
