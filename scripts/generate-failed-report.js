@@ -139,7 +139,25 @@ const BRANCH = args.branch || inferBranch();
   const title = failures.length ? `E2E failures: ${failures.length} test(s)` : 'No failing tests found';
 
   const metaBranch = pipeline?.vcs?.branch || BRANCH;
-  await writeHtml(ctx, { title, sections, meta: { generatedAt: new Date().toISOString(), pipelineNumber: pipeline?.number, pipelineId: pipeline?.id, workflowId: wf.id, branch: metaBranch, workflowStatus: wf.status } });
+  const meta = { generatedAt: new Date().toISOString(), pipelineNumber: pipeline?.number, pipelineId: pipeline?.id, workflowId: wf.id, branch: metaBranch, workflowStatus: wf.status };
+  await writeHtml(ctx, { title, sections, meta });
+
+  // Write summary.json for bots/PR comments
+  try {
+    const summary = {
+      ...meta,
+      workflowName: wf.name,
+      failures: failures.map(f => ({
+        jobNumber: f.job.job_number,
+        file: f.test.file || f.test.classname || '',
+        name: f.test.name || deriveBaseFromTest(f.test),
+        image: f.image ? path.join(`job-${f.job.job_number}`, f.image.rel) : null
+      }))
+    };
+    fs.writeFileSync(path.join(OUTDIR, 'summary.json'), JSON.stringify(summary, null, 2), 'utf8');
+  } catch (e) {
+    log('Failed to write summary.json:', e?.message || e);
+  }
 
   log(`Report written to ${path.join(OUTDIR, 'index.html')}`);
 })().catch(err => {

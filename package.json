@@ -89,7 +89,8 @@
     "build-contracts": "find ./node_modules/@openzeppelin/contracts | grep -i '.sol' > libs/remix-ui/editor/src/lib/providers/completion/contracts/contracts.txt && find ./node_modules/@uniswap/v3-core/contracts | grep -i '.sol' >> libs/remix-ui/editor/src/lib/providers/completion/contracts/contracts.txt",
     "ci:timings": "node scripts/circleci-timings.js",
     "ci:plan-shard": "node scripts/plan-shards.js",
-    "ci:failed-report": "node scripts/generate-failed-report.js"
+    "ci:failed-report": "node scripts/generate-failed-report.js --workflow web_vertical --out reports/ci-latest-failed",
+    "ci:post-pr-report": "node scripts/post-pr-report.js reports/ci-latest-failed"
   },
   "dependencies": {
     "@apollo/client": "^3.9.5",

@@ -396,6 +396,26 @@ jobs:
       - store_artifacts:
           path: ./reports/failed
 
+  post-failed-report:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    steps:
+      - checkout
+      - run:
+          name: Generate HTML failed report for this workflow
+          command: |
+            mkdir -p reports/ci-latest-failed
+            node scripts/generate-failed-report.js --workflow-id "$CIRCLE_WORKFLOW_ID" --out reports/ci-latest-failed || true
+      - store_artifacts:
+          path: ./reports/ci-latest-failed
+          destination: ci-latest-failed
+      - run:
+          name: Comment report link on PR (if failures)
+          command: |
+            node scripts/post-pr-report.js reports/ci-latest-failed || true
+
   tests-passed:
     machine:
       image: default
@@ -595,6 +615,9 @@ workflows:
             - remix-libs
             - chrome-tests
             - plugins
+      - post-failed-report:
+          requires:
+            - chrome-tests
 
   lint_only:
     when: << pipeline.parameters.run_lint_only >>
@@ -625,6 +648,9 @@ workflows:
               shard_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
               vertical_mode: [true]
       - tests-passed:
+          requires:
+            - chrome-tests-vertical
+      - post-failed-report:
           requires:
             - chrome-tests-vertical
   plan_e2e_shards:
