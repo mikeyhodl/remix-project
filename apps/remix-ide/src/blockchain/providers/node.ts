@@ -16,7 +16,7 @@ export class NodeProvider {
     if (!this.executionContext.isConnected) {
       return cb('Not connected to a node')
     }
-    this.executionContext.web3().send("eth_requestAccounts", []).then(res => cb(null, res)).catch(err => cb(err))
+    this.executionContext.web3().send("eth_accounts", []).then(res => cb(null, res)).catch(err => cb(err))
   }
 
   newAccount (passwordPromptCb, cb) {
