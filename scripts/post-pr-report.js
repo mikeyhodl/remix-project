@@ -46,14 +46,44 @@ if (!fs.existsSync(summaryPath)) {
 (async () => {
   const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
   const failures = Array.isArray(summary.failures) ? summary.failures : [];
-  if (!failures.length) {
-    log('No failures in summary; skipping PR comment.');
+  
+  const { owner, repo } = parseSlug(SLUG);
+  const prNumber = await resolvePrNumber(owner, repo, PR_URLS, SHA);
+  if (!prNumber) {
+    log('Cannot resolve PR number from env; skipping comment update.');
     process.exit(0);
   }
 
-  const { owner, repo } = parseSlug(SLUG);
-  const prNumber = await resolvePrNumber(owner, repo, PR_URLS, SHA);
-  if (!prNumber) exit('Cannot resolve PR number from env');
+  // Check if there's an existing sticky comment
+  const existing = await gh(`GET /repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`);
+  const mine = (existing || []).find(c => typeof c.body === 'string' && c.body.includes(MARKER));
+
+  // If no failures, update or delete the sticky comment to show success
+  if (!failures.length) {
+    if (mine && mine.id) {
+      const successBody = [
+        MARKER,
+        `✅ E2E tests passed (workflow: ${escapeMd(summary.workflowName || '')})`,
+        '',
+        '_All tests are now passing! Previous failures have been resolved._'
+      ].join('\n');
+      await gh(`PATCH /repos/${owner}/${repo}/issues/comments/${mine.id}`, { body: successBody });
+      log(`Updated sticky PR comment #${mine.id} with success status`);
+    } else {
+      log('No failures and no existing comment; nothing to update.');
+    }
+    
+    // Optional: set success commit status
+    if (REPORT_SET_STATUS && SHA) {
+      await gh(`POST /repos/${owner}/${repo}/statuses/${SHA}`, {
+        state: 'success',
+        description: 'E2E tests passed',
+        context: STATUS_CONTEXT
+      });
+      log(`Set commit status ${STATUS_CONTEXT}: success`);
+    }
+    process.exit(0);
+  }
 
   // Find the artifact URL for index.html uploaded by THIS job
   const artifacts = await circle(`/project/${SLUG}/${JOB_NUM}/artifacts`);
@@ -61,7 +91,7 @@ if (!fs.existsSync(summaryPath)) {
   if (!index) exit('index.html artifact not found; ensure store_artifacts ran before this step');
   const indexUrl = index.url;
 
-  // Compose comment
+  // Compose failure comment
   const top = failures.slice(0, 10);
   const list = top.map(f => `- ${escapeMd(f.name)}${f.file ? ` (${escapeMd(f.file)})` : ''}`).join('\n');
   const body = [
@@ -77,8 +107,6 @@ if (!fs.existsSync(summaryPath)) {
   ].join('\n');
 
   // Sticky comment behavior: update if existing, else create
-  const existing = await gh(`GET /repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`);
-  const mine = (existing || []).find(c => typeof c.body === 'string' && c.body.includes(MARKER));
   if (mine && mine.id) {
     await gh(`PATCH /repos/${owner}/${repo}/issues/comments/${mine.id}`, { body });
     log(`Updated sticky PR comment #${mine.id}`);
@@ -87,17 +115,15 @@ if (!fs.existsSync(summaryPath)) {
     log(`Comment posted to PR #${prNumber}: ${indexUrl} (id=${created.id})`);
   }
 
-  // Optional: set commit status pointing to the report
+  // Optional: set failure commit status pointing to the report
   if (REPORT_SET_STATUS && SHA) {
-    const state = failures.length ? 'failure' : 'success';
-    const description = failures.length ? `${failures.length} failing E2E test(s)` : 'E2E passed';
     await gh(`POST /repos/${owner}/${repo}/statuses/${SHA}`, {
-      state,
+      state: 'failure',
       target_url: indexUrl,
-      description,
+      description: `${failures.length} failing E2E test(s)`,
       context: STATUS_CONTEXT
     });
-    log(`Set commit status ${STATUS_CONTEXT}: ${state}`);
+    log(`Set commit status ${STATUS_CONTEXT}: failure`);
   }
 })().catch(e => { console.error(e); process.exit(1); });
 

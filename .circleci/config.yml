@@ -39,14 +39,13 @@ parameters:
   # Rerun-failed configuration
   rerun_failed_history:
     type: integer
-    default: 5
+    default: 1
   rerun_failed_mode:
     type: string
-    default: "first-failed"
+    default: "most-recent"
   rerun_failed_workflow:
-    type: enum
-    enum: ["web"]
-    default: "web"
+    type: string
+    default: "web,run_file_tests,run_pr_tests,run_flaky_tests"
 
   # Resource sizing
   resource_class:

@@ -147,11 +147,11 @@ function baseNameNoJs(p) {
 async function main() {
   program
     .option('--slug <projectSlug>', 'CircleCI project slug, e.g., gh/org/repo')
-    .option('--workflow <name>', 'Workflow name, e.g., web')
+    .option('--workflow <name>', 'Workflow name, e.g., web. Can be comma-separated list to check multiple workflows.')
     .option('--branch <name>', 'Branch to filter by (optional)')
     .option('--jobs <substr>', 'Include only jobs whose name contains this substring', 'remix-ide-browser')
     .option('--limit <n>', 'Number of workflow runs to check (default 1)', (v) => parseInt(v, 10), 1)
-    .option('--mode <m>', "Selection mode: 'first-failed' (default) or 'union' across runs", 'first-failed')
+    .option('--mode <m>', "Selection mode: 'most-recent' (latest run only), 'first-failed' (first run with failures), or 'union' (across runs)", 'most-recent')
     .option('--verbose', 'Verbose logging', false)
     .parse(process.argv);
 
@@ -162,48 +162,67 @@ async function main() {
   if (!candSlugs.length) throw new Error('Missing --slug and unable to derive CIRCLECI project slug');
   if (!opts.workflow) throw new Error('Missing --workflow');
 
+  // Support comma-separated workflow names
+  const workflowNames = opts.workflow.split(',').map(s => s.trim()).filter(Boolean);
+  if (!workflowNames.length) throw new Error('No workflow names provided');
+
   let slug = null;
-  let runs = [];
+  let allRuns = [];
   let lastErr = null;
-  for (const s of candSlugs) {
-    try {
-      runs = await listWorkflowRuns({ slug: s, workflowName: opts.workflow, branch: opts.branch, limit: opts.limit, token });
-      slug = s;
-      break;
-    } catch (e) {
-      lastErr = e;
-      // try pipelines fallback
+
+  // For each workflow name, fetch runs and combine them
+  for (const workflowName of workflowNames) {
+    for (const s of candSlugs) {
       try {
-        const pipes = await listPipelines({ slug: s, branch: opts.branch, limit: Math.max(50, opts.limit * 5), token });
-        const wf = [];
-        for (const p of pipes) {
-          const wfs = await listPipelineWorkflows({ pipelineId: p.id, token });
-          for (const w of wfs) {
-            if (w.name === opts.workflow) wf.push({ id: w.id, status: w.status, created_at: p.created_at });
+        const runs = await listWorkflowRuns({ slug: s, workflowName, branch: opts.branch, limit: opts.limit, token });
+        if (runs.length > 0) {
+          slug = s;
+          allRuns.push(...runs.map(r => ({ ...r, workflowName })));
+        }
+        break;
+      } catch (e) {
+        lastErr = e;
+        // try pipelines fallback
+        try {
+          const pipes = await listPipelines({ slug: s, branch: opts.branch, limit: Math.max(50, opts.limit * 5), token });
+          const wf = [];
+          for (const p of pipes) {
+            const wfs = await listPipelineWorkflows({ pipelineId: p.id, token });
+            for (const w of wfs) {
+              if (w.name === workflowName) wf.push({ id: w.id, status: w.status, created_at: p.created_at, workflowName });
+              if (wf.length >= opts.limit) break;
+            }
             if (wf.length >= opts.limit) break;
           }
-          if (wf.length >= opts.limit) break;
+          if (wf.length) { 
+            allRuns.push(...wf); 
+            slug = s; 
+            break; 
+          }
+        } catch (e2) {
+          lastErr = e2;
         }
-        if (wf.length) { runs = wf; slug = s; break; }
-      } catch (e2) {
-        lastErr = e2;
       }
     }
   }
 
-  if (!slug || !runs.length) {
+  if (!slug || !allRuns.length) {
     throw lastErr || new Error('Unable to find workflow runs via Insights or Pipelines for any candidate slug');
   }
 
+  // Sort all runs by creation time (newest first)
+  const runs = allRuns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
   if (opts.verbose) {
-    console.error(`\n=== Fetching failed tests from workflow: ${opts.workflow} ===`);
+    console.error(`\n=== Fetching failed tests from workflows: ${workflowNames.join(', ')} ===`);
     console.error(`Slug: ${slug}`);
     console.error(`Branch: ${opts.branch || '(all branches)'}`);
-    console.error(`History limit: ${opts.limit}`);
+    console.error(`History limit: ${opts.limit} per workflow`);
     console.error(`Selection mode: ${opts.mode}`);
-    console.error(`Found ${runs.length} workflow run(s):\n`);
+    console.error(`Found ${runs.length} workflow run(s) across all workflows:\n`);
     for (const run of runs) {
-      console.error(`  - Workflow ID: ${run.id}`);
+      console.error(`  - Workflow: ${run.workflowName || opts.workflow}`);
+      console.error(`    ID: ${run.id}`);
       console.error(`    Status: ${run.status}`);
       console.error(`    Created: ${run.created_at}`);
     }
@@ -229,7 +248,38 @@ async function main() {
       }
     }
     
-    if (opts.mode === 'first-failed') {
+    if (opts.mode === 'most-recent') {
+      // Always use the most recent run, even if it passed
+      if (opts.verbose) {
+        if (failingJobs.length > 0) {
+          console.error(`  → Most recent run has failures. Collecting failed tests...`);
+        } else {
+          console.error(`  → Most recent run passed. No tests to rerun.`);
+        }
+      }
+      for (const job of failingJobs) {
+        const jobNumber = job.job_number || job.number;
+        if (!jobNumber) continue;
+        const tests = await getJobTests({ slug, jobNumber, token });
+        if (opts.verbose) {
+          console.error(`    - Job #${jobNumber}: ${tests.length} test results`);
+        }
+        for (const t of tests) {
+          const result = (t.result || '').toLowerCase();
+          if (result && result !== 'success' && result !== 'passed') {
+            const file = t.file || t.classname || null;
+            if (!file) continue;
+            const basename = baseNameNoJs(file);
+            failing.add(basename);
+            if (opts.verbose) {
+              console.error(`      ✗ ${basename} (${result})`);
+            }
+          }
+        }
+      }
+      if (opts.verbose) console.error(`\n  → Using most recent run only (most-recent mode)`);
+      break; // Only check the first/most recent run
+    } else if (opts.mode === 'first-failed') {
       if (!failingJobs.length) {
         if (opts.verbose) console.error(`  → No failing jobs; moving to older run.`);
         continue; // check older runs until we find failing ones
