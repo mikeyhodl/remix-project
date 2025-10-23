@@ -77,8 +77,16 @@ jobs:
           name: Nx build (Cloud if token)
           command: |
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose
+              echo "Attempting Nx Cloud build..."
+              if NX_VERBOSE_LOGGING=1 node --max-old-space-size=4096 ./node_modules/.bin/nx build --cloud --verbose; then
+                echo "✓ Nx Cloud build succeeded"
+              else
+                echo "⚠ Nx Cloud build failed (out of credits or unavailable)"
+                echo "→ Falling back to local build..."
+                NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
+              fi
             else
+              echo "No NX_CLOUD_ACCESS_TOKEN; running local build"
               NX_VERBOSE_LOGGING=1 yarn build --skip-nx-cache
             fi
       - run:
@@ -502,8 +510,16 @@ jobs:
           name: Production build (Nx Cloud if token available)
           command: |
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
+              echo "Attempting Nx Cloud production build..."
+              if NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose; then
+                echo "✓ Nx Cloud production build succeeded"
+              else
+                echo "⚠ Nx Cloud build failed (out of credits or unavailable)"
+                echo "→ Falling back to local production build..."
+                NODE_ENV=production yarn nx build remix-ide --configuration=production
+              fi
             else
+              echo "No NX_CLOUD_ACCESS_TOKEN; running local production build"
               NODE_ENV=production yarn nx build remix-ide --configuration=production
             fi
 
@@ -532,8 +548,16 @@ jobs:
           name: Production build (Nx Cloud if token available)
           command: |
             if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
-              NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose
+              echo "Attempting Nx Cloud production build..."
+              if NX_VERBOSE_LOGGING=1 node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --cloud --verbose; then
+                echo "✓ Nx Cloud production build succeeded"
+              else
+                echo "⚠ Nx Cloud build failed (out of credits or unavailable)"
+                echo "→ Falling back to local production build..."
+                NODE_ENV=production yarn nx build remix-ide --configuration=production
+              fi
             else
+              echo "No NX_CLOUD_ACCESS_TOKEN; running local production build"
               NODE_ENV=production yarn nx build remix-ide --configuration=production
             fi
       - run: ./apps/remix-ide/ci/deploy_from_travis_remix-<< parameters.script >>.sh
