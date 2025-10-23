@@ -6,6 +6,10 @@ BUILD_ID=${CIRCLE_BUILD_NUM:-${TRAVIS_JOB_NUMBER}}
 echo "$BUILD_ID"
 TEST_EXITCODE=0
 
+# Accept workflow name as optional second argument (default: web)
+BROWSER=${1:-chrome}
+WORKFLOW_NAME=${2:-web}
+
 # Start required services
 npx ganache > /dev/null 2>&1 &
 npx http-server -p 9090 --cors='*' ./node_modules > /dev/null 2>&1 &
@@ -21,14 +25,21 @@ if [ ! -d "dist/apps/remix-ide-e2e/src/tests" ]; then
   yarn run build:e2e
 fi
 
-# Fetch failing test basenames from last workflow run
-FAILED_BASENAMES=""
-if [ -n "${CIRCLECI_TOKEN:-}" ]; then
-  echo "Fetching last run failing tests for branch ${CIRCLE_BRANCH:-all}..."
-  FAILED_BASENAMES=$(node scripts/circleci-failed-tests.js --slug ${CIRCLECI_PROJECT_SLUG:-gh/remix-project-org/remix-project} --workflow web --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit 1 || true)
+# Check if failed-basenames.txt was already created by CircleCI job
+# If so, use it instead of fetching again (avoids duplicate API calls)
+if [ -f "failed-basenames.txt" ] && [ -s "failed-basenames.txt" ]; then
+  echo "Using failed test list from CircleCI job..."
+  FAILED_BASENAMES=$(cat failed-basenames.txt)
 else
-  echo "CIRCLECI_TOKEN not set; cannot fetch failed tests. Exiting without running."
-  exit 0
+  # Fetch failing test basenames from last workflow run
+  FAILED_BASENAMES=""
+  if [ -n "${CIRCLECI_TOKEN:-}" ]; then
+    echo "Fetching last run failing tests for branch ${CIRCLE_BRANCH:-all} from workflow ${WORKFLOW_NAME}..."
+    FAILED_BASENAMES=$(node scripts/circleci-failed-tests.js --slug ${CIRCLECI_PROJECT_SLUG:-gh/remix-project-org/remix-project} --workflow "$WORKFLOW_NAME" --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit 1 || true)
+  else
+    echo "CIRCLECI_TOKEN not set; cannot fetch failed tests. Exiting without running."
+    exit 0
+  fi
 fi
 
 # Build file list from basenames
@@ -58,7 +69,7 @@ for TESTFILE in $(cat reports/failed/files.txt); do
   echo "Running failed test: ${TESTFILE}.js"
   attempt=0
   while true; do
-    if npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$1; then
+    if npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${BROWSER}.js dist/apps/remix-ide-e2e/src/tests/${TESTFILE}.js --env=$BROWSER; then
       break
     fi
     if [ "$attempt" -lt "$E2E_RETRIES" ]; then

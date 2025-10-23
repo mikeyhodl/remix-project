@@ -360,8 +360,7 @@ jobs:
         type: string
         default: "first-failed"
       workflow_name:
-        type: enum
-        enum: ["web"]
+        type: string
         default: "web"
     steps:
       - checkout
@@ -398,8 +397,8 @@ jobs:
           command: |
             if [ ! -s failed-basenames.txt ]; then
               echo "No failing tests to rerun. Exiting."; exit 0; fi
-            # Pass browser from Chrome; disable retries for measurement
-            E2E_RETRIES=${E2E_RETRIES:-0} bash ./apps/remix-ide/ci/rerun_failed.sh chrome
+            # Pass browser and workflow name; disable retries for measurement
+            E2E_RETRIES=${E2E_RETRIES:-0} bash ./apps/remix-ide/ci/rerun_failed.sh chrome "<< parameters.workflow_name >>"
       - store_test_results:
           path: ./reports/tests
       - store_artifacts:
@@ -685,3 +684,6 @@ workflows:
           history_limit: << pipeline.parameters.rerun_failed_history >>
           selection_mode: << pipeline.parameters.rerun_failed_mode >>
           workflow_name: << pipeline.parameters.rerun_failed_workflow >>
+      - post-failed-report:
+          requires:
+            - rerun-failed-e2e
