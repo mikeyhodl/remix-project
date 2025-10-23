@@ -8,7 +8,9 @@ module.exports = {
         init(browser, done)
     },
     'open default prettier config and set the content': function (browser: NightwatchBrowser) {
-        browser.openFile('.prettierrc2222.json').pause(1000).setEditorValue( // TODO: intend to .prettierrc.json after testing
+        browser
+            .waitForElementVisible('class name', 'remixIdeIcon2')
+            .openFile('.prettierrc.json').pause(1000).setEditorValue(
             JSON.stringify(defaultPrettierOptions, null, '\t')
         )
     },
