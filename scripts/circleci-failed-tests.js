@@ -195,46 +195,100 @@ async function main() {
     throw lastErr || new Error('Unable to find workflow runs via Insights or Pipelines for any candidate slug');
   }
 
+  if (opts.verbose) {
+    console.error(`\n=== Fetching failed tests from workflow: ${opts.workflow} ===`);
+    console.error(`Slug: ${slug}`);
+    console.error(`Branch: ${opts.branch || '(all branches)'}`);
+    console.error(`History limit: ${opts.limit}`);
+    console.error(`Selection mode: ${opts.mode}`);
+    console.error(`Found ${runs.length} workflow run(s):\n`);
+    for (const run of runs) {
+      console.error(`  - Workflow ID: ${run.id}`);
+      console.error(`    Status: ${run.status}`);
+      console.error(`    Created: ${run.created_at}`);
+    }
+    console.error('');
+  }
+
   const failing = new Set();
   for (const run of runs) {
     const jobs = await listWorkflowJobs({ workflowId: run.id, token });
     const targetJobs = jobs.filter((j) => (j.name || '').includes(opts.jobs));
     const failingJobs = targetJobs.filter((j) => (j.status || '') !== 'success');
+    
+    if (opts.verbose) {
+      console.error(`\n--- Workflow ${run.id} (${run.status}) ---`);
+      console.error(`  Total jobs matching "${opts.jobs}": ${targetJobs.length}`);
+      console.error(`  Failing jobs: ${failingJobs.length}`);
+      if (failingJobs.length > 0) {
+        console.error(`  Failed job details:`);
+        for (const fj of failingJobs) {
+          console.error(`    - Job: ${fj.name} (#${fj.job_number || fj.number})`);
+          console.error(`      Status: ${fj.status}`);
+        }
+      }
+    }
+    
     if (opts.mode === 'first-failed') {
       if (!failingJobs.length) {
-        if (opts.verbose) console.error(`Run ${run.id} has no failing jobs; moving to older run.`);
+        if (opts.verbose) console.error(`  → No failing jobs; moving to older run.`);
         continue; // check older runs until we find failing ones
       }
+      if (opts.verbose) console.error(`  → Found failures! Collecting failed tests from this run...`);
       for (const job of failingJobs) {
         const jobNumber = job.job_number || job.number;
         if (!jobNumber) continue;
         const tests = await getJobTests({ slug, jobNumber, token });
+        if (opts.verbose) {
+          console.error(`    - Job #${jobNumber}: ${tests.length} test results`);
+        }
         for (const t of tests) {
           const result = (t.result || '').toLowerCase();
           if (result && result !== 'success' && result !== 'passed') {
             const file = t.file || t.classname || null;
             if (!file) continue;
-            failing.add(baseNameNoJs(file));
+            const basename = baseNameNoJs(file);
+            failing.add(basename);
+            if (opts.verbose) {
+              console.error(`      ✗ ${basename} (${result})`);
+            }
           }
         }
       }
+      if (opts.verbose) console.error(`\n  → Stopping at first run with failures (first-failed mode)`);
       break; // stop at the first run with failures
     } else {
       // union mode: collect across up to N runs, only from failing jobs
+      if (opts.verbose && failingJobs.length > 0) {
+        console.error(`  → Union mode: collecting failures from this run...`);
+      }
       for (const job of failingJobs) {
         const jobNumber = job.job_number || job.number;
         if (!jobNumber) continue;
         const tests = await getJobTests({ slug, jobNumber, token });
+        if (opts.verbose && tests.length > 0) {
+          console.error(`    - Job #${jobNumber}: ${tests.length} test results`);
+        }
         for (const t of tests) {
           const result = (t.result || '').toLowerCase();
           if (result && result !== 'success' && result !== 'passed') {
             const file = t.file || t.classname || null;
             if (!file) continue;
-            failing.add(baseNameNoJs(file));
+            const basename = baseNameNoJs(file);
+            failing.add(basename);
+            if (opts.verbose) {
+              console.error(`      ✗ ${basename} (${result})`);
+            }
           }
         }
       }
     }
+  }
+
+  if (opts.verbose) {
+    console.error(`\n=== Summary ===`);
+    console.error(`Total unique failed tests: ${failing.size}`);
+    console.error('');
   }
 
   for (const name of failing) {

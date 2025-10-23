@@ -32,6 +32,9 @@ parameters:
   e2e_parallelism:
     type: integer
     default: 20
+  e2e_retries:
+    type: integer
+    default: 0
 
   # Rerun-failed configuration
   rerun_failed_history:
@@ -259,7 +262,7 @@ jobs:
               export CIRCLE_NODE_TOTAL=<< pipeline.parameters.e2e_parallelism >>
               export CIRCLE_NODE_INDEX=<< parameters.shard_index >>
             fi
-            SELF_SPLIT=1 TIMINGS_JSON=timings-current.json \
+            E2E_RETRIES=<< pipeline.parameters.e2e_retries >> SELF_SPLIT=1 TIMINGS_JSON=timings-current.json \
             ./apps/remix-ide/ci/<< parameters.script >> << parameters.browser >> << parameters.jobsize >> << parameters.job >> << parameters.scriptparameter >>
       - store_test_results:
           path: ./reports/tests
@@ -387,7 +390,7 @@ jobs:
           name: Fetch failed tests from last run
           command: |
             if [ -n "${CIRCLECI_TOKEN:-}" ]; then
-              node scripts/circleci-failed-tests.js --slug gh/remix-project-org/remix-project --workflow "<< parameters.workflow_name >>" --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit << parameters.history_limit >> --mode "<< parameters.selection_mode >>" > failed-basenames.txt || true
+              node scripts/circleci-failed-tests.js --slug gh/remix-project-org/remix-project --workflow "<< parameters.workflow_name >>" --branch "${CIRCLE_BRANCH:-}" --jobs "remix-ide-browser" --limit << parameters.history_limit >> --mode "<< parameters.selection_mode >>" --verbose > failed-basenames.txt || true
             else
               echo "CIRCLECI_TOKEN not set; cannot fetch failed tests." > failed-basenames.txt
             fi
@@ -397,8 +400,8 @@ jobs:
           command: |
             if [ ! -s failed-basenames.txt ]; then
               echo "No failing tests to rerun. Exiting."; exit 0; fi
-            # Pass browser and workflow name; disable retries for measurement
-            E2E_RETRIES=${E2E_RETRIES:-0} bash ./apps/remix-ide/ci/rerun_failed.sh chrome "<< parameters.workflow_name >>"
+            # Pass browser and workflow name; use pipeline parameter for retries
+            E2E_RETRIES=<< pipeline.parameters.e2e_retries >> bash ./apps/remix-ide/ci/rerun_failed.sh chrome "<< parameters.workflow_name >>"
       - store_test_results:
           path: ./reports/tests
       - store_artifacts:
