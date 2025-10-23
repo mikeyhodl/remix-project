@@ -401,6 +401,13 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install @octokit/auth-app for PR commenter
+          command: |
+            mkdir -p /tmp/pr-bot
+            cd /tmp/pr-bot
+            npm install --no-save @octokit/auth-app
+            echo "NODE_PATH=/tmp/pr-bot/node_modules" >> $BASH_ENV
+      - run:
           name: Wait for E2E jobs to finish (success or fail)
           command: |
             if [ -z "${CIRCLECI_TOKEN:-}" ]; then
@@ -413,9 +420,6 @@ jobs:
           command: |
             mkdir -p reports/ci-latest-failed
             node scripts/generate-failed-report.js --workflow-id "$CIRCLE_WORKFLOW_ID" --out reports/ci-latest-failed || true
-      - store_artifacts:
-          path: ./reports/ci-latest-failed
-          destination: ci-latest-failed
       - run:
           name: Comment report link on PR (if failures)
           command: |
