@@ -162,7 +162,7 @@ jobs:
   check-flaky-or-pr-tests:
     docker:
       - image: cimg/node:24.3.0
-    resource_class: medium+
+    resource_class: << pipeline.parameters.resource_class >>
     working_directory: ~/remix-project
     parameters:
       pattern:
@@ -212,6 +212,9 @@ jobs:
       parallelism:
         type: integer
         default: 1
+      skip_timings:
+        type: boolean
+        default: false
     parallelism: << parameters.parallelism >>
     steps:
       - checkout
@@ -235,15 +238,19 @@ jobs:
           install-geckodriver: false
       - run: yarn install_webdriver
       - run: google-chrome --version
-      - run:
-          name: Fetch CircleCI timings snapshot (best effort)
-          command: |
-            if [ -n "${CIRCLECI_TOKEN:-}" ]; then
-              echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
-              yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
-            else
-              echo "CIRCLECI_TOKEN not set; skipping timings fetch. Self-split will fall back to median weights."
-            fi
+      - when:
+          condition:
+            not: << parameters.skip_timings >>
+          steps:
+            - run:
+                name: Fetch CircleCI timings snapshot (best effort)
+                command: |
+                  if [ -n "${CIRCLECI_TOKEN:-}" ]; then
+                    echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
+                    yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
+                  else
+                    echo "CIRCLECI_TOKEN not set; skipping timings fetch. Self-split will fall back to median weights."
+                  fi
       - run:
           name: Run E2E shard (self-split)
           command: |
@@ -413,7 +420,6 @@ jobs:
             mkdir -p /tmp/pr-bot
             cd /tmp/pr-bot
             npm install --no-save @octokit/auth-app
-            echo "NODE_PATH=/tmp/pr-bot/node_modules" >> $BASH_ENV
       - run:
           name: Wait for E2E jobs to finish (success or fail)
           command: |
@@ -427,10 +433,13 @@ jobs:
           command: |
             mkdir -p reports/ci-latest-failed
             node scripts/generate-failed-report.js --workflow-id "$CIRCLE_WORKFLOW_ID" --out reports/ci-latest-failed || true
+      - store_artifacts:
+          path: ./reports/ci-latest-failed
+          destination: ci-latest-failed
       - run:
           name: Comment report link on PR (if failures)
           command: |
-            node scripts/post-pr-report.js reports/ci-latest-failed || true
+            NODE_PATH=/tmp/pr-bot/node_modules node scripts/post-pr-report.js reports/ci-latest-failed || true
 
   tests-passed:
     machine:
@@ -474,7 +483,7 @@ jobs:
   predeploy:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: << pipeline.parameters.resource_class >>
+    resource_class: medium+
     working_directory: ~/remix-project
     steps:
       - checkout
@@ -499,7 +508,7 @@ jobs:
   deploy-build:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: xlarge
+    resource_class: medium+
     environment:
       COMMIT_AUTHOR_EMAIL: "yann@ethereum.org"
       COMMIT_AUTHOR: "Circle CI"
@@ -547,6 +556,7 @@ workflows:
               jobsize: ["1"]
               parallelism: [1]
               scriptparameter: ["<< pipeline.parameters.run_file_tests >>"]
+              skip_timings: [true]
       - post-failed-report:
           requires:
             - build
@@ -570,6 +580,7 @@ workflows:
               jobsize: ["1"]
               parallelism: [1]
               scriptparameter: ["\\.pr\\.js$"]
+              skip_timings: [true]
       - post-failed-report:
           requires:
             - build
@@ -593,6 +604,7 @@ workflows:
               jobsize: ["1"]
               parallelism: [5]
               scriptparameter: ["\\.flaky"]
+              skip_timings: [true]
       - post-failed-report:
           requires:
             - build
