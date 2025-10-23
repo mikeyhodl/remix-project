@@ -14,6 +14,7 @@ type EndpointUrls = {
     solidityScanWebSocket: string;
     gitHubLoginProxy: string;
   billing: string;
+    components: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -32,6 +33,7 @@ const defaultUrls: EndpointUrls = {
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   billing: 'https://billing.api.remix.live',
+  components: 'https://components.api.remix.live',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -50,6 +52,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   solidityScanWebSocket: '',
   gitHubLoginProxy: 'github-login-proxy',
   billing: 'billing',
+  components: 'components',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;

@@ -29,7 +29,7 @@ export const ProtectedEsmDemoLoader: React.FC<ProtectedEsmDemoLoaderProps> = ({ 
       const { token } = await tokenResp.json()
       if (!token) throw new Error('No token returned')
 
-      const url = `${endpointUrls.billing}/esm/demo?token=${encodeURIComponent(token)}`
+  const url = `${endpointUrls.components}/esm/demo?token=${encodeURIComponent(token)}`
       // Instruct bundler to leave this import as-is to resolve at runtime
       // @ts-ignore - webpackIgnore is not a TS thing, it's a bundler hint
       const mod = await import(/* webpackIgnore: true */ url)
