@@ -2,6 +2,7 @@ version: 2.1
 
 # Only the build job uses Nx Cloud; other jobs consume its dist via workspace
 parameters:
+  # Workflow triggers
   run_all_tests:
     type: boolean
     default: false
@@ -26,6 +27,13 @@ parameters:
   run_rerun_failed:
     type: boolean
     default: false
+
+  # E2E configuration
+  e2e_parallelism:
+    type: integer
+    default: 20
+
+  # Rerun-failed configuration
   rerun_failed_history:
     type: integer
     default: 5
@@ -36,13 +44,12 @@ parameters:
     type: enum
     enum: ["web"]
     default: "web"
-  e2e_parallelism:
-    type: integer
-    default: 20
+
+  # Resource sizing
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "medium"
+    default: "small"
 
 orbs:
   browser-tools: circleci/browser-tools@1.5.2
