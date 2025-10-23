@@ -155,13 +155,27 @@ async function getAuthHeader() {
   const instId = INSTALLATION_ID_ENV;
   const pk = APP_PRIVATE_KEY_ENV;
   if (appId && instId && pk) {
-    const auth = createAppAuth({
-      appId: String(appId),
-      privateKey: String(pk).includes('\\n') ? String(pk).replace(/\\n/g, '\n') : String(pk),
-      installationId: String(instId)
-    });
-    const { token } = await auth({ type: 'installation' });
-    return `token ${token}`;
+    // Handle both literal newlines and escaped \n in the private key
+    let privateKey = String(pk);
+    // If the key contains literal \n (two characters), replace with actual newlines
+    if (privateKey.includes('\\n') && !privateKey.includes('\n')) {
+      privateKey = privateKey.replace(/\\n/g, '\n');
+    }
+    // Ensure the key has proper PEM headers
+    if (!privateKey.includes('-----BEGIN')) {
+      throw new Error('Invalid private key format: missing PEM headers. Ensure CI_PR_BOT_PRIVATE_KEY contains the full PEM including headers.');
+    }
+    try {
+      const auth = createAppAuth({
+        appId: String(appId),
+        privateKey: privateKey,
+        installationId: String(instId)
+      });
+      const { token } = await auth({ type: 'installation' });
+      return `token ${token}`;
+    } catch (err) {
+      throw new Error(`Failed to authenticate as GitHub App (id=${appId}): ${err.message}. Check that CI_PR_BOT_PRIVATE_KEY is a valid PEM-encoded RSA private key.`);
+    }
   }
   if (!GH_TOKEN) throw new Error('GH_PR_COMMENT_TOKEN missing (or configure CI_PR_BOT_APP_ID / CI_PR_BOT_INSTALLATION_ID / CI_PR_BOT_PRIVATE_KEY)');
   return `token ${GH_TOKEN}`;
