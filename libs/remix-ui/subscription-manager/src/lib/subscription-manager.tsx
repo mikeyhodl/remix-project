@@ -7,6 +7,7 @@ import {
   NoSubscriptionView,
   PricingCard,
   SubscriptionDetailsCard
+  , ProtectedEsmDemoLoader
 } from './components'
 import { SubscriptionDetails } from './types'
 import { openCheckoutOverlay } from './utils/checkout'
@@ -304,6 +305,15 @@ export const SubscriptionManagerUI: React.FC<SubscriptionManagerProps> = ({
           subscription={subscription}
           statusColor={statusColor}
         />
+
+        {/* Protected ESM demo loader */}
+        <div className="mt-3">
+          <ProtectedEsmDemoLoader 
+            ghId={ghId} 
+            hasActiveSubscription={hasActiveSubscription}
+            demoMessage={ghId ? `Hello ${ghId} from the app` : 'Hello from the app'}
+          />
+        </div>
 
         <div className="d-flex gap-2">
           <button 
