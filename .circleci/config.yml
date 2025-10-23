@@ -540,6 +540,9 @@ workflows:
               jobsize: ["1"]
               parallelism: [1]
               scriptparameter: ["<< pipeline.parameters.run_file_tests >>"]
+      - post-failed-report:
+          requires:
+            - build
 
   run_pr_tests:
     when: << pipeline.parameters.run_pr_tests >>
@@ -560,6 +563,9 @@ workflows:
               jobsize: ["1"]
               parallelism: [1]
               scriptparameter: ["\\.pr\\.js$"]
+      - post-failed-report:
+          requires:
+            - build
 
   run_flaky_tests:
     when: << pipeline.parameters.run_flaky_tests >>
@@ -580,6 +586,9 @@ workflows:
               jobsize: ["1"]
               parallelism: [5]
               scriptparameter: ["\\.flaky"]
+      - post-failed-report:
+          requires:
+            - build
 
   web:
     when: << pipeline.parameters.run_all_tests >>
