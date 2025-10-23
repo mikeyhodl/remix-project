@@ -154,7 +154,15 @@ async function getAuthHeader() {
   const appId = APP_ID_ENV;
   const instId = INSTALLATION_ID_ENV;
   const pk = APP_PRIVATE_KEY_ENV;
+  
+  log('Auth method detection:');
+  log(`  - CI_PR_BOT_APP_ID: ${appId ? '✓ set' : '✗ missing'}`);
+  log(`  - CI_PR_BOT_INSTALLATION_ID: ${instId ? '✓ set' : '✗ missing'}`);
+  log(`  - CI_PR_BOT_PRIVATE_KEY: ${pk ? `✓ set (${pk.length} chars)` : '✗ missing'}`);
+  log(`  - GH_PR_COMMENT_TOKEN: ${GH_TOKEN ? '✓ set (fallback)' : '✗ missing'}`);
+  
   if (appId && instId && pk) {
+    log('→ Using GitHub App authentication');
     // Handle both literal newlines and escaped \n in the private key
     let privateKey = String(pk);
     // If the key contains literal \n (two characters), replace with actual newlines
@@ -172,11 +180,13 @@ async function getAuthHeader() {
         installationId: String(instId)
       });
       const { token } = await auth({ type: 'installation' });
+      log('✓ GitHub App token obtained');
       return `token ${token}`;
     } catch (err) {
       throw new Error(`Failed to authenticate as GitHub App (id=${appId}): ${err.message}. Check that CI_PR_BOT_PRIVATE_KEY is a valid PEM-encoded RSA private key.`);
     }
   }
+  log('→ Using personal access token (GH_PR_COMMENT_TOKEN)');
   if (!GH_TOKEN) throw new Error('GH_PR_COMMENT_TOKEN missing (or configure CI_PR_BOT_APP_ID / CI_PR_BOT_INSTALLATION_ID / CI_PR_BOT_PRIVATE_KEY)');
   return `token ${GH_TOKEN}`;
 }
