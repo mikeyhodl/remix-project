@@ -76,7 +76,6 @@ export class TemplateExplorerModalPlugin extends Plugin {
   }
 
   updateComponent(state: any) {
-    console.log('what is state', state)
     return (
       <TemplateExplorerProvider plugin={state} />
     )

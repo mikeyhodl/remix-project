@@ -44,6 +44,11 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   case TemplateExplorerWizardAction.SET_METADATA:
     return { ...state, metadata: action.payload }
   case TemplateExplorerWizardAction.SELECT_TEMPLATE:{
+    console.log('select template', action.payload)
+    return { ...state, workspaceTemplateChosen: action.payload }
+  }
+  case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE:{
+    console.log('set workspace template', action.payload)
     return { ...state, workspaceTemplateChosen: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP:{
@@ -52,8 +57,9 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   case TemplateExplorerWizardAction.SET_WORKSPACE_NAME:{
     return { ...state, workspaceName: action.payload }
   }
-  case TemplateExplorerWizardAction.SET_DEFAULT_WORKSPACE_NAME:
+  case TemplateExplorerWizardAction.SET_DEFAULT_WORKSPACE_NAME:{
     return { ...state, defaultWorkspaceName: action.payload }
+  }
   case TemplateExplorerWizardAction.SET_TOP_LEFT_NAVIGATION_NAME:
     return { ...state, topLeftNagivationName: action.payload }
   case TemplateExplorerWizardAction.SET_INITIALIZE_AS_GIT_REPO:
@@ -78,7 +84,6 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
     return { ...state, searchTerm: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WIZARD_STEP: {
-    console.log('action.payload wizardStep', action.payload)
     return { ...state, wizardStep: action.payload }
   }
   case ContractWizardAction.CONTRACT_TYPE_UPDATED: {
@@ -106,20 +111,10 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
     return { ...state, tokenName: action.payload }
   }
   case ContractWizardAction.CONTRACT_NAME_UPDATE: {
-    console.log('action.payload contractName', action.payload)
     return { ...state, contractName: action.payload }
   }
   default: {
     return { ...state, contractCode: getErc20ContractCode('erc20', state) }
   }
   }
-}
-
-function doTemplateSearch (searchTerm: string, repo: TemplateRepository) {
-  if (!searchTerm) return repo
-  return repo.filter(template => template.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map(template => ({
-      ...template,
-      items: template.items.filter(item => item.displayName.toLowerCase().includes(searchTerm.toLowerCase()))
-    }))
 }

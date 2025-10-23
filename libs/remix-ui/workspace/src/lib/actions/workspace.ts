@@ -143,17 +143,19 @@ export const createWorkspace = async (
   contractContent?: string,
   contractName?: string,
 ) => {
-  console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit })
+  console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName })
+  // await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+  // await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts, contractContent, contractName)
   // return
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
-      await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts)
+      await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts, contractContent, contractName)
     }
     return
   }
   await plugin.fileManager.closeAllFiles()
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
-  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata)
+  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
   dispatch(createWorkspaceRequest())
   promise.then(async () => {
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
@@ -173,7 +175,7 @@ export const createWorkspace = async (
           plugin.call('notification', 'toast', 'Creating initial git commit ...')
 
           await dgitPlugin.call('dgit', 'init')
-          if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts)
+          if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
           const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
 
           Promise.all(
@@ -199,7 +201,7 @@ export const createWorkspace = async (
       }
     }
 
-    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit)
+    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)
     // this call needs to be here after the callback because it calls dGitProvider which also calls this function and that would cause an infinite loop
     await plugin.setWorkspaces(await getWorkspaces())
   }).catch((error) => {
@@ -219,7 +221,9 @@ export const populateWorkspace = async (
   isEmpty = false,
   cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
   isGitRepo: boolean = false,
-  createCommit: boolean = false
+  createCommit: boolean = false,
+  contractContent?: string,
+  contractName?: string
 ) => {
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
   if (metadata && metadata.type === 'plugin') {
@@ -233,7 +237,9 @@ export const populateWorkspace = async (
         plugin.call('notification', 'toast', 'error adding template ' + (e.message || e))
       })
     }, 5000)
-  } else if (!isEmpty && !(isGitRepo && createCommit)) await loadWorkspacePreset(workspaceTemplateName, opts)
+  } else if (!isEmpty && !(isGitRepo && createCommit)) {
+    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+  }
   cb && cb(null)
   if (isGitRepo) {
     await checkGit()
@@ -252,8 +258,7 @@ export const populateWorkspace = async (
   }
 }
 
-export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType) => {
-  console.log('createWorkspaceTemplate', workspaceName, template, metadata)
+export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string) => {
   if (!workspaceName) throw new Error('workspace name cannot be empty')
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('workspace already exists')
@@ -450,7 +455,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       let files = {}
       if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
         files = await templateWithContent[template](opts, contractContent, contractName)
-        console.log(`Testing the OpenZeppelin Templates ${template}`, files)
+        console.log(`The OpenZeppelin Template used is ${template}`, files)
       }
       else {
         files = await templateWithContent[template](opts, plugin)

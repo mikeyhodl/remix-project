@@ -1,9 +1,13 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 
 export function TopCards() {
-  const { state, dispatch } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
+
+  useEffect(() => {
+    console.log('state changed', state)
+  }, [state.workspaceTemplateChosen, state.workspaceTemplateGroupChosen, state.workspaceName])
 
   return (
     <div className="title">
@@ -65,7 +69,7 @@ export function TopCards() {
         <div
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
-            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'wizard' })
+            facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'zeppelin', items: []}, templateCategoryStrategy)
           }}
           style={{
             borderRadius: '10px',

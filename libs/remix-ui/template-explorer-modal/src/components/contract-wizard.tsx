@@ -44,7 +44,6 @@ export function ContractWizard () {
   }
 
   function switchAccessControl(accessControl: AccessControlType) {
-    console.log('switchAccessControl', accessControl)
     dispatch({ type: ContractWizardAction.CONTRACT_ACCESS_CONTROL_UPDATE, payload: accessControl })
   }
   function updateTokenName(tokenName: string) {
@@ -65,6 +64,16 @@ export function ContractWizard () {
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
 
+  useEffect(() => {
+    console.log('state changed', state)
+  }, [state])
+
+  const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
+    dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: value === 'erc20' ? { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' } : value === 'erc721' ? { value: 'ozerc721', displayName: 'ERC721', tagList: ["ERC721", "Solidity"], description: 'A customizable non-fungible token (NFT) contract' } : { value: 'ozerc1155', displayName: 'ERC1155', tagList: ["ERC1155", "Solidity"], description: 'A customizable multi token contract' } })
+  }
+
   return (
     <section className="container-fluid">
       <div className="row g-3">
@@ -73,14 +82,14 @@ export function ContractWizard () {
             {showEditModal ? <input className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span className={`fw-semibold fs-6 ${theme.currentTheme().name === 'Light' ? 'text-dark' : 'text-white'}`}>
               {state.tokenName}
             </span>}
-            <i className="fas fa-edit" onClick={() => setShowEditModal(true)}></i>
+            <i className={`${showEditModal ? 'fas fa-lock' : "fas fa-edit"}`} onClick={() => setShowEditModal(!showEditModal)}></i>
           </div>
           <div className="d-flex align-items-center gap-2">
             <select className="form-select form-select-sm w-auto" defaultValue="Solidity">
               <option>Solidity</option>
             </select>
             <select className="form-select form-select-sm w-auto" defaultValue="ERC20" onChange={(e) => {
-              dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: e.target.value as 'erc20' | 'erc721' | 'erc1155' })
+              switching(e.target.value as 'erc20' | 'erc721' | 'erc1155')
             }}>
               <option value="erc20">ERC20</option>
               <option value="erc721">ERC721</option>
@@ -164,7 +173,7 @@ export function ContractWizard () {
             </div>
 
             <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-              console.log('about to confirm workspace creation')
+              console.log('about to confirm workspace creation', strategy)
               dispatch({ type: TemplateExplorerWizardAction.END_WORKSPACE_WIZARD })
             }}>Validate workspace</button>
           </div>

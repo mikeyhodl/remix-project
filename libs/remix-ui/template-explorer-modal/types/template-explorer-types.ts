@@ -177,7 +177,7 @@ export interface ContractTypeStrategy {
 }
 
 export type AccessControlType = 'ownable' | 'roles' | 'managed' | ''
-export type ContractType = 'erc20' | 'erc721' | 'erc1155' | 'custom'
+export type ContractType = 'erc20' | 'erc721' | 'erc1155'
 
 export interface ContractOptions {mintable: boolean, burnable: boolean, pausable: boolean}
 export interface ContractUpgradability {uups: boolean, transparent: boolean}
@@ -204,4 +204,11 @@ export interface CreateWorkspaceDeps {
   createCommit?: boolean,
   contractContent?: string,
   contractName?: string
+}
+
+type TemplateItemState = {
+  value: string,
+  displayName: string,
+  tagList: string[],
+  description: string
 }

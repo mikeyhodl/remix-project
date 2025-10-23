@@ -60,7 +60,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
             isGitRepo: state.initializeAsGitRepo,
             createCommit: true
           })
-        }}>Create workspace</button>
+        }}>Validate Workspace</button>
       </div>
     </section>
   )

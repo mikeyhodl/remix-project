@@ -44,7 +44,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 </button>
               </div>
             </div>}
-            <button className="template-explorer-modal-close-button" onClick={() => props.dispatch({ type: appActionTypes.showGenericModal, payload: false })}>
+            <button className="template-explorer-modal-close-button" onClick={() => props.dispatch({ type: appActionTypes.closeGenericModal, payload: false })}>
               <i className="fa-solid fa-xmark text-dark"></i>
             </button>
           </div>

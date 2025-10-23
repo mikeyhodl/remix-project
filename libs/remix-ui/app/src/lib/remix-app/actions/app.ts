@@ -20,6 +20,7 @@ export const enum appActionTypes {
   setShowPopupPanel = 'SET_SHOW_POPUP_PANEL',
   setConnectedToDesktop = 'SET_CONNECTED_TO_DESKTOP',
   showGenericModal = 'SHOW_GENERIC_MODAL',
+  closeGenericModal = 'CLOSE_GENERIC_MODAL',
 }
 
 type AppPayload = {
@@ -29,7 +30,8 @@ type AppPayload = {
   [appActionTypes.setCanUseGit]: boolean,
   [appActionTypes.setShowPopupPanel]: boolean,
   [appActionTypes.setConnectedToDesktop]: desktopConnection,
-  [appActionTypes.showGenericModal]: boolean
+  [appActionTypes.showGenericModal]: boolean,
+  [appActionTypes.closeGenericModal]: boolean
 }
 
 export type AppAction = ActionMap<AppPayload>[keyof ActionMap<

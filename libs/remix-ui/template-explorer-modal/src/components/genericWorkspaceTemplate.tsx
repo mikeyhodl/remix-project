@@ -51,7 +51,7 @@ export function GenericWorkspaceTemplate() {
           }}>Create workspace</button>
         </div>
         <div className="mt-3 overflow-y-auto" style={{ maxHeight: '90%' }}>
-          { readMe && readMe?.type === 'md' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{readMe?.readMe}</ReactMarkdown> : <p>{readMe?.readMe}</p> }
+          { readMe && readMe?.type === 'md' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{readMe?.readMe}</ReactMarkdown> : <p className="text-dark">{readMe?.readMe}</p> }
         </div>
       </div>
     </section>

@@ -1,10 +1,7 @@
 import { erc1155 } from '@openzeppelin/wizard';
 
 export default async (opts: any, contractContent?: string, contractName: string = 'MyToken') => {
-  console.trace()
-  console.log('contractName called is this?', contractName)
-  console.log('opts called is this?', opts)
-  // return
+
   if (opts) {
     erc1155.defaults.mintable = opts.mintable
     erc1155.defaults.burnable = opts.burnable
@@ -31,9 +28,9 @@ export default async (opts: any, contractContent?: string, contractName: string 
   // @ts-ignore
   if (!opts || opts.upgradeable === undefined || !opts.upgradeable) {
     // @ts-ignore
-    if (erc1155.defaults.mintable) filesObj[`tests/${contractName}_test.sol`] = (await import(`raw-loader!./tests/${contractName}_mintable_test.sol`)).default
+    if (erc1155.defaults.mintable) filesObj[`tests/${contractName}_test.sol`] = (await import(`raw-loader!./tests/MyToken_mintable_test.sol`)).default
     // @ts-ignore
-    else filesObj[`tests/${contractName}_test.sol`] = (await import(`raw-loader!./tests/${contractName}_test.sol`)).default
+    else filesObj[`tests/${contractName}_test.sol`] = (await import(`raw-loader!./tests/MyToken_test.sol`)).default
   }
 
   return filesObj

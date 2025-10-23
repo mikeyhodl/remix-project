@@ -1,25 +1,40 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { GenAiStrategy, WizardStrategy, GenericStrategy, RemixDefaultStrategy, TemplateCategoryStrategy, CookbookStrategy } from '../../stategies/templateCategoryStrategy'
-import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState } from '../../types/template-explorer-types'
+import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractTypeStrategy } from '../../types/template-explorer-types'
 import { createWorkspace } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
+import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
+import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 
 export class TemplateExplorerModalFacade {
   plugin: any
+  appContext: appProviderContextType
 
-  constructor(plugin: any) {
+  constructor(plugin: any, appContext: appProviderContextType) {
     this.plugin = plugin
+    this.appContext = appContext
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
-    const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit } = deps
-    await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit)
+    const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
+    console.log('createWorkspace', deps)
+
+    await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)
   }
 
+  closeWizard() {
+    this.appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: false
+    })
+  }
+
   switchWizardScreen(dispatch: (action: any) => void, item: TemplateItem, template: TemplateCategory, templateCategoryStrategy: TemplateCategoryStrategy) {
-    dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: item })
+
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: item })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
-    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.value })
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.displayName })
+
     if (template.name.toLowerCase() === 'generic' && !item.value.toLowerCase().includes('remixaitemplate') && item.value !== 'remixDefault') {
       templateCategoryStrategy.setStrategy(new GenericStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
