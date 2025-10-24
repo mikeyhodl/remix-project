@@ -742,4 +742,5 @@ workflows:
           workflow_name: << pipeline.parameters.rerun_failed_workflow >>
       - post-failed-report:
           requires:
-            - build
+            - rerun-failed-e2e
+          when: always

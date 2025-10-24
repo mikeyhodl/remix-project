@@ -32,11 +32,23 @@ const terminal = new Set(['success', 'failed', 'failing', 'error', 'canceled', '
 
 (async () => {
   const started = Date.now();
+  let noJobsCount = 0;
   while (true) {
     const { items } = await api(`/workflow/${WORKFLOW_ID}/job`);
     const e2e = (items || []).filter(j => (j.name || '').startsWith(PREFIX));
     if (!e2e.length) {
+      noJobsCount++;
       console.log('[wait-for-e2e] No E2E jobs found yet; sleeping...');
+      // If we've been waiting too long for jobs to appear, list all jobs for debugging
+      if (noJobsCount === 5) {
+        console.log('[wait-for-e2e] DEBUG: All jobs in workflow:');
+        (items || []).forEach(j => console.log(`  - ${j.name} (${j.status})`));
+      }
+      // After 30 attempts with no jobs, give up and proceed
+      if (noJobsCount > 30) {
+        console.log('[wait-for-e2e] No E2E jobs found after 30 checks; proceeding anyway');
+        break;
+      }
     } else {
       const done = e2e.filter(j => terminal.has(String(j.status || '').toLowerCase()));
       const pending = e2e.length - done.length;
