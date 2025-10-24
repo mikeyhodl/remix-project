@@ -23,7 +23,7 @@ const profile = {
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
   kind: '',
-  location: 'popupPanel',
+  location: 'none',
   documentation: 'https://remix-ide.readthedocs.io/en/latest/ai.html',
   version: packageJson.version,
   maintainedBy: 'Remix'
@@ -191,10 +191,13 @@ export class RemixAIPlugin extends Plugin {
    * - If `useRag` is `true`, the function fetches additional context from a RAG API and prepends it to the user prompt.
    */
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
+    console.trace()
+    console.log('generate workspace with ai prompt: ', prompt)
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
     useRag = false
+
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
 

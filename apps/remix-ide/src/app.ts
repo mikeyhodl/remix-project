@@ -464,7 +464,6 @@ class AppComponent {
       scriptRunnerUI,
       remixAI,
       remixAiAssistant,
-      // templateExplorerModal,
       walletConnect
     ])
 

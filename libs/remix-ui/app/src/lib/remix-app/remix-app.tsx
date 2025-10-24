@@ -17,6 +17,7 @@ import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
 import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
+import { AiWorkspaceGeneration } from './components/modals/aiworkspace-generation'
 
 interface IRemixAppUi {
   app: any
@@ -58,6 +59,7 @@ const RemixApp = (props: IRemixAppUi) => {
       showModal: false
     }
   })
+  const [isAiWorkspaceBeingGenerated, setIsAiWorkspaceBeingGenerated] = useState<boolean>(false)
 
   useEffect(() => {
     if (props.app.params && props.app.params.activate && props.app.params.activate.split(',').includes('desktopClient')){
@@ -161,7 +163,9 @@ const RemixApp = (props: IRemixAppUi) => {
     showEnter: props.app.showEnter,
     modal: props.app.notification,
     appState: appState,
-    appStateDispatch: appStateDispatch
+    appStateDispatch: appStateDispatch,
+    isAiWorkspaceBeingGenerated: isAiWorkspaceBeingGenerated,
+    setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated
   }
 
   return (
@@ -170,6 +174,7 @@ const RemixApp = (props: IRemixAppUi) => {
       <platformContext.Provider value={props.app.platform}>
         <onLineContext.Provider value={online}>
           <AppProvider value={value}>
+            {isAiWorkspaceBeingGenerated && <AiWorkspaceGeneration></AiWorkspaceGeneration>}
             <OriginWarning></OriginWarning>
             <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
             {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}

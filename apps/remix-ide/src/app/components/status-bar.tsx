@@ -82,14 +82,7 @@ export class StatusBar extends Plugin<any, CustomRemixApi> implements StatusBarI
       this.isAiActive = isAiActive
     })
 
-    this.checkTemplateExplorerModal()
     this.renderComponent()
-  }
-
-  async checkTemplateExplorerModal() {
-    const check = await this.call('manager', 'isActive', 'templateexplorermodal')
-    if (!check) await this.call('manager', 'activatePlugin', 'templateexplorermodal')
-    console.log('check complete and template explorer modal is active')
   }
 
   setDispatch(dispatch: React.Dispatch<any>) {
