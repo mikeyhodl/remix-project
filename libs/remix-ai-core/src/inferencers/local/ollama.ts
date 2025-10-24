@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Registry } from '@remix-project/remix-lib';
+const _paq = (window._paq = window._paq || [])
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
