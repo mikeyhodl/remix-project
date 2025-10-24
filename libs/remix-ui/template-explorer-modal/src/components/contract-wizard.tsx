@@ -1,14 +1,9 @@
-import React,{ useContext, useEffect, useMemo, useReducer, useState } from 'react'
+import React,{ useContext, useEffect, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import * as erc20 from '../contractCode/erc20'
-import * as erc721 from '../contractCode/erc721'
-import * as erc1155 from '../contractCode/erc1155'
 import { AccessControlType, ContractTypeStrategy, ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from '../utils/contractWizardUtils'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { CustomTooltip } from '@remix-ui/helper'
-import { OverlayTrigger, Tooltip } from 'react-bootstrap'
-import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -63,10 +58,6 @@ export function ContractWizard () {
       dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc1155ContractCode(strategy.contractType, strategy) })
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
-
-  useEffect(() => {
-    console.log('state changed', state)
-  }, [state])
 
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
@@ -173,7 +164,6 @@ export function ContractWizard () {
             </div>
 
             <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-              console.log('about to confirm workspace creation', strategy)
               dispatch({ type: TemplateExplorerWizardAction.END_WORKSPACE_WIZARD })
             }}>Validate workspace</button>
           </div>

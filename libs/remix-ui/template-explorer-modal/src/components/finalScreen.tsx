@@ -1,8 +1,7 @@
 import React, { useContext, useState } from 'react'
 import { MiniFileExplorer } from './miniFileExplorer'
 import { Editor } from '@monaco-editor/react'
-import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { storageContractCode, ownerContractCode, ballotContractCode } from '../contractCode/remixDefault'
+import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 
 interface FinalScreenProps {
@@ -21,7 +20,6 @@ export function FinalScreen(props: FinalScreenProps) {
       </div>
 
       <button className="btn btn-primary btn-sm mx-3" data-id="validateWorkspaceButton" onClick={async () => {
-        console.log('about to create workspace', state)
         await facade.createWorkspace({
           workspaceName: state.workspaceName,
           workspaceTemplateName: state.workspaceTemplateChosen.value,

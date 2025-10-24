@@ -16,7 +16,6 @@ export class TemplateExplorerModalFacade {
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
-    console.log('createWorkspace', deps)
 
     await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)
@@ -42,7 +41,6 @@ export class TemplateExplorerModalFacade {
       templateCategoryStrategy.setStrategy(new GenAiStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
     } else if (template.name.toLowerCase() === 'generic' && item.value === 'remixDefault') {
-      console.log('remixdefault')
       templateCategoryStrategy.setStrategy(new RemixDefaultStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
     } else if (template.name.toLowerCase().includes('zeppelin')) {

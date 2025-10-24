@@ -13,7 +13,6 @@ export function GenericWorkspaceTemplate() {
   useEffect(() => {
     const run = async () => {
       const readMe = await facade.getTemplateReadMeFile(state.workspaceTemplateChosen.value)
-      console.log('readMe', readMe)
       setReadMe(readMe)
     }
     run()
@@ -39,7 +38,6 @@ export function GenericWorkspaceTemplate() {
           </div>
 
           <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-            console.log('about to create workspace generic')
             await facade.createWorkspace({
               workspaceName: state.workspaceTemplateChosen.displayName,
               workspaceTemplateName: state.workspaceTemplateChosen.value,

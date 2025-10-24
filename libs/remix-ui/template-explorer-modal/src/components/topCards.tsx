@@ -3,11 +3,7 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 
 export function TopCards() {
-  const { state, dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
-
-  useEffect(() => {
-    console.log('state changed', state)
-  }, [state.workspaceTemplateChosen, state.workspaceTemplateGroupChosen, state.workspaceName])
+  const { dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
 
   return (
     <div className="title">

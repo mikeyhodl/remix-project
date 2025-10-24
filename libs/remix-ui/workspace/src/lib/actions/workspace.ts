@@ -143,10 +143,6 @@ export const createWorkspace = async (
   contractContent?: string,
   contractName?: string,
 ) => {
-  console.log('createWorkspace', { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName })
-  // await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-  // await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts, contractContent, contractName)
-  // return
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
       await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts, contractContent, contractName)
@@ -453,7 +449,6 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       let files = {}
       if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
         files = await templateWithContent[template](opts, contractContent, contractName)
-        console.log(`The OpenZeppelin Template used is ${template}`, files)
       }
       else {
         files = await templateWithContent[template](opts, plugin)

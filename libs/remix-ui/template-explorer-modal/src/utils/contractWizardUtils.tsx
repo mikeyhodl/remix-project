@@ -272,7 +272,6 @@ export function getErc721ContractCode (contractType: 'erc721', state: ContractTy
 export function getErc1155ContractCode (contractType: 'erc1155', state: ContractTypeStrategy) {
 
   if (state.contractType === contractType) {
-    console.log('state.contractType and contracType are the same')
     if (state.contractOptions.mintable && state.contractOptions.burnable && state.contractOptions.pausable) {
       if (state.contractAccessControl === 'ownable') {
         if (state.contractUpgradability.uups) {
