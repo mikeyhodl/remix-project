@@ -487,15 +487,8 @@ jobs:
           name: Generate HTML failed report for this workflow
           command: |
             mkdir -p reports/ci-latest-failed
-            # Determine which jobs to check for failures based on workflow
-            # In rerun workflow, check rerun-failed-e2e; in others, check remix-ide-browser
-            if [ "${CIRCLE_WORKFLOW_ID}" != "${CIRCLE_WORKFLOW_ID#*rerun}" ]; then
-              JOBS_TO_CHECK="rerun-failed-e2e"
-            else
-              JOBS_TO_CHECK="remix-ide-browser"
-            fi
-            echo "Checking jobs: $JOBS_TO_CHECK"
-            node scripts/generate-failed-report.js --workflow-id "$CIRCLE_WORKFLOW_ID" --jobs "$JOBS_TO_CHECK" --out reports/ci-latest-failed || true
+            # Just check all E2E job types - let the script filter what exists
+            node scripts/generate-failed-report.js --workflow-id "$CIRCLE_WORKFLOW_ID" --jobs "remix-ide-browser,rerun-failed-e2e" --out reports/ci-latest-failed || true
       - store_artifacts:
           path: ./reports/ci-latest-failed
           destination: ci-latest-failed
