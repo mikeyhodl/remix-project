@@ -39,6 +39,8 @@ export const initialState: TemplateExplorerWizardState = {
 
 export const templateExplorerReducer = (state: TemplateExplorerWizardState, action: any) => {
   switch (action.type) {
+  case TemplateExplorerWizardAction.RESET_STATE:
+    return initialState
   case TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY:
     return { ...state, templateRepository: action.payload }
   case TemplateExplorerWizardAction.SET_METADATA:

@@ -9,10 +9,12 @@ import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/cont
 export class TemplateExplorerModalFacade {
   plugin: any
   appContext: appProviderContextType
+  dispatch: (action: any) => void
 
-  constructor(plugin: any, appContext: appProviderContextType) {
+  constructor(plugin: any, appContext: appProviderContextType, dispatch: (action: any) => void) {
     this.plugin = plugin
     this.appContext = appContext
+    this.dispatch = dispatch
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
@@ -26,6 +28,7 @@ export class TemplateExplorerModalFacade {
       type: appActionTypes.showGenericModal,
       payload: false
     })
+    this.dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
   }
 
   switchWizardScreen(dispatch: (action: any) => void, item: TemplateItem, template: TemplateCategory, templateCategoryStrategy: TemplateCategoryStrategy) {

@@ -15,7 +15,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const appContext = useContext(AppContext)
   const { plugin } = props
-  const facade = new TemplateExplorerModalFacade(plugin, appContext)
+  const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
 
   useEffect(() => {

@@ -16,7 +16,11 @@ export function GenericWorkspaceTemplate() {
       setReadMe(readMe)
     }
     run()
-  }, [])
+  }, [state.workspaceTemplateChosen.value])
+
+  useEffect(() => {
+    console.log('state  changed', state)
+  }, [state.workspaceTemplateChosen.value])
 
   return (
     <section className="mx-3 p-2">
@@ -46,6 +50,7 @@ export function GenericWorkspaceTemplate() {
               isGitRepo: state.initializeAsGitRepo,
               createCommit: true
             })
+            facade.closeWizard()
           }}>Create workspace</button>
         </div>
         <div className="mt-3 overflow-y-auto" style={{ maxHeight: '90%' }}>

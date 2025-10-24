@@ -13,9 +13,6 @@ export function TemplateExplorerBody({ plugin }: TemplateExplorerBodyProps) {
 
   const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
 
-  useEffect(() => {
-    console.log('state template explorer body', state)
-  }, [state])
   return (
     <section className="mx-4">
       <TopCards />
