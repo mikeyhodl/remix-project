@@ -41,17 +41,19 @@ export function GenericWorkspaceTemplate() {
             </>
           </div>
 
-          <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
+          <button className="btn btn-primary btn-sm mx-3" data-id="validateWorkspaceButton" onClick={async () => {
             await facade.createWorkspace({
-              workspaceName: state.workspaceTemplateChosen.displayName,
+              workspaceName: state.workspaceName,
               workspaceTemplateName: state.workspaceTemplateChosen.value,
-              opts: { },
+              opts: state.contractOptions,
               isEmpty: false,
               isGitRepo: state.initializeAsGitRepo,
-              createCommit: true
+              createCommit: true,
+              contractContent: state.contractCode,
+              contractName: state.tokenName
             })
             facade.closeWizard()
-          }}>Create workspace</button>
+          }}>Finish</button>
         </div>
         <div className="mt-3 overflow-y-auto" style={{ maxHeight: '90%' }}>
           { readMe && readMe?.type === 'md' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{readMe?.readMe}</ReactMarkdown> : <p className="text-dark">{readMe?.readMe}</p> }
