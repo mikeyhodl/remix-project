@@ -477,6 +477,14 @@ jobs:
             if [ -z "${CIRCLECI_TOKEN:-}" ]; then
               echo "CIRCLECI_TOKEN not set; cannot poll CircleCI API. Skipping wait.";
             else
+              # Set E2E job prefix based on workflow context
+              if [ "${CIRCLE_WORKFLOW_ID}" != "${CIRCLE_WORKFLOW_ID#*rerun}" ]; then
+                export E2E_JOB_PREFIX="rerun-failed-e2e"
+                echo "Detected rerun workflow; waiting for rerun-failed-e2e jobs"
+              else
+                export E2E_JOB_PREFIX="remix-ide-browser"
+                echo "Detected regular workflow; waiting for remix-ide-browser jobs"
+              fi
               node scripts/wait-for-e2e-jobs.js;
             fi
       - run:
