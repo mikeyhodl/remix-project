@@ -83,13 +83,6 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     })
   }
 
-  async function openGenericModal(event): Promise<void> {
-    appContext.appStateDispatch({
-      type: appActionTypes.showGenericModal,
-      payload: true
-    })
-  }
-
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {
   //   return (<></>)
   // }
@@ -102,7 +95,6 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
             <div className="d-flex w-100 m-3 justify-content-end">
               <button className="btn btn-secondary btn-md me-3" onClick={startLearnEth}><i className="fa-solid fa-book me-1"></i><FormattedMessage id="home.startLearning" /></button>
               <button data-id="landingPageImportFromTemplate" className="btn btn-primary btn-md me-2" onClick={openTemplateSelection}><i className="fa-solid fa-plus me-1"></i><FormattedMessage id="home.createNewWorkspace" /></button>
-              <button className="btn btn-secondary btn-md me-3" onClick={openGenericModal}><i className="fa-solid fa-gear me-1"></i>Click to open generic modal</button>
             </div>
             <div className="col-lg-8 col-xl-5 col-sm-12 mb-4">
               <HomeTabTitle />
