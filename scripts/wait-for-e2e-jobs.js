@@ -16,6 +16,7 @@ Optional:
 const TOKEN = process.env.CIRCLECI_TOKEN || '';
 const WORKFLOW_ID = process.env.CIRCLE_WORKFLOW_ID || '';
 const PREFIX = process.env.E2E_JOB_PREFIX || 'remix-ide-browser';
+const PREFIXES = PREFIX.split(',').map(p => p.trim());
 const TIMEOUT = Number(process.env.WAIT_TIMEOUT_SEC || 3600);
 const POLL = Number(process.env.WAIT_POLL_SEC || 10);
 
@@ -33,9 +34,10 @@ const terminal = new Set(['success', 'failed', 'failing', 'error', 'canceled', '
 (async () => {
   const started = Date.now();
   let noJobsCount = 0;
+  console.log(`[wait-for-e2e] Looking for jobs matching prefixes: ${PREFIXES.join(', ')}`);
   while (true) {
     const { items } = await api(`/workflow/${WORKFLOW_ID}/job`);
-    const e2e = (items || []).filter(j => (j.name || '').startsWith(PREFIX));
+    const e2e = (items || []).filter(j => PREFIXES.some(prefix => (j.name || '').startsWith(prefix)));
     if (!e2e.length) {
       noJobsCount++;
       console.log('[wait-for-e2e] No E2E jobs found yet; sleeping...');
