@@ -4,7 +4,7 @@ set -e
 
 
 
-BUILD_ID=${CIRCLE_BUILD_NUM:-${TRAVIS_JOB_NUMBER}}
+BUILD_ID=${CIRCLE_BUILD_NUM:-local}
 echo "$BUILD_ID"
 TEST_EXITCODE=0
 npx ganache > /dev/null 2>&1 &
