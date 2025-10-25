@@ -182,7 +182,7 @@ export const SolidityCompiler = (props: SolidityCompilerProps) => {
 
     // Runtime configuration for E2E tests (injected via post-build script)
     // Falls back to default URLs for production builds
-    const runtimeConfig = typeof window !== 'undefined' && (window as any)['__REMIX_COMPILER_URLS__']
+    const runtimeConfig = typeof window !== 'undefined' ? (window as any)['__REMIX_COMPILER_URLS__'] : undefined
 
     selectorList.forEach((compiler, index) => {
       const wasmIndex = wasmVersions.findIndex((wasmCompiler) => {
