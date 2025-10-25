@@ -138,9 +138,9 @@ class FSPluginClient extends ElectronBasePluginClient {
     this.setupErrorHandlers()
 
     this.onload(() => {
-      if (!isPackaged) {
-        this.window.webContents.openDevTools()
-      }
+      // if (!isPackaged) {
+      //   this.window.webContents.openDevTools()
+      // }
       this.window.on('close', async () => {
         await this.removeFromOpenedFolders(this.workingDir)
         await this.closeWatch()

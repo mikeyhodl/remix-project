@@ -49,18 +49,28 @@ export const createWindow = async (dir?: string): Promise<void> => {
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: (isE2E ? 2560 : width),
-    height: (isE2E ? 1140 : height),
+    width: 1024,
+    height: 652,
     frame: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      // Hint an initial zoom; Electron applies this at creation time
+      zoomFactor: (isE2E ? 0.5 : 1.0),
     },
   });
   
-  // For E2E tests on low-resolution CI machines, zoom out to fit more content
+  // Ensure zoom is applied after content loads (some pages reset it on load)
   if (isE2E) {
-    mainWindow.webContents.setZoomFactor(0.5); // 50% zoom for E2E
+    const applyZoom = () => {
+      try { mainWindow.webContents.setZoomFactor(0.5); } catch (_) {}
+    };
+    // Apply once the first load finishes
+    mainWindow.webContents.once('did-finish-load', applyZoom);
+    // Re-apply on any navigation within the window (SPA route changes, reloads)
+    mainWindow.webContents.on('did-navigate-in-page', applyZoom);
+    mainWindow.webContents.on('did-navigate', applyZoom);
   }
+  
   
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url); // Open URL in user's browser.
