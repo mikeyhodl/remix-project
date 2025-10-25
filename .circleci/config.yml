@@ -128,7 +128,7 @@ jobs:
             - node_modules
       - nx-build-with-fallback:
           target: "remix-ide"
-          fallback_command: "yarn build"
+          fallback_command: "yarn build --skip-nx-cache"
       - run:
           name: Inject E2E test configuration
           command: yarn inject-e2e-config
@@ -301,6 +301,12 @@ jobs:
                   if [ -n "${CIRCLECI_TOKEN:-}" ]; then
                     echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
                     yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
+                    
+                    # If no timings found for this branch (new branch), fall back to master
+                    if [ ! -s timings-current.json ] || [ "$(jq -r '.files | length' timings-current.json 2>/dev/null || echo 0)" -eq 0 ]; then
+                      echo "⚠️  No timings found for branch ${CIRCLE_BRANCH:-current}, falling back to master..."
+                      yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch master --limit 30 --json timings-current.json || true
+                    fi
                   else
                     echo "CIRCLECI_TOKEN not set; skipping timings fetch. Self-split will fall back to median weights."
                   fi
@@ -347,6 +353,12 @@ jobs:
             if [ -n "${CIRCLECI_TOKEN:-}" ]; then
               echo "Fetching timings for branch ${CIRCLE_BRANCH:-all}..."
               yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch "${CIRCLE_BRANCH:-}" --limit 30 --json timings-current.json || true
+              
+              # If no timings found for this branch (new branch), fall back to master
+              if [ ! -s timings-current.json ] || [ "$(jq -r '.files | length' timings-current.json 2>/dev/null || echo 0)" -eq 0 ]; then
+                echo "⚠️  No timings found for branch ${CIRCLE_BRANCH:-current}, falling back to master..."
+                yarn ci:timings --slug gh/remix-project-org/remix-project --workflow web --branch master --limit 30 --json timings-current.json || true
+              fi
             else
               echo "CIRCLECI_TOKEN not set; planning will use median default weights."
             fi
