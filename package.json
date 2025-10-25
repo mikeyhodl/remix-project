@@ -90,7 +90,8 @@
     "ci:timings": "node scripts/circleci-timings.js",
     "ci:plan-shard": "node scripts/plan-shards.js",
   "ci:failed-report": "node scripts/generate-failed-report.js --workflow web --out reports/ci-latest-failed",
-    "ci:post-pr-report": "node scripts/post-pr-report.js reports/ci-latest-failed"
+    "ci:post-pr-report": "node scripts/post-pr-report.js reports/ci-latest-failed",
+    "update:e2e-keywords": "node scripts/update-e2e-keywords.js"
   },
   "dependencies": {
     "@octokit/auth-app": "^7.1.3",

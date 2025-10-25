@@ -14,7 +14,7 @@ parameters:
     default: ""
   run_file_tests_keyword:
     type: enum
-    enum: ["", "blockchain", "bottom-bar", "circom", "code_format", "compile_run_widget", "compiler_api", "contract_flattener", "contract_verification", "debugger", "defaultLayout", "deploy_vefiry", "dgit_github", "dgit_local", "editor", "editorHoverContext", "editorReferences", "editor_error_marker", "editor_line_text", "eip1153", "eip7702", "environment-account", "erc721", "etherscan_api", "expandAllFolders", "fileExplorer", "fileManager_api", "file_decorator", "file_explorer_context_menu", "file_explorer_dragdrop", "file_explorer_multiselect", "generalSettings", "gist", "homeTab", "importFromGithub", "layout", "learneth", "libraryDeployment", "matomo-bot-detection", "matomo-consent", "metamask", "migrateFileSystem", "noir", "pinned_contracts", "pinned_plugin", "pluginManager", "plugin_api", "providers", "proxy_oz_v4", "proxy_oz_v5", "proxy_oz_v5_non_shanghai_runtime", "publishContract", "quickDapp_metamask", "recorder", "remixd", "runAndDeploy", "sauce", "script-runner", "search", "signingMessage", "sol2uml", "solidityImport", "solidityUnittests", "specialFunctions", "staticAnalysis", "stressEditor", "templates", "terminal", "transactionExecution", "txListener", "uniswap_v4_core", "url", "usingWebWorker", "verticalIconsPanel", "vm_state", "vyper_api", "walkthrough", "workspace", "workspace_git"]
+    enum: ["", "ai_panel", "ballot", "ballot_0_4_14", "blockchain", "bottom-bar", "circom", "code_format", "compile_run_widget", "compiler_api", "contract_flattener", "contract_verification", "debugger", "defaultLayout", "deploy_vefiry", "dgit_github", "dgit_local", "editor", "editorHoverContext", "editorReferences", "editor_error_marker", "editor_line_text", "eip1153", "eip7702", "environment-account", "erc721", "etherscan_api", "expandAllFolders", "fileExplorer", "fileManager_api", "file_decorator", "file_explorer_context_menu", "file_explorer_dragdrop", "file_explorer_multiselect", "generalSettings", "gist", "homeTab", "importFromGithub", "layout", "learneth", "libraryDeployment", "matomo-bot-detection", "matomo-consent", "metamask", "migrateFileSystem", "noir", "pinned_contracts", "pinned_plugin", "pluginManager", "plugin_api", "providers", "proxy_oz_v4", "proxy_oz_v5", "proxy_oz_v5_non_shanghai_runtime", "publishContract", "quickDapp_metamask", "recorder", "remixd", "runAndDeploy", "script-runner", "search", "signingMessage", "sol2uml", "solidityImport", "solidityUnittests", "specialFunctions", "staticAnalysis", "stressEditor", "templates", "terminal", "transactionExecution", "txListener", "uniswap_v4_core", "url", "usingWebWorker", "verticalIconsPanel", "vm_state", "vyper_api", "walkthrough", "workspace", "workspace_git"]
     default: ""
   run_flaky_tests:
     type: boolean
@@ -632,29 +632,29 @@ workflows:
           requires:
             - build
 
-    run_file_keyword:
-      when: << pipeline.parameters.run_file_tests_keyword >>
-      jobs:
-        - check-flaky-or-pr-tests:
-            pattern: "<< pipeline.parameters.run_file_tests_keyword >>"
-        - build:
-            requires:
-              - check-flaky-or-pr-tests
-        - remix-ide-browser:
-            requires:
-              - build
-            matrix:
-              parameters:
-                browser: ["chrome"]
-                script: ["singletest.sh"]
-                job: ["nogroup"]
-                jobsize: ["1"]
-                parallelism: [1]
-                scriptparameter: ["<< pipeline.parameters.run_file_tests_keyword >>"]
-                skip_timings: [true]
-        - post-failed-report:
-            requires:
-              - build
+  run_file_keyword:
+    when: << pipeline.parameters.run_file_tests_keyword >>
+    jobs:
+      - check-flaky-or-pr-tests:
+          pattern: "<< pipeline.parameters.run_file_tests_keyword >>"
+      - build:
+          requires:
+            - check-flaky-or-pr-tests
+      - remix-ide-browser:
+          requires:
+            - build
+          matrix:
+            parameters:
+              browser: ["chrome"]
+              script: ["singletest.sh"]
+              job: ["nogroup"]
+              jobsize: ["1"]
+              parallelism: [1]
+              scriptparameter: ["<< pipeline.parameters.run_file_tests_keyword >>"]
+              skip_timings: [true]
+      - post-failed-report:
+          requires:
+            - build
 
   run_pr_tests:
     when: << pipeline.parameters.run_pr_tests >>
