@@ -53,10 +53,15 @@ export const createWindow = async (dir?: string): Promise<void> => {
     height: (isE2E ? 1140 : height),
     frame: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
+  
+  // For E2E tests on low-resolution CI machines, zoom out to fit more content
+  if (isE2E) {
+    mainWindow.webContents.setZoomFactor(0.5); // 50% zoom for E2E
+  }
+  
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url); // Open URL in user's browser.
     return { action: "deny" }; // Prevent the app from opening the URL.
