@@ -145,7 +145,7 @@ jobs:
           name: Package dist for workspace
           command: |
             set -e
-            tar -cf remix-dist.tar dist/apps/remix-ide dist/apps/remix-ide-e2e dist/apps/remix-ide/assets/js/soljson 2>/dev/null || true
+            tar -cf remix-dist.tar dist/apps/remix-ide dist/apps/remix-ide-e2e dist/apps/remix-ide/assets/js/soljson dist/libs 2>/dev/null || true
             gzip -1 remix-dist.tar
       - persist_to_workspace:
           root: .
