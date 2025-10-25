@@ -44,13 +44,16 @@ export const createWindow = async (dir?: string): Promise<void> => {
   if (screen.getPrimaryDisplay().size.width < 2560 || screen.getPrimaryDisplay().size.height < 1440) {
     resizeFactor = 1
   }
-  const width = screen.getPrimaryDisplay().size.width * resizeFactor
-  const height = screen.getPrimaryDisplay().size.height * resizeFactor
+  const windowWidth = Math.round(screen.getPrimaryDisplay().size.width * resizeFactor)
+  const windowHeight = Math.round(screen.getPrimaryDisplay().size.height * resizeFactor)
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 652,
+    // For normal use, start at ~80% of the primary display; E2E will maximize anyway
+    width: windowWidth,
+    height: windowHeight,
+    minWidth: 1024,
+    minHeight: 650,
     frame: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
