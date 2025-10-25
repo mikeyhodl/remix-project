@@ -22,6 +22,9 @@ npx http-server -p 9090 --cors='*' ./node_modules &
 yarn run serve:production &
 sleep 5
 
+# Prepare slither toolchain if remixd tests are present in this selection
+printf '%s\n' "$TESTFILES" | ./apps/remix-ide/ci/setup_slither_if_needed.sh
+
 for TESTFILE in $TESTFILES; do
     npx nightwatch --config dist/apps/remix-ide-e2e/nightwatch-${1}.js $TESTFILE --env=$1  || TEST_EXITCODE=1
 done

@@ -47,22 +47,7 @@ echo "==> Full list (for grepability):"
 printf '%s\n' "$TESTFILES"
 
 # If this batch includes remixd (slither) tests, prepare pip3/slither toolchain on-demand
-if printf '%s\n' "$TESTFILES" | grep -Eiq '^(remixd|remixd_)'; then
-  echo "Preparing pip3/slither for remixd tests"
-  if ! command -v pip3 >/dev/null 2>&1; then
-    echo "Installing python3 and pip3..."
-    sudo apt-get update
-    sudo apt-get install -y python3 python3-pip
-  fi
-  pip3 --version || true
-  # Ensure user installs are on PATH
-  mkdir -p "$HOME/.local/bin"
-  export PATH="$HOME/.local/bin:$PATH"
-  pip3 install --user slither-analyzer solc-select || true
-  slither --version || true
-else
-  echo "No remixd tests detected in this shard; skipping slither setup"
-fi
+printf '%s\n' "$TESTFILES" | ./apps/remix-ide/ci/setup_slither_if_needed.sh
 for TESTFILE in $TESTFILES; do
     echo "Running test: ${TESTFILE}.js (retries on fail: $E2E_RETRIES)"
     attempt=0

@@ -62,6 +62,9 @@ fi
 echo "Will rerun $COUNT failing test(s):"
 cat reports/failed/files.txt
 
+# Prepare slither toolchain if remixd tests are present among failed ones
+cat reports/failed/files.txt | ./apps/remix-ide/ci/setup_slither_if_needed.sh
+
 # Default to single attempt for clean measurement unless overridden
 E2E_RETRIES=${E2E_RETRIES:-0}
 
