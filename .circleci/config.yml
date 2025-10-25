@@ -633,7 +633,7 @@ workflows:
             - build
 
     run_file_keyword:
-      when: << pipeline.parameters.run_file_tests_keyword != "" >>
+      when: << pipeline.parameters.run_file_tests_keyword >>
       jobs:
         - check-flaky-or-pr-tests:
             pattern: "<< pipeline.parameters.run_file_tests_keyword >>"
