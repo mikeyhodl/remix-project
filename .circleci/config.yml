@@ -477,7 +477,7 @@ jobs:
   post-failed-report:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: << pipeline.parameters.resource_class >>
+    resource_class: small
     working_directory: ~/remix-project
     steps:
       - checkout

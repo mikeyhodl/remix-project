@@ -37,15 +37,29 @@ if (!CIRCLE_TOKEN) exit('CIRCLECI_TOKEN missing');
 if (!HAS_APP_CREDS && !GH_TOKEN) exit('Missing GitHub auth: set GH_PR_COMMENT_TOKEN or APP_ID/INSTALLATION_ID/APP_PRIVATE_KEY');
 if (!SLUG || !JOB_NUM) exit('Missing CircleCI env (slug or job number)');
 
-const summaryPath = path.join(OUTDIR, 'summary.json');
+  const summaryPath = path.join(OUTDIR, 'summary.json');
 if (!fs.existsSync(summaryPath)) {
   log('summary.json not found; no failures or generator did not run. Skipping.');
   process.exit(0);
 }
 
+function formatRunTime() {
+  const now = new Date();
+  return now.toLocaleString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+}
+
 (async () => {
   const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
   const failures = Array.isArray(summary.failures) ? summary.failures : [];
+  const runTime = formatRunTime();
   
   const { owner, repo } = parseSlug(SLUG);
   const prNumber = await resolvePrNumber(owner, repo, PR_URLS, SHA);
@@ -64,6 +78,8 @@ if (!fs.existsSync(summaryPath)) {
       const successBody = [
         MARKER,
         `✅ E2E tests passed (workflow: ${escapeMd(summary.workflowName || '')})`,
+        '',
+        `_Last run: ${runTime}_`,
         '',
         '_All tests are now passing! Previous failures have been resolved._'
       ].join('\n');
@@ -97,6 +113,8 @@ if (!fs.existsSync(summaryPath)) {
   const body = [
     MARKER,
     `❌ E2E failures detected (workflow: ${escapeMd(summary.workflowName || '')})`,
+    '',
+    `_Last run: ${runTime}_`,
     '',
     `[View HTML report](${indexUrl})`,
     '',
