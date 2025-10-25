@@ -132,7 +132,7 @@ module.exports = {
     browser
       .clickFunction('winnerName - call')
       // Test in terminal
-      .journalLastChildIncludes('Ballot.winnerNam2222e()') // TODO: intentional typo to be fixed
+      .journalLastChildIncludes('Ballot.winnerName()')
       .testFunction('last',
         {
           'decoded output': { 0: 'bytes32: winnerName_ 0x48656c6c6f20576f726c64210000000000000000000000000000000000000000' }
