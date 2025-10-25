@@ -32,7 +32,7 @@ parameters:
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "small"
+    default: "medium"
 
   # E2E configuration
   e2e_parallelism:
@@ -235,7 +235,7 @@ jobs:
               exit 2
             fi
             echo "🔍 Searching for enabled tests with .$PATTERN extension..."
-            if grep -IRiL "'@disabled': \?true" "./apps/remix-ide-e2e/src/tests" | grep "${PATTERN}"; then
+            if grep -IRiL "'@disabled': \?true" "./apps/remix-ide-e2e/src/tests" | grep -i "${PATTERN}"; then
               echo "✅ Found enabled .$PATTERN tests."
               exit 0
             else
