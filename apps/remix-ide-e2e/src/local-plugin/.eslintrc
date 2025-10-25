@@ -243,10 +243,5 @@
   "settings": { "react": { "version": "detect" } },
   "plugins": ["import", "jsx-a11y", "react", "react-hooks"],
   "extends": ["../../../../.eslintrc"],
-  "ignorePatterns": [
-    "node_modules/**",
-    "dist/**",
-    "coverage/**",
-    "tmp/**"
-  ]
+  "ignorePatterns": ["!**/*"]
 }

@@ -12,11 +12,5 @@
       }
     ],
     "extends": ["../../.eslintrc"],
-    "ignorePatterns": [
-      "node_modules/**",
-      "dist/**",
-      "coverage/**",
-      "tmp/**",
-      "hardhat_compilation.ts"
-    ]
+    "ignorePatterns": ["!**/*", "hardhat_compilation.ts"]
 }
