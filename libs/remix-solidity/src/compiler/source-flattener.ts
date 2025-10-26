@@ -112,4 +112,21 @@ export class SourceFlattener {
 
     return { entry: entryFile, order, sources: bundle, flattened }
   }
+
+  /**
+   * Helper to write the flattened output to a file.
+   * - Ensures parent directory exists via IOAdapter.mkdir
+   * - Writes the flattened content via IOAdapter.writeFile
+   * Returns the FlattenResult extended with the outFile path.
+   */
+  public async flattenToFile(entryFile: string, outFile: string, opts?: { overwrite?: boolean }): Promise<FlattenResult & { outFile: string }> {
+    const result = await this.flatten(entryFile)
+    const dir = outFile.split('/').slice(0, -1).join('/')
+    if (dir) {
+      await this.io.mkdir(dir)
+    }
+    // For now, overwrite behavior is adapter-dependent; basic write always overwrites
+    await this.io.writeFile(outFile, result.flattened)
+    return { ...result, outFile }
+  }
 }

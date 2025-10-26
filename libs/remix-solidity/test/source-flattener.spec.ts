@@ -96,4 +96,43 @@ describe('SourceFlattener - end-to-end parsing + resolving + flattening', () => 
     expect(result.flattened).to.contain('ERC1155Upgradeable')
     expect(result.flattened).to.not.match(/\bimport\s+\"/)
   })
+
+  it('writes flattened output to a file with flattenToFile()', async function () {
+    this.timeout(90000)
+
+    const io = new NodeIOAdapter()
+    const flattener = new SourceFlattener(io, true)
+
+    const entry = 'WriteOut.sol'
+    const source = `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol";\n\ncontract WriteOut is ERC20 {\n  constructor() ERC20("WriteOut", "WRO") {}\n}`
+    await fs.writeFile(entry, source, 'utf8')
+
+    const outPath = 'out/Flattened.sol'
+    const result = await flattener.flattenToFile(entry, outPath)
+
+    expect(await exists(outPath)).to.equal(true)
+    const fileContent = await fs.readFile(outPath, 'utf8')
+    expect(fileContent).to.equal(result.flattened)
+    expect(result.outFile).to.equal(outPath)
+  })
+
+  it('flattens an entry importing from GitHub blob URL (blob→raw rewrite)', async function () {
+    this.timeout(120000)
+
+    const io = new NodeIOAdapter()
+    const flattener = new SourceFlattener(io, true)
+
+    const entry = 'GhBlobEntry.sol'
+    const ghBlob = 'https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol'
+    const source = `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "${ghBlob}";\n\ncontract Dummy2 {}`
+    await fs.writeFile(entry, source, 'utf8')
+
+    const result = await flattener.flatten(entry)
+
+    expect(result.flattened).to.be.a('string')
+    expect(result.flattened.length).to.be.greaterThan(2000)
+    expect(result.flattened).to.match(/pragma\s+solidity\s+/)
+    expect(result.flattened).to.contain('ERC1155Upgradeable')
+    expect(result.flattened).to.not.match(/\bimport\s+\"/)
+  })
 })

@@ -71,3 +71,24 @@ export class NodeIOAdapter implements IOAdapter {
 
 With such adapter, you can instantiate `ContentFetcher` and `PackageVersionResolver` and (via `ImportResolver`) resolve imports without the Remix app. In tests, implement a tiny in-memory adapter to avoid network/filesystem calls.
 
+## SourceFlattener (parsing + resolving + flattening)
+
+For a full end-to-end flow that starts from a local entry Solidity file, parses imports, resolves them contextually (npm, CDN, GitHub raw, IPFS/Swarm), and produces a single flattened source, use `SourceFlattener`:
+
+```ts
+import { NodeIOAdapter } from './adapters/node-io-adapter'
+import { SourceFlattener } from './source-flattener'
+
+const io = new NodeIOAdapter()
+const flattener = new SourceFlattener(io, /* debug */ true)
+
+const { flattened, order } = await flattener.flatten('contracts/MyToken.sol')
+
+// flattened: string with a single SPDX and pragma; no import statements
+// order: topologically ordered list of files (dependencies first)
+```
+
+Notes:
+- The flattener delegates to `DependencyResolver` + `ImportResolver` and honors parent/package contexts.
+- A per-file resolution index (for Go-to-Definition) is saved when there are normalized mappings to record.
+
