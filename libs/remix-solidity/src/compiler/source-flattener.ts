@@ -1,0 +1,115 @@
+import type { IOAdapter } from './adapters/io-adapter'
+import { DependencyResolver } from './dependency-resolver'
+
+export interface FlattenResult {
+  entry: string
+  order: string[]
+  sources: Map<string, string>
+  flattened: string
+}
+
+/**
+ * SourceFlattener
+ *
+ * Builds a complete dependency graph starting from an entry file, resolves all imports
+ * using ImportResolver (context-aware), and produces a single flattened Solidity file
+ * with a single SPDX and a single pragma solidity directive.
+ */
+export class SourceFlattener {
+  constructor(private io: IOAdapter, private debug = false) {}
+
+  private log(...args: any[]) {
+    if (this.debug) console.log('[SourceFlattener]', ...args)
+  }
+
+  /**
+   * Flatten a Solidity entry file by resolving its entire import graph and concatenating
+   * sources in a topologically sorted order (dependencies before dependents).
+   */
+  public async flatten(entryFile: string): Promise<FlattenResult> {
+    const dep = new DependencyResolver(this.io, entryFile, this.debug)
+    await dep.buildDependencyTree(entryFile)
+
+    // Optional: save resolution index for Go-to-Definition parity
+    await dep.saveResolutionIndex()
+
+    const graph = dep.getImportGraph()
+    const bundle = dep.getSourceBundle()
+
+    // Topologically sort files with DFS so that imported files come first
+    const visited = new Set<string>()
+    const order: string[] = []
+
+    const visit = (file: string) => {
+      if (visited.has(file)) return
+      visited.add(file)
+      const imports = graph.get(file)
+      if (imports) {
+        for (const imp of imports) {
+          // Resolve relative import node key to consistent key used in graph
+          let key = imp
+          if (graph.has(imp)) {
+            key = imp
+          }
+          visit(key)
+        }
+      }
+      order.push(file)
+    }
+
+    // The graph keys may be resolved paths; ensure entry is included
+    if (!graph.has(entryFile)) {
+      // Fallback: when no imports, still include entry
+      order.push(entryFile)
+    } else {
+      visit(entryFile)
+    }
+
+    // Build flattened content
+    let firstPragma: string | null = null
+    let firstSpdx: string | null = null
+    const seen = new Set<string>()
+    const parts: string[] = []
+
+    const stripImports = (src: string) => src.replace(/\n?\s*import\s+[^;]+;\s*\n?/g, '\n')
+
+    for (const file of order) {
+      if (seen.has(file)) continue
+      seen.add(file)
+      const content = bundle.get(file) || ''
+      if (!content) continue
+
+      const lines = content.split(/\r?\n/)
+      const kept: string[] = []
+      for (const line of lines) {
+        // SPDX
+        const spdxMatch = line.match(/^\s*\/\/\s*SPDX-License-Identifier:\s*(.+)$/)
+        if (spdxMatch) {
+          if (!firstSpdx) firstSpdx = line.trim()
+          // Drop duplicate SPDX
+          continue
+        }
+        // pragma solidity
+        const pragmaMatch = line.match(/^\s*pragma\s+solidity\s+[^;]+;/)
+        if (pragmaMatch) {
+          if (!firstPragma) firstPragma = pragmaMatch[0]
+          // Drop duplicate pragma
+          continue
+        }
+        kept.push(line)
+      }
+
+      const withoutImports = stripImports(kept.join('\n')).trim()
+      this.log('Adding file to flat:', file)
+      parts.push(`\n\n// File: ${file}\n\n${withoutImports}`)
+    }
+
+    const header: string[] = []
+    if (firstSpdx) header.push(firstSpdx)
+    if (firstPragma) header.push(firstPragma)
+
+    const flattened = [header.join('\n'), ...parts].filter(Boolean).join('\n')
+
+    return { entry: entryFile, order, sources: bundle, flattened }
+  }
+}

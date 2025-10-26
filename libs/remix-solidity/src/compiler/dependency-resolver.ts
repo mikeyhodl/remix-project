@@ -2,6 +2,8 @@
 
 import { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
+import type { IOAdapter } from './adapters/io-adapter'
+import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 
 /**
  * Pre-compilation dependency tree builder
@@ -16,7 +18,8 @@ import { ImportResolver } from './import-resolver'
  * - We build the complete source bundle before compiling
  */
 export class DependencyResolver {
-  private pluginApi: Plugin
+  private pluginApi: Plugin | null
+  private io: IOAdapter
   private resolver: ImportResolver
   private sourceFiles: Map<string, string> = new Map() // resolved path -> content
   private processedFiles: Set<string> = new Set() // Track already processed files
@@ -24,10 +27,19 @@ export class DependencyResolver {
   private fileToPackageContext: Map<string, string> = new Map() // file -> package@version it belongs to
   private debug: boolean = false
 
-  constructor(pluginApi: Plugin, targetFile: string, debug: boolean = false) {
-    this.pluginApi = pluginApi
-    this.debug = true
-    this.resolver = new ImportResolver(pluginApi, targetFile, debug)
+  // Overloaded constructor to support Plugin or IOAdapter
+  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
+  constructor(io: IOAdapter, targetFile: string, debug?: boolean)
+  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
+    const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
+    this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
+    this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as Plugin) : (pluginOrIo as IOAdapter)
+    this.debug = debug
+    if (isPlugin) {
+      this.resolver = new ImportResolver(this.pluginApi as Plugin, targetFile, debug)
+    } else {
+      this.resolver = new ImportResolver(this.io, targetFile, debug)
+    }
   }
 
   /**
@@ -151,8 +163,8 @@ export class DependencyResolver {
       // Handle local files differently from npm/npm-alias/external urls
       if (this.isLocalFile(importPath)) {
         this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
-        // For local files, read directly from file system
-        content = await this.pluginApi.call('fileManager', 'readFile', importPath)
+        // For local files, read directly from adapter or plugin-backed adapter
+        content = await this.io.readFile(importPath)
       } else {
         // For npm packages and external URLs (http/https/npm:), use the resolver
         content = await this.resolver.resolveAndSave(importPath, undefined, false)
@@ -163,9 +175,9 @@ export class DependencyResolver {
         return
       }
 
-      // Store the resolved content using the original import path as key
-      // The compiler expects source keys to match import statements exactly
-      const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
+  // Store the resolved content using the original import path as key
+  // The compiler expects source keys to match import statements exactly
+  const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
       this.sourceFiles.set(importPath, content)
       
       // If this is a versioned path (like @package@1.5.0/...) but the original import 
