@@ -209,6 +209,10 @@
             "@remix-ui/top-bar": [
               "libs/remix-ui/top-bar/src/index.ts"
             ]
+            ,
+            "@remix-project/import-resolver": [
+              "libs/remix-import-resolver/src/index.ts"
+            ]
         }
     }
 }

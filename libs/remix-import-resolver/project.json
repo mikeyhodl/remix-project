@@ -1,0 +1,33 @@
+{
+  "name": "remix-import-resolver",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/remix-import-resolver/src",
+  "projectType": "library",
+  "implicitDependencies": [
+    "remix-solidity"
+  ],
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/remix-import-resolver",
+        "main": "libs/remix-import-resolver/src/index.ts",
+        "tsConfig": "libs/remix-import-resolver/tsconfig.lib.json",
+        "updateBuildableProjectDepsInPackageJson": false,
+        "assets": [
+          "libs/remix-import-resolver/*.md"
+        ]
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/remix-import-resolver/**/*.ts"],
+        "eslintConfig": "libs/remix-solidity/.eslintrc"
+      }
+    }
+  },
+  "tags": []
+}
