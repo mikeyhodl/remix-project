@@ -20,6 +20,13 @@
           ]
         }
       },
+      "test": {
+        "executor": "@nrwl/workspace:run-commands",
+        "options": {
+          "command": "TS_NODE_PROJECT=libs/remix-solidity/tsconfig.spec.json mocha -r ts-node/register \"libs/remix-solidity/test/**/*.spec.ts\"",
+          "cwd": "."
+        }
+      },
       "lint": {
         "executor": "@nrwl/linter:eslint",
         "outputs": ["{options.outputFile}"],

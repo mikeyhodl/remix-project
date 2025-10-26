@@ -1,3 +1,4 @@
+
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
@@ -12,10 +13,11 @@ import { DependencyStore } from './utils/dependency-store'
 import { ConflictChecker } from './utils/conflict-checker'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+import { FileResolutionIndex } from './file-resolution-index'
 
 export class ImportResolver implements IImportResolver {
   private importMappings: Map<string, string>
-  private pluginApi: Plugin
+  private pluginApi: Plugin | null
   private targetFile: string
   private resolutions: Map<string, string> = new Map()
   private packageVersionResolver: PackageVersionResolver
@@ -33,8 +35,12 @@ export class ImportResolver implements IImportResolver {
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
 
-  constructor(pluginApi: Plugin, targetFile: string, debug: boolean = false) {
-    this.pluginApi = pluginApi
+  // Overloaded constructor to support Plugin or IOAdapter
+  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
+  constructor(io: IOAdapter, targetFile: string, debug?: boolean)
+  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
+    const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
+    this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.targetFile = targetFile
     this.debug = debug
     this.importMappings = new Map()
@@ -42,9 +48,9 @@ export class ImportResolver implements IImportResolver {
     this.conflictWarnings = new Set()
     this.importedFiles = new Map()
     this.packageSources = new Map()
-  this.io = new RemixPluginAdapter(pluginApi)
+    this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as Plugin) : (pluginOrIo as IOAdapter)
   this.packageVersionResolver = new PackageVersionResolver(this.io, debug)
-  this.logger = new Logger(pluginApi, debug)
+  this.logger = new Logger(this.pluginApi || undefined, debug)
   this.contentFetcher = new ContentFetcher(this.io, debug)
     this.dependencyStore = new DependencyStore()
     this.conflictChecker = new ConflictChecker(
@@ -237,12 +243,7 @@ export class ImportResolver implements IImportResolver {
       ``
     ].filter(line => line !== '').join('\n')
 
-    this.pluginApi.call('terminal', 'log', {
-      type: severity,
-      value: warningMsg
-    }).catch(() => {
-      console.warn(warningMsg)
-    })
+    await this.logger.terminal(severity as any, warningMsg)
   }
 
   /**
@@ -322,12 +323,7 @@ export class ImportResolver implements IImportResolver {
             ``
           ].join('\n')
 
-          this.pluginApi.call('terminal', 'log', {
-            type: 'warn',
-            value: warningMsg
-          }).catch(() => {
-            console.warn(warningMsg)
-          })
+          this.logger.terminal('warn', warningMsg)
         }
       }
     }
@@ -671,12 +667,7 @@ export class ImportResolver implements IImportResolver {
                   ``
                 ].join('\n')
 
-                this.pluginApi.call('terminal', 'log', {
-                  type: 'error',
-                  value: warningMsg
-                }).catch(() => {
-                  console.warn(warningMsg)
-                })
+                await this.logger.terminal('error', warningMsg)
               }
             }
 
@@ -771,7 +762,9 @@ export class ImportResolver implements IImportResolver {
 
     // Lazily initialize the resolution index if needed
     if (!this.resolutionIndex) {
-      this.resolutionIndex = new ResolutionIndex(this.pluginApi, this.debug)
+      this.resolutionIndex = this.pluginApi
+        ? new ResolutionIndex(this.pluginApi, this.debug)
+        : (new FileResolutionIndex(this.io, this.debug) as unknown as ResolutionIndex)
     }
     // Ensure it's loaded
     if (!this.resolutionIndexInitialized) {
