@@ -6,6 +6,7 @@ Standalone, Node-friendly import resolver and flattener for Solidity built from 
 - URL normalization (npm CDNs, GitHub raw/blob, IPFS, Swarm)
 - Context-aware dependency resolution with per-file package bases
 - Foundry-style remappings (inline or remappings.txt)
+  - If both are provided, remappings.txt takes precedence
 - Deterministic flattening with single SPDX/pragma and "// File:" sections
 - Optional resolution index for IDE "Go to Definition" parity
 
@@ -21,7 +22,8 @@ const io = new NodeIOAdapter()
 const flattener = new SourceFlattener(io)
 
 const { flattened } = await flattener.flatten('contracts/MyToken.sol', {
-  remappingsFile: 'remappings.txt',
+  remappingsFile: 'remappings.txt', // wins over inline
+  remappings: ['oz=@openzeppelin/contracts@4.8.0/'], // optional fallback
 })
 console.log(flattened)
 ```
