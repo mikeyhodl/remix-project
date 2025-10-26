@@ -382,38 +382,17 @@ jobs:
               | grep -v metamask)
             COUNT=$(printf '%s\n' "$TEST_NAMES" | wc -l | awk '{print $1}')
             echo "Found $COUNT enabled tests. Planning for << parameters.shards >> shard(s)."
+            
             # Run planner once to produce a manifest with all bins
-            printf '%s\n' "$TEST_NAMES" | node scripts/plan-shards.js --shards << parameters.shards >> --index 0 --timings timings-current.json --manifest-out reports/shards/manifest.json --verbose > /dev/null
-            # Generate overview and per-shard file lists
-            node -e '
-              const fs = require("fs");
-              const path = require("path");
-              const outDir = path.join("reports","shards");
-              const m = JSON.parse(fs.readFileSync(path.join(outDir, "manifest.json"), "utf8"));
-              const bins = Array.isArray(m.bins) ? m.bins : [];
-              // Build known/unknown stats using timings-current.json if present
-              const timingsPath = "timings-current.json";
-              let known = new Set();
-              try {
-                const t = JSON.parse(fs.readFileSync(timingsPath, "utf8"));
-                for (const f of (t.files||[])) if (f && f.file) known.add(String(f.file).trim());
-              } catch(_) {}
-              let totalTests = 0, knownCount = 0, unknownCount = 0;
-              bins.forEach(b => {
-                const names = (b.items||[]).map(it => typeof it === "string" ? it : (it && it.name) || it).filter(Boolean);
-                totalTests += names.length;
-                names.forEach(n => { if (known.has(n)) knownCount++; else unknownCount++; });
-              });
-              const overview = bins.map((b,i)=>({ shard:i, count:(b.items||[]).length, totalSec:Number(b.total||0) }));
-              const lines = overview.map(o=>`#${o.shard}\tcount=${o.count}\ttotal=${o.totalSec.toFixed(2)}s`);
-              fs.writeFileSync(path.join(outDir, "overview.txt"), lines.join("\n")+"\n");
-              fs.writeFileSync(path.join(outDir, "overview.json"), JSON.stringify({ shards: bins.length, overview, totals: bins.map(b=>b.total), counts: bins.map(b=>(b.items||[]).length), stats: { totalTests, knownCount, unknownCount } }, null, 2));
-              bins.forEach((b,i)=>{
-                const names = (b.items||[]).map(it => typeof it === "string" ? it : (it && it.name) || it).filter(Boolean);
-                fs.writeFileSync(path.join(outDir, `files-${i}.txt`), names.join("\n") + (names.length?"\n":""));
-              });
-              console.log("Wrote overview.txt, overview.json and files-<i>.txt to", outDir);
-            '
+            printf '%s\n' "$TEST_NAMES" | node scripts/plan-shards.js \
+              --shards << parameters.shards >> \
+              --index 0 \
+              --timings timings-current.json \
+              --manifest-out reports/shards/manifest.json \
+              --verbose > /dev/null
+            
+            # Generate overview and per-shard file lists using dedicated script
+            node scripts/generate-shard-overview.js reports/shards timings-current.json
       - store_artifacts:
           path: ./reports/shards
       - store_artifacts:
