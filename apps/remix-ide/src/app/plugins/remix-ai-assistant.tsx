@@ -103,7 +103,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
   async handleActivity(type: string, payload: any) {
     // Use the proper type-safe tracking helper with RemixAI events
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: `${type}-${payload}`, isClick: true })
+    trackMatomoEvent(this, { category: 'ai', action: 'chatting', name: `${type}-${payload}`, isClick: true })
   }
 
   updateComponent(state: {

@@ -6,7 +6,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, RemixAIEvent, RemixAIAssistantEvent } from '@remix-api'
+import { MatomoEvent, AIEvent, RemixAIAssistantEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
@@ -449,7 +449,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     dispatchActivity('button', 'generateWorkspace')
     if (prompt && prompt.trim()) {
       await sendPrompt(`/workspace ${prompt.trim()}`)
-      trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'GenerateNewAIWorkspaceFromEditMode', name: prompt, isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'GenerateNewAIWorkspaceFromEditMode', name: prompt, isClick: true })
     }
   }, [sendPrompt])
 
@@ -486,7 +486,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           dispatchActivity('button', 'setAssistant')
           setMessages([])
           sendPrompt(`/setAssistant ${assistantChoice}`)
-          trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'SetAIProvider', name: assistantChoice, isClick: true })
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetAIProvider', name: assistantChoice, isClick: true })
           // Log specific Ollama selection
           if (assistantChoice === 'ollama') {
             trackMatomoEvent({ category: 'ai', action: 'ollama_provider_selected', name: `from:${choiceSetting || 'unknown'}`, isClick: false })
@@ -605,7 +605,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       console.warn('Failed to set model:', error)
       trackMatomoEvent({ category: 'ai', action: 'ollama_model_set_backend_failed', name: `${modelName}|${error.message || 'unknown'}`, isClick: false })
     }
-    trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'SetOllamaModel', name: modelName, isClick: true })
+    trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetOllamaModel', name: modelName, isClick: true })
   }, [props.plugin, selectedModel])
 
   // refresh context whenever selection changes (even if selector is closed)
@@ -654,7 +654,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
       if (description && description.trim()) {
         sendPrompt(`/generate ${description.trim()}`)
-        trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'GenerateNewAIWorkspaceFromModal', name: description, isClick: true })
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'GenerateNewAIWorkspaceFromModal', name: description, isClick: true })
       }
     } catch {
       /* user cancelled */

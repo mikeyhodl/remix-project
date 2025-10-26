@@ -1,6 +1,6 @@
 /**
  * AI Events - AI and Copilot related tracking events
- * 
+ *
  * This file contains all AI-related Matomo events including RemixAI interactions,
  * Ollama local AI, and code completion features.
  */
@@ -9,7 +9,7 @@ import { MatomoEventBase } from '../core/base-types';
 
 export interface AIEvent extends MatomoEventBase {
   category: 'ai';
-  action: 
+  action:
     | 'remixAI'
     | 'error_explaining_SolidityError'
     | 'vulnerability_check_pasted_code'
@@ -20,6 +20,9 @@ export interface AIEvent extends MatomoEventBase {
     | 'code_insertion'
     | 'code_completion'
     | 'AddingAIContext'
+    | 'GenerateNewAIWorkspace'
+    | 'chatting'
+    | 'completion'
     | 'ollama_host_cache_hit'
     | 'ollama_port_check'
     | 'ollama_host_discovered_success'
@@ -61,17 +64,7 @@ export interface AIEvent extends MatomoEventBase {
     | 'ollama_connection_error'
     | 'ollama_model_selected'
     | 'ollama_model_set_backend_success'
-    | 'ollama_model_set_backend_failed';
-}
-
-
-
-/**
- * RemixAI Events - Specific to RemixAI interactions
- */
-export interface RemixAIEvent extends MatomoEventBase {
-  category: 'remixAI';
-  action:
+    | 'ollama_model_set_backend_failed'
     | 'ModeSwitch'
     | 'GenerateNewAIWorkspaceFromEditMode'
     | 'SetAIProvider'
@@ -79,7 +72,18 @@ export interface RemixAIEvent extends MatomoEventBase {
     | 'GenerateNewAIWorkspaceFromModal';
 }
 
-
+// /**
+//  * RemixAI Events - Specific to RemixAI interactions
+//  */
+// export interface RemixAIEvent extends MatomoEventBase {
+//   category: 'remixAI';
+//   action:
+//     | 'ModeSwitch'
+//     | 'GenerateNewAIWorkspaceFromEditMode'
+//     | 'SetAIProvider'
+//     | 'SetOllamaModel'
+//     | 'GenerateNewAIWorkspaceFromModal';
+// }
 
 /**
  * RemixAI Assistant Events - Specific to assistant interactions
