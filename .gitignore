@@ -80,5 +80,9 @@ logs
 apps/remix-ide-e2e/src/extensions/chrome/metamask
 apps/remix-ide-e2e/tmp/
 
+# Generated import resolution cache and fetched artifacts
+.deps/
+/@*
+
 # IDE - Cursor
 .cursor/
