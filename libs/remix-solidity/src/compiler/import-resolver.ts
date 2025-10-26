@@ -3,18 +3,27 @@
 import { Plugin } from '@remixproject/engine'
 import { ResolutionIndex } from './resolution-index'
 import { IImportResolver } from './import-resolver-interface'
+import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from './utils/url-normalizer'
+import { isBreakingVersionConflict, isPotentialVersionConflict } from './utils/semver-utils'
+import { PackageVersionResolver } from './utils/package-version-resolver'
+import { Logger } from './utils/logger'
+import { ContentFetcher } from './utils/content-fetcher'
+import { DependencyStore } from './utils/dependency-store'
+import { ConflictChecker } from './utils/conflict-checker'
 
 export class ImportResolver implements IImportResolver {
   private importMappings: Map<string, string>
   private pluginApi: Plugin
   private targetFile: string
   private resolutions: Map<string, string> = new Map()
-  private workspaceResolutions: Map<string, string> = new Map() // From package.json resolutions/overrides
-  private lockFileVersions: Map<string, string> = new Map() // From yarn.lock or package-lock.json
+  private packageVersionResolver: PackageVersionResolver
+  private contentFetcher: ContentFetcher
+  private dependencyStore: DependencyStore
+  private logger: Logger
+  private conflictChecker: ConflictChecker
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
   private importedFiles: Map<string, string> = new Map() // Track imported files: "pkg/path/to/file.sol" -> "version"
   private packageSources: Map<string, string> = new Map() // Track which package.json resolved each dependency: "pkg" -> "source-package"
-  private parentPackageDependencies: Map<string, Map<string, string>> = new Map() // Track dependencies of each parent package: "parent@version" -> { "dep" -> "version" }
   private debug: boolean = false
 
   // Shared resolution index across all ImportResolver instances
@@ -26,19 +35,22 @@ export class ImportResolver implements IImportResolver {
     this.targetFile = targetFile
     this.debug = debug
     this.importMappings = new Map()
-
-    this.log(`[ImportResolver] 🆕 Created new resolver instance for: "${targetFile}"`)
-
-    this.resolutionIndexInitialized = true
-    this.resolutionIndex = new ResolutionIndex(this.pluginApi, this.debug)
-    this.resolutionIndex.load().catch(err => {
-      this.log(`[ImportResolver] ⚠️  Failed to load resolution index:`, err)
-    })
-
-    // Initialize workspace resolution rules
-    this.initializeWorkspaceResolutions().catch(err => {
-      this.log(`[ImportResolver] ⚠️  Failed to initialize workspace resolutions:`, err)
-    })
+    this.resolutions = new Map()
+    this.conflictWarnings = new Set()
+    this.importedFiles = new Map()
+    this.packageSources = new Map()
+    this.packageVersionResolver = new PackageVersionResolver(pluginApi, debug)
+    this.logger = new Logger(pluginApi, debug)
+    this.contentFetcher = new ContentFetcher(pluginApi, debug)
+    this.dependencyStore = new DependencyStore()
+    this.conflictChecker = new ConflictChecker(
+      this.logger,
+      this.packageVersionResolver,
+      this.dependencyStore,
+      (key: string) => this.importMappings.get(key)
+    )
+    this.resolutionIndex = null
+    this.resolutionIndexInitialized = false
   }
 
   /**
@@ -50,209 +62,14 @@ export class ImportResolver implements IImportResolver {
     }
   }
 
-  public clearMappings(): void {
-    this.log(`[ImportResolver] 🧹 Clearing all import mappings`)
-    this.importMappings.clear()
-  }
-
   /**
-   * Set the package context for resolution
-   * This is called by DependencyResolver to inform the resolver which package
-   * the current file belongs to, enabling context-aware resolution
+   * Set or clear current package context provided by DependencyResolver
    */
-  public setPackageContext(packageContext: string | null): void {
-    if (packageContext) {
-      this.log(`[ImportResolver] 📦 Setting package context: ${packageContext}`)
-      // Store the current package context - this will be used by findParentPackageContext()
-      // We can make the parent lookup smarter by explicitly setting context
-      const mappingKey = `__CONTEXT__`
-      this.importMappings.set(mappingKey, packageContext)
-    }
-  }
-
-  /**
-   * Initialize workspace-level resolution rules
-   * Priority: 1) package.json resolutions/overrides, 2) lock files
-   */
-  private async initializeWorkspaceResolutions(): Promise<void> {
-    try {
-      // 1. Check for workspace package.json resolutions/overrides
-      await this.loadWorkspaceResolutions()
-
-      // 2. Parse lock files for installed versions
-      await this.loadLockFileVersions()
-
-      this.log(`[ImportResolver] 📋 Workspace resolutions loaded:`, this.workspaceResolutions.size)
-      this.log(`[ImportResolver] 🔒 Lock file versions loaded:`, this.lockFileVersions.size)
-    } catch (err) {
-      this.log(`[ImportResolver] ⚠️  Error initializing workspace resolutions:`, err)
-    }
-  }
-
-  /**
-   * Load resolutions/overrides from workspace package.json
-   */
-  private async loadWorkspaceResolutions(): Promise<void> {
-    try {
-      const exists = await this.pluginApi.call('fileManager', 'exists', 'package.json')
-      if (!exists) return
-
-      const content = await this.pluginApi.call('fileManager', 'readFile', 'package.json')
-      const packageJson = JSON.parse(content)
-
-      // Yarn resolutions or npm overrides
-      const resolutions = packageJson.resolutions || packageJson.overrides || {}
-
-      for (const [pkg, version] of Object.entries(resolutions)) {
-        if (typeof version === 'string') {
-          this.workspaceResolutions.set(pkg, version)
-          this.log(`[ImportResolver] 📌 Workspace resolution: ${pkg} → ${version}`)
-        }
-      }
-
-      // Also check dependencies and peerDependencies for version hints
-      // These are lower priority than explicit resolutions/overrides
-      const allDeps = {
-        ...(packageJson.dependencies || {}),
-        ...(packageJson.peerDependencies || {}),
-        ...(packageJson.devDependencies || {})
-      }
-
-      for (const [pkg, versionRange] of Object.entries(allDeps)) {
-        // Only store if not already set by resolutions/overrides
-        if (!this.workspaceResolutions.has(pkg) && typeof versionRange === 'string') {
-          // Handle npm aliases like "npm:@openzeppelin/contracts@4.8.3"
-          if (versionRange.startsWith('npm:')) {
-            const npmAlias = versionRange.substring(4) // Remove "npm:" prefix
-            const match = npmAlias.match(/^(@?[^@]+)@(.+)$/)
-            if (match) {
-              const [, realPackage, version] = match
-              this.workspaceResolutions.set(pkg, `alias:${realPackage}@${version}`)
-              this.log(`[ImportResolver] 🔗 NPM alias: ${pkg} → ${realPackage}@${version}`)
-            } else {
-              this.log(`[ImportResolver] ⚠️  Invalid npm alias format: ${pkg} → ${versionRange}`)
-            }
-          }
-          // For exact versions (e.g., "4.8.3"), store directly
-          // For ranges (e.g., "^4.8.0"), we'll need the lock file or npm to resolve
-          else if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
-            // Exact version - store it
-            this.workspaceResolutions.set(pkg, versionRange)
-            this.log(`[ImportResolver] 📦 Workspace dependency (exact): ${pkg} → ${versionRange}`)
-          } else {
-            // Range - just log it, lock file or npm will resolve
-            this.log(`[ImportResolver] 📦 Workspace dependency (range): ${pkg}@${versionRange}`)
-          }
-        }
-      }
-    } catch (err) {
-      this.log(`[ImportResolver] ℹ️  No workspace package.json or resolutions`)
-    }
-  }
-
-  /**
-   * Parse lock file to get actual installed versions
-   */
-  private async loadLockFileVersions(): Promise<void> {
-    // Only reload if we haven't loaded lock files yet (avoid repeated logging)
-    if (this.lockFileVersions.size > 0) {
-      return
-    }
-
-    // Try yarn.lock first
-    try {
-      const yarnLockExists = await this.pluginApi.call('fileManager', 'exists', 'yarn.lock')
-      if (yarnLockExists) {
-        await this.parseYarnLock()
-        return
-      }
-    } catch (err) {
-      // Silent
-    }
-
-    // Try package-lock.json
-    try {
-      const npmLockExists = await this.pluginApi.call('fileManager', 'exists', 'package-lock.json')
-      if (npmLockExists) {
-        await this.parsePackageLock()
-        return
-      }
-    } catch (err) {
-      // Silent
-    }
-  }
-
-  /**
-   * Parse yarn.lock to extract package versions
-   */
-  private async parseYarnLock(): Promise<void> {
-    try {
-      const content = await this.pluginApi.call('fileManager', 'readFile', 'yarn.lock')
-
-      // Simple yarn.lock parsing - look for package@version entries
-      const lines = content.split('\n')
-      let currentPackage = null
-
-      for (const line of lines) {
-        // Match: "@openzeppelin/contracts@^5.0.0": or "lodash@^4.17.0":
-        // For scoped packages: "@scope/package@version"
-        // For regular packages: "package@version"
-        const packageMatch = line.match(/^"?(@?[^"@]+(?:\/[^"@]+)?)@[^"]*"?:/)
-        if (packageMatch) {
-          currentPackage = packageMatch[1]
-        }
-
-        // Match:   version "5.4.0"
-        const versionMatch = line.match(/^\s+version\s+"([^"]+)"/)
-        if (versionMatch && currentPackage) {
-          this.lockFileVersions.set(currentPackage, versionMatch[1])
-          currentPackage = null
-        }
-      }
-
-      this.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from yarn.lock`)
-    } catch (err) {
-      this.log(`[ImportResolver] ⚠️  Failed to parse yarn.lock:`, err)
-    }
-  }
-
-  /**
-   * Parse package-lock.json to extract package versions
-   */
-  private async parsePackageLock(): Promise<void> {
-    try {
-      const content = await this.pluginApi.call('fileManager', 'readFile', 'package-lock.json')
-      const lockData = JSON.parse(content)
-
-      // npm v1/v2 format
-      if (lockData.dependencies) {
-        for (const [pkg, data] of Object.entries(lockData.dependencies)) {
-          if (data && typeof data === 'object' && 'version' in data) {
-            this.lockFileVersions.set(pkg, (data as any).version)
-          }
-        }
-      }
-
-      // npm v3 format
-      if (lockData.packages) {
-        for (const [path, data] of Object.entries(lockData.packages)) {
-          if (data && typeof data === 'object' && 'version' in data) {
-            // Skip root package (path is empty string "")
-            if (path === '') continue
-
-            // Extract package name from path
-            // Format: "node_modules/@openzeppelin/contracts" -> "@openzeppelin/contracts"
-            const pkg = path.replace(/^node_modules\//, '')
-            if (pkg && pkg !== '') {
-              this.lockFileVersions.set(pkg, (data as any).version)
-            }
-          }
-        }
-      }
-
-      this.log(`[ImportResolver] 🔒 Loaded ${this.lockFileVersions.size} versions from package-lock.json`)
-    } catch (err) {
-      this.log(`[ImportResolver] ⚠️  Failed to parse package-lock.json:`, err)
+  public setPackageContext(context: string | null): void {
+    if (context) {
+      this.importMappings.set('__CONTEXT__', context)
+    } else {
+      this.importMappings.delete('__CONTEXT__')
     }
   }
 
@@ -314,61 +131,7 @@ export class ImportResolver implements IImportResolver {
    * Returns true if the resolved version might not satisfy the requested range
    */
   private isPotentialVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
-    // Extract major.minor.patch from resolved version
-    const resolvedMatch = resolvedVersion.match(/^(\d+)\.(\d+)\.(\d+)/)
-    if (!resolvedMatch) return false
-
-    const [, resolvedMajor, resolvedMinor, resolvedPatch] = resolvedMatch.map(Number)
-
-    // Handle caret ranges: ^5.4.0 means >=5.4.0 <6.0.0
-    const caretMatch = requestedRange.match(/^\^(\d+)\.(\d+)\.(\d+)/)
-    if (caretMatch) {
-      const [, reqMajor, reqMinor, reqPatch] = caretMatch.map(Number)
-
-      // Must be same major version
-      if (resolvedMajor !== reqMajor) return true
-
-      // If major > 0, minor can be >= requested
-      if (resolvedMajor > 0) {
-        if (resolvedMinor < reqMinor) return true
-        if (resolvedMinor === reqMinor && resolvedPatch < reqPatch) return true
-      }
-
-      return false
-    }
-
-    // Handle tilde ranges: ~5.4.0 means >=5.4.0 <5.5.0
-    const tildeMatch = requestedRange.match(/^~(\d+)\.(\d+)\.(\d+)/)
-    if (tildeMatch) {
-      const [, reqMajor, reqMinor, reqPatch] = tildeMatch.map(Number)
-
-      if (resolvedMajor !== reqMajor) return true
-      if (resolvedMinor !== reqMinor) return true
-      if (resolvedPatch < reqPatch) return true
-
-      return false
-    }
-
-    // Handle exact version: 5.4.0
-    const exactMatch = requestedRange.match(/^(\d+)\.(\d+)\.(\d+)$/)
-    if (exactMatch) {
-      return requestedRange !== resolvedVersion
-    }
-
-    // Handle >= ranges
-    const gteMatch = requestedRange.match(/^>=(\d+)\.(\d+)\.(\d+)/)
-    if (gteMatch) {
-      const [, reqMajor, reqMinor, reqPatch] = gteMatch.map(Number)
-
-      if (resolvedMajor < reqMajor) return true
-      if (resolvedMajor === reqMajor && resolvedMinor < reqMinor) return true
-      if (resolvedMajor === reqMajor && resolvedMinor === reqMinor && resolvedPatch < reqPatch) return true
-
-      return false
-    }
-
-    // For complex ranges or wildcards, we can't reliably determine - don't warn
-    return false
+    return isPotentialVersionConflict(requestedRange, resolvedVersion)
   }
 
   /**
@@ -376,37 +139,14 @@ export class ImportResolver implements IImportResolver {
    * This is likely to cause compilation failures
    */
   private isBreakingVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
-    const resolvedMatch = resolvedVersion.match(/^(\d+)/)
-    if (!resolvedMatch) return false
-    const resolvedMajor = parseInt(resolvedMatch[1])
-
-    // Extract major version from requested range
-    const rangeMatch = requestedRange.match(/(\d+)/)
-    if (!rangeMatch) return false
-    const requestedMajor = parseInt(rangeMatch[1])
-
-    return resolvedMajor !== requestedMajor
+    return isBreakingVersionConflict(requestedRange, resolvedVersion)
   }
 
   /**
    * Check dependencies of a package for version conflicts
    */
   private async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: any): Promise<void> {
-    const allDeps = {
-      ...(packageJson.dependencies || {}),
-      ...(packageJson.peerDependencies || {})
-    }
-
-    if (Object.keys(allDeps).length === 0) return
-
-    const depTypes = []
-    if (packageJson.dependencies) depTypes.push('dependencies')
-    if (packageJson.peerDependencies) depTypes.push('peerDependencies')
-    this.log(`[ImportResolver] 🔗 Found ${depTypes.join(' & ')} for ${packageName}:`, Object.keys(allDeps))
-
-    for (const [dep, requestedRange] of Object.entries(allDeps)) {
-      await this.checkDependencyConflict(packageName, resolvedVersion, dep, requestedRange as string, packageJson.peerDependencies)
-    }
+    await this.conflictChecker.checkPackageDependencies(packageName, resolvedVersion, packageJson)
   }
 
   /**
@@ -432,11 +172,11 @@ export class ImportResolver implements IImportResolver {
       resolvedDepVersion = this.extractVersion(resolvedDepPackage)
     } else if (isPeerDep) {
       // Peer dependency not yet imported - check what version would be resolved
-      // Check workspace resolutions first
-      if (this.workspaceResolutions.has(dep)) {
-        resolvedDepVersion = this.workspaceResolutions.get(dep)!
-      } else if (this.lockFileVersions.has(dep)) {
-        resolvedDepVersion = this.lockFileVersions.get(dep)!
+      // Check workspace resolutions first, then lock file versions
+      if (this.packageVersionResolver.hasWorkspaceResolution(dep)) {
+        resolvedDepVersion = this.packageVersionResolver.getWorkspaceResolution(dep)!
+      } else if (this.packageVersionResolver.hasLockFileVersion(dep)) {
+        resolvedDepVersion = this.packageVersionResolver.getLockFileVersion(dep)!
       }
       // Don't fetch from npm - that's too expensive for peer dep checking
     } else {
@@ -458,9 +198,9 @@ export class ImportResolver implements IImportResolver {
     // Determine where the resolved version came from
     let resolvedFrom = 'npm registry'
     const sourcePackage = this.packageSources.get(dep)
-    if (this.workspaceResolutions.has(dep)) {
+    if (this.packageVersionResolver.hasWorkspaceResolution(dep)) {
       resolvedFrom = 'workspace package.json'
-    } else if (this.lockFileVersions.has(dep)) {
+    } else if (this.packageVersionResolver.hasLockFileVersion(dep)) {
       resolvedFrom = 'lock file'
     } else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') {
       resolvedFrom = `${sourcePackage}/package.json`
@@ -513,8 +253,8 @@ export class ImportResolver implements IImportResolver {
    */
   private findParentPackageContext(): string | null {
     // Priority 1: Check for explicitly set context (from DependencyResolver)
-    const explicitContext = this.importMappings.get('__CONTEXT__')
-    if (explicitContext && this.parentPackageDependencies.has(explicitContext)) {
+  const explicitContext = this.importMappings.get('__CONTEXT__')
+  if (explicitContext && this.dependencyStore.hasParent(explicitContext)) {
       this.log(`[ImportResolver]    📍 Using explicit context: ${explicitContext}`)
       return explicitContext
     }
@@ -534,7 +274,7 @@ export class ImportResolver implements IImportResolver {
     // Return the most recently added parent package (LIFO - last in, first out)
     for (let i = mappedPackages.length - 1; i >= 0; i--) {
       const pkg = mappedPackages[i]
-      if (pkg && this.parentPackageDependencies.has(pkg)) {
+      if (pkg && this.dependencyStore.hasParent(pkg)) {
         return pkg
       }
     }
@@ -550,7 +290,7 @@ export class ImportResolver implements IImportResolver {
     const conflictingParents: Array<{ parent: string, version: string }> = []
 
     // Check all parent packages to see if they depend on this package
-    for (const [parentPkg, deps] of this.parentPackageDependencies.entries()) {
+    for (const [parentPkg, deps] of this.dependencyStore.entries()) {
       if (deps.has(packageName)) {
         conflictingParents.push({
           parent: parentPkg,
@@ -598,60 +338,12 @@ export class ImportResolver implements IImportResolver {
     // Check if multiple parent packages have conflicting dependencies
     this.checkForConflictingParentDependencies(packageName)
 
-    // PRIORITY 1: Workspace resolutions/overrides - ALWAYS reload fresh
-    await this.loadWorkspaceResolutions()
+    // Determine parent context and deps (if any)
+  const parentPackage = this.findParentPackageContext()
+  const parentDeps = parentPackage ? this.dependencyStore.getParentPackageDeps(parentPackage) : undefined
 
-    if (this.workspaceResolutions.has(packageName)) {
-      const resolution = this.workspaceResolutions.get(packageName)
-
-      // Handle npm aliases like "alias:@openzeppelin/contracts@4.8.3"
-      if (resolution?.startsWith('alias:')) {
-        const aliasTarget = resolution.substring(6) // Remove "alias:" prefix
-        this.log(`[ImportResolver] 🔗 PRIORITY 1 - NPM alias: ${packageName} → ${aliasTarget}`)
-        const match = aliasTarget.match(/^(@?[^@]+)@(.+)$/)
-        if (match) {
-          const [, realPackage, version] = match
-          // Return the specific version from the alias, don't recurse
-          return { version, source: `alias:${packageName}→${realPackage}` }
-        }
-      } else {
-        this.log(`[ImportResolver] ✅ PRIORITY 1 - Workspace resolution: ${packageName} → ${resolution}`)
-        return { version: resolution, source: 'workspace-resolution' }
-      }
-    }
-    this.log(`[ImportResolver]    ⏭️  Priority 1 (workspace): Not found`)
-
-    // PRIORITY 2: Parent package dependencies
-    // Check if we're resolving from within a parent package (e.g., @chainlink/contracts-ccip@1.6.1)
-    const parentPackage = this.findParentPackageContext()
-    if (parentPackage) {
-      this.log(`[ImportResolver]    🔍 Priority 2 (parent): Checking ${parentPackage}`)
-      const parentDeps = this.parentPackageDependencies.get(parentPackage)
-      if (parentDeps && parentDeps.has(packageName)) {
-        const version = parentDeps.get(packageName)!
-        this.log(`[ImportResolver] ✅ PRIORITY 2 - Parent dependency: ${packageName} → ${version} (from ${parentPackage})`)
-        return { version, source: `parent-${parentPackage}` }
-      } else {
-        this.log(`[ImportResolver]    ⏭️  Priority 2 (parent): ${packageName} not in ${parentPackage} deps`)
-      }
-    } else {
-      this.log(`[ImportResolver]    ⏭️  Priority 2 (parent): No parent package context`)
-    }
-
-    // PRIORITY 3: Lock file (if no workspace override or parent dependency)
-    // Reload lock files fresh each time to pick up changes
-    await this.loadLockFileVersions()
-
-    if (this.lockFileVersions.has(packageName)) {
-      const version = this.lockFileVersions.get(packageName)
-      this.log(`[ImportResolver] ✅ PRIORITY 3 - Lock file: ${packageName} → ${version}`)
-      return { version, source: 'lock-file' }
-    }
-    this.log(`[ImportResolver]    ⏭️  Priority 3 (lock file): Not found`)
-
-    // PRIORITY 4: Fetch package.json (fallback)
-    this.log(`[ImportResolver]    🌐 Priority 4 (NPM): Fetching latest...`)
-    return await this.fetchPackageVersionFromNpm(packageName)
+    // Delegate to centralized resolver
+    return await this.packageVersionResolver.resolveVersion(packageName, parentDeps, parentPackage || undefined)
   }
 
   /**
@@ -680,8 +372,8 @@ export class ImportResolver implements IImportResolver {
         this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
       }
 
-      // Store parent's dependencies for future lookups
-      this.storePackageDependencies(`${packageName}@${packageJson.version}`, packageJson)
+  // Store parent's dependencies for future lookups
+  this.dependencyStore.storePackageDependencies(`${packageName}@${packageJson.version}`, packageJson)
 
       return { version: packageJson.version, source: 'package-json' }
     } catch (err) {
@@ -693,38 +385,7 @@ export class ImportResolver implements IImportResolver {
   /**
    * Extract and store dependencies from a package.json for future parent context resolution
    */
-  private storePackageDependencies(packageKey: string, packageJson: any): void {
-    if (!packageJson.dependencies && !packageJson.peerDependencies) {
-      return
-    }
-
-    const deps = new Map<string, string>()
-
-    // Store regular dependencies
-    if (packageJson.dependencies) {
-      for (const [dep, versionRange] of Object.entries(packageJson.dependencies)) {
-        // Extract version number from range (e.g., "^1.4.0" -> "1.4.0")
-        const cleanVersion = (versionRange as string).replace(/^[\^~>=<]+/, '')
-        deps.set(dep, cleanVersion)
-      }
-    }
-
-    // Store peer dependencies
-    if (packageJson.peerDependencies) {
-      for (const [dep, versionRange] of Object.entries(packageJson.peerDependencies)) {
-        if (!deps.has(dep)) {
-          const cleanVersion = (versionRange as string).replace(/^[\^~>=<]+/, '')
-          deps.set(dep, cleanVersion)
-        }
-      }
-    }
-
-    this.parentPackageDependencies.set(packageKey, deps)
-    this.log(`[ImportResolver] 📚 Stored ${deps.size} dependencies for ${packageKey}:`)
-    deps.forEach((version, dep) => {
-      this.log(`[ImportResolver]      - ${dep}: ${version}`)
-    })
-  }
+  // storePackageDependencies removed in favor of DependencyStore
 
   /**
    * Fetch and save package.json from GitHub repository (if it exists)
@@ -738,13 +399,13 @@ export class ImportResolver implements IImportResolver {
       this.log(`[ImportResolver] 📦 Attempting to fetch GitHub package.json: ${packageJsonUrl}`)
       
       // Try to fetch package.json
-      const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+  const content = await this.contentFetcher.resolve(packageJsonUrl)
       const packageJson = JSON.parse(content.content || content)
       
       if (packageJson && packageJson.name) {
         // Save package.json to normalized GitHub path
         const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
-        await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+  await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
         
         this.log(`[ImportResolver] ✅ Saved GitHub package.json to: ${targetPath}`)
         this.log(`[ImportResolver]    Package: ${packageJson.name}@${packageJson.version || 'unknown'}`)
@@ -752,7 +413,7 @@ export class ImportResolver implements IImportResolver {
         // Store dependencies for future reference
         if (packageJson.version) {
           const packageKey = `${owner}/${repo}@${ref}`
-          this.storePackageDependencies(packageKey, packageJson)
+          this.dependencyStore.storePackageDependencies(packageKey, packageJson)
         }
       }
     } catch (err) {
@@ -770,7 +431,7 @@ export class ImportResolver implements IImportResolver {
     }
 
     // Resolve version from workspace, lock file, or npm
-    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
+  const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
 
     if (!resolvedVersion) {
       return
@@ -792,14 +453,16 @@ export class ImportResolver implements IImportResolver {
     // Record the source of this resolution
     if (source === 'workspace-resolution' || source === 'lock-file') {
       this.packageSources.set(packageName, 'workspace')
+      this.dependencyStore.setPackageSource(packageName, 'workspace')
     } else {
-      this.packageSources.set(packageName, packageName) // Direct fetch from npm
+      this.packageSources.set(packageName, packageName)
+      this.dependencyStore.setPackageSource(packageName, packageName)
     }
 
     this.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
 
     // Check dependencies for conflicts
-    await this.checkPackageDependenciesIfNeeded(packageName, resolvedVersion, source)
+  await this.checkPackageDependenciesIfNeeded(packageName, resolvedVersion, source)
 
     this.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
   }
@@ -810,24 +473,22 @@ export class ImportResolver implements IImportResolver {
   private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string, source: string): Promise<void> {
     try {
       const packageJsonUrl = `${packageName}/package.json`
-      const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+  const content = await this.contentFetcher.resolve(packageJsonUrl)
       const packageJson = JSON.parse(content.content || content)
 
-      // Save package.json if we haven't already (when using lock file or workspace resolutions)
-      if (source !== 'package-json') {
-        try {
-          // Use the actual package name from package.json, not the potentially aliased packageName parameter
-          const realPackageName = packageJson.name || packageName
-          const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
-          await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
-          this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-        } catch (saveErr) {
-          this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
-        }
+      // Always save package.json for visibility and debugging
+      try {
+        // Use the actual package name from package.json, not the potentially aliased packageName parameter
+        const realPackageName = packageJson.name || packageName
+        const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
+          await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
+        this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+      } catch (saveErr) {
+        this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr)
       }
 
       // Store dependencies for future parent context resolution
-      this.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
+  this.dependencyStore.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
 
       // Check dependencies for conflicts
       await this.checkPackageDependencies(packageName, resolvedVersion, packageJson)
@@ -846,123 +507,40 @@ export class ImportResolver implements IImportResolver {
       throw new Error(`Invalid import: "${url}" does not end with .sol extension`)
     }
     
-    // If this is an external URL, check if it's a CDN serving an npm package
+    // If this is an external URL, handle normalizations (CDNs, GitHub, etc.)
     if (url.startsWith('http://') || url.startsWith('https://')) {
       this.log(`[ImportResolver] 🌐 External URL detected: ${url}`)
-      
-      // Convert GitHub blob URLs to raw.githubusercontent.com for direct file access
-      const githubBlobMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/)
-      if (githubBlobMatch) {
-        const owner = githubBlobMatch[1]
-        const repo = githubBlobMatch[2]
-        const ref = githubBlobMatch[3]
-        const filePath = githubBlobMatch[4]
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${filePath}`
-        this.log(`[ImportResolver]   🔄 Converting GitHub blob URL to raw: ${rawUrl}`)
-        url = rawUrl
+
+      // GitHub blob → raw
+      const blobToRaw = normalizeGithubBlobUrl(url)
+      if (blobToRaw) {
+        this.log(`[ImportResolver]   🔄 Converting GitHub blob URL to raw: ${blobToRaw}`)
+        url = blobToRaw
       }
-      
-      // Check if this CDN URL is serving an npm package
-      // Versioned: unpkg.com/@scope/pkg@version/... → @scope/pkg@version/...
-      // Unversioned: unpkg.com/@scope/pkg/... → @scope/pkg/... (will resolve version later)
-      // cdn.jsdelivr.net/npm/@scope/pkg@version/... → @scope/pkg@version/...
-      
-      // Try versioned pattern first
-      let npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)@([^/]+)\/(.+)$/)
-      
-      if (npmCdnMatch) {
-        const packageName = npmCdnMatch[1]
-        const version = npmCdnMatch[2]
-        const filePath = npmCdnMatch[3]
-        const npmPath = `${packageName}@${version}/${filePath}`
-        
-        this.log(`[ImportResolver]   🔄 CDN URL is serving versioned npm package, normalizing:`)
+
+      // npm CDN → npm path
+      const npmRewrite = rewriteNpmCdnUrl(url)
+      if (npmRewrite) {
+        this.log(`[ImportResolver]   🔄 CDN URL is serving npm package, normalizing:`)
         this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${npmPath}`)
-        
-        // Record the mapping from original URL to npm path
-        if (!this.resolutions.has(originalUrl)) {
-          this.resolutions.set(originalUrl, npmPath)
-        }
-        
-        // Now resolve it as a regular npm import (this will use our existing npm resolution logic)
-        return await this.resolveAndSave(npmPath, targetPath, skipResolverMappings)
+        this.log(`[ImportResolver]      To:   ${npmRewrite.npmPath}`)
+        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, npmRewrite.npmPath)
+        return await this.resolveAndSave(npmRewrite.npmPath, targetPath, skipResolverMappings)
       }
-      
-      // Try unversioned pattern (unpkg without @version)
-      npmCdnMatch = url.match(/^https?:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@?[^/]+(?:\/[^/@]+)?)\/(.+)$/)
-      
-      if (npmCdnMatch) {
-        const packageName = npmCdnMatch[1]
-        const filePath = npmCdnMatch[2]
-        const npmPath = `${packageName}/${filePath}`
-        
-        this.log(`[ImportResolver]   🔄 CDN URL is serving unversioned npm package, normalizing:`)
-        this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${npmPath}`)
-        
-        // Record the mapping from original URL to npm path
-        if (!this.resolutions.has(originalUrl)) {
-          this.resolutions.set(originalUrl, npmPath)
-        }
-        
-        // Now resolve it as a regular npm import (version will be resolved from workspace)
-        return await this.resolveAndSave(npmPath, targetPath, skipResolverMappings)
-      }
-      
-      // For raw.githubusercontent.com URLs, normalize to a cleaner path structure
-      // Handle both versioned (refs/heads/master, refs/tags/v1.0, v4.8.0) and keep the path clean
-      // raw.githubusercontent.com/owner/repo/ref.../path → github/owner/repo@ref/path
-      const rawGithubMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(.+)$/)
-      if (rawGithubMatch) {
-        const owner = rawGithubMatch[1]
-        const repo = rawGithubMatch[2]
-        const restOfPath = rawGithubMatch[3] // Everything after repo: could be "refs/heads/master/file.sol" or "v4.8.0/file.sol"
-        
-        // Split the rest of the path to extract ref and filePath
-        // Check if it starts with refs/heads/ or refs/tags/
-        let ref: string
-        let filePath: string
-        
-        if (restOfPath.startsWith('refs/heads/') || restOfPath.startsWith('refs/tags/')) {
-          // Extract: refs/heads/master/path/to/file.sol → ref=master, filePath=path/to/file.sol
-          const parts = restOfPath.split('/')
-          if (restOfPath.startsWith('refs/heads/')) {
-            ref = parts[2] // Get the branch name (master, main, etc.)
-            filePath = parts.slice(3).join('/') // Everything after refs/heads/master
-          } else {
-            ref = parts[2] // Get the tag name
-            filePath = parts.slice(3).join('/') // Everything after refs/tags/v1.0.0
-          }
-        } else {
-          // Direct version tag or branch: v4.8.0/path/to/file.sol
-          const firstSlash = restOfPath.indexOf('/')
-          ref = restOfPath.substring(0, firstSlash)
-          filePath = restOfPath.substring(firstSlash + 1)
-        }
-        
-        // Create a normalized path without the full URL
-        const normalizedPath = `github/${owner}/${repo}@${ref}/${filePath}`
-        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
-        
+
+      // raw.githubusercontent.com → normalized save path
+      const ghRaw = normalizeRawGithubUrl(url)
+      if (ghRaw) {
         this.log(`[ImportResolver]   🔄 Normalizing raw.githubusercontent.com URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
-        
-        // Try to fetch and save package.json for this GitHub repo (if it exists)
-        await this.fetchGitHubPackageJson(owner, repo, ref)
-        
-        // Fetch the content using the full URL but save to normalized path
-        // Note: contentImport will prepend .deps/ automatically
-        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
-        
+        this.log(`[ImportResolver]      To:   ${ghRaw.normalizedPath}`)
+
+        // Save optional package.json if available
+        await this.fetchGitHubPackageJson(ghRaw.owner, ghRaw.repo, ghRaw.ref)
+
+    const content = await this.contentFetcher.resolveAndSave(url, ghRaw.targetPath, false)
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        
-        // Record the mapping from original URL to normalized path
-        if (!this.resolutions.has(originalUrl)) {
-          this.resolutions.set(originalUrl, normalizedPath)
-        }
-        
+        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, ghRaw.normalizedPath)
         return content
       }
     }
@@ -970,32 +548,14 @@ export class ImportResolver implements IImportResolver {
     // Handle IPFS URLs: ipfs://QmHash/path or ipfs://ipfs/QmHash/path
     if (url.startsWith('ipfs://')) {
       this.log(`[ImportResolver] 🌐 IPFS URL detected: ${url}`)
-      
-      // Extract hash and path
-      const ipfsMatch = url.match(/^ipfs:\/\/(?:ipfs\/)?([^/]+)(?:\/(.+))?$/)
-      if (ipfsMatch) {
-        const hash = ipfsMatch[1]
-        const filePath = ipfsMatch[2] || ''
-        
-        // Create a normalized path
-        const normalizedPath = filePath ? `ipfs/${hash}/${filePath}` : `ipfs/${hash}`
-        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
-        
+      const ipfs = normalizeIpfsUrl(url)
+      if (ipfs) {
         this.log(`[ImportResolver]   🔄 Normalizing IPFS URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
-        
-        // Fetch the content using the IPFS URL
-        // Note: contentImport will prepend .deps/ automatically
-        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
-        
+        this.log(`[ImportResolver]      To:   ${ipfs.normalizedPath}`)
+  const content = await this.contentFetcher.resolveAndSave(url, ipfs.targetPath, false)
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        
-        // Record the mapping from original URL to normalized path
-        if (!this.resolutions.has(originalUrl)) {
-          this.resolutions.set(originalUrl, normalizedPath)
-        }
-        
+        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, ipfs.normalizedPath)
         return content
       }
     }
@@ -1003,33 +563,14 @@ export class ImportResolver implements IImportResolver {
     // Handle Swarm URLs: bzz-raw://hash/path or bzz://hash/path
     if (url.startsWith('bzz-raw://') || url.startsWith('bzz://')) {
       this.log(`[ImportResolver] 🌐 Swarm URL detected: ${url}`)
-      
-      // Extract hash and path
-      const swarmMatch = url.match(/^(bzz-raw?):\/\/([^/]+)(?:\/(.+))?$/)
-      if (swarmMatch) {
-        const protocol = swarmMatch[1]
-        const hash = swarmMatch[2]
-        const filePath = swarmMatch[3] || ''
-        
-        // Create a normalized path
-        const normalizedPath = filePath ? `swarm/${hash}/${filePath}` : `swarm/${hash}`
-        const normalizedTargetPath = normalizedPath  // Don't add .deps/ prefix - contentImport adds it
-        
+      const swarm = normalizeSwarmUrl(url)
+      if (swarm) {
         this.log(`[ImportResolver]   🔄 Normalizing Swarm URL:`)
         this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${normalizedPath}`)
-        
-        // Fetch the content using the Swarm URL
-        // Note: contentImport will prepend .deps/ automatically
-        const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, normalizedTargetPath, false)
-        
+        this.log(`[ImportResolver]      To:   ${swarm.normalizedPath}`)
+  const content = await this.contentFetcher.resolveAndSave(url, swarm.targetPath, false)
         this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        
-        // Record the mapping from original URL to normalized path
-        if (!this.resolutions.has(originalUrl)) {
-          this.resolutions.set(originalUrl, normalizedPath)
-        }
-        
+        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, swarm.normalizedPath)
         return content
       }
     }
@@ -1037,7 +578,7 @@ export class ImportResolver implements IImportResolver {
     // For other external HTTP/HTTPS URLs (not npm CDN, not GitHub raw), fetch directly
     if (url.startsWith('http://') || url.startsWith('https://')) {
       this.log(`[ImportResolver]   ⬇️  Fetching directly from URL: ${url}`)
-      const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
+  const content = await this.contentFetcher.resolveAndSave(url, targetPath, true)
       
       this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
       if (!content) {
@@ -1148,18 +689,18 @@ export class ImportResolver implements IImportResolver {
 
             // Fetch and save package.json for this version (if not already done)
             const versionedPackageName = `${packageName}@${requestedVersion}`
-            if (!this.parentPackageDependencies.has(versionedPackageName)) {
+            if (!this.dependencyStore.hasParent(versionedPackageName)) {
               try {
                 const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
-                const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+                const content = await this.contentFetcher.resolve(packageJsonUrl)
                 const packageJson = JSON.parse(content.content || content)
 
                 const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
-                await this.pluginApi.call('fileManager', 'setFile', pkgJsonPath, JSON.stringify(packageJson, null, 2))
+                await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
                 this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
 
                 // Store dependencies for future parent context resolution
-                this.storePackageDependencies(versionedPackageName, packageJson)
+                this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
               } catch (err) {
                 this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
               }
@@ -1192,15 +733,15 @@ export class ImportResolver implements IImportResolver {
             // Fetch and save package.json for this version
             try {
               const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
-              const content = await this.pluginApi.call('contentImport', 'resolve', packageJsonUrl)
+              const content = await this.contentFetcher.resolve(packageJsonUrl)
               const packageJson = JSON.parse(content.content || content)
 
               const targetPath = `.deps/npm/${versionedPackageName}/package.json`
-              await this.pluginApi.call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
+              await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
               this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
 
               // Store dependencies for future parent context resolution
-              this.storePackageDependencies(versionedPackageName, packageJson)
+              this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
             } catch (err) {
               this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
             }
@@ -1210,7 +751,7 @@ export class ImportResolver implements IImportResolver {
     }
 
     this.log(`[ImportResolver] 📥 Fetching: ${url}`)
-    const content = await this.pluginApi.call('contentImport', 'resolveAndSave', url, targetPath, true)
+  const content = await this.contentFetcher.resolveAndSave(url, targetPath, true)
 
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) {
@@ -1224,9 +765,14 @@ export class ImportResolver implements IImportResolver {
   public async saveResolutionsToIndex(): Promise<void> {
     this.log(`[ImportResolver] 💾 Saving ${this.resolutions.size} resolution(s) to index for: ${this.targetFile}`)
 
+    // Lazily initialize the resolution index if needed
     if (!this.resolutionIndex) {
-      this.log(`[ImportResolver] ⚠️  Resolution index not initialized, skipping save`)
-      return
+      this.resolutionIndex = new ResolutionIndex(this.pluginApi, this.debug)
+    }
+    // Ensure it's loaded
+    if (!this.resolutionIndexInitialized) {
+      await this.resolutionIndex.load()
+      this.resolutionIndexInitialized = true
     }
 
     this.resolutionIndex.clearFileResolutions(this.targetFile)
