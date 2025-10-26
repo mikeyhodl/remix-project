@@ -289,12 +289,17 @@ function StepDetailPage() {
               <button
                 className="w-100 btn btn-success"
                 onClick={() => {
+                  // Save tutorial completion to localStorage
+                  const completedTutorials = JSON.parse(localStorage.getItem('learneth_completed_tutorials') || '{}');
+                  completedTutorials[id] = true;
+                  localStorage.setItem('learneth_completed_tutorials', JSON.stringify(completedTutorials));
+
                   navigate(`/list?id=${id}`);
-                  trackMatomoEvent(remixClient, { 
-                    category: 'learneth', 
-                    action: 'navigate_finish', 
-                    name: id, 
-                    isClick: true 
+                  trackMatomoEvent(remixClient, {
+                    category: 'learneth',
+                    action: 'navigate_finish',
+                    name: id,
+                    isClick: true
                   })
                 }}
               >
