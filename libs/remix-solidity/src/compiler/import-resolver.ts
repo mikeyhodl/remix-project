@@ -10,6 +10,8 @@ import { Logger } from './utils/logger'
 import { ContentFetcher } from './utils/content-fetcher'
 import { DependencyStore } from './utils/dependency-store'
 import { ConflictChecker } from './utils/conflict-checker'
+import type { IOAdapter } from './adapters/io-adapter'
+import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 
 export class ImportResolver implements IImportResolver {
   private importMappings: Map<string, string>
@@ -21,6 +23,7 @@ export class ImportResolver implements IImportResolver {
   private dependencyStore: DependencyStore
   private logger: Logger
   private conflictChecker: ConflictChecker
+  private io: IOAdapter
   private conflictWarnings: Set<string> = new Set() // Track warned conflicts
   private importedFiles: Map<string, string> = new Map() // Track imported files: "pkg/path/to/file.sol" -> "version"
   private packageSources: Map<string, string> = new Map() // Track which package.json resolved each dependency: "pkg" -> "source-package"
@@ -39,9 +42,10 @@ export class ImportResolver implements IImportResolver {
     this.conflictWarnings = new Set()
     this.importedFiles = new Map()
     this.packageSources = new Map()
-    this.packageVersionResolver = new PackageVersionResolver(pluginApi, debug)
-    this.logger = new Logger(pluginApi, debug)
-    this.contentFetcher = new ContentFetcher(pluginApi, debug)
+  this.io = new RemixPluginAdapter(pluginApi)
+  this.packageVersionResolver = new PackageVersionResolver(this.io, debug)
+  this.logger = new Logger(pluginApi, debug)
+  this.contentFetcher = new ContentFetcher(this.io, debug)
     this.dependencyStore = new DependencyStore()
     this.conflictChecker = new ConflictChecker(
       this.logger,

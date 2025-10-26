@@ -17,7 +17,7 @@ High-level flow:
   - Responsibilities, now split with small utils:
     - URL normalization in `utils/url-normalizer.ts` (GitHub, npm CDNs, IPFS, Swarm).
     - Semver checks in `utils/semver-utils.ts`.
-    - Workspace/lock-file version hints and package.json persistence (in-file, next step to extract).
+    - Workspace/lock-file version hints and package.json persistence via `utils/package-version-resolver.ts`.
   - Records original → resolved paths into a ResolutionIndex for "Go to Definition".
 
 Debugging tips:
@@ -39,6 +39,35 @@ Key contracts:
 
 Next refactors (safe to do incrementally):
 
-- Extract package version resolution (workspace/lock/npm) to `utils/package-version-resolver.ts`.
 - Extract dependency/peer-dependency conflict checks to `utils/conflict-checker.ts`.
 - Add unit tests for the new utils: URL normalization and semver logic.
+
+Standalone/adapter-friendly usage:
+
+- IO boundary is abstracted by `adapters/io-adapter.ts` with a tiny interface for file ops and content fetching.
+  - Default app adapter: `adapters/remix-plugin-adapter.ts` (delegates to Remix plugin APIs).
+  - Core utilities like `ContentFetcher` and `PackageVersionResolver` now depend on `IOAdapter`, not the app.
+- To run outside the app (Node script, tests), provide your own adapter implementing:
+  - readFile(path), writeFile(path), setFile(path), exists(path), mkdir(path)
+  - fetch(url) → string content
+  - optionally resolveAndSave(url, targetPath?, useOriginal?) → string
+
+Example sketch for a Node adapter (pseudo):
+
+```ts
+import { IOAdapter } from './adapters/io-adapter'
+import { promises as fs } from 'fs'
+import { dirname } from 'path'
+
+export class NodeIOAdapter implements IOAdapter {
+  async readFile(p: string) { return fs.readFile(p, 'utf8') }
+  async writeFile(p: string, c: string) { await fs.writeFile(p, c, 'utf8') }
+  async setFile(p: string, c: string) { await fs.mkdir(dirname(p), { recursive: true }); await fs.writeFile(p, c, 'utf8') }
+  async exists(p: string) { try { await fs.stat(p); return true } catch { return false } }
+  async mkdir(p: string) { await fs.mkdir(p, { recursive: true }) }
+  async fetch(url: string) { const res = await fetch(url); if (!res.ok) throw new Error(`${res.status} ${url}`); return await res.text() }
+}
+```
+
+With such adapter, you can instantiate `ContentFetcher` and `PackageVersionResolver` and (via `ImportResolver`) resolve imports without the Remix app. In tests, implement a tiny in-memory adapter to avoid network/filesystem calls.
+
