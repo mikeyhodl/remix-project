@@ -72,19 +72,6 @@ export interface AIEvent extends MatomoEventBase {
     | 'GenerateNewAIWorkspaceFromModal';
 }
 
-// /**
-//  * RemixAI Events - Specific to RemixAI interactions
-//  */
-// export interface RemixAIEvent extends MatomoEventBase {
-//   category: 'remixAI';
-//   action:
-//     | 'ModeSwitch'
-//     | 'GenerateNewAIWorkspaceFromEditMode'
-//     | 'SetAIProvider'
-//     | 'SetOllamaModel'
-//     | 'GenerateNewAIWorkspaceFromModal';
-// }
-
 /**
  * RemixAI Assistant Events - Specific to assistant interactions
  */
