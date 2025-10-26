@@ -56,4 +56,44 @@ describe('SourceFlattener - end-to-end parsing + resolving + flattening', () => 
     // Ensure order contains entry as last element (after its deps)
     expect(result.order[result.order.length - 1]).to.equal(entry)
   })
+
+  it('flattens an entry importing from unpkg CDN (versioned path)', async function () {
+    this.timeout(90000)
+
+    const io = new NodeIOAdapter()
+    const flattener = new SourceFlattener(io, true)
+
+    const entry = 'CdnEntry.sol'
+    const source = `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "https://unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol";\n\ncontract CdnToken is ERC20 {\n  constructor() ERC20("CdnToken", "CDN") {}\n}`
+    await fs.writeFile(entry, source, 'utf8')
+
+    const result = await flattener.flatten(entry)
+
+    expect(result.flattened).to.be.a('string')
+    expect(result.flattened.length).to.be.greaterThan(5000)
+    expect(result.flattened).to.match(/pragma\s+solidity\s+/)
+    expect(result.flattened).to.contain('contract ERC20')
+    expect(result.flattened).to.contain('contract CdnToken')
+    expect(result.flattened).to.not.match(/\bimport\s+\"/)
+  })
+
+  it('flattens an entry importing from raw.githubusercontent.com (normalized save path)', async function () {
+    this.timeout(120000)
+
+    const io = new NodeIOAdapter()
+    const flattener = new SourceFlattener(io, true)
+
+    const entry = 'GhEntry.sol'
+    const ghImport = 'https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts-upgradeable/v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol'
+    const source = `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "${ghImport}";\n\ncontract Dummy {}`
+    await fs.writeFile(entry, source, 'utf8')
+
+    const result = await flattener.flatten(entry)
+
+    expect(result.flattened).to.be.a('string')
+    expect(result.flattened.length).to.be.greaterThan(2000)
+    expect(result.flattened).to.match(/pragma\s+solidity\s+/)
+    expect(result.flattened).to.contain('ERC1155Upgradeable')
+    expect(result.flattened).to.not.match(/\bimport\s+\"/)
+  })
 })
