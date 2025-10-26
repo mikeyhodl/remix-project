@@ -1,0 +1,103 @@
+import type { IOAdapter } from './adapters/io-adapter'
+import { DependencyResolver } from './dependency-resolver'
+import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
+
+export interface FlattenResult {
+  entry: string
+  order: string[]
+  sources: Map<string, string>
+  flattened: string
+}
+
+export interface FlattenOptions {
+  remappings?: Array<string | Remapping>
+  remappingsFile?: string
+}
+
+export class SourceFlattener {
+  constructor(private io: IOAdapter, private debug = false) {}
+
+  private log(...args: any[]) { if (this.debug) console.log('[SourceFlattener]', ...args) }
+
+  public async flatten(entryFile: string, opts?: FlattenOptions): Promise<FlattenResult> {
+    const dep = new DependencyResolver(this.io as any, entryFile, this.debug)
+    if (opts?.remappingsFile) {
+      try {
+        const content = await this.io.readFile(opts.remappingsFile)
+        const remaps = parseRemappingsFileContent(content)
+        dep.setRemappings(remaps)
+      } catch (e) {
+        this.log('Failed to read remappings file:', opts.remappingsFile, e)
+      }
+    } else if (opts?.remappings && opts.remappings.length) {
+      dep.setRemappings(normalizeRemappings(opts.remappings))
+    }
+    await dep.buildDependencyTree(entryFile)
+    await dep.saveResolutionIndex()
+
+    const graph = dep.getImportGraph()
+    const bundle = dep.getSourceBundle()
+    const visited = new Set<string>()
+    const order: string[] = []
+
+    const visit = (file: string) => {
+      if (visited.has(file)) return
+      visited.add(file)
+      const imports = graph.get(file)
+      if (imports) {
+        for (const imp of imports) {
+          let key = imp
+          if (graph.has(imp)) key = imp
+          visit(key)
+        }
+      }
+      order.push(file)
+    }
+
+    if (!graph.has(entryFile)) order.push(entryFile)
+    else visit(entryFile)
+
+    let firstPragma: string | null = null
+    let firstSpdx: string | null = null
+    const seen = new Set<string>()
+    const parts: string[] = []
+
+    const stripImports = (src: string) => src.replace(/\n?\s*import\s+[^;]+;\s*\n?/g, '\n')
+
+    for (const file of order) {
+      if (seen.has(file)) continue
+      seen.add(file)
+      const content = bundle.get(file) || ''
+      if (!content) continue
+
+      const lines = content.split(/\r?\n/)
+      const kept: string[] = []
+      for (const line of lines) {
+        const spdxMatch = line.match(/^\s*\/\/\s*SPDX-License-Identifier:\s*(.+)$/)
+        if (spdxMatch) { if (!firstSpdx) firstSpdx = line.trim(); continue }
+        const pragmaMatch = line.match(/^\s*pragma\s+solidity\s+[^;]+;/)
+        if (pragmaMatch) { if (!firstPragma) firstPragma = pragmaMatch[0]; continue }
+        kept.push(line)
+      }
+
+      const withoutImports = stripImports(kept.join('\n')).trim()
+      this.log('Adding file to flat:', file)
+      parts.push(`\n\n// File: ${file}\n\n${withoutImports}`)
+    }
+
+    const header: string[] = []
+    if (firstSpdx) header.push(firstSpdx)
+    if (firstPragma) header.push(firstPragma)
+
+    const flattened = [header.join('\n'), ...parts].filter(Boolean).join('\n')
+    return { entry: entryFile, order, sources: bundle, flattened }
+  }
+
+  public async flattenToFile(entryFile: string, outFile: string, opts?: FlattenOptions & { overwrite?: boolean }): Promise<FlattenResult & { outFile: string }> {
+    const result = await this.flatten(entryFile, opts)
+    const dir = outFile.split('/').slice(0, -1).join('/')
+    if (dir) await this.io.mkdir(dir)
+    await this.io.writeFile(outFile, result.flattened)
+    return { ...result, outFile }
+  }
+}

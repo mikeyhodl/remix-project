@@ -20,6 +20,13 @@
         ]
       }
     },
+    "test": {
+      "executor": "@nrwl/workspace:run-commands",
+      "options": {
+  "command": "TS_NODE_PROJECT=libs/remix-import-resolver/tsconfig.spec.json mocha -r ts-node/register -r tsconfig-paths/register \"libs/remix-import-resolver/test/**/*.spec.ts\"",
+        "cwd": "."
+      }
+    },
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],

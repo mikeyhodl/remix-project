@@ -1,27 +1,14 @@
-// Thin, Node-focused entry that re-exports the adapterized import resolver + flattener API
-// from @remix-project/remix-solidity. This keeps a stable, minimal surface for consumers
-// who only need resolving, remappings, and flattening in Node environments.
+// Thin, Node-focused entry for import resolving & flattening
+// Primary exports live in this package; ImportResolver is consumed from remix-solidity.
 
-export type { IOAdapter } from '@remix-project/remix-solidity'
-export { NodeIOAdapter } from '@remix-project/remix-solidity'
+export type { IOAdapter } from './compiler/adapters/io-adapter'
+export { NodeIOAdapter } from './compiler/adapters/node-io-adapter'
+export { RemixPluginAdapter } from './compiler/adapters/remix-plugin-adapter'
 
 export { ImportResolver } from '@remix-project/remix-solidity'
-export { DependencyResolver } from '@remix-project/remix-solidity'
+export { DependencyResolver } from './compiler/dependency-resolver'
 
-export { SourceFlattener } from '@remix-project/remix-solidity'
-export type { FlattenOptions, FlattenResult } from '@remix-project/remix-solidity'
+export { SourceFlattener } from './compiler/source-flattener'
+export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'
 
-export { FileResolutionIndex } from '@remix-project/remix-solidity'
-
-export { parseRemappingsFileContent, normalizeRemappings } from '@remix-project/remix-solidity'
-
-export { Logger } from '@remix-project/remix-solidity'
-export { PackageVersionResolver } from '@remix-project/remix-solidity'
-
-export {
-  normalizeGithubBlobUrl,
-  normalizeRawGithubUrl,
-  normalizeIpfsUrl,
-  normalizeSwarmUrl,
-  rewriteNpmCdnUrl
-} from '@remix-project/remix-solidity'
+export { parseRemappingsFileContent, normalizeRemappings } from './compiler/utils/remappings'
