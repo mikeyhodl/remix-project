@@ -1,11 +1,19 @@
 import type { IOAdapter } from './adapters/io-adapter'
 import { DependencyResolver } from './dependency-resolver'
+import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
 
 export interface FlattenResult {
   entry: string
   order: string[]
   sources: Map<string, string>
   flattened: string
+}
+
+export interface FlattenOptions {
+  // Foundry-style remappings provided inline (e.g., ["oz=@openzeppelin/contracts@4.8.0/"]) or as objects
+  remappings?: Array<string | Remapping>
+  // Path to remappings.txt (using the IOAdapter to read)
+  remappingsFile?: string
 }
 
 /**
@@ -26,8 +34,21 @@ export class SourceFlattener {
    * Flatten a Solidity entry file by resolving its entire import graph and concatenating
    * sources in a topologically sorted order (dependencies before dependents).
    */
-  public async flatten(entryFile: string): Promise<FlattenResult> {
+  public async flatten(entryFile: string, opts?: FlattenOptions): Promise<FlattenResult> {
     const dep = new DependencyResolver(this.io, entryFile, this.debug)
+
+    // Load and set remappings if provided
+    if (opts?.remappingsFile) {
+      try {
+        const content = await this.io.readFile(opts.remappingsFile)
+        const remaps = parseRemappingsFileContent(content)
+        dep.setRemappings(remaps)
+      } catch (e) {
+        this.log('Failed to read remappings file:', opts.remappingsFile, e)
+      }
+    } else if (opts?.remappings && opts.remappings.length) {
+      dep.setRemappings(normalizeRemappings(opts.remappings))
+    }
     await dep.buildDependencyTree(entryFile)
 
     // Optional: save resolution index for Go-to-Definition parity
@@ -119,8 +140,8 @@ export class SourceFlattener {
    * - Writes the flattened content via IOAdapter.writeFile
    * Returns the FlattenResult extended with the outFile path.
    */
-  public async flattenToFile(entryFile: string, outFile: string, opts?: { overwrite?: boolean }): Promise<FlattenResult & { outFile: string }> {
-    const result = await this.flatten(entryFile)
+  public async flattenToFile(entryFile: string, outFile: string, opts?: FlattenOptions & { overwrite?: boolean }): Promise<FlattenResult & { outFile: string }> {
+    const result = await this.flatten(entryFile, opts)
     const dir = outFile.split('/').slice(0, -1).join('/')
     if (dir) {
       await this.io.mkdir(dir)

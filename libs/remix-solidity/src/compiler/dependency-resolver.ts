@@ -26,6 +26,7 @@ export class DependencyResolver {
   private importGraph: Map<string, Set<string>> = new Map() // file -> files it imports
   private fileToPackageContext: Map<string, string> = new Map() // file -> package@version it belongs to
   private debug: boolean = false
+  private remappings: Array<{ from: string; to: string }> = []
 
   // Overloaded constructor to support Plugin or IOAdapter
   constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
@@ -40,6 +41,11 @@ export class DependencyResolver {
     } else {
       this.resolver = new ImportResolver(this.io, targetFile, debug)
     }
+  }
+
+  /** Set remappings used to rewrite non-relative import specifiers. */
+  public setRemappings(remaps: Array<{ from: string; to: string }>) {
+    this.remappings = remaps || []
   }
 
   /**
@@ -124,6 +130,20 @@ export class DependencyResolver {
     return resolvedPath
   }
 
+  /** Apply prefix remappings (e.g., forge-style: prefix=target) to an import path. */
+  private applyRemappings(importPath: string): string {
+    if (importPath.startsWith('./') || importPath.startsWith('../')) return importPath
+    for (const { from, to } of this.remappings) {
+      if (!from) continue
+      if (importPath === from || importPath.startsWith(from)) {
+        const replaced = to + importPath.substring(from.length)
+        this.log(`[DependencyResolver]   🔁 Remapped import: ${importPath} → ${replaced}`)
+        return replaced
+      }
+    }
+    return importPath
+  }
+
   /**
    * Process a single file: fetch content, extract imports, resolve dependencies
    */
@@ -205,10 +225,14 @@ export class DependencyResolver {
       
       if (imports.length > 0) {
         this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
-        this.importGraph.set(resolvedPath, new Set(imports))
-        
-  // Determine the package/url context to pass to child imports
-  const currentFilePackageContext = this.isLocalFile(importPath) ? null : (this.extractPackageContext(importPath) || this.extractUrlContext(importPath))
+
+        // Build a set of resolved import paths (after relative resolution and remappings)
+        const resolvedImports = new Set<string>()
+
+        // Determine the package/url context to pass to child imports
+        const currentFilePackageContext = this.isLocalFile(importPath)
+          ? null
+          : (this.extractPackageContext(importPath) || this.extractUrlContext(importPath))
         
         // Recursively process each import
         for (const importedPath of imports) {
@@ -221,9 +245,17 @@ export class DependencyResolver {
             resolvedImportPath = this.resolveRelativeImport(importPath, importedPath)
             this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${resolvedImportPath}"`)
           }
+          // Apply remappings for non-relative specifiers (or after relative resolution)
+          resolvedImportPath = this.applyRemappings(resolvedImportPath)
+
+          // Track the resolved import path in the graph to keep keys aligned with stored sources
+          resolvedImports.add(resolvedImportPath)
           
           await this.processFile(resolvedImportPath, resolvedPath, currentFilePackageContext)
         }
+
+        // Store the resolved imports for this file in the graph
+        this.importGraph.set(resolvedPath, resolvedImports)
       }
     } catch (err) {
       this.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
