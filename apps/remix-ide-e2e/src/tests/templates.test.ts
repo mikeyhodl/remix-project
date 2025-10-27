@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use strict'
 
 import { NightwatchBrowser } from 'nightwatch'
@@ -231,6 +232,7 @@ function testTemplateOptions(browser: NightwatchBrowser, mode: 'create' | 'add')
     })
 }
 
+//@ts-ignore
 const tests = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {

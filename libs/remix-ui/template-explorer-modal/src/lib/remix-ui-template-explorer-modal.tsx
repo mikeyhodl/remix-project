@@ -22,16 +22,18 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
   const { plugin, setSearchTerm, state, dispatch, facade } = useContext(TemplateExplorerContext)
 
   return (
-    <section>
+    <section data-id="template-explorer-modal-react">
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
         <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: props.appState.genericModalState.width, height: props.appState.genericModalState.height }}>
           <div className="template-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">
             {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
               <input
                 type="text"
+                name="template-explorer-search"
+                data-id="template-explorer-search-input"
                 placeholder="Search"
                 className="form-control template-explorer-modal-search-input ps-5 fw-light"
-                style={{ color: plugin?.theme?.currentTheme().name === 'Light' ? '#1B1D24' : '#FFF' }}
+                style={{ color: plugin?.theme?.currentTheme()?.name === 'Light' ? '#1B1D24' : '#FFF' }}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div> : <div>

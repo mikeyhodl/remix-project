@@ -20,6 +20,7 @@ export interface TemplateExplorerWizardState {
   wizardStep: WizardStep
   setWizardStep: (step: WizardStep) => void
   contractType: ContractType
+  contractTag: 'ERC20' | 'ERC721' | 'ERC1155'
   contractOptions: {
     mintable?: boolean
     burnable?: boolean
@@ -155,7 +156,8 @@ export enum ContractWizardAction {
   CONTRACT_IMPORT_UPDATE = 'CONTRACT_IMPORT_UPDATE',
   INITIALIZE_AS_GIT_REPO_UPDATE = 'INITIALIZE_AS_GIT_REPO_UPDATE',
   TOKEN_NAME_UPDATE = 'TOKEN_NAME_UPDATE',
-  CONTRACT_NAME_UPDATE = 'CONTRACT_NAME_UPDATE'
+  CONTRACT_NAME_UPDATE = 'CONTRACT_NAME_UPDATE',
+  CONTRACT_TAG_UPDATE = 'CONTRACT_TAG_UPDATE'
 }
 
 export interface ContractTypeStrategy {

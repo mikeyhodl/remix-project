@@ -9,6 +9,7 @@ export function TopCards() {
     <div className="title">
       <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
         <div
+          data-id="create-blank-workspace-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
@@ -39,6 +40,7 @@ export function TopCards() {
           </span>
         </div>
         <div
+          data-id="create-with-ai-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
@@ -66,6 +68,7 @@ export function TopCards() {
           </span>
         </div>
         <div
+          data-id="contract-wizard-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
             facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'zeppelin', items: []}, templateCategoryStrategy)
@@ -93,6 +96,7 @@ export function TopCards() {
           </span>
         </div>
         <div
+          data-id="import-project-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'import' })

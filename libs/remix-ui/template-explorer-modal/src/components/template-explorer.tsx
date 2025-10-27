@@ -6,13 +6,13 @@ import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, state } = useContext(TemplateExplorerContext)
 
   return (
-    <div className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
+    <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
 
       {dedupedTemplates?.map((template: TemplateCategory, templateIndex) => (
-        <div key={template.name} className="template-category mb-4">
+        <div key={template.name} className="template-category mb-4" data-id={`template-category-${template.name}`}>
           <h4 className="category-title mb-3 text-dark" style={{
             color: '#333',
             paddingBottom: '0.5rem',
@@ -41,6 +41,7 @@ export function TemplateExplorer() {
 
               return (
                 <div
+                  data-id={`template-card-${item.value}-${itemIndex}`}
                   key={`${templateIndex}-${itemIndex}`}
                   className="template-card bg-light border-0"
                   style={{
@@ -54,7 +55,13 @@ export function TemplateExplorer() {
                     display: 'flex',
                     flexDirection: 'column'
                   }}
-                  onClick={() => {
+                  onClick={async () => {
+                    if (item.value === 'cookbook') {
+                      await plugin.call('manager', 'activatePlugin', 'cookbookdev')
+                      await plugin.call('sidePanel', 'focus', 'cookbookdev')
+                      facade.closeWizard()
+                      return
+                    }
                     facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                   }}
                   onMouseEnter={(e) => {
@@ -153,29 +160,6 @@ export function TemplateExplorer() {
               )
             })}
           </div>
-          {template.name === 'Cookbook' && (
-            <div className="cookbook-special-card" style={{
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              padding: '1rem',
-              backgroundColor: '#f8f9fa',
-              textAlign: 'center'
-            }}>
-              <h6 className="mb-2" style={{ color: '#333', margin: 0 }}>
-                More from Cookbook
-              </h6>
-              <p className="mb-3" style={{ color: '#666', fontSize: '0.9rem', margin: 0 }}>
-                {template.description}
-              </p>
-              <button
-                className="btn btn-outline-primary btn-sm"
-                onClick={() => template.onClick && template.onClick()}
-                style={{ fontSize: '0.8rem' }}
-              >
-                {template.onClickLabel}
-              </button>
-            </div>
-          )}
         </div>
       ))}
     </div>

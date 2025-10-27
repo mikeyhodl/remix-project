@@ -281,8 +281,15 @@ export const templatesRepository = [
       // await pluginCall('sidePanel', 'focus', 'cookbookdev')
     },
     onClickLabel: 'Open Cookbook Plugin',
-    description: 'Discover more templates!',
-    items: [],
+    // description: 'Discover more templates!',
+    items: [
+      {
+        value: "cookbook",
+        displayName: "Cookbook",
+        tagList: ['Cookbook'],
+        description: 'Discover more templates!',
+      }
+    ],
     /*         {
           value: "token-sale",
           displayName: 'Token Sale',

@@ -21,6 +21,7 @@ export const initialState: TemplateExplorerWizardState = {
   setWizardStep: (step: WizardStep) => {},
   recentBump: 0,
   contractType: 'erc20',
+  contractTag: 'ERC20',
   contractOptions: {
     mintable: false,
     burnable: false,
@@ -114,6 +115,9 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   }
   case ContractWizardAction.CONTRACT_NAME_UPDATE: {
     return { ...state, contractName: action.payload }
+  }
+  case ContractWizardAction.CONTRACT_TAG_UPDATE: {
+    return { ...state, contractTag: action.payload }
   }
   default: {
     return { ...state, contractCode: getErc20ContractCode('erc20', state) }

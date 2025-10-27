@@ -79,7 +79,7 @@ export function ContractWizard () {
             <select className="form-select form-select-sm w-auto" defaultValue="Solidity">
               <option>Solidity</option>
             </select>
-            <select className="form-select form-select-sm w-auto" defaultValue="ERC20" onChange={(e) => {
+            <select className="form-select form-select-sm w-auto" value={strategy.contractTag} onChange={(e) => {
               switching(e.target.value as 'erc20' | 'erc721' | 'erc1155')
             }}>
               <option value="erc20">ERC20</option>

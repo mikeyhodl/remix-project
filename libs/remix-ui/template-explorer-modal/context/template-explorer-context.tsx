@@ -26,6 +26,10 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
   }, [])
 
+  useEffect(() => {
+    console.log('state with templates', state)
+  }, [state.templateRepository])
+
   const setSearchTerm = (term: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
   }
@@ -122,7 +126,8 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       }
       return unique
     }
-    return (filteredTemplates || []).map((group: any) => ({
+
+    const processedTemplates = (filteredTemplates || []).map((group: any) => ({
       ...group,
       items: makeUniqueItems(group && group.items ? group.items : [])
     })).filter((g: any) => {
@@ -133,7 +138,21 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
         (g.hasOptions && g.name !== 'Cookbook')
       )
     })
-  }, [filteredTemplates, recentTemplates])
+
+    // Find Cookbook from the original template repository
+    const cookbookTemplate = (state.templateRepository as TemplateCategory[] || []).find(x => x.name === 'Cookbook')
+
+    // If Cookbook exists and is not already in processedTemplates, add it as the second item
+    if (cookbookTemplate && !processedTemplates.find(t => t.name === 'Cookbook')) {
+      if (processedTemplates.length >= 1) {
+        processedTemplates.splice(1, 0, cookbookTemplate)
+      } else {
+        processedTemplates.push(cookbookTemplate)
+      }
+    }
+
+    return processedTemplates
+  }, [filteredTemplates, recentTemplates, state.templateRepository])
 
   const handleTagClick = (tag: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SELECTED_TAG, payload: state.selectedTag === tag ? null : tag })
