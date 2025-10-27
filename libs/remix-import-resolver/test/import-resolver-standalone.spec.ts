@@ -2,12 +2,28 @@
 import { expect } from 'chai'
 import { ImportResolver, NodeIOAdapter } from '../src'
 import { promises as fs } from 'fs'
+import { mkdtemp, rm } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 const INDEX_PATH = '.deps/npm/.resolution-index.json'
 
 // Basic smoke-test to ensure the standalone resolver resolves npm imports,
 // records a versioned mapping, and persists a resolution index for IDE features.
 describe('ImportResolver standalone (via NodeIOAdapter)', () => {
+  let originalCwd: string
+  let tempDir: string
+
+  beforeEach(async () => {
+    originalCwd = process.cwd()
+    tempDir = await mkdtemp(join(tmpdir(), 'import-resolver-standalone-'))
+    process.chdir(tempDir)
+  })
+
+  afterEach(async () => {
+    process.chdir(originalCwd)
+    await rm(tempDir, { recursive: true, force: true })
+  })
   it('resolves and saves an npm import without explicit version', async () => {
     const io = new NodeIOAdapter()
     const resolver = new ImportResolver(io as any, 'contracts/Test.sol', true)

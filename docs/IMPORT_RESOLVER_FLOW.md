@@ -77,3 +77,4 @@ ImportResolver.resolveAndSave → url-request-router
 
 - URLs and routing details: `docs/IMPORT_RESOLVER_URLS.md`
 - Version precedence and sources of truth: `docs/IMPORT_RESOLVER_VERSIONING.md`
+ - Test coverage overview: `docs/IMPORT_RESOLVER_TESTS_OVERVIEW.md`

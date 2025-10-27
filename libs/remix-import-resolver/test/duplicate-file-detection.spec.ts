@@ -1,14 +1,22 @@
 /// <reference types="mocha" />
 import { expect } from 'chai'
 import { ImportResolver, NodeIOAdapter } from '../src'
+import { mkdtemp, rm } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 // Asserts that importing the same file path from different versions in a single
 // resolver session triggers the duplicate-file error guidance.
 describe('Duplicate file detection across versions', () => {
   let originalError: (...args: any[]) => void
   const errors: string[] = []
+  let originalCwd: string
+  let tempDir: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    originalCwd = process.cwd()
+    tempDir = await mkdtemp(join(tmpdir(), 'import-resolver-dup-'))
+    process.chdir(tempDir)
     errors.length = 0
     originalError = console.error
     console.error = (...args: any[]) => {
@@ -18,8 +26,10 @@ describe('Duplicate file detection across versions', () => {
     }
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     console.error = originalError
+    process.chdir(originalCwd)
+    await rm(tempDir, { recursive: true, force: true })
   })
 
   it('emits a helpful error when the same file is imported from different versions', async function () {
