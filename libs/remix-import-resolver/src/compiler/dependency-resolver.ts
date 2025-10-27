@@ -4,6 +4,7 @@ import type { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
 
 /**
  * Pre-compilation dependency tree builder (Node-focused)
@@ -22,6 +23,14 @@ export class DependencyResolver {
   private debug: boolean = false
   private remappings: Array<{ from: string; to: string }> = []
 
+  /**
+   * Create a DependencyResolver
+   *
+   * Inputs:
+   * - pluginApi or io: Remix plugin API or IOAdapter implementation
+   * - targetFile: path used for resolution index scoping
+   * - debug: enable verbose logs
+   */
   constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
   constructor(io: IOAdapter, targetFile: string, debug?: boolean)
   constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
@@ -36,6 +45,9 @@ export class DependencyResolver {
     }
   }
 
+  /**
+   * Set import remappings, e.g. [ { from: 'oz/', to: '@openzeppelin/contracts@5.4.0/' } ]
+   */
   public setRemappings(remaps: Array<{ from: string; to: string }>) {
     this.remappings = remaps || []
   }
@@ -44,6 +56,10 @@ export class DependencyResolver {
     if (this.debug) console.log(message, ...args)
   }
 
+  /**
+   * Build the dependency tree starting from an entry file and return a bundle of sources
+   * Output: Map<originalImportPath, content>
+   */
   public async buildDependencyTree(entryFile: string): Promise<Map<string, string>> {
     this.log(`[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
     this.sourceFiles.clear()
@@ -60,32 +76,7 @@ export class DependencyResolver {
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules') && !path.startsWith('../') && !path.startsWith('./')
   }
 
-  private resolveRelativeImport(currentFile: string, importPath: string): string {
-    if (!importPath.startsWith('./') && !importPath.startsWith('../')) return importPath
-    const currentDir = currentFile.substring(0, currentFile.lastIndexOf('/'))
-    const currentParts = currentDir.split('/')
-    const importParts = importPath.split('/')
-    for (const part of importParts) {
-      if (part === '..') currentParts.pop()
-      else if (part !== '.') currentParts.push(part)
-    }
-    const resolvedPath = currentParts.join('/')
-    this.log(`[DependencyResolver]   🔗 Resolved relative import: ${importPath} → ${resolvedPath}`)
-    return resolvedPath
-  }
-
-  private applyRemappings(importPath: string): string {
-    if (importPath.startsWith('./') || importPath.startsWith('../')) return importPath
-    for (const { from, to } of this.remappings) {
-      if (!from) continue
-      if (importPath === from || importPath.startsWith(from)) {
-        const replaced = to + importPath.substring(from.length)
-        this.log(`[DependencyResolver]   🔁 Remapped import: ${importPath} → ${replaced}`)
-        return replaced
-      }
-    }
-    return importPath
-  }
+  // moved to utils/dependency-helpers
 
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
     if (!importPath.endsWith('.sol')) {
@@ -132,7 +123,7 @@ export class DependencyResolver {
       }
 
       if (!this.isLocalFile(importPath)) {
-        const filePackageContext = this.extractPackageContext(importPath) || this.extractUrlContext(importPath)
+        const filePackageContext = extractPackageContext(importPath) || extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args))
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
           this.resolver.setPackageContext(filePackageContext)
@@ -140,22 +131,22 @@ export class DependencyResolver {
         }
       }
 
-      const imports = this.extractImports(content)
+  const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
       if (imports.length > 0) {
         this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
         const resolvedImports = new Set<string>()
         const currentFilePackageContext = this.isLocalFile(importPath)
           ? null
-          : (this.extractPackageContext(importPath) || this.extractUrlContext(importPath))
+          : (extractPackageContext(importPath) || extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)))
 
         for (const importedPath of imports) {
           this.log(`[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
           let resolvedImportPath = importedPath
           if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
-            resolvedImportPath = this.resolveRelativeImport(importPath, importedPath)
+            resolvedImportPath = resolveRelativeImport(importPath, importedPath, (msg, ...args) => this.log(msg, ...args))
             this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${resolvedImportPath}"`)
           }
-          resolvedImportPath = this.applyRemappings(resolvedImportPath)
+          resolvedImportPath = applyRemappings(resolvedImportPath, this.remappings, (msg, ...args) => this.log(msg, ...args))
           resolvedImports.add(resolvedImportPath)
           await this.processFile(resolvedImportPath, resolvedPath, currentFilePackageContext || undefined)
         }
@@ -166,143 +157,40 @@ export class DependencyResolver {
     }
   }
 
-  private extractImports(content: string): string[] {
-    this.log(`[DependencyResolver]   📝 Extracting imports from content (${content.length} chars)`)
-    const imports: string[] = []
-    let cleanContent = content.replace(/\/\*[\s\S]*?\*\//g, '')
-    const lines = cleanContent.split('\n')
-    const cleanedLines = lines.map(line => {
-      const stringMatches: Array<{ start: number; end: number }> = []
-      let inString = false
-      let stringChar = ''
-      let escaped = false
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        if (escaped) { escaped = false; continue }
-        if (char === '\\') { escaped = true; continue }
-        if ((char === '"' || char === "'") && !inString) {
-          inString = true
-          stringChar = char
-          stringMatches.push({ start: i, end: -1 })
-        } else if (char === stringChar && inString) {
-          inString = false
-          stringMatches[stringMatches.length - 1].end = i
-        }
-      }
-      const commentIndex = line.indexOf('//')
-      if (commentIndex === -1) return line
-      const isInsideString = stringMatches.some(match => match.start < commentIndex && (match.end === -1 || match.end > commentIndex))
-      if (isInsideString) return line
-      return line.substring(0, commentIndex)
-    })
-    cleanContent = cleanedLines.join('\n')
+  // moved to utils/dependency-helpers
 
-    const importPatterns = [
-      /import\s+["']([^"']+)["']\s*;/g,
-      /import\s*{\s*[^}]*}\s*from\s+["']([^"']+)["']\s*;/g,
-      /import\s+\*\s+as\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,
-      /import\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,
-      /import\s+\w+\s*,\s*{\s*[^}]*}\s*from\s+["']([^"']+)["']\s*;/g
-    ]
-    for (const pattern of importPatterns) {
-      let match
-      while ((match = pattern.exec(cleanContent)) !== null) {
-        const importPath = match[1]
-        if (importPath && !imports.includes(importPath)) imports.push(importPath)
-      }
-      pattern.lastIndex = 0
-    }
-    if (imports.length > 0) this.log(`[DependencyResolver]   📝 Extracted ${imports.length} imports:`, imports)
-    else this.log(`[DependencyResolver]   📝 No imports found`)
-    return imports
-  }
+  // moved to utils/dependency-helpers
 
-  private extractUrlContext(path: string): string | null {
-    if (path.startsWith('ipfs://')) {
-      const ipfsMatch = path.match(/^ipfs:\/\/(?:ipfs\/)?([^/]+)/)
-      if (ipfsMatch) {
-        const hash = ipfsMatch[1]
-        this.log(`[DependencyResolver]   🌐 Extracted IPFS context: ipfs://${hash}`)
-        return `ipfs://${hash}`
-      }
-    }
-    if (path.startsWith('bzz-raw://') || path.startsWith('bzz://')) {
-      const swarmMatch = path.match(/^(bzz-raw?:\/\/[^/]+)/)
-      if (swarmMatch) {
-        const baseUrl = swarmMatch[1]
-        this.log(`[DependencyResolver]   🌐 Extracted Swarm context: ${baseUrl}`)
-        return baseUrl
-      }
-    }
-    if (!path.startsWith('http://') && !path.startsWith('https://')) return null
-    const unpkgMatch = path.match(/^(https?:\/\/unpkg\.com\/@?[^/]+(?:\/[^@/]+)?@[^/]+)\//)
-    if (unpkgMatch) {
-      const baseUrl = unpkgMatch[1]
-      this.log(`[DependencyResolver]   🌐 Extracted unpkg context: ${baseUrl}`)
-      return baseUrl
-    }
-    const jsDelivrNpmMatch = path.match(/^(https?:\/\/cdn\.jsdelivr\.net\/npm\/@?[^/]+(?:\/[^@/]+)?@[^/]+)\//)
-    if (jsDelivrNpmMatch) {
-      const baseUrl = jsDelivrNpmMatch[1]
-      this.log(`[DependencyResolver]   🌐 Extracted jsDelivr npm context: ${baseUrl}`)
-      return baseUrl
-    }
-    const jsDelivrGhMatch = path.match(/^(https?:\/\/cdn\.jsdelivr\.net\/gh\/[^/]+\/[^/@]+@[^/]+)\//)
-    if (jsDelivrGhMatch) {
-      const baseUrl = jsDelivrGhMatch[1]
-      this.log(`[DependencyResolver]   🌐 Extracted jsDelivr GitHub context: ${baseUrl}`)
-      return baseUrl
-    }
-    const rawMatch = path.match(/^(https?:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+)\//)
-    if (rawMatch) {
-      const baseUrl = rawMatch[1]
-      this.log(`[DependencyResolver]   🌐 Extracted raw.githubusercontent.com context: ${baseUrl}`)
-      return baseUrl
-    }
-    const githubBlobMatch = path.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\//)
-    if (githubBlobMatch) {
-      const owner = githubBlobMatch[1]
-      const repo = githubBlobMatch[2]
-      const ref = githubBlobMatch[3]
-      const baseUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}`
-      this.log(`[DependencyResolver]   🌐 Converted GitHub blob to raw context: ${baseUrl}`)
-      return baseUrl
-    }
-    this.log(`[DependencyResolver]   ⚠️  Could not extract URL context from: ${path}`)
-    return null
-  }
-
-  private extractPackageContext(path: string): string | null {
-    const scopedMatch = path.match(/^(@[^/]+\/[^/@]+)@([^/]+)/)
-    if (scopedMatch) return `${scopedMatch[1]}@${scopedMatch[2]}`
-    const regularMatch = path.match(/^([^/@]+)@([^/]+)/)
-    if (regularMatch) return `${regularMatch[1]}@${regularMatch[2]}`
-    return null
-  }
+  // moved to utils/dependency-helpers
 
   private getResolvedPath(importPath: string): string {
     const resolved = this.resolver.getResolution(importPath)
     return resolved || importPath
   }
 
+  /** Return the collected source bundle after buildDependencyTree. */
   public getSourceBundle(): Map<string, string> {
     return this.sourceFiles
   }
 
+  /** Return the import graph (file -> set of direct imports). */
   public getImportGraph(): Map<string, Set<string>> {
     return this.importGraph
   }
 
+  /** Retrieve the package context associated with a resolved file. */
   public getPackageContext(filePath: string): string | null {
     return this.fileToPackageContext.get(filePath) || null
   }
 
+  /** Convert the bundle to Solidity compiler input shape. */
   public toCompilerInput(): { [fileName: string]: { content: string } } {
     const sources: { [fileName: string]: { content: string } } = {}
     for (const [path, content] of this.sourceFiles.entries()) sources[path] = { content }
     return sources
   }
 
+  /** Persist the resolution index for this session. */
   public async saveResolutionIndex(): Promise<void> {
     this.log(`[DependencyResolver] 💾 Saving resolution index...`)
     await (this.resolver as any).saveResolutionsToIndex()
