@@ -1,6 +1,6 @@
 'use strict'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
-import { SmartCompiler, ImportResolver } from '@remix-project/remix-solidity'
+import { SmartCompiler } from '@remix-project/remix-solidity'
 
 import { CompilationResult, CompilationSource } from '@remix-project/remix-solidity'
 import { CodeParser } from "../code-parser";
