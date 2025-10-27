@@ -3,7 +3,7 @@ import { execution } from '@remix-project/remix-lib';
 import { saveSettings } from '../actions';
 import { BrowserProvider, ethers, formatUnits, toNumber, TransactionReceipt, TransactionResponse } from 'ethers'
 
-const provider =  ethers.getDefaultProvider()
+const provider = ethers.getDefaultProvider()
 
 export const shortenAddress = (address: string, etherBalance?: string) => {
   const len = address.length;
@@ -154,7 +154,7 @@ export class TxRunner {
   }
 
   async detectNetwork() {
-    const { chainId} = await provider.getNetwork()
+    const { chainId } = await provider.getNetwork()
     const id = Number(chainId)
     let name = '';
     if (id === 1) name = 'Main';

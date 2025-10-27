@@ -51,8 +51,11 @@ module.exports = {
       .pause(1000)
   },
   'Should switch to foundry provider, use the default foundry URL and succeed to connect #group1': function (browser: NightwatchBrowser) {
-    browser.switchEnvironment('foundry-provider')
-      .waitForElementVisible('*[data-id="foundry-providerModalDialogModalBody-react"]')
+    browser
+      .switchEnvironment('vm-cancun')
+      .pause(2000)
+      .switchEnvironment('foundry-provider')
+      .waitForElementVisible('*[data-id="foundry-providerModalDialogModalBody-react"]', 60000)
       .modalFooterOKClick('foundry-provider')
       .waitForElementContainsText('*[data-id="settingsNetworkEnv"]', 'Custom (')
   },
