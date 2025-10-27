@@ -36,7 +36,7 @@ export class Web3ProviderModule extends Plugin {
             const resultFn = async (error, response) => {
               let message
               // For a non-array of payload, result will be at index 0
-              if (!Array.isArray(payload)) message = response[0]
+              if (Array.isArray(response) && !Array.isArray(payload)) message = response[0]
               if (error) {
                 // Handle 'The method "debug_traceTransaction" does not exist / is not available.' error
                 if(error.message && error.code && error.code === -32601) {
