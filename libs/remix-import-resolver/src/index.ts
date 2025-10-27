@@ -4,11 +4,27 @@
 export type { IOAdapter } from './compiler/adapters/io-adapter'
 export { NodeIOAdapter } from './compiler/adapters/node-io-adapter'
 export { RemixPluginAdapter } from './compiler/adapters/remix-plugin-adapter'
+export type { IImportResolver } from './compiler/import-resolver-interface'
 
 export { ImportResolver } from './compiler/import-resolver'
 export { DependencyResolver } from './compiler/dependency-resolver'
 
 export { SourceFlattener } from './compiler/source-flattener'
 export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'
+export { FileResolutionIndex } from './compiler/file-resolution-index'
+export { ResolutionIndex } from './compiler/resolution-index'
 
 export { parseRemappingsFileContent, normalizeRemappings } from './compiler/utils/remappings'
+
+// Utils exposed for advanced usage/testing
+export { PackageVersionResolver } from './compiler/utils/package-version-resolver'
+export { ConflictChecker } from './compiler/utils/conflict-checker'
+export { Logger } from './compiler/utils/logger'
+export { DependencyStore } from './compiler/utils/dependency-store'
+export {
+	normalizeGithubBlobUrl,
+	normalizeRawGithubUrl,
+	rewriteNpmCdnUrl,
+	normalizeIpfsUrl,
+	normalizeSwarmUrl
+} from './compiler/utils/url-normalizer'

@@ -25,6 +25,13 @@
         "cwd": "."
       }
     },
+    "test:suite": {
+      "executor": "@nrwl/workspace:run-commands",
+      "options": {
+        "command": "TS_NODE_PROJECT=libs/remix-import-resolver/tsconfig.spec.json mocha -r ts-node/register -r tsconfig-paths/register {args.suite}",
+        "cwd": "."
+      }
+    },
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],

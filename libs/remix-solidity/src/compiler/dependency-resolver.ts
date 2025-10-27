@@ -1,9 +1,9 @@
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
-import { ImportResolver } from './import-resolver'
-import type { IOAdapter } from './adapters/io-adapter'
-import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+import { ImportResolver } from '@remix-project/import-resolver'
+import type { IOAdapter } from '@remix-project/import-resolver'
+import { RemixPluginAdapter } from '@remix-project/import-resolver'
 
 /**
  * Pre-compilation dependency tree builder

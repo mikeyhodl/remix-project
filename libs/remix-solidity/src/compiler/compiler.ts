@@ -4,7 +4,7 @@ import { update } from 'solc/abi'
 import compilerInput, { compilerInputForConfigFile } from './compiler-input'
 import EventManager from '../lib/eventManager'
 import txHelper from './helper'
-import { IImportResolver } from './import-resolver-interface'
+import { IImportResolver } from '@remix-project/import-resolver'
 
 import {
   Source, SourceWithTarget, MessageFromWorker, CompilerState, CompilationResult,

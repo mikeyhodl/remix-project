@@ -23,7 +23,7 @@
       "test": {
         "executor": "@nrwl/workspace:run-commands",
         "options": {
-          "command": "TS_NODE_PROJECT=libs/remix-solidity/tsconfig.spec.json mocha -r ts-node/register \"libs/remix-solidity/test/**/*.spec.ts\"",
+          "command": "TS_NODE_PROJECT=libs/remix-solidity/tsconfig.spec.json mocha -r ts-node/register -r tsconfig-paths/register \"libs/remix-solidity/test/**/*.spec.ts\"",
           "cwd": "."
         }
       },

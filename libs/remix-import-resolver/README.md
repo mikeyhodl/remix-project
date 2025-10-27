@@ -37,3 +37,20 @@ console.log(flattened)
 - parseRemappingsFileContent / normalizeRemappings: manage remappings
 
 See the Remix monorepo tests under `libs/remix-solidity/test` for end-to-end usage.
+
+## Testing
+
+- Run all tests for this library
+
+  - Using Nx: `yarn nx test remix-import-resolver`
+
+- Run a specific test suite (file or glob)
+
+  - Using Nx target with args:
+    - `yarn nx run remix-import-resolver:test:suite --args="--suite=libs/remix-import-resolver/test/cdn-and-github.spec.ts"`
+    - You can pass any glob, e.g. `--suite=libs/remix-import-resolver/test/import-resolver-groups1-6.spec.ts`
+
+Notes
+
+- Tests rely on NodeIOAdapter which performs HTTP fetches for external imports (npm CDNs/GitHub). A network connection is required.
+- Resolution artifacts (normalized sources and index) are written under `.deps/` relative to the current working directory during tests.

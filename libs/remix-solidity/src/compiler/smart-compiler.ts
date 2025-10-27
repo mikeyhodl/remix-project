@@ -2,7 +2,7 @@
 
 import { Plugin } from '@remixproject/engine'
 import { Compiler } from './compiler'
-import { DependencyResolver } from './dependency-resolver'
+import { DependencyResolver } from '@remix-project/import-resolver'
 import { CompilerState, Source } from './types'
 
 /**
