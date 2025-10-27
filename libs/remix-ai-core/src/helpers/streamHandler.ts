@@ -56,11 +56,14 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
   }
 };
 
-export const HandleOpenAIResponse = async (streamResponse, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+  // Handle both IAIStreamResponse format and plain response for backward compatibility
+  const streamResponse = aiResponse?.streamResponse || aiResponse
+  const tool_callback = aiResponse?.callback
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
-  let threadId
+  let threadId: string = ""
   let resultText = "";
 
   if (!reader) { // normal response, not a stream
@@ -90,6 +93,15 @@ export const HandleOpenAIResponse = async (streamResponse, cb: (streamText: stri
           const json = JSON.parse(jsonStr);
           threadId = json?.thread_id;
 
+          // Handle tool calls in OpenAI format
+          if (json.choices?.[0]?.delta?.tool_calls && tool_callback) {
+            console.log('calling tools in stream:', json.choices[0].delta.tool_calls)
+            const response = await tool_callback(json.choices[0].delta.tool_calls)
+            cb("\n\n");
+            HandleOpenAIResponse(response, cb, done_cb)
+            return;
+          }
+
           // Handle OpenAI "thread.message.delta" format
           if (json.object === "thread.message.delta" && json.delta?.content) {
             for (const contentItem of json.delta.content) {
@@ -101,6 +113,13 @@ export const HandleOpenAIResponse = async (streamResponse, cb: (streamText: stri
                 cb(contentItem.text.value);
                 resultText += contentItem.text.value;
               }
+            }
+          } else if (json.choices?.[0]?.delta?.content) {
+            // Handle standard OpenAI streaming format
+            const content = json.choices[0].delta.content;
+            if (typeof content === "string") {
+              cb(content);
+              resultText += content;
             }
           } else if (json.delta?.content) {
             // fallback for other formats
@@ -118,14 +137,15 @@ export const HandleOpenAIResponse = async (streamResponse, cb: (streamText: stri
   }
 }
 
-export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
   console.log('handling stream response', aiResponse)
-  const streamResponse = aiResponse.streamResponse
+  // Handle both IAIStreamResponse format and plain response for backward compatibility
+  const streamResponse = aiResponse?.streamResponse || aiResponse
   const tool_callback = aiResponse?.callback
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
-  let threadId
+  let threadId: string = ""
   let resultText = "";
 
   if (!reader) { // normal response, not a stream
@@ -175,11 +195,16 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse, cb:
   }
 }
 
-export const HandleAnthropicResponse = async (streamResponse, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+  // Handle both IAIStreamResponse format and plain response for backward compatibility
+  const streamResponse = aiResponse?.streamResponse || aiResponse
+  const tool_callback = aiResponse?.callback
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
   let resultText = "";
+  const toolUseBlocks: Map<number, any> = new Map();
+  let currentBlockIndex: number = -1;
 
   if (!reader) { // normal response, not a stream
     cb(streamResponse.result)
@@ -206,7 +231,50 @@ export const HandleAnthropicResponse = async (streamResponse, cb: (streamText: s
             return;
           }
 
-          if (json.type === "content_block_delta") {
+          // Handle tool use block start in Anthropic format
+          if (json.type === "content_block_start" && json.content_block?.type === "tool_use") {
+            currentBlockIndex = json.index;
+            toolUseBlocks.set(currentBlockIndex, {
+              id: json.content_block.id,
+              name: json.content_block.name,
+              input: ""
+            });
+            console.log('Anthropic tool use started:', json.content_block)
+          }
+
+          // Accumulate tool input deltas
+          if (json.type === "content_block_delta" && json.delta?.type === "input_json_delta") {
+            if (currentBlockIndex >= 0 && toolUseBlocks.has(json.index)) {
+              const block = toolUseBlocks.get(json.index);
+              block.input += json.delta.partial_json;
+              console.log('Anthropic tool input delta accumulated')
+            }
+          }
+
+          // Handle tool calls when message stops for tool use
+          if (json.type === "message_delta" && json.delta?.stop_reason === "tool_use" && tool_callback) {
+            console.log('Anthropic message stopped for tool use')
+
+            // Convert accumulated tool use blocks to tool calls format
+            const toolCalls = Array.from(toolUseBlocks.values()).map(block => ({
+              id: block.id,
+              function: {
+                name: block.name,
+                arguments: block.input
+              }
+            }));
+
+            if (toolCalls.length > 0) {
+              console.log('calling tools in stream:', toolCalls)
+              const response = await tool_callback(toolCalls)
+              cb("\n\n");
+              HandleAnthropicResponse(response, cb, done_cb)
+              return;
+            }
+          }
+
+          // Handle text content deltas
+          if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
             cb(json.delta.text);
             resultText += json.delta.text;
           }
@@ -218,7 +286,10 @@ export const HandleAnthropicResponse = async (streamResponse, cb: (streamText: s
   }
 }
 
-export const HandleOllamaResponse = async (streamResponse: any, cb: (streamText: string) => void, done_cb?: (result: string) => void, reasoning_cb?: (result: string) => void) => {
+export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string) => void, reasoning_cb?: (result: string) => void) => {
+  // Handle both IAIStreamResponse format and plain response for backward compatibility
+  const streamResponse = aiResponse?.streamResponse || aiResponse
+  const tool_callback = aiResponse?.callback
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let resultText = "";
@@ -243,6 +314,16 @@ export const HandleOllamaResponse = async (streamResponse: any, cb: (streamText:
         try {
           const parsed = JSON.parse(line);
           let content = "";
+
+          // Handle tool calls in Ollama format
+          if (parsed.message?.tool_calls && tool_callback) {
+            console.log('calling tools in stream:', parsed.message.tool_calls)
+            const response = await tool_callback(parsed.message.tool_calls)
+            cb("\n\n");
+            HandleOllamaResponse(response, cb, done_cb, reasoning_cb)
+            return;
+          }
+
           if (parsed.message?.thinking) {
             reasoning_cb?.('***Thinking ...***')
             inThinking = true
