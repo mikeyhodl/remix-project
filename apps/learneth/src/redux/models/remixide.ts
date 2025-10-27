@@ -19,7 +19,7 @@ export const ensureLearnethWorkspace = async (remixClient) => {
     return remixClient.call('filePanel', 'switchToWorkspace', { name: learnethWorkspaceName, isLocalHost: false })
   } catch (err) {
     console.error('Error ensuring learneth workspace:', err)
-  }  
+  }
 }
 
 function getFilePath(file: string): string {
