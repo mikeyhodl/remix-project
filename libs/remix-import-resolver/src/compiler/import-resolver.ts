@@ -4,12 +4,15 @@ import { Plugin } from '@remixproject/engine'
 import { ResolutionIndex } from './resolution-index'
 import { IImportResolver } from './import-resolver-interface'
 import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from './utils/url-normalizer'
+import { extractPackageName as parsePkgName, extractVersion as parseVersion, extractRelativePath as parseRelPath } from './utils/parser-utils'
+import { routeUrl } from './utils/url-request-router'
 import { isBreakingVersionConflict, isPotentialVersionConflict } from './utils/semver-utils'
 import { PackageVersionResolver } from './utils/package-version-resolver'
 import { Logger } from './utils/logger'
 import { ContentFetcher } from './utils/content-fetcher'
 import { DependencyStore } from './utils/dependency-store'
 import { ConflictChecker } from './utils/conflict-checker'
+import { PackageMapper } from './utils/package-mapper'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import { FileResolutionIndex } from './file-resolution-index'
@@ -29,6 +32,7 @@ export class ImportResolver implements IImportResolver {
   private importedFiles: Map<string, string> = new Map()
   private packageSources: Map<string, string> = new Map()
   private debug: boolean = false
+  private packageMapper: PackageMapper
 
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
@@ -56,6 +60,16 @@ export class ImportResolver implements IImportResolver {
       this.dependencyStore,
       (key: string) => this.importMappings.get(key)
     )
+    this.packageMapper = new PackageMapper(
+      this.importMappings,
+      this.packageSources,
+      this.dependencyStore,
+      this.packageVersionResolver,
+      this.contentFetcher,
+      this.logger,
+      this.resolvePackageVersion.bind(this),
+      this.conflictChecker
+    )
     this.resolutionIndex = null
     this.resolutionIndexInitialized = false
   }
@@ -73,43 +87,7 @@ export class ImportResolver implements IImportResolver {
     else this.importMappings.forEach((value, key) => this.log(`[ImportResolver]   ${key} → ${value}`))
   }
 
-  private extractPackageName(url: string): string | null {
-    // Prefer known workspace resolution keys (supports npm alias keys like "@module_remapping")
-    if (url.startsWith('@')) {
-      const resolutions = this.packageVersionResolver.getWorkspaceResolutions()
-      if (resolutions && resolutions.size > 0) {
-        // Find the longest key that is a prefix of the url (followed by "/" or end)
-        const keys = Array.from(resolutions.keys())
-        // Sort by length desc to prefer the most specific match
-        keys.sort((a, b) => b.length - a.length)
-        for (const key of keys) {
-          if (url === key || url.startsWith(`${key}/`) || url.startsWith(`${key}@`)) {
-            return key
-          }
-        }
-      }
-    }
-    const scopedMatch = url.match(/^(@[^/]+\/[^/@]+)/)
-    if (scopedMatch) return scopedMatch[1]
-    const regularMatch = url.match(/^([^/@]+)/)
-    if (regularMatch) return regularMatch[1]
-    return null
-  }
-
-  private extractVersion(url: string): string | null {
-    const match = url.match(/@(\d+(?:\.\d+)?(?:\.\d+)?[^\s/]*)/)
-    return match ? match[1] : null
-  }
-
-  private extractRelativePath(url: string, packageName: string): string | null {
-    const versionedPattern = new RegExp(`^${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}@[^/]+/(.+)$`)
-    const versionedMatch = url.match(versionedPattern)
-    if (versionedMatch) return versionedMatch[1]
-    const unversionedPattern = new RegExp(`^${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`)
-    const unversionedMatch = url.match(unversionedPattern)
-    if (unversionedMatch) return unversionedMatch[1]
-    return null
-  }
+  // parsing helpers are provided by utils/parser-utils for clarity
 
   private isPotentialVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
     return isPotentialVersionConflict(requestedRange, resolvedVersion)
@@ -123,66 +101,7 @@ export class ImportResolver implements IImportResolver {
     await this.conflictChecker.checkPackageDependencies(packageName, resolvedVersion, packageJson)
   }
 
-  private async checkDependencyConflict(
-    packageName: string,
-    packageVersion: string,
-    dep: string,
-    requestedRange: string,
-    peerDependencies: any
-  ): Promise<void> {
-    const isPeerDep = peerDependencies && dep in peerDependencies
-    const depMappingKey = `__PKG__${dep}`
-    let resolvedDepVersion: string | null = null
-
-    if (this.importMappings.has(depMappingKey)) {
-      const resolvedDepPackage = this.importMappings.get(depMappingKey)
-      resolvedDepVersion = this.extractVersion(resolvedDepPackage!)
-    } else if (isPeerDep) {
-      if (this.packageVersionResolver.hasWorkspaceResolution(dep)) resolvedDepVersion = this.packageVersionResolver.getWorkspaceResolution(dep)!
-      else if (this.packageVersionResolver.hasLockFileVersion(dep)) resolvedDepVersion = this.packageVersionResolver.getLockFileVersion(dep)!
-    } else {
-      return
-    }
-
-    if (!resolvedDepVersion || typeof requestedRange !== 'string') return
-
-    const conflictKey = `${isPeerDep ? 'peer' : 'dep'}:${packageName}→${dep}:${requestedRange}→${resolvedDepVersion}`
-    if (this.conflictWarnings.has(conflictKey) || !this.isPotentialVersionConflict(requestedRange, resolvedDepVersion)) return
-    this.conflictWarnings.add(conflictKey)
-
-    let resolvedFrom = 'npm registry'
-    const sourcePackage = this.packageSources.get(dep)
-    if (this.packageVersionResolver.hasWorkspaceResolution(dep)) resolvedFrom = 'workspace package.json'
-    else if (this.packageVersionResolver.hasLockFileVersion(dep)) resolvedFrom = 'lock file'
-    else if (sourcePackage && sourcePackage !== dep && sourcePackage !== 'workspace') resolvedFrom = `${sourcePackage}/package.json`
-
-    const isBreaking = this.isBreakingVersionConflict(requestedRange, resolvedDepVersion)
-    const severity = isBreaking ? 'error' : 'warn'
-    const emoji = isBreaking ? '🚨' : '⚠️'
-    const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
-    const isAlreadyImported = this.importMappings.has(depMappingKey)
-
-    const warningMsg = [
-      `${emoji} ${isPeerDep ? 'Peer Dependency' : 'Dependency'} version mismatch detected:`,
-      `   Package ${packageName}@${packageVersion} requires in ${depType}:`,
-      `     "${dep}": "${requestedRange}"`,
-      ``,
-      isAlreadyImported
-        ? `   But actual imported version is: ${dep}@${resolvedDepVersion}`
-        : `   But your workspace will resolve to: ${dep}@${resolvedDepVersion}`,
-      `     (from ${resolvedFrom})`,
-      ``,
-      isBreaking && isPeerDep ? `⚠️  PEER DEPENDENCY MISMATCH - This WILL cause compilation failures!` : '',
-      isBreaking && !isPeerDep ? `⚠️  MAJOR VERSION MISMATCH - May cause compilation failures!` : '',
-      isBreaking ? `` : '',
-      `💡 To fix, update your workspace package.json:`,
-      `     "${dep}": "${requestedRange}"`,
-      isPeerDep ? `   (Peer dependencies must be satisfied for ${packageName} to work correctly)` : '',
-      ``
-    ].filter(line => line !== '').join('\n')
-
-    await this.logger.terminal(severity as any, warningMsg)
-  }
+  // Removed an unused checkDependencyConflict method; conflict detection lives in ConflictChecker
 
   private findParentPackageContext(): string | null {
     const explicitContext = this.importMappings.get('__CONTEXT__')
@@ -278,52 +197,7 @@ export class ImportResolver implements IImportResolver {
     }
   }
 
-  private async fetchAndMapPackage(packageName: string): Promise<void> {
-    const mappingKey = `__PKG__${packageName}`
-    if (this.importMappings.has(mappingKey)) return
-    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
-    if (!resolvedVersion) return
-    let actualPackageName = packageName
-    if (source.startsWith('alias:')) {
-      const aliasMatch = source.match(/^alias:[^→]+→(.+)$/)
-      if (aliasMatch) {
-        actualPackageName = aliasMatch[1]
-        this.log(`[ImportResolver] 🔄 Using real package name: ${packageName} → ${actualPackageName}`)
-      }
-    }
-    const versionedPackageName = `${actualPackageName}@${resolvedVersion}`
-    this.importMappings.set(mappingKey, versionedPackageName)
-    if (source === 'workspace-resolution' || source === 'lock-file') {
-      this.packageSources.set(packageName, 'workspace')
-      this.dependencyStore.setPackageSource(packageName, 'workspace')
-    } else {
-      this.packageSources.set(packageName, packageName)
-      this.dependencyStore.setPackageSource(packageName, packageName)
-    }
-    this.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
-    // When resolving via npm alias (e.g. "@module_remapping": "npm:@openzeppelin/contracts@4.9.0"),
-    // ensure we fetch and save the REAL package's package.json, not the alias name.
-    await this.checkPackageDependenciesIfNeeded(actualPackageName, resolvedVersion, source)
-    this.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
-  }
-
-  private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string, source: string): Promise<void> {
-    try {
-      const packageJsonUrl = `${packageName}/package.json`
-      const content = await this.contentFetcher.resolve(packageJsonUrl)
-      const packageJson = JSON.parse(content.content || content)
-      try {
-        const realPackageName = packageJson.name || packageName
-        const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
-        await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
-        this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-      } catch (saveErr) { this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr) }
-      this.dependencyStore.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
-      await this.checkPackageDependencies(packageName, resolvedVersion, packageJson)
-    } catch (err) {
-      this.log(`[ImportResolver] ℹ️  Could not check dependencies for ${packageName}`)
-    }
-  }
+  // Package mapping/version logic moved to PackageMapper
 
   public async resolveAndSave(url: string, targetPath?: string, skipResolverMappings = false): Promise<string> {
     const originalUrl = url
@@ -331,108 +205,47 @@ export class ImportResolver implements IImportResolver {
       this.log(`[ImportResolver] ❌ Invalid import: "${url}" does not end with .sol extension`)
       throw new Error(`Invalid import: "${url}" does not end with .sol extension`)
     }
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      this.log(`[ImportResolver] 🌐 External URL detected: ${url}`)
-      const blobToRaw = normalizeGithubBlobUrl(url)
-      if (blobToRaw) {
-        this.log(`[ImportResolver]   🔄 Converting GitHub blob URL to raw: ${blobToRaw}`)
-        url = blobToRaw
-      }
-      const npmRewrite = rewriteNpmCdnUrl(url)
-      if (npmRewrite) {
-        this.log(`[ImportResolver]   🔄 CDN URL is serving npm package, normalizing:`)
-        this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${npmRewrite.npmPath}`)
-        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, npmRewrite.npmPath)
-        return await this.resolveAndSave(npmRewrite.npmPath, targetPath, skipResolverMappings)
-      }
-      const ghRaw = normalizeRawGithubUrl(url)
-      if (ghRaw) {
-        this.log(`[ImportResolver]   🔄 Normalizing raw.githubusercontent.com URL:`)
-        this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${ghRaw.normalizedPath}`)
-        await this.fetchGitHubPackageJson(ghRaw.owner, ghRaw.repo, ghRaw.ref)
-        const content = await this.contentFetcher.resolveAndSave(url, ghRaw.targetPath, false)
-        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, ghRaw.normalizedPath)
-        return content
-      }
-    }
-
-    if (url.startsWith('ipfs://')) {
-      this.log(`[ImportResolver] 🌐 IPFS URL detected: ${url}`)
-      const ipfs = normalizeIpfsUrl(url)
-      if (ipfs) {
-        this.log(`[ImportResolver]   🔄 Normalizing IPFS URL:`)
-        this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${ipfs.normalizedPath}`)
-        const content = await this.contentFetcher.resolveAndSave(url, ipfs.targetPath, false)
-        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, ipfs.normalizedPath)
-        return content
-      }
-    }
-
-    if (url.startsWith('bzz-raw://') || url.startsWith('bzz://')) {
-      this.log(`[ImportResolver] 🌐 Swarm URL detected: ${url}`)
-      const swarm = normalizeSwarmUrl(url)
-      if (swarm) {
-        this.log(`[ImportResolver]   🔄 Normalizing Swarm URL:`)
-        this.log(`[ImportResolver]      From: ${url}`)
-        this.log(`[ImportResolver]      To:   ${swarm.normalizedPath}`)
-        const content = await this.contentFetcher.resolveAndSave(url, swarm.targetPath, false)
-        this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, swarm.normalizedPath)
-        return content
-      }
-    }
-
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      this.log(`[ImportResolver]   ⬇️  Fetching directly from URL: ${url}`)
-      const content = await this.contentFetcher.resolveAndSave(url, targetPath, true)
-      this.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-      if (!content) this.log(`[ImportResolver]   ⚠️  WARNING: Empty content returned from contentImport`)
-      else if (content.length < 200) this.log(`[ImportResolver]   ⚠️  WARNING: Suspiciously short content: "${content.substring(0, 100)}"`)
-      if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, url)
-      return content
-    }
-
-    if (url.startsWith('npm:')) {
-      this.log(`[ImportResolver] 🔗 Detected npm: alias in URL, normalizing: ${url}`)
-      url = url.substring(4)
-    }
+    // Delegate URL handling and normalization to the router
+    const routed = await routeUrl(originalUrl, url, targetPath, {
+      contentFetcher: this.contentFetcher,
+      logger: this.logger,
+      resolutions: this.resolutions,
+      fetchGitHubPackageJson: this.fetchGitHubPackageJson.bind(this)
+    })
+    if (routed.action === 'content') return routed.content
+    if (routed.action === 'rewrite') url = routed.url
 
     // Ensure workspace resolutions (including npm alias keys) are loaded before extracting package names
     try { await this.packageVersionResolver.loadWorkspaceResolutions() } catch {}
 
     let finalUrl = url
-    const packageName = this.extractPackageName(url)
+    const packageName = parsePkgName(url, this.packageVersionResolver.getWorkspaceResolutions())
     if (!skipResolverMappings && packageName) {
       const hasVersion = url.includes(`${packageName}@`)
       if (!hasVersion) {
         const mappingKey = `__PKG__${packageName}`
         if (!this.importMappings.has(mappingKey)) {
           this.log(`[ImportResolver] 🔍 First import from ${packageName}, resolving version...`)
-          await this.fetchAndMapPackage(packageName)
+          await this.packageMapper.fetchAndMapPackage(packageName)
         }
         if (this.importMappings.has(mappingKey)) {
           const versionedPackageName = this.importMappings.get(mappingKey)!
           const mappedUrl = url.replace(packageName, versionedPackageName)
           this.log(`[ImportResolver] 🔀 Mapped: ${packageName} → ${versionedPackageName}`)
           finalUrl = mappedUrl
-          this.resolutions.set(originalUrl, finalUrl)
+          if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
           return this.resolveAndSave(mappedUrl, targetPath, true)
         } else {
           this.log(`[ImportResolver] ⚠️  No mapping available for ${mappingKey}`)
         }
       } else {
-        const requestedVersion = this.extractVersion(url)
+        const requestedVersion = parseVersion(url)
         const mappingKey = `__PKG__${packageName}`
         if (this.importMappings.has(mappingKey)) {
           const versionedPackageName = this.importMappings.get(mappingKey)!
-          const resolvedVersion = this.extractVersion(versionedPackageName)!
+          const resolvedVersion = parseVersion(versionedPackageName)!
           if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
-            const relativePath = this.extractRelativePath(url, packageName)
+            const relativePath = parseRelPath(url, packageName)
             const fileKey = relativePath ? `${packageName}/${relativePath}` : null
             const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
             if (previousVersion && previousVersion !== requestedVersion) {
@@ -475,13 +288,13 @@ export class ImportResolver implements IImportResolver {
               } catch (err) { this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err) }
             }
             finalUrl = url
-            this.resolutions.set(originalUrl, finalUrl)
+            if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
             return this.resolveAndSave(url, targetPath, true)
           } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
             const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, versionedPackageName)
             if (mappedUrl !== url) {
               finalUrl = mappedUrl
-              this.resolutions.set(originalUrl, finalUrl)
+              if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
               return this.resolveAndSave(mappedUrl, targetPath, true)
             }
           }

@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { ImportResolver } from '../src/compiler/import-resolver'
+import { extractPackageName } from '../src/compiler/utils/parser-utils'
 import { NodeIOAdapter } from '../src/compiler/adapters/node-io-adapter'
 
 describe('extractPackageName (alias-aware)', function () {
@@ -31,7 +32,10 @@ describe('extractPackageName (alias-aware)', function () {
     // Ensure workspace resolutions are loaded so alias keys are known to the resolver
     await (resolver as any).packageVersionResolver.loadWorkspaceResolutions()
 
-    const pkg = (resolver as any).extractPackageName('@module_remapping/token/ERC20/ERC20.sol')
+    const pkg = extractPackageName(
+      '@module_remapping/token/ERC20/ERC20.sol',
+      (resolver as any).packageVersionResolver.getWorkspaceResolutions()
+    )
     expect(pkg).to.equal('@module_remapping')
   })
 
@@ -42,7 +46,10 @@ describe('extractPackageName (alias-aware)', function () {
     const resolver = new ImportResolver(io as any, 'Alias.spec.ts', false)
     await (resolver as any).packageVersionResolver.loadWorkspaceResolutions()
 
-    const pkg = (resolver as any).extractPackageName('@openzeppelin/contracts/token/ERC20/ERC20.sol')
+    const pkg = extractPackageName(
+      '@openzeppelin/contracts/token/ERC20/ERC20.sol',
+      (resolver as any).packageVersionResolver.getWorkspaceResolutions()
+    )
     expect(pkg).to.equal('@openzeppelin/contracts')
   })
 })
