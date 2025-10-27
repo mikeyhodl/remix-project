@@ -17,6 +17,17 @@ import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import { FileResolutionIndex } from './file-resolution-index'
 
+/**
+ * ImportResolver
+ *
+ * Orchestrates import resolution for Solidity and package.json files with adapterized I/O.
+ * Responsibilities:
+ * - Normalize and route external URLs (CDN, GitHub, IPFS, Swarm)
+ * - Resolve npm package versions with precedence (workspace → parent deps → lockfile → npm)
+ * - Map packages to isolated versioned namespaces and persist real package.json for transitive deps
+ * - Fetch content and save to deterministic paths; record original → resolved mappings
+ * - Persist mappings to a resolution index to power IDE features like Go-to-Definition
+ */
 export class ImportResolver implements IImportResolver {
   private importMappings: Map<string, string>
   private pluginApi: Plugin | null
@@ -37,6 +48,14 @@ export class ImportResolver implements IImportResolver {
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
 
+  /**
+   * Create a resolver for a given target file. The target file name scopes the resolution index.
+   *
+   * Inputs:
+   * - pluginApi or io: Remix plugin API or Node IO adapter
+   * - targetFile: the file whose imports are being resolved (used for index scoping)
+   * - debug: when true, emits verbose logs to aid debugging
+   */
   constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
   constructor(io: IOAdapter, targetFile: string, debug?: boolean)
   constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
@@ -76,11 +95,16 @@ export class ImportResolver implements IImportResolver {
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
 
+  /**
+   * Set the current package context for dependency-aware resolution.
+   * Pass a versioned package (e.g., "@openzeppelin/contracts@4.9.6") to influence child resolves.
+   */
   public setPackageContext(context: string | null): void {
     if (context) this.importMappings.set('__CONTEXT__', context)
     else this.importMappings.delete('__CONTEXT__')
   }
 
+  /** Log current package and import mappings for this resolver's session. */
   public logMappings(): void {
     this.log(`[ImportResolver] 📊 Current import mappings for: "${this.targetFile}"`)
     if (this.importMappings.size === 0) this.log(`[ImportResolver] ℹ️  No mappings defined`)
@@ -199,6 +223,16 @@ export class ImportResolver implements IImportResolver {
 
   // Package mapping/version logic moved to PackageMapper
 
+  /**
+   * Resolve an import and save its content to a deterministic path.
+   *
+   * Inputs:
+   * - url: original import (npm path, CDN URL, GitHub URL, ipfs://, etc.)
+   * - targetPath: optional override for where to save the content
+   * - skipResolverMappings: internal flag to avoid infinite remap recursion
+   *
+   * Output: string content of the fetched file (throws on invalid import types)
+   */
   public async resolveAndSave(url: string, targetPath?: string, skipResolverMappings = false): Promise<string> {
     const originalUrl = url
     if (!url.endsWith('.sol') && !url.endsWith('package.json')) {
@@ -324,6 +358,7 @@ export class ImportResolver implements IImportResolver {
     return content
   }
 
+  /** Persist the original → resolved mappings for this target file into the resolution index. */
   public async saveResolutionsToIndex(): Promise<void> {
     this.log(`[ImportResolver] 💾 Saving ${this.resolutions.size} resolution(s) to index for: ${this.targetFile}`)
     if (!this.resolutionIndex) {
@@ -337,6 +372,8 @@ export class ImportResolver implements IImportResolver {
     await this.resolutionIndex.save()
   }
 
+  /** Return the target file this resolver is associated with. */
   public getTargetFile(): string { return this.targetFile }
+  /** Lookup an original import and return its resolved path, if recorded in this session. */
   public getResolution(originalImport: string): string | null { return this.resolutions.get(originalImport) || null }
 }

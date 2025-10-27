@@ -2,6 +2,15 @@ import type { IOAdapter } from '../adapters/io-adapter'
 
 export type ResolvedVersion = { version: string | null; source: string }
 
+/**
+ * PackageVersionResolver
+ *
+ * Resolves a concrete version for a package using precedence:
+ * 1) Workspace resolutions/overrides and aliases
+ * 2) Parent package.json dependencies (from current context)
+ * 3) Lockfiles (yarn.lock, package-lock.json)
+ * 4) Fetched package.json from npm
+ */
 export class PackageVersionResolver {
   private workspaceResolutions: Map<string, string> = new Map()
   private lockFileVersions: Map<string, string> = new Map()
@@ -16,6 +25,7 @@ export class PackageVersionResolver {
   public hasLockFileVersion(name: string): boolean { return this.lockFileVersions.has(name) }
   public getLockFileVersion(name: string): string | undefined { return this.lockFileVersions.get(name) }
 
+  /** Load workspace resolutions (resolutions/overrides, deps incl. npm: aliases). */
   public async loadWorkspaceResolutions(): Promise<void> {
     try {
       const exists = await this.io.exists('package.json')
@@ -59,6 +69,7 @@ export class PackageVersionResolver {
     }
   }
 
+  /** Parse lockfiles once to populate exact versions. */
   public async loadLockFileVersions(): Promise<void> {
     if (this.lockFileVersions.size > 0) return
     try {
@@ -71,6 +82,7 @@ export class PackageVersionResolver {
     } catch {}
   }
 
+  /** Best-effort yarn.lock parser to capture concrete versions. */
   private async parseYarnLock(): Promise<void> {
     try {
       const content = await this.io.readFile('yarn.lock')
@@ -91,6 +103,7 @@ export class PackageVersionResolver {
     }
   }
 
+  /** Best-effort package-lock.json parser to capture concrete versions. */
   private async parsePackageLock(): Promise<void> {
     try {
       const content = await this.io.readFile('package-lock.json')
@@ -117,6 +130,7 @@ export class PackageVersionResolver {
     }
   }
 
+  /** Resolve a version for a package given optional parent dependency context. */
   public async resolveVersion(
     packageName: string,
     parentDeps?: Map<string, string>,

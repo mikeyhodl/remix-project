@@ -16,6 +16,21 @@ export interface RouteDeps {
   fetchGitHubPackageJson: (owner: string, repo: string, ref: string) => Promise<void>
 }
 
+/**
+ * Route and normalize an incoming URL before the main resolver logic runs.
+ *
+ * Behaviors:
+ * - npm: alias → rewrite to plain npm path
+ * - http(s) CDN → rewrite to npm path and record mapping
+ * - GitHub blob → convert to raw; raw → normalize to github/<org>/<repo>@<ref>/..., fetch + save
+ * - IPFS/Swarm → normalize to ipfs/... or swarm/... and fetch + save
+ * - Other http(s) → direct fetch + save
+ *
+ * Returns:
+ * - { action: 'rewrite', url } to continue resolver pipeline with a new url
+ * - { action: 'content', content } when the content has been handled and saved here
+ * - { action: 'none' } when no routing occurred
+ */
 export async function routeUrl(originalUrl: string, url: string, targetPath: string | undefined, deps: RouteDeps): Promise<RouteAction> {
   const { contentFetcher, logger, resolutions, fetchGitHubPackageJson } = deps
 

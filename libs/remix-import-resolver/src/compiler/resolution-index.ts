@@ -2,6 +2,12 @@
 
 import { Plugin } from '@remixproject/engine'
 
+/**
+ * ResolutionIndex (Remix Plugin)
+ *
+ * Browser/Plugin implementation of the resolution index that persists mappings via
+ * the Remix fileManager API under .deps/npm/.resolution-index.json.
+ */
 export class ResolutionIndex {
   private indexPath: string = '.deps/npm/.resolution-index.json'
   private index: Record<string, Record<string, string>> = {}
@@ -15,6 +21,7 @@ export class ResolutionIndex {
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
 
+  /** Load index from the workspace once per session (idempotent). */
   async load(): Promise<void> {
     if (this.loadPromise) return this.loadPromise
     if (this.isLoaded) return Promise.resolve()
@@ -39,8 +46,10 @@ export class ResolutionIndex {
     return this.loadPromise
   }
 
+  /** Ensure the index is loaded before reading or writing. */
   async ensureLoaded(): Promise<void> { if (!this.isLoaded) await this.load() }
 
+  /** Drop cached state and reload from storage. */
   async reload(): Promise<void> {
     this.log(`[ResolutionIndex] 🔄 Reloading index (workspace changed)`)
     this.index = {}
@@ -50,6 +59,7 @@ export class ResolutionIndex {
     await this.load()
   }
 
+  /** Record a mapping for a source file if it changed since last write. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
     if (originalImport === resolvedPath) return
     if (!this.index[sourceFile]) this.index[sourceFile] = {}
@@ -60,11 +70,13 @@ export class ResolutionIndex {
     }
   }
 
+  /** Lookup a mapping scoped to a source file. */
   lookup(sourceFile: string, importPath: string): string | null {
     if (this.index[sourceFile] && this.index[sourceFile][importPath]) return this.index[sourceFile][importPath]
     return null
   }
 
+  /** Lookup a mapping across all source files (first hit wins). */
   lookupAny(importPath: string): string | null {
     for (const sourceFile in this.index) {
       if (this.index[sourceFile][importPath]) return this.index[sourceFile][importPath]
@@ -72,8 +84,10 @@ export class ResolutionIndex {
     return null
   }
 
+  /** Return all recorded mappings for a given source file. */
   getResolutionsForFile(sourceFile: string): Record<string, string> | null { return this.index[sourceFile] || null }
 
+  /** Remove all recorded mappings for a given source file. */
   clearFileResolutions(sourceFile: string): void {
     if (this.index[sourceFile]) {
       delete this.index[sourceFile]
@@ -82,6 +96,7 @@ export class ResolutionIndex {
     }
   }
 
+  /** Persist index to workspace storage if it changed. */
   async save(): Promise<void> {
     if (!this.isDirty) { this.log(`[ResolutionIndex] ⏭️  Index unchanged, skipping save`); return }
     try {

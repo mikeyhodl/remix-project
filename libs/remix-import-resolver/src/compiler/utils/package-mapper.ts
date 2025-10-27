@@ -6,6 +6,15 @@ import { DependencyStore } from './dependency-store'
 import { PackageVersionResolver } from './package-version-resolver'
 import { ConflictChecker } from './conflict-checker'
 
+/**
+ * PackageMapper
+ *
+ * Encapsulates mapping a package name to a concrete version and persisting metadata needed for
+ * deterministic, context-aware resolution:
+ * - Creates an isolated mapping key (__PKG__<name>) → <name>@<version>
+ * - Persists the real package.json under .deps/ for transitive resolution (handles npm aliases)
+ * - Records dependencies in the DependencyStore and runs ConflictChecker validations
+ */
 export class PackageMapper {
   constructor(
     private importMappings: Map<string, string>,
@@ -23,6 +32,10 @@ export class PackageMapper {
     this.logger.log(message, ...args)
   }
 
+  /**
+   * Resolve a version for the given package and record a mapping to the versioned name.
+   * Also persists package.json and checks dependency/peer conflicts.
+   */
   public async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
     if (this.importMappings.has(mappingKey)) return
