@@ -40,9 +40,9 @@ describe('Duplicate file detection across versions', () => {
     // Import the same logical file from two explicit versions.
     // Due to internal tracking behavior, we perform three imports to ensure
     // the previous version is recorded before the conflicting one.
-  await resolver.resolveAndSave('@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol') // establishes mapping (resolvedVersion = 4.8.0)
-  await resolver.resolveAndSave('@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol') // records first seen version for fileKey (previous = 5.0.2)
-  await resolver.resolveAndSave('@openzeppelin/contracts@4.9.6/token/ERC20/ERC20.sol') // triggers duplicate-file detection (requested = 4.9.6 vs previous = 5.0.2)
+    await resolver.resolveAndSave('@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol') // establishes mapping (resolvedVersion = 4.8.0)
+    await resolver.resolveAndSave('@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol') // records first seen version for fileKey (previous = 5.0.2)
+    await resolver.resolveAndSave('@openzeppelin/contracts@4.9.6/token/ERC20/ERC20.sol') // triggers duplicate-file detection (requested = 4.9.6 vs previous = 5.0.2)
 
     // Find a duplicate-file error message
     const found = errors.find(m => /DUPLICATE FILE DETECTED/.test(m))

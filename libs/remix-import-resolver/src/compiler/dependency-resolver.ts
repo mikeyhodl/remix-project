@@ -131,7 +131,7 @@ export class DependencyResolver {
         }
       }
 
-  const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
+      const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
       if (imports.length > 0) {
         this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
         const resolvedImports = new Set<string>()

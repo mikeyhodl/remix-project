@@ -39,14 +39,14 @@ describe('Deep package.json usage via parent deps', () => {
 
     // 2) Import a child file without a version; it should resolve to the version
     // declared in the parent's package.json (1.4.0 at the time of writing).
-  // Use a file that exists in @chainlink/contracts@1.4.0 across releases
-  const original = '@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
+    // Use a file that exists in @chainlink/contracts@1.4.0 across releases
+    const original = '@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
     const content = await resolver.resolveAndSave(original)
     expect(content).to.be.a('string')
-  expect(content).to.include('interface AggregatorV3Interface')
+    expect(content).to.include('interface AggregatorV3Interface')
 
     // Saved under versioned folder determined by parent deps
-  const expectedPath = '@chainlink/contracts@1.4.0/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
+    const expectedPath = '@chainlink/contracts@1.4.0/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
     expect(await exists(expectedPath)).to.equal(true)
 
     // Index mapping should reflect original → versioned path

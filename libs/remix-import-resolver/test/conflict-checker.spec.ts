@@ -23,12 +23,12 @@ describe('ConflictChecker', () => {
     await rm(tempDir, { recursive: true, force: true })
   })
   it('warns on peer dependency major mismatch', async () => {
-  const io = new NodeIOAdapter()
+    const io = new NodeIOAdapter()
     const pvr = new PackageVersionResolver(io, true)
     const depStore = new DependencyStore()
-  // Provide a minimal yarn.lock in the isolated temp dir so peer dep resolves deterministically
-  await writeFile('yarn.lock', `# yarn lockfile v1\n\n"@openzeppelin/contracts@^4.9.0":\n  version "5.0.2"\n`)
-  // Ensure lockfile versions are loaded so peer dep can resolve
+    // Provide a minimal yarn.lock in the isolated temp dir so peer dep resolves deterministically
+    await writeFile('yarn.lock', `# yarn lockfile v1\n\n"@openzeppelin/contracts@^4.9.0":\n  version "5.0.2"\n`)
+    // Ensure lockfile versions are loaded so peer dep can resolve
     await pvr.loadLockFileVersions()
 
     const messages: { type: string; value: string }[] = []
@@ -62,10 +62,10 @@ describe('ConflictChecker', () => {
   }).timeout(10000)
 
   it('warns on imported dependency major mismatch', async () => {
-  const io = new NodeIOAdapter()
+    const io = new NodeIOAdapter()
     const pvr = new PackageVersionResolver(io, true)
     const depStore = new DependencyStore()
-  // No lockfile needed for imported dependency case (we inject imported mapping)
+    // No lockfile needed for imported dependency case (we inject imported mapping)
 
     const messages: { type: string; value: string }[] = []
     const logger = new Logger(undefined, true)

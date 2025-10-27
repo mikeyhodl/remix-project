@@ -40,7 +40,7 @@ export class PackageMapper {
     const mappingKey = `__PKG__${packageName}`
     if (this.importMappings.has(mappingKey)) return
 
-  const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
+    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
     if (!resolvedVersion) return
 
     let actualPackageName = packageName
