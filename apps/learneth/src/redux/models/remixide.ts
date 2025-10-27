@@ -3,7 +3,24 @@ import { type ModelType } from '../store'
 import remixClient from '../../remix-client'
 import { router } from '../../App'
 import { trackMatomoEvent } from '@remix-api'
-import { ensureLearnethWorkspace } from './helper-workspace'
+
+const learnethWorkspaceName = 'learneth tutorials'
+
+export const ensureLearnethWorkspace = async (remixClient) => {
+  try {
+    const current = await remixClient.call('filePanel', 'getCurrentWorkspace')
+    if (current && current.name === learnethWorkspaceName) {
+      return
+    }
+    const exists = await remixClient.call('filePanel', 'workspaceExists')
+    if (!exists) {
+      await remixClient.call('filePanel', 'createWorkspace', learnethWorkspaceName, 'blank')
+    }
+    return remixClient.call('filePanel', 'switchToWorkspace', { name: learnethWorkspaceName, isLocalHost: false })
+  } catch (err) {
+    console.error('Error ensuring learneth workspace:', err)
+  }  
+}
 
 function getFilePath(file: string): string {
   const name = file.split('/')
