@@ -63,6 +63,16 @@ When published as a package, the CLI is exposed as `remix-flatten` in your PATH:
 
 - `remix-flatten contracts/MyToken.sol -o flat/MyToken.flat.sol`
 
+Optional overrides:
+
+- Force a specific pragma in the flattened header (useful if dependencies use a looser range):
+  - `node dist/libs/remix-import-resolver/src/cli.js contracts/MyToken.sol --pragma ^0.8.26`
+  - Or when installed: `remix-flatten contracts/MyToken.sol --pragma ^0.8.26`
+
+Control working directory (affects where `.deps/` is written):
+
+- `node dist/libs/remix-import-resolver/src/cli.js --cwd . contracts/MyToken.sol -o flat.sol`
+
 ## Testing
 
 - Run all tests for this library

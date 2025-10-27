@@ -21,6 +21,7 @@ interface ParsedArgs {
   debug: boolean
   cwd?: string
   help?: boolean
+  pragma?: string
 }
 
 function printHelp() {
@@ -31,6 +32,7 @@ Options:
   -o, --out <file>             Write output to file (default: stdout)
   -r, --remap <a=b>            Add a remapping (can be repeated)
   -R, --remappings-file <path> Read remappings from file (solc-style)
+    --pragma <range>          Override header pragma (e.g., ^0.8.26)
       --cwd <path>             Change working directory before running
       --debug                  Enable verbose logging
   -h, --help                   Show this help message
@@ -56,6 +58,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (a === '-o' || a === '--out') { args.out = rest[i+1]; i += 2; continue }
     if (a === '-r' || a === '--remap') { args.remap.push(rest[i+1]); i += 2; continue }
     if (a === '-R' || a === '--remappings-file') { args.remappingsFile = rest[i+1]; i += 2; continue }
+  if (a === '--pragma') { args.pragma = rest[i+1]; i += 2; continue }
     if (!args.entry && !a.startsWith('-')) { args.entry = a; i++; continue }
     // Unknown or malformed option – break to avoid infinite loop
     i++
@@ -77,12 +80,14 @@ async function main() {
       const res = await flattener.flattenToFile(args.entry, args.out, {
         remappings: args.remap,
         remappingsFile: args.remappingsFile,
+        pragma: args.pragma,
       })
       console.error(`Wrote flattened file to ${res.outFile} (sources: ${res.order.length})`)
     } else {
       const res = await flattener.flatten(args.entry, {
         remappings: args.remap,
         remappingsFile: args.remappingsFile,
+        pragma: args.pragma,
       })
       process.stdout.write(res.flattened)
     }

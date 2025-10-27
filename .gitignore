@@ -86,3 +86,4 @@ apps/remix-ide-e2e/tmp/
 
 # IDE - Cursor
 .cursor/
+tmpsol/

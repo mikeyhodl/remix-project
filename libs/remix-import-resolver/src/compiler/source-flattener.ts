@@ -12,6 +12,7 @@ export interface FlattenResult {
 export interface FlattenOptions {
   remappings?: Array<string | Remapping>
   remappingsFile?: string
+  pragma?: string // e.g., "^0.8.26" to override header pragma
 }
 
 export class SourceFlattener {
@@ -87,7 +88,11 @@ export class SourceFlattener {
 
     const header: string[] = []
     if (firstSpdx) header.push(firstSpdx)
-    if (firstPragma) header.push(firstPragma)
+    if (opts?.pragma) {
+      header.push(`pragma solidity ${opts.pragma};`)
+    } else if (firstPragma) {
+      header.push(firstPragma)
+    }
 
     const flattened = [header.join('\n'), ...parts].filter(Boolean).join('\n')
     return { entry: entryFile, order, sources: bundle, flattened }
