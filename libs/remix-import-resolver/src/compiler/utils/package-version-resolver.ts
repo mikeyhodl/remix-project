@@ -77,7 +77,7 @@ export class PackageVersionResolver {
       const lines = content.split('\n')
       let currentPackage: string | null = null
       for (const line of lines) {
-        const packageMatch = line.match(/^"?(@?[^"@]+(?:\/[^"@]+)?)@[^\"]*"?:/)
+        const packageMatch = line.match(/^"?(@?[^"@]+(?:\/[^"@]+)?)@[^"]*"?:/)
         if (packageMatch) currentPackage = packageMatch[1]
         const versionMatch = line.match(/^\s+version\s+"([^"]+)"/)
         if (versionMatch && currentPackage) {

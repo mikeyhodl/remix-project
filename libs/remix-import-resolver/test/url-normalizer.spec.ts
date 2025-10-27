@@ -1,6 +1,6 @@
 /// <reference types="mocha" />
 import { expect } from 'chai'
-import { 
+import {
   normalizeGithubBlobUrl,
   normalizeRawGithubUrl,
   rewriteNpmCdnUrl,

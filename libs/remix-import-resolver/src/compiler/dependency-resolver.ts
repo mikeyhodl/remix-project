@@ -167,12 +167,12 @@ export class DependencyResolver {
   }
 
   private extractImports(content: string): string[] {
-    this.log(`[DependencyResolver]   📝 Extracting imports from content (${content.length} chars)`) 
+    this.log(`[DependencyResolver]   📝 Extracting imports from content (${content.length} chars)`)
     const imports: string[] = []
     let cleanContent = content.replace(/\/\*[\s\S]*?\*\//g, '')
     const lines = cleanContent.split('\n')
     const cleanedLines = lines.map(line => {
-      const stringMatches: Array<{start: number, end: number}> = []
+      const stringMatches: Array<{ start: number; end: number }> = []
       let inString = false
       let stringChar = ''
       let escaped = false
@@ -183,7 +183,7 @@ export class DependencyResolver {
         if ((char === '"' || char === "'") && !inString) {
           inString = true
           stringChar = char
-          stringMatches.push({start: i, end: -1})
+          stringMatches.push({ start: i, end: -1 })
         } else if (char === stringChar && inString) {
           inString = false
           stringMatches[stringMatches.length - 1].end = i

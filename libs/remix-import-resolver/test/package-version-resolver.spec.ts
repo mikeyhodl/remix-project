@@ -10,6 +10,6 @@ describe('PackageVersionResolver (standalone via IOAdapter)', () => {
     expect(result.version).to.be.a('string')
     // Should look like a semver (loose check)
     expect(result.version).to.match(/^\d+\./)
-  expect(['package-json', 'lock-file']).to.include(result.source)
+    expect(['package-json', 'lock-file']).to.include(result.source)
   })
 })

@@ -97,7 +97,7 @@ export class ImportResolver implements IImportResolver {
   }
 
   private extractVersion(url: string): string | null {
-    const match = url.match(/@(\d+(?:\.\d+)?(?:\.\d+)?[^\s\/]*)/)
+    const match = url.match(/@(\d+(?:\.\d+)?(?:\.\d+)?[^\s/]*)/)
     return match ? match[1] : null
   }
 
@@ -281,7 +281,7 @@ export class ImportResolver implements IImportResolver {
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
     if (this.importMappings.has(mappingKey)) return
-  const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
+    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
     if (!resolvedVersion) return
     let actualPackageName = packageName
     if (source.startsWith('alias:')) {
@@ -301,9 +301,9 @@ export class ImportResolver implements IImportResolver {
       this.dependencyStore.setPackageSource(packageName, packageName)
     }
     this.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
-  // When resolving via npm alias (e.g. "@module_remapping": "npm:@openzeppelin/contracts@4.9.0"),
-  // ensure we fetch and save the REAL package's package.json, not the alias name.
-  await this.checkPackageDependenciesIfNeeded(actualPackageName, resolvedVersion, source)
+    // When resolving via npm alias (e.g. "@module_remapping": "npm:@openzeppelin/contracts@4.9.0"),
+    // ensure we fetch and save the REAL package's package.json, not the alias name.
+    await this.checkPackageDependenciesIfNeeded(actualPackageName, resolvedVersion, source)
     this.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
   }
 

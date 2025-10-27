@@ -47,7 +47,7 @@ describe('import-resolver: flattener e2e', () => {
     const ozVersions = collectPackageVersions(result.flattened, '@openzeppelin/contracts')
     expect(ozVersions.size).to.equal(1)
     expect(ozVersions.has('4.8.0')).to.equal(true)
-    expect(result.flattened).to.not.match(/\bimport\s+\"/)
+    expect(result.flattened).to.not.match(/\bimport\s+"/)
   })
 
   it('supports remappings from file and inline (file precedence)', async function () {
@@ -58,7 +58,7 @@ describe('import-resolver: flattener e2e', () => {
     const src = `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "oz/token/ERC20/ERC20.sol";\n\ncontract R is ERC20 {\n  constructor() ERC20("R","R") {}\n}`
     await fs.writeFile(entry, src, 'utf8')
     await fs.writeFile('remappings.txt', 'oz=@openzeppelin/contracts@4.8.0/', 'utf8')
-    const result = await flattener.flatten(entry, { remappingsFile: 'remappings.txt', remappings: ['oz=@openzeppelin/contracts@5.4.0/'] })
+    const result = await flattener.flatten(entry, { remappingsFile: 'remappings.txt', remappings: ['oz=@openzeppelin/contracts@5.4.0/']})
     const ozVersions = collectPackageVersions(result.flattened, '@openzeppelin/contracts')
     expect(ozVersions.has('4.8.0')).to.equal(true)
     expect(ozVersions.has('5.4.0')).to.equal(false)

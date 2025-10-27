@@ -42,7 +42,7 @@ export class ResolutionIndex {
   async ensureLoaded(): Promise<void> { if (!this.isLoaded) await this.load() }
 
   async reload(): Promise<void> {
-    this.log(`[ResolutionIndex] 🔄 Reloading index (workspace changed)`) 
+    this.log(`[ResolutionIndex] 🔄 Reloading index (workspace changed)`)
     this.index = {}
     this.isDirty = false
     this.isLoaded = false

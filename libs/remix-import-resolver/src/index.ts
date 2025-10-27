@@ -22,9 +22,9 @@ export { ConflictChecker } from './compiler/utils/conflict-checker'
 export { Logger } from './compiler/utils/logger'
 export { DependencyStore } from './compiler/utils/dependency-store'
 export {
-	normalizeGithubBlobUrl,
-	normalizeRawGithubUrl,
-	rewriteNpmCdnUrl,
-	normalizeIpfsUrl,
-	normalizeSwarmUrl
+  normalizeGithubBlobUrl,
+  normalizeRawGithubUrl,
+  rewriteNpmCdnUrl,
+  normalizeIpfsUrl,
+  normalizeSwarmUrl
 } from './compiler/utils/url-normalizer'
