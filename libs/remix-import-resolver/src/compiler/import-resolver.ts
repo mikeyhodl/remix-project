@@ -74,6 +74,21 @@ export class ImportResolver implements IImportResolver {
   }
 
   private extractPackageName(url: string): string | null {
+    // Prefer known workspace resolution keys (supports npm alias keys like "@module_remapping")
+    if (url.startsWith('@')) {
+      const resolutions = this.packageVersionResolver.getWorkspaceResolutions()
+      if (resolutions && resolutions.size > 0) {
+        // Find the longest key that is a prefix of the url (followed by "/" or end)
+        const keys = Array.from(resolutions.keys())
+        // Sort by length desc to prefer the most specific match
+        keys.sort((a, b) => b.length - a.length)
+        for (const key of keys) {
+          if (url === key || url.startsWith(`${key}/`) || url.startsWith(`${key}@`)) {
+            return key
+          }
+        }
+      }
+    }
     const scopedMatch = url.match(/^(@[^/]+\/[^/@]+)/)
     if (scopedMatch) return scopedMatch[1]
     const regularMatch = url.match(/^([^/@]+)/)
@@ -266,7 +281,7 @@ export class ImportResolver implements IImportResolver {
   private async fetchAndMapPackage(packageName: string): Promise<void> {
     const mappingKey = `__PKG__${packageName}`
     if (this.importMappings.has(mappingKey)) return
-    const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
+  const { version: resolvedVersion, source } = await this.resolvePackageVersion(packageName)
     if (!resolvedVersion) return
     let actualPackageName = packageName
     if (source.startsWith('alias:')) {
@@ -286,7 +301,9 @@ export class ImportResolver implements IImportResolver {
       this.dependencyStore.setPackageSource(packageName, packageName)
     }
     this.log(`[ImportResolver] ✅ Mapped ${packageName} → ${versionedPackageName} (source: ${source})`)
-    await this.checkPackageDependenciesIfNeeded(packageName, resolvedVersion, source)
+  // When resolving via npm alias (e.g. "@module_remapping": "npm:@openzeppelin/contracts@4.9.0"),
+  // ensure we fetch and save the REAL package's package.json, not the alias name.
+  await this.checkPackageDependenciesIfNeeded(actualPackageName, resolvedVersion, source)
     this.log(`[ImportResolver] 📊 Total isolated mappings: ${this.importMappings.size}`)
   }
 
@@ -384,6 +401,9 @@ export class ImportResolver implements IImportResolver {
       this.log(`[ImportResolver] 🔗 Detected npm: alias in URL, normalizing: ${url}`)
       url = url.substring(4)
     }
+
+    // Ensure workspace resolutions (including npm alias keys) are loaded before extracting package names
+    try { await this.packageVersionResolver.loadWorkspaceResolutions() } catch {}
 
     let finalUrl = url
     const packageName = this.extractPackageName(url)

@@ -140,6 +140,26 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  describe('#group13 - workspace module remapping alias saves real package.json', () => {
+    it('saves the resolved package.json for the real npm package when importing via alias key', async function () {
+      this.timeout(90000)
+      await writeFile('package.json', JSON.stringify({
+        name: 'module-remap-mre', private: true,
+        dependencies: { '@module_remapping': 'npm:@openzeppelin/contracts@4.9.0' }
+      }, null, 2))
+
+      const io = new NodeIOAdapter()
+      const resolver = new ImportResolver(io as any, 'ModuleRemapAlias.sol', true)
+
+      // Import through the alias key
+      await resolver.resolveAndSave('@module_remapping/token/ERC20/ERC20.sol')
+
+      // The real package.json must be persisted for transitive resolution
+      const hasRealPkg = await exists('.deps/npm/@openzeppelin/contracts@4.9.0/package.json')
+      expect(hasRealPkg, 'real package.json for @openzeppelin/contracts@4.9.0 should be saved').to.equal(true)
+    })
+  })
+
   describe('#group19 - jsDelivr multi-version imports', () => {
     it('resolves v4 ECDSA and v5 ERC20 via CDN and records mappings', async function () {
       this.timeout(120000)
