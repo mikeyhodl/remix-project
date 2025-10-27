@@ -4,12 +4,12 @@
       "module": "CommonJS",
       "outDir": "../../dist/out-tsc",
       "declaration": true,
-      "rootDir": "./src",
+      "rootDir": "../../",
       "types": ["node"]
     },
     "exclude": [
       "**/*.spec.ts"
     ],
-    "include": ["**/*.ts"]
+  "include": ["src/**/*.ts"]
   }
   

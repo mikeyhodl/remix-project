@@ -4,7 +4,8 @@
     "sourceRoot": "libs/remix-solidity/src",
     "projectType": "library",
     "implicitDependencies": [
-      "remix-lib"
+      "remix-lib",
+      "remix-import-resolver"
     ],
     "targets": {
       "build": {
@@ -14,6 +15,7 @@
           "outputPath": "dist/libs/remix-solidity",
           "main": "libs/remix-solidity/src/index.ts",
           "tsConfig": "libs/remix-solidity/tsconfig.lib.json",
+          "buildLibsFromSource": false,
           "updateBuildableProjectDepsInPackageJson": false,
           "assets": [
             "libs/remix-solidity/*.md"
