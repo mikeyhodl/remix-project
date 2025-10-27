@@ -3,6 +3,7 @@ import { type ModelType } from '../store'
 import remixClient from '../../remix-client'
 import { router } from '../../App'
 import { trackMatomoEvent } from '@remix-api'
+import { ensureLearnethWorkspace } from './helper-workspace'
 
 function getFilePath(file: string): string {
   const name = file.split('/')
@@ -83,10 +84,11 @@ const Model: ModelType = {
 
       const workshop = detail[selectedId]
 
-      path = `.learneth/${workshop.name}/${step.name}/${path}`
+      path = `${workshop.name}/${step.name}/${path}`
       try {
         const isExist = yield remixClient.call('fileManager', 'exists' as any, path)
         if (!isExist) {
+          yield ensureLearnethWorkspace(remixClient)
           yield remixClient.call('fileManager', 'setFile', path, content)
         }
         yield remixClient.call('fileManager', 'switchFile', `${path}`)
@@ -131,12 +133,13 @@ const Model: ModelType = {
         let path: string
         if (step.solidity.file) {
           path = getFilePath(step.solidity.file)
-          path = `.learneth/${workshop.name}/${step.name}/${path}`
+          path = `${workshop.name}/${step.name}/${path}`
           yield remixClient.call('fileManager', 'switchFile', `${path}`)
         }
 
         path = getFilePath(step.test.file)
-        path = `.learneth/${workshop.name}/${step.name}/${path}`
+        path = `${workshop.name}/${step.name}/${path}`
+        yield ensureLearnethWorkspace(remixClient)
         yield remixClient.call('fileManager', 'setFile', path, step.test.content)
 
         const result = yield remixClient.call('solidityUnitTesting', 'testFromPath', path)
@@ -195,7 +198,8 @@ const Model: ModelType = {
         const { detail, selectedId } = yield select((state) => state.workshop)
 
         const workshop = detail[selectedId]
-        path = `.learneth/${workshop.name}/${step.name}/${path}`
+        path = `${workshop.name}/${step.name}/${path}`
+        yield ensureLearnethWorkspace(remixClient)
         yield remixClient.call('fileManager', 'setFile', path, content)
         yield remixClient.call('fileManager', 'switchFile', `${path}`);
 
