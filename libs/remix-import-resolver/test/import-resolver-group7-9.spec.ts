@@ -16,6 +16,10 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+// These tests exercise behaviors that previously lived in remix-solidity e2e "groups 7–9".
+// We run them against the standalone resolver with the Node IO adapter to ensure
+// parity in a minimal, fast, app-independent environment. Each test explains the
+// user-observable intent in plain English so reviewers can quickly see what's covered.
 describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
   let originalCwd: string
   let tempDir: string
@@ -31,6 +35,10 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
+  // group7: When a package depends on another package, imports of the child package
+  // should be resolved to the version declared in the parent’s package.json.
+  // Case: contracts-ccip@1.6.1 depends on @chainlink/contracts@1.4.0; we verify
+  // that importing @chainlink/contracts resolves to 1.4.0 (and not a newer 1.5.x).
   describe('#group7 - Chainlink CCIP parent dependency resolution', () => {
     it('uses parent package.json (contracts-ccip@1.6.1) to resolve @chainlink/contracts to 1.4.0', async function () {
       this.timeout(60000)
@@ -53,6 +61,9 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
     })
   })
 
+  // group8: Ensure alias syntax and CDN URLs behave like first-class npm imports.
+  // - npm: prefix should be treated as an npm path and saved under a versioned folder
+  // - jsDelivr/unpkg URLs should normalize to npm paths and be saved under versioned folders
   describe('#group8 - npm alias and external URL normalization', () => {
     it('resolves npm: alias syntax to the correct versioned npm path', async function () {
       this.timeout(60000)
@@ -104,6 +115,9 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
     })
   })
 
+  // group9: After resolving imports, a resolution index is persisted so IDE features
+  // like "Go to Definition" can map from the original import to the actual saved path.
+  // We verify that the index file exists and contains correct mappings for all imports.
   describe('#group9 - Resolution index mapping for Go to Definition', () => {
     it('saves a .resolution-index.json with mappings for imported npm paths', async function () {
       this.timeout(60000)

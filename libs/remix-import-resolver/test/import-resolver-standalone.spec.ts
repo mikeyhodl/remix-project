@@ -5,6 +5,8 @@ import { promises as fs } from 'fs'
 
 const INDEX_PATH = '.deps/npm/.resolution-index.json'
 
+// Basic smoke-test to ensure the standalone resolver resolves npm imports,
+// records a versioned mapping, and persists a resolution index for IDE features.
 describe('ImportResolver standalone (via NodeIOAdapter)', () => {
   it('resolves and saves an npm import without explicit version', async () => {
     const io = new NodeIOAdapter()

@@ -11,6 +11,8 @@ async function exists(path: string): Promise<boolean> {
   try { await fs.stat(path); return true } catch { return false }
 }
 
+// These tests cover a subset of remix-solidity e2e groups 10–22, ported to the standalone
+// resolver. Each block explains the human-level behavior being validated.
 describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', () => {
   let originalCwd: string
   let tempDir: string
@@ -29,6 +31,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
   it.skip('#group10 - debug logging toggles via localStorage (UI only)', () => {})
   it.skip('#group11 - import parsing edge cases (compiler integration)', () => {})
 
+  // group12: Requests to CDN providers (unpkg/jsDelivr) should be normalized to npm paths.
+  // Versioned CDN URLs become versioned npm paths; unversioned resolve to a workspace-pinned version.
   describe('#group12 - CDN imports normalization', () => {
     it('normalizes unpkg versioned to npm path and saves under versioned folders', async function () {
       this.timeout(60000)
@@ -87,6 +91,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  // group16: Raw GitHub imports should be saved under a deterministic github/<org>/<repo>@<ref>/ path,
+  // and when possible, package.json should be fetched alongside for transitive resolution.
   describe('#group16 - raw.githubusercontent.com imports', () => {
     it('saves GitHub raw imports and fetches package.json when available', async function () {
       this.timeout(90000)
@@ -99,6 +105,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  // group17: Unversioned raw GitHub refs like refs/heads/master should normalize to @master
+  // so saves are deterministic and easy to browse.
   describe('#group17 - unversioned GitHub raw import master/main normalization', () => {
     it('normalizes refs/heads/master to @master in save path', async function () {
       this.timeout(90000)
@@ -113,6 +121,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  // group18: npm alias keys in workspace package.json can point to different versions of the
+  // same package. We verify both alias target and canonical package resolve and co-exist.
   describe('#group18 - npm alias with multiple package versions', () => {
     it('resolves both @openzeppelin/contracts and alias @openzeppelin/contracts-5', async function () {
       this.timeout(120000)
@@ -140,6 +150,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  // group13: When importing via a workspace alias key (module remapping), the real package.json
+  // for the underlying npm package must be persisted for transitive dependency resolution.
   describe('#group13 - workspace module remapping alias saves real package.json', () => {
     it('saves the resolved package.json for the real npm package when importing via alias key', async function () {
       this.timeout(90000)
@@ -160,6 +172,8 @@ describe('ImportResolver e2e parity (groups 10–22 subset) - Node + local FS', 
     })
   })
 
+  // group19: Multiple CDN imports for different versions of the same package should resolve independently
+  // and have their mappings recorded in the resolution index for IDE features.
   describe('#group19 - jsDelivr multi-version imports', () => {
     it('resolves v4 ECDSA and v5 ERC20 via CDN and records mappings', async function () {
       this.timeout(120000)

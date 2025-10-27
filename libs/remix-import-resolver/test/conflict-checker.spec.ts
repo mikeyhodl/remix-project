@@ -2,6 +2,9 @@
 import { expect } from 'chai'
 import { Logger, PackageVersionResolver, DependencyStore, ConflictChecker, NodeIOAdapter } from '../src'
 
+// ConflictChecker emits structured warnings/errors when imported or peer dependency
+// versions are inconsistent with what is actually resolved. These tests simulate
+// realistic scenarios to ensure developers are alerted to risky version skews.
 describe('ConflictChecker', () => {
   it('warns on peer dependency major mismatch', async () => {
     const io = new NodeIOAdapter()

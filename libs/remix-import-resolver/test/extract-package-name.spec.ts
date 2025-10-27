@@ -6,6 +6,9 @@ import { ImportResolver } from '../src/compiler/import-resolver'
 import { extractPackageName } from '../src/compiler/utils/parser-utils'
 import { NodeIOAdapter } from '../src/compiler/adapters/node-io-adapter'
 
+// Parser util checks: ensure alias-aware package name extraction returns the
+// alias key when present (e.g., @module_remapping) and falls back to the
+// scoped package name for standard npm paths.
 describe('extractPackageName (alias-aware)', function () {
   let originalCwd: string
   let tempDir: string

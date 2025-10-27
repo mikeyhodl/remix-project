@@ -15,6 +15,9 @@ async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true } catch { return false }
 }
 
+// End-to-end flows that combine normalization and flattening. These validate that
+// CDN and GitHub imports integrate correctly with the SourceFlattener and that
+// the resolution index captures the original → normalized mapping as users would expect.
 describe('import-resolver: cdn + github flows', () => {
   let originalCwd: string
   let tempDir: string
@@ -30,6 +33,9 @@ describe('import-resolver: cdn + github flows', () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
+  // Scenario: a Solidity file imports from jsDelivr (versioned). We expect the flattener to
+  // normalize to an npm path, resolve and save files, and write an index mapping the CDN URL
+  // to the versioned npm path for Go-to-Definition.
   it('flattens an entry importing from jsDelivr CDN (versioned path)', async function () {
     this.timeout(90000)
     const io = new NodeIOAdapter()
@@ -50,6 +56,8 @@ describe('import-resolver: cdn + github flows', () => {
     expect(mappings[key]).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol')
   })
 
+  // Scenario: a Solidity file imports a GitHub "blob" URL. We expect it to be rewritten to
+  // raw.githubusercontent.com, saved under github/<org>/<repo>@<ref>/..., and indexed.
   it('rewrites GitHub blob URL to raw and persists normalized path in index', async function () {
     this.timeout(120000)
     const io = new NodeIOAdapter()

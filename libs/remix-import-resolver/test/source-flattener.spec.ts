@@ -20,6 +20,9 @@ function collectPackageVersions(flattened: string, pkgPrefix: string): Set<strin
   return versions
 }
 
+// End-to-end tests for the SourceFlattener on top of the import resolver. These ensure
+// deterministic flattening order, single-version guarantees where expected, remapping
+// precedence (file remappings.txt over inline), and ability to write flattened output.
 describe('import-resolver: flattener e2e', () => {
   let originalCwd: string
   let tempDir: string
@@ -35,6 +38,8 @@ describe('import-resolver: flattener e2e', () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
+  // Flattens a simple ERC20 example with an explicit version; ensures only that version
+  // appears in the flattened output and that no import statements remain.
   it('flattens an entry with OZ ERC20 @4.8.0', async function () {
     this.timeout(60000)
     const io = new NodeIOAdapter()
@@ -50,6 +55,8 @@ describe('import-resolver: flattener e2e', () => {
     expect(result.flattened).to.not.match(/\bimport\s+"/)
   })
 
+  // When both a remappings.txt and inline remappings are provided, the file should win.
+  // We check that only the version from remappings.txt is present after flattening.
   it('supports remappings from file and inline (file precedence)', async function () {
     this.timeout(90000)
     const io = new NodeIOAdapter()
@@ -64,6 +71,7 @@ describe('import-resolver: flattener e2e', () => {
     expect(ozVersions.has('5.4.0')).to.equal(false)
   })
 
+  // Convenience API: flatten directly to a file path and verify contents match the returned result.
   it('writes flattened output to a file', async function () {
     this.timeout(90000)
     const io = new NodeIOAdapter()
