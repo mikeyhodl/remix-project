@@ -13,14 +13,14 @@ describe('Accounts', () => {
 
   describe('eth_getAccounts', () => {
     it('should get a list of accounts', async function () {
-      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])      
+      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])
       assert.notEqual(accounts.length, 0)
     })
   })
 
   describe('eth_getBalance', () => {
     it('should get an account balance', async () => {
-      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", []) 
+      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])
       const balance0: bigint = await ethersProvider.getBalance(accounts[0])
       const balance1: bigint = await ethersProvider.getBalance(accounts[1])
       const balance2: bigint = await ethersProvider.getBalance(accounts[2])
@@ -33,7 +33,7 @@ describe('Accounts', () => {
 
   describe('eth_sign', () => {
     it('should sign payloads', async () => {
-      const signer = await ethersProvider.getSigner() 
+      const signer = await ethersProvider.getSigner()
       const signature: any = await signer._legacySignMessage('Hello world') // _legacySignMessage uses 'eth_sign' internally
       assert.deepEqual(typeof signature === 'string' ? signature.length : signature.signature.length, 132)
     })
@@ -41,7 +41,7 @@ describe('Accounts', () => {
 
   describe('eth_signTypedData', () => {
     it('should sign typed data', async () => {
-      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", []) 
+      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])
       const typedData = {
         domain: {
           chainId: 1,

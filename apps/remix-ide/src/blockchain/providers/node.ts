@@ -58,7 +58,7 @@ export class NodeProvider {
           .then(signedData => cb(undefined, bytesToHex(messageHash), signedData))
           .catch(error => cb(error, bytesToHex(messageHash), undefined))
       })
-      
+
     } catch (e) {
       cb(e.message)
     }

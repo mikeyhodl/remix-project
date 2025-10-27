@@ -124,7 +124,7 @@ export const delegationAuthorization = async (contractAddress: string, plugin: R
   const provider = {
     request: async (query) => {
       const ret = await plugin.call('web3Provider', 'sendAsync', query)
-      return ret
+      return ret.result
     }
   }
 

@@ -16,7 +16,7 @@ describe('Transactions', () => {
   describe('eth_sendTransaction', () => {
     it('should deploy Storage contract, save a number and retrieve it', async function () {
       const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])
-      const signer = await ethersProvider.getSigner(0) 
+      const signer = await ethersProvider.getSigner(0)
       let receipt = await signer.sendTransaction({
         from: accounts[0],
         gasLimit: 1000000,

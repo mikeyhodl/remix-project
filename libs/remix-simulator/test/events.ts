@@ -13,7 +13,7 @@ describe('Events', () => {
 
   describe('eth_getLogs', () => {
     it('should deploy 2 contracts which emit events and retrieve these events using different block ranges', async function () {
-      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", []) 
+      const accounts: string[] = await ethersProvider.send("eth_requestAccounts", [])
       const signer = await ethersProvider.getSigner(0)
       // deploy the contract "test".
       const testContractTx = await signer.sendTransaction({

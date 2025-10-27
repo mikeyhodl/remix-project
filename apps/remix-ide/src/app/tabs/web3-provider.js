@@ -33,7 +33,10 @@ export class Web3ProviderModule extends Plugin {
         async (result) => {
           if (result) {
             const provider = this.blockchain.web3()
-            const resultFn = async (error, message) => {
+            const resultFn = async (error, response) => {
+              let message
+              // For a non-array of payload, result will be at index 0
+              if (!Array.isArray(payload)) message = response[0]
               if (error) {
                 // Handle 'The method "debug_traceTransaction" does not exist / is not available.' error
                 if(error.message && error.code && error.code === -32601) {
@@ -83,7 +86,8 @@ export class Web3ProviderModule extends Plugin {
               resolve(message)
             }
             try {
-              resultFn(null, await provider.send(payload.method, payload.params))
+              // browserProvider._send(payload: JsonRpcPayload | Array<JsonRpcPayload>) => Promise<Array<JsonRpcResult | JsonRpcError>>
+              resultFn(null, await provider._send(payload))
             } catch (e) {
               resultFn(e.error ? e.error : e)
             }

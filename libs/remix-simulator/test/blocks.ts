@@ -4,8 +4,8 @@ import * as assert from 'assert'
 import { ethers, BrowserProvider } from "ethers"
 
 describe('blocks', () => {
-    let ethersProvider: BrowserProvider
-  
+  let ethersProvider: BrowserProvider
+
   before(async () => {
     const provider = new Provider({
       coinbase: '0x0000000000000000000000000000000000000001'
@@ -316,7 +316,7 @@ describe('blocks', () => {
       const contractAddress = await contractInstance.getAddress()
       const contractInteract = new ethers.Contract(contractAddress, abi, signer)
 
-      let value = await contractInteract.get()
+      const value = await contractInteract.get()
 
       assert.deepEqual(value, 100)
     })
