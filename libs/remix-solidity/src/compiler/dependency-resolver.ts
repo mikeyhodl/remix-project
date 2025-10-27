@@ -20,7 +20,7 @@ import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 export class DependencyResolver {
   private pluginApi: Plugin | null
   private io: IOAdapter
-  private resolver: ImportResolver
+  private resolver: any
   private sourceFiles: Map<string, string> = new Map() // resolved path -> content
   private processedFiles: Set<string> = new Set() // Track already processed files
   private importGraph: Map<string, Set<string>> = new Map() // file -> files it imports

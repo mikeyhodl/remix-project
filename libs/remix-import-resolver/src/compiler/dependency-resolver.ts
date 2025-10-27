@@ -1,7 +1,7 @@
 'use strict'
 
 import type { Plugin } from '@remixproject/engine'
-import { ImportResolver } from '@remix-project/remix-solidity'
+import { ImportResolver } from './import-resolver'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 

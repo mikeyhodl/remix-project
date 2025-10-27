@@ -3,9 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/remix-import-resolver/src",
   "projectType": "library",
-  "implicitDependencies": [
-    "remix-solidity"
-  ],
+  "implicitDependencies": [],
   "targets": {
     "build": {
       "executor": "@nrwl/js:tsc",

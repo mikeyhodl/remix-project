@@ -5,7 +5,7 @@ export type { IOAdapter } from './compiler/adapters/io-adapter'
 export { NodeIOAdapter } from './compiler/adapters/node-io-adapter'
 export { RemixPluginAdapter } from './compiler/adapters/remix-plugin-adapter'
 
-export { ImportResolver } from '@remix-project/remix-solidity'
+export { ImportResolver } from './compiler/import-resolver'
 export { DependencyResolver } from './compiler/dependency-resolver'
 
 export { SourceFlattener } from './compiler/source-flattener'
