@@ -102,8 +102,9 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async handleActivity(type: string, payload: any) {
-    // Use the proper type-safe tracking helper with RemixAI events
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: `${type}-${payload}`, isClick: true })
+    // Never log user prompts - only track the activity type
+    const eventName = type === 'promptSend' ? 'remixai-assistant-promptSend' : `remixai-assistant-${type}-${payload}`;
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: eventName as any, isClick: true })
   }
 
   updateComponent(state: {
