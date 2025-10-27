@@ -18,7 +18,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
         const ret = await self.call('web3Provider', 'sendAsync', payload)
         return ret.result
       }
-      
+
     }
     this._web3 = new ethers.BrowserProvider(this.web3Provider)
     // this._web3 can be overwritten and reset to initial value in 'debug' method
