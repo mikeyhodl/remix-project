@@ -72,3 +72,8 @@ ImportResolver.resolveAndSave → url-request-router
 - CDN rewrite behavior preserves the original unversioned mapping entry for clarity while saving under the versioned folder
 - npm aliases are resolved to their real package for metadata persistence to keep transitive imports working
 - Parent context is derived from previous mappings and DependencyStore to select consistent versions across a graph
+
+## See also
+
+- URLs and routing details: `docs/IMPORT_RESOLVER_URLS.md`
+- Version precedence and sources of truth: `docs/IMPORT_RESOLVER_VERSIONING.md`
