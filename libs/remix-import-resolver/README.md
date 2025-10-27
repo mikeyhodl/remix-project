@@ -38,6 +38,31 @@ console.log(flattened)
 
 See the Remix monorepo tests under `libs/remix-solidity/test` for end-to-end usage.
 
+## CLI
+
+After building the library in this monorepo, a CLI is available as `remix-flatten`.
+
+- Help
+
+  - `node dist/libs/remix-import-resolver/src/cli.js --help`
+
+- Flatten to stdout
+
+  - `node dist/libs/remix-import-resolver/src/cli.js contracts/MyToken.sol`
+
+- Flatten to a file
+
+  - `node dist/libs/remix-import-resolver/src/cli.js contracts/MyToken.sol --out flat/MyToken.flat.sol`
+
+- With remappings (repeatable) or a remappings file
+
+  - `node dist/libs/remix-import-resolver/src/cli.js contracts/MyToken.sol -r @openzeppelin/=node_modules/@openzeppelin/`
+  - `node dist/libs/remix-import-resolver/src/cli.js contracts/MyToken.sol -R remappings.txt`
+
+When published as a package, the CLI is exposed as `remix-flatten` in your PATH:
+
+- `remix-flatten contracts/MyToken.sol -o flat/MyToken.flat.sol`
+
 ## Testing
 
 - Run all tests for this library
