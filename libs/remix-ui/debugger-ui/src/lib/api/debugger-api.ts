@@ -126,7 +126,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     const provider = await this.getDebugProvider()
     const currentReceipt = await provider.getTransactionReceipt(hash)
     const debug = new Debugger({
-      provider,
+      web3: provider,
       offsetToLineColumnConverter: this.offsetToLineColumnConverter,
       compilationResult: async (address) => {
         try {
