@@ -38,7 +38,7 @@ export class SmartCompiler {
     
     // Create the underlying compiler
     // Note: We can pass null for importResolverFactory since we handle imports differently
-    this.compiler = new Compiler(importCallback, null, this.debug)
+    this.compiler = new Compiler(importCallback)
     
     if (this.debug) {
       console.log(`[SmartCompiler] 🧠 Created smart compiler wrapper`)

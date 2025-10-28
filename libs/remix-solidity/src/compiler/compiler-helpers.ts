@@ -6,7 +6,7 @@ import type { CompilerSettings, Language, Source } from './types'
 
 export const compile = (compilationTargets: Source, settings: CompilerSettings, language: Language, version: string, contentResolverCallback, debug: boolean = false): Promise<CompilerAbstract> => {
   return new Promise((resolve, reject) => {
-    const compiler = new Compiler(contentResolverCallback, null, debug)
+    const compiler = new Compiler(contentResolverCallback)
     compiler.set('evmVersion', settings?.evmVersion)
     compiler.set('optimize', settings?.optimizer?.enabled)
     compiler.set('language', language)
