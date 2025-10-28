@@ -135,20 +135,6 @@ export class ImportResolver implements IImportResolver {
     }
   }
 
-  // parsing helpers are provided by utils/parser-utils for clarity
-
-  private isPotentialVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
-    return isPotentialVersionConflict(requestedRange, resolvedVersion)
-  }
-
-  private isBreakingVersionConflict(requestedRange: string, resolvedVersion: string): boolean {
-    return isBreakingVersionConflict(requestedRange, resolvedVersion)
-  }
-
-  private async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: any): Promise<void> {
-    await this.conflictChecker.checkPackageDependencies(packageName, resolvedVersion, packageJson)
-  }
-
   // Removed an unused checkDependencyConflict method; conflict detection lives in ConflictChecker
 
   private findParentPackageContext(): string | null {
