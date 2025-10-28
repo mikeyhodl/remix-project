@@ -11,6 +11,11 @@
           "projectType": "application",
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -189,6 +194,11 @@
           "projectType": "application",
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -232,6 +242,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -241,7 +256,8 @@
                   "apps/contract-verification/**/*.ts"
                 ],
                 "eslintConfig": "apps/contract-verification/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -302,7 +318,7 @@
             },
             {
               "file": "apps/contract-verification/src/app/app.tsx",
-              "hash": "48e95697c702ef42f73bfb63e4d9f5f4426ecced",
+              "hash": "8a3237204eaa96c8a8c656c1d23ade2fa251734f",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -384,7 +400,7 @@
             },
             {
               "file": "apps/contract-verification/src/app/ContractVerificationPluginClient.ts",
-              "hash": "c68ecf5cdbc2f0df7a447a573d91c537147c09f6",
+              "hash": "498ab5d75f43f3e7e78a1cc05953f99d49981aad",
               "deps": [
                 "npm:@remixproject/plugin",
                 "npm:@remixproject/plugin-webview",
@@ -463,7 +479,7 @@
             },
             {
               "file": "apps/contract-verification/src/app/Verifiers/EtherscanVerifier.ts",
-              "hash": "e59c8f0648e31d0509948c70b94128f85e66b8ec"
+              "hash": "23aace30dc7dd4758b1d35f95ce3566c53e70297"
             },
             {
               "file": "apps/contract-verification/src/app/Verifiers/index.ts",
@@ -500,7 +516,7 @@
             },
             {
               "file": "apps/contract-verification/src/app/views/LookupView.tsx",
-              "hash": "f43f4940aea67dd39f74aff3c63d8b28db6cc252",
+              "hash": "ea053c760aec57875de01c9c68f8382dda65925b",
               "deps": [
                 "npm:react",
                 "npm:react-router-dom",
@@ -525,7 +541,7 @@
             },
             {
               "file": "apps/contract-verification/src/app/views/VerifyView.tsx",
-              "hash": "a0ab2b75801011caffa0273af2f46b8bca839285",
+              "hash": "8928b3e5bbc0887ee7a57589bb72b2bfa75e2cac",
               "deps": [
                 "npm:react",
                 "npm:react-router-dom",
@@ -586,7 +602,7 @@
             },
             {
               "file": "apps/contract-verification/webpack.config.js",
-              "hash": "8d0246f078fc9ae3898817e80dd3b072a3a1e76d",
+              "hash": "289bcac72410709edc8aee5ee239a82b134d4cc7",
               "deps": [
                 "npm:@nrwl/webpack",
                 "npm:webpack",
@@ -608,6 +624,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -630,6 +651,11 @@
               "configurations": {}
             },
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -651,6 +677,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -660,7 +691,8 @@
                   "libs/remix-import-resolver/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-solidity/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -782,6 +814,10 @@
               "hash": "34681502512c50ee560dd5189a9a4adbd0160337"
             },
             {
+              "file": "libs/remix-import-resolver/src/compiler/utils/warning-system.ts",
+              "hash": "8f44505a544ff6af821582ffda75ddada525ef7c"
+            },
+            {
               "file": "libs/remix-import-resolver/src/index.ts",
               "hash": "396edab395c9e060e34201bf923852b48606f248"
             },
@@ -844,6 +880,13 @@
               ]
             },
             {
+              "file": "libs/remix-import-resolver/test/github-raw-caching.spec.ts",
+              "hash": "6b63282acb7594e79a4c66be5acb4a962b810c61",
+              "deps": [
+                "npm:chai"
+              ]
+            },
+            {
               "file": "libs/remix-import-resolver/test/github-raw-routing.spec.ts",
               "hash": "6fe33127b2ac1e7b7cb2c29ac6307c728f3f8e09",
               "deps": [
@@ -874,6 +917,13 @@
             {
               "file": "libs/remix-import-resolver/test/import-resolver-standalone.spec.ts",
               "hash": "146a1a5f3abf0cfb70ba0a7053b2fd92ae76a7af",
+              "deps": [
+                "npm:chai"
+              ]
+            },
+            {
+              "file": "libs/remix-import-resolver/test/local-with-external.spec.ts",
+              "hash": "cbca2ff4794710c10bc28c8aecbb2353496aee6b",
               "deps": [
                 "npm:chai"
               ]
@@ -921,11 +971,22 @@
               ]
             },
             {
+              "file": "libs/remix-import-resolver/test/warning-system.spec.ts",
+              "hash": "de5f6389eb5ea5852d3d2a6b1f56550b8af7ccab",
+              "deps": [
+                "npm:chai"
+              ]
+            },
+            {
               "file": "libs/remix-import-resolver/test/workspace-resolutions-precedence.spec.ts",
               "hash": "644b2347635b04ebf914cc1f7d122ff6616e8b14",
               "deps": [
                 "npm:chai"
               ]
+            },
+            {
+              "file": "libs/remix-import-resolver/TROUBLESHOOTING.md",
+              "hash": "aedb921bf962872ff82ad0486564ed43bdfc2079"
             },
             {
               "file": "libs/remix-import-resolver/tsconfig.json",
@@ -938,35 +999,6 @@
             {
               "file": "libs/remix-import-resolver/tsconfig.spec.json",
               "hash": "d8de5c268065ca383ec3a79d14f504f1d6d990da"
-            },
-            {
-              "file": "libs/remix-import-resolver/test/github-raw-caching.spec.ts",
-              "hash": "6b63282acb7594e79a4c66be5acb4a962b810c61",
-              "deps": [
-                "npm:chai"
-              ]
-            },
-            {
-              "file": "libs/remix-import-resolver/test/local-with-external.spec.ts",
-              "hash": "cbca2ff4794710c10bc28c8aecbb2353496aee6b",
-              "deps": [
-                "npm:chai"
-              ]
-            },
-            {
-              "file": "libs/remix-import-resolver/src/compiler/utils/warning-system.ts",
-              "hash": "8f44505a544ff6af821582ffda75ddada525ef7c"
-            },
-            {
-              "file": "libs/remix-import-resolver/test/warning-system.spec.ts",
-              "hash": "de5f6389eb5ea5852d3d2a6b1f56550b8af7ccab",
-              "deps": [
-                "npm:chai"
-              ]
-            },
-            {
-              "file": "libs/remix-import-resolver/TROUBLESHOOTING.md",
-              "hash": "aedb921bf962872ff82ad0486564ed43bdfc2079"
             }
           ]
         }
@@ -982,6 +1014,11 @@
           "implicitDependencies": [],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -995,6 +1032,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -1017,6 +1059,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -1026,7 +1073,8 @@
                   "libs/remix-url-resolver/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-url-resolver/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -1046,7 +1094,7 @@
             },
             {
               "file": "libs/remix-url-resolver/package.json",
-              "hash": "a8a56c44efd7627528258a08abbf84667094d42a",
+              "hash": "80d0d6a3ccfaf45064afb859796ca773a076d6a4",
               "deps": [
                 "npm:@erebos/bzz-node",
                 "npm:axios",
@@ -1083,7 +1131,7 @@
             },
             {
               "file": "libs/remix-url-resolver/src/resolve.ts",
-              "hash": "491cec6b5d984a8bfac4a5e8c216d533b2ba61c5",
+              "hash": "3188becdd38ee65801a4d52a04710888ac65cc5e",
               "deps": [
                 "npm:axios",
                 "npm:semver",
@@ -1131,6 +1179,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -1170,6 +1223,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -1179,7 +1237,8 @@
                   "libs/remix-ws-templates/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-ws-templates/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -1191,7 +1250,7 @@
             },
             {
               "file": "libs/remix-ws-templates/package.json",
-              "hash": "f95ec3a08d53932d045c9efd78e85a7688e4ce94",
+              "hash": "e7f2d2db3ca58bce5a7f7630a56d1dce0095d041",
               "deps": [
                 "npm:@openzeppelin/contracts",
                 "npm:@openzeppelin/wizard",
@@ -1986,6 +2045,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2028,6 +2092,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -2037,7 +2106,8 @@
                   "apps/solidity-compiler/**/*.ts"
                 ],
                 "eslintConfig": "apps/solidity-compiler/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -2153,7 +2223,7 @@
             },
             {
               "file": "apps/solidity-compiler/webpack.config.js",
-              "hash": "8665d9a48ebcd9f08c7ef020b6a8de2f920f7889",
+              "hash": "74e51f57a75226a49b04a4b2d7e0981c9855661e",
               "deps": [
                 "npm:@nrwl/webpack",
                 "npm:@nrwl/react",
@@ -2175,6 +2245,11 @@
           "projectType": "library",
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2195,6 +2270,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -2204,7 +2284,8 @@
                   "libs/remix-core-plugin/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-core-plugin/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -2241,7 +2322,7 @@
             },
             {
               "file": "libs/remix-core-plugin/src/lib/compiler-content-imports.ts",
-              "hash": "82c5bbf1f9dc320f7eea4aabd06ce85b611c2121",
+              "hash": "93529448127dd021c94504101f4a4d226b8881c3",
               "deps": [
                 "npm:@remixproject/engine"
               ]
@@ -2336,6 +2417,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2378,6 +2464,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -2387,7 +2478,8 @@
                   "apps/circuit-compiler/**/*.ts"
                 ],
                 "eslintConfig": "apps/circuit-compiler/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -2431,7 +2523,7 @@
             },
             {
               "file": "apps/circuit-compiler/src/app/actions/index.ts",
-              "hash": "ef403fe54197dd652a8440fe91d378f1e8858544",
+              "hash": "db39692597d964cb7c9ac7883f8f60f26183e96a",
               "deps": [
                 "npm:snarkjs",
                 "npm:is-electron"
@@ -2525,7 +2617,7 @@
             },
             {
               "file": "apps/circuit-compiler/src/app/services/circomPluginClient.ts",
-              "hash": "daee5c96067584ebc0f044f852bf26eee6501882",
+              "hash": "4aa95499709082394f811e2430334922414c168d",
               "deps": [
                 "npm:@remixproject/plugin",
                 "npm:@remixproject/plugin-webview",
@@ -2616,6 +2708,11 @@
           ],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2629,6 +2726,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2649,6 +2751,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -2658,7 +2765,8 @@
                   "libs/ghaction-helper/**/*.ts"
                 ],
                 "eslintConfig": "libs/ghaction-helper/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -2674,7 +2782,7 @@
             },
             {
               "file": "libs/ghaction-helper/package.json",
-              "hash": "8696a83890076b3bf4dbbb5a71936bc93b20556b",
+              "hash": "8e5f4fb86e9263cd5a56ca2155f9c7f2b00ef496",
               "deps": [
                 "remix-simulator",
                 "npm:chai",
@@ -2747,6 +2855,11 @@
           ],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2760,6 +2873,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2782,6 +2900,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -2791,7 +2914,8 @@
                   "libs/remix-astwalker/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-astwalker/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -2811,7 +2935,7 @@
             },
             {
               "file": "libs/remix-astwalker/package.json",
-              "hash": "096be1d9b712fa6b7f82ec460fe10a153191e96b",
+              "hash": "443d024b533858bd933fdbff7ecb15cf28b47aca",
               "deps": [
                 "npm:@ethereumjs/block",
                 "npm:@ethereumjs/tx",
@@ -2899,42 +3023,6 @@
             {
               "file": "libs/remix-astwalker/tsconfig.lib.json",
               "hash": "4c89a574be11686459a6457a1255a250cf5c56bd"
-            },
-            {
-              "file": "libs/remix-astwalker/.nyc_output/59ac63fc-8879-4574-a937-d9afd5748b65.json",
-              "hash": "9e26dfeeb6e641a33dae4961196235bdb965b21b"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/base.css",
-              "hash": "7090209c71b5d60b723d711343aac58d38d4cd20"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/block-navigation.js",
-              "hash": "c7ff5a5cac80f4e9509e7afceb84004b3a44e6c8"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/index.html",
-              "hash": "31058547ee8835889c010430633abf80163f2a64"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/prettify.css",
-              "hash": "b317a7cda31a440fbd47540297ee3c68d51f343e"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/prettify.js",
-              "hash": "b3225238f26e3ab49a5e41e9cb287a73c82740b7"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/sort-arrow-sprite.png",
-              "hash": "acf609d0852fc5f5b2b8397dc8d441a24d2fd351"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov-report/sorter.js",
-              "hash": "5547cfc6a3ee6473583e9521849b720fe2061c70"
-            },
-            {
-              "file": "libs/remix-astwalker/coverage/lcov.info",
-              "hash": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
             }
           ]
         }
@@ -2952,6 +3040,11 @@
           ],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2965,6 +3058,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -2996,6 +3094,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -3005,7 +3108,8 @@
                   "libs/remix-simulator/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-simulator/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -3025,7 +3129,7 @@
             },
             {
               "file": "libs/remix-simulator/package.json",
-              "hash": "bf1562388f8095fbd5163582ba78662f669b60a1",
+              "hash": "80986a7dd037680867fea3093bfc93206de3def8",
               "deps": [
                 "npm:@ethereumjs/block",
                 "npm:@ethereumjs/blockchain",
@@ -3262,6 +3366,11 @@
           ],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -3275,6 +3384,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -3297,6 +3411,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -3306,7 +3425,8 @@
                   "libs/remix-analyzer/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-analyzer/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -3322,7 +3442,7 @@
             },
             {
               "file": "libs/remix-analyzer/package.json",
-              "hash": "b4900dae7e1699cda928f38df86b03b4a3a6a0bb",
+              "hash": "1c5af042af59cbba9acf39da66e031102f21d16b",
               "deps": [
                 "npm:@ethereumjs/block",
                 "npm:@ethereumjs/tx",
@@ -3898,6 +4018,11 @@
           ],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -3921,6 +4046,11 @@
               "configurations": {}
             },
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -3935,6 +4065,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -3944,7 +4079,8 @@
                   "libs/remix-solidity/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-solidity/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -3964,7 +4100,7 @@
             },
             {
               "file": "libs/remix-solidity/package.json",
-              "hash": "0e74027c56d3c9ea049a9a6fcb9b9752b96209c4",
+              "hash": "412ca36a615845ce02a935c78e3ec94c1b637559",
               "deps": [
                 "npm:@ethereumjs/block",
                 "npm:@ethereumjs/tx",
@@ -4088,6 +4224,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -4130,6 +4271,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -4139,7 +4285,8 @@
                   "apps/noir-compiler/**/*.ts"
                 ],
                 "eslintConfig": "apps/noir-compiler/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -4218,7 +4365,7 @@
             },
             {
               "file": "apps/noir-compiler/src/app/services/noirPluginClient.ts",
-              "hash": "23ed1e4909b84244eb1e46eb3248ac7dbce8756b",
+              "hash": "05dab1a26a763e6d194727229f83edb970c6963c",
               "deps": [
                 "npm:@remixproject/plugin",
                 "npm:@remixproject/plugin-webview",
@@ -4298,6 +4445,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -4320,6 +4472,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -4329,7 +4486,8 @@
                   "libs/remix-ai-core/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-ai-core/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -4411,14 +4569,14 @@
             },
             {
               "file": "libs/remix-ai-core/src/inferencers/local/ollama.ts",
-              "hash": "605197ddef36331f3c2b3822d66e21242aae49fd",
+              "hash": "0702710aacbb1dc7e42fe8ff0427f4436f5f8996",
               "deps": [
                 "npm:axios"
               ]
             },
             {
               "file": "libs/remix-ai-core/src/inferencers/local/ollamaInferencer.ts",
-              "hash": "517e3e992acd2199b300f28be0912a7f611e633f",
+              "hash": "6340d68d561257ed449c8511fc130503470f1c93",
               "deps": [
                 "npm:axios"
               ]
@@ -4480,6 +4638,11 @@
           ],
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -4493,6 +4656,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -4524,6 +4692,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -4533,7 +4706,8 @@
                   "libs/remix-debug/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-debug/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -4557,7 +4731,7 @@
             },
             {
               "file": "libs/remix-debug/package.json",
-              "hash": "85ec79b70dc3e8e153974765faf6a7113cf15f27",
+              "hash": "07d2f683958413a9681d07a849d2650bd39663d2",
               "deps": [
                 "npm:@ethereumjs/block",
                 "npm:@ethereumjs/common",
@@ -4669,7 +4843,7 @@
             },
             {
               "file": "libs/remix-debug/src/init.ts",
-              "hash": "8217c0808aae866a3a4590b1c503295c80627be0",
+              "hash": "a84f58a59ded0020149416a7ea5c61023e20c977",
               "deps": [
                 "npm:web3",
                 "npm:web3-utils"
@@ -5082,6 +5256,11 @@
           ],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -5113,6 +5292,11 @@
               "configurations": {}
             },
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -5126,6 +5310,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -5135,7 +5324,8 @@
                   "libs/remix-tests/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-tests/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -5171,7 +5361,7 @@
             },
             {
               "file": "libs/remix-tests/package.json",
-              "hash": "c074d0388e08def17fecc7226d7e566b7bd5fe33",
+              "hash": "ff1a93142953aac323193b447f6f9631f4e1728d",
               "deps": [
                 "npm:@erebos/bzz-node",
                 "npm:@ethereumjs/block",
@@ -5428,6 +5618,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -5467,6 +5662,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -5476,7 +5676,8 @@
                   "apps/doc-viewer/**/*.ts"
                 ],
                 "eslintConfig": "apps/doc-viewer/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -5585,8 +5786,16 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
-                "install"
+                {
+                  "target": "build",
+                  "projects": "dependencies"
+                }
               ],
               "executor": "@nrwl/webpack:webpack",
               "outputs": [
@@ -5617,6 +5826,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -5626,10 +5840,12 @@
                   "apps/quick-dapp/**/*.ts"
                 ],
                 "eslintConfig": "apps/quick-dapp/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "install": {
               "executor": "nx:run-commands",
+              "cache": false,
               "options": {
                 "commands": [
                   "cd apps/quick-dapp && yarn"
@@ -5675,7 +5891,7 @@
             },
             {
               "file": "apps/quick-dapp/project.json",
-              "hash": "8ca9b6c42f76cb3f822d70b8a24b5274a5d94e95"
+              "hash": "ed733ee12ba0dbede4f4490a9c6426a00418a306"
             },
             {
               "file": "apps/quick-dapp/README.md",
@@ -5916,8 +6132,16 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
-                "install"
+                {
+                  "target": "build",
+                  "projects": "dependencies"
+                }
               ],
               "executor": "@nrwl/webpack:webpack",
               "outputs": [
@@ -5947,6 +6171,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -5956,10 +6185,12 @@
                   "apps/remix-dapp/**/*.ts"
                 ],
                 "eslintConfig": "apps/remix-dapp/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "install": {
               "executor": "nx:run-commands",
+              "cache": false,
               "options": {
                 "commands": [
                   "cd apps/remix-dapp && yarn"
@@ -6005,7 +6236,7 @@
             },
             {
               "file": "apps/remix-dapp/project.json",
-              "hash": "106108513ecdfbb35801f220e84aeb0b27ee8041"
+              "hash": "a10aaa31cc1737da02eeca8a85aa2ff5954dea1d"
             },
             {
               "file": "apps/remix-dapp/README.md",
@@ -6403,11 +6634,14 @@
           ],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "!{projectRoot}/src/assets/version.json"
+              ],
               "dependsOn": [
-                {
-                  "target": "build",
-                  "projects": "dependencies"
-                }
+                "^build"
               ],
               "executor": "@nrwl/webpack:webpack",
               "outputs": [
@@ -6469,12 +6703,15 @@
                 "development": {
                   "buildTarget": "remix-ide:build:development",
                   "host": "0.0.0.0",
-                  "port": 8080
+                  "port": 8080,
+                  "hmr": false,
+                  "buildLibsFromSource": true
                 },
                 "hot": {
                   "buildTarget": "remix-ide:build:development",
                   "port": 8080,
-                  "hmr": true
+                  "hmr": true,
+                  "buildLibsFromSource": true
                 },
                 "production": {
                   "buildTarget": "remix-ide:build:production",
@@ -6483,6 +6720,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -6492,7 +6734,8 @@
                   "apps/remix-ide/**/*.{ts,tsx,js,jsx}"
                 ],
                 "eslintConfig": "apps/remix-ide/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -6531,10 +6774,6 @@
               "hash": "cc5875fabb8c2ee75a3d20f131a99c1a8a0df204"
             },
             {
-              "file": "apps/remix-ide/.travis.yml",
-              "hash": "c8790fa6b88ab7decc844e935d573c1f3e1ea44f"
-            },
-            {
               "file": "apps/remix-ide/background.js",
               "hash": "5bffa0da9e279dd971aa8151ddff3dcd4f8eb117"
             },
@@ -6544,15 +6783,11 @@
             },
             {
               "file": "apps/remix-ide/ci/browser_test_plugin.sh",
-              "hash": "1f5afbd28cd4e7e805cd7c60a3c738b8109e58fe"
+              "hash": "754cd250c98037ce340d5064cdd0477462064877"
             },
             {
               "file": "apps/remix-ide/ci/browser_test.sh",
-              "hash": "cf40e4b1cac0dfa5d1da354525b24bb20a821fff"
-            },
-            {
-              "file": "apps/remix-ide/ci/browser_tests.sh",
-              "hash": "d8687b26f4264bcf34fb502e8fbb2fbccdd096a8"
+              "hash": "6fedd20cce881dd83ee1b6426a2f3d04c469f1b6"
             },
             {
               "file": "apps/remix-ide/ci/build_and_publish_docker_images.sh",
@@ -6563,24 +6798,16 @@
               "hash": "ab0bf9ccb2046e9ca35c1b64b1f9ba2614f4aaba"
             },
             {
-              "file": "apps/remix-ide/ci/deploy_from_travis_remix-alpha.sh",
-              "hash": "aa504960d084ace3dc20dba3f0e5bb109a3a3c0c"
+              "file": "apps/remix-ide/ci/deploy_remix-alpha.sh",
+              "hash": "b817f7e5f9aad99ea3b5bda6a52e7bab4a2331f8"
             },
             {
-              "file": "apps/remix-ide/ci/deploy_from_travis_remix-beta.sh",
-              "hash": "ecdf6e2f3746cce8baebafc19c62492219b172c7"
+              "file": "apps/remix-ide/ci/deploy_remix-beta.sh",
+              "hash": "28fba07e26c497ac7f7b6770b70093b911bf7ddc"
             },
             {
-              "file": "apps/remix-ide/ci/deploy_from_travis_remix-live.sh",
-              "hash": "263a3f68243a6ac891d46e98482ca66d6e30d88f"
-            },
-            {
-              "file": "apps/remix-ide/ci/deploy_key_remix-live-alpha.enc",
-              "hash": "db21779a32b98f06e94ee5e12652397cc39abbb2"
-            },
-            {
-              "file": "apps/remix-ide/ci/deploy_key_remix-live.enc",
-              "hash": "03806ec8345d23df935f8d9f4691d2a8ba9e1540"
+              "file": "apps/remix-ide/ci/deploy_remix-live.sh",
+              "hash": "5c3c6894f6a55eb47543304ae20f4585a77d7e44"
             },
             {
               "file": "apps/remix-ide/ci/download_e2e_assets.js",
@@ -6615,19 +6842,27 @@
             },
             {
               "file": "apps/remix-ide/ci/metamask.sh",
-              "hash": "f2780e251230a5782a7da884d517d210b15dd178"
+              "hash": "ca1752db3e180a806165f1de93124d88b84ee0c5"
             },
             {
               "file": "apps/remix-ide/ci/publishIpfs",
               "hash": "15d2dc9b66fce01465c132acd04e90d4bfc9c133"
             },
             {
+              "file": "apps/remix-ide/ci/rerun_failed.sh",
+              "hash": "46d8d26e3af6a1e26d23b71907c543cb4432df3b"
+            },
+            {
               "file": "apps/remix-ide/ci/sauceDisconnect.js",
               "hash": "48d58eb70c93334fba8a74765e51e843c13a9c45"
             },
             {
+              "file": "apps/remix-ide/ci/setup_slither_if_needed.sh",
+              "hash": "76e0153da5451d5b8ee70f4dfc5bf8f292f2d701"
+            },
+            {
               "file": "apps/remix-ide/ci/singletest.sh",
-              "hash": "29d353631dd6e7818446e10b6c958265f2218375"
+              "hash": "3bc6a911caae2c74e13e83d9df95582a8005665b"
             },
             {
               "file": "apps/remix-ide/ci/splice_tests.js",
@@ -6806,7 +7041,7 @@
             },
             {
               "file": "apps/remix-ide/project.json",
-              "hash": "744036b2454ebd81c1d6ed94c2c4e507381d66bd"
+              "hash": "2cf19621a4b97256ad332c8386ea65633adebdc0"
             },
             {
               "file": "apps/remix-ide/remix-screenshot-400h.png",
@@ -6822,7 +7057,7 @@
             },
             {
               "file": "apps/remix-ide/src/app.ts",
-              "hash": "6f524ae840e2f935e20fab28052c9f8018ef0b8b",
+              "hash": "d66f03aa3345ed93211cc5eaaa0ee85a67e3c578",
               "deps": [
                 "npm:is-electron",
                 "npm:@remixproject/engine"
@@ -6883,7 +7118,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/components/plugin-manager-component.tsx",
-              "hash": "55bff7f2559c23f8baefa9776be5015f664aecb4",
+              "hash": "8b68f0fddd26a2978a35bfbf881b665a260fad00",
               "deps": [
                 "npm:@remixproject/engine-web",
                 "npm:react",
@@ -6901,10 +7136,11 @@
             },
             {
               "file": "apps/remix-ide/src/app/components/preload.tsx",
-              "hash": "16f2d08cd8b74fa6fdfdf349d9a79bd9363e6a65",
+              "hash": "3b430413f86082f6d46b5dbb10df32920d89ab9f",
               "deps": [
                 "npm:axios",
                 "npm:react",
+                "npm:react-intl",
                 "npm:is-electron"
               ]
             },
@@ -6954,6 +7190,13 @@
               ]
             },
             {
+              "file": "apps/remix-ide/src/app/contexts/TrackingContext.tsx",
+              "hash": "5f278d29bd9e546e13debd922765f6c920ecc08f",
+              "deps": [
+                "npm:react"
+              ]
+            },
+            {
               "file": "apps/remix-ide/src/app/editor/editor.js",
               "hash": "c89fd8a1d0787c5f3b3fd9c05b60c1efb20e7d7d",
               "deps": [
@@ -6998,7 +7241,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/files/filesystems/fileSystemUtility.ts",
-              "hash": "ecbd4f552744aca45445dd45d79a4a0273e3b316",
+              "hash": "71186d7fb364eedcdfcf611aca7c7091fb563d09",
               "deps": [
                 "npm:ethers",
                 "npm:jszip"
@@ -7067,6 +7310,25 @@
               "deps": [
                 "npm:events"
               ]
+            },
+            {
+              "file": "apps/remix-ide/src/app/matomo/BotDetector.ts",
+              "hash": "fe7c47198d516abb3ab3c7be4a1d3fb391c52132"
+            },
+            {
+              "file": "apps/remix-ide/src/app/matomo/MatomoAutoInit.ts",
+              "hash": "6a2b1bc4eed2ea136f80b575c38af118ff5f6eba"
+            },
+            {
+              "file": "apps/remix-ide/src/app/matomo/MatomoConfig.ts",
+              "hash": "e5aacb3ad420fb5f4b2f1025c98172f35ea1afb4",
+              "deps": [
+                "npm:is-electron"
+              ]
+            },
+            {
+              "file": "apps/remix-ide/src/app/matomo/MatomoManager.ts",
+              "hash": "b320a799635385805bb2695454b2ed9b70e678da"
             },
             {
               "file": "apps/remix-ide/src/app/pages/GitHubPopupCallback.tsx",
@@ -7139,7 +7401,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/compile-details.tsx",
-              "hash": "1be931f0ed072f82db6b220f60240d53551810db",
+              "hash": "74ac336fa9a63d5890909b80904059607ac798f3",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -7154,16 +7416,17 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/contractFlattener.tsx",
-              "hash": "46176cc07c1ad69c51b1f23353c09e81d8eb41cd",
+              "hash": "6664d889c78e61b73e50ad8286f0771d72585a15",
               "deps": [
                 "npm:react",
+                "npm:@remixproject/engine-web",
                 "npm:@remixproject/engine",
                 "npm:@remixproject/plugin-api"
               ]
             },
             {
               "file": "apps/remix-ide/src/app/plugins/desktop-client.tsx",
-              "hash": "93fb24eb4fcc2b45c99da1661ba87eeb2f882dc3",
+              "hash": "ce6cd1d9db418227a3a186aca108f18a547875d9",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web",
@@ -7188,7 +7451,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/electron/compilerLoaderPlugin.ts",
-              "hash": "66e904b62e5dd27117fe85122e5e36bd9f0587da",
+              "hash": "90a3bcc0e63a7549e96c24b16635de22a78cad8d",
               "deps": [
                 "npm:@remixproject/engine-electron",
                 "npm:@remixproject/engine",
@@ -7197,7 +7460,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/electron/desktopHostPlugin.ts",
-              "hash": "1f9c6938013477dbc37e2ef0ea6deddbf84ab105",
+              "hash": "6c0fb68c74e1d3901f5d69ec18d7e0e7be353766",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine",
@@ -7206,7 +7469,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/electron/electronConfigPlugin.ts",
-              "hash": "324d2774bee7210409e26b59ab9f74eacdb33fcb",
+              "hash": "14298125142fa168d8f358bb8233d5eed5d4d772",
               "deps": [
                 "npm:@remixproject/engine-electron"
               ]
@@ -7300,7 +7563,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/matomo.ts",
-              "hash": "40c61e718e7768257c712a82c6f4de9e77f51130",
+              "hash": "8dd72fa523c0e23c0b66d5a43aacd9889f42dd6b",
               "deps": [
                 "npm:@remixproject/engine"
               ]
@@ -7372,7 +7635,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/remix-ai-assistant.tsx",
-              "hash": "c2deb75318013ac1ad1122e2f6cf46ef8b9fe7d7",
+              "hash": "5593f036bca5f3a84235019b701ce2df6bee0748",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web",
@@ -7388,7 +7651,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/remixAIPlugin.tsx",
-              "hash": "48f4433cc0b76fc5b9facab388e5b0caf977745e",
+              "hash": "60a471499fa492adcc4661247f7104f87519c658",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:axios"
@@ -7411,7 +7674,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/remixGuide.tsx",
-              "hash": "39ae0cb59a81ddbd44be84e924822c9b950c3805",
+              "hash": "381526f9b0ad1db52c6174fdada6d35036abc015",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -7435,7 +7698,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/solidity-script.tsx",
-              "hash": "8ad4295603aafb35ea07d5387a63793594ae3c99",
+              "hash": "d73bd925f62f9adf5bb80727587378a57c436a8e",
               "deps": [
                 "npm:react",
                 "npm:util",
@@ -7445,7 +7708,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/solidity-umlgen.tsx",
-              "hash": "9ae582f29f9abea553e1c677a4ea9b91a4c0001e",
+              "hash": "3bc11403a0a0be10cce25ddef4300447c51ebec1",
               "deps": [
                 "npm:@remixproject/engine-web",
                 "npm:react",
@@ -7457,7 +7720,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/storage.ts",
-              "hash": "8feeac49c8134c4a380aee1559d47228846267c8",
+              "hash": "b276db824e6192966797e1c6f676c0166c2dfa43",
               "deps": [
                 "npm:@remixproject/engine"
               ]
@@ -7468,7 +7731,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/templates-selection/templates-selection-plugin.tsx",
-              "hash": "25f755db4821381ad05ae859caca2dba6e9b97ac",
+              "hash": "51d660fb18e3f27f8ed529549f269b8d691fd294",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -7482,7 +7745,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/vyper-compilation-details.tsx",
-              "hash": "faac09ff9c56dd3dd72df7ee90bb4ab4659bea38",
+              "hash": "f86619122cccf94088dddd114d4045d26249aaf7",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web",
@@ -7529,7 +7792,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/providers/environment-explorer.tsx",
-              "hash": "d84357df1fda4c454b1e7d35c81dea5b04580ad9",
+              "hash": "8173186e6996743ae91162007a131634d5cfa0e9",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -7592,11 +7855,11 @@
             },
             {
               "file": "apps/remix-ide/src/app/providers/mainnet-vm-fork-provider.tsx",
-              "hash": "6a87aff000edc1115ae843503df56f5de9daad07"
+              "hash": "3d92d07e07c0f723ea6c910d24d348fce899ccc3"
             },
             {
               "file": "apps/remix-ide/src/app/providers/sepolia-vm-fork-provider.tsx",
-              "hash": "3995087b6af84abf8f28dc3771d10b244ea484f4"
+              "hash": "87503a9acbd40b02852589d79cd9cde5c939141f"
             },
             {
               "file": "apps/remix-ide/src/app/providers/style/environment-explorer.css",
@@ -7621,14 +7884,14 @@
             },
             {
               "file": "apps/remix-ide/src/app/tabs/compile-and-run.ts",
-              "hash": "9643cd78e97065a37d5002ef553bb9d9f99cd006",
+              "hash": "35bb68a335babe7d0c25485142da5cc45c3a77c9",
               "deps": [
                 "npm:@remixproject/engine"
               ]
             },
             {
               "file": "apps/remix-ide/src/app/tabs/compile-tab.js",
-              "hash": "671bb76fae021695e10b902bc5d86b9dc1e1b7ed",
+              "hash": "d820c6f3a8cdaa763bd961c09f73c875e8c400dc",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -7644,8 +7907,8 @@
               ]
             },
             {
-              "file": "apps/remix-ide/src/app/tabs/locale-module.js",
-              "hash": "5ce5048ab142b6a33cab23ec27ee5585415e9113",
+              "file": "apps/remix-ide/src/app/tabs/locale-module.ts",
+              "hash": "d46289e437da36f022c062f798ffe5c953c8ce24",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:events"
@@ -8197,8 +8460,8 @@
               ]
             },
             {
-              "file": "apps/remix-ide/src/app/tabs/runTab/model/recorder.js",
-              "hash": "85e36aaf802d7aeb4502a2ffd7b2e3dd773f0acc",
+              "file": "apps/remix-ide/src/app/tabs/runTab/model/recorder.ts",
+              "hash": "84704c71ac9786e785a7d93d460a983fbadc1091",
               "deps": [
                 "npm:async",
                 "npm:@ethereumjs/util",
@@ -8223,7 +8486,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/tabs/settings-tab.tsx",
-              "hash": "69a653b65db2f2fa8b6475d5e0c96f2202cfb2b8",
+              "hash": "dec40a827854ae3207818356e1e5afa0d86205d4",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -8302,8 +8565,8 @@
               ]
             },
             {
-              "file": "apps/remix-ide/src/app/tabs/theme-module.js",
-              "hash": "e43d24d48714fbd3a3fbdf3b89f8307e27093eb0",
+              "file": "apps/remix-ide/src/app/tabs/theme-module.ts",
+              "hash": "b3b88aaddc5a3e0e5d55b6893f0bf1a65ee6a380",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:events",
@@ -8328,7 +8591,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/udapp/run-tab.tsx",
-              "hash": "73fe9efaf0ee265f71a595e5500c6e07a7c0fd13",
+              "hash": "78f2a255be5b1d719654ef6e14518b3a1ffc938a",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web",
@@ -8382,6 +8645,22 @@
               "deps": [
                 "npm:csjs-inject"
               ]
+            },
+            {
+              "file": "apps/remix-ide/src/app/utils/AppRenderer.tsx",
+              "hash": "004a9d61308d5d3cea69cb2dbdbfbc486c0a6020",
+              "deps": [
+                "npm:react",
+                "npm:react-dom"
+              ]
+            },
+            {
+              "file": "apps/remix-ide/src/app/utils/AppSetup.ts",
+              "hash": "c72509016cd9ad2beeef11537e0bfdd4fbf5aa5d"
+            },
+            {
+              "file": "apps/remix-ide/src/app/utils/TrackingFunction.ts",
+              "hash": "b1d813ac5044b100ddc988b2b86eec0a12918b11"
             },
             {
               "file": "apps/remix-ide/src/assets/audio/remiGuitar-single-power-chord-A-minor.mp3",
@@ -8836,8 +9115,8 @@
               "hash": "b3c2bfa36f746e7bc405252f35f586dac34603b7"
             },
             {
-              "file": "apps/remix-ide/src/assets/js/loader.js",
-              "hash": "3d591f4ad4a18b8762a1d2202325f98587586b04"
+              "file": "apps/remix-ide/src/assets/js/matomo-debug-plugin.js",
+              "hash": "d5893b3c7f311fcfd0ee32be5a80e6cb3870982e"
             },
             {
               "file": "apps/remix-ide/src/assets/js/parser/antlr.js",
@@ -8857,7 +9136,7 @@
             },
             {
               "file": "apps/remix-ide/src/blockchain/blockchain.tsx",
-              "hash": "7b24aacd82a7d5151ad7d8da75f1a5ae70c24325",
+              "hash": "473e4801b233d9c24605fc024054d80f1d79ad1f",
               "deps": [
                 "npm:react",
                 "npm:web3-utils",
@@ -8869,7 +9148,7 @@
             },
             {
               "file": "apps/remix-ide/src/blockchain/execution-context.js",
-              "hash": "9ee8988f19714fe154c20a4f28f4c7351d192f13",
+              "hash": "1ed1d4ebec7182d38944bfe4bb82541d8d5570eb",
               "deps": [
                 "npm:web3",
                 "npm:@ethereumjs/util"
@@ -8931,14 +9210,13 @@
             },
             {
               "file": "apps/remix-ide/src/index.html",
-              "hash": "7eb6776e5f23bff589445ff7f54d12b24ca2c7d1"
+              "hash": "2702f3af95ffe0a56bb9faada0e0008fa4dabfc0"
             },
             {
               "file": "apps/remix-ide/src/index.tsx",
-              "hash": "6011fef095addf85cea76ffcec74b174e3419dc6",
+              "hash": "5e7708e6461bed2a5451ad3eb1cdd68fce1401f8",
               "deps": [
-                "npm:react",
-                "npm:react-dom"
+                "npm:react"
               ]
             },
             {
@@ -8971,7 +9249,7 @@
             },
             {
               "file": "apps/remix-ide/src/remixAppManager.ts",
-              "hash": "743209653f2bf64ceeece6a6539e07e410fef605",
+              "hash": "467d4ca0f0a08819f6f0c062433fa6920f13b317",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:events",
@@ -9013,7 +9291,7 @@
             },
             {
               "file": "apps/remix-ide/tsconfig.json",
-              "hash": "c702a5fbd5106d3207803de872e2529e7e101cf1"
+              "hash": "16151c166b437391a8d713319c3fa8b1a2d9a2ff"
             },
             {
               "file": "apps/remix-ide/tsconfig.spec.json",
@@ -9021,7 +9299,7 @@
             },
             {
               "file": "apps/remix-ide/webpack.config.js",
-              "hash": "b649019c388e9b013d40b9026ab3821f99297727",
+              "hash": "97ea0b49279eb011c070f85e021ca71154a9ed73",
               "deps": [
                 "npm:@nrwl/webpack",
                 "npm:@nrwl/react",
@@ -9029,17 +9307,8 @@
                 "npm:copy-webpack-plugin",
                 "npm:terser-webpack-plugin",
                 "npm:css-minimizer-webpack-plugin",
-                "npm:webpack-bundle-analyzer",
-                "npm:child_process"
+                "npm:webpack-bundle-analyzer"
               ]
-            },
-            {
-              "file": "apps/remix-ide/src/assets/version.json",
-              "hash": "2db297dd6851981fda0963866fdf3804b11d5133"
-            },
-            {
-              "file": "apps/remix-ide/src/assets/js/soljson/soljson-v0.8.30+commit.73712a01.js.js",
-              "hash": "a45c1271b91d5dded9ce73e529bf36a96cde2ac2"
             }
           ]
         }
@@ -9054,6 +9323,11 @@
           "projectType": "library",
           "targets": {
             "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -9067,6 +9341,11 @@
               "configurations": {}
             },
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -9089,6 +9368,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -9098,7 +9382,8 @@
                   "libs/remix-lib/**/*.ts"
                 ],
                 "eslintConfig": "libs/remix-lib/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -9115,7 +9400,7 @@
             },
             {
               "file": "libs/remix-lib/package.json",
-              "hash": "86d01bc1d464dafc6cd365100354bc35f0309b2c",
+              "hash": "d7a11948995e16696db80323aa37f8d7405dbb21",
               "deps": [
                 "npm:@ethereumjs/util",
                 "npm:async",
@@ -9255,7 +9540,7 @@
             },
             {
               "file": "libs/remix-lib/src/helpers/aaConstants.ts",
-              "hash": "fbffa4cf8579cf95c7dbe5425d4b82380d273122",
+              "hash": "0a1166f57b23bcb69b04f0d8977a52ee25beb304",
               "deps": [
                 "npm:ethers"
               ]
@@ -9403,6 +9688,11 @@
           ],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -9445,6 +9735,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -9454,7 +9749,8 @@
                   "apps/debugger/**/*.ts"
                 ],
                 "eslintConfig": "apps/debugger/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -9585,6 +9881,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -9626,6 +9927,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -9635,7 +9941,8 @@
                   "apps/learneth/**/*.ts"
                 ],
                 "eslintConfig": "apps/learneth/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -9721,7 +10028,7 @@
             },
             {
               "file": "apps/learneth/src/components/RepoImporter/index.tsx",
-              "hash": "9b2b7a3b9f4f835f0ef378457677f2144d2dac62",
+              "hash": "2b6a16f2527814d01718bdf419c607dd3bd948f8",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap"
@@ -9769,7 +10076,7 @@
             },
             {
               "file": "apps/learneth/src/pages/Home/index.tsx",
-              "hash": "043d5a1aa863327e28568f54207328824cee0e80",
+              "hash": "f357da7895cfa1193af2271ee8e4f30f236b76a9",
               "deps": [
                 "npm:react",
                 "npm:react-router-dom"
@@ -9788,7 +10095,7 @@
             },
             {
               "file": "apps/learneth/src/pages/StepDetail/index.tsx",
-              "hash": "d0a6e7eb8463e341f57ecba2fe07ce65030dd1b0",
+              "hash": "26ce471723065bc59f0d2a387ab0cbea198f8d25",
               "deps": [
                 "npm:react",
                 "npm:react-router-dom",
@@ -9802,7 +10109,7 @@
             },
             {
               "file": "apps/learneth/src/pages/StepList/index.tsx",
-              "hash": "ee50a33e59547528e2f7665f8220ec69b6aec65e",
+              "hash": "bf13502a36b30bed0ea565a246bdd2c81f2c53c3",
               "deps": [
                 "npm:react",
                 "npm:react-router-dom",
@@ -9836,14 +10143,14 @@
             },
             {
               "file": "apps/learneth/src/redux/models/remixide.ts",
-              "hash": "beeffc5a77bb8f736f4022af42d951c1e34c1efa",
+              "hash": "4736996065e06e5342da284f0bd475760d06a4de",
               "deps": [
                 "npm:react-toastify"
               ]
             },
             {
               "file": "apps/learneth/src/redux/models/workshop.ts",
-              "hash": "2dfa746d7e0ddcf76d1f9cb60c680aa0a80a1b6e",
+              "hash": "f3de539a7084e582082f1aad4e4e1f3008d0e11c",
               "deps": [
                 "npm:axios",
                 "npm:react-toastify",
@@ -9898,6 +10205,11 @@
           "implicitDependencies": [],
           "targets": {
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -9907,7 +10219,8 @@
                   "libs/remix-ui/**/*.{ts,tsx,js,jsx}"
                 ],
                 "eslintConfig": "libs/remix-ui/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -9957,7 +10270,7 @@
             },
             {
               "file": "libs/remix-ui/app/src/lib/remix-app/components/modals/managePreferences.tsx",
-              "hash": "58fdf0251a014457cb2b7eb7ef0b2e5a6ddd8438",
+              "hash": "5413200487d4a7af7ce6dfcf7f6b578bf51d6e6e",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -9965,7 +10278,7 @@
             },
             {
               "file": "libs/remix-ui/app/src/lib/remix-app/components/modals/matomo.tsx",
-              "hash": "7447ad75d08fa92e29cf03bc7bf9082fc366cc4b",
+              "hash": "5fb7d110cc5f6b26e86fafc43410dd517d4eb564",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -10021,7 +10334,7 @@
             },
             {
               "file": "libs/remix-ui/app/src/lib/remix-app/remix-app.tsx",
-              "hash": "58c87575a2418ff229e175f8a79145f7899c902f",
+              "hash": "47416e46e6e353f526c5028e1dd77f9fbf82b0f0",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -10117,7 +10430,7 @@
             },
             {
               "file": "libs/remix-ui/debugger-ui/src/lib/debugger-ui.tsx",
-              "hash": "da9ad009a41505d72715842240313cfb9bcda485",
+              "hash": "dca1c5e37a4e01dc6afefeeb0a5320fe17506f1f",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -10310,7 +10623,7 @@
             },
             {
               "file": "libs/remix-ui/desktop-download/lib/desktop-download.tsx",
-              "hash": "e03ce39dfd95846fd8e58b5b9e0af3d0e6283135",
+              "hash": "a008f7d40ee2c76e75f2918f4e8bb27c31b4a9ae",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -10434,10 +10747,7 @@
             },
             {
               "file": "libs/remix-ui/editor/src/lib/providers/inlineCompletionProvider.ts",
-              "hash": "3431ce13ebfa4e818c8dfd1d056dc94463535d97",
-              "deps": [
-                "npm:monaco-editor"
-              ]
+              "hash": "5ff3dca3228b47bbf03b11db456ca264c35274b4"
             },
             {
               "file": "libs/remix-ui/editor/src/lib/providers/quickfixes.ts",
@@ -10460,7 +10770,7 @@
             },
             {
               "file": "libs/remix-ui/editor/src/lib/remix-ui-editor.tsx",
-              "hash": "aa913e823d4679a7479206cb1f0d0b3e33e02619",
+              "hash": "de10dcade42abfa678acd3b620bfe706378897b5",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -10599,7 +10909,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/buttons/gituibutton.tsx",
-              "hash": "ee8c68a11bbca0209574555377cb73a1eec2566b",
+              "hash": "50f2ebb1ffb69f5245d48a14bb51ca68362d9886",
               "deps": [
                 "npm:react"
               ]
@@ -10617,7 +10927,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/buttons/sourcecontrolbuttons.tsx",
-              "hash": "d0c5662c817c4d2faeda410561287d7495582703",
+              "hash": "e6cebfd124d5cf33712eec05be8f348fbcca0174",
               "deps": [
                 "npm:@fortawesome/free-solid-svg-icons",
                 "npm:@fortawesome/react-fontawesome",
@@ -10643,7 +10953,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/github/devicecode.tsx",
-              "hash": "3af50fb94b1999b59c187b9caabcdafa3f8a3933",
+              "hash": "7cdfaf51058eab5fb6f0e4f96ec2ebbfc95b8bfc",
               "deps": [
                 "npm:react",
                 "npm:axios",
@@ -10652,7 +10962,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/github/repositoryselect.tsx",
-              "hash": "1c1254a56dc7e3338aff1b67f80e550b7375a8d0",
+              "hash": "7b31ab98444e8b2a42889dfb0c03e5ca2d5b43d6",
               "deps": [
                 "npm:react",
                 "npm:react-select"
@@ -10667,7 +10977,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/gitui.tsx",
-              "hash": "c4410f333130f8da7bef60dfc270f58024dfcac5",
+              "hash": "df7fa27588697fac47e13b62559b51f9cccfd852",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap"
@@ -10838,7 +11148,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/panels/branches/localbranchdetails.tsx",
-              "hash": "4ac959f3fe1a0bf619c16d59ea0a8e5f90c375a7",
+              "hash": "1217d673de53ce62a14cd7ae7cf713534e2dff84",
               "deps": [
                 "npm:isomorphic-git",
                 "npm:react",
@@ -10847,7 +11157,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/panels/branches/remotebranchedetails.tsx",
-              "hash": "3d9ff6de7ee75d48be3be7a6b90a73c4c76f7d26",
+              "hash": "684945ef41f24f06603b3c3635c11fb8d59a8ad3",
               "deps": [
                 "npm:isomorphic-git",
                 "npm:react",
@@ -10886,7 +11196,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/panels/commands/pushpull.tsx",
-              "hash": "18bcb801f7e3f80014388bcc3b1d5ebe5ac0f47e",
+              "hash": "109620d5548571444f4ed83350810c47780acd08",
               "deps": [
                 "npm:react",
                 "npm:react-select"
@@ -10931,7 +11241,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/panels/githubcredentials.tsx",
-              "hash": "a13ed8d0b7e71db56ff548e8589a0dbaf4418e14",
+              "hash": "a27f1e2cab5a3825d1a95445c27c97e4cb249d5c",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -10955,7 +11265,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/components/panels/remotes.tsx",
-              "hash": "a76721e8d18990e75affcf794efb2ad53912a75c",
+              "hash": "c1c7911a42951fc755019f5f118049f3dd3d34c9",
               "deps": [
                 "npm:react"
               ]
@@ -11063,7 +11373,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/lib/gitactions.ts",
-              "hash": "e9c21dab5a307d51dbc579f26cac312e46e31d80",
+              "hash": "36d86d0b6d4a582426bf23a92146fc1ef8f6b442",
               "deps": [
                 "npm:isomorphic-git",
                 "npm:react",
@@ -11072,7 +11382,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/lib/gitLoginActions.ts",
-              "hash": "8118116b679b6f1817d403a96e960ba3a8b7aad6",
+              "hash": "5e9b3e1fec770b0881369d8a8888087403167455",
               "deps": [
                 "npm:axios",
                 "npm:is-electron"
@@ -11080,7 +11390,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/lib/listeners.ts",
-              "hash": "b640d7b45ba3e81e9e26b70ff112d4b7dbc00576",
+              "hash": "f51d9b3cc2b40a415701d73fc1d9be360fa21fe0",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine",
@@ -11089,7 +11399,7 @@
             },
             {
               "file": "libs/remix-ui/git/src/lib/pluginActions.ts",
-              "hash": "96534a688057f840022c7318e90ff633d373133c",
+              "hash": "c2fb24201b1ad06374801094833c48b935b342bd",
               "deps": [
                 "npm:@remixproject/engine"
               ]
@@ -11173,7 +11483,7 @@
             },
             {
               "file": "libs/remix-ui/grid-view/src/lib/remix-ui-grid-cell.tsx",
-              "hash": "36b0afe9beb3f48084eea1c0767ca78d949b26c4",
+              "hash": "b722eb1c960898ea25c69989287cfc77df747311",
               "deps": [
                 "npm:react"
               ]
@@ -11184,7 +11494,7 @@
             },
             {
               "file": "libs/remix-ui/grid-view/src/lib/remix-ui-grid-section.tsx",
-              "hash": "62d85a5c1771be09b28d4d8448a2b28beab89513",
+              "hash": "9be4a881ca9462fb543cad090656d5cb41f1228d",
               "deps": [
                 "npm:react"
               ]
@@ -11195,7 +11505,7 @@
             },
             {
               "file": "libs/remix-ui/grid-view/src/lib/remix-ui-grid-view.tsx",
-              "hash": "258526f8984a0300ac32e393aa28c578614c08d1",
+              "hash": "d8c47776f71e8fd551d29fbfc08030e4cbc07da8",
               "deps": [
                 "npm:react"
               ]
@@ -11228,9 +11538,8 @@
             },
             {
               "file": "libs/remix-ui/helper/src/lib/components/custom-tooltip.tsx",
-              "hash": "f0fd240037b9f6e2729dee18b84e4c1ac559acb7",
+              "hash": "d0fe98b7d11d8f143d3ecc08a63c8780197ceaa9",
               "deps": [
-                "npm:chai",
                 "npm:react",
                 "npm:react-bootstrap"
               ]
@@ -11258,7 +11567,7 @@
             },
             {
               "file": "libs/remix-ui/helper/src/lib/components/solScanTable.tsx",
-              "hash": "97dc65b643bc1cef0439917988d380457459c676",
+              "hash": "e4e71cdfb9d20c841010f62196cfb59d01dfa86f",
               "deps": [
                 "npm:react",
                 "npm:html-react-parser"
@@ -11289,7 +11598,7 @@
             },
             {
               "file": "libs/remix-ui/helper/src/lib/solidity-scan.tsx",
-              "hash": "00afaaff441993e26d93a3a7e42506d1bb013009",
+              "hash": "79b82f5e699ba7035439b80bd5b1a2ef9db16d26",
               "deps": [
                 "npm:react",
                 "npm:axios",
@@ -11321,7 +11630,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabFeatured.tsx",
-              "hash": "2232172fa551e6311e34c87471af3c1e66b8641e",
+              "hash": "e049a66683022242f00f853d48f9b813105fdb3f",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11330,7 +11639,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabFeaturedPlugins.tsx",
-              "hash": "baf751686030a50099d55ed90d0149b810f22581",
+              "hash": "787369ec5b160f9717b828607073938d701c609b",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11339,7 +11648,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabFile.tsx",
-              "hash": "a52763008744e898810da97b46ef587f7592e8ae",
+              "hash": "467671b109f543052bed06d898e7ff8d64bcc982",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11347,7 +11656,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabFileElectron.tsx",
-              "hash": "3c2250a3285ddfe152c44383684af149a0bfb6d8",
+              "hash": "3f8ecf200240a24ba1c1597b268efe4fd5505793",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11355,7 +11664,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabGetStarted.tsx",
-              "hash": "b414b7a7cb3c04c94a22d7c131b60f6fcfaa9337",
+              "hash": "0bcdf596589362d48bec5fd0c294576e135c5b34",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11365,7 +11674,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTablangOptions.tsx",
-              "hash": "46642c499e886b79c13db18d9c707374cf3b0bcc",
+              "hash": "778a9a40a3eafa22020624d97b77f43e1841900f",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap",
@@ -11374,7 +11683,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabLearn.tsx",
-              "hash": "32250dce623d9dfe93764c29a6989fecbd032937",
+              "hash": "d2e83d234e3140f4fc067d5473781e44cd2c52b5",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11382,14 +11691,21 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabRecentWorkspaces.tsx",
-              "hash": "3866e84fa718ca8f4233a1e1c3659fc9bfc69eb6",
+              "hash": "3c1cb3c7cb6857331cc4a7b6526af644d9eacebc",
+              "deps": [
+                "npm:react"
+              ]
+            },
+            {
+              "file": "libs/remix-ui/home-tab/src/lib/components/homeTabRecentWorkspacesElectron.tsx",
+              "hash": "0023e274ccb28639793e91f6cdfbc92238796d32",
               "deps": [
                 "npm:react"
               ]
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabScamAlert.tsx",
-              "hash": "31c89aa570635c0007efebe4f7cc2290146d00a4",
+              "hash": "04ca6eb873e887b996aad804f5053b64f1b1dd5a",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11397,7 +11713,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabTitle.tsx",
-              "hash": "a7044272beaf04c44d7948680272984effba2b3f",
+              "hash": "2c6770c858e9f7839b6d6277a1865950c95b8c33",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11406,10 +11722,11 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/components/homeTabUpdates.tsx",
-              "hash": "6b900adcaa4fee73fbb495fd1067aa6de08b6aeb",
+              "hash": "2637a687c2fb2ebf50b275bf251fa5e1c442beb1",
               "deps": [
                 "npm:react",
-                "npm:axios"
+                "npm:axios",
+                "npm:react-intl"
               ]
             },
             {
@@ -11447,7 +11764,7 @@
             },
             {
               "file": "libs/remix-ui/home-tab/src/lib/remix-ui-home-tab.tsx",
-              "hash": "4f47bd6cbd7cd8955dbcd329a95a508dd1c8804f",
+              "hash": "e005f897e1bf1bcab1584406070af5e948532acf",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11478,7 +11795,7 @@
             },
             {
               "file": "libs/remix-ui/locale-module/types/locale-module.ts",
-              "hash": "824f68147cc42a4ac0bc69b07e17f9fb7eac7320",
+              "hash": "df125f5834e649010369758370b39d6a667a8fcd",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:events"
@@ -11543,7 +11860,7 @@
             },
             {
               "file": "libs/remix-ui/panel/src/lib/plugins/panel-header.tsx",
-              "hash": "d605f1001185c5e04530d49fff4d235de83360eb",
+              "hash": "8d514cb573ab49032a8695f07db75f748184cdef",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11727,10 +12044,12 @@
             },
             {
               "file": "libs/remix-ui/remix-ai-assistant/src/components/chat.tsx",
-              "hash": "068b437e1d1d5b22dec58995b7feebdfa5015bc7",
+              "hash": "4889f9605e0d8951c944595c46fdb808317ade01",
               "deps": [
                 "npm:react-markdown",
                 "npm:remark-gfm",
+                "npm:rehype-raw",
+                "npm:rehype-sanitize",
                 "npm:copy-to-clipboard",
                 "npm:react"
               ]
@@ -11751,14 +12070,14 @@
             },
             {
               "file": "libs/remix-ui/remix-ai-assistant/src/components/prompt.tsx",
-              "hash": "75c4499b0b6b0ff92bb87f9eb18419c9cb608866",
+              "hash": "968253d4f3ce1674abc88286a7d67064b0a7cbaf",
               "deps": [
                 "npm:react"
               ]
             },
             {
               "file": "libs/remix-ui/remix-ai-assistant/src/components/remix-ui-remix-ai-assistant.tsx",
-              "hash": "7d96297f198913276ca76aab4e9f60bff71f9148",
+              "hash": "5328301ae622cef77d3ed037d5542da2762bb776",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine"
@@ -11770,7 +12089,7 @@
             },
             {
               "file": "libs/remix-ui/remix-ai-assistant/src/css/remix-ai-assistant.css",
-              "hash": "759d7f809050542904ace6fea08a436dbae2a7c0"
+              "hash": "c1b905e85dcf9cb93f20cec9e25886b03d0bd798"
             },
             {
               "file": "libs/remix-ui/remix-ai-assistant/src/index.ts",
@@ -11798,7 +12117,7 @@
             },
             {
               "file": "libs/remix-ui/renderer/src/lib/renderer.tsx",
-              "hash": "9938abf94c92730942f9b39f8cb2ec70d66a8360",
+              "hash": "5a5889064cf9b0b70e7f90b49f454f8dc612f8bc",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -11810,7 +12129,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/actions/account.ts",
-              "hash": "ce8ccbd8ec6d468870234c3089da996edc0e240e",
+              "hash": "3ef09b2a77f9a75f7d09304a886be2f4bd93ac13",
               "deps": [
                 "npm:@ethereumjs/util",
                 "npm:ethers",
@@ -11824,7 +12143,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/actions/deploy.ts",
-              "hash": "f587450c9ed3c1bcaaf0f4a13f4c45bae22f9862",
+              "hash": "9332c4558e4bdb04d6a7051be0986c6472ffd620",
               "deps": [
                 "npm:@openzeppelin/upgrades-core",
                 "npm:web3"
@@ -11832,7 +12151,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/actions/events.ts",
-              "hash": "de198d5cb4f7f9943f56e075ea4c6d69fea2945d",
+              "hash": "bf827465e4f9d118e6b92df6b4559e8be9e1d4bc",
               "deps": [
                 "npm:bn.js",
                 "npm:web3",
@@ -11845,7 +12164,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/actions/index.ts",
-              "hash": "49e2bc6ff18b530da4bc5a2c3e8d54eb6a382539",
+              "hash": "d4b12e97359279ec96f2db9278b2ea6f696bf100",
               "deps": [
                 "npm:react",
                 "npm:@openzeppelin/upgrades-core"
@@ -11861,7 +12180,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/components/account.tsx",
-              "hash": "c2e14bca7c15e336abfb3c8e8dd2218c1aa9c73f",
+              "hash": "a22af0c257bedc920a63c36a5387d30b13e2a5fb",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11870,7 +12189,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/components/contractDropdownUI.tsx",
-              "hash": "6df5b4a8dfc1ff4e742150734b8003271c52d683",
+              "hash": "765ad7c3d8630ca32bb4f5d0a9d17f72160f1b96",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11879,7 +12198,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/components/contractGUI.tsx",
-              "hash": "64063b220bae7dc3a334883dfebbee5946bf0fcb",
+              "hash": "41e81d7d78e1ce79eb9ba14c6b0ceccc8ac7e65f",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11912,7 +12231,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/components/environment.tsx",
-              "hash": "24c5da3ca9aa31aa51586e3413d41b5f48d5da6f",
+              "hash": "9c6de73343372532fb52b86aa19955991dd9f503",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -11998,7 +12317,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/components/universalDappUI.tsx",
-              "hash": "f370836d82546685a9efd2f68463dbc562c25b70",
+              "hash": "47e60bf9e009d49858cf1395784fe42a904dc225",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12013,6 +12332,14 @@
                 "npm:react",
                 "npm:react-intl",
                 "npm:bn.js"
+              ]
+            },
+            {
+              "file": "libs/remix-ui/run-tab/src/lib/components/verificationSettingsUI.tsx",
+              "hash": "988ef4a53d5d9fd23c8e00df91da14c8c24cf54a",
+              "deps": [
+                "npm:react",
+                "npm:react-intl"
               ]
             },
             {
@@ -12057,7 +12384,7 @@
             },
             {
               "file": "libs/remix-ui/run-tab/src/lib/types/index.ts",
-              "hash": "4a66d8d0dee12d7654610f808da3d0c7ae9ca2f2",
+              "hash": "67188e4ce26656553d7497cd50c47cdd8f4dab2f",
               "deps": [
                 "npm:react",
                 "npm:@openzeppelin/upgrades-core"
@@ -12092,7 +12419,7 @@
             },
             {
               "file": "libs/remix-ui/scriptrunner/src/lib/components/config-section.tsx",
-              "hash": "05b6afb053c1ba535fb2d090f0cd46fbd353351b",
+              "hash": "7fd17f7027814da1b01fe43e9e3746ac4a5bb681",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12111,7 +12438,7 @@
             },
             {
               "file": "libs/remix-ui/scriptrunner/src/lib/script-runner-ui.tsx",
-              "hash": "c47ffcbbf5f8ba4345d54bce8748d57d965e9fd6",
+              "hash": "14da5820d8012ca12298afbca54a80fed98d1bf5",
               "deps": [
                 "npm:react"
               ]
@@ -12265,7 +12592,7 @@
             },
             {
               "file": "libs/remix-ui/settings/src/lib/remix-ui-settings.tsx",
-              "hash": "294664289a49f61e6b326640f5e04fe486d5a929",
+              "hash": "15a9ea311aa46af0ed110d7939f519b2f6fc0ba5",
               "deps": [
                 "npm:@remixproject/engine-web",
                 "npm:react",
@@ -12292,7 +12619,7 @@
             },
             {
               "file": "libs/remix-ui/settings/src/lib/settingsReducer.ts",
-              "hash": "35907d6d19a5d5881d55212ffef27b68c2bd54ef"
+              "hash": "7c650d0e5300cd255edad067c3c6ee81a548d76b"
             },
             {
               "file": "libs/remix-ui/settings/src/types/index.ts",
@@ -12304,7 +12631,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-compile-details/src/lib/components/solidityCompile.tsx",
-              "hash": "3145aeea8d6c274477e443baa77ff3fe093dcce6",
+              "hash": "95dec83c00fb342a2f1333e29d8d55ff82333bc0",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -12312,7 +12639,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-compile-details/src/lib/solidity-compile-details.tsx",
-              "hash": "f187c37fac8f95f503282f2d37cf5851a4f622e5",
+              "hash": "ec8f9b8760f4cf8f767fc1017ced3b206e197ab0",
               "deps": [
                 "npm:react"
               ]
@@ -12330,14 +12657,14 @@
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/api/compiler-api.ts",
-              "hash": "fcc9f236ba04f6a81e823cf10de231c949c4db3e",
+              "hash": "995f68e62e950f237153cb368c5d694bec06271f",
               "deps": [
                 "npm:react"
               ]
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/compiler-container.tsx",
-              "hash": "7f779bf7ae4b96f5998151249132f0e4c2ab6221",
+              "hash": "9685625e477be3fee228befa6f1c19f76233d0a8",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12365,7 +12692,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/contract-selection.tsx",
-              "hash": "869c180da61a3d7af086364ceb899fa4fcfea6f4",
+              "hash": "e9d3efe4bc0dc1707d3ce7e2f599746091c0d6dd",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12378,7 +12705,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/logic/compileTabLogic.ts",
-              "hash": "731fb7b46008b7c83272115cca1ee9605f0ce639",
+              "hash": "a88514c89936dffb3e61db721fb128381fb424c4",
               "deps": [
                 "npm:events"
               ]
@@ -12404,14 +12731,14 @@
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/solidity-compiler.tsx",
-              "hash": "b34214c6b5a814d784cf9883844d486ac9348776",
+              "hash": "17d69bbd205e62bf9fb38329280799f3849de424",
               "deps": [
                 "npm:react"
               ]
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/types/index.ts",
-              "hash": "2386066c3607a1f3602d0b22ff1c7d3c98e4f3fb"
+              "hash": "56bdb2020cb3cb02c0fb1aa773ad897d421a6065"
             },
             {
               "file": "libs/remix-ui/solidity-uml-gen/src/index.ts",
@@ -12419,7 +12746,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-uml-gen/src/lib/components/UmlDownload.tsx",
-              "hash": "09ffa3518e8f6835af3a866a34a753ccbb69d38c",
+              "hash": "a0d5cb5afd159ca18d2ab4ff1eb7e2f5ca22d40f",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12470,7 +12797,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-unit-testing/src/lib/solidity-unit-testing.tsx",
-              "hash": "40f322a7084909afce6eb938ccbdcf15dff7503d",
+              "hash": "19d2e49d13fb7d97d09faa293ae0aecb2c427410",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12486,7 +12813,7 @@
             },
             {
               "file": "libs/remix-ui/static-analyser/src/lib/actions/staticAnalysisActions.ts",
-              "hash": "bc5a9ce84f9ece5c16e690ece869c947de835c8d",
+              "hash": "92530fa1a114e02f15e1eb1b4601232a9d8dea58",
               "deps": [
                 "npm:@remixproject/plugin-api",
                 "npm:react"
@@ -12522,7 +12849,7 @@
             },
             {
               "file": "libs/remix-ui/static-analyser/src/lib/remix-ui-static-analyser.tsx",
-              "hash": "21eb59c566f0618b645e0c41a41d432841a74b44",
+              "hash": "f8fdeacce6da752757aa5ba91951bef5e171cfa8",
               "deps": [
                 "npm:react",
                 "npm:lodash",
@@ -12579,7 +12906,7 @@
             },
             {
               "file": "libs/remix-ui/statusbar/src/lib/components/gitStatus.tsx",
-              "hash": "e1dfd76baa5dbb94d24855814c02f50580f045aa",
+              "hash": "b61a790a5ea77a3eeafd070231081cb3a5e4bf91",
               "deps": [
                 "npm:react",
                 "remix-ide"
@@ -12596,7 +12923,7 @@
             },
             {
               "file": "libs/remix-ui/statusbar/src/lib/components/scamDetails.tsx",
-              "hash": "ae031b6e534dc1495026fa53e4d2813d49d9c7e3",
+              "hash": "26319f33b27b2e6a7d24abdf6c8814f360d0d806",
               "deps": [
                 "npm:@floating-ui/react",
                 "npm:react",
@@ -12709,7 +13036,7 @@
             },
             {
               "file": "libs/remix-ui/tabs/src/lib/components/CompileDropdown.tsx",
-              "hash": "2166eec5734f4811fe143ddd372f92345060f54d",
+              "hash": "6dc7ed16e58d860adb391a65827d5abc256ee07d",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -12739,7 +13066,7 @@
             },
             {
               "file": "libs/remix-ui/tabs/src/lib/remix-ui-tabs.tsx",
-              "hash": "42bc34637c51d17361dfaac4195dd255935f839e",
+              "hash": "bcf10a5d3e481dc89c6252b6eb0de0ef295bcf30",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:react",
@@ -12796,7 +13123,7 @@
             },
             {
               "file": "libs/remix-ui/terminal/src/lib/components/remix-ui-terminal-menu-buttons.tsx",
-              "hash": "6c5c27c75fa57d35974e25df2cc2c6bc96e04a25",
+              "hash": "12cd64533a2b9edf102eb8dfae2686d8054929ba",
               "deps": [
                 "npm:react"
               ]
@@ -12835,7 +13162,7 @@
             },
             {
               "file": "libs/remix-ui/terminal/src/lib/components/RenderUnknownTransactions.tsx",
-              "hash": "5d9540839b7e2d14e2f7b7502942254af281e37d",
+              "hash": "94951d1c6b215f1e54e09ad3f9a1044f2cfe1227",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -12881,7 +13208,7 @@
             },
             {
               "file": "libs/remix-ui/terminal/src/lib/remix-ui-terminal.tsx",
-              "hash": "e4a7942819ac363816565e02425126fdf0b11d52",
+              "hash": "a2ad694348cff40b1d5b0ee993463a3ee0e2e85a",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -12893,7 +13220,7 @@
             },
             {
               "file": "libs/remix-ui/terminal/src/lib/terminalWelcome.tsx",
-              "hash": "d4f79b38d2c70957cd112c356b6dc71c419cfc21",
+              "hash": "149bfa4edf9d3f2a69d7bd280f873dbf6502ac2c",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -12933,7 +13260,7 @@
             },
             {
               "file": "libs/remix-ui/theme-module/types/theme-module.ts",
-              "hash": "ed8a84cdab8efe36fc8ed2af6e12282d12cb0244",
+              "hash": "275b4ae3aabc1d985594ee9182b99cbbf50d6431",
               "deps": [
                 "npm:@remixproject/engine",
                 "npm:events"
@@ -12998,8 +13325,16 @@
               ]
             },
             {
+              "file": "libs/remix-ui/top-bar/src/components/ElectronWorkspaceMenu.tsx",
+              "hash": "01ea700308507804953763fbfae83ca1bdde6566",
+              "deps": [
+                "npm:react",
+                "npm:react-bootstrap"
+              ]
+            },
+            {
               "file": "libs/remix-ui/top-bar/src/components/gitLogin.tsx",
-              "hash": "a1ce59245a84caa8d7087b0d795dd0c488062eda",
+              "hash": "6f3381029643df7fab52a74a6526535cd7e1d1bd",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap"
@@ -13007,7 +13342,7 @@
             },
             {
               "file": "libs/remix-ui/top-bar/src/components/WorkspaceDropdown.tsx",
-              "hash": "a71c318e7b236f5a655b98287d4cc9deb708a0b9",
+              "hash": "63d4fa400cae0d863022195858ee258ea625299c",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap",
@@ -13024,7 +13359,7 @@
             },
             {
               "file": "libs/remix-ui/top-bar/src/context/topbarContext.tsx",
-              "hash": "3918507c4e930e9fe3257e1d516d45bb34e12681",
+              "hash": "52eac90abc5d2fc2fde77a067dab19e655ed918a",
               "deps": [
                 "remix-ide",
                 "npm:react"
@@ -13032,7 +13367,7 @@
             },
             {
               "file": "libs/remix-ui/top-bar/src/context/topbarProvider.tsx",
-              "hash": "feb880bc7c4b801d7e581f753563715e0a3d7e16",
+              "hash": "2949ca9c81b80ce7083b31a3ecfa318aee9d0b6b",
               "deps": [
                 "npm:react",
                 "remix-ide"
@@ -13044,11 +13379,11 @@
             },
             {
               "file": "libs/remix-ui/top-bar/src/index.ts",
-              "hash": "f372a9ff5bb02abb210a6bcd0930fb2b5ed68cff"
+              "hash": "c1e7de0c04574c1a5d59a04d6517776ca6a7715a"
             },
             {
               "file": "libs/remix-ui/top-bar/src/lib/remix-ui-topbar.tsx",
-              "hash": "084c1dff02608d61ffade3d3cdfcc934b8f61dcb",
+              "hash": "14b2f1b95be5e35ac68b73770e51fb817c7f8790",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap",
@@ -13212,7 +13547,7 @@
             },
             {
               "file": "libs/remix-ui/vyper-compile-details/src/lib/vyperCompile.tsx",
-              "hash": "6179fa2d5bb733bc6e98349f79d91af49b00a25e",
+              "hash": "3aa6e4e7108dd4524974966db479f6af2480f0f8",
               "deps": [
                 "npm:@microlink/react-json-view",
                 "npm:react",
@@ -13234,7 +13569,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/actions/index.tsx",
-              "hash": "0c87e6b5977b23305e21d2b8cdcf19a36fc1463a",
+              "hash": "68ae146ba88ac201e9197eb067d3756eb7b569c6",
               "deps": [
                 "npm:react",
                 "npm:gists",
@@ -13250,7 +13585,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/actions/workspace.ts",
-              "hash": "0b88bdfc5e56d58bfa87bd8049b3c181bf0193b4",
+              "hash": "ab02edb84dc5a937e97b7e1b68eb3580ec14b61b",
               "deps": [
                 "npm:react",
                 "npm:@ethereumjs/util",
@@ -13270,7 +13605,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/components/electron-menu.tsx",
-              "hash": "2c0a2d626caa82a4da994360d119fb4de9d9549f",
+              "hash": "11625d06f98a65b1ff095538543a247e5c3c2334",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -13285,7 +13620,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/components/file-explorer-context-menu.tsx",
-              "hash": "bf86f9d8adfe24a2f17ccc094f4d79c11639893c",
+              "hash": "23deb833b06407b8c68792d997440c69c1e84ac7",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -13302,7 +13637,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/components/file-explorer-menu.tsx",
-              "hash": "37d08b5bee758b87cfefa42e3691dae4a75e606d",
+              "hash": "45e56f962d0c1e430bc8943c45ef04284c7199f5",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -13311,7 +13646,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/components/file-explorer.tsx",
-              "hash": "fa82ef2274d49056dd80c99c963066e33a74f8c7",
+              "hash": "e5cec14dccf8672843939ca693f7393727f5dcf1",
               "deps": [
                 "npm:react",
                 "npm:react-intl"
@@ -13349,7 +13684,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/components/workspace-hamburger-item.tsx",
-              "hash": "e93e27797ae6f7b806ec0f92d747bb4d59333d1e",
+              "hash": "fac487c9f1ec6f7a51f90c7ffe2346d27f16641c",
               "deps": [
                 "npm:react",
                 "npm:react-bootstrap",
@@ -13370,7 +13705,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/contexts/index.ts",
-              "hash": "c69b3377b20b87e43c81819e587a6751baa8ed90",
+              "hash": "16ccf7eed56fb56bc550782945c5295e41a47368",
               "deps": [
                 "npm:@remixproject/plugin-api",
                 "npm:react",
@@ -13379,7 +13714,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/css/electron-menu.css",
-              "hash": "02c273f9ba5f416ab8c598e46df71046167545fd"
+              "hash": "9bef8eb2855f3e22b1accbe0596b8969cb756889"
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/css/file-explorer-context-menu.css",
@@ -13395,7 +13730,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/providers/FileSystemProvider.tsx",
-              "hash": "3e923c7b76478fdc38275a44dff729c82ccddb6b",
+              "hash": "f2362db1d2769e7affc44261c6bcd4685fddcd4c",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/plugin-api"
@@ -13412,7 +13747,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/remix-ui-workspace.tsx",
-              "hash": "e6e9906f02dc6f040234653acf10d7949f721779",
+              "hash": "4e3a67ea4eb4b5f93b0ff306febf8c7c03473716",
               "deps": [
                 "npm:react",
                 "npm:react-intl",
@@ -13422,7 +13757,7 @@
             },
             {
               "file": "libs/remix-ui/workspace/src/lib/types/index.ts",
-              "hash": "d5eec98c930a779b8be5e24f5da20eb2fe895ce2",
+              "hash": "e5d1512eb7b20e066b7810d26cff748b459e10dc",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/plugin-api",
@@ -13526,6 +13861,11 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -13565,6 +13905,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -13574,7 +13919,8 @@
                   "apps/doc-gen/**/*.ts"
                 ],
                 "eslintConfig": "apps/doc-gen/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -13880,8 +14226,16 @@
           "implicitDependencies": [],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
-                "install"
+                {
+                  "target": "build",
+                  "projects": "dependencies"
+                }
               ],
               "executor": "@nrwl/webpack:webpack",
               "outputs": [
@@ -13916,6 +14270,7 @@
             },
             "install": {
               "executor": "nx:run-commands",
+              "cache": false,
               "options": {
                 "commands": [
                   "cd apps/solhint && yarn"
@@ -13924,6 +14279,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -13933,7 +14293,8 @@
                   "apps/solhint/**/*.ts"
                 ],
                 "eslintConfig": "apps/solhint/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
@@ -13977,7 +14338,7 @@
             },
             {
               "file": "apps/solhint/project.json",
-              "hash": "c8d6075771c7ee6feed4c0c5848ac48dc4bebfd8"
+              "hash": "0313b22d66b29733777af595478aea5eb4c52e18"
             },
             {
               "file": "apps/solhint/src/app/App.tsx",
@@ -14059,6 +14420,11 @@
           ],
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -14082,6 +14448,11 @@
               "configurations": {}
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -14091,7 +14462,8 @@
                   "libs/remixd/**/*.ts"
                 ],
                 "eslintConfig": "libs/remixd/.eslintrc"
-              }
+              },
+              "configurations": {}
             }
           },
           "tags": [],
@@ -14111,7 +14483,7 @@
             },
             {
               "file": "libs/remixd/package.json",
-              "hash": "1cb980d871dcc8b063e6323271d5bc479a10a555",
+              "hash": "848cf3e808381343c6e9dba1f7f9cb325a567012",
               "deps": [
                 "remix-solidity",
                 "npm:@remixproject/plugin",
@@ -14289,6 +14661,11 @@
           "projectType": "application",
           "targets": {
             "build": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default"
+              ],
               "dependsOn": [
                 {
                   "target": "build",
@@ -14332,6 +14709,11 @@
               }
             },
             "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
               "executor": "@nrwl/linter:eslint",
               "outputs": [
                 "{options.outputFile}"
@@ -14341,7 +14723,8 @@
                   "apps/vyper/**/*.ts"
                 ],
                 "eslintConfig": "apps/vyper/.eslintrc"
-              }
+              },
+              "configurations": {}
             },
             "serve": {
               "dependsOn": [
