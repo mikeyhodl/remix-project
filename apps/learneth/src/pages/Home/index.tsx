@@ -184,7 +184,7 @@ function HomePage(): JSX.Element {
                     <Antenna level={r.levelNum} />
                     <span className="small fw-medium text-body-emphasis">{r.levelText}</span>
                     {completedTutorials[r.id] && (
-                      <span className="badge bg-success ms-2">Finished</span>
+                      <i className="text-success ms-2 fas fa-check"></i>
                     )}
                   </div>
                   <MetaRight stepsLen={r.stepsLen} duration={r.duration} />
