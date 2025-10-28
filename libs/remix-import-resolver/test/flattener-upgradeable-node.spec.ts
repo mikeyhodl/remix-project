@@ -59,9 +59,9 @@ describe('SourceFlattener - upgradeable package resolution (Node adapter)', func
     const keys = Array.from(res.sources.keys())
     const mustExistPatterns = [
       /@openzeppelin\/contracts-upgradeable@[^/]+\/token\/ERC1155\/ERC1155Upgradeable\.sol$/, // entry dep
-      /@openzeppelin\/contracts-upgradeable@[^/]+\/utils\/ContextUpgradeable\.sol$/,           // utility
+      /@openzeppelin\/contracts-upgradeable@[^/]+\/utils\/ContextUpgradeable\.sol$/, // utility
       /@openzeppelin\/contracts-upgradeable@[^/]+\/utils\/introspection\/ERC165Upgradeable\.sol$/, // introspection
-      /@openzeppelin\/contracts-upgradeable@[^/]+\/proxy\/utils\/Initializable\.sol$/        // initializer base
+      /@openzeppelin\/contracts-upgradeable@[^/]+\/proxy\/utils\/Initializable\.sol$/ // initializer base
     ]
     const filesToCheck = keys.filter(k => mustExistPatterns.some(re => re.test(k)))
     expect(filesToCheck.length, 'expected core upgradeable files present in bundle keys').to.equal(mustExistPatterns.length)

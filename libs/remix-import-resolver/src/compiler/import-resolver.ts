@@ -91,10 +91,10 @@ export class ImportResolver implements IImportResolver {
       this.resolvePackageVersion.bind(this),
       this.conflictChecker
     )
-  this.resolutionIndex = null
+    this.resolutionIndex = null
     this.resolutionIndexInitialized = false
     this.fetchedGitHubPackages = new Set()
-  this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
+    this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
   }
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }

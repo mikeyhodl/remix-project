@@ -100,6 +100,10 @@ Control working directory (affects where `.deps/` is written):
     - `yarn nx run remix-import-resolver:test:suite --args="--suite=libs/remix-import-resolver/test/cdn-and-github.spec.ts"`
     - You can pass any glob, e.g. `--suite=libs/remix-import-resolver/test/import-resolver-groups1-6.spec.ts`
 
+## Troubleshooting
+
+See TROUBLESHOOTING.md in this folder for common warnings, causes, and fixes (multi-parent conflicts, duplicate file across versions, verbose resolution hints) and how to enable verbose warnings.
+
 Notes
 
 - Tests rely on NodeIOAdapter which performs HTTP fetches for external imports (npm CDNs/GitHub). A network connection is required.

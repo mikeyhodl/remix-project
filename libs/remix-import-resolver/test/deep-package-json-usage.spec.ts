@@ -45,11 +45,11 @@ describe('Deep package.json usage via parent deps', () => {
     expect(content).to.be.a('string')
     expect(content).to.include('interface AggregatorV3Interface')
 
-  // Saved under versioned folder determined by parent deps (under .deps/npm)
-  const expectedPath = '@chainlink/contracts@1.4.0/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
-  const savedDeps = await exists(`.deps/${expectedPath}`)
-  const savedNpm = await exists(`.deps/npm/${expectedPath}`)
-  expect(savedDeps || savedNpm).to.equal(true)
+    // Saved under versioned folder determined by parent deps (under .deps/npm)
+    const expectedPath = '@chainlink/contracts@1.4.0/src/v0.8/shared/interfaces/AggregatorV3Interface.sol'
+    const savedDeps = await exists(`.deps/${expectedPath}`)
+    const savedNpm = await exists(`.deps/npm/${expectedPath}`)
+    expect(savedDeps || savedNpm).to.equal(true)
 
     // Index mapping should reflect original → versioned path
     await resolver.saveResolutionsToIndex()

@@ -46,8 +46,8 @@ export class DependencyResolver {
     this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as any) : (pluginOrIo as IOAdapter)
     this.debug = debug
-  this.logger = new Logger(this.pluginApi || undefined, debug)
-  this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
+    this.logger = new Logger(this.pluginApi || undefined, debug)
+    this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
     if (isPlugin) {
       this.resolver = new ImportResolver(this.pluginApi as any, targetFile, debug)
     } else {

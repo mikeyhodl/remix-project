@@ -20,12 +20,12 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
       if (lastpart.startsWith('import')) {
         const importPath = line.substring(lastpart.indexOf('"') + 1)
         const importPath2 = importPath.substring(0, importPath.indexOf('"'))
-        
+
         // Try to resolve using the resolution index
         // model.uri.path gives us the current file we're in
         const currentFile = model.uri.path
         console.log('[DefinitionProvider] 📍 Import navigation from:', currentFile, '→', importPath2)
-        
+
         let resolvedPath = importPath2
         try {
           // Check if we have a resolution index entry for this import
@@ -39,7 +39,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
         } catch (e) {
           console.log('[DefinitionProvider] ⚠️ Failed to lookup resolution index:', e)
         }
-        
+
         jumpLocation = {
           startLineNumber: 1,
           startColumn: 1,
@@ -89,7 +89,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
       } catch (e) {
         console.log('[DefinitionProvider] ⚠️ Resolution index lookup failed, using original path:', e)
       }
-      
+
       const fileTarget = await this.props.plugin.call('fileManager', 'getPathFromUrl', resolvedFileName)
       console.log('jumpToLine', fileName, '→', resolvedFileName, '→', fileTarget)
       if (resolvedFileName !== await this.props.plugin.call('fileManager', 'file')) {

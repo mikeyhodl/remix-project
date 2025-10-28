@@ -30,8 +30,7 @@ export class CompileTabLogic {
     this.debug = debug !== undefined ? debug : (localStorage.getItem('remix-debug-resolver') === 'true')
 
     this.event = new EventEmitter()
-    
-    
+
     // Create smart compiler with automatic dependency resolution
     this.compiler = new SmartCompiler(
       this.api as any,
@@ -45,7 +44,7 @@ export class CompileTabLogic {
       null, // importResolverFactory - not used by SmartCompiler
       this.debug
     )
-    
+
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }
 
@@ -150,28 +149,28 @@ export class CompileTabLogic {
    */
   async compileFile (target) {
     if (!target) throw new Error('No target provided for compilation')
-    
+
     try {
       console.log(`[CompileTabLogic] 🎯 Starting smart compilation for: ${target}`)
-      
+
       // Read the entry file
       const content = await this.api.readFile(target)
-      
+
       this.event.emit('removeAnnotations')
       this.event.emit('startingCompilation')
       await this.setCompilerMappings()
       await this.setCompilerConfigContent()
-      
+
       // SmartCompiler automatically handles dependency resolution and compilation
       console.log(`[CompileTabLogic] 🧠 Using SmartCompiler with automatic dependency resolution`)
-      
+
       const sources = { [target]: { content } }
-      
+
       console.log(`[CompileTabLogic] � Starting smart compilation...`)
       this.compiler.compile(sources, target)
-      
+
       console.log(`[CompileTabLogic] ⏳ Smart compilation triggered for: ${target}`)
-      
+
       return true
     } catch (error) {
       console.error(`[CompileTabLogic] ❌ Compilation failed:`, error)

@@ -44,27 +44,27 @@ describe('Local project with external OpenZeppelin dependencies', () => {
     }, null, 2), 'utf8')
 
     // Create local project files
-  await fs.mkdir(dirname('contracts/interfaces/IStorage.sol'), { recursive: true })
-  await writeFile('contracts/interfaces/IStorage.sol', `// SPDX-License-Identifier: MIT
+    await fs.mkdir(dirname('contracts/interfaces/IStorage.sol'), { recursive: true })
+    await writeFile('contracts/interfaces/IStorage.sol', `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 interface IStorage { function get() external view returns (uint256); }
 `, 'utf8')
 
-  await fs.mkdir(dirname('contracts/libraries/Math.sol'), { recursive: true })
-  await writeFile('contracts/libraries/Math.sol', `// SPDX-License-Identifier: MIT
+    await fs.mkdir(dirname('contracts/libraries/Math.sol'), { recursive: true })
+    await writeFile('contracts/libraries/Math.sol', `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 library Math { function add(uint256 a, uint256 b) internal pure returns (uint256) { return a + b; } }
 `, 'utf8')
 
-  await fs.mkdir(dirname('contracts/base/BaseContract.sol'), { recursive: true })
-  await writeFile('contracts/base/BaseContract.sol', `// SPDX-License-Identifier: MIT
+    await fs.mkdir(dirname('contracts/base/BaseContract.sol'), { recursive: true })
+    await writeFile('contracts/base/BaseContract.sol', `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "../interfaces/IStorage.sol";
 contract BaseContract { IStorage internal store; constructor(IStorage s) { store = s; } }
 `, 'utf8')
 
-  await fs.mkdir(dirname('contracts'), { recursive: true })
-  await writeFile('contracts/TokenVault.sol', `// SPDX-License-Identifier: MIT
+    await fs.mkdir(dirname('contracts'), { recursive: true })
+    await writeFile('contracts/TokenVault.sol', `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "./base/BaseContract.sol";
 contract TokenVault is BaseContract { constructor(IStorage s) BaseContract(s) {} }
@@ -130,8 +130,8 @@ contract Staking is BaseContract, Ownable, Pausable {
       }
     }, null, 2), 'utf8')
 
-  // Ensure the exact directory exists; dirname('contracts/main') would only create 'contracts'
-  await fs.mkdir('contracts/main', { recursive: true })
+    // Ensure the exact directory exists; dirname('contracts/main') would only create 'contracts'
+    await fs.mkdir('contracts/main', { recursive: true })
     await writeFile('contracts/main/Staking.sol', `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";

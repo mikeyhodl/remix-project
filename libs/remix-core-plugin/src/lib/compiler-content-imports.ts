@@ -17,7 +17,7 @@ export type ResolvedImport = {
 
 export class CompilerImports extends Plugin {
   urlResolver: any
-  
+
   constructor () {
     super(profile)
     this.urlResolver = new RemixURLResolver(async () => {
@@ -71,7 +71,7 @@ export class CompilerImports extends Plugin {
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
     const indexPath = '.deps/npm/.resolution-index.json'
-    
+
     try {
       // Just read the file directly!
       const exists = await this.call('fileManager', 'exists', indexPath)
@@ -79,20 +79,20 @@ export class CompilerImports extends Plugin {
         console.log('[CompilerImports] ℹ️ No resolution index file found')
         return null
       }
-      
+
       const content = await this.call('fileManager', 'readFile', indexPath)
       const index = JSON.parse(content)
-      
+
       console.log('[CompilerImports] 🔍 Looking up:', { sourceFile, importPath })
       console.log('[CompilerImports] 📊 Index has', Object.keys(index).length, 'source files')
-      
+
       // First try: lookup using the current file (works if currentFile is a base file)
       if (index[sourceFile] && index[sourceFile][importPath]) {
         const resolved = index[sourceFile][importPath]
         console.log('[CompilerImports] ✅ Direct lookup result:', resolved)
         return resolved
       }
-      
+
       // Second try: search across ALL base files (works if currentFile is a library file)
       console.log('[CompilerImports] 🔍 Trying lookupAny across all source files...')
       for (const file in index) {
@@ -102,10 +102,10 @@ export class CompilerImports extends Plugin {
           return resolved
         }
       }
-      
+
       console.log('[CompilerImports] ℹ️ Import not found in index')
       return null
-      
+
     } catch (err) {
       console.log('[CompilerImports] ⚠️ Failed to read resolution index:', err)
       return null

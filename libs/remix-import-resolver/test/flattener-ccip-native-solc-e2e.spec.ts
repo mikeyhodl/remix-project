@@ -72,9 +72,9 @@ describe('SourceFlattener - Chainlink CCIP base contract (native solc E2E)', fun
       ''
     ].join('\n'))
 
-  const io = new NodeIOAdapter()
-  const flattener = new SourceFlattener(io, false)
-  const res = await flattener.flatten(entry)
+    const io = new NodeIOAdapter()
+    const flattener = new SourceFlattener(io, false)
+    const res = await flattener.flatten(entry)
 
     // Sanity checks: the flattened output should include CCIPReceiver and Client
     expect(res.flattened).to.match(/abstract\s+contract\s+CCIPReceiver/)
