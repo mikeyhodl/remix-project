@@ -131,8 +131,8 @@ jobs:
             mkdir -p /tmp/pr-bot
             cd /tmp/pr-bot
             npm install --no-save @octokit/auth-app
-    - run:
-      name: "Post sticky PR comment: CI started"
+      - run:
+          name: "Post sticky PR comment: CI started"
           command: |
             NODE_PATH=/tmp/pr-bot/node_modules node scripts/post-pr-started.js || true
 
