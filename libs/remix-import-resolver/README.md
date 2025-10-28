@@ -36,6 +36,21 @@ console.log(flattened)
 - NodeIOAdapter: basic fs/network I/O for Node
 - parseRemappingsFileContent / normalizeRemappings: manage remappings
 
+### Warnings and verbosity
+
+Warnings are centralized and deduplicated via `WarningSystem`.
+
+- High-signal issues (multi-parent dependency conflicts, duplicate file across versions, processing errors) always emit once per unique event.
+- Noisy messages (like failed resolves or non-.sol imports) are gated behind the resolver `debug` flag. Instantiate with `debug=true` to enable verbose warnings:
+
+```ts
+import { DependencyResolver, NodeIOAdapter } from '@remix-project/import-resolver'
+
+const dep = new DependencyResolver(new NodeIOAdapter(), 'contracts/Main.sol', true) // debug → verbose
+```
+
+For advanced scenarios, `WarningSystem` is exported from the package utilities.
+
 See the Remix monorepo tests under `libs/remix-solidity/test` for end-to-end usage.
 
 ## CLI

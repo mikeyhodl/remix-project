@@ -20,6 +20,7 @@ export { parseRemappingsFileContent, normalizeRemappings } from './compiler/util
 export { PackageVersionResolver } from './compiler/utils/package-version-resolver'
 export { ConflictChecker } from './compiler/utils/conflict-checker'
 export { Logger } from './compiler/utils/logger'
+export { WarningSystem } from './compiler/utils/warning-system'
 export { DependencyStore } from './compiler/utils/dependency-store'
 export {
   normalizeGithubBlobUrl,
