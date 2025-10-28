@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { CustomTooltip } from "@remix-ui/helper"
 import { Link } from 'react-router-dom'
 import { useAppSelector } from '../../redux/hooks'
 import RepoImporter from '../../components/RepoImporter'
@@ -184,7 +185,12 @@ function HomePage(): JSX.Element {
                     <Antenna level={r.levelNum} />
                     <span className="small fw-medium text-body-emphasis">{r.levelText}</span>
                     {completedTutorials[r.id] && (
-                      <i className="text-success ms-2 fas fa-check"></i>
+                      <CustomTooltip
+                        placement={"auto"}
+                        tooltipId="tutorialCompletedTooltip"
+                        tooltipClasses="text-nowrap"
+                        tooltipText={<span>{'Completed'}</span>}
+                      ><i className="text-success ms-2 fas fa-check"></i></CustomTooltip>
                     )}
                   </div>
                   <MetaRight stepsLen={r.stepsLen} duration={r.duration} />

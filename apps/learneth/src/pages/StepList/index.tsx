@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { CustomTooltip } from "@remix-ui/helper"
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -104,9 +105,14 @@ export default function StepListPage(): JSX.Element {
       <div className="container-fluid">
         <article className="card course-hero mb-3 border border-secondary">
           <div className="card-body">
-            {entity?.id &&completedTutorials[entity?.id] && (
-                      <span className="badge bg-success float-end">Finished</span>
-                    )}
+            {entity?.id && completedTutorials[entity?.id] && (
+                <CustomTooltip
+                placement={"auto"}
+                tooltipId="tutorialCompletedTooltip"
+                tooltipClasses="text-nowrap"
+                tooltipText={<span>{'Completed'}</span>}
+              ><span className="badge bg-success float-end">Completed</span></CustomTooltip>                      
+              )}
             <h2 className="h4 mb-2">{entity?.name}</h2>            
             <div className={`description-wrapper ${!isExpanded && needsExpansionButton ? 'truncated' : ''}`}>
               <ReactMarkdown
