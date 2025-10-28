@@ -118,6 +118,24 @@ commands:
             fi
 
 jobs:
+  post-pr-started:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: small
+    working_directory: ~/remix-project
+    steps:
+      - checkout
+      - run:
+          name: Install @octokit/auth-app for PR commenter (started)
+          command: |
+            mkdir -p /tmp/pr-bot
+            cd /tmp/pr-bot
+            npm install --no-save @octokit/auth-app
+      - run:
+          name: Post sticky PR comment: CI started
+          command: |
+            NODE_PATH=/tmp/pr-bot/node_modules node scripts/post-pr-started.js || true
+
   build:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -595,9 +613,13 @@ workflows:
       - build:
           requires:
             - check-flaky-or-pr-tests
+      - post-pr-started:
+          requires:
+            - build
       - remix-ide-browser:
           requires:
             - build
+            - post-pr-started
           matrix:
             parameters:
               browser: ["chrome"]
@@ -610,6 +632,7 @@ workflows:
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
 
   run_file_keyword:
     when: << pipeline.parameters.run_file_tests_keyword >>
@@ -619,9 +642,13 @@ workflows:
       - build:
           requires:
             - check-flaky-or-pr-tests
+      - post-pr-started:
+          requires:
+            - build
       - remix-ide-browser:
           requires:
             - build
+            - post-pr-started
           matrix:
             parameters:
               browser: ["chrome"]
@@ -634,6 +661,7 @@ workflows:
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
 
   run_pr_tests:
     when: << pipeline.parameters.run_pr_tests >>
@@ -643,9 +671,13 @@ workflows:
       - build:
           requires:
             - check-flaky-or-pr-tests
+      - post-pr-started:
+          requires:
+            - build
       - remix-ide-browser:
           requires:
             - build
+            - post-pr-started
           matrix:
             parameters:
               browser: ["chrome"]
@@ -658,6 +690,7 @@ workflows:
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
 
   run_flaky_tests:
     when: << pipeline.parameters.run_flaky_tests >>
@@ -667,9 +700,13 @@ workflows:
       - build:
           requires:
             - check-flaky-or-pr-tests
+      - post-pr-started:
+          requires:
+            - build
       - remix-ide-browser:
           requires:
             - build
+            - post-pr-started
           matrix:
             parameters:
               browser: ["chrome"]
@@ -682,11 +719,15 @@ workflows:
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
 
   web:
     when: << pipeline.parameters.run_all_tests >>
     jobs:
       - build
+      - post-pr-started:
+          requires:
+            - build
       - build-plugin:
           matrix:
             parameters:
@@ -694,12 +735,14 @@ workflows:
       - lint:
           requires:
             - build
+            - post-pr-started
       - remix-libs
       - remix-test-plugins:
           name: test-plugin-<< matrix.plugin >>
           requires:
             - build
             - build-plugin
+            - post-pr-started
           matrix:
             alias: plugins
             parameters:
@@ -711,6 +754,7 @@ workflows:
       - remix-ide-browser:
           requires:
             - build
+            - post-pr-started
           matrix:
             alias: chrome-tests
             parameters:
@@ -731,6 +775,7 @@ workflows:
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
 
   lint_only:
     when: << pipeline.parameters.run_lint_only >>
@@ -758,12 +803,18 @@ workflows:
     when: << pipeline.parameters.run_rerun_failed >>
     jobs:
       - build
+      - post-failed-report:
+          name: post-pr-started
+          requires:
+            - build
       - rerun-failed-e2e:
           requires:
             - build
+            - post-pr-started
           history_limit: << pipeline.parameters.rerun_failed_history >>
           selection_mode: << pipeline.parameters.rerun_failed_mode >>
           workflow_name: << pipeline.parameters.rerun_failed_workflow >>
       - post-failed-report:
           requires:
             - build
+            - post-pr-started
