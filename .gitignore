@@ -82,4 +82,9 @@ apps/remix-ide-e2e/tmp/
 apps/remix-ide-e2e/tmp/
 
 # IDE - Cursor
+<<<<<<< HEAD
 .cursor/
+=======
+.cursor/
+PR_MESSAGE.md
+>>>>>>> master

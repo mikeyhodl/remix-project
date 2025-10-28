@@ -1,5 +1,6 @@
 import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
+import { trackMatomoEvent } from '@remix-api'
 import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
 import { MCPInferencer } from '@remix/remix-ai-core';
@@ -7,7 +8,6 @@ import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-const _paq = (window._paq = window._paq || [])
 
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
@@ -229,7 +229,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
     useRag = false
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'GenerateNewAIWorkspace'])
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
 
     if (useRag) {
@@ -273,7 +273,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = this.assistantProvider
     useRag = false
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'WorkspaceAgentEdit'])
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
 
     await statusCallback?.('Performing workspace request...')
     if (useRag) {
@@ -344,7 +344,7 @@ export class RemixAIPlugin extends Plugin {
     else {
       console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
-    _paq.push(['trackEvent', 'ai', 'remixAI', 'remixAI_chat'])
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'remixAI_chat', isClick: false })
   }
 
   async ProcessChatRequestBuffer(params:IParams=GenerationParams){
