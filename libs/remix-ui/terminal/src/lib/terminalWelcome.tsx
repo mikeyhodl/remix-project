@@ -5,11 +5,11 @@ import { Registry } from '@remix-project/remix-lib'
 const TerminalWelcomeMessage = ({ packageJson, storage }) => {
   // Don't show the welcome message in Electron - desktop client shows its own version
   const isDesktop = Registry.getInstance().get('platform')?.api?.isDesktop?.() || false
-  
+
   if (isDesktop) {
     return null
   }
-  
+
   return (
     <div className="remix_ui_terminal_block px-4 " data-id="block_null">
       <div className="remix_ui_terminal_welcome">
