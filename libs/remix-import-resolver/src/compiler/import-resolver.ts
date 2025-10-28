@@ -9,6 +9,7 @@ import { routeUrl } from './utils/url-request-router'
 import { isBreakingVersionConflict, isPotentialVersionConflict } from './utils/semver-utils'
 import { PackageVersionResolver } from './utils/package-version-resolver'
 import { Logger } from './utils/logger'
+import { WarningSystem } from './utils/warning-system'
 import { ContentFetcher } from './utils/content-fetcher'
 import { DependencyStore } from './utils/dependency-store'
 import { ConflictChecker } from './utils/conflict-checker'
@@ -46,6 +47,7 @@ export class ImportResolver implements IImportResolver {
   private packageMapper: PackageMapper
   // Cache to avoid refetching the same GitHub package.json multiple times per session
   private fetchedGitHubPackages: Set<string> = new Set()
+  private warnings: WarningSystem
 
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
@@ -91,9 +93,10 @@ export class ImportResolver implements IImportResolver {
       this.resolvePackageVersion.bind(this),
       this.conflictChecker
     )
-    this.resolutionIndex = null
+  this.resolutionIndex = null
     this.resolutionIndexInitialized = false
     this.fetchedGitHubPackages = new Set()
+  this.warnings = new WarningSystem(this.logger)
   }
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
@@ -167,18 +170,106 @@ export class ImportResolver implements IImportResolver {
         const conflictKey = `multi-parent:${packageName}:${Array.from(uniqueVersions).sort().join('↔')}`
         if (!this.conflictWarnings.has(conflictKey)) {
           this.conflictWarnings.add(conflictKey)
-          const warningMsg = [
-            `⚠️  MULTI-PARENT DEPENDENCY CONFLICT`,
-            ``,
-            `   Multiple parent packages require different versions of: ${packageName}`,
-            ``,
-            ...conflictingParents.map(p => `   • ${p.parent} requires ${packageName}@${p.version}`),
-            ``
-          ].join('\n')
-          this.logger.terminal('warn', warningMsg)
+          this.warnings.emitMultiParentConflictWarn(packageName, conflictingParents)
         }
       }
     }
+  }
+
+  /**
+   * Ensure a versioned npm package has its real package.json fetched and saved under .deps.
+   * Idempotent: skips if already captured in the dependency store.
+   */
+  private async ensurePackageJsonSaved(versionedPackageName: string): Promise<void> {
+    if (this.dependencyStore.hasParent(versionedPackageName)) return
+    try {
+      const packageJsonUrl = `${versionedPackageName}/package.json`
+      const content = await this.contentFetcher.resolve(packageJsonUrl)
+      const packageJson = JSON.parse((content as any).content || (content as any))
+      const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
+      await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
+      this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
+      this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
+    } catch (err) {
+      this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
+    }
+  }
+
+  /**
+   * Handle an unversioned npm import by mapping it to the isolated versioned namespace and recursing.
+   * Returns string content if it performed a remap (early return path), otherwise null to continue.
+   */
+  private async mapUnversionedImport(
+    url: string,
+    packageName: string,
+    originalUrl: string,
+    targetPath?: string
+  ): Promise<string | null> {
+    const mappingKey = `__PKG__${packageName}`
+    if (!this.importMappings.has(mappingKey)) {
+      this.log(`[ImportResolver] 🔍 First import from ${packageName}, resolving version...`)
+      await this.packageMapper.fetchAndMapPackage(packageName)
+    }
+    if (this.importMappings.has(mappingKey)) {
+      const versionedPackageName = this.importMappings.get(mappingKey)!
+      const mappedUrl = url.replace(packageName, versionedPackageName)
+      this.log(`[ImportResolver] 🔀 Mapped: ${packageName} → ${versionedPackageName}`)
+      if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, mappedUrl)
+      return this.resolveAndSave(mappedUrl, targetPath, true)
+    } else {
+      this.log(`[ImportResolver] ⚠️  No mapping available for __PKG__${packageName}`)
+      return null
+    }
+  }
+
+  /**
+   * For explicit versioned imports where a workspace/global mapping exists, reconcile versions and recurse if needed.
+   * Returns string content if it performed a remap (early return path), otherwise null to continue.
+   */
+  private async handleExplicitVersionWithMapping(
+    url: string,
+    packageName: string,
+    requestedVersion: string,
+    mappedVersionedPackageName: string,
+    originalUrl: string,
+    targetPath?: string
+  ): Promise<string | null> {
+    const resolvedVersion = parseVersion(mappedVersionedPackageName)!
+    if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
+      // Detect and warn on duplicate file across versions, and track the chosen version per file
+      const relativePath = parseRelPath(url, packageName)
+      const fileKey = relativePath ? `${packageName}/${relativePath}` : null
+      const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
+      if (previousVersion && previousVersion !== requestedVersion) {
+        const conflictKey = `${fileKey}:${previousVersion}↔${requestedVersion}`
+        if (!this.conflictWarnings.has(conflictKey)) {
+          this.conflictWarnings.add(conflictKey)
+          await this.warnings.emitDuplicateFileError({
+            packageName,
+            relativePath,
+            previousVersion,
+            requestedVersion
+          })
+        }
+      }
+      if (fileKey) {
+        this.importedFiles.set(fileKey, requestedVersion)
+        this.log(`[ImportResolver] 📝 Tracking: ${fileKey} @ ${requestedVersion}`)
+      }
+      this.log(`[ImportResolver] ✅ Explicit version: ${packageName}@${requestedVersion}`)
+      const versionedPackageName = `${packageName}@${requestedVersion}`
+      await this.ensurePackageJsonSaved(versionedPackageName)
+      if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, url)
+      return this.resolveAndSave(url, targetPath, true)
+    } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
+      // Normalize any import to the canonical mapped namespace if different in string form
+      const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, mappedVersionedPackageName)
+      if (mappedUrl !== url) {
+        if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, mappedUrl)
+        return this.resolveAndSave(mappedUrl, targetPath, true)
+      }
+    }
+    return null
   }
 
   private async resolvePackageVersion(packageName: string): Promise<{ version: string | null, source: string }> {
@@ -263,100 +354,30 @@ export class ImportResolver implements IImportResolver {
     // Ensure workspace resolutions (including npm alias keys) are loaded before extracting package names
     try { await this.packageVersionResolver.loadWorkspaceResolutions() } catch {}
 
-    let finalUrl = url
     const packageName = parsePkgName(url, this.packageVersionResolver.getWorkspaceResolutions())
     if (!skipResolverMappings && packageName) {
       const hasVersion = url.includes(`${packageName}@`)
       if (!hasVersion) {
-        const mappingKey = `__PKG__${packageName}`
-        if (!this.importMappings.has(mappingKey)) {
-          this.log(`[ImportResolver] 🔍 First import from ${packageName}, resolving version...`)
-          await this.packageMapper.fetchAndMapPackage(packageName)
-        }
-        if (this.importMappings.has(mappingKey)) {
-          const versionedPackageName = this.importMappings.get(mappingKey)!
-          const mappedUrl = url.replace(packageName, versionedPackageName)
-          this.log(`[ImportResolver] 🔀 Mapped: ${packageName} → ${versionedPackageName}`)
-          finalUrl = mappedUrl
-          if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
-          return this.resolveAndSave(mappedUrl, targetPath, true)
-        } else {
-          this.log(`[ImportResolver] ⚠️  No mapping available for ${mappingKey}`)
-        }
+        const res = await this.mapUnversionedImport(url, packageName, originalUrl, targetPath)
+        if (typeof res === 'string') return res
       } else {
         const requestedVersion = parseVersion(url)
         const mappingKey = `__PKG__${packageName}`
-        if (this.importMappings.has(mappingKey)) {
+        if (this.importMappings.has(mappingKey) && requestedVersion) {
           const versionedPackageName = this.importMappings.get(mappingKey)!
-          const resolvedVersion = parseVersion(versionedPackageName)!
-          if (requestedVersion && resolvedVersion && requestedVersion !== resolvedVersion) {
-            const relativePath = parseRelPath(url, packageName)
-            const fileKey = relativePath ? `${packageName}/${relativePath}` : null
-            const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
-            if (previousVersion && previousVersion !== requestedVersion) {
-              const conflictKey = `${fileKey}:${previousVersion}↔${requestedVersion}`
-              if (!this.conflictWarnings.has(conflictKey)) {
-                this.conflictWarnings.add(conflictKey)
-                const warningMsg = [
-                  `🚨 DUPLICATE FILE DETECTED - Will cause compilation errors!`,
-                  `   File: ${relativePath}`,
-                  `   From package: ${packageName}`,
-                  ``,
-                  `   Already imported from version: ${previousVersion}`,
-                  `   Now requesting version:       ${requestedVersion}`,
-                  ``,
-                  `🔧 REQUIRED FIX - Use explicit versioned imports in your Solidity file:`,
-                  `   Choose ONE version:`,
-                  `     import "${packageName}@${previousVersion}/${relativePath}";`,
-                  `   OR`,
-                  `     import "${packageName}@${requestedVersion}/${relativePath}";`,
-                  ``
-                ].join('\n')
-                await this.logger.terminal('error', warningMsg)
-              }
-            }
-            if (fileKey) {
-              this.importedFiles.set(fileKey, requestedVersion!)
-              this.log(`[ImportResolver] 📝 Tracking: ${fileKey} @ ${requestedVersion}`)
-            }
-            this.log(`[ImportResolver] ✅ Explicit version: ${packageName}@${requestedVersion}`)
-            const versionedPackageName = `${packageName}@${requestedVersion}`
-            if (!this.dependencyStore.hasParent(versionedPackageName)) {
-              try {
-                const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
-                const content = await this.contentFetcher.resolve(packageJsonUrl)
-                const packageJson = JSON.parse(content.content || content)
-                const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
-                await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
-                this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
-                this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
-              } catch (err) { this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err) }
-            }
-            finalUrl = url
-            if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
-            return this.resolveAndSave(url, targetPath, true)
-          } else if (requestedVersion && resolvedVersion && requestedVersion === resolvedVersion) {
-            const mappedUrl = url.replace(`${packageName}@${requestedVersion}`, versionedPackageName)
-            if (mappedUrl !== url) {
-              finalUrl = mappedUrl
-              if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, finalUrl)
-              return this.resolveAndSave(mappedUrl, targetPath, true)
-            }
-          }
-        } else {
-          if (requestedVersion) {
-            const versionedPackageName = `${packageName}@${requestedVersion}`
-            this.importMappings.set(mappingKey, versionedPackageName)
-            try {
-              const packageJsonUrl = `${packageName}@${requestedVersion}/package.json`
-              const content = await this.contentFetcher.resolve(packageJsonUrl)
-              const packageJson = JSON.parse(content.content || content)
-              const targetPath = `.deps/npm/${versionedPackageName}/package.json`
-              await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
-              this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-              this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
-            } catch (err) { this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err) }
-          }
+          const res = await this.handleExplicitVersionWithMapping(
+            url,
+            packageName,
+            requestedVersion,
+            versionedPackageName,
+            originalUrl,
+            targetPath
+          )
+          if (typeof res === 'string') return res
+        } else if (requestedVersion) {
+          const versionedPackageName = `${packageName}@${requestedVersion}`
+          this.importMappings.set(mappingKey, versionedPackageName)
+          await this.ensurePackageJsonSaved(versionedPackageName)
         }
       }
     }
