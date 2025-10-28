@@ -723,11 +723,11 @@
             },
             {
               "file": "libs/remix-import-resolver/src/compiler/adapters/node-io-adapter.ts",
-              "hash": "766fd743f5615d298fc04f0d40380a9c990838d9"
+              "hash": "86ab2b9460af249eebd4b2efb6f36351b886d028"
             },
             {
               "file": "libs/remix-import-resolver/src/compiler/adapters/remix-plugin-adapter.ts",
-              "hash": "9827886c35850ec16c59d521ccd7f1e8c6cd2505"
+              "hash": "b5fb65680b3962df80eb713280ba6bbc75702b5b"
             },
             {
               "file": "libs/remix-import-resolver/src/compiler/dependency-resolver.ts",
@@ -2159,7 +2159,7 @@
             },
             {
               "file": "apps/solidity-compiler/src/app/compiler.ts",
-              "hash": "69973170ac7c9cfd8c678e35fa76271d5a1848c2",
+              "hash": "4fa81a52c56e0d87c09ace2e63ef3dd3c5e8a7f0",
               "deps": [
                 "npm:@remixproject/plugin",
                 "npm:@remixproject/plugin-webview"
@@ -4165,19 +4165,12 @@
               "hash": "d3e3a496a389dbe3da2d88743891afffd01adc42"
             },
             {
-              "file": "libs/remix-solidity/src/compiler/smart-compiler.ts",
-              "hash": "b19587782f66446817ae4f309fa60bbbf452c135",
-              "deps": [
-                "npm:@remixproject/engine"
-              ]
-            },
-            {
               "file": "libs/remix-solidity/src/compiler/types.ts",
               "hash": "c118fe313d73c80ae5597cfd6f3ebd3bc10fb9e4"
             },
             {
               "file": "libs/remix-solidity/src/index.ts",
-              "hash": "964641750a5a700a493b1751d09bf95e883770d9"
+              "hash": "eba07bb04efd3d038d71fbb65e354583988ba0c3"
             },
             {
               "file": "libs/remix-solidity/src/lib/es-web-worker/compiler-worker.ts",
@@ -7599,7 +7592,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/plugins/parser/services/code-parser-compiler.ts",
-              "hash": "e8ebf65efbd576d6c9e7fad4b3fb3a2a9d0fd94a",
+              "hash": "c77a30d52168d7aa3e9d32b27007c53d353f5952",
               "deps": [
                 "npm:@remixproject/plugin-api"
               ]
@@ -7891,7 +7884,7 @@
             },
             {
               "file": "apps/remix-ide/src/app/tabs/compile-tab.js",
-              "hash": "d820c6f3a8cdaa763bd961c09f73c875e8c400dc",
+              "hash": "5f24d53cf811aa5e1ddde0b4a2e27e73f86f4969",
               "deps": [
                 "npm:react",
                 "npm:@remixproject/engine-web"
@@ -9308,6 +9301,13 @@
                 "npm:terser-webpack-plugin",
                 "npm:css-minimizer-webpack-plugin",
                 "npm:webpack-bundle-analyzer"
+              ]
+            },
+            {
+              "file": "apps/remix-ide/src/app/lib/smart-compiler.ts",
+              "hash": "3ad79e7f01df12293e72aa988ad7159f01721e4f",
+              "deps": [
+                "npm:@remixproject/engine"
               ]
             }
           ]
@@ -12705,7 +12705,7 @@
             },
             {
               "file": "libs/remix-ui/solidity-compiler/src/lib/logic/compileTabLogic.ts",
-              "hash": "a88514c89936dffb3e61db721fb128381fb424c4",
+              "hash": "3a6149b97fb0b17603462ea3ab93b12878c7e66d",
               "deps": [
                 "npm:events"
               ]

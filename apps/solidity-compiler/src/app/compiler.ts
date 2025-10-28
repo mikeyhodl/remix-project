@@ -18,6 +18,7 @@ export class CompilerClientApi extends CompilerApiMixin(PluginClient) implements
   constructor () {
     super()
     createClient(this as any)
+    // Use default (legacy) Compiler in the plugin app; SmartCompiler is only wired in main app
     this.compileTabLogic = new CompileTabLogic(this)
     this.compiler = this.compileTabLogic.compiler
     this.compileTabLogic.init()

@@ -37,7 +37,17 @@ export default class CompileTab extends CompilerApiMixin(ViewPlugin) { // implem
     this.config = config
     this.queryParams = new QueryParams()
     // Pass 'this' as the plugin reference so CompileTabLogic can access contentImport via this.call()
-    this.compileTabLogic = new CompileTabLogic(this)
+    // Inject SmartCompiler from app layer so libs don't depend on app code
+    const { SmartCompiler } = require('../lib/smart-compiler')
+    this.compileTabLogic = new CompileTabLogic(this, undefined, (api, debug) => new SmartCompiler(
+      api,
+      (url, cb) => {
+        const error = new Error(`not found ${url}`)
+        cb(error.message)
+      },
+      null,
+      debug
+    ))
     this.compiler = this.compileTabLogic.compiler
     this.compileTabLogic.init()
     this.initCompilerApi()

@@ -1,5 +1,5 @@
 import { ICompilerApi } from '@remix-project/remix-lib'
-import { getValidLanguage, SmartCompiler } from '@remix-project/remix-solidity'
+import { getValidLanguage, Compiler } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 import { configFileContent } from '../compilerConfiguration'
 
@@ -17,26 +17,22 @@ export class CompileTabLogic {
   public useFileConfiguration: boolean
   private debug: boolean = false
 
-  constructor (api: ICompilerApi, debug?: boolean) {
+  constructor (api: ICompilerApi, debug?: boolean, createCompiler?: (api: ICompilerApi, debug?: boolean) => any) {
     this.api = api
     // Enable debug logging if explicitly set, or if localStorage flag is set
     this.debug = debug !== undefined ? debug : (localStorage.getItem('remix-debug-resolver') === 'true')
 
     this.event = new EventEmitter()
 
-    // Create smart compiler with automatic dependency resolution
-    this.compiler = new SmartCompiler(
-      this.api as any,
-      (url, cb) => {
-        // This callback should match content-import plugin behavior for unresolved URLs
-        // For now, return error since SmartCompiler handles dependency resolution internally
-        // Create Error object but pass the message to match existing patterns
+    // Create compiler (injectable). Default to legacy Compiler if none provided.
+    if (createCompiler) {
+      this.compiler = createCompiler(this.api, this.debug)
+    } else {
+      this.compiler = new Compiler((url, cb) => {
         const error = new Error(`not found ${url}`)
         cb(error.message as any)
-      },
-      null, // importResolverFactory - not used by SmartCompiler
-      this.debug
-    )
+      })
+    }
 
     this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }

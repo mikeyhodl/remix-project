@@ -1,5 +1,4 @@
 export { Compiler } from './compiler/compiler'
-export { SmartCompiler } from './compiler/smart-compiler'
 export { compile } from './compiler/compiler-helpers'
 export { default as compilerInputFactory, getValidLanguage } from './compiler/compiler-input'
 export { CompilerAbstract } from './compiler/compiler-abstract'
