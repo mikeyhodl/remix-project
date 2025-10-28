@@ -1,5 +1,5 @@
 'use strict'
-import { AbiCoder } from 'ethers'
+import { AbiCoder, Block } from 'ethers'
 import { toBytes, addHexPrefix } from '@ethereumjs/util'
 import { EventManager } from '../eventManager'
 import { compareByteCode, getinputParameters } from '../util'
@@ -159,9 +159,8 @@ export class TxListener {
   }
 
   async _startListenOnNetwork () {
-    let lastSeenBlock = this.executionContext.lastBlock?.number - BigInt(1)
+    let lastSeenBlock = BigInt(this.executionContext.lastBlock?.number) - BigInt(1)
     let processingBlock = false
-
     const processBlocks = async () => {
       if (!this._isListening) return
       if (processingBlock) return
@@ -203,9 +202,9 @@ export class TxListener {
 
   async _manageBlock (blockNumber) {
     try {
-      const result = await this.executionContext.web3().getBlock(blockNumber, true)
-      return await this._newBlock(Object.assign({ type: 'web3' }, result))
-    } catch (e) {}
+      const result: Block = await this.executionContext.web3().getBlock(blockNumber, true)
+      return await this._newBlock(Object.assign(result, { type: 'web3' } ))
+    } catch (e) { }
   }
 
   /**
@@ -231,7 +230,7 @@ export class TxListener {
 
   async _newBlock (block) {
     this.blocks.push(block)
-    await this._resolve(block.transactions)
+    await this._resolve(block.prefetchedTransactions || block.transactions)
     this.event.trigger('newBlock', [block])
   }
 
@@ -256,7 +255,7 @@ export class TxListener {
       try {
         if (!this._isListening) break
         await this._resolveAsync(tx)
-      } catch (e) {}
+      } catch (e) { console.error(e)}
     }
   }
 
