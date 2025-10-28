@@ -86,10 +86,12 @@ export class DependencyResolver {
   }
 
   private isLocalFile(path: string): boolean {
+    // External schemes are never local
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
-    // Treat on-disk cached deps as local, even if they contain '@'
+    // Treat on-disk cached deps as local (they are already materialized in workspace)
     if (path.startsWith('.deps/')) return path.endsWith('.sol')
-    return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules') && !path.startsWith('../') && !path.startsWith('./')
+    // Everything else that is a .sol path in the workspace (including relative paths) is local
+    return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules')
   }
 
   // moved to utils/dependency-helpers
