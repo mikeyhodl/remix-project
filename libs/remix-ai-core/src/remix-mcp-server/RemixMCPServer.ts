@@ -1,8 +1,9 @@
+/* eslint-disable no-case-declarations */
 import EventEmitter from 'events';
-import { 
-  IMCPInitializeResult, 
-  IMCPServerCapabilities, 
-  IMCPToolCall, 
+import {
+  IMCPInitializeResult,
+  IMCPServerCapabilities,
+  IMCPToolCall,
   IMCPToolResult,
   IMCPResourceContent
 } from '../types/mcp';
@@ -57,7 +58,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this._plugin = plugin
     this._tools = new RemixToolRegistry();
     this._resources = new RemixResourceProviderRegistry(plugin);
-    
+
     this._stats = {
       uptime: 0,
       totalToolCalls: 0,
@@ -103,13 +104,13 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   async initialize(): Promise<IMCPInitializeResult> {
     try {
       this.setState(ServerState.STARTING);
-      
+
       await this.initializeDefaultTools();
-      
+
       await this.initializeDefaultResourceProviders();
-      
+
       this.setupCleanupIntervals();
-      
+
       const result: IMCPInitializeResult = {
         protocolVersion: '2024-11-05',
         capabilities: this.getCapabilities(),
@@ -122,7 +123,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
       this.setState(ServerState.RUNNING);
       console.log('Server initialized successfully', 'info');
-      
+
       return result;
     } catch (error) {
       this.setState(ServerState.ERROR);
@@ -199,50 +200,50 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.lastActivity = new Date();
 
       switch (message.method) {
-        case 'initialize':
-          const initResult = await this.initialize();
-          return { id: message.id, result: initResult };
+      case 'initialize':
+        const initResult = await this.initialize();
+        return { id: message.id, result: initResult };
 
-        case 'tools/list':
-          const tools = this._tools.list().map(tool => ({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema
-          }));
-          return { id: message.id, result: { tools } };
+      case 'tools/list':
+        const tools = this._tools.list().map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema
+        }));
+        return { id: message.id, result: { tools } };
 
-        case 'tools/call':
-          const toolResult = await this.executeTool(message.params as IMCPToolCall);
-          return { id: message.id, result: toolResult };
+      case 'tools/call':
+        const toolResult = await this.executeTool(message.params as IMCPToolCall);
+        return { id: message.id, result: toolResult };
 
-        case 'resources/list':
-          const resources = await this._resources.getResources();
-          console.log('listing resources', resources)
-          return { id: message.id, result: { resources: resources.resources } };
+      case 'resources/list':
+        const resources = await this._resources.getResources();
+        console.log('listing resources', resources)
+        return { id: message.id, result: { resources: resources.resources } };
 
-        case 'resources/read':
-          const content = await this.getResourceContent(message.params.uri);
-          return { id: message.id, result: content };
+      case 'resources/read':
+        const content = await this.getResourceContent(message.params.uri);
+        return { id: message.id, result: content };
 
-        case 'server/capabilities':
-          return { id: message.id, result: this.getCapabilities() };
+      case 'server/capabilities':
+        return { id: message.id, result: this.getCapabilities() };
 
-        case 'server/stats':
-          return { id: message.id, result: this.stats };
+      case 'server/stats':
+        return { id: message.id, result: this.stats };
 
-        default:
-          return {
-            id: message.id,
-            error: {
-              code: MCPErrorCode.METHOD_NOT_FOUND,
-              message: `Unknown method: ${message.method}`
-            }
-          };
+      default:
+        return {
+          id: message.id,
+          error: {
+            code: MCPErrorCode.METHOD_NOT_FOUND,
+            message: `Unknown method: ${message.method}`
+          }
+        };
       }
     } catch (error) {
       this._stats.errorCount++;
       console.log(`Message handling error: ${error.message}`, 'error');
-      
+
       return {
         id: message.id,
         error: {
@@ -260,7 +261,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private async executeTool(call: IMCPToolCall): Promise<IMCPToolResult> {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = new Date();
-    
+
     const execution: ToolExecutionStatus = {
       id: executionId,
       toolName: call.name,
@@ -343,7 +344,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
     // Get from provider
     const content = await this._resources.getResourceContent(uri);
-    
+
     // Cache result
     if (this._config.enableResourceCache !== false) {
       this._resourceCache.set(uri, {
@@ -358,7 +359,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
     this._stats.totalResourcesServed++;
     this.emit('resource-accessed', uri, 'default');
-    
+
     return content;
   }
 
@@ -380,7 +381,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     const entries = Array.from(this._resourceCache.values());
     const totalAccess = entries.reduce((sum, entry) => sum + entry.accessCount, 0);
     const cacheHits = totalAccess - entries.length;
-    
+
     return {
       size: entries.length,
       hitRate: totalAccess > 0 ? cacheHits / totalAccess : 0,
@@ -519,7 +520,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    * Setup cleanup intervals
    */
   private setupCleanupIntervals(): void {
-    // Clean up old cache entries
     setInterval(() => {
       const now = Date.now();
       for (const [uri, entry] of this._resourceCache.entries()) {
@@ -541,8 +541,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    */
   private async getCurrentWorkspace(): Promise<string> {
     try {
-      // TODO: Get actual current workspace from Remix API
-      return 'default';
+      return await this.plugin.call('filePanel', 'getCurrentWorkspace')
     } catch (error) {
       return 'default';
     }
@@ -553,36 +552,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    */
   private async getCurrentFile(): Promise<string> {
     try {
-      // TODO: Get actual current file from Remix API
-      return '';
+      return await this.plugin.call('fileManager', 'getCurrentFile');
     } catch (error) {
-      return '';
+      return 'None';
     }
   }
 
-  /**
-   * Log message with audit trail
-   */
-  // private log(message: string, level: 'info' | 'warning' | 'error', details?: any): void {
-  //   if (this._config.debug || level !== 'info') {
-  //     console.log(`[RemixMCPServer] ${level.toUpperCase()}: ${message}`, details || '');
-  //   }
-
-  //   if (this._config.security?.enableAuditLog !== false) {
-  //     const entry: AuditLogEntry = {
-  //       id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  //       timestamp: new Date(),
-  //       type: level === 'error' ? 'error' : 'info',
-  //       user: 'system',
-  //       details: {
-  //         message,
-  //         ...details
-  //       },
-  //       severity: level
-  //     };
-
-  //     this._auditLog.push(entry);
-  //     this.emit('audit-log', entry);
-  //   }
-  // }
 }

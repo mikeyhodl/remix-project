@@ -112,26 +112,25 @@ export class DeployContractHandler extends BaseToolHandler {
             console.log(error)
           }, finalCb: (error, contractObject, address: string, txResult: TxResult) => {
             if (error) return reject(error)
-            resolve({contractObject, address, txResult})
-          }}
+            resolve({ contractObject, address, txResult })
+          } }
           const confirmationCb = (network, tx, gasEstimation, continueTxExecution, cancelCb) => {
             continueTxExecution(null)
           }
           const compilerContracts = await plugin.call('compilerArtefacts', 'getLastCompilationResult')
-          plugin.call('blockchain', 'deployContractAndLibraries', 
-            data, 
+          plugin.call('blockchain', 'deployContractAndLibraries',
+            data,
             args.constructorArgs ? args.constructorArgs : [],
-            null, 
-            compilerContracts.getData().contracts, 
-            callbacks, 
+            null,
+            compilerContracts.getData().contracts,
+            callbacks,
             confirmationCb
           )
         })
       } catch (e) {
         return this.createErrorResult(`Deployment error: ${e.message || e}`);
       }
-      
-      
+
       const receipt = (txReturn.txResult.receipt as TransactionReceipt)
       const result: DeploymentResult = {
         transactionHash: web3.utils.bytesToHex(receipt.transactionHash),
@@ -140,7 +139,7 @@ export class DeployContractHandler extends BaseToolHandler {
         blockNumber: web3.utils.toNumber(receipt.blockNumber),
         logs: receipt.logs,
         contractAddress: receipt.contractAddress,
-        success: receipt.status === BigInt(1) ? true : false        
+        success: receipt.status === BigInt(1) ? true : false
       };
 
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
@@ -235,7 +234,6 @@ export class CallContractHandler extends BaseToolHandler {
       return 'Invalid contract address format';
     }
 
-
     if (!Array.isArray(args.abi)) {
       try {
         args.abi = JSON.parse(args.abi as any)
@@ -253,14 +251,14 @@ export class CallContractHandler extends BaseToolHandler {
   async execute(args: CallContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const funcABI = args.abi.find((item: any) => item.name === args.methodName && item.type === 'function')
-      const isView =  funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure';
+      const isView = funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure';
       let txReturn
-      try {        
-        txReturn = await new Promise(async (resolve, reject) => {
+      try {
+        txReturn = await new Promise((resolve, reject) => {
           const params = funcABI.type !== 'fallback' ? args.args.join(',') : ''
-          plugin.call('blockchain', 'runOrCallContractMethod', 
+          plugin.call('blockchain', 'runOrCallContractMethod',
             args.contractName,
-            args.abi,      
+            args.abi,
             funcABI,
             undefined,
             args.args ? args.args : [],
@@ -269,11 +267,9 @@ export class CallContractHandler extends BaseToolHandler {
             isView,
             (msg) => {
               // logMsg
-              console.log(msg)
             },
             (msg) => {
               // logCallback
-              console.log(msg)
             },
             (returnValue) => {
               // outputCb
@@ -290,9 +286,9 @@ export class CallContractHandler extends BaseToolHandler {
             (okCb, cancelCb) => {
               // promptCb
             },
-            (error, {txResult, address, returnValue}) => {
+            (error, { txResult, address, returnValue }) => {
               if (error) return reject(error)
-              resolve({txResult, address, returnValue})
+              resolve({ txResult, address, returnValue })
             },
           )
         })
@@ -305,9 +301,9 @@ export class CallContractHandler extends BaseToolHandler {
       const result: ContractInteractionResult = {
         result: txReturn.returnValue,
         transactionHash: isView ? undefined : web3.utils.bytesToHex(receipt.transactionHash),
-        gasUsed: web3.utils.toNumber(receipt.gasUsed),        
+        gasUsed: web3.utils.toNumber(receipt.gasUsed),
         logs: receipt.logs,
-        success: receipt.status === BigInt(1) ? true : false     
+        success: receipt.status === BigInt(1) ? true : false
       };
 
       return this.createSuccessResult(result);
@@ -435,7 +431,7 @@ export class SendTransactionHandler extends BaseToolHandler {
 
   async execute(args: SendTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      // Get accounts     
+      // Get accounts
       const sendAccount = args.account
 
       if (!sendAccount) {
@@ -548,7 +544,7 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
       const provider = Object.keys(providers).find((p) => p === args.environment)
       if (!provider) {
         return this.createErrorResult(`Could not find provider for environment '${args.environment}'`);
-      } 
+      }
       await plugin.call('blockchain', 'changeExecutionContext', { context: args.environment })
       return this.createSuccessResult({
         success: true,

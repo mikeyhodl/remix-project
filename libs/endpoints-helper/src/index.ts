@@ -36,7 +36,7 @@ const defaultUrls: EndpointUrls = {
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
   corsProxy: 'corsproxy',
-  mcpCorsProxy: 'mcpCorsProxy',
+  mcpCorsProxy: 'mcpCorsProxy/proxy?url=',
   solidityScan: 'solidityscan',
   ipfsGateway: 'jqgt',
   commonCorsProxy: 'common-corsproxy',

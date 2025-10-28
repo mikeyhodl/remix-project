@@ -65,6 +65,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   let buffer = "";
   let threadId: string = ""
   let resultText = "";
+  const toolCalls: Map<number, any> = new Map(); // Accumulate tool calls by index
 
   if (!reader) { // normal response, not a stream
     cb(streamResponse.result)
@@ -93,10 +94,37 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
           const json = JSON.parse(jsonStr);
           threadId = json?.thread_id;
 
-          // Handle tool calls in OpenAI format
-          if (json.choices?.[0]?.delta?.tool_calls && tool_callback) {
-            console.log('calling tools in stream:', json.choices[0].delta.tool_calls)
-            const response = await tool_callback(json.choices[0].delta.tool_calls)
+          // Handle tool calls in OpenAI format - accumulate deltas
+          if (json.choices?.[0]?.delta?.tool_calls) {
+            const toolCallDeltas = json.choices[0].delta.tool_calls;
+
+            for (const delta of toolCallDeltas) {
+              const index = delta.index;
+
+              if (!toolCalls.has(index)) {
+                // Initialize new tool call
+                toolCalls.set(index, {
+                  id: delta.id || "",
+                  type: delta.type || "function",
+                  function: {
+                    name: delta.function?.name || "",
+                    arguments: delta.function?.arguments || ""
+                  }
+                });
+              } else {
+                // Accumulate deltas
+                const existing = toolCalls.get(index);
+                if (delta.id) existing.id = delta.id;
+                if (delta.function?.name) existing.function.name += delta.function.name;
+                if (delta.function?.arguments) existing.function.arguments += delta.function.arguments;
+              }
+            }
+          }
+
+          // Check if this is the finish reason for tool calls
+          if (json.choices?.[0]?.finish_reason === "tool_calls" && tool_callback && toolCalls.size > 0) {
+            console.log('OpenAI tool calls completed, calling callback with accumulated tools:', Array.from(toolCalls.values()))
+            const response = await tool_callback(Array.from(toolCalls.values()))
             cb("\n\n");
             HandleOpenAIResponse(response, cb, done_cb)
             return;

@@ -111,7 +111,7 @@ export class MCPClient {
     const result: IMCPInitializeResult = response.result;
     this.connected = true;
     this.capabilities = result.capabilities;
-    
+
     console.log(`[MCP] Successfully connected to HTTP server ${this.server.name}`);
     this.eventEmitter.emit('connected', this.server.name, result);
     console.log(`[MCP] Successfully emitted event connected`);
@@ -331,7 +331,6 @@ export class MCPClient {
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
-
 
   async disconnect(): Promise<void> {
     if (this.connected) {
@@ -671,15 +670,15 @@ export class MCPClient {
 
   hasCapability(capability: string): boolean {
     if (!this.capabilities) return false;
-    
+
     const parts = capability.split('.');
     let current = this.capabilities;
-    
+
     for (const part of parts) {
       if (current[part] === undefined) return false;
       current = current[part];
     }
-    
+
     return !!current;
   }
 
@@ -723,7 +722,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       if (server.enabled !== false) {
         console.log(`[MCP Inferencer] Setting up client for server: ${server.name}`);
         const client = new MCPClient(
-          server, 
+          server,
           server.transport === 'internal' ? this.remixMCPServer : undefined
         );
         this.mcpClients.set(server.name, client);
@@ -901,10 +900,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       // Analyze user intent
       const intent = await this.intentAnalyzer.analyzeIntent(prompt);
       console.log(`[MCP Inferencer] Analyzed intent:`, intent);
-      
+
       // Gather all available resources
       const allResources: Array<{ resource: IMCPResource; serverName: string }> = [];
-      
+
       for (const serverName of mcpParams.mcpServers || []) {
         const client = this.mcpClients.get(serverName);
         if (!client || !client.isConnected()) {
@@ -992,7 +991,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       let mcpContext = "";
       for (const scoredResource of selectedResources) {
         const { resource, serverName } = scoredResource;
-        
+
         try {
           // Try to get from cache first
           let content = null //this.resourceCache.get(resource.uri);
@@ -1063,13 +1062,13 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   // Override completion methods to include MCP context
-  
+
   async answer(prompt: string, options: IParams = GenerationParams): Promise<IAIStreamResponse> {
     const mcpContext = await this.enrichContextWithMCPResources(options, prompt);
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     // Add available tools to the request in LLM format
-    const llmFormattedTools = await this.getToolsForLLMRequest();
+    const llmFormattedTools = await this.getToolsForLLMRequest(options.provider);
     const enhancedOptions = {
       ...options,
       tools: llmFormattedTools.length > 0 ? llmFormattedTools : undefined,
@@ -1091,7 +1090,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         // avoid circular tooling
         if (toolExecutionCount >= this.MAX_TOOL_EXECUTIONS) {
           console.log(`[MCP Inferencer] Maximum tool execution limit (${this.MAX_TOOL_EXECUTIONS}) reached. Stopping further executions.`);
-          return { streamResponse: await super.answer(enrichedPrompt, options)};
+          return { streamResponse: await super.answer(enrichedPrompt, options) };
           return;
         }
 
@@ -1109,40 +1108,61 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
 
-              toolResults.push({
-                role: 'tool',
-                name: llmToolCall.function.name,
-                tool_call_id: llmToolCall.id,
+              if (options.provider === 'openai'){
+                toolResults.push( {
+                  "role": "assistant",
+                  "tool_calls": [llmToolCall]
+                })
+              }
+
+              const toolResult: any = {
+                role: options.provider === 'anthropic' ? 'user' : 'tool',
                 content: result.content[0]?.text || JSON.stringify(result)
-              });
+              };
+
+              if (options.provider !== 'anthropic') {
+                toolResult.tool_call_id = llmToolCall.id;
+              }
+
+              toolResults.push(toolResult);
             } catch (error) {
               console.error(`[MCP Inferencer] Tool execution failed:`, error);
-              toolResults.push({
-                tool_call_id: llmToolCall.id,
+
+              const errorResult: any = {
                 content: `Error: ${error.message}`
-              });
+              };
+
+              if (options.provider !== 'anthropic') {
+                errorResult.tool_call_id = llmToolCall.id;
+              }
+
+              toolResults.push(errorResult);
             }
           }
 
-          // Send tool results back to LLM for final response
           if (toolResults.length > 0) {
-            toolResults.unshift({role:'assistant', tool_calls: tool_calls})
-            toolResults.unshift({role:'user', content:enrichedPrompt})
+            if (options.provider === 'mistralai'){
+              toolResults.unshift({ role:'assistant', tool_calls: tool_calls })
+              toolResults.unshift({ role:'user', content:enrichedPrompt })
+            } else {
+              toolResults.unshift({ role:'user', content:enrichedPrompt })
+            }
+
             const followUpOptions = {
               ...enhancedOptions,
               toolsMessages: toolResults
             };
 
             console.log('finalizing tool request')
-            return { streamResponse: await super.answer("Follow up on tool call ", followUpOptions), callback: toolExecutionCallback} as IAIStreamResponse;
+            return { streamResponse: await super.answer("Follow up on tool call ", followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
           }
         }
       }
 
-      return { streamResponse: response, callback:toolExecutionCallback} as IAIStreamResponse;
+      return { streamResponse: response, callback:toolExecutionCallback } as IAIStreamResponse;
     } catch (error) {
       console.error(`[MCP Inferencer] Error in enhanced answer:`, error);
-      return { streamResponse: await super.answer(enrichedPrompt, options)};
+      return { streamResponse: await super.answer(enrichedPrompt, options) };
     }
   }
 
@@ -1151,7 +1171,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context;
 
     // Add available tools to the request in LLM format
-    const llmFormattedTools = await this.getToolsForLLMRequest();
+    const llmFormattedTools = await this.getToolsForLLMRequest(options.provider);
     options.stream_result = false
     const enhancedOptions = {
       ...options,
@@ -1164,27 +1184,35 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     try {
       const response = await super.code_explaining(prompt, enrichedContext, enhancedOptions);
 
-      // Handle tool calls in the response
       if (response?.tool_calls && response.tool_calls.length > 0) {
         console.log(`[MCP Inferencer] LLM requested ${response.tool_calls.length} tool calls during code explanation`);
         const toolResults = [];
 
         for (const llmToolCall of response.tool_calls) {
           try {
-            // Convert LLM tool call to internal MCP format
             const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
             const result = await this.executeToolForLLM(mcpToolCall);
 
-            toolResults.push({
-              tool_call_id: llmToolCall.id,
+            const toolResult: any = {
               content: result.content[0]?.text || JSON.stringify(result)
-            });
+            };
+
+            if (options.provider !== 'anthropic') {
+              toolResult.tool_call_id = llmToolCall.id;
+            }
+
+            toolResults.push(toolResult);
           } catch (error) {
             console.error(`[MCP Inferencer] Tool execution failed:`, error);
-            toolResults.push({
-              tool_call_id: llmToolCall.id,
+            const errorResult: any = {
               content: `Error: ${error.message}`
-            });
+            };
+
+            if (options.provider !== 'anthropic') {
+              errorResult.tool_call_id = llmToolCall.id;
+            }
+
+            toolResults.push(errorResult);
           }
         }
 
@@ -1293,28 +1321,55 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     return allTools;
   }
 
-  async getToolsForLLMRequest(): Promise<any[]> {
+  async getToolsForLLMRequest(provider?: string): Promise<any[]> {
     const mcpTools = await this.getAvailableToolsForLLM();
 
-    const convertedTools = mcpTools.map(tool => ({
-      type: "function",
-      function: {
+    // Format tools based on provider
+    let convertedTools: any[];
+
+    if (provider === 'anthropic') {
+      // Anthropic format: direct object with name, description, input_schema
+      convertedTools = mcpTools.map(tool => ({
         name: tool.name,
         description: tool.description,
-        parameters: tool.inputSchema
-      }
-    }));
+        input_schema: tool.inputSchema
+      }));
+    } else {
+      // OpenAI and other providers format: type + function wrapper
+      convertedTools = mcpTools.map(tool => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema
+        }
+      }));
+    }
 
-    console.log(`[MCP Inferencer] Converted ${convertedTools.length} tools to LLM request format`);
+    console.log(`[MCP Inferencer] Converted ${convertedTools.length} tools to ${provider || 'default'} LLM format`);
     return convertedTools;
   }
 
   convertLLMToolCallToMCP(llmToolCall: any): IMCPToolCall {
+    let parsedArguments = llmToolCall.function.arguments;
+
+    if (typeof parsedArguments === 'string') {
+      const trimmed = parsedArguments.trim();
+      if (trimmed === '' || trimmed === '{}') {
+        parsedArguments = {};
+      } else {
+        try {
+          parsedArguments = JSON.parse(trimmed);
+        } catch (error) {
+          console.log(`[MCP Inferencer] Failed to parse tool arguments, using empty object:`, error);
+          parsedArguments = {};
+        }
+      }
+    }
+
     return {
       name: llmToolCall.function.name,
-      arguments: typeof llmToolCall.function.arguments === 'string'
-        ? JSON.parse(llmToolCall.function.arguments)
-        : llmToolCall.function.arguments
+      arguments: parsedArguments || {}
     };
   }
 
