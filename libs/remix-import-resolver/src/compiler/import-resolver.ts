@@ -40,7 +40,6 @@ export class ImportResolver implements IImportResolver {
   private logger: Logger
   private conflictChecker: ConflictChecker
   private io: IOAdapter
-  private conflictWarnings: Set<string> = new Set()
   private importedFiles: Map<string, string> = new Map()
   private packageSources: Map<string, string> = new Map()
   private debug: boolean = false
@@ -69,7 +68,6 @@ export class ImportResolver implements IImportResolver {
     this.debug = debug
     this.importMappings = new Map()
     this.resolutions = new Map()
-    this.conflictWarnings = new Set()
     this.importedFiles = new Map()
     this.packageSources = new Map()
     this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as Plugin) : (pluginOrIo as IOAdapter)
@@ -96,7 +94,7 @@ export class ImportResolver implements IImportResolver {
   this.resolutionIndex = null
     this.resolutionIndexInitialized = false
     this.fetchedGitHubPackages = new Set()
-  this.warnings = new WarningSystem(this.logger)
+  this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
   }
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
@@ -167,11 +165,7 @@ export class ImportResolver implements IImportResolver {
     if (conflictingParents.length >= 2) {
       const uniqueVersions = new Set(conflictingParents.map(p => p.version))
       if (uniqueVersions.size > 1) {
-        const conflictKey = `multi-parent:${packageName}:${Array.from(uniqueVersions).sort().join('↔')}`
-        if (!this.conflictWarnings.has(conflictKey)) {
-          this.conflictWarnings.add(conflictKey)
-          this.warnings.emitMultiParentConflictWarn(packageName, conflictingParents)
-        }
+        this.warnings.emitMultiParentConflictWarn(packageName, conflictingParents)
       }
     }
   }
@@ -241,16 +235,12 @@ export class ImportResolver implements IImportResolver {
       const fileKey = relativePath ? `${packageName}/${relativePath}` : null
       const previousVersion = fileKey ? this.importedFiles.get(fileKey) : null
       if (previousVersion && previousVersion !== requestedVersion) {
-        const conflictKey = `${fileKey}:${previousVersion}↔${requestedVersion}`
-        if (!this.conflictWarnings.has(conflictKey)) {
-          this.conflictWarnings.add(conflictKey)
-          await this.warnings.emitDuplicateFileError({
-            packageName,
-            relativePath,
-            previousVersion,
-            requestedVersion
-          })
-        }
+        await this.warnings.emitDuplicateFileError({
+          packageName,
+          relativePath,
+          previousVersion,
+          requestedVersion
+        })
       }
       if (fileKey) {
         this.importedFiles.set(fileKey, requestedVersion)

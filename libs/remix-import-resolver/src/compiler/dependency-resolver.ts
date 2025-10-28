@@ -7,6 +7,8 @@ import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import { ResolutionIndex } from './resolution-index'
 import { FileResolutionIndex } from './file-resolution-index'
 import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
+import { Logger } from './utils/logger'
+import { WarningSystem } from './utils/warning-system'
 
 /**
  * Pre-compilation dependency tree builder (Node-focused)
@@ -26,6 +28,8 @@ export class DependencyResolver {
   private remappings: Array<{ from: string; to: string }> = []
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
+  private logger: Logger
+  private warnings: WarningSystem
 
   /**
    * Create a DependencyResolver
@@ -42,6 +46,8 @@ export class DependencyResolver {
     this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as any) : (pluginOrIo as IOAdapter)
     this.debug = debug
+  this.logger = new Logger(this.pluginApi || undefined, debug)
+  this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
     if (isPlugin) {
       this.resolver = new ImportResolver(this.pluginApi as any, targetFile, debug)
     } else {
@@ -99,6 +105,7 @@ export class DependencyResolver {
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
     if (!importPath.endsWith('.sol')) {
       this.log(`[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
+      try { await this.warnings.emitInvalidSolidityImport(importPath) } catch {}
       return
     }
     if (this.processedFiles.has(importPath)) {
@@ -132,6 +139,7 @@ export class DependencyResolver {
 
       if (!content) {
         this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
+        try { await this.warnings.emitFailedToResolve(importPath) } catch {}
         return
       }
 
@@ -199,6 +207,7 @@ export class DependencyResolver {
       }
     } catch (err) {
       this.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
+      try { await this.warnings.emitProcessingError(importPath, err) } catch {}
     }
   }
 
