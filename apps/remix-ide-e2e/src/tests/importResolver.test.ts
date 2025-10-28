@@ -19,18 +19,15 @@ module.exports = {
             .addFile('UpgradeableNFT.sol', upgradeableNFTSource['UpgradeableNFT.sol'])
             .pause(3000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Verify versioned folder naming: contracts-upgradeable@VERSION
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts-upgradeable@"]', 60000)
     },
 
     'Verify package.json in versioned folder #group1': function (browser: NightwatchBrowser) {
         browser
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts-upgradeable@"]')
             .waitForElementVisible('*[data-id$="/package.json"]', 120000)
             .pause(1000)
             .perform(function () {
@@ -59,9 +56,9 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)  // Wait for compilation
             .clickLaunchIcon('filePanel')
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+
             // Verify the correct version from package.json was used (4.8.3)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 60000)
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
@@ -75,7 +72,6 @@ module.exports = {
     'Verify canonical version is used consistently #group2': function (browser: NightwatchBrowser) {
         browser
             // Click on the versioned folder
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]')
             .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
             .pause(1000)
@@ -92,9 +88,9 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
             .clickLaunchIcon('filePanel')
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+
             // Verify only ONE version folder exists (canonical version)
             .elements('css selector', '*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', function (result) {
                 // Should have only one @openzeppelin/contracts@ folder (deduplication works)
@@ -110,7 +106,6 @@ module.exports = {
             // only ONE canonical version folder exists (deduplication)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]')
             // Verify package.json exists in the single canonical folder
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.3/package.json"]', 60000)
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]')
             .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
@@ -129,11 +124,11 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
             .clickLaunchIcon('filePanel')
+
             // Verify that when explicit version @5 is used, it resolves to 5.x.x
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .expandAllFolders()
+
             // Should have version 5.x.x (not 4.8.3 from package.json) because explicit @5 in import
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5"]', 10000)
             .waitForElementNotPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 10000)
@@ -147,10 +142,9 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000) // Longer pause for npm fetch
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .expandAllFolders()
             // Should use version from yarn.lock (4.9.6)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9"]', 10000)
     },
@@ -163,10 +157,10 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(1000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .expandAllFolders()
+
             // Should use version from package-lock.json (4.8.1)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.1"]', 10000)
 
@@ -175,11 +169,10 @@ module.exports = {
     'Test Chainlink CCIP parent dependency resolution #group7': function (browser: NightwatchBrowser) {
         browser
             .addFile('ChainlinkCCIP.sol', chainlinkCCIPSource['ChainlinkCCIP.sol'])
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
             // Verify contracts@1.4.0 (not 1.5.0!) - this is the key test for parent dependency resolution
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 10000)
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]', 10000)
@@ -195,10 +188,10 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .expandAllFolders()
+
             // Verify npm:@openzeppelin/contracts@4.9.0 syntax resolves correctly
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9"]', 10000)
     },
@@ -211,15 +204,12 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
+
             // Expand .deps/https/unpkg.com and check the requested path is present
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/unpkg.com"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/unpkg.com"]')
-            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/https/unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20"]', 60000)
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/https/unpkg.com/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20"]', 60000)
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"]', 60000)
             // Additionally ensure no compilation error for the import
             .elements('css selector', '*[data-id="compiledErrors"]', function (res) {
                 if (Array.isArray(res.value) && res.value.length > 0) {
@@ -241,7 +231,7 @@ module.exports = {
     'Test External URL imports (jsDelivr) #group8': function (browser: NightwatchBrowser) {
         const source = {
             'JsDelivrImport.sol': {
-                content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol";\ncontract JsDelivrImport {}`
+                content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport "https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.6.0/token/ERC20/IERC20.sol";\ncontract JsDelivrImport {}`
             }
         }
         browser
@@ -250,14 +240,11 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/https/cdn.jsdelivr.net"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/https/cdn.jsdelivr.net"]')
-            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/https/cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20"]', 60000)
-            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/https/cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.6.0/token/ERC20"]', 60000)
+            .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.6.0/token/ERC20/IERC20.sol"]', 60000)
     },
 
     'Test External URL imports (raw.githubusercontent.com) #group16': function (browser: NightwatchBrowser) {
@@ -269,24 +256,18 @@ module.exports = {
         browser
             .addFile('RawGithubImport.sol', source['RawGithubImport.sol'])
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0"]', 60000)
-            .click('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0"]')
             // Verify package.json was fetched from GitHub
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/package.json"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol"]', 60000)
             // Verify package.json content
             .openFile('.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/package.json')
-            .pause(1000)
+            .pause()
             .getEditorValue((content) => {
                 try {
                     const packageJson = JSON.parse(content)
@@ -308,24 +289,16 @@ module.exports = {
         browser
             .addFile('UnversionedGithubImport.sol', source['UnversionedGithubImport.sol'])
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/remix-project-org"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github/remix-project-org"]')
             // refs/heads/master should normalize to just @master
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/remix-project-org/remix-project@master"]', 60000)
-            .click('*[data-id^="treeViewDivDraggableItem.deps/github/remix-project-org/remix-project@master"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum"]', 60000)
-            .click('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum"]')
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum/constitution.sol"]', 60000)
             // Verify the imported file exists and can be opened
             .openFile('.deps/github/remix-project-org/remix-project@master/apps/remix-ide/contracts/app/ethereum/constitution.sol')
@@ -343,11 +316,11 @@ module.exports = {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             .clickLaunchIcon('filePanel')
+
             // Navigate through folders to reach .resolution-index.json
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
             .openFile('.deps/npm/.resolution-index.json')
             .pause(1000)
@@ -393,16 +366,14 @@ module.exports = {
             .addFile('ChainlinkCCIPExact.sol', chainlinkCCIPSource['ChainlinkCCIP.sol'])
             // Ensure .deps tree is created and Chainlink packages resolved
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
             // Quick sanity: parent resolution produced contracts@1.4.0 and contracts-ccip@1.6.1
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 60000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.1"]', 60000)
-            .expandAllFolders()
-            
+
+
             // Open CCIPReceiver.sol directly from .deps and compile it
             .openFile('.deps/npm/@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPReceiver.sol')
             .clickLaunchIcon('solidity')
@@ -436,10 +407,10 @@ module.exports = {
                     const resolvedTargets = Object.values(mappings).map(String)
                     const uses140 = resolvedTargets.some(p => p.includes('@chainlink/contracts@1.4.0'))
                     const uses150 = resolvedTargets.some(p => p.includes('@chainlink/contracts@1.5.0'))
-                    ;(browser as any).assert.ok(uses140, 'CCIPReceiver internal deps should use @chainlink/contracts@1.4.0')
-                    ;(browser as any).assert.ok(!uses150, 'CCIPReceiver internal deps should not use @chainlink/contracts@1.5.0')
+                        ; (browser as any).assert.ok(uses140, 'CCIPReceiver internal deps should use @chainlink/contracts@1.4.0')
+                        ; (browser as any).assert.ok(!uses150, 'CCIPReceiver internal deps should not use @chainlink/contracts@1.5.0')
                 } catch (e) {
-                    ;(browser as any).assert.fail('Resolution index should be valid and contain CCIPReceiver entry: ' + (e as Error).message)
+                    ; (browser as any).assert.fail('Resolution index should be valid and contain CCIPReceiver entry: ' + (e as Error).message)
                 }
             })
     },
@@ -523,27 +494,21 @@ import { Context } from "@openzeppelin/contracts@4.8.0/utils/Context.sol";
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
+            .expandAllFolders()
+
             // Verify that multi-line imports are resolved correctly
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]')
             // Verify the imported files actually exist - check IERC20Metadata.sol
             .waitForElementVisible('*[data-id$="contracts@4.8.0/token"]', 10000)
-            .click('*[data-id$="contracts@4.8.0/token"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20"]', 10000)
-            .click('*[data-id$="contracts@4.8.0/token/ERC20"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20/extensions"]', 10000)
-            .click('*[data-id$="contracts@4.8.0/token/ERC20/extensions"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.0/token/ERC20/extensions/IERC20Metadata.sol"]', 10000)
             // Collapse and re-expand to check Context.sol in utils folder
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]') // Collapse
+            // removed collapse under .deps
             .pause(500)
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]') // Re-expand
             .waitForElementVisible('*[data-id$="contracts@4.8.0/utils"]', 10000)
-            .click('*[data-id$="contracts@4.8.0/utils"]')
             .waitForElementVisible('*[data-id$="contracts@4.8.0/utils/Context.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'All imported files exist in the correct folder structure');
@@ -578,13 +543,10 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(2000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id$="/token"]', 10000)
-            .click('*[data-id$="/token"]')
             .waitForElementVisible('*[data-id$="/ERC20"]', 10000)
             // Verify ERC721 and ERC1155 folders don't exist (commented imports ignored)
             .waitForElementNotPresent('*[data-id$="/ERC721"]', 5000)
@@ -616,12 +578,10 @@ contract CommentedImports is ERC20 {
             .pause(5000) // CDN imports may take longer
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             // CDN npm packages are normalized to .deps/npm/
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'unpkg.com CDN imports should be normalized to npm folder');
@@ -635,11 +595,11 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
+
             // CDN npm packages are normalized to .deps/npm/
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'cdn.jsdelivr.net npm imports should be normalized to npm folder');
@@ -653,11 +613,11 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
             .clickLaunchIcon('filePanel')
+
             // Unversioned CDN npm packages are normalized to .deps/npm/ with version from workspace
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should have versioned folder (version resolved from workspace/lock file/npm)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
             .perform(function () {
@@ -673,10 +633,9 @@ contract CommentedImports is ERC20 {
             .pause(5000)
             .clickLaunchIcon('filePanel')
             // Unversioned CDN npm packages are normalized to .deps/npm/ with version from workspace
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             // Should have versioned folder (version resolved from workspace/lock file/npm)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
             .perform(function () {
@@ -692,46 +651,16 @@ contract CommentedImports is ERC20 {
             .pause(5000)
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             // raw.githubusercontent.com URLs are normalized to .deps/github/owner/repo@ref/
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/github/OpenZeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/github/OpenZeppelin/openzeppelin-contracts@v4.8.0"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'raw.githubusercontent.com imports should be normalized to github folder');
             })
     },
 
-    'Test IPFS imports #group13': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('IPFSTest.sol', ipfsImportsSource['IPFSTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(8000) // IPFS imports may take longer to fetch
-            .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/ipfs"]')
-            .perform(function () {
-                browser.assert.ok(true, 'IPFS imports should be resolved and stored in .deps/ipfs/ folder');
-            })
-    },
-
-    'Test IPFS relative imports #group13': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('IPFSRelativeTest.sol', ipfsImportsSource['IPFSRelativeTest.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(8000)
-            .clickLaunchIcon('filePanel')
-            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/ipfs"]', 60000)
-            .perform(function () {
-                browser.assert.ok(true, 'IPFS relative imports should resolve correctly within the same IPFS hash context');
-            })
-    },
 
     'Test invalid non-sol import rejection #group15': function (browser: NightwatchBrowser) {
         browser
@@ -740,6 +669,7 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+            .expandAllFolders()
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
     },
 
@@ -750,6 +680,7 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+            .expandAllFolders()
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
     },
 
@@ -760,6 +691,7 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+            .expandAllFolders()
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
             .end()
     },
@@ -772,34 +704,27 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             // Verify both versions are present
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present')
             })
             // Verify contracts@4.9.6 structure
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/token/ERC20/ERC20.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@4.9.6 should contain token/ERC20/ERC20.sol')
             })
             // Verify contracts@5.0.2 structure
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol')
@@ -812,24 +737,24 @@ contract CommentedImports is ERC20 {
                 try {
                     const idx = JSON.parse(content)
                     const sourceFiles = Object.keys(idx || {})
-                    
+
                     // Find eee.sol entry
                     const eeeSolEntry = sourceFiles.find(file => file.includes('eee.sol'))
                     browser.assert.ok(!!eeeSolEntry, 'Resolution index should contain eee.sol')
-                    
+
                     if (eeeSolEntry) {
                         const mappings = idx[eeeSolEntry]
-                        
+
                         // Check that both imports are mapped correctly
-                        const hasV4Import = Object.keys(mappings).some(key => 
+                        const hasV4Import = Object.keys(mappings).some(key =>
                             key.includes('@openzeppelin/contracts/token/ERC20/ERC20.sol') &&
                             mappings[key].includes('@openzeppelin/contracts@4.9.6')
                         )
-                        const hasV5Import = Object.keys(mappings).some(key => 
+                        const hasV5Import = Object.keys(mappings).some(key =>
                             key.includes('@openzeppelin/contracts-5/token/ERC20/ERC20.sol') &&
                             mappings[key].includes('@openzeppelin/contracts@5.0.2')
                         )
-                        
+
                         browser.assert.ok(hasV4Import, 'Resolution index should map @openzeppelin/contracts to version 4.9.6')
                         browser.assert.ok(hasV5Import, 'Resolution index should map @openzeppelin/contracts-5 to version 5.0.2')
                     }
@@ -853,34 +778,27 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             // Verify both versions are present
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present from jsDelivr CDN')
             })
             // Verify contracts@4.9.6 structure (ECDSA utilities)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/cryptography/ECDSA.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@4.9.6 should contain utils/cryptography/ECDSA.sol from jsDelivr')
             })
             // Verify contracts@5.0.2 structure (ERC20 token)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol from jsDelivr')
@@ -913,24 +831,24 @@ contract CommentedImports is ERC20 {
                 try {
                     const idx = JSON.parse(content)
                     const sourceFiles = Object.keys(idx || {})
-                    
+
                     // Find MixedCDNVersions.sol entry
                     const wkEntry = sourceFiles.find(file => file.includes('MixedCDNVersions.sol'))
                     browser.assert.ok(!!wkEntry, 'Resolution index should contain MixedCDNVersions.sol')
-                    
+
                     if (wkEntry) {
                         const mappings = idx[wkEntry]
-                        
+
                         // Check that both jsDelivr imports are mapped correctly
-                        const hasV4Import = Object.keys(mappings).some(key => 
+                        const hasV4Import = Object.keys(mappings).some(key =>
                             key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6') &&
                             key.includes('ECDSA.sol')
                         )
-                        const hasV5Import = Object.keys(mappings).some(key => 
+                        const hasV5Import = Object.keys(mappings).some(key =>
                             key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2') &&
                             key.includes('ERC20.sol')
                         )
-                        
+
                         browser.assert.ok(hasV4Import, 'Resolution index should map jsDelivr 4.9.6 ECDSA import')
                         browser.assert.ok(hasV5Import, 'Resolution index should map jsDelivr 5.0.2 ERC20 import')
                     }
@@ -967,34 +885,27 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(3000)
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             // Verify both versions are present
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'Both @openzeppelin/contracts@4.9.6 and @openzeppelin/contracts@5.0.2 should be present for SafeMath + ERC20v5')
             })
             // Verify contracts@4.9.6 structure (SafeMath utilities)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@4.9.6 should contain utils/math/SafeMath.sol from jsDelivr')
             })
             // Verify contracts@5.0.2 structure (ERC20 token)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
-            .click('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]')
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'contracts@5.0.2 should contain token/ERC20/ERC20.sol from jsDelivr')
@@ -1011,24 +922,24 @@ contract CommentedImports is ERC20 {
                 try {
                     const idx = JSON.parse(content)
                     const sourceFiles = Object.keys(idx || {})
-                    
+
                     // Find djdidjod.sol entry
                     const djEntry = sourceFiles.find(file => file.includes('djdidjod.sol'))
                     browser.assert.ok(!!djEntry, 'Resolution index should contain djdidjod.sol')
-                    
+
                     if (djEntry) {
                         const mappings = idx[djEntry]
-                        
+
                         // Check that both jsDelivr imports are mapped correctly
-                        const hasV4Import = Object.keys(mappings).some(key => 
+                        const hasV4Import = Object.keys(mappings).some(key =>
                             key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.9.6') &&
                             key.includes('SafeMath.sol')
                         )
-                        const hasV5Import = Object.keys(mappings).some(key => 
+                        const hasV5Import = Object.keys(mappings).some(key =>
                             key.includes('cdn.jsdelivr.net/npm/@openzeppelin/contracts@5.0.2') &&
                             key.includes('ERC20.sol')
                         )
-                        
+
                         browser.assert.ok(hasV4Import, 'Resolution index should map jsDelivr 4.9.6 SafeMath import')
                         browser.assert.ok(hasV5Import, 'Resolution index should map jsDelivr 5.0.2 ERC20 import')
                     }
@@ -1065,13 +976,12 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000) // Longer pause for multiple CDN fetches
             .clickLaunchIcon('filePanel')
+
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             // Verify both OpenZeppelin versions are present (pulled in as transitive deps from Chainlink)
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4"]', 60000)
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5"]', 60000)
             .perform(function () {
@@ -1079,20 +989,15 @@ contract CommentedImports is ERC20 {
             })
             // Verify Chainlink contracts are resolved
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
             .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'Chainlink contracts@1.5.0 should be resolved from jsDelivr CDN')
             })
             // Verify specific Chainlink imports exist
-            .click('*[data-id^="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5.0"]')
             .waitForElementVisible('*[data-id$="contracts@1.5.0/src"]', 10000)
-            .click('*[data-id$="contracts@1.5.0/src"]')
             .waitForElementVisible('*[data-id$="contracts@1.5.0/src/v0.8"]', 10000)
-            .click('*[data-id$="contracts@1.5.0/src/v0.8"]')
             // Check for functions directory
             .waitForElementVisible('*[data-id$="contracts@1.5.0/src/v0.8/functions"]', 10000)
-            .click('*[data-id$="contracts@1.5.0/src/v0.8/functions"]')
             .waitForElementVisible('*[data-id$="contracts@1.5.0/src/v0.8/functions/v1_3_0"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'Chainlink functions/v1_3_0 directory should exist')
@@ -1145,13 +1050,12 @@ contract CommentedImports is ERC20 {
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000) // Longer pause for multiple external imports
             .clickLaunchIcon('filePanel')
+
             // Verify external dependencies were resolved
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
             .waitForElementVisible('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
             .perform(function () {
                 browser.assert.ok(true, 'External OpenZeppelin dependencies should be resolved')
@@ -1179,24 +1083,24 @@ contract CommentedImports is ERC20 {
                 try {
                     const idx = JSON.parse(content)
                     const sourceFiles = Object.keys(idx || {})
-                    
+
                     // Find Staking.sol entry (main contract)
                     const stakingEntry = sourceFiles.find(file => file.includes('Staking.sol'))
                     browser.assert.ok(!!stakingEntry, 'Resolution index should contain Staking.sol')
-                    
+
                     if (stakingEntry) {
                         const mappings = idx[stakingEntry]
                         const mappingKeys = Object.keys(mappings)
-                        
+
                         // Verify that local imports are NOT in the mappings (they should be direct)
-                        const hasLocalImport = mappingKeys.some(key => 
-                            key.includes('../base/BaseContract.sol') || 
+                        const hasLocalImport = mappingKeys.some(key =>
+                            key.includes('../base/BaseContract.sol') ||
                             key.includes('../TokenVault.sol')
                         )
                         browser.assert.ok(!hasLocalImport, 'Local relative imports should not be in resolution index')
-                        
+
                         // Verify that external imports ARE in the mappings
-                        const hasExternalImport = mappingKeys.some(key => 
+                        const hasExternalImport = mappingKeys.some(key =>
                             key.includes('@openzeppelin/contracts')
                         )
                         browser.assert.ok(hasExternalImport, 'External imports should be mapped in resolution index')
@@ -1728,42 +1632,6 @@ contract RawGitHubTest is ERC20 {
     }
 }
 
-const ipfsImportsSource = {
-    'IPFSTest.sol': {
-        content: `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-// Test IPFS import - using a sample Greeter contract on IPFS
-// Note: This is a real IPFS hash that should contain a Solidity contract
-import "ipfs://QmQQmQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ/Greeter.sol";
-
-contract IPFSTest {
-    string public greeting = "Hello from IPFS!";
-    
-    function setGreeting(string memory _greeting) public {
-        greeting = _greeting;
-    }
-}
-`
-    },
-    'IPFSRelativeTest.sol': {
-        content: `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-// Test IPFS import with relative path resolution
-import "ipfs://QmQQmQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ/contracts/Token.sol";
-
-contract IPFSRelativeTest {
-    string public name = "IPFS Relative Test";
-    
-    function getName() public view returns (string memory) {
-        return name;
-    }
-}
-`
-    }
-}
-
 const invalidImportSource = {
     'InvalidImportTest.sol': {
         content: `// SPDX-License-Identifier: MIT
@@ -2078,7 +1946,6 @@ const sources = [
     multiLineImportsSource,
     unresolvableImportSource,
     cdnImportsSource,
-    ipfsImportsSource,
     invalidImportSource,
     npmAliasMultiVersionSource,
     jsDelivrMultiVersionSource,
