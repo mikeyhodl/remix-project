@@ -31,11 +31,13 @@ import { createFileManagementTools } from './handlers/FileManagementHandler';
 import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
+import { createTutorialsTools } from './handlers/TutorialsHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 import { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
+import { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 
 /**
  * Main Remix MCP Server implementation
@@ -475,6 +477,11 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._tools.registerBatch(codeAnalysisTools);
       console.log(`Registered ${codeAnalysisTools.length} code analysis tools`, 'info');
 
+      // Register debugging tools
+      const tutorialTools = createTutorialsTools();
+      this._tools.registerBatch(tutorialTools);
+      console.log(`Registered ${tutorialTools.length} code analysis tools`, 'info');
+
       const totalTools = this._tools.list().length;
       console.log(`Total tools registered: ${totalTools}`, 'info');
 
@@ -506,6 +513,11 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const deploymentProvider = new DeploymentResourceProvider();
       this._resources.register(deploymentProvider);
       console.log(`Registered deployment resource provider: ${deploymentProvider.name}`, 'info');
+
+      // Register deployment resource provider
+      const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
+      this._resources.register(tutorialsProvider);
+      console.log(`Registered tutorials resource provider: ${tutorialsProvider.name}`, 'info');
 
       const totalProviders = this._resources.list().length;
       console.log(`Total resource providers registered: ${totalProviders}`, 'info');

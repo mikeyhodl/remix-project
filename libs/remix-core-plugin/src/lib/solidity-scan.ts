@@ -2,7 +2,7 @@ import axios from 'axios'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ScanReport } from '@remix-ui/helper'
 
-const _paq = (window._paq = window._paq || [])
+const _paq = ((window as any)._paq = (window as any)._paq || [])
 
 /**
  * Core function to perform Solidity scan and return the scan report
