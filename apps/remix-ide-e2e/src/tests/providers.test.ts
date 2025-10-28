@@ -57,7 +57,7 @@ module.exports = {
       .switchEnvironment('foundry-provider')
       .waitForElementVisible('*[data-id="foundry-providerModalDialogModalBody-react"]', 60000)
       .modalFooterOKClick('foundry-provider')
-      .waitForElementContainsText('*[data-id="settingsNetworkEnv"]', 'Custom (')
+      .waitForElementContainsText('*[data-id="settingsNetworkEnv"]', '1337) network')
   },
 
   'Should switch to custom provider #group2': function (browser: NightwatchBrowser) {
