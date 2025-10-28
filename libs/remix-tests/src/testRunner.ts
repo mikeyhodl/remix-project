@@ -232,7 +232,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
     filename: testObject.filename
   }
   testCallback(undefined, resp)
-  async.eachOfLimit(runList, 1, async function (func, index) {
+  async.eachOfLimit(runList, 1, async function (func, index, next) {
     let sender: string | null = null
     let hhLogs
     let sendParams: Record<string, any> | null = null
@@ -341,7 +341,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
                 testCallback(undefined, resp)
                 failureNum += 1
                 timePassed += time
-                return
+                return next()
               }
               testPassed = true
             }
@@ -375,11 +375,11 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           timePassed += time
         }
 
-        return
+        return next()
       } catch (err) {
         if (!err.receipt) {
           console.error(err)
-          return
+          return next(err)
         }
         const time: number = (Date.now() - startTime) / 1000.0
         if (failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
@@ -406,7 +406,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         testCallback(undefined, resp)
         failureNum += 1
         timePassed += time
-        return
+        return next()
       }
     }
   }, function (error) {
