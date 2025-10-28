@@ -85,46 +85,44 @@ export function getErc20ContractCode (contractType: 'erc20', state: ContractType
         }
         return erc20.erc20MintableManagedOptions(state.contractName || 'MyToken')
       }
+    } else if (state.contractOptions.burnable) {
+      if (state.contractAccessControl === 'ownable') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSOwnableBurnableOptions(state.contractName || 'MyToken')
+        }
+        return erc20.erc20BurnableOwnableOptions(state.contractName || 'MyToken')
+      } else if (state.contractAccessControl === 'roles') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSRolesFullOptions(state.contractName || 'MyToken')
+        }
+        return erc20.erc20BurnableRolesOptions(state.contractName || 'MyToken')
+      } else if (state.contractAccessControl === 'managed') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSManagedFullOptions(state.contractName || 'MyToken')
+        }
+        return erc20.erc20BurnableOwnableOptions(state.contractName || 'MyToken')
+      }
+      return erc20.erc20BurnableOnlyOptions(state.contractName || 'MyToken')
     }
-    return erc20.erc20MintableOwnableOptions(state.contractName || 'MyToken')
-  }
-  else if (state.contractOptions.burnable) {
-    if (state.contractAccessControl === 'ownable') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSOwnableBurnableOptions(state.contractName || 'MyToken')
+    else if (state.contractOptions.pausable) {
+      if (state.contractAccessControl === 'ownable') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSOwnablePausableOptions(state.contractName || 'MyToken')
+        }
+      } else if (state.contractAccessControl === 'roles') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSRolesFullOptions(state.contractName || 'MyToken')
+        }
+        return erc20.erc20PausableRolesOptions(state.contractName || 'MyToken')
+      } else if (state.contractAccessControl === 'managed') {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20UUPSManagedFullOptions(state.contractName || 'MyToken')
+        }
+        return erc20.erc20PausableOwnableOptions(state.contractName || 'MyToken')
       }
-      return erc20.erc20BurnableOwnableOptions(state.contractName || 'MyToken')
-    } else if (state.contractAccessControl === 'roles') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSRolesFullOptions(state.contractName || 'MyToken')
-      }
-      return erc20.erc20BurnableRolesOptions(state.contractName || 'MyToken')
-    } else if (state.contractAccessControl === 'managed') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSManagedFullOptions(state.contractName || 'MyToken')
-      }
-      return erc20.erc20BurnableOwnableOptions(state.contractName || 'MyToken')
     }
-    return erc20.erc20BurnableOnlyOptions(state.contractName || 'MyToken')
+    return erc20.erc20DefaultNoOptions(state.contractName || 'MyToken')
   }
-  else if (state.contractOptions.pausable) {
-    if (state.contractAccessControl === 'ownable') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSOwnablePausableOptions(state.contractName || 'MyToken')
-      }
-    } else if (state.contractAccessControl === 'roles') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSRolesFullOptions(state.contractName || 'MyToken')
-      }
-      return erc20.erc20PausableRolesOptions(state.contractName || 'MyToken')
-    } else if (state.contractAccessControl === 'managed') {
-      if (state.contractUpgradability.uups) {
-        return erc20.erc20UUPSManagedFullOptions(state.contractName || 'MyToken')
-      }
-      return erc20.erc20PausableOwnableOptions(state.contractName || 'MyToken')
-    }
-  }
-  return erc20.erc20DefaultNoOptions(state.contractName || 'MyToken')
 }
 
 export function getErc721ContractCode (contractType: 'erc721', state: ContractTypeStrategy) {

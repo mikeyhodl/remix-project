@@ -47,11 +47,9 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   case TemplateExplorerWizardAction.SET_METADATA:
     return { ...state, metadata: action.payload }
   case TemplateExplorerWizardAction.SELECT_TEMPLATE:{
-    console.log('select template', action.payload)
     return { ...state, workspaceTemplateChosen: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE:{
-    console.log('set workspace template', action.payload)
     return { ...state, workspaceTemplateChosen: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP:{

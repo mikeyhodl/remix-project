@@ -26,10 +26,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
   }, [])
 
-  useEffect(() => {
-    console.log('state with templates', state)
-  }, [state.templateRepository])
-
   const setSearchTerm = (term: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
   }

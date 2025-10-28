@@ -454,7 +454,7 @@ export function AccountUI(props: AccountProps) {
           <i id="remixRunSignMsg" data-id="settingsRemixRunSignMsg" className="mx-1 fas fa-edit udapp_icon" aria-hidden="true" onClick={signMessage}></i>
         </CustomTooltip> : null }
         <span className='mx-1'>
-          <CopyToClipboard className="fas fa-copy p-0" tip={intl.formatMessage({ id: 'udapp.copyAccount' })} content={selectedAccount} direction="top" />
+          <CopyToClipboard data-id="udapp-copy-account-address" className="fas fa-copy p-0" tip={intl.formatMessage({ id: 'udapp.copyAccount' })} content={selectedAccount} direction="top" />
         </span>
         { enableDelegationAuthorization ? (<span className="mx-1 mt-1">
           <CustomTooltip placement={'top'} tooltipClasses="text-wrap" tooltipId="remixDelegationAuthTooltip" tooltipText={"Using EIP 7702 in Remix"}>

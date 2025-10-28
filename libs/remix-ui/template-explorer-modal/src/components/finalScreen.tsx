@@ -15,8 +15,8 @@ export function FinalScreen(props: FinalScreenProps) {
   return (
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
       <div className="pt-3 ps-3 d-flex flex-row align-items-center text-dark">
-        { showEditWorkspaceName ? <input type="text" className="form-control form-control-sm" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span className="fw-semibold fs-6">{state.workspaceName}</span> }
-        <i className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
+        { showEditWorkspaceName ? <input data-id="finalize-contract-wizard-workspaceName-input" type="text" className="form-control form-control-sm" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span data-id="finalize-contract-wizard-workspaceName-span" className="fw-semibold fs-6">{state.workspaceName}</span> }
+        <i data-id="finalize-contractWizard-workspace-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
       </div>
 
       <button className="btn btn-primary btn-sm mx-3" data-id="validateWorkspaceButton" onClick={async () => {

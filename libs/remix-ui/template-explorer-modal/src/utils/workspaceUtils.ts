@@ -47,8 +47,6 @@ export class TemplateExplorerModalFacade {
       templateCategoryStrategy.setStrategy(new RemixDefaultStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
     } else if (template.name.toLowerCase().includes('zeppelin')) {
-      dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: item.value })
-      dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: item.tagList?.[0] })
       templateCategoryStrategy.setStrategy(new WizardStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
     } else if (template.name.toLowerCase().includes('cookbook')) {
