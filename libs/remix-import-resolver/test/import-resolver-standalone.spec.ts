@@ -34,10 +34,15 @@ describe('ImportResolver standalone (via NodeIOAdapter)', () => {
     expect(content).to.be.a('string')
     expect(content.length).to.be.greaterThan(500)
 
-    // Resolution should include a version mapping
+  // Resolution should include a version mapping
     const resolved = resolver.getResolution(original)
     expect(resolved).to.be.a('string')
     expect(resolved).to.match(/^@openzeppelin\/contracts@\d+\./)
+
+  // The resolved Solidity file should be saved under .deps; npm paths under .deps/npm/
+  const savedExists = await fs.stat(`.deps/${resolved}`).then(() => true).catch(() => false)
+  const savedNpmExists = await fs.stat(`.deps/npm/${resolved}`).then(() => true).catch(() => false)
+  expect(savedExists || savedNpmExists, `expected saved file at .deps/${resolved} (or .deps/npm/${resolved})`).to.equal(true)
 
     // Save index and verify file is created
     await resolver.saveResolutionsToIndex()

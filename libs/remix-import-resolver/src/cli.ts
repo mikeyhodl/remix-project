@@ -58,7 +58,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (a === '-o' || a === '--out') { args.out = rest[i+1]; i += 2; continue }
     if (a === '-r' || a === '--remap') { args.remap.push(rest[i+1]); i += 2; continue }
     if (a === '-R' || a === '--remappings-file') { args.remappingsFile = rest[i+1]; i += 2; continue }
-  if (a === '--pragma') { args.pragma = rest[i+1]; i += 2; continue }
+    if (a === '--pragma') { args.pragma = rest[i+1]; i += 2; continue }
     if (!args.entry && !a.startsWith('-')) { args.entry = a; i++; continue }
     // Unknown or malformed option – break to avoid infinite loop
     i++

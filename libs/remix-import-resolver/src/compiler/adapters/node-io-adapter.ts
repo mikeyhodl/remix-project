@@ -48,7 +48,27 @@ export class NodeIOAdapter implements IOAdapter {
 
   async resolveAndSave(url: string, targetPath?: string, _useOriginal?: boolean): Promise<string> {
     const content = await this.fetch(url)
-    const dest = targetPath || url
+    let dest = targetPath
+    if (!dest) {
+      // Determine a deterministic destination under .deps
+      if (isHttp(url)) {
+        try {
+          const u = new URL(url)
+          const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+          dest = `.deps/http/${u.hostname}/${cleanPath}`
+        } catch {
+          // Fallback to hashing or raw, but keep inside .deps/http
+          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^a-zA-Z0-9._\-\/]/g, '_')
+          dest = `.deps/http/${safe}`
+        }
+      } else {
+        // Treat as npm-like path (e.g., "@scope/pkg@ver/path")
+        dest = `.deps/npm/${url}`
+      }
+    } else if (!dest.startsWith('.deps/')) {
+      // Ensure all resolver-managed artifacts live under .deps
+      dest = `.deps/${dest}`
+    }
     await this.setFile(dest, content)
     return content
   }

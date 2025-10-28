@@ -75,11 +75,11 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
       expect(content).to.be.a('string')
       expect(content.length).to.be.greaterThan(200)
 
-      const resolved = resolver.getResolution(original)
-      expect(resolved).to.equal('@openzeppelin/contracts@4.9.0/token/ERC20/ERC20.sol')
+  const resolved = resolver.getResolution(original)
+  expect(resolved).to.equal('@openzeppelin/contracts@4.9.0/token/ERC20/ERC20.sol')
 
-      const fileExists = await exists('@openzeppelin/contracts@4.9.0/token/ERC20/ERC20.sol')
-      expect(fileExists).to.equal(true)
+  const fileExists = await exists(`.deps/npm/@openzeppelin/contracts@4.9.0/token/ERC20/ERC20.sol`)
+  expect(fileExists).to.equal(true)
     })
 
     it('normalizes jsDelivr CDN requests to npm paths and saves under versioned folders', async function () {
@@ -91,11 +91,11 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
       const content = await resolver.resolveAndSave(original)
       expect(content).to.be.a('string')
 
-      const resolved = resolver.getResolution(original)
-      expect(resolved).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
+  const resolved = resolver.getResolution(original)
+  expect(resolved).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
 
-      const fileExists = await exists('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
-      expect(fileExists).to.equal(true)
+  const fileExists = await exists('.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
+  expect(fileExists).to.equal(true)
     })
 
     it('normalizes unpkg CDN requests to npm paths and saves under versioned folders', async function () {
@@ -107,11 +107,11 @@ describe('ImportResolver e2e parity (groups 7–9) - Node + local FS', () => {
       const content = await resolver.resolveAndSave(original)
       expect(content).to.be.a('string')
 
-      const resolved = resolver.getResolution(original)
-      expect(resolved).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
+  const resolved = resolver.getResolution(original)
+  expect(resolved).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
 
-      const fileExists = await exists('@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
-      expect(fileExists).to.equal(true)
+  const fileExists = await exists('.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20/IERC20.sol')
+  expect(fileExists).to.equal(true)
     })
   })
 

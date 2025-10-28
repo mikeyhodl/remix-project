@@ -20,7 +20,8 @@ describe('url-normalizer', () => {
   // Raw GitHub URLs produce a target save path under github/<org>/<repo>@<ref>/...
   it('normalizes raw.githubusercontent.com', () => {
     const out = normalizeRawGithubUrl('https://raw.githubusercontent.com/openzeppelin/openzeppelin-contracts/v5.0.2/contracts/token/ERC20/ERC20.sol')
-    expect(out?.targetPath).to.equal('github/openzeppelin/openzeppelin-contracts@v5.0.2/contracts/token/ERC20/ERC20.sol')
+    // targetPath is where we save on disk (under .deps), normalizedPath is the canonical key used in indices/markers
+    expect(out?.targetPath).to.equal('.deps/github/openzeppelin/openzeppelin-contracts@v5.0.2/contracts/token/ERC20/ERC20.sol')
     expect(out?.normalizedPath).to.equal('github/openzeppelin/openzeppelin-contracts@v5.0.2/contracts/token/ERC20/ERC20.sol')
   })
 

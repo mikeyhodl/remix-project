@@ -37,8 +37,11 @@ describe('GitHub raw URL routing and normalization', () => {
     const content = await resolver.resolveAndSave(original)
     expect(content).to.be.a('string').and.includes('interface IERC20')
 
-    // content saved to normalized path (NodeIOAdapter writes exactly to targetPath without .deps prefix)
-    expect(await exists('github/OpenZeppelin/openzeppelin-contracts@v4.9.6/contracts/token/ERC20/IERC20.sol')).to.equal(true)
+  // content saved under .deps/github to the normalized path
+    expect(await exists('.deps/github/OpenZeppelin/openzeppelin-contracts@v4.9.6/contracts/token/ERC20/IERC20.sol')).to.equal(true)
+
+  // package.json fetched and saved under .deps/github for the repository ref
+  expect(await exists('.deps/github/OpenZeppelin/openzeppelin-contracts@v4.9.6/package.json')).to.equal(true)
 
     await resolver.saveResolutionsToIndex()
     const idxRaw = await fs.readFile('.deps/npm/.resolution-index.json', 'utf8')

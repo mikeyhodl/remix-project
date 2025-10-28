@@ -51,7 +51,8 @@ export function normalizeRawGithubUrl(url: string): GithubRawNormalization | nul
   }
 
   const normalizedPath = `github/${owner}/${repo}@${ref}/${filePath}`
-  return { owner, repo, ref, filePath, normalizedPath, targetPath: normalizedPath }
+  // Save under .deps while keeping canonical normalizedPath for mapping/markers
+  return { owner, repo, ref, filePath, normalizedPath, targetPath: `.deps/${normalizedPath}` }
 }
 
 export function normalizeIpfsUrl(url: string): IpfsNormalization | null {

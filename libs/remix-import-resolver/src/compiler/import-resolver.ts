@@ -111,6 +111,27 @@ export class ImportResolver implements IImportResolver {
     else this.importMappings.forEach((value, key) => this.log(`[ImportResolver]   ${key} → ${value}`))
   }
 
+  /** Ensure the dependency graph for a versioned package context is loaded from its package.json. */
+  public async ensurePackageContextLoaded(context: string): Promise<void> {
+    try {
+      if (!context) return
+      if (this.dependencyStore.hasParent(context)) return
+      const m = context.match(/^(@?[^@]+)@(.+)$/)
+      if (!m) return
+      const packageName = m[1]
+      const version = m[2]
+      const packageJsonUrl = `${packageName}@${version}/package.json`
+      const content = await this.contentFetcher.resolve(packageJsonUrl)
+      const packageJson = JSON.parse(content.content || content)
+      const pkgJsonPath = `.deps/npm/${packageName}@${version}/package.json`
+      await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
+      this.log(`[ImportResolver] 💾 Loaded context package.json → ${pkgJsonPath}`)
+      this.dependencyStore.storePackageDependencies(context, packageJson)
+    } catch (err) {
+      this.log(`[ImportResolver] ℹ️  Could not load package.json for context ${context}:`, err)
+    }
+  }
+
   // parsing helpers are provided by utils/parser-utils for clarity
 
   private isPotentialVersionConflict(requestedRange: string, resolvedVersion: string): boolean {

@@ -95,6 +95,10 @@ export class DependencyResolver {
       this.log(`[DependencyResolver]   📦 Package context: ${packageContext}`)
       this.fileToPackageContext.set(importPath, packageContext)
       this.resolver.setPackageContext(packageContext)
+      // Ensure the parent's package.json is loaded so its declared deps influence child resolution
+      if ((this.resolver as any).ensurePackageContextLoaded) {
+        await (this.resolver as any).ensurePackageContextLoaded(packageContext)
+      }
     }
 
     this.processedFiles.add(importPath)
@@ -114,10 +118,13 @@ export class DependencyResolver {
       }
 
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
-      this.sourceFiles.set(importPath, content)
+      // Store content under the resolvedPath so bundle lookups during flatten match graph keys
+      this.sourceFiles.set(resolvedPath, content)
+      // Also store under the original importPath as a convenience alias
+      if (resolvedPath !== importPath) this.sourceFiles.set(importPath, content)
 
-      if (!this.isLocalFile(importPath) && importPath.includes('@') && importPath.match(/@[^/]+@\d+\.\d+\.\d+\//)) {
-        const unversionedPath = importPath.replace(/@([^@/]+(?:\/[^@/]+)?)@\d+\.\d+\.\d+\//, '@$1/')
+      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^/]+@\d+\.\d+\.\d+\//)) {
+        const unversionedPath = resolvedPath.replace(/@([^@/]+(?:\/[^@/]+)?)@\d+\.\d+\.\d+\//, '@$1/')
         this.sourceFiles.set(unversionedPath, content)
         this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
       }
@@ -127,6 +134,9 @@ export class DependencyResolver {
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
           this.resolver.setPackageContext(filePackageContext)
+          if ((this.resolver as any).ensurePackageContextLoaded) {
+            await (this.resolver as any).ensurePackageContextLoaded(filePackageContext)
+          }
           this.log(`[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
         }
       }
@@ -141,14 +151,22 @@ export class DependencyResolver {
 
         for (const importedPath of imports) {
           this.log(`[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
-          let resolvedImportPath = importedPath
+          // Start with the raw path as written in the file
+          let nextPath = importedPath
+          // Resolve relative paths using the CURRENT FILE PATH as base (original importPath)
           if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
-            resolvedImportPath = resolveRelativeImport(importPath, importedPath, (msg, ...args) => this.log(msg, ...args))
-            this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${resolvedImportPath}"`)
+            nextPath = resolveRelativeImport(importPath, importedPath, (msg, ...args) => this.log(msg, ...args))
+            this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)
           }
-          resolvedImportPath = applyRemappings(resolvedImportPath, this.remappings, (msg, ...args) => this.log(msg, ...args))
-          resolvedImports.add(resolvedImportPath)
-          await this.processFile(resolvedImportPath, resolvedPath, currentFilePackageContext || undefined)
+          // Apply any remappings (e.g., oz/ → @openzeppelin/contracts@X/)
+          nextPath = applyRemappings(nextPath, this.remappings, (msg, ...args) => this.log(msg, ...args))
+
+          // Recursively process the child first so that resolver mappings are populated
+          await this.processFile(nextPath, resolvedPath, currentFilePackageContext || undefined)
+
+          // Normalize the graph edge to the canonical resolved path used as keys in graph/bundle
+          const childGraphKey = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
+          resolvedImports.add(childGraphKey)
         }
         this.importGraph.set(resolvedPath, resolvedImports)
       }
