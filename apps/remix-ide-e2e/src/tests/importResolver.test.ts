@@ -387,6 +387,63 @@ module.exports = {
             })
     },
 
+    'Test CCIPReceiver internal mapping uses contracts@1.4.0 #group23': function (browser: NightwatchBrowser) {
+        // Add the exact CCIP base contract, then open CCIPReceiver.sol from .deps and verify its internal imports map to @chainlink/contracts@1.4.0 (not 1.5.0)
+        browser
+            .addFile('ChainlinkCCIPExact.sol', chainlinkCCIPSource['ChainlinkCCIP.sol'])
+            // Ensure .deps tree is created and Chainlink packages resolved
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .click('*[data-id="treeViewDivDraggableItem.deps"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]', 60000)
+            .click('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]')
+            // Quick sanity: parent resolution produced contracts@1.4.0 and contracts-ccip@1.6.1
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.1"]', 60000)
+            .expandAllFolders()
+            
+            // Open CCIPReceiver.sol directly from .deps and compile it
+            .openFile('.deps/npm/@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPReceiver.sol')
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(2000)
+            // Verify in resolution index that CCIPReceiver internal @chainlink/contracts deps map to 1.4.0 (not 1.5.0)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const keys = Object.keys(idx || {})
+                    // Find CCIPReceiver entry
+                    const entryKey = keys.find(k => k.includes('@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPReceiver.sol'))
+                    // If not present (e.g., hidden entry path differences), search by CCIPReceiver and contracts-ccip
+                    const fallbackKey = keys.find(k => k.includes('contracts-ccip@1.6.1') && k.endsWith('/contracts/applications/CCIPReceiver.sol'))
+                    const targetKey = entryKey || fallbackKey
+                    if (!targetKey) {
+                        throw new Error('CCIPReceiver entry not found in resolution index')
+                    }
+                    const mappings = idx[targetKey] || {}
+                    const mappingKeys = Object.keys(mappings)
+                    // Look for any mapping of @chainlink/contracts
+                    const hasContractsImport = mappingKeys.some(k => k.includes('@chainlink/contracts'))
+                    if (!hasContractsImport) {
+                        throw new Error('No @chainlink/contracts import found in CCIPReceiver mappings')
+                    }
+                    // Ensure mapped paths point to @chainlink/contracts@1.4.0 and do NOT include 1.5.0
+                    const resolvedTargets = Object.values(mappings).map(String)
+                    const uses140 = resolvedTargets.some(p => p.includes('@chainlink/contracts@1.4.0'))
+                    const uses150 = resolvedTargets.some(p => p.includes('@chainlink/contracts@1.5.0'))
+                    ;(browser as any).assert.ok(uses140, 'CCIPReceiver internal deps should use @chainlink/contracts@1.4.0')
+                    ;(browser as any).assert.ok(!uses150, 'CCIPReceiver internal deps should not use @chainlink/contracts@1.5.0')
+                } catch (e) {
+                    ;(browser as any).assert.fail('Resolution index should be valid and contain CCIPReceiver entry: ' + (e as Error).message)
+                }
+            })
+    },
+
     'Test debug logging with localStorage flag #group10': function (browser: NightwatchBrowser) {
         browser
             // Enable debug logging
