@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react'
 import DropdownMenu, { MenuItem } from './DropdownMenu'
 import { AppModal } from '@remix-ui/app'
 import { FormattedMessage } from 'react-intl'
-import { handleSolidityScan } from '@remix-project/core-plugin'
+import { handleSolidityScan } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
