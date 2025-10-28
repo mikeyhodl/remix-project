@@ -2,7 +2,15 @@ import axios from 'axios'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ScanReport } from '@remix-ui/helper'
 
-const _paq = (window._paq = window._paq || [])
+function trackMatomoEvent(category: string, action: string, name?: string) {
+  try {
+    if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
+      (window as any)._matomoManagerInstance.trackEvent(category, action, name)
+    }
+  } catch (error) {
+    // Silent fail for tracking
+  }
+}
 
 /**
  * Core function to perform Solidity scan and return the scan report
@@ -110,7 +118,7 @@ export const handleSolidityScan = async (
   renderResults: ScanReportRenderer
 ) => {
   await api.call('notification', 'toast', 'Processing data to scan...')
-  _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'initiateScan'])
+  trackMatomoEvent('solidityCompiler', 'solidityScan', 'initiateScan')
 
   try {
     const workspace = await api.call('filePanel', 'getCurrentWorkspace')
@@ -120,11 +128,11 @@ export const handleSolidityScan = async (
 
     const scanReport = await performSolidityScan(api, compiledFileName)
 
-    _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'scanSuccess'])
+    trackMatomoEvent('solidityCompiler', 'solidityScan', 'scanSuccess')
     const renderedResults = renderResults(scanReport, fileName)
     await api.call('terminal', 'logHtml', renderedResults)
   } catch (error) {
-    _paq.push(['trackEvent', 'solidityCompiler', 'solidityScan', 'scanFailed'])
+    trackMatomoEvent('solidityCompiler', 'solidityScan', 'scanFailed')
     await api.call('notification', 'modal', {
       id: 'SolidityScanError',
       title: modalMessage,

@@ -9,8 +9,10 @@ import { MatomoEventBase } from '../core/base-types';
 
 export interface AIEvent extends MatomoEventBase {
   category: 'ai';
-  action: 
+  action:
     | 'remixAI'
+    | 'SpeechToTextPrompt'
+    | 'StartAudioRecording'
     | 'error_explaining_SolidityError'
     | 'vulnerability_check_pasted_code'
     | 'generateDocumentation'

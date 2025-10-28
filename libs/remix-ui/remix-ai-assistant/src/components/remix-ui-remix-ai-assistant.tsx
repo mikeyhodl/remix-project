@@ -49,14 +49,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [contextChoice, setContextChoice] = useState<'none' | 'current' | 'opened' | 'workspace'>(
     'none'
   )
-<<<<<<< HEAD
   const [mcpEnhanced, setMcpEnhanced] = useState(true)
-=======
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
   }
->>>>>>> master
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
@@ -87,7 +84,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     onTranscriptionComplete: async (text) => {
       if (sendPromptRef.current) {
         await sendPromptRef.current(text)
-        _paq.push(['trackEvent', 'remixAI', 'SpeechToTextPrompt', text])
+        trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
       }
     },
     onError: (error) => {
@@ -729,7 +726,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const handleRecord = useCallback(async () => {
     await toggleRecording()
     if (!isRecording) {
-      _paq.push(['trackEvent', 'remixAI', 'StartAudioRecording'])
+      trackMatomoEvent({ category: 'ai', action: 'StartAudioRecording', name: 'StartAudioRecording', isClick: true })
     }
   }, [toggleRecording, isRecording])
 
