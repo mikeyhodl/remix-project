@@ -58,7 +58,7 @@ export class NodeIOAdapter implements IOAdapter {
           dest = `.deps/http/${u.hostname}/${cleanPath}`
         } catch {
           // Fallback to hashing or raw, but keep inside .deps/http
-          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^a-zA-Z0-9._\-\/]/g, '_')
+          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
           dest = `.deps/http/${safe}`
         }
       } else {

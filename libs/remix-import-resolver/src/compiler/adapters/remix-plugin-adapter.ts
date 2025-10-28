@@ -48,7 +48,7 @@ export class RemixPluginAdapter implements IOAdapter {
           const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
           dest = `.deps/http/${u.hostname}/${cleanPath}`
         } catch {
-          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^a-zA-Z0-9._\-\/]/g, '_')
+          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
           dest = `.deps/http/${safe}`
         }
       } else {
