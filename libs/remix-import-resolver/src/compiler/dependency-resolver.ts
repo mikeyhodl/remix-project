@@ -4,6 +4,8 @@ import type { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+import { ResolutionIndex } from './resolution-index'
+import { FileResolutionIndex } from './file-resolution-index'
 import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
 
 /**
@@ -22,6 +24,8 @@ export class DependencyResolver {
   private fileToPackageContext: Map<string, string> = new Map()
   private debug: boolean = false
   private remappings: Array<{ from: string; to: string }> = []
+  private resolutionIndex: ResolutionIndex | null = null
+  private resolutionIndexInitialized: boolean = false
 
   /**
    * Create a DependencyResolver
@@ -66,6 +70,16 @@ export class DependencyResolver {
     this.processedFiles.clear()
     this.importGraph.clear()
     this.fileToPackageContext.clear()
+    // Ensure resolution index is loaded so we can record per-file mappings
+    if (!this.resolutionIndex) {
+      this.resolutionIndex = this.pluginApi
+        ? new ResolutionIndex(this.pluginApi as any, this.debug)
+        : (new FileResolutionIndex(this.io, this.debug) as unknown as ResolutionIndex)
+    }
+    if (!this.resolutionIndexInitialized) {
+      await this.resolutionIndex.load()
+      this.resolutionIndexInitialized = true
+    }
     await this.processFile(entryFile, null)
     this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
     return this.sourceFiles
@@ -73,6 +87,8 @@ export class DependencyResolver {
 
   private isLocalFile(path: string): boolean {
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
+    // Treat on-disk cached deps as local, even if they contain '@'
+    if (path.startsWith('.deps/')) return path.endsWith('.sol')
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules') && !path.startsWith('../') && !path.startsWith('./')
   }
 
@@ -129,8 +145,9 @@ export class DependencyResolver {
         this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
       }
 
-      if (!this.isLocalFile(importPath)) {
-        const filePackageContext = extractPackageContext(importPath) || extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args))
+      // Derive package context from path, regardless of local vs external.
+      {
+        const filePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)) : null)
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
           this.resolver.setPackageContext(filePackageContext)
@@ -141,13 +158,16 @@ export class DependencyResolver {
         }
       }
 
+      // Before scanning imports, clear any prior index entries for this file so we write fresh mappings
+      if (this.resolutionIndex) {
+        try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch {}
+      }
+
       const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
       if (imports.length > 0) {
         this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
         const resolvedImports = new Set<string>()
-        const currentFilePackageContext = this.isLocalFile(importPath)
-          ? null
-          : (extractPackageContext(importPath) || extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)))
+        const currentFilePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)) : null)
 
         for (const importedPath of imports) {
           this.log(`[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
@@ -167,6 +187,11 @@ export class DependencyResolver {
           // Normalize the graph edge to the canonical resolved path used as keys in graph/bundle
           const childGraphKey = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
           resolvedImports.add(childGraphKey)
+
+          // Record per-file resolution for Go-to-Definition: original spec as written → resolved path
+          if (this.resolutionIndex && !this.isLocalFile(importedPath)) {
+            try { this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey) } catch {}
+          }
         }
         this.importGraph.set(resolvedPath, resolvedImports)
       }
@@ -211,6 +236,8 @@ export class DependencyResolver {
   /** Persist the resolution index for this session. */
   public async saveResolutionIndex(): Promise<void> {
     this.log(`[DependencyResolver] 💾 Saving resolution index...`)
-    await (this.resolver as any).saveResolutionsToIndex()
+    if (this.resolutionIndex) {
+      try { await this.resolutionIndex.save() } catch {}
+    }
   }
 }

@@ -138,9 +138,19 @@ export function extractUrlContext(path: string, log: LogFn = noop): string | nul
 }
 
 export function extractPackageContext(path: string): string | null {
-  const scopedMatch = path.match(/^(@[^/]+\/[^/@]+)@([^/]+)/)
-  if (scopedMatch) return `${scopedMatch[1]}@${scopedMatch[2]}`
-  const regularMatch = path.match(/^([^/@]+)@([^/]+)/)
-  if (regularMatch) return `${regularMatch[1]}@${regularMatch[2]}`
+  // 1) Match at the beginning (npm-style import strings)
+  let m = path.match(/^(@[^/]+\/[^/@]+)@([^/]+)/)
+  if (m) return `${m[1]}@${m[2]}`
+  m = path.match(/^([^/@]+)@([^/]+)/)
+  if (m) return `${m[1]}@${m[2]}`
+
+  // 2) Match anywhere inside the path (e.g. .deps/npm/@scope/name@version/..., or name@version/...)
+  // Scoped package inside a path
+  m = path.match(/\/(?:deps\/npm\/)?(@[^/]+\/[^/@]+)@([^/]+)(?:\/|$)/)
+  if (m) return `${m[1]}@${m[2]}`
+  // Unscoped package inside a path
+  m = path.match(/\/(?:deps\/npm\/)?([^/@]+)@([^/]+)(?:\/|$)/)
+  if (m) return `${m[1]}@${m[2]}`
+
   return null
 }

@@ -96,7 +96,7 @@ export class SmartCompiler {
       if (this.debug) {
         console.log(`[SmartCompiler] 🌳 Building dependency tree...`)
       }
-      const depResolver = new DependencyResolver(this.pluginApi, target, this.debug)
+      const depResolver = new DependencyResolver(this.pluginApi, target, true)
       
       // Build complete source bundle with context-aware resolution
       const sourceBundle = await depResolver.buildDependencyTree(target)
