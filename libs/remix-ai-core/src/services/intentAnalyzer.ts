@@ -82,17 +82,17 @@ export class IntentAnalyzer {
    */
   async analyzeIntent(query: string): Promise<IUserIntent> {
     const normalizedQuery = query.toLowerCase().trim();
-    
+
     // Extract intent type
     const intentType = this.extractIntentType(normalizedQuery);
     const confidence = this.calculateConfidence(normalizedQuery, intentType);
-    
+
     // Extract keywords
     const keywords = this.extractKeywords(normalizedQuery);
-    
+
     // Detect domains
     const domains = this.detectDomains(normalizedQuery);
-    
+
     // Determine complexity
     const complexity = this.determineComplexity(normalizedQuery);
 
@@ -112,7 +112,7 @@ export class IntentAnalyzer {
   expandQuery(query: string, maxExpansionTerms: number = 10): string[] {
     const words = query.toLowerCase().split(/\s+/);
     const expandedTerms = new Set([query]);
-    
+
     for (const word of words) {
       for (const [key, synonymList] of Object.entries(this.synonyms)) {
         if (key.includes(word) || word.includes(key)) {
@@ -124,7 +124,7 @@ export class IntentAnalyzer {
         }
       }
     }
-    
+
     return Array.from(expandedTerms);
   }
 
@@ -145,14 +145,14 @@ export class IntentAnalyzer {
     const patterns = this.intentPatterns[intentType];
     const matchCount = patterns.filter(pattern => pattern.test(query)).length;
     const totalPatterns = patterns.length;
-    
+
     let confidence = matchCount / totalPatterns;
-    
+
     // Boost confidence for clear indicators
     if (query.includes('?')) confidence += 0.1;
     if (query.length > 10) confidence += 0.1;
     if (query.length > 50) confidence += 0.1;
-    
+
     return Math.min(confidence, 1.0);
   }
 
@@ -172,7 +172,7 @@ export class IntentAnalyzer {
 
     // Extract technical terms and multi-word phrases
     const keywords = new Set(words);
-    
+
     // Add domain-specific multi-word phrases
     for (const [domain, domainWords] of Object.entries(this.domainKeywords)) {
       for (const phrase of domainWords) {
@@ -187,17 +187,17 @@ export class IntentAnalyzer {
 
   private detectDomains(query: string): string[] {
     const detectedDomains = [];
-    
+
     for (const [domain, keywords] of Object.entries(this.domainKeywords)) {
-      const matchCount = keywords.filter(keyword => 
+      const matchCount = keywords.filter(keyword =>
         query.toLowerCase().includes(keyword.toLowerCase())
       ).length;
-      
+
       if (matchCount > 0) {
         detectedDomains.push(domain);
       }
     }
-    
+
     return detectedDomains;
   }
 
@@ -208,7 +208,7 @@ export class IntentAnalyzer {
         return complexity as IUserIntent['complexity'];
       }
     }
-    
+
     // Fallback based on query length and structure
     if (query.length < 20) return 'low';
     if (query.length < 100) return 'medium';

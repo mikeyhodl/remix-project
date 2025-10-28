@@ -4,8 +4,8 @@
 
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
-import { 
-  ToolCategory, 
+import {
+  ToolCategory,
   RemixToolDefinition,
   SolidityCompileArgs,
   CompilerConfigArgs,
@@ -56,7 +56,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
   }
 
   validate(args: SolidityCompileArgs): boolean | string {
-    const types = this.validateTypes(args, { 
+    const types = this.validateTypes(args, {
       file: 'string',
       version: 'string',
       optimize: 'boolean',
@@ -75,7 +75,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
   async execute(args: SolidityCompileArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       let compilerConfig: any = {};
-      
+
       try {
         // Try to get existing compiler config
         compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
@@ -124,7 +124,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       console.log('emitting compilationFinished event with proper UI trigger')
       // Emit compilationFinished event with correct parameters to trigger UI effects
       plugin.emit('compilationFinished',
-        args.file,  // source target
+        args.file, // source target
         { sources: compilationResult?.source || {} }, // source files
         'soljson', // compiler type
         compilationResult.data, // compilation data
@@ -180,7 +180,7 @@ export class GetCompilationResultHandler extends BaseToolHandler {
 
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
-        contracts: {'target': compilationResult.source?.target},
+        contracts: { 'target': compilationResult.source?.target },
         errors: compilationResult?.data?.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
@@ -355,7 +355,7 @@ export class CompileWithHardhatHandler extends BaseToolHandler {
   async execute(args: { configPath?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const configPath = args.configPath || 'hardhat.config.js';
-      
+
       // Check if hardhat config exists
       const exists = await plugin.call('fileManager', 'exists', configPath);
       if (!exists) {
@@ -406,7 +406,7 @@ export class CompileWithTruffleHandler extends BaseToolHandler {
   async execute(args: { configPath?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const configPath = args.configPath || 'truffle.config.js';
-      
+
       // Check if truffle config exists
       const exists = await plugin.call('fileManager', 'exists', configPath);
       if (!exists) {
@@ -414,7 +414,7 @@ export class CompileWithTruffleHandler extends BaseToolHandler {
       }
 
       const result = await plugin.call('solidity' as any , 'compileWithTruffle', configPath);
-      
+
       return this.createSuccessResult({
         success: true,
         message: 'Compiled with Truffle successfully',
@@ -444,10 +444,10 @@ export class GetCompilerVersionsHandler extends BaseToolHandler {
   async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get available compiler versions from Remix API
-      const compilerList = await  plugin.call('compilerloader', 'listCompilers')
+      const compilerList = await plugin.call('compilerloader', 'listCompilers')
       //const solJson = await  plugin.call('compilerloader', 'getJsonBinData')
       const versions = ['0.8.20', '0.8.25', '0.8.26', '0.8.28', '0.8.30']; // Mock data
-      
+
       return this.createSuccessResult({
         success: true,
         versions: versions || [],

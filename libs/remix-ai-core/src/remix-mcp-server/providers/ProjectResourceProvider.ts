@@ -10,7 +10,7 @@ import { ResourceCategory } from '../types/mcpResources';
 export class ProjectResourceProvider extends BaseResourceProvider {
   name = 'project';
   description = 'Provides access to project files, structure, and metadata';
-    private _plugin
+  private _plugin
 
   constructor (plugin){
     super()
@@ -23,14 +23,14 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     try {
       const workspacePath = await this.getWorkspacePath(plugin);
       await this.collectProjectResources(plugin, workspacePath, resources);
-      
+
       resources.push(
         this.createResource(
           'project://structure',
           'Project Structure',
           'Hierarchical view of project files and folders',
           'application/json',
-          { 
+          {
             category: ResourceCategory.PROJECT_FILES,
             tags: ['structure', 'files', 'folders'],
             priority: 8
@@ -98,9 +98,9 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   }
 
   private async collectProjectResources(
-    plugin: Plugin, 
-    path: string, 
-    resources: IMCPResource[], 
+    plugin: Plugin,
+    path: string,
+    resources: IMCPResource[],
     visited: Set<string> = new Set()
   ): Promise<void> {
     if (path.startsWith('/')) {
@@ -117,7 +117,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
       if (!exists) return;
 
       const isDir = await plugin.call('fileManager', 'isDirectory', path);
-      
+
       if (isDir) {
         // Process directory
         const files = await plugin.call('fileManager', 'readdir', path);
@@ -134,7 +134,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
         const fileExtension = path.split('.').pop()?.toLowerCase() || '';
         const mimeType = this.getMimeTypeForFile(fileExtension);
         const category = this.getCategoryForFile(fileExtension);
-        
+
         if (this.shouldIncludeFile(path, fileExtension)) {
           resources.push(
             this.createResource(
@@ -176,7 +176,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   private async getProjectConfig(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const configs: any = {};
-      
+
       // Check for common config files
       const configFiles = [
         'package.json',
@@ -249,7 +249,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
   private async getFileContent(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     const filePath = uri.replace('file://', '');
-    
+
     try {
       const exists = await plugin.call('fileManager', 'exists', filePath);
       if (!exists) {
@@ -326,11 +326,11 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
   private async scanForImports(plugin: Plugin, path: string, dependencies: any): Promise<void> {
     try {
-      const exists = await this._plugin.call('fileManager', 'exists', path || '') 
+      const exists = await this._plugin.call('fileManager', 'exists', path || '')
       if (!exists) return;
 
-      const isDir = await this._plugin.call('fileManager', 'isDirectory', path || '') 
-      
+      const isDir = await this._plugin.call('fileManager', 'isDirectory', path || '')
+
       if (isDir) {
         const files = await this._plugin.call('fileManager', 'readdir', path || '')
 
@@ -344,7 +344,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
           }
         }
       } else if (path.endsWith('.sol')) {
-        const content = await this._plugin.call('fileManager', 'readFile', path) 
+        const content = await this._plugin.call('fileManager', 'readFile', path)
         const imports = this.extractSolidityImports(content);
         dependencies.imports.push(...imports.map(imp => ({
           file: path,
@@ -359,14 +359,14 @@ export class ProjectResourceProvider extends BaseResourceProvider {
   private extractSolidityImports(content: string): string[] {
     const imports: string[] = [];
     const lines = content.split('\n');
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith('import ')) {
         imports.push(trimmed);
       }
     }
-    
+
     return imports;
   }
 
@@ -379,7 +379,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
         const lines = content.split('\n');
         const config: any = {};
         let currentSection = '';
-        
+
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -392,7 +392,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
             config[section][key] = value.replace(/"/g, '');
           }
         }
-        
+
         return config;
       } else {
         return { content, note: 'Raw content - parsing not implemented' };
@@ -419,10 +419,10 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     // Include source files and important project files
     const includedExtensions = ['sol', 'js', 'ts', 'json', 'md', 'txt', 'toml', 'yaml', 'yml'];
     const includedFiles = ['README', 'LICENSE', 'Dockerfile'];
-    
+
     const filename = path.split('/').pop() || '';
-    
-    return includedExtensions.includes(extension) || 
+
+    return includedExtensions.includes(extension) ||
            includedFiles.some(f => filename.toUpperCase().includes(f.toUpperCase()));
   }
 
@@ -438,7 +438,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
       'yaml': 'text/x-yaml',
       'yml': 'text/x-yaml'
     };
-    
+
     return mimeTypes[extension] || 'text/plain';
   }
 
@@ -452,7 +452,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
 
   private getTagsForFile(path: string, extension: string): string[] {
     const tags = [extension];
-    
+
     if (path.includes('contract')) tags.push('contract');
     if (path.includes('test')) tags.push('test');
     if (path.includes('script')) tags.push('script');
@@ -460,7 +460,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
     if (path.includes('deploy')) tags.push('deployment');
     if (path.includes('config')) tags.push('config');
     if (path.includes('README')) tags.push('documentation', 'readme');
-    
+
     return tags;
   }
 }

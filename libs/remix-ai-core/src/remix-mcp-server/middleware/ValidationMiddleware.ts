@@ -50,7 +50,7 @@ export class ValidationMiddleware {
    * Validate a tool call and its arguments
    */
   async validateToolCall(
-    call: IMCPToolCall, 
+    call: IMCPToolCall,
     inputSchema: any,
     context: ToolExecutionContext,
     plugin: Plugin
@@ -190,7 +190,7 @@ export class ValidationMiddleware {
     if (schema.type) {
       const expectedType = schema.type;
       const actualType = Array.isArray(value) ? 'array' : typeof value;
-      
+
       if (expectedType !== actualType) {
         result.errors.push({
           field,
@@ -309,49 +309,49 @@ export class ValidationMiddleware {
 
       // Additional type-specific validations
       switch (fieldSchema.type) {
-        case 'string':
-          if (typeof value !== 'string') {
-            result.errors.push({
-              field,
-              code: 'TYPE_ERROR',
-              message: `Field '${field}' must be a string`,
-              value
-            });
-          }
-          break;
+      case 'string':
+        if (typeof value !== 'string') {
+          result.errors.push({
+            field,
+            code: 'TYPE_ERROR',
+            message: `Field '${field}' must be a string`,
+            value
+          });
+        }
+        break;
 
-        case 'number':
-          if (typeof value !== 'number' || isNaN(value)) {
-            result.errors.push({
-              field,
-              code: 'TYPE_ERROR',
-              message: `Field '${field}' must be a valid number`,
-              value
-            });
-          }
-          break;
+      case 'number':
+        if (typeof value !== 'number' || isNaN(value)) {
+          result.errors.push({
+            field,
+            code: 'TYPE_ERROR',
+            message: `Field '${field}' must be a valid number`,
+            value
+          });
+        }
+        break;
 
-        case 'boolean':
-          if (typeof value !== 'boolean') {
-            result.errors.push({
-              field,
-              code: 'TYPE_ERROR',
-              message: `Field '${field}' must be a boolean`,
-              value
-            });
-          }
-          break;
+      case 'boolean':
+        if (typeof value !== 'boolean') {
+          result.errors.push({
+            field,
+            code: 'TYPE_ERROR',
+            message: `Field '${field}' must be a boolean`,
+            value
+          });
+        }
+        break;
 
-        case 'array':
-          if (!Array.isArray(value)) {
-            result.errors.push({
-              field,
-              code: 'TYPE_ERROR',
-              message: `Field '${field}' must be an array`,
-              value
-            });
-          }
-          break;
+      case 'array':
+        if (!Array.isArray(value)) {
+          result.errors.push({
+            field,
+            code: 'TYPE_ERROR',
+            message: `Field '${field}' must be an array`,
+            value
+          });
+        }
+        break;
       }
     }
   }
@@ -483,9 +483,9 @@ export class ValidationMiddleware {
    * Custom validations for specific tools
    */
   private async customValidations(
-    call: IMCPToolCall, 
-    context: ToolExecutionContext, 
-    plugin: Plugin, 
+    call: IMCPToolCall,
+    context: ToolExecutionContext,
+    plugin: Plugin,
     result: ValidationResult
   ): Promise<void> {
     const customValidator = this.config.customValidators.get(call.name);
@@ -497,22 +497,22 @@ export class ValidationMiddleware {
 
     // Tool-specific validations
     switch (call.name) {
-      case 'file_write':
-      case 'file_create':
-        await this.validateFileWrite(call.arguments, plugin, result);
-        break;
-        
-      case 'deploy_contract':
-        await this.validateContractDeployment(call.arguments, plugin, result);
-        break;
-        
-      case 'call_contract':
-        await this.validateContractCall(call.arguments, plugin, result);
-        break;
-        
-      case 'set_breakpoint':
-        await this.validateBreakpoint(call.arguments, plugin, result);
-        break;
+    case 'file_write':
+    case 'file_create':
+      await this.validateFileWrite(call.arguments, plugin, result);
+      break;
+
+    case 'deploy_contract':
+      await this.validateContractDeployment(call.arguments, plugin, result);
+      break;
+
+    case 'call_contract':
+      await this.validateContractCall(call.arguments, plugin, result);
+      break;
+
+    case 'set_breakpoint':
+      await this.validateBreakpoint(call.arguments, plugin, result);
+      break;
     }
   }
 
@@ -520,9 +520,9 @@ export class ValidationMiddleware {
    * Business logic validations
    */
   private async businessLogicValidations(
-    call: IMCPToolCall, 
-    context: ToolExecutionContext, 
-    plugin: Plugin, 
+    call: IMCPToolCall,
+    context: ToolExecutionContext,
+    plugin: Plugin,
     result: ValidationResult
   ): Promise<void> {
     // Validate workspace state
@@ -714,7 +714,7 @@ export class ValidationMiddleware {
 
   private requiresWorkspace(toolName: string): boolean {
     const workspaceTools = [
-      'solidity_compile', 'deploy_contract', 'file_write', 
+      'solidity_compile', 'deploy_contract', 'file_write',
       'file_create', 'set_breakpoint'
     ];
     return workspaceTools.includes(toolName);

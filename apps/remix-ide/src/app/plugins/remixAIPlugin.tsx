@@ -565,7 +565,7 @@ export class RemixAIPlugin extends Plugin {
 
     const defaultStatuses = this.mcpServers.map(server => ({
       serverName: server.name,
-      status: 'disconnected' as 'disconnected',
+      status: 'disconnected' as const,
       lastAttempt: Date.now()
     }));
     return defaultStatuses;

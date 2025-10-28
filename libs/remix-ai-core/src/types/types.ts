@@ -110,7 +110,7 @@ export interface IParams {
 }
 
 export interface IAIStreamResponse{
-  streamResponse: any, 
+  streamResponse: any,
   callback?: any
 }
 

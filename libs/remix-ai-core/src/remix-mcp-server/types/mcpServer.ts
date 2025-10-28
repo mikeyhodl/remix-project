@@ -131,29 +131,29 @@ export interface IRemixMCPServer extends EventEmitter {
   readonly plugin: ICustomRemixApi;
 
   initialize(): Promise<IMCPInitializeResult>;
-  
+
   start(): Promise<void>;
-  
+
   stop(): Promise<void>;
-  
+
   getCapabilities(): IMCPServerCapabilities;
-  
+
   handleMessage(message: any): Promise<any>;
-  
+
   checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult>;
-  
+
   getActiveExecutions(): ToolExecutionStatus[];
-  
+
   getCacheStats(): {
     size: number;
     hitRate: number;
     entries: ResourceCacheEntry[];
   };
-  
+
   getAuditLog(limit?: number): AuditLogEntry[];
-  
+
   clearCache(): void;
-  
+
   refreshResources(): Promise<void>;
 }
 

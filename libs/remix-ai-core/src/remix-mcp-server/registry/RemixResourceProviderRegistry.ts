@@ -1,10 +1,11 @@
+/* eslint-disable no-case-declarations */
 /**
  * Remix Resource Provider Registry Implementation
  */
 
 import { Plugin } from '@remixproject/engine';
 import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
-import { 
+import {
   ResourceProviderRegistry,
   RemixResourceProvider,
   ResourceQuery,
@@ -56,7 +57,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
     if (provider) {
       this.providers.delete(name);
       this.resourceCache.delete(name);
-      
+
       this.notifySubscribers({
         type: 'deleted',
         resource: {
@@ -95,7 +96,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
     for (const [name, provider] of this.providers) {
       try {
         let resources: IMCPResource[];
-        
+
         // Check cache first
         const cached = this.resourceCache.get(name);
         if (cached && Date.now() - cached.timestamp.getTime() < this.cacheTimeout) {
@@ -249,7 +250,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
 
     // Filter by category
     if (query.category) {
-      filtered = filtered.filter(resource => 
+      filtered = filtered.filter(resource =>
         (resource as any).metadata?.category === query.category
       );
     }
@@ -257,7 +258,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
     // Filter by tags
     if (query.tags && query.tags.length > 0) {
       filtered = filtered.filter(resource =>
-        query.tags!.some(tag => 
+        query.tags!.some(tag =>
           (resource as any).metadata?.tags?.includes(tag) ||
           resource.name.toLowerCase().includes(tag.toLowerCase()) ||
           resource.description?.toLowerCase().includes(tag.toLowerCase())
@@ -275,7 +276,7 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
           ...(resource.annotations?.audience || [])
         ].join(' ').toLowerCase();
 
-        return query.keywords!.some(keyword => 
+        return query.keywords!.some(keyword =>
           searchText.includes(keyword.toLowerCase())
         );
       });
@@ -323,8 +324,8 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
    * Sort resources by specified criteria
    */
   private sortResources(
-    resources: IMCPResource[], 
-    sortBy: 'name' | 'date' | 'size' | 'relevance', 
+    resources: IMCPResource[],
+    sortBy: 'name' | 'date' | 'size' | 'relevance',
     order: 'asc' | 'desc'
   ): IMCPResource[] {
     const multiplier = order === 'desc' ? -1 : 1;
@@ -333,23 +334,23 @@ export class RemixResourceProviderRegistry implements ResourceProviderRegistry {
       let comparison = 0;
 
       switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'date':
-          const dateA = (a as any).metadata?.lastModified || new Date(0);
-          const dateB = (b as any).metadata?.lastModified || new Date(0);
-          comparison = new Date(dateA).getTime() - new Date(dateB).getTime();
-          break;
-        case 'size':
-          const sizeA = (a as any).metadata?.size || 0;
-          const sizeB = (b as any).metadata?.size || 0;
-          comparison = sizeA - sizeB;
-          break;
-        case 'relevance':
-          // TODO: Implement relevance scoring
-          comparison = 0;
-          break;
+      case 'name':
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case 'date':
+        const dateA = (a as any).metadata?.lastModified || new Date(0);
+        const dateB = (b as any).metadata?.lastModified || new Date(0);
+        comparison = new Date(dateA).getTime() - new Date(dateB).getTime();
+        break;
+      case 'size':
+        const sizeA = (a as any).metadata?.size || 0;
+        const sizeB = (b as any).metadata?.size || 0;
+        comparison = sizeA - sizeB;
+        break;
+      case 'relevance':
+        // TODO: Implement relevance scoring
+        comparison = 0;
+        break;
       }
 
       return comparison * multiplier;
@@ -394,9 +395,9 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
    * Helper method to create basic resource
    */
   protected createResource(
-    uri: string, 
-    name: string, 
-    description?: string, 
+    uri: string,
+    name: string,
+    description?: string,
     mimeType?: string,
     metadata?: any
   ): IMCPResource {

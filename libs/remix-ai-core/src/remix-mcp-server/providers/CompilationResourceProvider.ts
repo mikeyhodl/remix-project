@@ -27,7 +27,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
           'Latest Compilation Result',
           'Most recent compilation output with contracts and errors',
           'application/json',
-          { 
+          {
             category: ResourceCategory.COMPILATION_RESULTS,
             tags: ['compilation', 'latest', 'results'],
             priority: 9
@@ -155,7 +155,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     try {
       // TODO: Get actual compilation result from Remix API
       const mockContracts = ['MyToken', 'TokenSale', 'Ownable']; // Mock data
-      
+
       for (const contractName of mockContracts) {
         resources.push(
           this.createResource(
@@ -258,7 +258,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         if (content) content = JSON.parse(content)
         if (content) artifacts.push(content)
       }
-      
+
       return this.createJsonContent('compilation://artifacts', artifacts);
     } catch (error) {
       return this.createTextContent('compilation://artifacts', `Error getting build artifacts: ${error.message}`);
@@ -277,7 +277,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     try {
       const compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
       let config: any;
-      
+
       if (compilerConfig) {
         config = JSON.parse(compilerConfig);
       } else {
@@ -297,7 +297,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
 
   private async getContractDetails(uri: string, plugin: Plugin): Promise<IMCPResourceContent> {
     const contractName = uri.replace('contract://', '');
-    
+
     try {
       const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
       if (!compilationResult) {

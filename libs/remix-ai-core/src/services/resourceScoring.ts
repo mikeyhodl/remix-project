@@ -71,12 +71,12 @@ export class ResourceScoring {
   ): Promise<IResourceScore[]> {
     const domainWeights = { ...this.defaultDomainWeights, ...(params.domainWeights || {}) };
     const relevanceThreshold = params.relevanceThreshold || 0.35;
-    
+
     const scoredResources: IResourceScore[] = [];
 
     for (const { resource, serverName } of resources) {
       const score = this.calculateResourceScore(resource, intent, domainWeights);
-      
+
       if (score.score >= relevanceThreshold) {
         scoredResources.push({
           resource,
@@ -101,14 +101,14 @@ export class ResourceScoring {
     strategy: 'priority' | 'semantic' | 'hybrid' = 'hybrid'
   ): IResourceScore[] {
     switch (strategy) {
-      case 'priority':
-        return this.selectByPriority(scoredResources, maxResources);
-      case 'semantic':
-        return this.selectBySemantic(scoredResources, maxResources);
-      case 'hybrid':
-        return this.selectByHybrid(scoredResources, maxResources);
-      default:
-        return scoredResources.slice(0, maxResources);
+    case 'priority':
+      return this.selectByPriority(scoredResources, maxResources);
+    case 'semantic':
+      return this.selectBySemantic(scoredResources, maxResources);
+    case 'hybrid':
+      return this.selectByHybrid(scoredResources, maxResources);
+    default:
+      return scoredResources.slice(0, maxResources);
     }
   }
 
@@ -152,7 +152,7 @@ export class ResourceScoring {
       resource.uri
     ].join(' ').toLowerCase();
 
-    const matches = keywords.filter(keyword => 
+    const matches = keywords.filter(keyword =>
       resourceText.includes(keyword.toLowerCase())
     );
 
@@ -160,8 +160,8 @@ export class ResourceScoring {
   }
 
   private calculateDomainRelevance(
-    resource: IMCPResource, 
-    domains: string[], 
+    resource: IMCPResource,
+    domains: string[],
     domainWeights: Record<string, number>
   ): number {
     if (domains.length === 0) return 0.5; // Neutral if no domains detected
@@ -228,9 +228,9 @@ export class ResourceScoring {
   }
 
   private selectBySemantic(resources: IResourceScore[], maxResources: number): IResourceScore[] {
-    const semanticScore = (r: IResourceScore) => 
+    const semanticScore = (r: IResourceScore) =>
       (r.components.keywordMatch + r.components.domainRelevance + r.components.typeRelevance) / 3;
-    
+
     return [...resources]
       .sort((a, b) => semanticScore(b) - semanticScore(a))
       .slice(0, maxResources);
@@ -266,14 +266,14 @@ export class ResourceScoring {
   private inferResourceType(resource: IMCPResource): string {
     const name = resource.name.toLowerCase();
     const uri = resource.uri.toLowerCase();
-    
+
     if (name.includes('readme') || uri.includes('readme')) return 'readme';
     if (name.includes('example') || uri.includes('example')) return 'example';
     if (name.includes('template') || uri.includes('template')) return 'template';
     if (name.includes('api') || uri.includes('api')) return 'api';
     if (name.includes('guide') || uri.includes('guide')) return 'guide';
     if (resource.mimeType?.includes('code') || uri.includes('.sol') || uri.includes('.js')) return 'code';
-    
+
     return 'documentation';
   }
 
@@ -283,27 +283,27 @@ export class ResourceScoring {
     intent: IUserIntent
   ): string {
     const reasons = [];
-    
+
     if (components.keywordMatch > 0.7) {
       reasons.push(`Strong keyword match (${Math.round(components.keywordMatch * 100)}%)`);
     }
-    
+
     if (components.domainRelevance > 0.7) {
       reasons.push(`Highly relevant to ${intent.domains.join(', ')} domains`);
     }
-    
+
     if (components.typeRelevance > 0.7) {
       reasons.push(`Well-suited for ${intent.type} tasks`);
     }
-    
+
     if (components.priority > 0.7) {
       reasons.push('High priority resource');
     }
-    
+
     if (reasons.length === 0) {
       reasons.push('General relevance match');
     }
-    
+
     return reasons.join('; ');
   }
 }

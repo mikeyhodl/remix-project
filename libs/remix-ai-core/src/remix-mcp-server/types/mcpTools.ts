@@ -263,6 +263,7 @@ export interface DeploymentResult {
   logs: any[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface RunScriptResult {}
 
 export interface ContractInteractionResult {

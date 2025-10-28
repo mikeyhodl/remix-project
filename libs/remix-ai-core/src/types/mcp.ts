@@ -13,7 +13,7 @@ export interface IMCPServer {
   autoStart?: boolean
   timeout?: number
   enabled?: boolean
-  isBuiltIn?: boolean  // Cannot be removed if true
+  isBuiltIn?: boolean // Cannot be removed if true
 }
 
 export interface IMCPResource {

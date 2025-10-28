@@ -24,21 +24,21 @@ export { CompilationResourceProvider } from './providers/CompilationResourceProv
 export { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
 
 // Middleware
-export { 
-  SecurityMiddleware, 
+export {
+  SecurityMiddleware,
   defaultSecurityConfig
 } from './middleware/SecurityMiddleware';
-export type { 
+export type {
   SecurityConfig,
   SecurityValidationResult,
   AuditLogEntry
 } from './middleware/SecurityMiddleware';
 
-export { 
-  ValidationMiddleware, 
+export {
+  ValidationMiddleware,
   defaultValidationConfig
 } from './middleware/ValidationMiddleware';
-export type { 
+export type {
   ValidationConfig,
   ValidationResult,
   ValidationError,
@@ -46,14 +46,14 @@ export type {
 } from './middleware/ValidationMiddleware';
 
 // Registries
-export { 
-  RemixToolRegistry, 
-  BaseToolHandler 
+export {
+  RemixToolRegistry,
+  BaseToolHandler
 } from './registry/RemixToolRegistry';
 
-export { 
-  RemixResourceProviderRegistry, 
-  BaseResourceProvider 
+export {
+  RemixResourceProviderRegistry,
+  BaseResourceProvider
 } from './registry/RemixResourceProviderRegistry';
 
 // Types
@@ -83,7 +83,7 @@ export async function createRemixMCPServer(
     customProviders = []
   } = options;
 
-  // Create server with configuration  
+  // Create server with configuration
   const serverConfig = {
     name: 'Remix MCP Server',
     version: '1.0.0',
@@ -109,7 +109,7 @@ export async function createRemixMCPServer(
       testing: true
     }
   };
-  
+
   const server = new RemixMCPServer(plugin, serverConfig);
 
   // Register custom tools if provided

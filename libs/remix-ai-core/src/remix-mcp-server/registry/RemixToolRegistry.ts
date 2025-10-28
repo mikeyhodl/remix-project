@@ -4,10 +4,10 @@
 import { isBigInt } from 'web3-validator';
 import EventEmitter from 'events';
 import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
-import { 
-  ToolRegistry, 
-  RemixToolDefinition, 
-  ToolCategory, 
+import {
+  ToolRegistry,
+  RemixToolDefinition,
+  ToolCategory,
   ToolExecutionContext,
   RemixToolHandler
 } from '../types/mcpTools';
@@ -51,7 +51,7 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
     }
 
     this.tools.delete(name);
-    
+
     // Remove from category
     const categoryTools = this.categories.get(tool.category);
     if (categoryTools) {
@@ -76,7 +76,7 @@ export class RemixToolRegistry extends EventEmitter implements ToolRegistry {
       const categoryTools = this.categories.get(category) || new Set();
       return Array.from(categoryTools).map(name => this.tools.get(name)!);
     }
-    
+
     return Array.from(this.tools.values());
   }
 
@@ -249,8 +249,6 @@ export abstract class BaseToolHandler implements RemixToolHandler {
   validate(args: any): boolean | string {
     return true;
   }
-
-  
 
   protected createSuccessResult(content: any): IMCPToolResult {
     return {

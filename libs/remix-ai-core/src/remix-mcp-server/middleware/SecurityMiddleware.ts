@@ -40,19 +40,19 @@ export class SecurityMiddleware {
   private rateLimitTracker = new Map<string, { count: number; resetTime: number }>();
   private auditLog: AuditLogEntry[] = [];
   private blockedIPs = new Set<string>();
-  
+
   constructor(private config: SecurityConfig) {}
 
   /**
    * Validate a tool call before execution
    */
   async validateToolCall(
-    call: IMCPToolCall, 
+    call: IMCPToolCall,
     context: ToolExecutionContext,
     plugin: Plugin
   ): Promise<SecurityValidationResult> {
     const startTime = Date.now();
-    
+
     try {
       // Rate limiting check
       const rateLimitResult = this.checkRateLimit(context);
@@ -94,10 +94,10 @@ export class SecurityMiddleware {
 
     } catch (error) {
       this.logAudit(call, context, 'error', `Validation error: ${error.message}`, startTime, 'high');
-      return { 
-        allowed: false, 
-        reason: `Security validation failed: ${error.message}`, 
-        risk: 'high' 
+      return {
+        allowed: false,
+        reason: `Security validation failed: ${error.message}`,
+        risk: 'high'
       };
     }
   }
@@ -118,29 +118,29 @@ export class SecurityMiddleware {
     try {
       const result = await executor();
       clearTimeout(timeoutId);
-      
+
       this.logAudit(
-        { name: toolName, arguments: {} }, 
-        context, 
-        'success', 
-        'Execution completed', 
-        startTime, 
+        { name: toolName, arguments: {} },
+        context,
+        'success',
+        'Execution completed',
+        startTime,
         'low'
       );
-      
+
       return result;
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       this.logAudit(
-        { name: toolName, arguments: {} }, 
-        context, 
-        'error', 
-        error.message, 
-        startTime, 
+        { name: toolName, arguments: {} },
+        context,
+        'error',
+        error.message,
+        startTime,
         'high'
       );
-      
+
       throw error;
     }
   }
@@ -152,7 +152,7 @@ export class SecurityMiddleware {
     const identifier = context.userId || context.sessionId || 'anonymous';
     const now = Date.now();
     const resetTime = Math.floor(now / 60000) * 60000 + 60000; // Next minute
-    
+
     const userLimit = this.rateLimitTracker.get(identifier);
     if (!userLimit || userLimit.resetTime <= now) {
       this.rateLimitTracker.set(identifier, { count: 1, resetTime });
@@ -160,8 +160,8 @@ export class SecurityMiddleware {
     }
 
     if (userLimit.count >= this.config.maxRequestsPerMinute) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         reason: `Rate limit exceeded: ${userLimit.count}/${this.config.maxRequestsPerMinute} requests per minute`,
         risk: 'medium'
       };
@@ -186,11 +186,11 @@ export class SecurityMiddleware {
 
     // Get required permissions for this tool (would need to be passed from tool definition)
     const requiredPermissions = this.getRequiredPermissions(call.name);
-    
+
     for (const permission of requiredPermissions) {
       if (!context.permissions.includes(permission)) {
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           reason: `Missing required permission: ${permission}`,
           risk: 'high'
         };
@@ -222,8 +222,8 @@ export class SecurityMiddleware {
       if (typeof value === 'string') {
         for (const pattern of dangerousPatterns) {
           if (pattern.test(value)) {
-            return { 
-              allowed: false, 
+            return {
+              allowed: false,
               reason: `Potentially dangerous content detected in argument ${key}: ${pattern}`,
               risk: 'high'
             };
@@ -232,8 +232,8 @@ export class SecurityMiddleware {
 
         // Check for extremely long strings that might cause DoS
         if (value.length > 100000) {
-          return { 
-            allowed: false, 
+          return {
+            allowed: false,
             reason: `Argument ${key} exceeds maximum length (100KB)`,
             risk: 'medium'
           };
@@ -249,10 +249,10 @@ export class SecurityMiddleware {
    */
   private async validateFileOperations(call: IMCPToolCall, plugin: Plugin): Promise<SecurityValidationResult> {
     const args = call.arguments || {};
-    
+
     // File operation tools
     const fileOps = ['file_read', 'file_write', 'file_create', 'file_delete', 'file_move', 'file_copy'];
-    
+
     if (!fileOps.includes(call.name)) {
       return { allowed: true, risk: 'low' };
     }
@@ -271,8 +271,8 @@ export class SecurityMiddleware {
     // Check file content size
     if (args.content && typeof args.content === 'string') {
       if (args.content.length > this.config.maxFileSize) {
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           reason: `File content exceeds maximum size (${this.config.maxFileSize} bytes)`,
           risk: 'medium'
         };
@@ -283,8 +283,8 @@ export class SecurityMiddleware {
     if (args.path && this.config.allowedFileTypes.length > 0) {
       const extension = args.path.split('.').pop()?.toLowerCase();
       if (extension && !this.config.allowedFileTypes.includes(extension)) {
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           reason: `File type .${extension} is not allowed`,
           risk: 'medium'
         };
@@ -300,8 +300,8 @@ export class SecurityMiddleware {
   private validateFilePath(path: string): SecurityValidationResult {
     // Check for path traversal attacks
     if (path.includes('..') || path.includes('~')) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         reason: 'Path traversal detected',
         risk: 'high'
       };
@@ -309,8 +309,8 @@ export class SecurityMiddleware {
 
     // Check for absolute paths outside workspace
     if (path.startsWith('/') && !path.startsWith('/workspace')) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         reason: 'Absolute path outside workspace',
         risk: 'high'
       };
@@ -319,8 +319,8 @@ export class SecurityMiddleware {
     // Check blocked paths
     for (const blockedPath of this.config.blockedPaths) {
       if (path.includes(blockedPath)) {
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           reason: `Path contains blocked segment: ${blockedPath}`,
           risk: 'high'
         };
@@ -331,8 +331,8 @@ export class SecurityMiddleware {
     const systemFiles = ['.env', '.git', 'node_modules', '.ssh', 'id_rsa'];
     for (const systemFile of systemFiles) {
       if (path.includes(systemFile)) {
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           reason: `Access to system file/directory not allowed: ${systemFile}`,
           risk: 'high'
         };
@@ -372,8 +372,8 @@ export class SecurityMiddleware {
       if (typeof value === 'string') {
         for (const pattern of allPatterns) {
           if (pattern.test(value)) {
-            return { 
-              allowed: false, 
+            return {
+              allowed: false,
               reason: `Potentially malicious content detected in ${key}`,
               risk: 'high'
             };
@@ -407,8 +407,8 @@ export class SecurityMiddleware {
    * Log audit entry
    */
   private logAudit(
-    call: IMCPToolCall, 
-    context: ToolExecutionContext, 
+    call: IMCPToolCall,
+    context: ToolExecutionContext,
     result: 'success' | 'error' | 'blocked',
     reason: string,
     startTime: number,
@@ -447,7 +447,6 @@ export class SecurityMiddleware {
   clearAuditLog(): void {
     this.auditLog = [];
   }
-
 
   blockIP(ip: string): void {
     this.blockedIPs.add(ip);

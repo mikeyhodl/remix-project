@@ -1,6 +1,6 @@
 'use strict'
 import { EventManager } from '../eventManager'
-import type { Transaction as InternalTransaction, TxResult} from './txRunner'
+import type { Transaction as InternalTransaction, TxResult } from './txRunner'
 import { Web3 } from 'web3'
 import { BrowserProvider } from 'ethers'
 import { normalizeHexAddress } from '../helpers/uiHelper'

@@ -22,7 +22,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           'Deployment History',
           'Complete history of contract deployments',
           'application/json',
-          { 
+          {
             category: ResourceCategory.DEPLOYMENT_DATA,
             tags: ['deployments', 'history', 'transactions'],
             priority: 9
@@ -430,12 +430,12 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
   private getNetworkType(chainId: any): string {
     const id = parseInt(chainId.toString());
     switch (id) {
-      case 1: return 'mainnet';
-      case 11155111: return 'sepolia';
-      case 5: return 'goerli';
-      case 137: return 'polygon';
-      case 1337: return 'local';
-      default: return id > 1000 ? 'local' : 'testnet';
+    case 1: return 'mainnet';
+    case 11155111: return 'sepolia';
+    case 5: return 'goerli';
+    case 137: return 'polygon';
+    case 1337: return 'local';
+    default: return id > 1000 ? 'local' : 'testnet';
     }
   }
 
@@ -527,7 +527,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
       // Get current provider and network info
       const provider = await plugin.call('blockchain' as any, 'getCurrentProvider').catch(() => ({ displayName: 'unknown' }));
       const networkName = await plugin.call('blockchain' as any, 'getProvider').catch(() => 'unknown');
-      let chainId = await plugin.call('blockchain' as any, 'getChainId').catch(() => 'unknown');
+      const chainId = await plugin.call('blockchain' as any, 'getChainId').catch(() => 'unknown');
 
       // Get available providers
       const availableProviders = await plugin.call('blockchain' as any, 'getProviders').catch(() => []);
