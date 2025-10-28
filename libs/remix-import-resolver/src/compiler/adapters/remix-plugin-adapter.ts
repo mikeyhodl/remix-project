@@ -33,9 +33,34 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   async resolveAndSave(url: string, targetPath?: string, useOriginal?: boolean): Promise<string> {
-    // Leverage existing optimized path in the app to both resolve and persist content.
-    const result = await this.plugin.call('contentImport', 'resolveAndSave', url, targetPath, useOriginal)
-    // resolveAndSave returns the local destination path in Remix; propagate it.
-    return result
+    // Fetch content using contentImport.resolve to avoid any side-effects or internal remapping,
+    // then persist to the deterministic destination under .deps (mirrors NodeIOAdapter logic).
+    const contentResult = await this.plugin.call('contentImport', 'resolve', url)
+    const content: string = typeof contentResult === 'string' ? contentResult : (contentResult?.content ?? '')
+
+    // Determine destination
+    let dest = targetPath
+    const isHttp = (u: string) => u.startsWith('http://') || u.startsWith('https://')
+    if (!dest) {
+      if (isHttp(url)) {
+        try {
+          const u = new URL(url)
+          const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+          dest = `.deps/http/${u.hostname}/${cleanPath}`
+        } catch {
+          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^a-zA-Z0-9._\-\/]/g, '_')
+          dest = `.deps/http/${safe}`
+        }
+      } else {
+        // Treat as npm-like path (e.g., "@scope/pkg@ver/path")
+        dest = `.deps/npm/${url}`
+      }
+    } else if (!dest.startsWith('.deps/')) {
+      dest = `.deps/${dest}`
+    }
+
+    await this.plugin.call('fileManager', 'setFile', dest, content)
+    // Return content to the resolver (it expects the fetched file contents, not a path)
+    return content
   }
 }

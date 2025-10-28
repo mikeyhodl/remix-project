@@ -267,7 +267,7 @@ module.exports = {
             .waitForElementVisible('*[data-id$="treeViewLitreeViewItem.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol"]', 60000)
             // Verify package.json content
             .openFile('.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/package.json')
-            .pause()
+            .pause(1000)
             .getEditorValue((content) => {
                 try {
                     const packageJson = JSON.parse(content)

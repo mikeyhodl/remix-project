@@ -44,6 +44,8 @@ export class ImportResolver implements IImportResolver {
   private packageSources: Map<string, string> = new Map()
   private debug: boolean = false
   private packageMapper: PackageMapper
+  // Cache to avoid refetching the same GitHub package.json multiple times per session
+  private fetchedGitHubPackages: Set<string> = new Set()
 
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
@@ -91,6 +93,7 @@ export class ImportResolver implements IImportResolver {
     )
     this.resolutionIndex = null
     this.resolutionIndexInitialized = false
+    this.fetchedGitHubPackages = new Set()
   }
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
@@ -200,41 +203,42 @@ export class ImportResolver implements IImportResolver {
     return await this.packageVersionResolver.resolveVersion(packageName, parentDeps, parentPackage || undefined)
   }
 
-  private async fetchPackageVersionFromNpm(packageName: string): Promise<{ version: string | null, source: string }> {
-    try {
-      this.log(`[ImportResolver] 📦 Fetching package.json for: ${packageName}`)
-      const packageJsonUrl = `${packageName}/package.json`
-      const content = await (this.pluginApi as any).call('contentImport', 'resolve', packageJsonUrl)
-      const packageJson = JSON.parse(content.content || content)
-      if (!packageJson.version) return { version: null, source: 'fetched' }
-      const realPackageName = packageJson.name || packageName
-      try {
-        const targetPath = `.deps/npm/${realPackageName}@${packageJson.version}/package.json`
-        await (this.pluginApi as any).call('fileManager', 'setFile', targetPath, JSON.stringify(packageJson, null, 2))
-        this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-      } catch (saveErr) { this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr) }
-      this.dependencyStore.storePackageDependencies(`${packageName}@${packageJson.version}`, packageJson)
-      return { version: packageJson.version, source: 'package-json' }
-    } catch (err) {
-      this.log(`[ImportResolver] ⚠️  Failed to fetch package.json for ${packageName}:`, err)
-      return { version: null, source: 'fetched' }
-    }
-  }
-
   private async fetchGitHubPackageJson(owner: string, repo: string, ref: string): Promise<void> {
     try {
+      const key = `${owner}/${repo}@${ref}`
+      const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
+
+      // Skip if we already processed this repo/ref in this session
+      if (this.fetchedGitHubPackages.has(key)) {
+        this.log(`[ImportResolver] 📦 Skipping GitHub package.json fetch (cached): ${key}`)
+        return
+      }
+
+      // If file already exists on disk, don't refetch; load into store once
+      if (await this.contentFetcher.exists(targetPath)) {
+        this.fetchedGitHubPackages.add(key)
+        try {
+          if (!this.dependencyStore.hasParent(key)) {
+            const existing = await this.contentFetcher.readFile(targetPath)
+            const pkg = JSON.parse(existing)
+            if (pkg && pkg.name) this.dependencyStore.storePackageDependencies(key, pkg)
+          }
+        } catch {}
+        this.log(`[ImportResolver] 📦 GitHub package.json already present: ${targetPath}`)
+        return
+      }
+
       const packageJsonUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/package.json`
       this.log(`[ImportResolver] 📦 Attempting to fetch GitHub package.json: ${packageJsonUrl}`)
       const content = await this.contentFetcher.resolve(packageJsonUrl)
       const packageJson = JSON.parse(content.content || content)
       if (packageJson && packageJson.name) {
-        const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
         await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
+        this.fetchedGitHubPackages.add(key)
         this.log(`[ImportResolver] ✅ Saved GitHub package.json to: ${targetPath}`)
         this.log(`[ImportResolver]    Package: ${packageJson.name}@${packageJson.version || 'unknown'}`)
         if (packageJson.version) {
-          const packageKey = `${owner}/${repo}@${ref}`
-          this.dependencyStore.storePackageDependencies(packageKey, packageJson)
+          this.dependencyStore.storePackageDependencies(key, packageJson)
         }
       }
     } catch (err) {
