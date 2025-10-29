@@ -55,24 +55,23 @@ export class ResolutionIndexPlugin extends Plugin {
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
     const candidates = this.buildCandidates(importPath)
+    const isLocalPath = (val?: string) => !!val && !/^https?:\/\//.test(val) && !val.startsWith('github/')
     // 1) Direct lookup by candidates for the given sourceFile
     for (const cand of candidates) {
-      if (this.index[sourceFile] && this.index[sourceFile][cand]) {
-        return this.index[sourceFile][cand]
-      }
+      const val = this.index[sourceFile]?.[cand]
+      if (isLocalPath(val)) return val as string
     }
     // 2) Fallback: search across all base files for any candidate
     for (const file in this.index) {
       for (const cand of candidates) {
-        if (this.index[file] && this.index[file][cand]) {
-          return this.index[file][cand]
-        }
+        const val = this.index[file]?.[cand]
+        if (isLocalPath(val)) return val as string
       }
     }
     // 3) Last chance: fuzzy match by resolved path suffix (handles alias like github/<o>/<r>@<ref>/rest)
     const suffixes = candidates.map((c) => this.toSuffix(c)).filter(Boolean) as string[]
     const hit = this.findByResolvedSuffix(suffixes)
-    if (hit) return hit
+    if (isLocalPath(hit || undefined)) return hit
     return null
   }
 
@@ -81,8 +80,12 @@ export class ResolutionIndexPlugin extends Plugin {
    * Does not touch providers or the file system; uses only the in-memory index.
    */
   async resolvePath(sourceFile: string, inputPath: string): Promise<string> {
+    // Try exact mapping from the index (using normalization and fallback logic)
     const mapped = await this.resolveImportFromIndex(sourceFile, inputPath)
-    return mapped || inputPath
+    if (mapped) return mapped
+
+    // Return the original path as a last resort (renderer will guard with exists)
+    return inputPath
   }
 
   // Helpers
@@ -137,5 +140,26 @@ export class ResolutionIndexPlugin extends Plugin {
       }
     }
     return null
+  }
+
+  private externalToDepsPath(p: string): string | null {
+    // github alias or raw/blob urls → .deps/github/<owner>/<repo>@<ref>/<rest>
+    const alias = this.rawToGithubAlias(p) || this.aliasFromGithubBlob(p) || this.aliasFromGithubAlias(p)
+    if (alias) return `.deps/${alias}`
+    return null
+  }
+
+  private aliasFromGithubAlias(p: string): string | null {
+    const m = typeof p === 'string' ? p.match(/^github\/([^/]+)\/([^@]+)@([^/]+)\/(.*)$/) : null
+    if (!m) return null
+    const [, owner, repo, ref, rest] = m
+    return `github/${owner}/${repo}@${ref}/${rest}`
+  }
+
+  private aliasFromGithubBlob(p: string): string | null {
+    const m = typeof p === 'string' ? p.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)$/) : null
+    if (!m) return null
+    const [, owner, repo, ref, rest] = m
+    return `github/${owner}/${repo}@${ref}/${rest}`
   }
 }
