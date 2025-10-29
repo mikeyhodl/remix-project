@@ -2,6 +2,7 @@
 import { RunTab, makeUdapp } from './app/udapp'
 import { RemixEngine } from './remixEngine'
 import { RemixAppManager } from './remixAppManager'
+import { ResolutionIndexPlugin } from '@remix-project/core-plugin'
 import { LocaleModule } from './app/tabs/locale-module'
 import { NetworkModule } from './app/tabs/network-module'
 import { Web3ProviderModule } from './app/tabs/web3-provider'
@@ -327,8 +328,10 @@ class AppComponent {
     const remixAI = new RemixAIPlugin(isElectron())
     const remixAiAssistant = new RemixAIAssistant()
 
-    // ----------------- import content service ------------------------
-    const contentImport = new CompilerImports()
+  // ----------------- import content service ------------------------
+  const contentImport = new CompilerImports()
+  // ----------------- resolution index service ----------------------
+  const resolutionIndex = new ResolutionIndexPlugin()
 
     const blockchain = new Blockchain(Registry.getInstance().get('config').api)
 
@@ -409,8 +412,9 @@ class AppComponent {
       this.notification,
       this.gistHandler,
       configPlugin,
-      blockchain,
+  blockchain,
       contentImport,
+  resolutionIndex,
       this.themeModule,
       this.localeModule,
       editor,
@@ -736,7 +740,7 @@ class AppComponent {
     })
 
     // activate solidity plugin
-    this.appManager.activatePlugin(['solidity', 'udapp', 'deploy-libraries', 'link-libraries', 'openzeppelin-proxy', 'scriptRunnerBridge'])
+    this.appManager.activatePlugin(['solidity', 'udapp', 'deploy-libraries', 'link-libraries', 'openzeppelin-proxy', 'scriptRunnerBridge', 'resolutionIndex'])
 
     if (isElectron()){
       this.appManager.activatePlugin(['desktopHost'])

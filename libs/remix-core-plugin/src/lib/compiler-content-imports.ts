@@ -6,7 +6,7 @@ const profile = {
   name: 'contentImport',
   displayName: 'content import',
   version: '0.0.1',
-  methods: ['resolve', 'resolveAndSave', 'isExternalUrl', 'resolveGithubFolder', 'resolveImportFromIndex']
+  methods: ['resolve', 'resolveAndSave', 'isExternalUrl', 'resolveGithubFolder']
 }
 
 export type ResolvedImport = {
@@ -65,52 +65,7 @@ export class CompilerImports extends Plugin {
     })
   }
 
-  /**
-   * Resolve an import path using the persistent resolution index
-   * This is used by the editor for "Go to Definition" navigation
-   */
-  async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
-    const indexPath = '.deps/npm/.resolution-index.json'
-
-    try {
-      // Just read the file directly!
-      const exists = await this.call('fileManager', 'exists', indexPath)
-      if (!exists) {
-        console.log('[CompilerImports] ℹ️ No resolution index file found')
-        return null
-      }
-
-      const content = await this.call('fileManager', 'readFile', indexPath)
-      const index = JSON.parse(content)
-
-      console.log('[CompilerImports] 🔍 Looking up:', { sourceFile, importPath })
-      console.log('[CompilerImports] 📊 Index has', Object.keys(index).length, 'source files')
-
-      // First try: lookup using the current file (works if currentFile is a base file)
-      if (index[sourceFile] && index[sourceFile][importPath]) {
-        const resolved = index[sourceFile][importPath]
-        console.log('[CompilerImports] ✅ Direct lookup result:', resolved)
-        return resolved
-      }
-
-      // Second try: search across ALL base files (works if currentFile is a library file)
-      console.log('[CompilerImports] 🔍 Trying lookupAny across all source files...')
-      for (const file in index) {
-        if (index[file][importPath]) {
-          const resolved = index[file][importPath]
-          console.log('[CompilerImports] ✅ Found in', file, ':', resolved)
-          return resolved
-        }
-      }
-
-      console.log('[CompilerImports] ℹ️ Import not found in index')
-      return null
-
-    } catch (err) {
-      console.log('[CompilerImports] ⚠️ Failed to read resolution index:', err)
-      return null
-    }
-  }
+  
 
   async setToken () {
     try {

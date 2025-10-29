@@ -13,6 +13,9 @@ import { commitChange } from '@remix-ui/git'
 /*
   attach to files event (removed renamed)
   trigger: currentFileChanged
+        // Handle any errors that occur during the mapping process
+      }
+    }
 */
 
 const profile = {
@@ -193,7 +196,7 @@ export default class FileManager extends Plugin {
   async open(path) {
     path = this.normalize(path)
     path = this.limitPluginScope(path)
-    path = this.getPathFromUrl(path).file
+    path = (await this.getPathFromUrl(path)).file
     await this._handleExists(path, `Cannot open file ${path}`)
     await this._handleIsFile(path, `Cannot open file ${path}`)
     await this.openFile(path)
@@ -660,7 +663,7 @@ export default class FileManager extends Plugin {
     const provider = this.fileProviderOf(file)
     if (!provider) throw new Error(`no provider for ${file}`)
     return {
-      file: provider.getPathFromUrl(file) || file, // in case an external URL is given as input, we resolve it to the right internal path
+      file: provider.getPathFromUrl(file) || file,
       provider
     }
   }
@@ -713,7 +716,7 @@ export default class FileManager extends Plugin {
 
     if (!change.readonly){
       let file = this.normalize(change.path)
-      const resolved = this.getPathFromUrl(file)
+  const resolved = this.getPathFromUrl(file)
       file = resolved.file
       this._deps.config.set('currentFile', file)
       this.openedFiles[file] = file
@@ -741,7 +744,7 @@ export default class FileManager extends Plugin {
       this.emit('noFileSelected')
     } else {
       file = this.normalize(file)
-      const resolved = this.getPathFromUrl(file)
+  const resolved = this.getPathFromUrl(file)
       file = resolved.file
       await this.saveCurrentFile()
       // we always open the file in the editor, even if it's the same as the current one if the editor is in diff mode

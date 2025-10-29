@@ -29,7 +29,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
         let resolvedPath = importPath2
         try {
           // Check if we have a resolution index entry for this import
-          const resolved = await this.props.plugin.call('contentImport', 'resolveImportFromIndex', currentFile, importPath2)
+          const resolved = await this.props.plugin.call('resolutionIndex', 'resolveImportFromIndex', currentFile, importPath2)
           if (resolved) {
             console.log('[DefinitionProvider] ✅ Found in resolution index:', resolved)
             resolvedPath = resolved
@@ -79,9 +79,9 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
       // Try to resolve the fileName using the resolution index
       // This is crucial for navigating to library files with correct versions
       let resolvedFileName = fileName
+      const currentFile = await this.props.plugin.call('fileManager', 'file')
       try {
-        const currentFile = await this.props.plugin.call('fileManager', 'file')
-        const resolved = await this.props.plugin.call('contentImport', 'resolveImportFromIndex', currentFile, fileName)
+        const resolved = await this.props.plugin.call('resolutionIndex', 'resolveImportFromIndex', currentFile, fileName)
         if (resolved) {
           console.log('[DefinitionProvider] 🔀 Resolved via index:', fileName, '→', resolved)
           resolvedFileName = resolved
@@ -89,9 +89,9 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
       } catch (e) {
         console.log('[DefinitionProvider] ⚠️ Resolution index lookup failed, using original path:', e)
       }
-
-      const fileTarget = await this.props.plugin.call('fileManager', 'getPathFromUrl', resolvedFileName)
-      console.log('jumpToLine', fileName, '→', resolvedFileName, '→', fileTarget)
+      const fileTargetPath = await this.props.plugin.call('resolutionIndex', 'resolvePath', currentFile, resolvedFileName)
+      const fileTarget = { file: fileTargetPath }
+      console.log('jumpToLine', fileName, '→', resolvedFileName, '→', fileTargetPath)
       if (resolvedFileName !== await this.props.plugin.call('fileManager', 'file')) {
         await this.props.plugin.call('contentImport', 'resolveAndSave', resolvedFileName, null)
         const fileContent = await this.props.plugin.call('fileManager', 'readFile', resolvedFileName)

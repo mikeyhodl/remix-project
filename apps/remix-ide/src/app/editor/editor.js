@@ -543,8 +543,13 @@ export default class Editor extends Plugin {
 
   async addDecoration (decoration, filePath, typeOfDecoration) {
     if (!filePath) return
-    filePath = await this.call('fileManager', 'getPathFromUrl', filePath)
-    filePath = filePath.file
+    try {
+      const currentFile = await this.call('fileManager', 'file')
+      const resolved = await this.call('resolutionIndex', 'resolvePath', currentFile, filePath)
+      filePath = resolved || filePath
+    } catch (e) {
+      // best-effort: fall back to provided path
+    }
     if (!this.sessions[filePath]) return
     const path = filePath || this.currentFile
 
