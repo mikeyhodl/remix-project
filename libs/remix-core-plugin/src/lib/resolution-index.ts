@@ -54,16 +54,25 @@ export class ResolutionIndexPlugin extends Plugin {
    * Resolve an import path using the in-memory resolution index
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
-    // 1) Direct lookup in the source file's mapping
-    if (this.index[sourceFile] && this.index[sourceFile][importPath]) {
-      return this.index[sourceFile][importPath]
-    }
-    // 2) Fallback: search across all base files
-    for (const file in this.index) {
-      if (this.index[file] && this.index[file][importPath]) {
-        return this.index[file][importPath]
+    const candidates = this.buildCandidates(importPath)
+    // 1) Direct lookup by candidates for the given sourceFile
+    for (const cand of candidates) {
+      if (this.index[sourceFile] && this.index[sourceFile][cand]) {
+        return this.index[sourceFile][cand]
       }
     }
+    // 2) Fallback: search across all base files for any candidate
+    for (const file in this.index) {
+      for (const cand of candidates) {
+        if (this.index[file] && this.index[file][cand]) {
+          return this.index[file][cand]
+        }
+      }
+    }
+    // 3) Last chance: fuzzy match by resolved path suffix (handles alias like github/<o>/<r>@<ref>/rest)
+    const suffixes = candidates.map((c) => this.toSuffix(c)).filter(Boolean) as string[]
+    const hit = this.findByResolvedSuffix(suffixes)
+    if (hit) return hit
     return null
   }
 
@@ -74,5 +83,59 @@ export class ResolutionIndexPlugin extends Plugin {
   async resolvePath(sourceFile: string, inputPath: string): Promise<string> {
     const mapped = await this.resolveImportFromIndex(sourceFile, inputPath)
     return mapped || inputPath
+  }
+
+  // Helpers
+  private buildCandidates(inputPath: string): string[] {
+    const out = new Set<string>()
+    if (inputPath) out.add(inputPath)
+    const gh = this.githubAliasToRaw(inputPath)
+    if (gh) out.add(gh)
+    const ghBlob = this.githubBlobToRaw(inputPath)
+    if (ghBlob) out.add(ghBlob)
+    return Array.from(out)
+  }
+
+  private githubAliasToRaw(p: string): string | null {
+    // github/<owner>/<repo>@<ref>/<rest> -> https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<rest>
+    const m = typeof p === 'string' ? p.match(/^github\/([^/]+)\/([^@]+)@([^/]+)\/(.*)$/) : null
+    if (!m) return null
+    const [, owner, repo, ref, rest] = m
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${rest}`
+  }
+
+  private githubBlobToRaw(p: string): string | null {
+    // https://github.com/<o>/<r>/blob/<ref>/<rest> -> https://raw.githubusercontent.com/<o>/<r>/<ref>/<rest>
+    const m = typeof p === 'string' ? p.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)$/) : null
+    if (!m) return null
+    const [, owner, repo, ref, rest] = m
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${rest}`
+  }
+
+  private toSuffix(p: string): string {
+    // we want to match values like ".deps/github/<o>/<r>@<ref>/<rest>" by suffix "github/<o>/<r>@<ref>/<rest>"
+    // if p is already an alias, keep it; if p is a raw URL, convert to alias-ish suffix
+    const alias = this.rawToGithubAlias(p)
+    return alias ? alias : p
+  }
+
+  private rawToGithubAlias(p: string): string | null {
+    const m = typeof p === 'string' ? p.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.*)$/) : null
+    if (!m) return null
+    const [, owner, repo, ref, rest] = m
+    return `github/${owner}/${repo}@${ref}/${rest}`
+  }
+
+  private findByResolvedSuffix(suffixes: string[]): string | null {
+    for (const file in this.index) {
+      const map = this.index[file]
+      for (const key in map) {
+        const value = map[key]
+        for (const s of suffixes) {
+          if (value.endsWith(s)) return value
+        }
+      }
+    }
+    return null
   }
 }
