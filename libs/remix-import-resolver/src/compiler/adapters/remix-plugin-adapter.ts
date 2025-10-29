@@ -35,10 +35,7 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   async resolveAndSave(url: string, targetPath?: string, useOriginal?: boolean): Promise<string> {
-    // Fetch content directly using our simple translator
-    const content: string = await this.fetch(url)
-
-    // Determine destination
+    // Determine destination FIRST so we can skip fetching if already present
     let dest = targetPath
     const isHttp = (u: string) => u.startsWith('http://') || u.startsWith('https://')
     if (!dest) {
@@ -59,6 +56,18 @@ export class RemixPluginAdapter implements IOAdapter {
       dest = `.deps/${dest}`
     }
 
+    // If already exists, read from disk and return, avoiding a refetch
+    try {
+      const exists = await this.exists(dest)
+      if (exists) {
+        return await this.readFile(dest)
+      }
+    } catch (_) {
+      // If existence check fails, fall through to fetch/write
+    }
+
+    // Fetch content directly using our simple translator
+    const content: string = await this.fetch(url)
     await this.plugin.call('fileManager', 'setFile', dest, content)
     // Return content to the resolver (it expects the fetched file contents, not a path)
     return content

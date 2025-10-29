@@ -72,15 +72,23 @@ export class PackageMapper {
 
   private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string): Promise<void> {
     try {
-      const packageJsonUrl = `${packageName}/package.json`
-      const content = await this.contentFetcher.resolve(packageJsonUrl)
-      const packageJson = JSON.parse((content as any).content || content)
-      try {
-        const realPackageName = (packageJson as any).name || packageName
-        const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
-        await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
-        this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
-      } catch (saveErr) { this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr) }
+      const targetPathCandidate = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
+      let packageJson: any
+      if (await this.contentFetcher.exists(targetPathCandidate)) {
+        const existing = await this.contentFetcher.readFile(targetPathCandidate)
+        packageJson = JSON.parse(existing)
+        this.log(`[ImportResolver] 📦 Using cached package.json: ${targetPathCandidate}`)
+      } else {
+        const packageJsonUrl = `${packageName}/package.json`
+        const content = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse((content as any).content || content)
+        try {
+          const realPackageName = (packageJson as any).name || packageName
+          const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
+          await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
+          this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
+        } catch (saveErr) { this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr) }
+      }
       this.dependencyStore.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
       await this.conflictChecker.checkPackageDependencies(packageName, resolvedVersion, packageJson)
     } catch {

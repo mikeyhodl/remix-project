@@ -124,12 +124,20 @@ export class ImportResolver implements IImportResolver {
       if (!m) return
       const packageName = m[1]
       const version = m[2]
-      const packageJsonUrl = `${packageName}@${version}/package.json`
-      const content = await this.contentFetcher.resolve(packageJsonUrl)
-      const packageJson = JSON.parse(content.content || content)
       const pkgJsonPath = `.deps/npm/${packageName}@${version}/package.json`
-      await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
-      this.log(`[ImportResolver] 💾 Loaded context package.json → ${pkgJsonPath}`)
+      // If already present on disk, read and use it; otherwise fetch and persist
+      let packageJson: any
+      if (await this.contentFetcher.exists(pkgJsonPath)) {
+        const existing = await this.contentFetcher.readFile(pkgJsonPath)
+        packageJson = JSON.parse(existing)
+        this.log(`[ImportResolver] 📦 Using cached context package.json → ${pkgJsonPath}`)
+      } else {
+        const packageJsonUrl = `${packageName}@${version}/package.json`
+        const content = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse(content.content || content)
+        await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
+        this.log(`[ImportResolver] 💾 Loaded context package.json → ${pkgJsonPath}`)
+      }
       this.dependencyStore.storePackageDependencies(context, packageJson)
     } catch (err) {
       this.log(`[ImportResolver] ℹ️  Could not load package.json for context ${context}:`, err)
@@ -177,12 +185,19 @@ export class ImportResolver implements IImportResolver {
   private async ensurePackageJsonSaved(versionedPackageName: string): Promise<void> {
     if (this.dependencyStore.hasParent(versionedPackageName)) return
     try {
-      const packageJsonUrl = `${versionedPackageName}/package.json`
-      const content = await this.contentFetcher.resolve(packageJsonUrl)
-      const packageJson = JSON.parse((content as any).content || (content as any))
       const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
-      await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
-      this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
+      let packageJson: any
+      if (await this.contentFetcher.exists(pkgJsonPath)) {
+        const existing = await this.contentFetcher.readFile(pkgJsonPath)
+        packageJson = JSON.parse(existing)
+        this.log(`[ImportResolver] 📦 Using cached package.json: ${pkgJsonPath}`)
+      } else {
+        const packageJsonUrl = `${versionedPackageName}/package.json`
+        const content = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse((content as any).content || (content as any))
+        await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
+        this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
+      }
       this.dependencyStore.storePackageDependencies(versionedPackageName, packageJson)
     } catch (err) {
       this.log(`[ImportResolver] ⚠️  Failed to fetch/save package.json:`, err)
