@@ -28,20 +28,16 @@ export class TemplateExplorerModalPlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   event: any
   appStateDispatch: any
-  theme: any = null
-  constructor(theme: ThemeModule) {
+  constructor() {
     super(pluginProfile)
     this.element = document.createElement('div')
     this.element.setAttribute('id', 'template-explorer-modal')
     this.dispatch = () => { }
     this.event = new EventEmitter()
-    this.theme = theme
   }
 
   async onActivation(): Promise<void> {
-    this.on('theme', 'themeChanged', (theme: any) => {
-      this.theme = theme
-    })
+
   }
 
   openModal() {

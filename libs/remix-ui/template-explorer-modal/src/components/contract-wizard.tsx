@@ -4,6 +4,9 @@ import * as erc20 from '../contractCode/erc20'
 import { AccessControlType, ContractTypeStrategy, ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from '../utils/contractWizardUtils'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import CodeMirror from '@uiw/react-codemirror'
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
+import { javascript } from '@codemirror/lang-javascript'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -50,10 +53,6 @@ export function ContractWizard () {
   }
 
   useEffect(() => {
-    console.log('state', state)
-  }, [state])
-
-  useEffect(() => {
     if (strategy.contractType === 'erc20') {
       dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode(strategy.contractType, strategy) })
     } else if (strategy.contractType === 'erc721') {
@@ -74,7 +73,7 @@ export function ContractWizard () {
       <div className="row g-3">
         <div className="col-12 d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            {showEditModal ? <input data-id="contract-wizard-token-name-input" className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span data-id="contract-wizard-token-name-span" className={`fw-semibold fs-6 ${theme.currentTheme().name === 'Light' ? 'text-dark' : 'text-white'}`}>
+            {showEditModal ? <input data-id="contract-wizard-token-name-input" className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span data-id="contract-wizard-token-name-span" className={`fw-semibold fs-6 ${theme?.name === 'Light' ? 'text-dark' : 'text-white'}`}>
               {state.tokenName}
             </span>}
             <i data-id="contract-wizard-edit-icon" className={`${showEditModal ? 'fas fa-lock' : "fas fa-edit"}`} onClick={() => setShowEditModal(!showEditModal)}></i>
@@ -151,12 +150,30 @@ export function ContractWizard () {
 
         <div className="col-12 col-lg-9">
           <div className="border rounded p-0 h-100">
-            <Editor
+            {/* <Editor
               data-id="contract-wizard-editor"
               height="460px"
               defaultLanguage="typescript"
               options={{ readOnly: true, minimap: { enabled: false }, theme: theme.currentTheme().name === 'Light' ? 'vs' : 'vs-dark' }}
               value={strategy.contractCode as string}
+            /> */}
+            <CodeMirror
+              data-id="contract-wizard-editor"
+              value={strategy.contractCode as string}
+              lang="typescript"
+              height="460px"
+              theme={theme?.name === 'Light' ? vscodeLight : vscodeDark}
+              readOnly={true}
+              basicSetup={{
+                lineNumbers: false,
+                syntaxHighlighting: true,
+                foldGutter: false,
+                highlightActiveLine: true,
+                highlightActiveLineGutter: false,
+                indentOnInput: false,
+                tabSize: 2
+              }}
+              extensions={[javascript({ typescript: true })]}
             />
           </div>
           <div className="d-flex justify-content-between align-items-center gap-3 mt-3">

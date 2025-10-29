@@ -13,6 +13,7 @@ export const TemplateExplorerContext = createContext<TemplateExplorerContextType
 
 export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin }) => {
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
+  const [theme, setTheme] = useState<any>(null)
   const appContext = useContext(AppContext)
   const { plugin } = props
   const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch)
@@ -24,6 +25,22 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
 
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
+  }, [])
+
+  useEffect(() => {
+    plugin.on('theme', 'themeChanged', (theme: any) => {
+      setTheme(theme)
+    })
+  }, [state.wizardStep])
+
+  useEffect(() => {
+    const run = async () => {
+      if (theme === null) {
+        const currentTheme = await plugin.call('theme', 'currentTheme')
+        setTheme(currentTheme)
+      }
+    }
+    run()
   }, [])
 
   const setSearchTerm = (term: string) => {
@@ -174,7 +191,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme: plugin.theme, facade, templateCategoryStrategy }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

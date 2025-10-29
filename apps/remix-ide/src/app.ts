@@ -269,7 +269,7 @@ class AppComponent {
     this.gistHandler = new GistHandler()
     // ----------------- theme service ---------------------------------
     this.themeModule = new ThemeModule()
-    this.templateExplorerModal = new TemplateExplorerModalPlugin(this.themeModule)
+    this.templateExplorerModal = new TemplateExplorerModalPlugin()
     // ----------------- locale service ---------------------------------
     this.localeModule = new LocaleModule()
     Registry.getInstance().put({ api: this.themeModule, name: 'themeModule' })
