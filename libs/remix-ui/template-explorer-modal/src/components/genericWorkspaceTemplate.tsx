@@ -1,13 +1,13 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useContext, useEffect, useReducer, useState } from 'react'
 import { initialState, templateExplorerReducer } from '../../reducers/template-explorer-reducer'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { RemixMdRenderer } from 'libs/remix-ui/helper/src/lib/components/remix-md-renderer'
 
 export function GenericWorkspaceTemplate() {
 
-  const { state, dispatch, facade } = useContext(TemplateExplorerContext)
+  const { state, theme, dispatch, facade } = useContext(TemplateExplorerContext)
   const [readMe, setReadMe] = useState(null)
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function GenericWorkspaceTemplate() {
           <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className="form-control text-dark" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} />
         </div>
 
-        <div className="d-flex justify-content-between align-items-center gap-3 mt-3">
+        <div className="d-flex justify-content-between align-items-center gap-3 mt-3 mb-5">
           <div className="form-check m-0">
             <>
               <input className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
@@ -55,8 +55,8 @@ export function GenericWorkspaceTemplate() {
             facade.closeWizard()
           }}>Finish</button>
         </div>
-        <div className="mt-3 overflow-y-auto" style={{ maxHeight: '90%' }}>
-          { readMe && readMe?.type === 'md' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{readMe?.readMe}</ReactMarkdown> : <p className="text-dark">{readMe?.readMe}</p> }
+        <div className="overflow-y-auto" style={{ maxHeight: '70%' }}>
+          { readMe && readMe?.type === 'md' ? <RemixMdRenderer markDownContent={readMe?.readMe} theme={theme.name} /> : <p className="text-dark">{readMe?.readMe}</p> }
         </div>
       </div>
     </section>

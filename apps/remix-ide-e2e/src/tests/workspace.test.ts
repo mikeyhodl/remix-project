@@ -35,10 +35,7 @@ module.exports = {
 
   'Should create Remix default workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="workspacecreate"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-remixDefault"]')
       .scrollAndClick('*[data-id="create-remixDefault"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -112,9 +109,7 @@ module.exports = {
 
   'Should create blank workspace with no files #group1': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="workspacecreate"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="create-blank"]')
       .click('*[data-id="create-blank"]')
       .waitForElementPresent('*[data-id="TemplatesSelectionModalDialogModalTitle-react"]')
@@ -141,9 +136,7 @@ module.exports = {
   'Should create ERC20 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="workspacecreate"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-ozerc20"]')
       .scrollAndClick('*[data-id="create-ozerc20"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -205,17 +198,35 @@ module.exports = {
   'Should create ERC721 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="workspacecreate"]')
-      .click('*[data-id="workspacecreate"]')
-      .waitForElementPresent('*[data-id="create-ozerc721"]')
-      .scrollAndClick('*[data-id="create-ozerc721"]')
-      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'workspace_erc721')
-      // eslint-disable-next-line dot-notation
-      .execute(function () { document.querySelector('*[data-id="modalDialogCustomPromptTextCreate"]')['value'] = 'workspace_erc721' })
-      .modalFooterOKClick('TemplatesSelection')
+      .openTemplateExplorer()
+      .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
+      .click('*[data-id="contract-wizard-topcard"]')
+      .waitForElementVisible('*[data-id="contract-wizard-container"]')
+      .setValue('#contractWizardContractTagSelect', 'erc721')
+      // .click('*[data-id="contract-wizard-contract-tag-select-option-ERC721"]')
+      .click('*[data-id="contract-wizard-mintable-checkbox"]')
+      .click('*[data-id="contract-wizard-burnable-checkbox"]')
+      .click('*[data-id="contract-wizard-pausable-checkbox"]')
+      .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
+      .click('*[data-id="contract-wizard-validate-workspace-button"]')
+      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
+      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC721 Workspace')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC721 Workspace', 'Workspace name is correct')
+      .click('*[data-id="validateWorkspaceButton"]')
+      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC721 Workspace', 'Workspace name is correct')
+      .pause(2000)
+      // .clickLaunchIcon('filePanel')
+      .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .isVisible('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
+      .click('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`contract Test721Token is ERC721, ERC721Pausable, Ownable, ERC721Burnable {`) !== -1,
+          'Incorrect content')
+      })
       .pause(100)
       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
@@ -269,17 +280,31 @@ module.exports = {
   'Should create ERC1155 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
-      .waitForElementPresent('*[data-id="create-ozerc1155"]')
-      .scrollAndClick('*[data-id="create-ozerc1155"]')
-      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'workspace_erc1155')
-      // eslint-disable-next-line dot-notation
-      .execute(function () { document.querySelector('*[data-id="modalDialogCustomPromptTextCreate"]')['value'] = 'workspace_erc1155' })
-      .modalFooterOKClick('TemplatesSelection')
+      .openTemplateExplorer()
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
+      .click('*[data-id="contract-wizard-topcard"]')
+      .waitForElementVisible('*[data-id="contract-wizard-container"]')
+      .setValue('#contractWizardContractTagSelect', 'erc1155')
+      .click('*[data-id="contract-wizard-mintable-checkbox"]')
+      .click('*[data-id="contract-wizard-burnable-checkbox"]')
+      .click('*[data-id="contract-wizard-pausable-checkbox"]')
+      .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
+      .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
       .pause(100)
+      .click('*[data-id="contract-wizard-validate-workspace-button"]')
+      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
+      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC1155 Workspace')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
+      .click('*[data-id="validateWorkspaceButton"]')
+      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
+      .click('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
+      .pause(1000)
       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
@@ -332,26 +357,33 @@ module.exports = {
   'Should create ERC1155 workspace with template customizations #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
-      // .waitForElementPresent(`*[data-id='create-ozerc1155{"upgradeable":"uups","mintable":true,"burnable":true,"pausable":true}']`)
-      // .scrollAndClick(`*[data-id='create-ozerc1155{"upgradeable":"uups","mintable":true,"burnable":true,"pausable":true}']`)
-      .waitForElementPresent('*[data-id="create-ozerc1155"]')
-      .scrollAndClick('*[data-id="create-ozerc1155"]')
-      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .click('*[data-id="featureTypeMintable"]')
-      .click('*[data-id="featureTypeBurnable"]')
-      .click('*[data-id="featureTypePausable"]')
-      .click('*[data-id="upgradeTypeUups"]')
-      .modalFooterOKClick('TemplatesSelection')
+      .openTemplateExplorer()
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
+      .click('*[data-id="contract-wizard-topcard"]')
+      .waitForElementVisible('*[data-id="contract-wizard-container"]')
+      .setValue('#contractWizardContractTagSelect', 'erc1155')
+      .click('*[data-id="contract-wizard-mintable-checkbox"]')
+      .click('*[data-id="contract-wizard-burnable-checkbox"]')
+      .click('*[data-id="contract-wizard-pausable-checkbox"]')
+      .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
+      .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
       .pause(100)
-      .clickLaunchIcon('filePanel')
+      .click('*[data-id="contract-wizard-validate-workspace-button"]')
+      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
+      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC1155 Workspace')
+      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
+      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
+      .click('*[data-id="validateWorkspaceButton"]')
+      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
       .pause(1000)
       .getEditorValue((content) => {
-        browser.assert.ok(content.indexOf(`contract MyToken is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC1155PausableUpgradeable, ERC1155BurnableUpgradeable, UUPSUpgradeable {`) !== -1,
+        browser.assert.ok(content.indexOf(`contract MyToken is Initializable, ERC1155Upgradeable, ERC1155PausableUpgradeable, OwnableUpgradeable, ERC1155BurnableUpgradeable, UUPSUpgradeable {`) !== -1,
           'Incorrect content')
       })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts"]')
@@ -402,12 +434,14 @@ module.exports = {
   },
   'Should create circom zkp hashchecker workspace #group1': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
-      .waitForElementPresent('*[data-id="create-hashchecker"]')
-      .scrollAndClick('*[data-id="create-hashchecker"]')
-      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .modalFooterOKClick('TemplatesSelection')
+      .openTemplateExplorer()
+      .scrollInto('*[data-id="template-category-Circom ZKP"]')
+      .waitForElementVisible('*[data-id="template-card-semaphore-0"]')
+      .waitForElementPresent('*[data-id="template-card-hashchecker-1"]')
+      .click('*[data-id="template-card-hashchecker-1"]')
+      .waitForElementVisible('*[data-id="workspace-name-hashchecker-input"')
+      .setValue('*[data-id="workspace-name-hashchecker-input"]', 'Test Hashchecker Workspace')
+      .click('*[data-id="validate-hashcheckerworkspace-button"]')
       .pause(100)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcircuits"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcircuits/calculate_hash.circom"]')
@@ -439,8 +473,7 @@ module.exports = {
 
   'Should create two workspace and switch to the first one #group1': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-remixDefault"]')
       .click('*[data-id="create-remixDefault"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -456,8 +489,7 @@ module.exports = {
         selector: "//div[contains(@class, 'view-line') and contains(.//span, 'test')]",
         locateStrategy: 'xpath'
       })
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-remixDefault"]')
       .scrollAndClick('*[data-id="create-remixDefault"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -522,8 +554,7 @@ module.exports = {
   'Should create workspace for test #group2': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-ozerc1155"]')
       .scrollAndClick('*[data-id="create-ozerc1155"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -549,8 +580,7 @@ module.exports = {
 
   'Should create workspace for next test #group2': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-ozerc1155"]')
       .scrollAndClick('*[data-id="create-ozerc1155"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -579,8 +609,7 @@ module.exports = {
   'Should create a cookbook workspace #group3': !function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-uniswapV4HookBookMultiSigSwapHook"]')
       .scrollAndClick('*[data-id="create-uniswapV4HookBookMultiSigSwapHook"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -602,7 +631,7 @@ module.exports = {
   'Should add Create2 solidity factory #group4': !function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
+      .openTemplateExplorer()
       .click('*[data-id="workspaceaddcreate2solidityfactory"]')
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract Create2FactoryAssembly {`) !== -1,

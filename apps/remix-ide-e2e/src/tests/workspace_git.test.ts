@@ -12,8 +12,7 @@ module.exports = {
   'Should not be able to create GIT without credentials #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-remixDefault"]')
       .scrollAndClick('*[data-id="create-remixDefault"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -46,8 +45,7 @@ module.exports = {
   'Should create and initialize a GIT repository #group1': function (browser: NightwatchBrowser) {
     browser
       // .waitForElementNotVisible('[data-id="workspaceGitPanel"]')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-blank"]')
       .scrollAndClick('*[data-id="create-blank"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -451,8 +449,7 @@ module.exports = {
 
   'Should create a git workspace (uniswapV4Template) #group4': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-uniswapV4Template"]')
       .scrollAndClick('*[data-id="create-uniswapV4Template"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -470,10 +467,7 @@ module.exports = {
 
   'Should create Remix default workspace with files #group5': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="workspacecreate"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-ozerc20"]')
       .scrollAndClick('*[data-id="create-ozerc20"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
@@ -533,8 +527,7 @@ module.exports = {
   'Should create a git workspace (uniswapV4Template) #group5': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementPresent('*[data-id="create-uniswapV4Template"]')
       .scrollAndClick('*[data-id="create-uniswapV4Template"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')

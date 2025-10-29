@@ -1,3 +1,4 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -10,6 +11,7 @@ import {
   sampleConversationStarters,
   type ConversationStarter
 } from '../lib/conversationStarters'
+import { normalizeMarkdown } from 'libs/remix-ui/helper/src/lib/components/remix-md-renderer'
 
 // ChatHistory component
 export interface ChatHistoryComponentProps {
@@ -23,13 +25,6 @@ export interface ChatHistoryComponentProps {
 
 interface AiChatIntroProps {
   sendPrompt: (prompt: string) => void
-}
-
-export function normalizeMarkdown(input: string): string {
-  return input
-    .trim()
-    .replace(/\n{2,}/g, "\n\n")
-    .replace(/[ \t]+$/gm, "");
 }
 
 const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt }) => {

@@ -133,8 +133,7 @@ function setTemplateOptions(browser: NightwatchBrowser, opts: { [key: string]: a
 
 function openTemplatesExplorer(browser: NightwatchBrowser) {
   browser
-    .click('*[data-id="workspacesSelect"]')
-    .click('*[data-id="workspacecreate"]')
+    .openTemplateExplorer()
     .waitForElementPresent('*[data-id="create-remixDefault"]')
 }
 

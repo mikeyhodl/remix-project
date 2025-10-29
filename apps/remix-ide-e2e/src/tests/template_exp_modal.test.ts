@@ -9,11 +9,7 @@ module.exports = {
   'Create blank workspace': function (browser: NightwatchBrowser) {
     browser
       .refreshPage()
-      .waitForElementVisible('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacesSelect')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
-      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="template-card-blank-1"]')
       .click('*[data-id="template-card-blank-1"]')
       .waitForElementVisible('*[data-id="workspace-name-blank-input"]')
@@ -29,9 +25,7 @@ module.exports = {
   },
   'Create Pectra 7702 based workspace': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="template-card-simpleEip7702-2"]')
       .click('*[data-id="template-card-simpleEip7702-2"]')
       .waitForElementVisible('*[data-id="workspace-name-simpleEip7702-input"]')
@@ -47,11 +41,7 @@ module.exports = {
   },
   'Create Semaphore based workspace': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
-      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
-      .click('*[data-id="template-explorer-template-container"]')
+      .openTemplateExplorer()
       .scrollInto('*[data-id="template-category-Circom ZKP"]')
       .waitForElementVisible('*[data-id="template-card-semaphore-0"]')
       .click('*[data-id="template-card-semaphore-0"]')
@@ -75,9 +65,7 @@ module.exports = {
   },
   'Search for Noir Simple Multiplier template': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="template-explorer-search-input"]')
       .click('*[data-id="template-explorer-search-input"]')
       .setValue('*[data-id="template-explorer-search-input"]', 'Simple Multiplier')
@@ -96,9 +84,7 @@ module.exports = {
   },
   'Create OpenZeppelin ERC20 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
       .click('*[data-id="contract-wizard-topcard"]')
       .waitForElementVisible('*[data-id="contract-wizard-container"]')
@@ -138,9 +124,7 @@ module.exports = {
   },
   'Create OpenZeppelin ERC721 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
-      .pause(3000)
-      .click('*[data-id="workspacecreate"]')
+      .openTemplateExplorer()
       .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
       .click('*[data-id="contract-wizard-topcard"]')
       .waitForElementVisible('*[data-id="contract-wizard-container"]')
