@@ -1,15 +1,10 @@
 import type { IOAdapter } from './io-adapter'
 import { promises as fs } from 'fs'
 import { dirname } from 'path'
+import { toHttpUrl } from '../utils/to-http-url'
 
 function isHttp(url: string) {
   return url.startsWith('http://') || url.startsWith('https://')
-}
-
-function toNpmCdn(url: string) {
-  // Map bare npm path like "@scope/pkg@1.2.3/file" or "@scope/pkg/file" to jsDelivr
-  // Preserve @version if present
-  return `https://cdn.jsdelivr.net/npm/${url}`
 }
 
 export class NodeIOAdapter implements IOAdapter {
@@ -40,7 +35,7 @@ export class NodeIOAdapter implements IOAdapter {
   }
 
   async fetch(url: string): Promise<string> {
-    const finalUrl = isHttp(url) ? url : toNpmCdn(url)
+    const finalUrl = toHttpUrl(url)
     const res = await fetch(finalUrl)
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${finalUrl}`)
     return await res.text()

@@ -29,3 +29,4 @@ export {
   normalizeIpfsUrl,
   normalizeSwarmUrl
 } from './compiler/utils/url-normalizer'
+export { toHttpUrl } from './compiler/utils/to-http-url'

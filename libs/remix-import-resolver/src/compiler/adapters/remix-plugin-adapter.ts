@@ -1,4 +1,5 @@
 import type { IOAdapter } from './io-adapter'
+import { toHttpUrl } from '../utils/to-http-url'
 
 // Thin adapter around the Remix plugin APIs previously used throughout the resolver.
 // This keeps the app-coupled logic at the edge while enabling a pure core.
@@ -26,17 +27,16 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   async fetch(url: string): Promise<string> {
-    // Use the content import plugin to resolve arbitrary URLs and npm sources.
-    const result = await this.plugin.call('contentImport', 'resolve', url)
-    // result may be { content, cleanUrl } shape – we only need the content here.
-    return typeof result === 'string' ? result : (result?.content ?? '')
+    // Translate to a concrete HTTP URL and fetch directly in the browser/plugin runtime.
+    const finalUrl = toHttpUrl(url)
+    const res = await fetch(finalUrl)
+    if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${finalUrl}`)
+    return await res.text()
   }
 
   async resolveAndSave(url: string, targetPath?: string, useOriginal?: boolean): Promise<string> {
-    // Fetch content using contentImport.resolve to avoid any side-effects or internal remapping,
-    // then persist to the deterministic destination under .deps (mirrors NodeIOAdapter logic).
-    const contentResult = await this.plugin.call('contentImport', 'resolve', url)
-    const content: string = typeof contentResult === 'string' ? contentResult : (contentResult?.content ?? '')
+    // Fetch content directly using our simple translator
+    const content: string = await this.fetch(url)
 
     // Determine destination
     let dest = targetPath
