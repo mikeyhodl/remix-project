@@ -77,9 +77,13 @@ export function deployAll (compileResult: compilationInterface, provider: Browse
               if (deployCb) await deployCb(filename, receipt.contractAddress)
               callback(null, { receipt: { contractAddress: receipt.contractAddress } }) // TODO this will only work with JavaScriptV VM
             })
+          }).catch((err) => {
+            const error = new Error(err)
+            console.error('Error while estimating gas: ', error.message)
+            callback(error.message)
           })
         }).catch((err) => {
-          console.error(err)
+          console.error('Error while getting deployment transaction: ', err)
           callback(err)
         })
       }

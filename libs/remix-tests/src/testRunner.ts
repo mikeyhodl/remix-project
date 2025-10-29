@@ -225,11 +225,11 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
     value: opts.accounts
   }
   testCallback(undefined, accts)
-
+  const filename = testObject.filename
   const resp: TestResultInterface = {
     type: 'contract',
     value: testName,
-    filename: testObject.filename
+    filename
   }
   testCallback(undefined, resp)
   async.eachOfLimit(runList, 1, async function (func, index, next) {
@@ -253,7 +253,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         const resp: TestResultInterface = {
           type: 'testPass',
           value: changeCase.sentenceCase(func.name),
-          filename: testObject.filename,
+          filename,
           time: time,
           context: testName,
           provider,
@@ -267,7 +267,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         const resp: TestResultInterface = {
           type: 'testFailure',
           value: changeCase.sentenceCase(func.name),
-          filename: testObject.filename,
+          filename,
           time: time,
           errMsg: 'function returned false',
           context: testName,
@@ -279,6 +279,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         failureNum += 1
         timePassed += time
       }
+      return next()
     } else {
       if (func.signature) {
         sender = getOverriddenSender(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
@@ -308,6 +309,23 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         const time: number = (Date.now() - startTime) / 1000.0
         const assertionEventHashes = assertionEvents.map(e => keccak256(toUtf8Bytes(e.name + '(' + e.params.join() + ')')))
         let testPassed = false
+        if (receipt.status === 0) {
+          const resp: TestResultInterface = {
+            type: 'testFailure',
+            value: changeCase.sentenceCase(func.name),
+            filename,
+            time: time,
+            errMsg: `Transaction with hash "${debugTxHash}" has been reverted by the EVM.`,
+            context: testName,
+            provider, 
+            debugTxHash
+          }
+        if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
+                testCallback(undefined, resp)
+                failureNum += 1
+                timePassed += time
+                return next()
+        }
         for (const i in receipt.logs) {
           let events = receipt.logs[i]
           if (!Array.isArray(events)) events = [events]
@@ -323,10 +341,11 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
                   testEvent[4] = 'true'
                 }
                 const location = getAssertMethodLocation(fileAST, testName, func.name, assertMethod)
+
                 const resp: TestResultInterface = {
                   type: 'testFailure',
                   value: changeCase.sentenceCase(func.name),
-                  filename: testObject.filename,
+                  filename,
                   time: time,
                   errMsg: testEvent[1],
                   context: testName,
@@ -352,7 +371,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           const resp: TestResultInterface = {
             type: 'testPass',
             value: changeCase.sentenceCase(func.name),
-            filename: testObject.filename,
+            filename,
             time: time,
             context: testName,
             provider,
@@ -366,7 +385,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           const resp: TestResultInterface = {
             type: 'logOnly',
             value: changeCase.sentenceCase(func.name),
-            filename: testObject.filename,
+            filename,
             time: time,
             context: testName,
             hhLogs
@@ -390,7 +409,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         const resp: TestResultInterface = {
           type: 'testFailure',
           value: changeCase.sentenceCase(func.name),
-          filename: testObject.filename,
+          filename,
           time: time,
           errMsg,
           context: testName,
