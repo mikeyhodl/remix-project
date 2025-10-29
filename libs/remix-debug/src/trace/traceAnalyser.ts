@@ -68,7 +68,7 @@ export class TraceAnalyser {
   buildCalldata (index, step, tx, newContext) {
     let calldata = ''
     if (index === 0) {
-      calldata = tx.input
+      calldata = tx.input || tx.data
       this.traceCache.pushCallDataChanges(index, calldata)
     } else if (!newContext) {
       const lastCall = this.traceCache.callsData[this.traceCache.callDataChanges[this.traceCache.callDataChanges.length - 2]]
