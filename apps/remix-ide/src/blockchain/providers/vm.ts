@@ -145,7 +145,7 @@ export class VMProvider {
     const messageHash = hashPersonalMessage(Buffer.from(message))
     this.web3.getSigner(account).then((signer) => {
       message = isHexString(message) ? message : hexlify(toUtf8Bytes(message))
-      signer.signMessage(message)
+      signer._legacySignMessage(message)
         .then(signedData => cb(null, bytesToHex(messageHash), signedData))
         .catch(error => cb(error))
     })
