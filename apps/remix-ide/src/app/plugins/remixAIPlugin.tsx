@@ -2,13 +2,12 @@ import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
-import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
+import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
 }
@@ -581,18 +580,8 @@ export class RemixAIPlugin extends Plugin {
       const savedServers = await this.call('settings', 'get', 'settings/mcp/servers');
       if (savedServers) {
         const loadedServers = JSON.parse(savedServers);
-        // Ensure built-in servers are always present
-        const builtInServers: IMCPServer[] = [
-          {
-            name: 'Remix IDE Server',
-            description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
-            transport: 'internal',
-            autoStart: true,
-            enabled: true,
-            timeout: 5000,
-            isBuiltIn: true
-          }
-        ];
+        // Get built-in servers from config file
+        const builtInServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers.filter(s => s.isBuiltIn);
 
         // Add built-in servers if they don't exist, or ensure they're enabled if they do
         for (const builtInServer of builtInServers) {
@@ -618,27 +607,8 @@ export class RemixAIPlugin extends Plugin {
           await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(loadedServers));
         }
       } else {
-        // Initialize with default MCP servers
-        const defaultServers: IMCPServer[] = [
-          {
-            name: 'Remix IDE Server',
-            description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
-            transport: 'internal',
-            autoStart: true,
-            enabled: true,
-            timeout: 5000,
-            isBuiltIn: true
-          },
-          {
-            name: 'OpenZeppelin Contracts',
-            description: 'OpenZeppelin smart contract library and security tools',
-            transport: 'http',
-            url: 'https://mcp.openzeppelin.com/contracts/solidity/mcp',
-            autoStart: true,
-            enabled: true,
-            timeout: 30000
-          }
-        ];
+        // Initialize with default MCP servers from config file
+        const defaultServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers;
         this.mcpServers = defaultServers;
         // Save default servers to settings
         await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(defaultServers));

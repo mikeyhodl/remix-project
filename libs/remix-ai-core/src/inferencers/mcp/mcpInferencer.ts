@@ -1033,6 +1033,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
+              console.log(`tool ${mcpToolCall.name} executed with result ${result}`)
 
               if (options.provider === 'openai'){
                 toolResults.push( {
@@ -1302,7 +1303,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-
+    console.log(`executing tool ${toolCall} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 
