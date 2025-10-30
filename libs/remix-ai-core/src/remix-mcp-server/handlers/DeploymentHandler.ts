@@ -353,7 +353,6 @@ export class RunScriptHandler extends BaseToolHandler {
       return this.createSuccessResult(result);
 
     } catch (error) {
-      console.log(error)
       return this.createErrorResult(`Run script failed: ${error.message}`);
     }
   }
@@ -540,7 +539,6 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
   async execute(args: { environment: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const providers = await plugin.call('blockchain', 'getAllProviders')
-      console.log('available providers', Object.keys(providers))
       const provider = Object.keys(providers).find((p) => p === args.environment)
       if (!provider) {
         return this.createErrorResult(`Could not find provider for environment '${args.environment}'`);
@@ -638,7 +636,6 @@ export class GetUserAccountsHandler extends BaseToolHandler {
     try {
       // Get accounts from the run-tab plugin (udapp)
       const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI');
-      console.log('geetting accounts returned', runTabApi)
 
       if (!runTabApi || !runTabApi.accounts) {
         return this.createErrorResult('Could not retrieve accounts from execution environment');
@@ -647,9 +644,6 @@ export class GetUserAccountsHandler extends BaseToolHandler {
       const accounts: AccountInfo[] = [];
       const loadedAccounts = runTabApi.accounts.loadedAccounts || {};
       const selectedAccount = runTabApi.accounts.selectedAccount;
-      console.log('loadedAccounts', loadedAccounts)
-      console.log('selected account', selectedAccount)
-
       for (const [address, displayName] of Object.entries(loadedAccounts)) {
         const account: AccountInfo = {
           address: address,
@@ -663,7 +657,6 @@ export class GetUserAccountsHandler extends BaseToolHandler {
             const balance = await plugin.call('blockchain' as any, 'getBalanceInEther', address);
             account.balance = balance || '0';
           } catch (error) {
-            console.warn(`Could not get balance for account ${address}:`, error);
             account.balance = 'unknown';
           }
         }
@@ -792,7 +785,6 @@ export class GetCurrentEnvironmentHandler extends BaseToolHandler {
 
       return this.createSuccessResult(result);
     } catch (error) {
-      console.error(error)
       return this.createErrorResult(`Failed to get environment information: ${error.message}`);
     }
   }

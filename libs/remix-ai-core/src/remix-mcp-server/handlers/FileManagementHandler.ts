@@ -4,8 +4,8 @@
 
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
-import { 
-  ToolCategory, 
+import {
+  ToolCategory,
   RemixToolDefinition,
   FileReadArgs,
   FileWriteArgs,
@@ -57,7 +57,7 @@ export class FileReadHandler extends BaseToolHandler {
       }
 
       const content = await plugin.call('fileManager', 'readFile', args.path)
-      
+
       const result: FileOperationResult = {
         success: true,
         path: args.path,
@@ -106,8 +106,8 @@ export class FileWriteHandler extends BaseToolHandler {
     const required = this.validateRequired(args, ['path', 'content']);
     if (required !== true) return required;
 
-    const types = this.validateTypes(args, { 
-      path: 'string', 
+    const types = this.validateTypes(args, {
+      path: 'string',
       content: 'string',
       encoding: 'string'
     });
@@ -121,12 +121,10 @@ export class FileWriteHandler extends BaseToolHandler {
       const exists = await plugin.call('fileManager', 'exists', args.path)
       try {
         if (!exists) {await plugin.call('fileManager', 'writeFile', args.path, "")}
-        
         await plugin.call('fileManager', 'open', args.path)
       } catch (openError) {
         console.warn(`Failed to open file in editor: ${openError.message}`);
       }
-      
       await new Promise(resolve => setTimeout(resolve, 1000))
       await plugin.call('editor', 'showCustomDiff', args.path, args.content)
       //await plugin.call('fileManager', 'writeFile', args.path, args.content);
@@ -182,7 +180,7 @@ export class FileCreateHandler extends BaseToolHandler {
     const required = this.validateRequired(args, ['path']);
     if (required !== true) return required;
 
-    const types = this.validateTypes(args, { 
+    const types = this.validateTypes(args, {
       path: 'string',
       content: 'string',
       type: 'string'
@@ -211,7 +209,7 @@ export class FileCreateHandler extends BaseToolHandler {
         await new Promise(resolve => setTimeout(resolve, 1000))
         await plugin.call('editor', 'showCustomDiff', args.path, args.content || "")
       }
-      
+
       const result: FileOperationResult = {
         success: true,
         path: args.path,
@@ -265,7 +263,7 @@ export class FileDeleteHandler extends BaseToolHandler {
       }
 
       await plugin.call('fileManager', 'remove', args.path);
-      
+
       const result: FileOperationResult = {
         success: true,
         path: args.path,
@@ -327,7 +325,7 @@ export class FileMoveHandler extends BaseToolHandler {
       }
 
       await await plugin.call('fileManager', 'rename', args.from, args.to);
-      
+
       const result: FileOperationResult = {
         success: true,
         path: args.to,
@@ -386,7 +384,7 @@ export class FileCopyHandler extends BaseToolHandler {
 
       const content = await plugin.call('fileManager', 'readFile',args.from);
       await plugin.call('fileManager', 'writeFile',args.to, content);
-      
+
       const result: FileOperationResult = {
         success: true,
         path: args.to,
@@ -453,7 +451,7 @@ export class DirectoryListHandler extends BaseToolHandler {
         try {
           const isDir = await await plugin.call('fileManager', 'isDirectory', fullPath);
           let size = 0;
-          
+
           if (!isDir) {
             const content = await plugin.call('fileManager', 'readFile',fullPath);
             size = content.length;
@@ -478,10 +476,9 @@ export class DirectoryListHandler extends BaseToolHandler {
           }
         } catch (error) {
           // Skip files that can't be accessed
-          console.warn(`Couldn't access ${fullPath}:`, error.message);
         }
       }
-      
+
       const result = {
         success: true,
         path: args.path,
@@ -530,7 +527,7 @@ export class FileExistsHandler extends BaseToolHandler {
   async execute(args: { path: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const exists = await plugin.call('fileManager', 'exists', args.path)
-      
+
       const result = {
         success: true,
         path: args.path,
