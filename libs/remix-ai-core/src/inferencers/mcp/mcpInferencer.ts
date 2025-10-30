@@ -19,6 +19,21 @@ import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
 import { endpointUrls } from "@remix-endpoints-helper"
 
+// Helper function to track events using MatomoManager instance
+function trackMatomoEvent(category: string, action: string, name?: string) {
+  try {
+    if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
+      const matomoInstance = (window as any)._matomoManagerInstance;
+      if (typeof matomoInstance.trackEvent === 'function') {
+        matomoInstance.trackEvent(category, action, name);
+      }
+    }
+  } catch (error) {
+    // Silent fail for tracking
+    console.debug('Matomo tracking failed:', error);
+  }
+}
+
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
@@ -41,6 +56,7 @@ export class MCPClient {
   async connect(): Promise<IMCPInitializeResult> {
     try {
       this.eventEmitter.emit('connecting', this.server.name);
+      trackMatomoEvent('ai', 'mcp_connect_attempt', `${this.server.name}|${this.server.transport}`);
 
       if (this.server.transport === 'internal') {
         return await this.connectInternal();
@@ -58,6 +74,7 @@ export class MCPClient {
 
     } catch (error) {
       this.eventEmitter.emit('error', this.server.name, error);
+      trackMatomoEvent('ai', 'mcp_connect_failed', `${this.server.name}|${error.message}`);
       throw error;
     }
   }
@@ -71,6 +88,7 @@ export class MCPClient {
     this.connected = true;
     this.capabilities = result.capabilities;
     this.eventEmitter.emit('connected', this.server.name, result);
+    trackMatomoEvent('ai', 'mcp_connect_success', `${this.server.name}|internal`);
     return result;
   }
 
@@ -108,6 +126,7 @@ export class MCPClient {
     this.capabilities = result.capabilities;
 
     this.eventEmitter.emit('connected', this.server.name, result);
+    trackMatomoEvent('ai', 'mcp_connect_success', `${this.server.name}|http`);
     return result;
   }
 
@@ -410,6 +429,8 @@ export class MCPClient {
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    trackMatomoEvent('ai', 'mcp_resource_read', `${this.server.name}|${uri}`);
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
@@ -542,6 +563,8 @@ export class MCPClient {
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
+    trackMatomoEvent('ai', 'mcp_tool_call', `${this.server.name}|${toolCall.name}`);
+
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
         id: Date.now().toString(),
@@ -550,8 +573,10 @@ export class MCPClient {
       });
 
       if (response.error) {
+        trackMatomoEvent('ai', 'mcp_tool_call_failed', `${this.server.name}|${toolCall.name}|${response.error.message}`);
         throw new Error(`Failed to call tool: ${response.error.message}`);
       }
+      trackMatomoEvent('ai', 'mcp_tool_call_success', `${this.server.name}|${toolCall.name}`);
       return response.result;
     } else if (this.server.transport === 'http') {
       const response = await this.sendHTTPRequest({
@@ -705,6 +730,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   async connectAllServers(): Promise<void> {
+    trackMatomoEvent('ai', 'mcp_connect_all_servers', `count:${this.mcpClients.size}`);
     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
       try {
         await client.connect();
@@ -714,6 +740,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     await Promise.allSettled(promises);
+    const connectedCount = this.getConnectedServers().length;
+    trackMatomoEvent('ai', 'mcp_connect_all_complete', `connected:${connectedCount}|total:${this.mcpClients.size}`);
   }
 
   async disconnectAllServers(): Promise<void> {
@@ -730,6 +758,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (this.mcpClients.has(server.name)) {
       throw new Error(`MCP server ${server.name} already exists`);
     }
+
+    trackMatomoEvent('ai', 'mcp_server_add', `${server.name}|${server.transport}`);
 
     const client = new MCPClient(
       server,
@@ -781,6 +811,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   async removeMCPServer(serverName: string): Promise<void> {
     const client = this.mcpClients.get(serverName);
     if (client) {
+      trackMatomoEvent('ai', 'mcp_server_remove', serverName);
       await client.disconnect();
       this.mcpClients.delete(serverName);
       this.connectionStatuses.delete(serverName);
@@ -975,6 +1006,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       tool_choice: llmFormattedTools.length > 0 ? "auto" : undefined
     };
 
+    if (llmFormattedTools.length > 0) {
+      trackMatomoEvent('ai', 'mcp_answer_with_tools', `provider:${options.provider}|tools:${llmFormattedTools.length}`);
+    }
+
     try {
       const response = await super.answer(enrichedPrompt, enhancedOptions);
       let toolExecutionCount = 0;
@@ -990,6 +1025,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
         // Handle tool calls in the response
         if (tool_calls && tool_calls.length > 0) {
+          trackMatomoEvent('ai', 'mcp_llm_tool_execution', `provider:${options.provider}|count:${tool_calls.length}|iteration:${toolExecutionCount}`);
           const toolResults = [];
 
           for (const llmToolCall of tool_calls) {
