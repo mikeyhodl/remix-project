@@ -4,7 +4,10 @@ import { toHttpUrl } from '../utils/to-http-url'
 // Thin adapter around the Remix plugin APIs previously used throughout the resolver.
 // This keeps the app-coupled logic at the edge while enabling a pure core.
 export class RemixPluginAdapter implements IOAdapter {
+  private cacheEnabled = true
   constructor(private readonly plugin: any) {}
+
+  setCacheEnabled(enabled: boolean): void { this.cacheEnabled = !!enabled }
 
   async readFile(path: string): Promise<string> {
     return await this.plugin.call('fileManager', 'readFile', path)
@@ -56,14 +59,16 @@ export class RemixPluginAdapter implements IOAdapter {
       dest = `.deps/${dest}`
     }
 
-    // If already exists, read from disk and return, avoiding a refetch
-    try {
-      const exists = await this.exists(dest)
-      if (exists) {
-        return await this.readFile(dest)
+    // If cache is enabled and file already exists, return cached content
+    if (this.cacheEnabled) {
+      try {
+        const exists = await this.exists(dest)
+        if (exists) {
+          return await this.readFile(dest)
+        }
+      } catch (_) {
+        // If existence check fails, fall through to fetch/write
       }
-    } catch (_) {
-      // If existence check fails, fall through to fetch/write
     }
 
     // Fetch content directly using our simple translator

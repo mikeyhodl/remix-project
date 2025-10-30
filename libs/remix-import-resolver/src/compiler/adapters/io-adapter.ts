@@ -15,4 +15,8 @@ export interface IOAdapter {
   // Optional optimized path which both fetches and persists according to the adapter rules.
   // If not implemented, callers can fall back to fetch() + setFile().
   resolveAndSave?(url: string, targetPath?: string, useOriginal?: boolean): Promise<string>
+
+  // Optional cache toggle. Adapters that implement internal caching behavior
+  // (e.g., skip fetch if destination exists) should honor this flag.
+  setCacheEnabled?(enabled: boolean): void
 }

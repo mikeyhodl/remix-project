@@ -52,7 +52,6 @@ export class FileResolutionIndex {
 
   /** Record a single original → resolved mapping for a source file. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
-    if (originalImport === resolvedPath) return
     if (!this.index[sourceFile]) this.index[sourceFile] = {}
     if (this.index[sourceFile][originalImport] !== resolvedPath) {
       this.index[sourceFile][originalImport] = resolvedPath

@@ -57,6 +57,7 @@ export class SmartCompiler {
     // 1) Build deps
     if (this.debug) console.log(`[SmartCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
+  depResolver.setCacheEnabled(false)
     const sourceBundle = await depResolver.buildDependencyTree(target)
     if (this.debug) {
       console.log(`[SmartCompiler] ✅ Dependency tree built successfully`)

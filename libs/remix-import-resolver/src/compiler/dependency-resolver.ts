@@ -62,6 +62,13 @@ export class DependencyResolver {
     this.remappings = remaps || []
   }
 
+  /** Enable or disable caching for this resolver session. */
+  public setCacheEnabled(enabled: boolean): void {
+    if ((this.resolver as any).setCacheEnabled) {
+      ;(this.resolver as any).setCacheEnabled(enabled)
+    }
+  }
+
   private log(message: string, ...args: any[]): void {
     if (this.debug) console.log(message, ...args)
   }

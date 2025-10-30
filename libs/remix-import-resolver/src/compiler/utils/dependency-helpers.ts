@@ -64,6 +64,7 @@ export function extractImports(content: string, log: LogFn = noop): string[] {
 
   const importPatterns = [
     /import\s+["']([^"']+)["']\s*;/g,
+    /import\s+["']([^"']+)["']\s+as\s+\w+\s*;/g,
     /import\s*{\s*[^}]*}\s*from\s+["']([^"']+)["']\s*;/g,
     /import\s+\*\s+as\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,
     /import\s+\w+\s+from\s+["']([^"']+)["']\s*;/g,

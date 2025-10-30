@@ -36,6 +36,40 @@ console.log(flattened)
 - NodeIOAdapter: basic fs/network I/O for Node
 - parseRemappingsFileContent / normalizeRemappings: manage remappings
 
+### Cache control
+
+By default the resolver uses a cache-first strategy, reusing on-disk files under `.deps/` and skipping redundant network requests where possible.
+
+You can toggle this behavior at runtime per session:
+
+```ts
+import { DependencyResolver, NodeIOAdapter } from '@remix-project/import-resolver'
+
+const io = new NodeIOAdapter()
+const dep = new DependencyResolver(io, 'contracts/Main.sol')
+
+// Disable cache: always refetch and overwrite saved content
+dep.setCacheEnabled(false)
+
+// Build graph or flatten as usual
+await dep.buildDependencyTree('contracts/Main.sol')
+```
+
+If you use the low-level `ImportResolver` directly:
+
+```ts
+import { ImportResolver, NodeIOAdapter } from '@remix-project/import-resolver'
+
+const resolver = new ImportResolver(new NodeIOAdapter(), 'contracts/Main.sol')
+resolver.setCacheEnabled(false)
+```
+
+When cache is disabled:
+
+- External content (.sol and package.json) is always fetched and written to the deterministic path under `.deps/`, even if a file already exists.
+- GitHub `package.json` short-circuiting (by repo@ref) is bypassed.
+- This is useful for forcing fresh sources or debugging resolution changes.
+
 ### Warnings and verbosity
 
 Warnings are centralized and deduplicated via `WarningSystem`.

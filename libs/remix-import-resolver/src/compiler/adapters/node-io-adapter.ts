@@ -8,6 +8,9 @@ function isHttp(url: string) {
 }
 
 export class NodeIOAdapter implements IOAdapter {
+  private cacheEnabled = true
+
+  setCacheEnabled(enabled: boolean): void { this.cacheEnabled = !!enabled }
   async readFile(path: string): Promise<string> {
     return await fs.readFile(path, 'utf8')
   }
@@ -42,7 +45,6 @@ export class NodeIOAdapter implements IOAdapter {
   }
 
   async resolveAndSave(url: string, targetPath?: string, _useOriginal?: boolean): Promise<string> {
-    const content = await this.fetch(url)
     let dest = targetPath
     if (!dest) {
       // Determine a deterministic destination under .deps
@@ -64,6 +66,20 @@ export class NodeIOAdapter implements IOAdapter {
       // Ensure all resolver-managed artifacts live under .deps
       dest = `.deps/${dest}`
     }
+
+    // If cache is enabled and file exists, return cached content from disk
+    if (this.cacheEnabled) {
+      try {
+        const exists = await this.exists(dest)
+        if (exists) {
+          return await this.readFile(dest)
+        }
+      } catch {
+        // ignore and proceed to fetch
+      }
+    }
+
+    const content = await this.fetch(url)
     await this.setFile(dest, content)
     return content
   }

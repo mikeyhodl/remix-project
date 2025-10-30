@@ -43,6 +43,7 @@ export class ImportResolver implements IImportResolver {
   private importedFiles: Map<string, string> = new Map()
   private packageSources: Map<string, string> = new Map()
   private debug: boolean = false
+  private cacheEnabled: boolean = true
   private packageMapper: PackageMapper
   // Cache to avoid refetching the same GitHub package.json multiple times per session
   private fetchedGitHubPackages: Set<string> = new Set()
@@ -74,6 +75,7 @@ export class ImportResolver implements IImportResolver {
     this.packageVersionResolver = new PackageVersionResolver(this.io, debug)
     this.logger = new Logger(this.pluginApi || undefined, debug)
     this.contentFetcher = new ContentFetcher(this.io, debug)
+    this.contentFetcher.setCacheEnabled(true)
     this.dependencyStore = new DependencyStore()
     this.conflictChecker = new ConflictChecker(
       this.logger,
@@ -113,6 +115,12 @@ export class ImportResolver implements IImportResolver {
     this.log(`[ImportResolver] 📊 Current import mappings for: "${this.targetFile}"`)
     if (this.importMappings.size === 0) this.log(`[ImportResolver] ℹ️  No mappings defined`)
     else this.importMappings.forEach((value, key) => this.log(`[ImportResolver]   ${key} → ${value}`))
+  }
+
+  /** Enable or disable cache usage for this resolver session. */
+  public setCacheEnabled(enabled: boolean): void {
+    this.cacheEnabled = !!enabled
+    try { this.contentFetcher.setCacheEnabled(this.cacheEnabled) } catch {}
   }
 
   /** Ensure the dependency graph for a versioned package context is loaded from its package.json. */
@@ -183,11 +191,11 @@ export class ImportResolver implements IImportResolver {
    * Idempotent: skips if already captured in the dependency store.
    */
   private async ensurePackageJsonSaved(versionedPackageName: string): Promise<void> {
-    if (this.dependencyStore.hasParent(versionedPackageName)) return
+    if (this.dependencyStore.hasParent(versionedPackageName) && this.cacheEnabled) return
     try {
       const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
       let packageJson: any
-      if (await this.contentFetcher.exists(pkgJsonPath)) {
+      if (this.cacheEnabled && await this.contentFetcher.exists(pkgJsonPath)) {
         const existing = await this.contentFetcher.readFile(pkgJsonPath)
         packageJson = JSON.parse(existing)
         this.log(`[ImportResolver] 📦 Using cached package.json: ${pkgJsonPath}`)
@@ -291,13 +299,13 @@ export class ImportResolver implements IImportResolver {
       const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
 
       // Skip if we already processed this repo/ref in this session
-      if (this.fetchedGitHubPackages.has(key)) {
+      if (this.cacheEnabled && this.fetchedGitHubPackages.has(key)) {
         this.log(`[ImportResolver] 📦 Skipping GitHub package.json fetch (cached): ${key}`)
         return
       }
 
       // If file already exists on disk, don't refetch; load into store once
-      if (await this.contentFetcher.exists(targetPath)) {
+      if (this.cacheEnabled && await this.contentFetcher.exists(targetPath)) {
         this.fetchedGitHubPackages.add(key)
         try {
           if (!this.dependencyStore.hasParent(key)) {
@@ -316,7 +324,7 @@ export class ImportResolver implements IImportResolver {
       const packageJson = JSON.parse(content.content || content)
       if (packageJson && packageJson.name) {
         await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
-        this.fetchedGitHubPackages.add(key)
+        if (this.cacheEnabled) this.fetchedGitHubPackages.add(key)
         this.log(`[ImportResolver] ✅ Saved GitHub package.json to: ${targetPath}`)
         this.log(`[ImportResolver]    Package: ${packageJson.name}@${packageJson.version || 'unknown'}`)
         if (packageJson.version) {
@@ -405,7 +413,11 @@ export class ImportResolver implements IImportResolver {
     }
     if (!this.resolutionIndexInitialized) { await this.resolutionIndex.load(); this.resolutionIndexInitialized = true }
     this.resolutionIndex.clearFileResolutions(this.targetFile)
-    this.resolutions.forEach((resolvedPath, originalImport) => { this.resolutionIndex!.recordResolution(this.targetFile, originalImport, resolvedPath) })
+    this.resolutions.forEach((resolvedPath, originalImport) => {
+      // Store a concrete on-disk path in the index so IDE lookups can open files directly.
+      const localPath = this.toLocalPath(resolvedPath)
+      this.resolutionIndex!.recordResolution(this.targetFile, originalImport, localPath)
+    })
     await this.resolutionIndex.save()
   }
 
@@ -413,4 +425,38 @@ export class ImportResolver implements IImportResolver {
   public getTargetFile(): string { return this.targetFile }
   /** Lookup an original import and return its resolved path, if recorded in this session. */
   public getResolution(originalImport: string): string | null { return this.resolutions.get(originalImport) || null }
+
+  /**
+   * Translate a resolved import URL/path to a deterministic local workspace path under .deps.
+   * - npm-like paths (e.g., "@scope/pkg@ver/path") → .deps/npm/<same>
+   * - http(s) URLs → .deps/http/<host>/<pathname>
+   * - already-scoped paths under .deps are returned as-is
+   */
+  private toLocalPath(resolved: string, targetPath?: string): string {
+    if (!resolved) return resolved
+    // If a specific targetPath was provided and is already rooted under .deps, respect it
+    if (targetPath && targetPath.startsWith('.deps/')) return targetPath
+    // If it already points under .deps, return as-is
+    if (resolved.startsWith('.deps/')) return resolved
+    // If a specific targetPath was provided but not rooted, root it now
+    if (targetPath) return targetPath.startsWith('.deps/') ? targetPath : `.deps/${targetPath}`
+    // Derive from the resolved string
+    const isHttp = resolved.startsWith('http://') || resolved.startsWith('https://')
+    if (isHttp) {
+      try {
+        const u = new URL(resolved)
+        const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+        return `.deps/http/${u.hostname}/${cleanPath}`
+      } catch {
+        const safe = resolved.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
+        return `.deps/http/${safe}`
+      }
+    }
+    // Canonical alias families used by the router
+    if (resolved.startsWith('github/')) return `.deps/${resolved}`
+    if (resolved.startsWith('ipfs/')) return `.deps/${resolved}`
+    if (resolved.startsWith('swarm/')) return `.deps/${resolved}`
+    // Treat non-HTTP as npm-like canonical path
+    return `.deps/npm/${resolved}`
+  }
 }

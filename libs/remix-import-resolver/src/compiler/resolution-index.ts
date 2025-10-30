@@ -61,13 +61,34 @@ export class ResolutionIndex {
 
   /** Record a mapping for a source file if it changed since last write. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
-    if (originalImport === resolvedPath) return
     if (!this.index[sourceFile]) this.index[sourceFile] = {}
-    if (this.index[sourceFile][originalImport] !== resolvedPath) {
-      this.index[sourceFile][originalImport] = resolvedPath
+    const local = this.toLocalPath(resolvedPath)
+    if (this.index[sourceFile][originalImport] !== local) {
+      this.index[sourceFile][originalImport] = local
       this.isDirty = true
-      this.log(`[ResolutionIndex] 📝 Recorded: ${sourceFile} | ${originalImport} → ${resolvedPath}`)
+      this.log(`[ResolutionIndex] 📝 Recorded: ${sourceFile} | ${originalImport} → ${local}`)
     }
+  }
+
+  /** Translate a resolved path into a deterministic local path under .deps. */
+  private toLocalPath(resolved: string): string {
+    if (!resolved) return resolved
+    if (resolved.startsWith('.deps/')) return resolved
+    const isHttp = resolved.startsWith('http://') || resolved.startsWith('https://')
+    if (isHttp) {
+      try {
+        const u = new URL(resolved)
+        const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+        return `.deps/http/${u.hostname}/${cleanPath}`
+      } catch {
+        const safe = resolved.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
+        return `.deps/http/${safe}`
+      }
+    }
+    if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
+      return `.deps/${resolved}`
+    }
+    return `.deps/npm/${resolved}`
   }
 
   /** Lookup a mapping scoped to a source file. */
@@ -98,7 +119,7 @@ export class ResolutionIndex {
 
   /** Persist index to workspace storage if it changed. */
   async save(): Promise<void> {
-    if (!this.isDirty) { this.log(`[ResolutionIndex] ⏭️  Index unchanged, skipping save`); return }
+    //if (!this.isDirty) { this.log(`[ResolutionIndex] ⏭️  Index unchanged, skipping save`); return }
     try {
       const directory = '.deps/npm'
       try {

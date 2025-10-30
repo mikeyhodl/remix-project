@@ -56,7 +56,7 @@ describe('Deep package.json usage via parent deps', () => {
     const idxRaw = await fs.readFile('.deps/npm/.resolution-index.json', 'utf8')
     const idx = JSON.parse(idxRaw)
     const entry = idx['DeepParentDeps.sol'] || {}
-    expect(entry[original]).to.equal(expectedPath)
+    expect(entry[original]).to.equal(`.deps/npm/${expectedPath}`)
   })
 
   it('auto-loads parent deps when entry file is inside a versioned package (no manual package.json touch)', async function () {

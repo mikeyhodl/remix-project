@@ -47,6 +47,6 @@ describe('GitHub raw URL routing and normalization', () => {
     const idxRaw = await fs.readFile('.deps/npm/.resolution-index.json', 'utf8')
     const idx = JSON.parse(idxRaw)
     const entry = idx['GhRaw.sol'] || {}
-    expect(entry[original]).to.equal('github/OpenZeppelin/openzeppelin-contracts@v4.9.6/contracts/token/ERC20/IERC20.sol')
+    expect(entry[original]).to.equal('.deps/github/OpenZeppelin/openzeppelin-contracts@v4.9.6/contracts/token/ERC20/IERC20.sol')
   })
 })

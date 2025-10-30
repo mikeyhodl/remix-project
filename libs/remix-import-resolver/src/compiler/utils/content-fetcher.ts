@@ -1,10 +1,18 @@
 import type { IOAdapter } from '../adapters/io-adapter'
 
 export class ContentFetcher {
+  private cacheEnabled = true
   constructor(private io: IOAdapter, private debug = false) {}
 
   private log(...args: any[]) {
     if (this.debug) console.log('[ContentFetcher]', ...args)
+  }
+
+  setCacheEnabled(enabled: boolean): void {
+    this.cacheEnabled = !!enabled
+    if (typeof (this.io as any).setCacheEnabled === 'function') {
+      try { (this.io as any).setCacheEnabled(this.cacheEnabled) } catch {}
+    }
   }
 
   async resolve(url: string): Promise<any> {
