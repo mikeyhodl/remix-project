@@ -7,8 +7,8 @@ import { displayNotification } from "./payload"
 
 const saveScenario = async (plugin: RunTab, newPath: string, provider, promptCb, cb) => {
   const txJSON = JSON.stringify(plugin.recorder.getAll(), (key, value) =>
-      typeof value === 'bigint' ? value.toString() : value
-    , 2)
+    typeof value === 'bigint' ? value.toString() : value
+  , 2)
 
   promptCb(async () => {
     try {

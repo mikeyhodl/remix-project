@@ -317,14 +317,14 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
             time: time,
             errMsg: `Transaction with hash "${debugTxHash}" has been reverted by the EVM.`,
             context: testName,
-            provider, 
+            provider,
             debugTxHash
           }
-        if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
-                testCallback(undefined, resp)
-                failureNum += 1
-                timePassed += time
-                return next()
+          if (hhLogs && hhLogs.length) resp.hhLogs = hhLogs
+          testCallback(undefined, resp)
+          failureNum += 1
+          timePassed += time
+          return next()
         }
         for (const i in receipt.logs) {
           let events = receipt.logs[i]
