@@ -206,7 +206,8 @@ export class DependencyResolver {
           resolvedImports.add(childGraphKey)
 
           // Record per-file resolution for Go-to-Definition: original spec as written → resolved path
-          if (this.resolutionIndex && !this.isLocalFile(importedPath)) {
+          // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
+          if (this.resolutionIndex) {
             try { this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey) } catch {}
           }
         }

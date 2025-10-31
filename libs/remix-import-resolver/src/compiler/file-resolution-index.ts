@@ -53,10 +53,11 @@ export class FileResolutionIndex {
   /** Record a single original → resolved mapping for a source file. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
     if (!this.index[sourceFile]) this.index[sourceFile] = {}
-    if (this.index[sourceFile][originalImport] !== resolvedPath) {
-      this.index[sourceFile][originalImport] = resolvedPath
+    const local = this.toLocalPath(resolvedPath)
+    if (this.index[sourceFile][originalImport] !== local) {
+      this.index[sourceFile][originalImport] = local
       this.isDirty = true
-      this.log(`[FileResolutionIndex] Recorded: ${sourceFile} | ${originalImport} → ${resolvedPath}`)
+      this.log(`[FileResolutionIndex] Recorded: ${sourceFile} | ${originalImport} → ${local}`)
     }
   }
 
@@ -72,5 +73,26 @@ export class FileResolutionIndex {
     } catch (err) {
       this.log(`[FileResolutionIndex] Failed to save index:`, err)
     }
+  }
+
+  /** Translate a resolved path into a deterministic local path under .deps. */
+  private toLocalPath(resolved: string): string {
+    if (!resolved) return resolved
+    if (resolved.startsWith('.deps/')) return resolved
+    const isHttp = resolved.startsWith('http://') || resolved.startsWith('https://')
+    if (isHttp) {
+      try {
+        const u = new URL(resolved)
+        const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+        return `.deps/http/${u.hostname}/${cleanPath}`
+      } catch {
+        const safe = resolved.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
+        return `.deps/http/${safe}`
+      }
+    }
+    if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
+      return `.deps/${resolved}`
+    }
+    return `.deps/npm/${resolved}`
   }
 }
