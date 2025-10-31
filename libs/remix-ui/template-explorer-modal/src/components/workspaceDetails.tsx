@@ -4,13 +4,16 @@ import { Editor } from '@monaco-editor/react'
 import { ContractWizardAction } from '../../types/template-explorer-types'
 import { storageContractCode, ownerContractCode, ballotContractCode } from '../contractCode/remixDefault'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
+import CodeMirror from '@uiw/react-codemirror'
+import { javascript } from '@codemirror/lang-javascript'
 
 interface WorkspaceDetailsProps {
   strategy?: any
 }
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
-  const { state, dispatch, facade } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
 
   return (
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
@@ -23,21 +26,23 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
           <MiniFileExplorer />
         </div>
         <div className="border" style={{ minHeight: '75%', minWidth: '70%', borderTopRightRadius: '10px', borderBottomRightRadius: '10px' }}>
-          <Editor
-            height="100%"
-            width="100%"
-            defaultLanguage="typescript"
-            options={{
-              readOnly: true,
-              minimap: { enabled: false },
-              lineNumbers: 'off',
-              theme: 'vs-dark',
-              scrollbar: {
-                vertical: 'hidden',
-                horizontal: 'hidden'
-              }
-            }}
+          <CodeMirror
+            data-id="workspace-details-editor"
             value={storageContractCode('Storage')}
+            lang="typescript"
+            height="460px"
+            theme={theme?.name === 'Light' ? vscodeLight : vscodeDark}
+            readOnly={true}
+            basicSetup={{
+              lineNumbers: false,
+              syntaxHighlighting: true,
+              foldGutter: false,
+              highlightActiveLine: true,
+              highlightActiveLineGutter: false,
+              indentOnInput: false,
+              tabSize: 2
+            }}
+            extensions={[javascript({ typescript: true })]}
           />
         </div>
       </div>

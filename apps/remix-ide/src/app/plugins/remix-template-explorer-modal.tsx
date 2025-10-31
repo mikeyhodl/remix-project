@@ -8,12 +8,13 @@ import { ThemeModule } from '../tabs/theme-module'
 import * as packageJson from '../../../../../package.json'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 import { ViewPlugin } from '@remixproject/engine-web'
+import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
 
 const pluginProfile = {
   name: 'templateexplorermodal',
   displayName: 'Template Explorer Modal',
   description: 'Template Explorer Modal',
-  methods: ['openModal'],
+  methods: ['addArtefactsToWorkspace'],
   events: [],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
@@ -40,8 +41,12 @@ export class TemplateExplorerModalPlugin extends Plugin {
 
   }
 
-  openModal() {
-    console.log('This is openModal')
+  async addArtefactsToWorkspace(workspaceTemplateName: WorkspaceTemplate, opts: any, isEmpty: boolean, cb: (err: Error) => void) {
+    this.emit('addTemplateToWorkspaceReducerEvent', workspaceTemplateName, opts, isEmpty, (err: Error) => {
+      if (err) {
+        console.error(err)
+      }
+    })
   }
 
   onDeactivation(): void {

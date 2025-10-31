@@ -62,6 +62,10 @@ export function ContractWizard () {
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
 
+  useEffect(() => {
+    console.log('what is state now?', state)
+  }, [state, state.contractName, state.tokenName, state.contractOptions, state.contractAccessControl, state.contractUpgradability])
+
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })

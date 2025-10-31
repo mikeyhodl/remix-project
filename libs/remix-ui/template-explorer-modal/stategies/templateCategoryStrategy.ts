@@ -1,6 +1,6 @@
 import { TemplateExplorerWizardAction, WizardStep } from '../types/template-explorer-types'
 
-type ActionWithPayload = { type: TemplateExplorerWizardAction, payload: any }
+type ActionWithPayload = { type: TemplateExplorerWizardAction, payload?: any }
 export interface TemplateExplorerStrategy {
   activateScreen: (dispatch: (action: ActionWithPayload) => void) => void
 }
@@ -58,3 +58,9 @@ export class BasicStrategy implements TemplateExplorerStrategy {
   }
 }
 
+export class ScriptsStrategy implements TemplateExplorerStrategy {
+
+  activateScreen(dispatch: (action: ActionWithPayload) => void) {
+    dispatch({ type: TemplateExplorerWizardAction.MODIFY_WORKSPACE, payload: 'ModifyWorkspace' })
+  }
+}

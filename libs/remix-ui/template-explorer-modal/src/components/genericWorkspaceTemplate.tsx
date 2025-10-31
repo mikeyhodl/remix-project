@@ -24,7 +24,7 @@ export function GenericWorkspaceTemplate() {
 
   return (
     <section className="mx-3 p-2">
-      <div className="d-flex flex-column p-3 bg-light" style={{ height: '50%' }}>
+      <div className="d-flex flex-column p-3 bg-light" style={{ height: state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : '50%' }}>
         <div>
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>

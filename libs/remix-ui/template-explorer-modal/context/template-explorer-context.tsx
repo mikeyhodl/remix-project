@@ -198,7 +198,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       <RemixUiTemplateExplorerModal
         appState={appContext.appState}
         dispatch={appContext.appStateDispatch}
-        plugin={plugin}
       />
     </TemplateExplorerContext.Provider>
   )

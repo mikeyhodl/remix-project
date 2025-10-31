@@ -169,6 +169,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
         className="px-2"
         data-id="topbar-custom-dropdown-items"
         show={showMain}
+        as={"div"}
       >
         <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px' }}>
           {menuItems.map((item, idx) => {

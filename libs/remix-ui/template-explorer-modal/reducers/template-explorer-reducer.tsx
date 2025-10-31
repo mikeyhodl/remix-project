@@ -13,7 +13,7 @@ export const initialState: TemplateExplorerWizardState = {
   initializeAsGitRepo: false,
   workspaceGeneratedWithAi: false,
   searchTerm: '',
-  metadata: metadata as MetadataType,
+  metadata: metadata as any,
   templateRepository: templatesRepository as TemplateRepository || [],
   selectedTag: null,
   setSearchTerm: (term: string) => {},
@@ -60,6 +60,9 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   }
   case TemplateExplorerWizardAction.SET_DEFAULT_WORKSPACE_NAME:{
     return { ...state, defaultWorkspaceName: action.payload }
+  }
+  case TemplateExplorerWizardAction.MODIFY_WORKSPACE: {
+    return { ...state, wizardStep: action.payload as WizardStep }
   }
   case TemplateExplorerWizardAction.SET_TOP_LEFT_NAVIGATION_NAME:
     return { ...state, topLeftNagivationName: action.payload }

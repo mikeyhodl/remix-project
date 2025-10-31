@@ -6,7 +6,11 @@ import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, state } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, state, theme } = useContext(TemplateExplorerContext)
+
+  useEffect(() => {
+    console.log('state', state)
+  }, [])
 
   return (
     <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
@@ -62,6 +66,16 @@ export function TemplateExplorer() {
                       facade.closeWizard()
                       return
                     }
+                    if (item?.IsArtefact && item.templateType === undefined) {
+                      // facade.closeWizard()
+                      // return
+                    }
+                    if (item.IsArtefact && item.templateType) {
+
+                    }
+                    if (item.templateType && item?.IsArtefact === false) {
+
+                    }
                     facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                   }}
                   onMouseEnter={(e) => {
@@ -79,7 +93,7 @@ export function TemplateExplorer() {
                       fontWeight: '600',
                       margin: 0,
                       lineHeight: '1.2',
-                      color: plugin?.theme?.currentTheme().name === 'Light' ? '#1B1D24' : '#FFF'
+                      color: theme?.name === 'Light' ? '#1B1D24' : '#FFF'
                     }}>
                       {item.displayName || item.value}
                     </h6>

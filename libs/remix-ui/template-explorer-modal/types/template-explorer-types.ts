@@ -2,6 +2,7 @@
 import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
 import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
+import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
 
 export interface TemplateExplorerWizardState {
   workspaceTemplateChosen: any
@@ -37,10 +38,10 @@ export interface TemplateExplorerWizardState {
   tokenName?: string
 }
 
-export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'zkp' | 'confirm'
+export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'ModifyWorkspace' | 'confirm' | 'scripts'
 
 export interface TemplateExplorerContextType {
-  plugin: any
+  plugin: TemplateExplorerModalPlugin
   templateRepository: TemplateCategory[]
   metadata: any[]
   selectedTag: string | null
@@ -100,9 +101,20 @@ export interface TemplateItem {
     burnable?: boolean
     pausable?: boolean
   }
-  templateType?: any
+  templateType?: TemplateType
 }
 
+export type TemplateType = {
+  type: 'git' | 'plugin'
+  url: string
+  branch?: string
+  name?: string
+  endpoint?: string
+  params?: string[]
+  forceCreateNewWorkspace?: boolean
+  desktopCompatible?: boolean
+  disabled?: boolean
+}
 export interface TemplateCategory {
   name: string
   description?: string
@@ -119,19 +131,19 @@ export type TemplateRepository = TemplateCategory[]
 export type MetadataType = Record<string, MetadataItem>
 
 export type MetadataItem =
-| {
-    type: 'git';
-    url: string;
-    branch: string;
-    forceCreateNewWorkspace: boolean;
+{
+    type: 'git'
+    url: string
+    branch?: string
+    forceCreateNewWorkspace: boolean
   }
 | {
-    type: 'plugin';
-    name: string;
-    endpoint: string;
-    params: string[];
-    forceCreateNewWorkspace?: boolean;
-    desktopCompatible?: boolean;
+    type: 'plugin'
+    name: string
+    endpoint?: string
+    params?: string[]
+    forceCreateNewWorkspace?: boolean
+    desktopCompatible?: boolean
     disabled?: boolean;
   }
 

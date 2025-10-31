@@ -10,16 +10,16 @@ import { TemplateExplorerWizardAction, TemplateExplorerWizardState } from '../..
 import { GenericWorkspaceTemplate } from '../components/genericWorkspaceTemplate'
 import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
 import { FinalScreen } from '../components/finalScreen'
+import { ScriptsFinalScreen } from '../components/scriptsFinalScreen'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
   appState: AppState
-  plugin: any
 }
 
 export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModalProps) {
 
-  const { plugin, setSearchTerm, state, dispatch, facade } = useContext(TemplateExplorerContext)
+  const { setSearchTerm, state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
 
   return (
     <section data-id="template-explorer-modal-react">
@@ -33,7 +33,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 data-id="template-explorer-search-input"
                 placeholder="Search"
                 className="form-control template-explorer-modal-search-input ps-5 fw-light"
-                style={{ color: plugin?.theme?.currentTheme()?.name === 'Light' ? '#1B1D24' : '#FFF' }}
+                style={{ color: theme?.name === 'Light' ? '#1B1D24' : '#FFF' }}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div> : <div>
@@ -52,12 +52,13 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
               <i className="fa-solid fa-xmark text-dark"></i>
             </button>
           </div>
-          {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <TemplateExplorerBody plugin={props.plugin} /> : null}
+          {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <TemplateExplorerBody /> : null}
           {state.wizardStep === 'generic' ? <GenericWorkspaceTemplate /> : null}
           {state.wizardStep === 'genAI' ? <GenerateWorkspaceWithAi /> : null}
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}
           {state.wizardStep === 'remixdefault' ? <WorkspaceDetails strategy={state} /> : null}
           {state.wizardStep === 'confirm' ? <FinalScreen /> : null}
+          {/* {state.wizardStep === 'ModifyWorkspace' ? <ScriptsFinalScreen /> : null} */}
         </div>
       </section>
     </section>

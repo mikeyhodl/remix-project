@@ -4,11 +4,7 @@ import { TopCards } from './topCards'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { NotFound } from './notfound'
 
-export interface TemplateExplorerBodyProps {
-  plugin: any
-}
-
-export function TemplateExplorerBody({ plugin }: TemplateExplorerBodyProps) {
+export function TemplateExplorerBody() {
   const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates, state } = useContext(TemplateExplorerContext)
 
   const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
