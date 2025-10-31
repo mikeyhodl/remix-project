@@ -1,7 +1,7 @@
-import { privateToAddress, hashPersonalMessage, isHexString, bytesToHex } from '@ethereumjs/util'
+import { privateToAddress, bytesToHex } from '@ethereumjs/util'
 import { extendProvider, JSONRPCRequestPayload, JSONRPCResponseCallback } from '@remix-project/remix-simulator'
 import { ExecutionContext } from '../execution-context'
-import { BrowserProvider, formatUnits, hexlify, toUtf8Bytes, ethers } from 'ethers'
+import { BrowserProvider, formatUnits, ethers, hashMessage, toUtf8Bytes, keccak256 } from 'ethers'
 
 export class VMProvider {
   executionContext: ExecutionContext
@@ -142,11 +142,10 @@ export class VMProvider {
   }
 
   signMessage (message, account, _passphrase, cb) {
-    const messageHash = hashPersonalMessage(Buffer.from(message))
+    const messageHash = hashMessage(message)
     this.web3.getSigner(account).then((signer) => {
-      message = isHexString(message) ? message : hexlify(toUtf8Bytes(message))
-      signer._legacySignMessage(message)
-        .then(signedData => cb(null, bytesToHex(messageHash), signedData))
+      signer._legacySignMessage(toUtf8Bytes(message))
+        .then(signedData => cb(null, messageHash, signedData))
         .catch(error => cb(error))
     })
   }
