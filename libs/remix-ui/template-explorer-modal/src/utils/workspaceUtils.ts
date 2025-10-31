@@ -19,9 +19,7 @@ export class TemplateExplorerModalFacade {
     this.dispatch = dispatch
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
-    console.trace()
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
-    console.log('createWorkspace', deps)
     await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)
   }
@@ -40,7 +38,7 @@ export class TemplateExplorerModalFacade {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.displayName })
 
-    if (template.name.toLowerCase().includes('github actions') || template.name.toLowerCase().includes('contract verification') || template.name.toLowerCase().includes('solidity create2')) {
+    if (template.name.toLowerCase().includes('github actions') || template.name.toLowerCase().includes('contract verification') || template.name.toLowerCase().includes('solidity create2') || template.name.toLowerCase().includes( 'generic zkp')) {
       templateCategoryStrategy.setStrategy(new ScriptsStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
       await this.plugin.call('templateexplorermodal', 'addArtefactsToWorkspace', item.value, {}, false, (err: Error) => {

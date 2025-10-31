@@ -1,14 +1,6 @@
 import React, { useState } from 'react'
 
 const structure = {
-  '.deps': {
-    type: 'folder',
-    name: '.deps',
-    isDirectory: true,
-    isOpen: true,
-    child: [],
-    selected: false
-  },
   'contracts': {
     type: 'folder',
     name: 'contracts',
@@ -19,24 +11,24 @@ const structure = {
         type: 'file',
         name: '1_Storage.sol',
         isDirectory: false,
-        isOpen: true,
-        child: [],
+        isOpen: false,
+        child: null,
         selected: false
       },
       {
         type: 'file',
         name: '2_Owner.sol',
         isDirectory: false,
-        isOpen: true,
-        child: [],
+        isOpen: false,
+        child: null,
         selected: false
       },
       {
         type: 'file',
         name: '3_Ballot.sol',
         isDirectory: false,
-        isOpen: true,
-        child: [],
+        isOpen: false,
+        child: null,
         selected: false
       }
     ]
@@ -46,7 +38,40 @@ const structure = {
     name: 'scripts',
     isDirectory: true,
     isOpen: true,
-    child: [],
+    child: [
+      {
+        type: 'file',
+        name: 'deploy_with_ethers.ts',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      },
+      {
+        type: 'file',
+        name: 'deploy_with_web3.ts',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      },
+      {
+        type: 'file',
+        name: 'ethers-lib.ts',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      },
+      {
+        type: 'file',
+        name: 'web3-lib.ts',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      }
+    ],
     selected: false
   },
   'tests': {
@@ -54,15 +79,48 @@ const structure = {
     name: 'tests',
     isDirectory: true,
     isOpen: true,
-    child: [],
+    child: [
+      {
+        type: 'file',
+        name: 'Ballot_test.sol',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      },
+      {
+        type: 'file',
+        name: 'storage.test.js',
+        isDirectory: false,
+        isOpen: false,
+        child: null,
+        selected: false
+      }
+    ],
+    selected: false
+  },
+  '.prettierrc.json': {
+    type: 'file',
+    name: '.prettierrc.json',
+    isDirectory: false,
+    isOpen: false,
+    child: null,
+    selected: false
+  },
+  'README.txt': {
+    type: 'file',
+    name: 'README.txt',
+    isDirectory: false,
+    isOpen: false,
+    child: null,
     selected: false
   },
   'remix.config.json': {
     type: 'file',
     name: 'remix.config.json',
     isDirectory: false,
-    isOpen: true,
-    child: [],
+    isOpen: false,
+    child: null,
     selected: false
   }
 }
@@ -83,16 +141,16 @@ export function MiniFileExplorer() {
       {Object.entries(structure).map(([key, value]) => (
         <li key={key} className="list-unstyled d-flex flex-column">
           <div className="p-1">
-            <i className={`fas fa-${value.type === 'folder' ? 'folder' : getFileExtension(value.name) === 'sol' ? 'fa-kit fa-solidity-mono' : getFileExtension(value.name) === 'json' ? 'small fas fa-brackets-curly' : 'file'}`}
+            <i className={`fas fa-${value.type === 'folder' ? 'folder-open' : getFileExtension(value.name) === 'sol' ? 'fa-kit fa-solidity-mono' : getFileExtension(value.name) === 'json' ? 'small fas fa-brackets-curly' : 'file'}`}
               style={{ color: styleJson(value) }}></i>
             <span className="ms-1">{value.name}</span>
           </div>
-          {value.child.map((child: any, index: number) => (
+          {value.child?.map((child: any, index: number) => (
             <span key={child.name} className="list-unstyled d-flex flex-column ps-3">
               <div className={`${selectedStyle}`} onClick={() => {
-                setSelectedStyle(child.selected ? '' : 'bg-secondary')
+                setSelectedStyle(child.selected ? '' : '')
               }}>
-                <i className={`${child.type === 'folder' ? child.isOpen ? 'fas fa-folder-open' : 'fas fa-folder' : getFileExtension(child.name) === 'sol' ? 'fa-kit fa-solidity-mono' : getFileExtension(child.name) === 'json' ? 'small fas fa-brackets-curly' : 'fas fa-file'}`}></i>
+                <i className={`${child.type === 'folder' ? child.isOpen ? 'fas fa-folder-open' : 'fas fa-folder' : getFileExtension(child.name) === 'sol' ? 'fa-kit fa-solidity-mono' : getFileExtension(child.name) === 'json' ? 'small fas fa-brackets-curly' : getFileExtension(child.name) === 'txt' ? 'fas fa-file-alt' : getFileExtension(child.name) === 'ts' ? 'small fa-kit fa-ts-logo' : 'fas fa-file'}`}></i>
                 <span className="ms-1">{child.name}</span>
               </div>
             </span>

@@ -1,7 +1,7 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { MiniFileExplorer } from './miniFileExplorer'
 import { Editor } from '@monaco-editor/react'
-import { ContractWizardAction } from '../../types/template-explorer-types'
+import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { storageContractCode, ownerContractCode, ballotContractCode } from '../contractCode/remixDefault'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
@@ -14,14 +14,19 @@ interface WorkspaceDetailsProps {
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
+  const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
+
+  useEffect(() => {
+    console.log('What is state now?', state)
+  }, [state.workspaceName])
 
   return (
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
-      <div className="pt-3 ps-3 d-flex flex-row align-items-center text-dark">
-        <span className="text-uppercase small ">Workspace Name</span>
-        <i className="fa-solid fa-edit ms-2"></i>
+      <div className="p-3 d-flex flex-row align-items-center text-dark">
+        { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{state.workspaceName}</span> }
+        <i data-id="default-workspace-name-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
       </div>
-      <div className="d-flex flex-row h-100 p-3" style={{ height: '100%' }}>
+      <div className="d-flex flex-row h-100 pt-1 ps-3 pe-3 pb-3" style={{ height: '100%' }}>
         <div className="" style={{ minHeight: '80%', minWidth: '30%', borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }}>
           <MiniFileExplorer />
         </div>
@@ -56,15 +61,16 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
         </div>
 
         <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-          console.log('about to create workspace')
           await facade.createWorkspace({
-            workspaceName: state.workspaceTemplateChosen.displayName,
+            workspaceName: state.workspaceName,
             workspaceTemplateName: state.workspaceTemplateChosen.value,
             opts: { },
             isEmpty: false,
             isGitRepo: state.initializeAsGitRepo,
             createCommit: true
           })
+          facade.closeWizard()
+          dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
         }}>Validate Workspace</button>
       </div>
     </section>

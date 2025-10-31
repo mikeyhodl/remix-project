@@ -58,7 +58,6 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}
           {state.wizardStep === 'remixdefault' ? <WorkspaceDetails strategy={state} /> : null}
           {state.wizardStep === 'confirm' ? <FinalScreen /> : null}
-          {/* {state.wizardStep === 'ModifyWorkspace' ? <ScriptsFinalScreen /> : null} */}
         </div>
       </section>
     </section>
