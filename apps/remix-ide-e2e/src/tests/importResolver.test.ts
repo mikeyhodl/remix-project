@@ -360,6 +360,72 @@ module.exports = {
             })
     },
 
+    'Test OZ transitive mappings recorded in resolution index #group24': function (browser: NightwatchBrowser) {
+        // Scenario replicates unit test: Entry imports unversioned ERC20 (resolves to concrete v5.x),
+        // Context@5.0.2 explicitly, and Ownable@5.4.0 explicitly. We verify entry mappings and
+        // that ERC20.sol and Ownable.sol source keys have their relative imports recorded to concrete .deps paths.
+        browser
+            .addFile('Entry.sol', ozTransitiveIndexSource['Entry.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
+            .openFile('.deps/npm/.resolution-index.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const idx = JSON.parse(content)
+                    const entryMap = idx['Entry.sol']
+                    ;(browser as any).assert.ok(!!entryMap, 'Entry.sol map should exist in resolution index')
+                    if (!entryMap) return
+
+                    // 1) Entry mappings for three imports
+                    const erc20Resolved = entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']
+                    const ctxResolved = entryMap['@openzeppelin/contracts@5.0.2/utils/Context.sol']
+                    const ownableResolved = entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']
+                    ;(browser as any).assert.ok(typeof erc20Resolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/.test(erc20Resolved), 'ERC20 should resolve to concrete .deps path')
+                    ;(browser as any).assert.ok(typeof ctxResolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete .deps path')
+                    ;(browser as any).assert.ok(typeof ownableResolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete .deps path')
+
+                    // 2) ERC20.sol source key should have relative imports recorded
+                    const erc20KeyCandidates = [
+                        // Plugin index uses versioned logical path as key (no .deps)
+                        (erc20Resolved || '').replace(/^\.deps\/npm\//, ''),
+                        // Some contexts might store the full .deps path as key
+                        erc20Resolved
+                    ].filter(Boolean)
+                    const erc20MapKey = erc20KeyCandidates.find((k: string) => !!idx[k])
+                    const erc20Map = erc20MapKey ? idx[erc20MapKey] : null
+                    ;(browser as any).assert.ok(!!erc20Map, 'ERC20.sol map should exist in resolution index')
+                    if (erc20Map) {
+                        const hasIERC20 = /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/IERC20\.sol$/.test(erc20Map['./IERC20.sol'] || '')
+                        const hasIERC20Meta = /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/extensions\/IERC20Metadata\.sol$/.test(erc20Map['./extensions/IERC20Metadata.sol'] || '')
+                        const hasContext = /\.deps\/npm\/@openzeppelin\/contracts@.+\/utils\/Context\.sol$/.test(erc20Map['../../utils/Context.sol'] || '')
+                        ;(browser as any).assert.ok(hasIERC20 && hasIERC20Meta && hasContext, 'ERC20.sol should record relative imports to concrete .deps paths')
+                    }
+
+                    // 3) Ownable.sol source key should have relative Context import recorded
+                    const ownableKeyCandidates = [
+                        (ownableResolved || '').replace(/^\.deps\/npm\//, ''),
+                        ownableResolved
+                    ].filter(Boolean)
+                    const ownableMapKey = ownableKeyCandidates.find((k: string) => !!idx[k])
+                    const ownableMap = ownableMapKey ? idx[ownableMapKey] : null
+                    ;(browser as any).assert.ok(!!ownableMap, 'Ownable.sol map should exist in resolution index')
+                    if (ownableMap) {
+                        const hasOwnableCtx = /\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/utils\/Context\.sol$/.test(ownableMap['../utils/Context.sol'] || '')
+                        ;(browser as any).assert.ok(hasOwnableCtx, 'Ownable.sol should record relative Context import to concrete .deps path')
+                    }
+                } catch (e) {
+                    ;(browser as any).assert.fail('Resolution index should be valid JSON and contain expected mappings: ' + (e as Error).message)
+                }
+            })
+    },
+
     'Test CCIPReceiver internal mapping uses contracts@1.4.0 #group23': function (browser: NightwatchBrowser) {
         // Add the exact CCIP base contract, then open CCIPReceiver.sol from .deps and verify its internal imports map to @chainlink/contracts@1.4.0 (not 1.5.0)
         browser
@@ -1926,6 +1992,23 @@ contract Staking is BaseContract, Pausable {
     }
 }
 
+// New source for OZ transitive index scenario
+const ozTransitiveIndexSource = {
+    'Entry.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol" as OZ;
+import "@openzeppelin/contracts@5.0.2/utils/Context.sol" as ContextV5;
+import "@openzeppelin/contracts@5.4.0/access/Ownable.sol" as Auth;
+
+contract A is OZ.ERC20, Auth {
+    constructor() OZ.ERC20("A", "A") {}
+}
+`
+    }
+}
+
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
     upgradeableNFTSource,
@@ -1952,5 +2035,6 @@ const sources = [
     jsDelivrV5WithV4UtilsSource,
     chainlinkMultiVersionSource,
     localImportsProjectSource,
+    ozTransitiveIndexSource,
 ]
 
