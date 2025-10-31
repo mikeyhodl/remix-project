@@ -279,7 +279,9 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         failureNum += 1
         timePassed += time
       }
-      return next()
+      // Remix IDE SUT plugin requires call of next
+      // but in some node.js cases, next is not a function
+      return next ? next() : undefined 
     } else {
       if (func.signature) {
         sender = getOverriddenSender(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
@@ -324,7 +326,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           testCallback(undefined, resp)
           failureNum += 1
           timePassed += time
-          return next()
+          return next ? next() : undefined
         }
         for (const i in receipt.logs) {
           let events = receipt.logs[i]
@@ -360,7 +362,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
                 testCallback(undefined, resp)
                 failureNum += 1
                 timePassed += time
-                return next()
+                return next ? next() : undefined
               }
               testPassed = true
             }
@@ -394,11 +396,11 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
           timePassed += time
         }
 
-        return next()
+        return next ? next() : undefined
       } catch (err) {
         if (!err.receipt) {
           console.error(err)
-          return next(err)
+          return next ? next(err) : undefined
         }
         const time: number = (Date.now() - startTime) / 1000.0
         if (failedTransactions[err.receipt.transactionHash]) return // we are already aware of this transaction failing.
@@ -425,7 +427,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
         testCallback(undefined, resp)
         failureNum += 1
         timePassed += time
-        return next()
+        return next ? next() : undefined
       }
     }
   }, function (error) {
