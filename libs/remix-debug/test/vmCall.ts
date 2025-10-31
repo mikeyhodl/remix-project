@@ -16,13 +16,14 @@ async function getWeb3 () {
 async function sendTx (provider, from, to, value, data, cb) {
   try {
     cb = cb || (() => {})
+    if (!data.startsWith('0x')) data = '0x' + data
     const signer = await provider.getSigner()
     const receipt = await signer.sendTransaction({
       from: createAddressFromPrivateKey(from.privateKey).toString(),
       to,
       value,
       data,
-      gas: 7000000
+      gasLimit: 7000000
     })
     cb(null, receipt.hash)
     return receipt.hash
