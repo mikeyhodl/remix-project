@@ -61,6 +61,7 @@ export class ResolutionIndex {
 
   /** Record a mapping for a source file if it changed since last write. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
+    this.log(`[ResolutionIndex] ➡️  Recording resolution: ${sourceFile} | ${originalImport} → ${resolvedPath}`)
     if (!this.index[sourceFile]) this.index[sourceFile] = {}
     const local = this.toLocalPath(resolvedPath)
     if (this.index[sourceFile][originalImport] !== local) {
@@ -88,7 +89,7 @@ export class ResolutionIndex {
     if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
       return `.deps/${resolved}`
     }
-    return `.deps/npm/${resolved}`
+    return `${resolved}`
   }
 
   /** Lookup a mapping scoped to a source file. */

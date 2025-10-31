@@ -54,8 +54,13 @@ export class ResolutionIndexPlugin extends Plugin {
    * Resolve an import path using the in-memory resolution index
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
+    console.log('[ResolutionIndexPlugin] resolveImportFromIndex', { sourceFile, importPath })
     const candidates = this.buildCandidates(importPath)
+    console.log('[ResolutionIndexPlugin] candidates:', candidates)
     const isLocalPath = (val?: string) => !!val && !/^https?:\/\//.test(val) && !val.startsWith('github/')
+    console.log('[ResolutionIndexPlugin] isLocalPath check:', candidates.map(c => ({ candidate: c, isLocal: isLocalPath(this.index[sourceFile]?.[c]) })))
+    console.log('[ResolutionIndexPlugin] full index snapshot for sourceFile:', this.index[sourceFile])
+    console.log('[ResolutionIndexPlugin] full index snapshot:', this.index)
     // 1) Direct lookup by candidates for the given sourceFile
     for (const cand of candidates) {
       const val = this.index[sourceFile]?.[cand]
