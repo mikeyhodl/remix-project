@@ -281,7 +281,7 @@ export function runTest (testName: string, testObject: any, contractDetails: Com
       }
       // Remix IDE SUT plugin requires call of next
       // but in some node.js cases, next is not a function
-      return next ? next() : undefined 
+      return next ? next() : undefined
     } else {
       if (func.signature) {
         sender = getOverriddenSender(contractDetails.userdoc, func.signature, contractDetails.evm.methodIdentifiers)
