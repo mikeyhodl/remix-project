@@ -11,8 +11,7 @@ import { DependencyResolver } from '@remix-project/import-resolver'
  * This class exposes the exact same interface as Compiler but adds intelligent
  * pre-compilation dependency resolution using DependencyResolver.
  */
-export class SmartCompiler {
-  private compiler: Compiler
+export class SmartCompiler extends Compiler {
   private pluginApi: Plugin
   private debug: boolean = false
 
@@ -22,24 +21,13 @@ export class SmartCompiler {
     _importResolverFactory?: (target: string) => any,
     debug: boolean = false
   ) {
+    super(importCallback)
     this.pluginApi = pluginApi
     this.debug = debug
-
-    // Underlying compiler adheres to legacy constructor
-    this.compiler = new Compiler(importCallback)
 
     if (this.debug) {
       console.log(`[SmartCompiler] 🧠 Created smart compiler wrapper`)
     }
-
-    return new Proxy(this, {
-      get(target, prop, receiver) {
-        if (prop in target) return Reflect.get(target, prop, receiver)
-        const compilerValue = (target.compiler as any)[prop]
-        if (typeof compilerValue === 'function') return compilerValue.bind(target.compiler)
-        return compilerValue
-      }
-    })
   }
 
   public compile(sources: Source, target: string): void {
@@ -49,7 +37,7 @@ export class SmartCompiler {
         console.log(`[SmartCompiler] ❌ Smart compilation failed:`, error)
         console.log(`[SmartCompiler] 🔄 Falling back to direct compilation...`)
       }
-      this.compiler.compile(sources, target)
+      super.compile(sources, target)
     })
   }
 
@@ -96,6 +84,6 @@ export class SmartCompiler {
     }
 
     // 6) Delegate to base compiler
-    this.compiler.compile(resolvedSources, target)
+    super.compile(resolvedSources, target)
   }
 }
