@@ -17,6 +17,8 @@ import { PackageMapper } from './utils/package-mapper'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import { FileResolutionIndex } from './file-resolution-index'
+import { ImportHandlerRegistry } from './import-handler-registry'
+import type { ImportHandlerContext } from './import-handler-interface'
 
 /**
  * ImportResolver
@@ -51,6 +53,7 @@ export class ImportResolver implements IImportResolver {
 
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
+  private handlerRegistry: ImportHandlerRegistry
 
   /**
    * Create a resolver for a given target file. The target file name scopes the resolution index.
@@ -59,10 +62,11 @@ export class ImportResolver implements IImportResolver {
    * - pluginApi or io: Remix plugin API or Node IO adapter
    * - targetFile: the file whose imports are being resolved (used for index scoping)
    * - debug: when true, emits verbose logs to aid debugging
+   * - options: { registerDefaultHandlers?: boolean } - auto-register common handlers like RemixTestLibsHandler (defaults to true)
    */
-  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
-  constructor(io: IOAdapter, targetFile: string, debug?: boolean)
-  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
+  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean, options?: { registerDefaultHandlers?: boolean })
+  constructor(io: IOAdapter, targetFile: string, debug?: boolean, options?: { registerDefaultHandlers?: boolean })
+  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false, options: { registerDefaultHandlers?: boolean } = { registerDefaultHandlers: true }) {
     const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
     this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.targetFile = targetFile
@@ -97,6 +101,29 @@ export class ImportResolver implements IImportResolver {
     this.resolutionIndexInitialized = false
     this.fetchedGitHubPackages = new Set()
     this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
+    this.handlerRegistry = new ImportHandlerRegistry(debug)
+    
+    // Auto-register default handlers (enabled by default)
+    if (options.registerDefaultHandlers !== false) {
+      this.registerDefaultHandlers()
+    }
+  }
+
+  /**
+   * Register commonly used handlers like RemixTestLibsHandler
+   */
+  private registerDefaultHandlers(): void {
+    const { RemixTestLibsHandler } = require('./handlers')
+    const testLibHandler = new RemixTestLibsHandler({
+      pluginApi: this.pluginApi as Plugin,
+      io: this.io,
+      debug: this.debug
+    })
+    this.handlerRegistry.register(testLibHandler)
+    
+    if (this.debug) {
+      console.log('[ImportResolver] Registered default handlers')
+    }
   }
 
   private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
@@ -121,6 +148,11 @@ export class ImportResolver implements IImportResolver {
   public setCacheEnabled(enabled: boolean): void {
     this.cacheEnabled = !!enabled
     try { this.contentFetcher.setCacheEnabled(this.cacheEnabled) } catch {}
+  }
+
+  /** Get access to the import handler registry for registering custom handlers */
+  public getHandlerRegistry(): ImportHandlerRegistry {
+    return this.handlerRegistry
   }
 
   /** Ensure the dependency graph for a versioned package context is loaded from its package.json. */
@@ -354,6 +386,22 @@ export class ImportResolver implements IImportResolver {
       this.log(`[ImportResolver] ❌ Invalid import: "${url}" does not end with .sol extension`)
       throw new Error(`Invalid import: "${url}" does not end with .sol extension`)
     }
+
+    // Try registered import handlers first (e.g., remix_tests.sol generation)
+    const handlerContext: ImportHandlerContext = {
+      importPath: url,
+      targetFile: this.targetFile,
+      targetPath
+    }
+    const handlerResult = await this.handlerRegistry.tryHandle(handlerContext)
+    if (handlerResult?.handled) {
+      this.log(`[ImportResolver] ✅ Import handled by custom handler: ${url}`)
+      if (handlerResult.resolvedPath && !this.resolutions.has(originalUrl)) {
+        this.resolutions.set(originalUrl, handlerResult.resolvedPath)
+      }
+      return handlerResult.content!
+    }
+
     // Delegate URL handling and normalization to the router
     const routed = await routeUrl(originalUrl, url, targetPath, {
       contentFetcher: this.contentFetcher,

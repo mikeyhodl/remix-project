@@ -14,6 +14,17 @@ export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'
 export { FileResolutionIndex } from './compiler/file-resolution-index'
 export { ResolutionIndex } from './compiler/resolution-index'
 
+// Import Handler System
+export type { 
+  IImportHandler, 
+  ImportHandlerContext, 
+  ImportHandlerResult 
+} from './compiler/import-handler-interface'
+export { ImportHandler } from './compiler/import-handler-interface'
+export { ImportHandlerRegistry } from './compiler/import-handler-registry'
+export { RemixTestLibsHandler } from './compiler/handlers/remix-test-libs-handler'
+export { CustomTemplateHandler } from './compiler/handlers/custom-template-handler'
+
 export { parseRemappingsFileContent, normalizeRemappings } from './compiler/utils/remappings'
 
 // Utils exposed for advanced usage/testing

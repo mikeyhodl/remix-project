@@ -149,7 +149,13 @@ export class DependencyResolver {
       let content: string
       if (this.isLocalFile(importPath)) {
         this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
-        content = await this.io.readFile(importPath)
+        try {
+          content = await this.io.readFile(importPath)
+        } catch (err) {
+          // File doesn't exist locally - try handler system (e.g., remix_tests.sol generation)
+          this.log(`[DependencyResolver]   🔄 Local file not found, trying handler system...`)
+          content = await this.resolver.resolveAndSave(importPath, undefined, false)
+        }
       } else {
         content = await this.resolver.resolveAndSave(importPath, undefined, false)
       }
