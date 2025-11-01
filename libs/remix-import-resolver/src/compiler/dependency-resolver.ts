@@ -95,6 +95,16 @@ export class DependencyResolver {
     }
     await this.processFile(entryFile, null)
     this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
+    
+    // Strip leading slashes from all keys
+    const normalizedSources = new Map<string, string>()
+    for (const [path, content] of this.sourceFiles.entries()) {
+      const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+      normalizedSources.set(normalizedPath, content)
+    }
+    this.sourceFiles = normalizedSources
+    
+    console.debug(this.sourceFiles)
     return this.sourceFiles
   }
 

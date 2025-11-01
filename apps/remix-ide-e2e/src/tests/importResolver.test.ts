@@ -10,7 +10,6 @@ module.exports = {
 
     'Test deep imports workspace set #group25': function (browser: NightwatchBrowser) {
         browser
-            .pause()
             .clickLaunchIcon('filePanel')
             .addFile('DeepImportsToken.sol', deepImportsSource['DeepImportsToken.sol'])
             .addFile('access/Lockable.sol', deepImportsSource['access/Lockable.sol'])
@@ -19,7 +18,6 @@ module.exports = {
             .addFile('security/Pausable.sol', deepImportsSource['security/Pausable.sol'])
             .addFile('utils/interfaces/ITokenReceiver.sol', deepImportsSource['utils/interfaces/ITokenReceiver.sol'])
             .addFile('utils/libraries/SafeOperations.sol', deepImportsSource['utils/libraries/SafeOperations.sol'])
-            .pause()
             .openFile('DeepImportsToken.sol')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
@@ -28,7 +26,7 @@ module.exports = {
             .perform(function () {
                 browser.assert.ok(true, 'Deep imports workspace files loaded and compilation attempted')
             })
-            .clickLaunchIcon('filePanel')
+            .pause()
     },
 
     '@sources': function () {
