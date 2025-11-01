@@ -1,6 +1,6 @@
 'use strict'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
-import { SmartCompiler } from '../../../lib/smart-compiler'
+import { DependencyResolvingCompiler } from '../../../lib/smart-compiler'
 
 import { CompilationResult, CompilationSource } from '@remix-project/remix-solidity'
 import { CodeParser } from "../code-parser";
@@ -35,7 +35,7 @@ type errorMarker = {
 }
 export default class CodeParserCompiler {
   plugin: CodeParser
-  compiler: SmartCompiler // used to compile the current file separately from the main compiler
+  compiler: DependencyResolvingCompiler // used to compile the current file separately from the main compiler
   onAstFinished: (success: any, data: CompilationResult, source: CompilationSourceCode, input: any, version: any) => Promise<void>;
   errorState: boolean;
   gastEstimateTimeOut: any
@@ -119,11 +119,11 @@ export default class CodeParserCompiler {
       this.plugin.emit('astFinished')
     }
 
-    this.compiler = new SmartCompiler(
+    this.compiler = new DependencyResolvingCompiler(
       this.plugin,
       (url, cb) => {
       },
-      null, // importResolverFactory - not used by SmartCompiler
+      null, // importResolverFactory - not used by DependencyResolvingCompiler
       false // debug - set to false for code-parser to reduce noise
     )
     this.compiler.event.register('compilationFinished', this.onAstFinished)

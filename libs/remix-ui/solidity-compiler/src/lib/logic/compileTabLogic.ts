@@ -171,8 +171,8 @@ export class CompileTabLogic {
       await this.setCompilerMappings()
       await this.setCompilerConfigContent()
 
-      // SmartCompiler automatically handles dependency resolution and compilation
-      console.log(`[CompileTabLogic] 🧠 Using SmartCompiler with automatic dependency resolution`)
+      // DependencyResolvingCompiler automatically handles dependency resolution and compilation
+      console.log(`[CompileTabLogic] 🧠 Using DependencyResolvingCompiler with automatic dependency resolution`)
 
       const sources = { [target]: { content } }
 
