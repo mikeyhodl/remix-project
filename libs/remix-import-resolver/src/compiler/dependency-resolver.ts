@@ -155,7 +155,8 @@ export class DependencyResolver {
       }
 
       if (!content) {
-        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
+        if(content === '') return
+        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath} ${content}`)
         try { await this.warnings.emitFailedToResolve(importPath) } catch {}
         return
       }
