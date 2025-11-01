@@ -10,6 +10,7 @@ import * as packageJson from '../../../../../package.json'
 import { compilerConfigChangedToastMsg, compileToastMsg } from '@remix-ui/helper'
 import { isNative } from '../../remixAppManager'
 import { Registry } from '@remix-project/remix-lib'
+import { DependencyResolvingCompiler } from '../lib/dependency-resolving-compiler'
 
 const remixConfigPath = 'remix.config.json'
 const profile = {
@@ -37,8 +38,6 @@ export default class CompileTab extends CompilerApiMixin(ViewPlugin) { // implem
     this.config = config
     this.queryParams = new QueryParams()
     // Pass 'this' as the plugin reference so CompileTabLogic can access contentImport via this.call()
-    // Inject DependencyResolvingCompiler from app layer so libs don't depend on app code
-    const { DependencyResolvingCompiler } = require('../lib/dependency-resolving-compiler.ts')
     this.compileTabLogic = new CompileTabLogic(this, undefined, (api, debug) => new DependencyResolvingCompiler(
       api,
       (url, cb) => {
