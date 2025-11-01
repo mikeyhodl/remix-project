@@ -93,6 +93,6 @@ export class FileResolutionIndex {
     if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
       return `.deps/${resolved}`
     }
-    return `${resolved}`
+    return resolved
   }
 }

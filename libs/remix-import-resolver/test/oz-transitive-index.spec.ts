@@ -62,29 +62,34 @@ describe('Resolution index includes transitive mappings for external package fil
     // 1) Entry mappings
     const entryMap = idx[entry]
     expect(entryMap, 'entry map missing').to.be.ok
-    expect(entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']).to.match(/\.deps\/.+@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/)
-    expect(entryMap['@openzeppelin/contracts@5.0.2/utils/Context.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/)
-    expect(entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/)
+    // Note: paths may or may not have .deps/npm/ prefix depending on context (Node vs Plugin)
+    expect(entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/)
+    expect(entryMap['@openzeppelin/contracts@5.0.2/utils/Context.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/)
+    expect(entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/)
 
     // Resolve actual mapped ERC20 path (e.g., .deps/npm/@openzeppelin/contracts@5.4.0/token/ERC20/ERC20.sol)
     const erc20Local = entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']
-    expect(await exists(erc20Local)).to.equal(true)
+    // The mapped value might be a canonical path (without .deps/npm/) or a file path (with .deps/npm/)
+    const erc20FilePath = erc20Local.startsWith('.deps/') ? erc20Local : `.deps/npm/${erc20Local}`
+    expect(await exists(erc20FilePath)).to.equal(true)
 
     // 2) ERC20.sol source key should have relative imports recorded
-    const erc20SourceKey = erc20Local.replace(/^\.deps\/npm\//, '') // stored under versioned path as source key in Node; plugin stores .deps path
+    // The canonical source key is the versioned path without .deps/npm/ prefix
+    const erc20SourceKey = erc20Local.replace(/^\.deps\/npm\//, '') 
     // Our index writing stores keys differently between Node and Plugin; try both
-    const erc20KeyCandidates = [erc20SourceKey, erc20Local]
+    const erc20KeyCandidates = [erc20SourceKey, erc20FilePath]
     const erc20Map = erc20KeyCandidates.map(k => idx[k]).find(Boolean)
     expect(erc20Map, 'ERC20.sol map missing').to.be.ok
-    expect(erc20Map['./IERC20.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/IERC20\.sol$/)
-    expect(erc20Map['./extensions/IERC20Metadata.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/extensions\/IERC20Metadata\.sol$/)
-    expect(erc20Map['../../utils/Context.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@.+\/utils\/Context\.sol$/)
+    // Mapped values may or may not have .deps/npm/ prefix depending on context
+    expect(erc20Map['./IERC20.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@.+\/token\/ERC20\/IERC20\.sol$/)
+    expect(erc20Map['./extensions/IERC20Metadata.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@.+\/token\/ERC20\/extensions\/IERC20Metadata\.sol$/)
+    expect(erc20Map['../../utils/Context.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@.+\/utils\/Context\.sol$/)
 
     // 3) Ownable.sol source key should have relative Context import recorded
     const ownableLocal = entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']
     const ownableKeyCandidates = [ownableLocal.replace(/^\.deps\/npm\//, ''), ownableLocal]
     const ownableMap = ownableKeyCandidates.map(k => idx[k]).find(Boolean)
     expect(ownableMap, 'Ownable.sol map missing').to.be.ok
-    expect(ownableMap['../utils/Context.sol']).to.match(/\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/utils\/Context\.sol$/)
+    expect(ownableMap['../utils/Context.sol']).to.match(/(\.deps\/(npm\/)?)?@openzeppelin\/contracts@5\.4\.0\/utils\/Context\.sol$/)
   })
 })

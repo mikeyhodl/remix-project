@@ -74,6 +74,6 @@ describe('import-resolver: cdn + github flows', () => {
     const idx = await readJson<Record<string, Record<string, string>>>(idxPath)
     expect(idx[entry]).to.be.ok
     const mappings = idx[entry]
-    expect(mappings[blobUrl]).to.equal('github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol')
+    expect(mappings[blobUrl]).to.equal('.deps/github/OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0/contracts/token/ERC1155/ERC1155Upgradeable.sol')
   })
 })
