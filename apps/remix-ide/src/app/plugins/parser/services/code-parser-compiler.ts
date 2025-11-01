@@ -1,6 +1,6 @@
 'use strict'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
-import { DependencyResolvingCompiler } from '../../../lib/smart-compiler'
+import { DependencyResolvingCompiler } from '../../../lib/dependency-resolving-compiler'
 
 import { CompilationResult, CompilationSource } from '@remix-project/remix-solidity'
 import { CodeParser } from "../code-parser";

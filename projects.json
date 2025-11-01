@@ -9304,7 +9304,7 @@
               ]
             },
             {
-              "file": "apps/remix-ide/src/app/lib/smart-compiler.ts",
+              "file": "apps/remix-ide/src/app/lib/dependency-resolving-compiler.ts.ts",
               "hash": "3ad79e7f01df12293e72aa988ad7159f01721e4f",
               "deps": [
                 "npm:@remixproject/engine"
