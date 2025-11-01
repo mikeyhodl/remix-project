@@ -10,6 +10,15 @@ module.exports = {
 
     'Test deep imports workspace set #group25': function (browser: NightwatchBrowser) {
         browser
+
+            .waitForElementVisible('*[data-id="compilerContainerAutoCompile"]')
+            .click('[data-id="compilerContainerAutoCompile"]')
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('filePanel')
             .addFile('DeepImportsToken.sol', deepImportsSource['DeepImportsToken.sol'])
             .addFile('access/Lockable.sol', deepImportsSource['access/Lockable.sol'])
@@ -21,12 +30,45 @@ module.exports = {
             .openFile('DeepImportsToken.sol')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(3000)
-            .waitForElementPresent('*[data-id="compiledContracts"], *[data-id="compiledErrors"]', 10000)
+            .pause(5000)
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .perform(function () {
-                browser.assert.ok(true, 'Deep imports workspace files loaded and compilation attempted')
+                browser.assert.ok(true, 'Deep imports workspace compiled successfully')
             })
-            .pause()
+            .clickLaunchIcon('filePanel')
+            // Verify build-info artifacts
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: 'DeepImportsToken.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local DeepImportsToken.sol in build-info'
+                },
+                {
+                    packagePath: 'security/Pausable.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local security/Pausable.sol in build-info'
+                },
+                {
+                    packagePath: 'access/RoleManager.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local access/RoleManager.sol in build-info'
+                },
+                {
+                    packagePath: 'utils/libraries/SafeOperations.sol',
+                    versionComment: 'SPDX-License-Identifier: MIT',
+                    description: 'Should find local utils/libraries/SafeOperations.sol in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.4.0/token/ERC20/extensions/ERC20Burnable.sol',
+                    versionComment: '5.0.0',
+                    description: 'Should find OpenZeppelin v5.4.0 ERC20Burnable.sol in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.4.0/access/AccessControl.sol',
+                    versionComment: '5.4.0',
+                    description: 'Should find OpenZeppelin v5.4.0 AccessControl.sol in build-info'
+                }
+            ])
     },
 
     '@sources': function () {
