@@ -71,6 +71,34 @@ module.exports = {
             ])
     },
 
+    'Test import handler system for remix_tests.sol #group26': function (browser: NightwatchBrowser) {
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('TestImportHandler.sol', remixTestsHandlerSource['TestImportHandler.sol'])
+            .openFile('TestImportHandler.sol')
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .assert.containsText('*[data-id="compiledContracts"]', 'TestImportHandler')
+            .clickLaunchIcon('filePanel')
+            .expandAllFolders()
+            // Verify remix_tests.sol and remix_accounts.sol were auto-generated
+            .waitForElementVisible('*[data-path=".deps/remix-tests/remix_tests.sol"]')
+            .waitForElementVisible('*[data-path=".deps/remix-tests/remix_accounts.sol"]')
+            .click('*[data-path=".deps/remix-tests/remix_tests.sol"]')
+            .pause(500)
+            .getEditorValue((content) => {
+                browser.assert.ok(content.includes('library Assert'), 'remix_tests.sol should contain Assert library')
+                browser.assert.ok(content.includes('event AssertionEvent'), 'remix_tests.sol should contain AssertionEvent')
+            })
+            .click('*[data-path=".deps/remix-tests/remix_accounts.sol"]')
+            .pause(500)
+            .getEditorValue((content) => {
+                browser.assert.ok(content.includes('library TestsAccounts'), 'remix_accounts.sol should contain TestsAccounts library')
+            })
+    },
+
     '@sources': function () {
         return sources
     },
@@ -2459,6 +2487,28 @@ library SafeOperations {
   }
 }
 
+const remixTestsHandlerSource = {
+    'TestImportHandler.sol': {
+        content: `// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.7.0 <0.9.0;
+
+import "remix_tests.sol";
+import "remix_accounts.sol";
+
+contract TestImportHandler {
+    function testAssertTrue() public {
+        Assert.ok(true, "This should pass");
+    }
+    
+    function testAccounts() public {
+        address acc0 = TestsAccounts.getAccount(0);
+        Assert.notEqual(acc0, address(0), "Account 0 should not be zero address");
+    }
+}
+`
+    }
+}
+
 
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
@@ -2488,5 +2538,6 @@ const sources = [
     localImportsProjectSource,
     ozTransitiveIndexSource,
     deepImportsSource,
+    remixTestsHandlerSource,
 ]
 
