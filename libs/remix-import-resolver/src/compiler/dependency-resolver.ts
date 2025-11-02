@@ -95,16 +95,6 @@ export class DependencyResolver {
     }
     await this.processFile(entryFile, null)
     this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
-    
-    // Strip leading slashes from all keys
-    const normalizedSources = new Map<string, string>()
-    for (const [path, content] of this.sourceFiles.entries()) {
-      const normalizedPath = path.startsWith('/') ? path.slice(1) : path
-      normalizedSources.set(normalizedPath, content)
-    }
-    this.sourceFiles = normalizedSources
-    
-    console.debug(this.sourceFiles)
     return this.sourceFiles
   }
 
@@ -152,9 +142,27 @@ export class DependencyResolver {
         try {
           content = await this.io.readFile(importPath)
         } catch (err) {
-          // File doesn't exist locally - try handler system (e.g., remix_tests.sol generation)
+          // Local absolute/relative file missing. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
           this.log(`[DependencyResolver]   🔄 Local file not found, trying handler system...`)
-          content = await this.resolver.resolveAndSave(importPath, undefined, false)
+          try {
+            const handler = (this.resolver as any).getHandlerRegistry?.()
+            if (handler?.tryHandle) {
+              const ctx = { importPath, targetFile: (this.resolver as any).getTargetFile?.(), targetPath: undefined }
+              const res = await handler.tryHandle(ctx)
+              if (res?.handled && typeof res.content === 'string') {
+                content = res.content
+              } else {
+                throw new Error(`Local file not found and no handler matched: ${importPath}`)
+              }
+            } else {
+              throw new Error(`Local file not found and handler registry unavailable: ${importPath}`)
+            }
+          } catch (e) {
+            // Emit warning and stop processing this path; don't route to external fetchers.
+            this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
+            try { await this.warnings.emitFailedToResolve(importPath) } catch {}
+            return
+          }
         }
       } else {
         content = await this.resolver.resolveAndSave(importPath, undefined, false)

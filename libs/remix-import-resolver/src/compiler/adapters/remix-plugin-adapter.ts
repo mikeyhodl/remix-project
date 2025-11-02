@@ -30,6 +30,10 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   async fetch(url: string): Promise<string> {
+    // Treat absolute workspace paths as local files (no network)
+    if (url.startsWith('/')) {
+      return await this.readFile(url)
+    }
     // Translate to a concrete HTTP URL and fetch directly in the browser/plugin runtime.
     const finalUrl = toHttpUrl(url)
     const res = await fetch(finalUrl)
@@ -38,6 +42,10 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   async resolveAndSave(url: string, targetPath?: string, useOriginal?: boolean): Promise<string> {
+    // Short-circuit local absolute paths: read directly from workspace; don't save under .deps
+    if (url.startsWith('/')) {
+      return await this.readFile(url)
+    }
     // Determine destination FIRST so we can skip fetching if already present
     let dest = targetPath
     const isHttp = (u: string) => u.startsWith('http://') || u.startsWith('https://')
