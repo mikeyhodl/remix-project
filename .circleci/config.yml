@@ -52,7 +52,7 @@ parameters:
   # Timings fetch window (fewer = faster API calls)
   timings_limit:
     type: integer
-    default: 10
+    default: 1
 
   # Rerun-failed configuration
   rerun_failed_history:
