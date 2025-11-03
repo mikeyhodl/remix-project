@@ -2,7 +2,7 @@
 import { EditorUIProps, monacoTypes } from '@remix-ui/editor';
 import { CompletionParams } from '@remix/remix-ai-core';
 import { trackMatomoEvent, AIEvent, MatomoEvent } from '@remix-api'
-import * as monaco from 'monaco-editor';
+// Do not import monaco runtime here to avoid bundling it. Use types and the injected instance instead.
 import {
   AdaptiveRateLimiter,
   SmartContextDetector,
@@ -202,13 +202,13 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     })
 
     const data = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after)
-    this.trackMatomoEvent?.({ category: 'ai', action: 'code_generation', isClick: false })
+    this.trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: 'code_generation', isClick: false })
     this.task = 'code_generation'
 
     const parsedData = data.trimStart()
     const item: monacoTypes.languages.InlineCompletion = {
       insertText: parsedData,
-      range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+      range: new monacoTypes.Range(position.lineNumber, position.column, position.lineNumber, position.column)
     };
 
     this.currentCompletion.text = parsedData
@@ -228,13 +228,13 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     try {
       CompletionParams.stop = ['\n\n', '```']
       const output = await this.props.plugin.call('remixAI', 'code_insertion', word, word_after, CompletionParams)
-      this.trackMatomoEvent?.({ category: 'ai', action: 'code_insertion', isClick: false })
+      this.trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: 'code_insertion', isClick: false })
       const generatedText = output
 
       this.task = 'code_insertion'
       const item: monacoTypes.languages.InlineCompletion = {
         insertText: generatedText,
-        range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+        range: new monacoTypes.Range(position.lineNumber, position.column, position.lineNumber, position.column)
       };
 
       this.currentCompletion.text = generatedText
@@ -259,7 +259,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
       CompletionParams.stop = ['\n', '```']
       this.task = 'code_completion'
       const output = await this.props.plugin.call('remixAI', 'code_completion', word, word_after, CompletionParams)
-      this.trackMatomoEvent?.({ category: 'ai', action: 'code_completion', isClick: false })
+      this.trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: 'code_completion', isClick: false })
       const generatedText = output
       let clean = generatedText
 
@@ -271,7 +271,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
 
       const item: monacoTypes.languages.InlineCompletion = {
         insertText: clean,
-        range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+        range: new monacoTypes.Range(position.lineNumber, position.column, position.lineNumber, position.column)
       };
 
       this.currentCompletion.text = clean
@@ -307,7 +307,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionShown()
-    this.trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: this.task + '_did_show', isClick: true })
+    this.trackMatomoEvent?.({ category: 'ai', action: 'completion', name: this.task + '_did_show', isClick: true })
   }
 
   handlePartialAccept?(
@@ -319,7 +319,7 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     this.currentCompletion.task = this.task
 
     this.rateLimiter.trackCompletionAccepted()
-    this.trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: this.task + '_partial_accept', isClick: true })
+    this.trackMatomoEvent?.({ category: 'ai', action: 'completion', name: this.task + '_partial_accept', isClick: true })
   }
 
   freeInlineCompletions(
