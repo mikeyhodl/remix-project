@@ -233,7 +233,7 @@ export class TxRunner {
 
     let currentDateTime = new Date();
     try {
-      const signer = await (provider as BrowserProvider).getSigner();
+      const signer = await (provider as BrowserProvider).getSigner(tx.from || 0);
       const { hash } = await signer.sendTransaction(tx);
       const receipt = await tryTillReceiptAvailable(hash);
       tx = await tryTillTxAvailable(hash);

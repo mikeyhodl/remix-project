@@ -96,7 +96,7 @@ export class TxRunnerWeb3 {
       promptCb(
         async (value) => {
           try {
-            const res = await (await this.getWeb3().getSigner()).sendTransaction({ ...tx, value })
+            const res = await (await this.getWeb3().getSigner(tx.from || 0)).sendTransaction({ ...tx, value })
             cb(null, res.hash, isCreation, false, null)
 
           } catch (e) {

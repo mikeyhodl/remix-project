@@ -75,7 +75,6 @@ export class SolidityScript extends Plugin {
     }
     const bytecode = '0x' + contract.object.evm.bytecode.object
     const web3 = await this.call('blockchain', 'web3')
-    const signer = await web3.getSigner()
     const accounts = await this.call('blockchain', 'getAccounts')
     if (!accounts || accounts.length === 0) {
       throw new Error('no account available')
@@ -88,6 +87,7 @@ export class SolidityScript extends Plugin {
     }
     let receipt
     try {
+      const signer = await web3.getSigner(tx.from || 0)
       const { hash } = await signer.sendTransaction(tx)
       receipt = await web3.getTransactionReceipt(hash)
     } catch (e) {
