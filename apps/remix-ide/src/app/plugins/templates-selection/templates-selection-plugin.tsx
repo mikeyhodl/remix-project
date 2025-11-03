@@ -168,7 +168,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
       const modalResult = await this.call('notification', 'modal', modal)
       if (!modalResult) return
-      trackMatomoEvent(this, { category: 'templateSelection', action: 'createWorkspace', name: item.value, isClick: true })
+      trackMatomoEvent(this, { category: 'template-selection', action: 'createWorkspace', name: item.value, isClick: true })
       this.emit('createWorkspaceReducerEvent', workspaceName, item.value, this.opts, false, errorCallback, initGit)
     }
 
@@ -178,7 +178,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
 
     const addToCurrentWorkspace = async (item: Template, templateGroup: TemplateGroup) => {
       this.opts = {}
-      trackMatomoEvent(this, { category: 'templateSelection', action: 'addToCurrentWorkspace', name: item.value, isClick: true })
+      trackMatomoEvent(this, { category: 'template-selection', action: 'addToCurrentWorkspace', name: item.value, isClick: true })
       if (templateGroup.hasOptions) {
         const modal: AppModal = {
           id: 'TemplatesSelection',
@@ -262,10 +262,10 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
                 item.templateType = TEMPLATE_METADATA[item.value]
 
                 if (item.templateType && item.templateType.desktopCompatible === false && isElectron()) {
-                  return (<></>)
+                  return <React.Fragment key={item.name || index}></React.Fragment>
                 }
 
-                if (item.templateType && item.templateType.disabled === true) return
+                if (item.templateType && item.templateType.disabled === true) return null
                 if (!item.opts) {
                   return (
                     <RemixUIGridCell
