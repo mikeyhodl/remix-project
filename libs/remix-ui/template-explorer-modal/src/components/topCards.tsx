@@ -1,10 +1,12 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useContext, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
+import { uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
-
+  const enableDirUpload = { directory: '', webkitdirectory: '' }
   return (
     <div className="title">
       <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
@@ -97,30 +99,45 @@ export function TopCards() {
         </div>
         <div
           data-id="import-project-topcard"
-          className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {
-            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'import' })
-          }}
+          className="explora-topcard d-flex flex-row align-items-center p-4 bg-light shadow-sm border-0"
           style={{
+            color: '#d8d8e5',
             borderRadius: '10px',
             height: '76px',
-            width: '298px'
+            width: '298px',
+            cursor: 'pointer',
+            transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s'
           }}
+          onClick={() => document.getElementById('importProjectInput')?.click()}
           onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
-            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
-            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
+          <input
+            type="file"
+            id="importProjectInput"
+            multiple
+            className="d-none"
+            onChange={(e) => {
+              e.stopPropagation()
+              uploadFolderInTemplateExplorer(e.target, '/')
+              facade.closeWizard()
+            }}
+            {...enableDirUpload}
+          />
+
           <span className="d-flex flex-shrink-0">
-            <i className={`fa-2x fas fa-upload`}></i>
+            <i className="fa-2x fas fa-upload"></i>
           </span>
+
           <span className="d-flex flex-column flex-grow-1 ms-3">
-            <p className="mb-0">Import Project</p>
-            <p className="mb-0 fw-light text-wrap">Import an existing project</p>
+            <p className="mb-0 fw-semibold fs-6">Import Project</p>
+            <p className="mb-0 text-secondary small">Import an existing project</p>
           </span>
         </div>
       </div>

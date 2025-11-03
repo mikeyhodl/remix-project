@@ -678,6 +678,16 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
     }
   }
 }
+
+export const uploadFolderInTemplateExplorer = async (target, targetFolder?: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
+  for (const file of [...target.files]) {
+    const workspaceProvider = plugin.fileProviders.workspace
+    const name = targetFolder === '/' ? file.webkitRelativePath : `${targetFolder}/${file.webkitRelativePath}`
+    if (!(await workspaceProvider.exists(name))) {
+      loadFile(name, file, workspaceProvider, cb)
+    }
+  }
+}
 export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
   try {

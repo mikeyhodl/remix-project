@@ -5,7 +5,7 @@ import { initialState, templateExplorerReducer } from '../reducers/template-expl
 import { metadata, templatesRepository } from '../src/utils/helpers'
 import { AppContext } from '@remix-ui/app'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
-import { RemixUiTemplateExplorerModal } from '@remix-ui/template-explorer-modal'
+import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
 import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
 
