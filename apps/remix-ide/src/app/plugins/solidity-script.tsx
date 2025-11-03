@@ -86,8 +86,8 @@ export class SolidityScript extends Plugin {
       data: bytecode
     }
     let receipt
+    const signer = await web3.getSigner(tx.from || 0)
     try {
-      const signer = await web3.getSigner(tx.from || 0)
       const { hash } = await signer.sendTransaction(tx)
       receipt = await web3.getTransactionReceipt(hash)
     } catch (e) {
