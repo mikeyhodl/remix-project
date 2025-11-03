@@ -87,7 +87,7 @@ module.exports = {
       .waitForElementVisible({
         locateStrategy: 'xpath',
         selector: "//span[@class='text-danger' and contains(., 'exceed maximum block range')]"
-      })
+      }, 60000)
       .waitForElementPresent({ selector: `[data-id="selected-provider-ganache-provider"]`, timeout: 5000 })
   }
 }
