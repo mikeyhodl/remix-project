@@ -1,7 +1,7 @@
 import { signTypedData, SignTypedDataVersion, TypedMessage, MessageTypes } from '@metamask/eth-sig-util'
 import { privateToAddress, toChecksumAddress, isValidPrivate, createAddressFromString, toBytes, bytesToHex, Account, intToHex } from '@ethereumjs/util'
 import type { PrefixedHexString } from '@ethereumjs/util'
-import { ethers, Wallet } from 'ethers'
+import { ethers, toBeArray, Wallet } from 'ethers'
 import * as crypto from 'crypto'
 
 type AccountType = {
@@ -122,7 +122,7 @@ export class Web3Accounts {
       return cb(new Error('unknown account'))
     }
     const wallet: Wallet = new ethers.Wallet(privateKey)
-    const signature = wallet.signMessageSync(message)
+    const signature = wallet.signMessageSync(toBeArray(message))
 
     cb(null, signature)
   }
