@@ -56,7 +56,7 @@ export class TemplateExplorerModalFacade {
       this.closeWizard()
       return
     }
-    if (template.name.toLowerCase() !== 'generic' && template.name.toLowerCase() !== 'openzeppelin' && template.name.toLowerCase() !== 'cookbook' && template.name.toLowerCase() !== 'github actions' && template.name.toLowerCase() !== 'contract verification') {
+    if (template.name.toLowerCase() !== 'generic' && template.name.toLowerCase() !== 'zeppelin' && template.name.toLowerCase() !== 'cookbook' && template.name.toLowerCase() !== 'github actions' && template.name.toLowerCase() !== 'contract verification') {
       templateCategoryStrategy.setStrategy(new GenericStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
       return
@@ -76,10 +76,9 @@ export class TemplateExplorerModalFacade {
       templateCategoryStrategy.switchScreen(dispatch)
       return
     }
-    if (template.name.toLowerCase().includes('openzeppelin')) {
+    if (template.name.toLowerCase().includes('zeppelin')) {
       templateCategoryStrategy.setStrategy(new WizardStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
-      return
     }
   }
 
