@@ -251,7 +251,8 @@ export class MCPClient {
   }
 
   private async sendHTTPRequest(request: any): Promise<any> {
-    const response = await fetch(endpointUrls.mcpCorsProxy + this.server.url, {
+    const contractType = new URL(this.server.url).pathname.split('/')[2]
+    const response = await fetch(endpointUrls.mcpCorsProxy + '/' + contractType, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1033,7 +1034,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
-              console.log(`tool ${mcpToolCall.name} executed with result ${result}`)
+              console.log(`tool ${mcpToolCall.name} executed with valid result`)
 
               if (options.provider === 'openai'){
                 toolResults.push( {
@@ -1303,7 +1304,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-    console.log(`executing tool ${toolCall} from server ${targetServer}`)
+    console.log(`executing tool ${toolCall.name} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 
