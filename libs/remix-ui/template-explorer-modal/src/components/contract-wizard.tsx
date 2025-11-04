@@ -9,9 +9,6 @@ import CodeMirror from '@uiw/react-codemirror'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
-import { Highlighter, tags as t } from '@lezer/highlight'
-import type { Extension } from '@codemirror/state'
 import { createNonClashingNameAsync, createNonClashingTitle } from 'libs/remix-ui/helper/src/lib/remix-ui-helper'
 
 const defaultStrategy: ContractTypeStrategy = {
@@ -30,6 +27,26 @@ const defaultStrategy: ContractTypeStrategy = {
   contractImport: '',
   initializeAsGitRepo: false
 }
+
+const darkTheme = EditorView.theme({
+  "&": {
+    backgroundColor: "#2a2c3f",
+    color: "#e0e0e0"
+  },
+  ".cm-content": {
+    caretColor: "#ffffff"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#2a2c3f",
+    color: "#6c7293"
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#ffffff"
+  },
+  "&.cm-focused .cm-selectionBackground, ::selection": {
+    backgroundColor: "#3a3d58"
+  }
+}, { dark: true })
 
 export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
@@ -68,244 +85,6 @@ export function ContractWizard () {
       dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc1155ContractCode(strategy.contractType, strategy) })
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
-
-  const formatColor = (name) => {
-    let color = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-    if (color.length === 4 && color.startsWith('#')) {
-      color = color.concat(color.substr(1))
-    }
-    return color
-  }
-
-  const defineAndSetTheme = (monaco) => {
-    const themeType = theme?.name.toLowerCase() === 'dark' ? 'vs-dark' : 'vs'
-    const themeName = theme?.name.toLowerCase() === 'dark' ? 'remix-dark' : 'remix-light'
-
-    // see https://microsoft.github.io/monaco-editor/playground.html#customizing-the-appearence-exposed-colors
-    const lightColor = formatColor('--bs-light')
-    const infoColor = formatColor('--bs-info')
-    const darkColor = formatColor('--bs-dark')
-    const secondaryColor = formatColor('--bs-body-bg')
-    const primaryColor = formatColor('--bs-primary')
-    const textColor = formatColor('--bs-body-color') || darkColor
-    const textbackground = formatColor('--bs-body-bg') || lightColor
-    const blueColor = formatColor('--bs-blue')
-    const successColor = formatColor('--bs-success')
-    const warningColor = formatColor('--bs-warning')
-    const yellowColor = formatColor('--bs-yellow')
-    const pinkColor = formatColor('--bs-pink')
-    const locationColor = '#9e7e08'
-    // const purpleColor = formatColor('--purple')
-    const dangerColor = formatColor('--bs-danger')
-    const greenColor = formatColor('--bs-green')
-    const orangeColor = formatColor('--bs-orange')
-    const grayColor = formatColor('--bs-gray')
-
-    monaco.editor.defineTheme(themeName, {
-      base: themeType,
-      inherit: true, // can also be false to completely replace the builtin rules
-      rules: [
-        { background: darkColor.replace('#', '') },
-        { foreground: textColor.replace('#', '') },
-
-        // global variables
-        { token: 'keyword.abi', foreground: blueColor },
-        { token: 'keyword.block', foreground: blueColor },
-        { token: 'keyword.bytes', foreground: blueColor },
-        { token: 'keyword.msg', foreground: blueColor },
-        { token: 'keyword.tx', foreground: blueColor },
-
-        // global functions
-        { token: 'keyword.assert', foreground: blueColor },
-        { token: 'keyword.require', foreground: blueColor },
-        { token: 'keyword.revert', foreground: blueColor },
-        { token: 'keyword.blockhash', foreground: blueColor },
-        { token: 'keyword.keccak256', foreground: blueColor },
-        { token: 'keyword.sha256', foreground: blueColor },
-        { token: 'keyword.ripemd160', foreground: blueColor },
-        { token: 'keyword.ecrecover', foreground: blueColor },
-        { token: 'keyword.addmod', foreground: blueColor },
-        { token: 'keyword.mulmod', foreground: blueColor },
-        { token: 'keyword.selfdestruct', foreground: blueColor },
-        { token: 'keyword.type ', foreground: blueColor },
-        { token: 'keyword.gasleft', foreground: blueColor },
-        { token: 'function', foreground: blueColor, fontStyle: 'bold' },
-
-        // specials
-        { token: 'keyword.super', foreground: infoColor },
-        { token: 'keyword.this', foreground: infoColor },
-        { token: 'keyword.virtual', foreground: infoColor },
-
-        // for state variables
-        { token: 'keyword.constants', foreground: grayColor },
-        { token: 'keyword.override', foreground: grayColor },
-        { token: 'keyword.immutable', foreground: grayColor },
-
-        // data location
-        { token: 'keyword.memory', foreground: locationColor },
-        { token: 'keyword.storage', foreground: locationColor },
-        { token: 'keyword.calldata', foreground: locationColor },
-
-        // for Events
-        { token: 'keyword.indexed', foreground: yellowColor },
-        { token: 'keyword.anonymous', foreground: yellowColor },
-
-        // for functions
-        { token: 'keyword.external', foreground: successColor },
-        { token: 'keyword.internal', foreground: successColor },
-        { token: 'keyword.private', foreground: successColor },
-        { token: 'keyword.public', foreground: successColor },
-        { token: 'keyword.view', foreground: successColor },
-        { token: 'keyword.pure', foreground: successColor },
-        { token: 'keyword.payable', foreground: successColor },
-        { token: 'keyword.nonpayable', foreground: successColor },
-
-        // Errors
-        { token: 'keyword.Error', foreground: dangerColor },
-        { token: 'keyword.Panic', foreground: dangerColor },
-
-        // special functions
-        { token: 'keyword.fallback', foreground: pinkColor },
-        { token: 'keyword.receive', foreground: pinkColor },
-        { token: 'keyword.constructor', foreground: pinkColor },
-
-        // identifiers
-        { token: 'keyword.identifier', foreground: warningColor },
-        { token: 'keyword.for', foreground: warningColor },
-        { token: 'keyword.break', foreground: warningColor },
-        { token: 'keyword.continue', foreground: warningColor },
-        { token: 'keyword.while', foreground: warningColor },
-        { token: 'keyword.do', foreground: warningColor },
-        { token: 'keyword.delete', foreground: warningColor },
-
-        { token: 'keyword.if', foreground: yellowColor },
-        { token: 'keyword.else', foreground: yellowColor },
-
-        { token: 'keyword.throw', foreground: orangeColor },
-        { token: 'keyword.catch', foreground: orangeColor },
-        { token: 'keyword.try', foreground: orangeColor },
-
-        // returns
-        { token: 'keyword.returns', foreground: greenColor },
-        { token: 'keyword.return', foreground: greenColor },
-      ],
-      colors: {
-        // see https://code.visualstudio.com/api/references/theme-color for more settings
-        'editor.background': lightColor,
-        'editorSuggestWidget.background': lightColor,
-        'editorSuggestWidget.selectedBackground': secondaryColor,
-        'editorSuggestWidget.selectedForeground': textColor,
-        'editorSuggestWidget.highlightForeground': primaryColor,
-        'editorSuggestWidget.focusHighlightForeground': infoColor,
-        'editor.lineHighlightBorder': textbackground,
-        'editor.lineHighlightBackground': textbackground === darkColor ? lightColor : secondaryColor,
-        'editorGutter.background': lightColor,
-        //'editor.selectionHighlightBackground': secondaryColor,
-        'minimap.background': lightColor,
-        'menu.foreground': textColor,
-        'menu.background': textbackground,
-        'menu.selectionBackground': secondaryColor,
-        'menu.selectionForeground': textColor,
-        'menu.selectionBorder': secondaryColor,
-      },
-    })
-    monacoRef.current.editor.setTheme(themeName)
-  }
-
-  function remixDarkCodeMirrorTheme(): Extension {
-    // Pull the same palette as in defineAndSetTheme
-    const lightColor = formatColor('--bs-light')
-    const infoColor = formatColor('--bs-info')
-    const darkColor = formatColor('--bs-dark')
-    const secondaryColor = formatColor('--bs-body-bg')
-    const primaryColor = formatColor('--bs-primary')
-    const textColor = formatColor('--bs-body-color') || darkColor
-    const textbackground = formatColor('--bs-body-bg') || lightColor
-    const blueColor = formatColor('--bs-blue')
-    const successColor = formatColor('--bs-success')
-    const warningColor = formatColor('--bs-warning')
-    const yellowColor = formatColor('--bs-yellow')
-    const pinkColor = formatColor('--bs-pink')
-    const dangerColor = formatColor('--bs-danger')
-    const greenColor = formatColor('--bs-green')
-    const orangeColor = formatColor('--bs-orange')
-    const grayColor = formatColor('--bs-gray')
-
-    // Base editor UI theme (containers, cursors, selections, gutters, tooltips)
-    const remixTheme = EditorView.theme(
-      {
-        '&': {
-          color: textColor,
-          backgroundColor: lightColor
-        },
-        '.cm-content': {
-          caretColor: primaryColor
-        },
-        '&.cm-focused .cm-cursor': { borderLeftColor: primaryColor },
-        '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-          backgroundColor: secondaryColor
-        },
-        '.cm-activeLine': {
-          backgroundColor: textbackground === darkColor ? lightColor : secondaryColor
-        },
-        '.cm-gutters': {
-          backgroundColor: lightColor,
-          color: grayColor,
-          borderRight: `1px solid ${secondaryColor}`
-        },
-        '.cm-tooltip': {
-          border: `1px solid ${secondaryColor}`,
-          backgroundColor: textbackground,
-          color: textColor
-        },
-        '.cm-tooltip-autocomplete': {
-          backgroundColor: lightColor
-        },
-        '.cm-selectionMatch': {
-          backgroundColor: secondaryColor
-        },
-        '.cm-panels': {
-          backgroundColor: lightColor,
-          color: textColor
-        },
-        '.cm-panels-top, .cm-panels-bottom': {
-          borderBottom: `1px solid ${secondaryColor}`
-        }
-      },
-      { dark: true }
-    )
-
-    // Syntax highlight style mapped to Monaco token intentions
-    const remixHighlight = HighlightStyle.define([
-      { tag: [t.variableName, t.propertyName, t.attributeName], color: textColor },
-
-      { tag: [t.keyword], color: warningColor },
-      { tag: [t.controlKeyword], color: yellowColor },
-      { tag: [t.modifier], color: successColor },
-      { tag: [t.operatorKeyword], color: orangeColor },
-
-      { tag: [t.typeName, t.typeOperator], color: blueColor },
-      { tag: [t.keyword], color: '#9e7e08' },
-
-      { tag: [t.function(t.variableName), t.function(t.propertyName), t.function(t.definition(t.variableName))],
-        color: blueColor, fontWeight: 'bold' },
-      //@ts-ignore
-      { tag: [t.constant, t.keyword], color: grayColor },
-
-      { tag: [t.bool], color: successColor, fontWeight: 'bold' },
-      { tag: [t.number], color: primaryColor },
-      { tag: [t.string], color: infoColor },
-      { tag: [t.regexp], color: pinkColor },
-
-      { tag: [t.invalid, t.annotation], color: dangerColor, fontWeight: 'bold' },
-
-      { tag: [t.comment], color: grayColor, fontStyle: 'italic' },
-      { tag: [t.className], color: blueColor },
-      { tag: [t.meta], color: yellowColor }
-    ])
-
-    return [remixTheme, syntaxHighlighting(remixHighlight)]
-  }
 
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
@@ -407,7 +186,7 @@ export function ContractWizard () {
               value={strategy.contractCode as string}
               lang="typescript"
               height="460px"
-              theme={theme?.name === 'Light' ? vscodeLight : vscodeDark}
+              theme={theme?.name === 'Light' ? vscodeLight : darkTheme }
               readOnly={true}
               basicSetup={{
                 lineNumbers: false,
@@ -418,7 +197,7 @@ export function ContractWizard () {
                 indentOnInput: false,
                 tabSize: 2
               }}
-              extensions={[javascript({ typescript: true })]}
+              extensions={[javascript({ typescript: true }),vscodeDark, darkTheme]}
             />
           </div>
           <div className="d-flex justify-content-between align-items-center gap-3 mt-3">

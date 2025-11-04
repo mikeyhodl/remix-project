@@ -117,7 +117,6 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@gradio/client": "^0.10.1",
     "@isomorphic-git/lightning-fs": "^4.4.1",
-    "@lezer/highlight": "^1.2.3",
     "@metamask/eth-sig-util": "^7.0.2",
     "@microlink/react-json-view": "^1.23.0",
     "@noir-lang/noir_wasm": "^1.0.0-beta.2",
