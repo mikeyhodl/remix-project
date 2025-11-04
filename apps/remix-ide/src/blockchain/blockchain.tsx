@@ -1,5 +1,4 @@
 import React from 'react' // eslint-disable-line
-import { fromWei, toBigInt, toWei } from 'web3-utils'
 import { Plugin } from '@remixproject/engine'
 import { trackMatomoEvent } from '@remix-api'
 import { toBytes, addHexPrefix } from '@ethereumjs/util'
@@ -19,6 +18,7 @@ const { txFormat, txExecution, typeConversion, txListener: Txlistener, TxRunner,
 const { txResultHelper } = helpers
 const { resultToRemixTx } = txResultHelper
 import * as packageJson from '../../../../package.json'
+import { formatUnits, parseUnits } from 'ethers'
 
 const profile = {
   name: 'blockchain',
@@ -575,17 +575,17 @@ export class Blockchain extends Plugin {
 
   fromWei(value, doTypeConversion, unit) {
     if (doTypeConversion) {
-      return fromWei(typeConversion.toInt(value), unit || 'ether')
+      return formatUnits(typeConversion.toInt(value), unit || 'ether')
     }
-    return fromWei(value.toString(10), unit || 'ether')
+    return formatUnits(value.toString(10), unit || 'ether')
   }
 
   toWei(value, unit) {
-    return toWei(value, unit || 'gwei')
+    return (parseUnits(value, unit || 'gwei')).toString()
   }
 
   calculateFee(gas, gasPrice, unit?) {
-    return toBigInt(gas) * toBigInt(toWei(gasPrice.toString(10) as string, unit || 'gwei'))
+    return BigInt(gas) * BigInt(parseUnits(gasPrice.toString(10) as string, unit || 'gwei'))
   }
 
   determineGasFees(tx) {
@@ -880,11 +880,11 @@ export class Blockchain extends Plugin {
   }
 
   async getCode(address) {
-    return await this.web3().eth.getCode(address)
+    return await this.web3().getCode(address)
   }
 
   async getTransactionReceipt(hash) {
-    return await this.web3().eth.getTransactionReceipt(hash)
+    return await this.web3().getTransactionReceipt(hash)
   }
 
   /**

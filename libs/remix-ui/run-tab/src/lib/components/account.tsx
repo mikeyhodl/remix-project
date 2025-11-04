@@ -79,7 +79,7 @@ export function AccountUI(props: AccountProps) {
         delegationAuthorizationAddressRef.current = null
         return
       }
-      const code = await props.runTabPlugin.blockchain.web3().eth.getCode(selectedAccount)
+      const code = await props.runTabPlugin.blockchain.web3().getCode(selectedAccount)
       if (code && code.startsWith(eip7702Constants.EIP7702_CODE_INDICATOR_FLAG)) {
         // see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md delegation indicator
         const address = '0x' + code.replace(eip7702Constants.EIP7702_CODE_INDICATOR_FLAG, '')
