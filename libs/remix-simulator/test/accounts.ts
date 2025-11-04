@@ -36,6 +36,16 @@ describe('Accounts', () => {
       const signer = await ethersProvider.getSigner()
       const signature: any = await signer._legacySignMessage('Hello world') // _legacySignMessage uses 'eth_sign' internally
       assert.deepEqual(typeof signature === 'string' ? signature.length : signature.signature.length, 132)
+      assert.deepEqual(signature, "0x4bb5c87f889dcef489ce5965930a33cd4a5a4e20b5c44f9abb948a10f8b5cc5176398e92d9faf9168af3fbf3cb4ab12b99f9c88d34ab91242cc9490f71ca3f751c")
+    })
+  })
+
+  describe('personal_sign', () => {
+    it('should sign payloads', async () => {
+      const signer = await ethersProvider.getSigner()
+      const signature: any = await signer.signMessage('Hello world') // signMessage uses 'personal_sign' internally
+      assert.deepEqual(typeof signature === 'string' ? signature.length : signature.signature.length, 132)
+      assert.deepEqual(signature, "0x4bb5c87f889dcef489ce5965930a33cd4a5a4e20b5c44f9abb948a10f8b5cc5176398e92d9faf9168af3fbf3cb4ab12b99f9c88d34ab91242cc9490f71ca3f751c")
     })
   })
 
