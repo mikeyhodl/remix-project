@@ -201,9 +201,9 @@ export class CompilationResourceProvider extends BaseResourceProvider {
             const contract = contractData as any;
             result.contracts[`${fileName}:${contractName}`] = {
               abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+              // bytecode: contract.evm?.bytecode?.object || '',
+              // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+              // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
               gasEstimates: contract.evm?.gasEstimates || {}
             };
           }

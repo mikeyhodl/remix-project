@@ -320,10 +320,10 @@ export class MCPClient {
   private handleSSEMessage(message: any): void {
     // Handle SSE notifications (resource updates, etc.)
     if (message.method === 'notifications/resources/list_changed') {
-      this.resourceListCache = undefined; // Invalidate cache on resource changes
+      this.resourceListCache = undefined;
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
-      this.toolListCache = undefined; // Invalidate cache on tool changes
+      this.toolListCache = undefined;
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
@@ -331,10 +331,10 @@ export class MCPClient {
   private handleWebSocketMessage(message: any): void {
     // Handle WebSocket responses and notifications
     if (message.method === 'notifications/resources/list_changed') {
-      this.resourceListCache = undefined; // Invalidate cache on resource changes
+      this.resourceListCache = undefined;
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
-      this.toolListCache = undefined; // Invalidate cache on tool changes
+      this.toolListCache = undefined;
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
@@ -937,7 +937,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       // Select best resources
       const selectedResources = this.resourceScoring.selectResources(
         scoredResources,
-        mcpParams.maxResources || 5,
+        mcpParams.maxResources || 3,
         mcpParams.selectionStrategy || 'hybrid'
       );
 
