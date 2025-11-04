@@ -1089,25 +1089,40 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               const result = await this.executeToolForLLM(mcpToolCall);
               console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
 
+              // Extract full text content from MCP result
+              const extractContent = (mcpResult: any): string => {
+                if (!mcpResult?.content) return JSON.stringify(mcpResult);
+
+                return mcpResult.content
+                  .map((item: any) => {
+                    if (typeof item === 'string') return item;
+                    if (item?.text) return item.text;
+                    return JSON.stringify(item);
+                  })
+                  .join('\n');
+              };
+
+              const toolResultContent = extractContent(result);
+
               // Format tool result based on provider
               if (options.provider === 'anthropic') {
                 toolMessages.push({
                   type: 'tool_result',
                   tool_use_id: llmToolCall.id,
-                  content: result.content[0]?.text || JSON.stringify(result)
+                  content: toolResultContent
                 });
               } else if (options.provider === 'openai') {
                 toolMessages.push({
                   role: 'tool',
                   tool_call_id: llmToolCall.id,
-                  content: result.content[0]?.text || JSON.stringify(result)
+                  content: toolResultContent
                 });
               } else if (options.provider === 'mistralai') {
                 toolMessages.push({
                   role: 'tool',
                   name: mcpToolCall.name,
                   tool_call_id: llmToolCall.id,
-                  content: result.content[0]?.text || JSON.stringify(result)
+                  content: toolResultContent
                 });
               }
             } catch (error) {
@@ -1138,8 +1153,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
 
           if (toolMessages.length > 0) {
-            // Build toolsMessages array based on provider format
-            // The server expects an array of messages that will be appended to the conversation
             let toolsMessagesArray = [];
 
             if (options.provider === 'anthropic') {
@@ -1170,6 +1183,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               toolsMessages: toolsMessagesArray
             };
 
+            // Send empty prompt - the tool results are in toolsMessages
+            // Don't add extra prompts as they cause Anthropic to summarize instead of using full tool results
             return { streamResponse: await super.answer('', followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
           }
         }
@@ -1205,8 +1220,20 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
             const result = await this.executeToolForLLM(mcpToolCall);
 
+            const extractContent = (mcpResult: any): string => {
+              if (!mcpResult?.content) return JSON.stringify(mcpResult);
+
+              return mcpResult.content
+                .map((item: any) => {
+                  if (typeof item === 'string') return item;
+                  if (item?.text) return item.text;
+                  return JSON.stringify(item);
+                })
+                .join('\n');
+            };
+
             const toolResult: any = {
-              content: result.content[0]?.text || JSON.stringify(result)
+              content: extractContent(result)
             };
 
             if (options.provider !== 'anthropic') {
