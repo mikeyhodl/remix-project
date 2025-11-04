@@ -128,11 +128,11 @@ export class Web3Accounts {
     cb(null, signature)
   }
 
-   personal_sign (payload, cb) {
-    let message = payload.params[0]
+  personal_sign (payload, cb) {
+    const message = payload.params[0]
     const address = payload.params[1]
 
-     const privateKey = this.accountsKeys[toChecksumAddress(address)]
+    const privateKey = this.accountsKeys[toChecksumAddress(address)]
     if (!privateKey) {
       return cb(new Error('unknown account'))
     }
