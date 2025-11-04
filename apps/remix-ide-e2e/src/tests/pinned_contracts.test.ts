@@ -78,7 +78,7 @@ module.exports = {
       .clickFunction('store - transact (not payable)', { types: 'uint256 num', values: '35' })
       .testFunction('last',
         {
-          status: '0x1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution succeed',
           'decoded input': { "uint256 num": "35" }
         })
       .clickFunction('retrieve - call')
@@ -102,7 +102,7 @@ module.exports = {
       .clickFunction('store - transact (not payable)', { types: 'uint256 num', values: '55' })
       .testFunction('last',
         {
-          status: '0x1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution succeed',
           'decoded input': { "uint256 num": "55" }
         })
       .clickFunction('retrieve - call')

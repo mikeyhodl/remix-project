@@ -207,7 +207,7 @@ const tests = {
 
       .testFunction('last',
         {
-          status: '0x1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution succeed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
   },
