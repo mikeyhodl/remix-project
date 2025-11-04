@@ -137,6 +137,7 @@ export default class FileProvider {
   }
 
   async forceCreateDir (path) {
+    console.trace()
     const paths = path.split('/')
     if (paths.length && paths[0] === '') paths.shift()
     let currentCheck = ''

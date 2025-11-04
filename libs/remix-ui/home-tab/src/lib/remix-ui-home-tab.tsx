@@ -78,6 +78,14 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
       type: appActionTypes.showGenericModal,
       payload: true
     })
+    // await plugin.call('manager', 'activatePlugin', 'templateSelection')
+    // await plugin.call('tabs', 'focus', 'templateSelection')
+    trackMatomoEvent({
+      category: 'hometab',
+      action: 'header',
+      name: 'Create a new workspace',
+      isClick: true
+    })
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {

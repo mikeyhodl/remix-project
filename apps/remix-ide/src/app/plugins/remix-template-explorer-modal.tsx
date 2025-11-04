@@ -9,6 +9,7 @@ import * as packageJson from '../../../../../package.json'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 import { ViewPlugin } from '@remixproject/engine-web'
 import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
+import FileManager from '../files/fileManager'
 
 const pluginProfile = {
   name: 'templateexplorermodal',
@@ -29,12 +30,14 @@ export class TemplateExplorerModalPlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   event: any
   appStateDispatch: any
-  constructor() {
+  fileManager: FileManager
+  constructor(fileManager: FileManager) {
     super(pluginProfile)
     this.element = document.createElement('div')
     this.element.setAttribute('id', 'template-explorer-modal')
     this.dispatch = () => { }
     this.event = new EventEmitter()
+    this.fileManager = fileManager
   }
 
   async onActivation(): Promise<void> {

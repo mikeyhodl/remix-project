@@ -269,7 +269,6 @@ class AppComponent {
     this.gistHandler = new GistHandler()
     // ----------------- theme service ---------------------------------
     this.themeModule = new ThemeModule()
-    this.templateExplorerModal = new TemplateExplorerModalPlugin()
     // ----------------- locale service ---------------------------------
     this.localeModule = new LocaleModule()
     Registry.getInstance().put({ api: this.themeModule, name: 'themeModule' })
@@ -285,6 +284,7 @@ class AppComponent {
 
     // ----------------- fileManager service ----------------------------
     const fileManager = new FileManager(editor, appManager)
+    this.templateExplorerModal = new TemplateExplorerModalPlugin(fileManager)
     Registry.getInstance().put({ api: fileManager, name: 'filemanager' })
     // ----------------- dGit provider ---------------------------------
     const dGitProvider = new DGitProvider()
