@@ -19,8 +19,6 @@ export class TemplateExplorerModalFacade {
     this.dispatch = dispatch
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
-    const workspaces = await getWorkspaces()
-    const answer = workspaces.filter((workspace) => workspace.name === deps.workspaceName)
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
     await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)

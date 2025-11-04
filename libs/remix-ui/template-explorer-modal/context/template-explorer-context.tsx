@@ -43,6 +43,15 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     run()
   }, [])
 
+  const generateUniqueWorkspaceName = async (name: string) => {
+    try {
+      const uniqueName = await plugin.call('filePanel', 'getAvailableWorkspaceName', name) as string
+      return uniqueName
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
   const setSearchTerm = (term: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
   }
@@ -191,7 +200,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

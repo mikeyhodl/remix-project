@@ -50,7 +50,7 @@ const darkTheme = EditorView.theme({
 
 export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
-  const { state, dispatch, theme, facade, plugin } = useContext(TemplateExplorerContext)
+  const { state, dispatch, theme, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const strategy = state
   const monacoRef = useRef<Monaco>(null)
 
@@ -210,12 +210,10 @@ export function ContractWizard () {
             </div>
 
             <button data-id="contract-wizard-validate-workspace-button" className="btn btn-primary btn-sm" onClick={async () => {
-              const result = await createNonClashingTitle(state.workspaceName, plugin.fileManager)
+              const result = await generateUniqueWorkspaceName(state.workspaceName)
               dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: result })
-              console.log('state is now ?', state)
-              // return
               await facade.createWorkspace({
-                workspaceName: state.workspaceName,
+                workspaceName: result,
                 workspaceTemplateName: state.workspaceTemplateChosen.value,
                 opts: state.contractOptions,
                 isEmpty: false,

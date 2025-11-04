@@ -59,6 +59,7 @@ export interface TemplateExplorerContextType {
   theme: any
   facade: TemplateExplorerModalFacade
   templateCategoryStrategy: TemplateCategoryStrategy
+  generateUniqueWorkspaceName: (name: string) => Promise<string>
 }
 
 export enum TemplateExplorerWizardAction {

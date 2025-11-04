@@ -30,14 +30,12 @@ export class TemplateExplorerModalPlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   event: any
   appStateDispatch: any
-  fileManager: FileManager
-  constructor(fileManager: FileManager) {
+  constructor() {
     super(pluginProfile)
     this.element = document.createElement('div')
     this.element.setAttribute('id', 'template-explorer-modal')
     this.dispatch = () => { }
     this.event = new EventEmitter()
-    this.fileManager = fileManager
   }
 
   async onActivation(): Promise<void> {

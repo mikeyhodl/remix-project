@@ -2,10 +2,10 @@
 import React, { useContext, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { createWorkspaceTemplate, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 
 export function TopCards() {
-  const { dispatch, facade, templateCategoryStrategy } = useContext(TemplateExplorerContext)
+  const { dispatch, facade, templateCategoryStrategy, plugin } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   return (
     <div className="title">
@@ -123,8 +123,18 @@ export function TopCards() {
             id="importProjectInput"
             multiple
             className="d-none"
-            onChange={(e) => {
+            onChange={async (e) => {
               e.stopPropagation()
+              if (e.target.files.length === 0 || !e.target.files) return
+              const relativePath = e.target.files[0].webkitRelativePath
+              const targetFolder = relativePath.split('/')[0]
+              await createWorkspaceTemplate(targetFolder, 'blank')
+              for (const file of Array.from(e.target.files)) {
+                
+              }
+              await plugin.call('fileManager', 'createFile', '')
+              console.log('relativePath', relativePath)
+              return
               uploadFolderInTemplateExplorer(e.target, '/')
               facade.closeWizard()
             }}
