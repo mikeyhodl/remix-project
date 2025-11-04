@@ -116,7 +116,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         errors: compilationResult.data.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source || {}
+        sources: compilationResult?.source.sources[args.file] || {}
       };
 
       // Emit compilationFinished event with correct parameters to trigger UI effects
@@ -133,13 +133,16 @@ export class SolidityCompileHandler extends BaseToolHandler {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
-            result.contracts[`${fileName}:${contractName}`] = {
-              abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
-              gasEstimates: contract.evm?.gasEstimates || {}
-            };
+            if (fileName.includes(args.file)){
+              result.contracts[`${fileName}:${contractName}`] = {
+                abi: contract.abi || [],
+                // bytecode: contract.evm?.bytecode?.object || '',
+                // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+                // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+                gasEstimates: contract.evm?.gasEstimates || {}
+              };
+            }
+
           }
         }
       }
@@ -188,9 +191,9 @@ export class GetCompilationResultHandler extends BaseToolHandler {
             const contract = contractData as any;
             result.contracts[`${fileName}:${contractName}`] = {
               abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+              // bytecode: contract.evm?.bytecode?.object || '',
+              // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+              // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
               gasEstimates: contract.evm?.gasEstimates || {}
             };
           }
