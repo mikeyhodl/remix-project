@@ -7,7 +7,7 @@ import { RemixMdRenderer } from 'libs/remix-ui/helper/src/lib/components/remix-m
 
 export function GenericWorkspaceTemplate() {
 
-  const { state, theme, dispatch, facade } = useContext(TemplateExplorerContext)
+  const { state, theme, dispatch, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [readMe, setReadMe] = useState(null)
 
   useEffect(() => {
@@ -16,10 +16,6 @@ export function GenericWorkspaceTemplate() {
       setReadMe(readMe)
     }
     run()
-  }, [state.workspaceTemplateChosen.value])
-
-  useEffect(() => {
-    console.log('state  changed', state)
   }, [state.workspaceTemplateChosen.value])
 
   return (
@@ -42,8 +38,10 @@ export function GenericWorkspaceTemplate() {
           </div>
 
           <button className="btn btn-primary btn-sm mx-3" data-id={`validate-${state.workspaceTemplateChosen.value}workspace-button`} onClick={async () => {
+            const result = await generateUniqueWorkspaceName(state.workspaceName)
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: result })
             await facade.createWorkspace({
-              workspaceName: state.workspaceName,
+              workspaceName: result,
               workspaceTemplateName: state.workspaceTemplateChosen.value,
               opts: state.contractOptions,
               isEmpty: false,

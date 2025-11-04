@@ -13,7 +13,7 @@ interface WorkspaceDetailsProps {
 }
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
-  const { state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade, theme, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
 
   useEffect(() => {
@@ -61,8 +61,10 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
         </div>
 
         <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
+          const result = await generateUniqueWorkspaceName(state.workspaceName)
+          dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: result })
           await facade.createWorkspace({
-            workspaceName: state.workspaceName,
+            workspaceName: result,
             workspaceTemplateName: state.workspaceTemplateChosen.value,
             opts: { },
             isEmpty: false,
