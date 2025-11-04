@@ -21,7 +21,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   }, [state.workspaceName])
 
   return (
-    <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
+    <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
       <div className="p-3 d-flex flex-row align-items-center text-dark">
         { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{state.workspaceName}</span> }
         <i data-id="default-workspace-name-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>

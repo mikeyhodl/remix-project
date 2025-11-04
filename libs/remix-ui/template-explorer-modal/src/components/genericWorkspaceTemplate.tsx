@@ -23,7 +23,7 @@ export function GenericWorkspaceTemplate() {
   }, [state.workspaceTemplateChosen.value])
 
   return (
-    <section className="mx-3 p-2">
+    <section data-id={`generic-template-section-${state.workspaceTemplateChosen.value}`} className="mx-3 p-2">
       <div className="d-flex flex-column p-3 bg-light" style={{ height: state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : '50%' }}>
         <div>
           <label className="form-label text-uppercase small mb-1">Workspace name</label>

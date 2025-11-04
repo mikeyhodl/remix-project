@@ -21,7 +21,12 @@ module.exports = {
       .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test Blank Workspace', 'Workspace name is correct')
       .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
       .isVisible('*[data-id="treeViewDivDraggableItem.prettierrc.json"]')
-      .waitForElementNotPresent('*[data-id="treeViewDivDraggableItemcontracts"]')
+      .execute(function () {
+        const fileList = document.querySelector('*[data-id="treeViewUltreeViewMenu"]')
+        return fileList.getElementsByTagName('li').length;
+      }, [], function (result) {
+        browser.assert.equal(result.value, 3, 'Incorrect number of files in workspace');
+      });
   },
   'Create Pectra 7702 based workspace': function (browser: NightwatchBrowser) {
     browser
@@ -84,7 +89,13 @@ module.exports = {
   },
   'Create OpenZeppelin ERC20 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
       .click('*[data-id="contract-wizard-topcard"]')
       .waitForElementVisible('*[data-id="contract-wizard-container"]')

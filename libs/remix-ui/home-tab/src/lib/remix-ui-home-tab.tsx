@@ -73,13 +73,9 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   }
 
   const openTemplateSelection = async () => {
-    await plugin.call('manager', 'activatePlugin', 'templateSelection')
-    await plugin.call('tabs', 'focus', 'templateSelection')
-    trackMatomoEvent({
-      category: 'hometab',
-      action: 'header',
-      name: 'Create a new workspace',
-      isClick: true
+    appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
     })
   }
 
