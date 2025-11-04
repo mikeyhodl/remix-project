@@ -1,6 +1,5 @@
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../../package.json'
-import {isBigInt} from 'web3-validator'
 import { addressToString } from "@remix-ui/helper"
 
 export const profile = {
@@ -13,7 +12,7 @@ export const profile = {
 }
 
 const replacer = (key, value) => {
-  if (isBigInt(value)) value = value.toString()
+  if (typeof value === 'bigint') value = value.toString()
   return value
 }
 
@@ -33,8 +32,11 @@ export class Web3ProviderModule extends Plugin {
       this.askUserPermission('sendAsync', `Calling ${payload.method} with parameters ${JSON.stringify(payload.params, replacer, '\t')}`).then(
         async (result) => {
           if (result) {
-            const provider = this.blockchain.web3().currentProvider
-            const resultFn = async (error, message) => {
+            const provider = this.blockchain.web3()
+            const resultFn = async (error, response) => {
+              let message
+              // For a non-array of payload, result will be at index 0
+              if (Array.isArray(response) && !Array.isArray(payload)) message = response[0]
               if (error) {
                 // Handle 'The method "debug_traceTransaction" does not exist / is not available.' error
                 if(error.message && error.code && error.code === -32601) {
@@ -84,7 +86,8 @@ export class Web3ProviderModule extends Plugin {
               resolve(message)
             }
             try {
-              resultFn(null, await provider.sendAsync(payload))
+              // browserProvider._send(payload: JsonRpcPayload | Array<JsonRpcPayload>) => Promise<Array<JsonRpcResult | JsonRpcError>>
+              resultFn(null, await provider._send(payload))
             } catch (e) {
               resultFn(e.error ? e.error : e)
             }

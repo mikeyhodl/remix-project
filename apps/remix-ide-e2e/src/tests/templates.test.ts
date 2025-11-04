@@ -9,7 +9,7 @@ const templatesToCheck = [
     displayName: "Basic",
     checkSelectors: [
       '*[data-id="treeViewLitreeViewItemcontracts/3_Ballot.sol"]',
-      '*[data-id="treeViewLitreeViewItemscripts/deploy_with_web3.ts"]'
+      '*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]'
     ]
   },
   {
