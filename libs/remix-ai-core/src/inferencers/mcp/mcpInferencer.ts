@@ -18,6 +18,7 @@ import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
 import { endpointUrls } from "@remix-endpoints-helper"
+import { text } from "stream/consumers";
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
@@ -46,6 +47,9 @@ export class MCPClient {
   private sseEventSource?: EventSource; // For SSE transport
   private wsConnection?: WebSocket; // For WebSocket transport
   private httpAbortController?: AbortController; // For HTTP request cancellation
+  private resourceListCache?: { resources: IMCPResource[], timestamp: number }; // Cache for HTTP servers
+  private toolListCache?: { tools: IMCPTool[], timestamp: number }; // Cache for HTTP servers
+  private readonly CACHE_TTL = 120000; // 120 seconds cache TTL
 
   constructor(server: IMCPServer, remixMCPServer?: any) {
     this.server = server;
@@ -316,8 +320,10 @@ export class MCPClient {
   private handleSSEMessage(message: any): void {
     // Handle SSE notifications (resource updates, etc.)
     if (message.method === 'notifications/resources/list_changed') {
+      this.resourceListCache = undefined; // Invalidate cache on resource changes
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
+      this.toolListCache = undefined; // Invalidate cache on tool changes
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
@@ -325,8 +331,10 @@ export class MCPClient {
   private handleWebSocketMessage(message: any): void {
     // Handle WebSocket responses and notifications
     if (message.method === 'notifications/resources/list_changed') {
+      this.resourceListCache = undefined; // Invalidate cache on resource changes
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
+      this.toolListCache = undefined; // Invalidate cache on tool changes
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
@@ -350,6 +358,8 @@ export class MCPClient {
       this.connected = false;
       this.resources = [];
       this.tools = [];
+      this.resourceListCache = undefined; // Clear cache on disconnect
+      this.toolListCache = undefined; // Clear cache on disconnect
       this.eventEmitter.emit('disconnected', this.server.name);
     }
   }
@@ -379,6 +389,14 @@ export class MCPClient {
       return this.resources;
 
     } else if (this.server.transport === 'http') {
+      // Check cache for HTTP servers
+      const now = Date.now();
+      if (this.resourceListCache && (now - this.resourceListCache.timestamp) < this.CACHE_TTL) {
+        console.log(`[MCP] Using cached resource list for ${this.server.name}`);
+        return this.resourceListCache.resources;
+      }
+
+      // Cache miss or expired, fetch from server
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
         id: this.getNextRequestId(),
@@ -391,6 +409,13 @@ export class MCPClient {
       }
 
       this.resources = response.result.resources || [];
+
+      // Update cache
+      this.resourceListCache = {
+        resources: this.resources,
+        timestamp: now
+      };
+
       return this.resources;
 
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
@@ -513,6 +538,13 @@ export class MCPClient {
       return this.tools;
 
     } else if (this.server.transport === 'http') {
+      // Check cache for HTTP servers
+      const now = Date.now();
+      if (this.toolListCache && (now - this.toolListCache.timestamp) < this.CACHE_TTL) {
+        return this.toolListCache.tools;
+      }
+
+      // Cache miss or expired, fetch from server
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
         id: this.getNextRequestId(),
@@ -525,6 +557,13 @@ export class MCPClient {
       }
 
       this.tools = response.result.tools || [];
+
+      // Update cache
+      this.toolListCache = {
+        tools: this.tools,
+        timestamp: now
+      };
+
       return this.tools;
 
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
@@ -657,6 +696,19 @@ export class MCPClient {
     return this.capabilities;
   }
 
+  clearResourceListCache(): void {
+    this.resourceListCache = undefined;
+  }
+
+  clearToolListCache(): void {
+    this.toolListCache = undefined;
+  }
+
+  clearAllCaches(): void {
+    this.resourceListCache = undefined;
+    this.toolListCache = undefined;
+  }
+
   private getNextRequestId(): number {
     return this.requestId++;
   }
@@ -674,6 +726,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private mcpClients: Map<string, MCPClient> = new Map();
   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
   private resourceCache: Map<string, IMCPResourceContent> = new Map();
+  private resourceListCache: Map<string, { resources: IMCPResource[], timestamp: number }> = new Map();
   private cacheTimeout: number = 5000;
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
@@ -1019,67 +1072,105 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
         // avoid circular tooling
         if (toolExecutionCount >= this.MAX_TOOL_EXECUTIONS) {
+          console.warn(`[MCP] Maximum tool execution iterations (${this.MAX_TOOL_EXECUTIONS}) reached`);
           return { streamResponse: await super.answer(enrichedPrompt, options) };
         }
 
         toolExecutionCount++;
-
-        // Handle tool calls in the response
         if (tool_calls && tool_calls.length > 0) {
           trackMatomoEvent('ai', 'mcp_llm_tool_execution', `provider:${options.provider}|count:${tool_calls.length}|iteration:${toolExecutionCount}`);
-          const toolResults = [];
+          const toolMessages = [];
 
+          // Execute all tools and collect results
           for (const llmToolCall of tool_calls) {
             try {
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
-              console.log(`tool ${mcpToolCall.name} executed with valid result`)
+              console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
 
-              if (options.provider === 'openai'){
-                toolResults.push( {
-                  "role": "assistant",
-                  "tool_calls": [llmToolCall]
-                })
+              // Format tool result based on provider
+              if (options.provider === 'anthropic') {
+                toolMessages.push({
+                  type: 'tool_result',
+                  tool_use_id: llmToolCall.id,
+                  content: result.content[0]?.text || JSON.stringify(result)
+                });
+              } else if (options.provider === 'openai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: result.content[0]?.text || JSON.stringify(result)
+                });
+              } else if (options.provider === 'mistralai') {
+                toolMessages.push({
+                  role: 'tool',
+                  name: mcpToolCall.name,
+                  tool_call_id: llmToolCall.id,
+                  content: result.content[0]?.text || JSON.stringify(result)
+                });
               }
-
-              const toolResult: any = {
-                role: options.provider === 'anthropic' ? 'user' : 'tool',
-                content: result.content[0]?.text || JSON.stringify(result)
-              };
-
-              if (options.provider !== 'anthropic') {
-                toolResult.tool_call_id = llmToolCall.id;
-              }
-
-              toolResults.push(toolResult);
             } catch (error) {
-              const errorResult: any = {
-                content: `Error: ${error.message}`
-              };
+              console.error(`[MCP] Tool execution error for ${llmToolCall.function?.name}:`, error);
+              const errorContent = `Error executing tool: ${error.message}`;
 
-              if (options.provider !== 'anthropic') {
-                errorResult.tool_call_id = llmToolCall.id;
+              if (options.provider === 'anthropic') {
+                toolMessages.push({
+                  type: 'tool_result',
+                  tool_use_id: llmToolCall.id,
+                  content: errorContent,
+                  is_error: true
+                });
+              } else if (options.provider === 'openai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: errorContent
+                });
+              } else if (options.provider === 'mistralai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: errorContent
+                });
               }
-
-              toolResults.push(errorResult);
             }
           }
 
-          if (toolResults.length > 0) {
-            if (options.provider === 'mistralai'){
-              toolResults.unshift({ role:'assistant', tool_calls: tool_calls })
-              toolResults.unshift({ role:'user', content:enrichedPrompt })
-            } else {
-              toolResults.unshift({ role:'user', content:enrichedPrompt })
+          if (toolMessages.length > 0) {
+            // Build toolsMessages array based on provider format
+            // The server expects an array of messages that will be appended to the conversation
+            let toolsMessagesArray = [];
+
+            if (options.provider === 'anthropic') {
+              // Anthropic: Convert tool_use blocks to assistant message, then user message with tool_result blocks
+              const toolUseBlocks = tool_calls.map(tc => ({
+                type: 'tool_use',
+                id: tc.id,
+                name: tc.function?.name || '',
+                input: typeof tc.function?.arguments === 'string'
+                  ? JSON.parse(tc.function.arguments || '{}')
+                  : tc.function?.arguments || {}
+              }));
+
+              toolsMessagesArray = [
+                { role: 'assistant', content: toolUseBlocks },
+                { role: 'user', content: toolMessages }
+              ];
+            } else if (options.provider === 'openai' || options.provider === 'mistralai') {
+              // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
+              toolsMessagesArray = [
+                { role: 'assistant', tool_calls: tool_calls },
+                ...toolMessages
+              ];
             }
 
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolResults
+              toolsMessages: toolsMessagesArray
             };
 
-            return { streamResponse: await super.answer("Follow up on tool call ", followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
+            return { streamResponse: await super.answer('', followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
           }
         }
       }

@@ -203,7 +203,6 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
             const response = await tool_callback(json.choices[0].delta.tool_calls)
             cb("\n\n");
             HandleMistralAIResponse(response, cb, done_cb)
-
           } else if (json.choices[0].delta.content){
             const content = json.choices[0].delta.content
             cb(content);
