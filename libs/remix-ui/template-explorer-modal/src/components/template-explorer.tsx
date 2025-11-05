@@ -1,16 +1,11 @@
 import isElectron from 'is-electron'
-import React, { useContext, useEffect } from 'react'
-import { TemplateCategory, TemplateExplorerProps, TemplateExplorerWizardAction, TemplateItem } from '../../types/template-explorer-types'
+import React, { useContext } from 'react'
+import { TemplateCategory, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { TemplateExplorerModalFacade } from '../utils/workspaceUtils'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, state, theme } = useContext(TemplateExplorerContext)
-
-  useEffect(() => {
-    console.log('state', state)
-  }, [])
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme } = useContext(TemplateExplorerContext)
 
   return (
     <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
