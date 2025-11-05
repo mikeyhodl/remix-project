@@ -25,8 +25,6 @@ export const Preload = (props: PreloadProps) => {
   const [supported, setSupported] = useState<boolean>(true)
   const [error, setError] = useState<boolean>(false)
   const [showDownloader, setShowDownloader] = useState<boolean>(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mainRef = useRef<HTMLDivElement>(null)
   const remixFileSystems = useRef<fileSystems>(new fileSystems())
   const remixIndexedDB = useRef<fileSystem>(new indexedDBFileSystem())
   const localStorageFileSystem = useRef<fileSystem>(new localStorageFS())
@@ -142,8 +140,8 @@ export const Preload = (props: PreloadProps) => {
 
   return (
     <>
-      <div className="preload-container" ref={containerRef}>
-        <div className="preload-main" ref={mainRef}>
+      <div className="preload-container" >
+        <div className="preload-main">
           <div className="preload-logo text-center">
             <img src="assets/img/remix-logo-blue.png" alt="Remix logo" width="64" height="64" />
             <div className="preload-title">REMIX IDE</div>
