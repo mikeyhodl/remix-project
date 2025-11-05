@@ -2,6 +2,7 @@ import React, { useEffect, useRef, createRef } from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
+//@ts-ignore
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
 import { trackMatomoEvent } from '@remix-api'
@@ -18,7 +19,7 @@ const profile = {
   maintainedBy: 'Remix',
   permission: true,
   events: [],
-  methods: ['chatPipe']
+  methods: ['chatPipe', 'handleExternalMessage']
 }
 
 export class RemixAIAssistant extends ViewPlugin {
@@ -28,6 +29,7 @@ export class RemixAIAssistant extends ViewPlugin {
   event: any
   chatRef: React.RefObject<RemixUiRemixAiAssistantHandle>
   history: ChatMessage[] = []
+  externalMessage: string
 
   constructor() {
     super(profile)
@@ -85,6 +87,11 @@ export class RemixAIAssistant extends ViewPlugin {
       text: message,
       timestamp: Date.now()
     }
+    this.renderComponent()
+  }
+
+  handleExternalMessage = (message: string) => {
+    this.externalMessage = message
     this.renderComponent()
   }
 

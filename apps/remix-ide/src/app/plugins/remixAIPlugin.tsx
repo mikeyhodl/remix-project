@@ -3,7 +3,8 @@ import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
-import axios from 'axios';
+import axios from 'axios'
+//@ts-ignore
 import { endpointUrls } from "@remix-endpoints-helper"
 
 type chatRequestBufferT<T> = {
@@ -191,8 +192,6 @@ export class RemixAIPlugin extends Plugin {
    * - If `useRag` is `true`, the function fetches additional context from a RAG API and prepends it to the user prompt.
    */
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
-    console.trace()
-    console.log('generate workspace with ai prompt: ', prompt)
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
