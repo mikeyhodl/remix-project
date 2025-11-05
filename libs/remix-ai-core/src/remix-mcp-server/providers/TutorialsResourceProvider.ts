@@ -57,7 +57,6 @@ export class TutorialsResourceProvider extends BaseResourceProvider {
   private async getTutorialsList(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const tutorials = await axios('https://raw.githubusercontent.com/remix-project-org/remix-workshops/refs/heads/json_desc/config-properties.json')
-      console.log(tutorials)
       return this.createJsonContent('tutorials://list', tutorials);
     } catch (error) {
       return this.createTextContent('tutorials://list', `Error getting tutorials: ${error.message}`);

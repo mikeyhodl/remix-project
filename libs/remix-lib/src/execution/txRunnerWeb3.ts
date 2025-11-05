@@ -1,6 +1,6 @@
 'use strict'
 import { EventManager } from '../eventManager'
-import type { Transaction as InternalTransaction } from './txRunner'
+import type { Transaction as InternalTransaction, TxResult } from './txRunner'
 import { BrowserProvider, getAddress, parseUnits } from 'ethers'
 import { normalizeHexAddress } from '../helpers/uiHelper'
 import { aaSupportedNetworks, aaLocalStorageKey, getPimlicoBundlerURL, aaDeterminiticProxyAddress } from '../helpers/aaConstants'

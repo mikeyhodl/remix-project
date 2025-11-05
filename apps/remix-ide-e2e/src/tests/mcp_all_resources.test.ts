@@ -18,7 +18,7 @@ module.exports = {
   'Should have all resource providers registered': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="remix-ai-assistant"]')
-      .execute(async function () {
+      .execute( function () {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
           return { error: 'RemixMCPServer not available' };
@@ -46,7 +46,7 @@ module.exports = {
         }
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Resource providers error:', data.error);
           return;
         }
@@ -63,21 +63,24 @@ module.exports = {
    */
   'Should list all project resources': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/list',
-            id: 'test-1'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-1'
+        }).then(function (response) {
           const resources = response.result.resources || [];
-          const projectResources = resources.filter((r: any) => r.uri.startsWith('project://'));
-          const fileResources = resources.filter((r: any) => r.uri.startsWith('file://'));
+          const projectResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('project://');
+          });
+          const fileResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('file://');
+          });
 
           const expectedProjectResources = [
             'project://structure',
@@ -85,28 +88,28 @@ module.exports = {
             'project://dependencies'
           ];
 
-          const foundProjectResources = expectedProjectResources.filter(uri =>
-            projectResources.some((r: any) => r.uri === uri)
-          );
+          const foundProjectResources = expectedProjectResources.filter(function (uri) {
+            return projectResources.some(function (r: any) { return r.uri === uri; });
+          });
 
-          return {
+          done({
             totalResources: resources.length,
             projectResourceCount: projectResources.length,
             fileResourceCount: fileResources.length,
             expectedCount: expectedProjectResources.length,
             foundCount: foundProjectResources.length,
             foundResources: foundProjectResources,
-            missingResources: expectedProjectResources.filter(uri =>
-              !projectResources.some((r: any) => r.uri === uri)
-            ),
+            missingResources: expectedProjectResources.filter(function (uri) {
+              return !projectResources.some(function (r: any) { return r.uri === uri; });
+            }),
             sampleProjectResource: projectResources[0] || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Project resources list error:', data.error);
           return;
         }
@@ -119,19 +122,18 @@ module.exports = {
 
   'Should read project structure resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'project://structure' },
-            id: 'test-2'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'project://structure' },
+          id: 'test-2'
+        }).then(function (response) {
           const content = response.result;
           let structureData = null;
 
@@ -139,11 +141,12 @@ module.exports = {
             try {
               structureData = JSON.parse(content.text);
             } catch (e) {
-              return { error: 'Failed to parse structure JSON' };
+              done({ error: 'Failed to parse structure JSON' });
+              return;
             }
           }
 
-          return {
+          done({
             hasContent: !!content,
             uri: content.uri,
             mimeType: content.mimeType,
@@ -152,13 +155,13 @@ module.exports = {
             hasRoot: !!structureData?.root,
             hasGeneratedAt: !!structureData?.generatedAt,
             isValidJSON: content.mimeType === 'application/json'
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Project structure read error:', data.error);
           return;
         }
@@ -171,19 +174,18 @@ module.exports = {
 
   'Should read project config resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'project://config' },
-            id: 'test-3'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'project://config' },
+          id: 'test-3'
+        }).then(function (response) {
           const content = response.result;
           let configData = null;
 
@@ -191,19 +193,19 @@ module.exports = {
             configData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasConfigs: !!configData?.configs,
             hasGeneratedAt: !!configData?.generatedAt,
             configKeys: configData?.configs ? Object.keys(configData.configs) : []
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Project config read error:', data.error);
           return;
         }
@@ -216,19 +218,18 @@ module.exports = {
 
   'Should read project dependencies resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'project://dependencies' },
-            id: 'test-4'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'project://dependencies' },
+          id: 'test-4'
+        }).then(function (response) {
           const content = response.result;
           let depsData = null;
 
@@ -236,7 +237,7 @@ module.exports = {
             depsData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasNpm: !!depsData?.npm,
@@ -244,13 +245,13 @@ module.exports = {
             hasContracts: !!depsData?.contracts,
             hasGeneratedAt: !!depsData?.generatedAt,
             importsCount: depsData?.imports?.length || 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Project dependencies read error:', data.error);
           return;
         }
@@ -267,22 +268,21 @@ module.exports = {
    */
   'Should list all compilation resources': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/list',
-            id: 'test-5'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-5'
+        }).then(function (response) {
           const resources = response.result.resources || [];
-          const compilationResources = resources.filter((r: any) =>
-            r.uri.startsWith('compilation://') || r.uri.startsWith('contract://')
-          );
+          const compilationResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('compilation://') || r.uri.startsWith('contract://');
+          });
 
           const expectedCompilationResources = [
             'compilation://latest',
@@ -293,25 +293,25 @@ module.exports = {
             'compilation://config'
           ];
 
-          const foundResources = expectedCompilationResources.filter(uri =>
-            compilationResources.some((r: any) => r.uri === uri)
-          );
+          const foundResources = expectedCompilationResources.filter(function (uri) {
+            return compilationResources.some(function (r: any) { return r.uri === uri; });
+          });
 
-          return {
+          done({
             compilationResourceCount: compilationResources.length,
             expectedCount: expectedCompilationResources.length,
             foundCount: foundResources.length,
-            foundResources,
-            missingResources: expectedCompilationResources.filter(uri =>
-              !compilationResources.some((r: any) => r.uri === uri)
-            )
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+            foundResources: foundResources,
+            missingResources: expectedCompilationResources.filter(function (uri) {
+              return !compilationResources.some(function (r: any) { return r.uri === uri; });
+            })
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Compilation resources list error:', data.error);
           return;
         }
@@ -323,19 +323,18 @@ module.exports = {
 
   'Should read compilation latest resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'compilation://latest' },
-            id: 'test-6'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'compilation://latest' },
+          id: 'test-6'
+        }).then(function (response) {
           const content = response.result;
           let compilationData = null;
 
@@ -343,7 +342,7 @@ module.exports = {
             compilationData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasSuccess: compilationData?.success !== undefined,
@@ -353,13 +352,13 @@ module.exports = {
             hasSources: !!compilationData?.sources,
             contractCount: compilationData?.contracts ? Object.keys(compilationData.contracts).length : 0,
             errorCount: compilationData?.errors?.length || 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Compilation latest read error:', data.error);
           return;
         }
@@ -373,19 +372,18 @@ module.exports = {
 
   'Should read compilation contracts resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'compilation://contracts' },
-            id: 'test-7'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'compilation://contracts' },
+          id: 'test-7'
+        }).then(function (response) {
           const content = response.result;
           let contractsData = null;
 
@@ -393,20 +391,20 @@ module.exports = {
             contractsData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasCompiledContracts: !!contractsData?.compiledContracts,
             hasCount: contractsData?.count !== undefined,
             hasGeneratedAt: !!contractsData?.generatedAt,
             contractCount: contractsData?.count || 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Compilation contracts read error:', data.error);
           return;
         }
@@ -419,19 +417,18 @@ module.exports = {
 
   'Should read compilation config resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'compilation://config' },
-            id: 'test-8'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'compilation://config' },
+          id: 'test-8'
+        }).then(function (response) {
           const content = response.result;
           let configData = null;
 
@@ -439,7 +436,7 @@ module.exports = {
             configData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasVersion: !!configData?.version,
@@ -448,13 +445,13 @@ module.exports = {
             hasEvmVersion: !!configData?.evmVersion,
             hasLanguage: !!configData?.language,
             config: configData
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Compilation config read error:', data.error);
           return;
         }
@@ -470,22 +467,21 @@ module.exports = {
    */
   'Should list all deployment resources': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/list',
-            id: 'test-9'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-9'
+        }).then(function (response) {
           const resources = response.result.resources || [];
-          const deploymentResources = resources.filter((r: any) =>
-            r.uri.startsWith('deployment://') || r.uri.startsWith('instance://')
-          );
+          const deploymentResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('deployment://') || r.uri.startsWith('instance://');
+          });
 
           const expectedDeploymentResources = [
             'deployment://history',
@@ -495,29 +491,29 @@ module.exports = {
             'deployment://config'
           ];
 
-          const foundResources = expectedDeploymentResources.filter(uri =>
-            deploymentResources.some((r: any) => r.uri === uri)
-          );
+          const foundResources = expectedDeploymentResources.filter(function (uri) {
+            return deploymentResources.some(function (r: any) { return r.uri === uri; });
+          });
 
-          return {
+          done({
             deploymentResourceCount: deploymentResources.length,
             expectedCount: expectedDeploymentResources.length,
             foundCount: foundResources.length,
-            foundResources,
-            missingResources: expectedDeploymentResources.filter(uri =>
-              !deploymentResources.some((r: any) => r.uri === uri)
-            ),
-            instanceResources: deploymentResources.filter((r: any) =>
-              r.uri.startsWith('instance://')
-            ).length
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+            foundResources: foundResources,
+            missingResources: expectedDeploymentResources.filter(function (uri) {
+              return !deploymentResources.some(function (r: any) { return r.uri === uri; });
+            }),
+            instanceResources: deploymentResources.filter(function (r: any) {
+              return r.uri.startsWith('instance://');
+            }).length
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
-          console.error('Deployment resources list error:', data.error);
+        if (data?.error) {
+          console.error('Deployment resources list error:', data?.error);
           return;
         }
         browser.assert.ok(data.deploymentResourceCount >= 5, 'Should have at least 5 deployment resources');
@@ -528,19 +524,18 @@ module.exports = {
 
   'Should read deployment history resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'deployment://history' },
-            id: 'test-10'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'deployment://history' },
+          id: 'test-10'
+        }).then(function (response) {
           const content = response.result;
           let historyData = null;
 
@@ -548,7 +543,7 @@ module.exports = {
             historyData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasDeployments: !!historyData?.deployments,
@@ -556,13 +551,13 @@ module.exports = {
             hasGeneratedAt: !!historyData?.generatedAt,
             deploymentCount: historyData?.deployments?.length || 0,
             summary: historyData?.summary || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Deployment history read error:', data.error);
           return;
         }
@@ -575,19 +570,18 @@ module.exports = {
 
   'Should read deployment networks resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'deployment://networks' },
-            id: 'test-11'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'deployment://networks' },
+          id: 'test-11'
+        }).then(function (response) {
           const content = response.result;
           let networksData = null;
 
@@ -595,7 +589,7 @@ module.exports = {
             networksData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasConfigured: !!networksData?.configured,
@@ -604,13 +598,13 @@ module.exports = {
             hasStatistics: !!networksData?.statistics,
             networkCount: networksData?.configured?.length || 0,
             currentNetwork: networksData?.current || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Deployment networks read error:', data.error);
           return;
         }
@@ -624,19 +618,18 @@ module.exports = {
 
   'Should read deployment config resource': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const response = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'deployment://config' },
-            id: 'test-12'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'deployment://config' },
+          id: 'test-12'
+        }).then(function (response) {
           const content = response.result;
           let configData = null;
 
@@ -644,7 +637,7 @@ module.exports = {
             configData = JSON.parse(content.text);
           }
 
-          return {
+          done({
             hasContent: !!content,
             mimeType: content.mimeType,
             hasEnvironment: !!configData?.environment,
@@ -655,13 +648,13 @@ module.exports = {
             hasCapabilities: !!configData?.capabilities,
             accountCount: configData?.accounts?.length || 0,
             selectedAccount: configData?.selectedAccount || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Deployment config read error:', data.error);
           return;
         }
@@ -678,61 +671,64 @@ module.exports = {
    */
   'Should handle invalid resource URIs gracefully': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const invalidURIs = [
-            'invalid://resource',
-            'project://nonexistent',
-            'compilation://invalid',
-            'deployment://missing',
-            'file://../../etc/passwd', // Path traversal attempt
-            'http://example.com' // External URI
-          ];
+        const invalidURIs = [
+          'invalid://resource',
+          'project://nonexistent',
+          'compilation://invalid',
+          'deployment://missing',
+          'file://../../etc/passwd', // Path traversal attempt
+          'http://example.com' // External URI
+        ];
 
-          const results = [];
+        const results = [];
 
-          for (const uri of invalidURIs) {
-            try {
-              const response = await aiPlugin.remixMCPServer.handleMessage({
-                method: 'resources/read',
-                params: { uri },
-                id: `test-invalid-${uri}`
-              });
-
-              results.push({
-                uri,
-                hasError: !!response.error,
-                errorCode: response.error?.code || null,
-                handled: true
-              });
-            } catch (error) {
-              results.push({
-                uri,
-                hasError: true,
-                errorMessage: error.message,
-                handled: true
-              });
-            }
+        function processNextURI(index) {
+          if (index >= invalidURIs.length) {
+            done({
+              totalTests: invalidURIs.length,
+              allHandled: results.every(function (r) { return r.handled; }),
+              allErrored: results.every(function (r) { return r.hasError; }),
+              results: results,
+              systemStable: true
+            });
+            return;
           }
 
-          return {
-            totalTests: invalidURIs.length,
-            allHandled: results.every(r => r.handled),
-            allErrored: results.every(r => r.hasError),
-            results,
-            systemStable: true
-          };
-        } catch (error) {
-          return { error: error.message };
+          const uri = invalidURIs[index];
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'resources/read',
+            params: { uri: uri },
+            id: 'test-invalid-' + uri
+          }).then(function (response) {
+            results.push({
+              uri: uri,
+              hasError: !!response.error,
+              errorCode: response.error?.code || null,
+              handled: true
+            });
+            processNextURI(index + 1);
+          }).catch(function (error) {
+            results.push({
+              uri: uri,
+              hasError: true,
+              errorMessage: error.message,
+              handled: true
+            });
+            processNextURI(index + 1);
+          });
         }
+
+        processNextURI(0);
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Invalid URI handling error:', data.error);
           return;
         }
@@ -747,53 +743,55 @@ module.exports = {
    */
   'Should test resource caching performance': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const server = aiPlugin.remixMCPServer;
-          const testURI = 'deployment://history';
+        const server = aiPlugin.remixMCPServer;
+        const testURI = 'deployment://history';
+        let firstReadTime = 0;
 
-          // First read (uncached)
-          const startTime1 = Date.now();
-          await server.handleMessage({
-            method: 'resources/read',
-            params: { uri: testURI },
-            id: 'test-cache-1'
-          });
-          const firstReadTime = Date.now() - startTime1;
+        // First read (uncached)
+        const startTime1 = Date.now();
+        server.handleMessage({
+          method: 'resources/read',
+          params: { uri: testURI },
+          id: 'test-cache-1'
+        }).then(function () {
+          firstReadTime = Date.now() - startTime1;
 
           // Second read (should be cached)
           const startTime2 = Date.now();
-          await server.handleMessage({
+          return server.handleMessage({
             method: 'resources/read',
             params: { uri: testURI },
             id: 'test-cache-2'
+          }).then(function () {
+            const secondReadTime = Date.now() - startTime2;
+
+            // Get cache stats
+            const cacheStats = server.getCacheStats();
+
+            done({
+              firstReadTime: firstReadTime,
+              secondReadTime: secondReadTime,
+              cachingWorking: secondReadTime <= firstReadTime,
+              hasCacheStats: !!cacheStats,
+              cacheSize: cacheStats?.size || 0,
+              cacheHitRate: cacheStats?.hitRate || 0,
+              performanceImprovement: firstReadTime > 0 ?
+                ((firstReadTime - secondReadTime) / firstReadTime * 100).toFixed(2) : 0
+            });
           });
-          const secondReadTime = Date.now() - startTime2;
-
-          // Get cache stats
-          const cacheStats = server.getCacheStats();
-
-          return {
-            firstReadTime,
-            secondReadTime,
-            cachingWorking: secondReadTime <= firstReadTime,
-            hasCacheStats: !!cacheStats,
-            cacheSize: cacheStats?.size || 0,
-            cacheHitRate: cacheStats?.hitRate || 0,
-            performanceImprovement: firstReadTime > 0 ?
-              ((firstReadTime - secondReadTime) / firstReadTime * 100).toFixed(2) : 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
-        if (data.error) {
+        if (data?.error) {
           console.error('Resource caching error:', data.error);
           return;
         }

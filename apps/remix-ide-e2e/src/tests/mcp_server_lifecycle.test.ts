@@ -54,38 +54,38 @@ module.exports = {
 
   'Should test RemixMCPServer registration and availability': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.mcpInferencer) {
-          return { error: 'MCP inferencer not available' };
+          done({ error: 'MCP inferencer not available' });
+          return;
         }
 
-        try {
-          // Check if RemixMCPServer is registered with the inferencer
-          const connectedServers = aiPlugin.mcpInferencer.getConnectedServers();
-          const connectionStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
+        // Check if RemixMCPServer is registered with the inferencer
+        const connectedServers = aiPlugin.mcpInferencer.getConnectedServers();
+        const connectionStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
 
-          const remixServerConnected = connectedServers.includes('Remix IDE Server');
-          const remixServerStatus = connectionStatuses.find((s: any) => s.serverName === 'Remix IDE Server');
+        const remixServerConnected = connectedServers.includes('Remix IDE Server');
+        const remixServerStatus = connectionStatuses.find(function (s: any) { return s.serverName === 'Remix IDE Server'; });
 
-          // Test server availability through inferencer
-          const allTools = await aiPlugin.mcpInferencer.getAllTools();
-          const allResources = await aiPlugin.mcpInferencer.getAllResources();
+        // Test server availability through inferencer
+        aiPlugin.mcpInferencer.getAllTools().then(function (allTools) {
+          return aiPlugin.mcpInferencer.getAllResources().then(function (allResources) {
+            const remixTools = allTools['Remix IDE Server'] || [];
+            const remixResources = allResources['Remix IDE Server'] || [];
 
-          const remixTools = allTools['Remix IDE Server'] || [];
-          const remixResources = allResources['Remix IDE Server'] || [];
-
-          return {
-            remixServerConnected,
-            remixServerStatus: remixServerStatus?.status || 'unknown',
-            remixToolCount: remixTools.length,
-            remixResourceCount: remixResources.length,
-            serverRegistered: remixServerConnected && remixTools.length > 0 && remixResources.length > 0,
-            connectionStable: remixServerStatus?.status === 'connected'
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+            done({
+              remixServerConnected: remixServerConnected,
+              remixServerStatus: remixServerStatus?.status || 'unknown',
+              remixToolCount: remixTools.length,
+              remixResourceCount: remixResources.length,
+              serverRegistered: remixServerConnected && remixTools.length > 0 && remixResources.length > 0,
+              connectionStable: remixServerStatus?.status === 'connected'
+            });
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -113,7 +113,6 @@ module.exports = {
           name: server.config.name,
           capabilities: server.getCapabilities() || {},
         };
-
 
         const toolRegistry = server.tools;
         const resourceProviders = server.resources.providers;
@@ -148,32 +147,33 @@ module.exports = {
 
   'Should test RemixMCPServer cleanup and shutdown': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer || !aiPlugin?.mcpInferencer) {
-          return { error: 'MCP components not available' };
+          done({ error: 'MCP components not available' });
+          return;
         }
 
-        try {
-          const initialConnected = aiPlugin.mcpInferencer.getConnectedServers();
-          const initialCount = initialConnected.length;
+        const initialConnected = aiPlugin.mcpInferencer.getConnectedServers();
+        const initialCount = initialConnected.length;
 
-          await aiPlugin.mcpInferencer.disconnectAllServers();
+        aiPlugin.mcpInferencer.disconnectAllServers().then(function () {
           const afterDisconnect = aiPlugin.mcpInferencer.getConnectedServers();
 
-          await aiPlugin.mcpInferencer.connectAllServers();
-          const afterReconnect = aiPlugin.mcpInferencer.getConnectedServers();
+          return aiPlugin.mcpInferencer.connectAllServers().then(function () {
+            const afterReconnect = aiPlugin.mcpInferencer.getConnectedServers();
 
-          return {
-            initiallyConnected: initialCount > 0,
-            disconnectedSuccessfully: afterDisconnect.length === 0,
-            reconnectedSuccessfully: afterReconnect.length > 0,
-            serverSurvivalTest: afterReconnect.includes('Remix IDE Server'),
-            cleanupWorking: true 
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+            done({
+              initiallyConnected: initialCount > 0,
+              disconnectedSuccessfully: afterDisconnect.length === 0,
+              reconnectedSuccessfully: afterReconnect.length > 0,
+              serverSurvivalTest: afterReconnect.includes('Remix IDE Server'),
+              cleanupWorking: true
+            });
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -190,62 +190,71 @@ module.exports = {
 
   'Should test RemixMCPServer stability under load': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer || !aiPlugin?.mcpInferencer) {
-          return { error: 'MCP components not available' };
+          done({ error: 'MCP components not available' });
+          return;
         }
 
-        try {
-          const concurrentOperations = [];
-          const startTime = Date.now();
+        const concurrentOperations = [];
+        const startTime = Date.now();
 
-          // Create multiple concurrent tool executions
-          for (let i = 0; i < 5; i++) {
-            concurrentOperations.push(
-              aiPlugin.mcpInferencer.executeTool('Remix IDE Server', {
-                name: 'get_compiler_config',
-                arguments: {}
-              })
-            );
-          }
+        // Create multiple concurrent tool executions
+        for (let i = 0; i < 5; i++) {
+          concurrentOperations.push(
+            aiPlugin.mcpInferencer.executeTool('Remix IDE Server', {
+              name: 'get_compiler_config',
+              arguments: {}
+            })
+          );
+        }
 
-          for (let i = 0; i < 5; i++) {
-            concurrentOperations.push(
-              aiPlugin.mcpInferencer.readResource('Remix IDE Server', 'deployment://history')
-            );
-          }
+        for (let i = 0; i < 5; i++) {
+          concurrentOperations.push(
+            aiPlugin.remixMCPServer.handleMessage({
+              method: 'resources/read',
+              params: { uri: 'deployment://history' },
+              id: 'test-'+i
+            })
+          );
+        }
 
-          const results = await Promise.allSettled(concurrentOperations);
+        Promise.allSettled(concurrentOperations).then(function (results) {
           const endTime = Date.now();
 
-          const successCount = results.filter(r => r.status === 'fulfilled').length;
-          const failureCount = results.filter(r => r.status === 'rejected').length;
+          const successCount = results.filter(function (r) { return r.status === 'fulfilled'; }).length;
+          const failureCount = results.filter(function (r) { return r.status === 'rejected'; }).length;
           const totalTime = endTime - startTime;
 
           // Test rapid sequential operations
           const sequentialStart = Date.now();
-          const sequentialOps = [];
+          const sequentialPromises = [];
           for (let i = 0; i < 10; i++) {
-            sequentialOps.push(await aiPlugin.mcpInferencer.getAllTools());
+            sequentialPromises.push(aiPlugin.mcpInferencer.getAllTools());
           }
-          const sequentialEnd = Date.now();
-          const sequentialTime = sequentialEnd - sequentialStart;
 
-          return {
-            concurrentOperations: concurrentOperations.length,
-            successCount,
-            failureCount,
-            totalTime,
-            averageTime: totalTime / concurrentOperations.length,
-            sequentialTime,
-            stabilityScore: successCount / concurrentOperations.length,
-            performanceAcceptable: totalTime < 10000 && sequentialTime < 5000,
-            highStability: successCount >= concurrentOperations.length * 0.9 // 90% success rate
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          Promise.all(sequentialPromises).then(function () {
+            const sequentialEnd = Date.now();
+            const sequentialTime = sequentialEnd - sequentialStart;
+
+            done({
+              concurrentOperations: concurrentOperations.length,
+              successCount: successCount,
+              failureCount: failureCount,
+              totalTime: totalTime,
+              averageTime: totalTime / concurrentOperations.length,
+              sequentialTime: sequentialTime,
+              stabilityScore: successCount / concurrentOperations.length,
+              performanceAcceptable: totalTime < 10000 && sequentialTime < 5000,
+              highStability: successCount >= concurrentOperations.length * 0.9 // 90% success rate
+            });
+          }).catch(function (error) {
+            done({ error: error.message });
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {

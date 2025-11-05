@@ -106,40 +106,39 @@ module.exports = {
    */
   'Should test file_write tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'file_write',
-              arguments: {
-                path: 'test_mcp_write.txt',
-                content: 'Hello from MCP test!'
-              }
-            },
-            id: 'test-file-write'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'file_write',
+            arguments: {
+              path: 'test_mcp_write.txt',
+              content: 'Hello from MCP test!'
+            }
+          },
+          id: 'test-file-write'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             hasResult: !!resultData,
             writeSuccess: resultData?.success || false,
             path: resultData?.path || null,
             errorMessage: result.error?.message || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -154,39 +153,38 @@ module.exports = {
 
   'Should test file_read tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'file_read',
-              arguments: {
-                path: 'test_mcp_write.txt'
-              }
-            },
-            id: 'test-file-read'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'file_read',
+            arguments: {
+              path: 'test_mcp_write.txt'
+            }
+          },
+          id: 'test-file-read'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             hasResult: !!resultData,
             readSuccess: resultData?.success || false,
             content: resultData?.content || null,
             path: resultData?.path || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -201,25 +199,24 @@ module.exports = {
 
   'Should test file_exists tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const existingResult = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'file_exists',
-              arguments: {
-                path: 'test_mcp_write.txt'
-              }
-            },
-            id: 'test-exists-1'
-          });
-
-          const nonExistingResult = await aiPlugin.remixMCPServer.handleMessage({
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'file_exists',
+            arguments: {
+              path: 'test_mcp_write.txt'
+            }
+          },
+          id: 'test-exists-1'
+        }).then(function (existingResult) {
+          return aiPlugin.remixMCPServer.handleMessage({
             method: 'tools/call',
             params: {
               name: 'file_exists',
@@ -228,28 +225,28 @@ module.exports = {
               }
             },
             id: 'test-exists-2'
+          }).then(function (nonExistingResult) {
+            let existingData = null;
+            let nonExistingData = null;
+
+            if (!existingResult.error && existingResult.result?.content?.[0]?.text) {
+              existingData = JSON.parse(existingResult.result.content[0].text);
+            }
+
+            if (!nonExistingResult.error && nonExistingResult.result?.content?.[0]?.text) {
+              nonExistingData = JSON.parse(nonExistingResult.result.content[0].text);
+            }
+
+            done({
+              existingFileSuccess: !existingResult.error,
+              existingFileExists: existingData?.exists || false,
+              nonExistingFileSuccess: !nonExistingResult.error,
+              nonExistingFileExists: nonExistingData?.exists || false
+            });
           });
-
-          let existingData = null;
-          let nonExistingData = null;
-
-          if (!existingResult.error && existingResult.result?.content?.[0]?.text) {
-            existingData = JSON.parse(existingResult.result.content[0].text);
-          }
-
-          if (!nonExistingResult.error && nonExistingResult.result?.content?.[0]?.text) {
-            nonExistingData = JSON.parse(nonExistingResult.result.content[0].text);
-          }
-
-          return {
-            existingFileSuccess: !existingResult.error,
-            existingFileExists: existingData?.exists || false,
-            nonExistingFileSuccess: !nonExistingResult.error,
-            nonExistingFileExists: nonExistingData?.exists || false
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -265,37 +262,36 @@ module.exports = {
 
   'Should test file_delete tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'file_delete',
-              arguments: {
-                path: 'test_mcp_write.txt'
-              }
-            },
-            id: 'test-file-delete'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'file_delete',
+            arguments: {
+              path: 'test_mcp_write.txt'
+            }
+          },
+          id: 'test-file-delete'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             deleteSuccess: resultData?.success || false,
             path: resultData?.path || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -309,39 +305,38 @@ module.exports = {
 
   'Should test directory_list tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'directory_list',
-              arguments: {
-                path: '',
-                recursive: false
-              }
-            },
-            id: 'test-dir-list'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'directory_list',
+            arguments: {
+              path: '',
+              recursive: false
+            }
+          },
+          id: 'test-dir-list'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             hasFiles: !!resultData?.files,
             fileCount: resultData?.files?.length || 0,
             listSuccess: resultData?.success || false
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -358,38 +353,37 @@ module.exports = {
    */
   'Should test get_compiler_config tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'get_compiler_config',
-              arguments: {}
-            },
-            id: 'test-get-config'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'get_compiler_config',
+            arguments: {}
+          },
+          id: 'test-get-config'
+        }).then(function (result) {
           let configData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             configData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             hasConfig: !!configData?.config,
             configSuccess: configData?.success || false,
             version: configData?.config?.version || null,
             optimize: configData?.config?.optimize,
             runs: configData?.config?.runs || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -404,42 +398,41 @@ module.exports = {
 
   'Should test set_compiler_config tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'set_compiler_config',
-              arguments: {
-                version: '0.8.20',
-                optimize: true,
-                runs: 200,
-                evmVersion: 'london',
-                language: 'Solidity'
-              }
-            },
-            id: 'test-set-config'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'set_compiler_config',
+            arguments: {
+              version: '0.8.20',
+              optimize: true,
+              runs: 200,
+              evmVersion: 'london',
+              language: 'Solidity'
+            }
+          },
+          id: 'test-set-config'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             setSuccess: resultData?.success || false,
             hasConfig: !!resultData?.config,
             version: resultData?.config?.version || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -456,43 +449,42 @@ module.exports = {
     browser
       .addFile('contracts/MCPToolTest.sol', { content: testContract })
       .pause(1000)
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'solidity_compile',
-              arguments: {
-                file: 'contracts/MCPToolTest.sol',
-                version: '0.8.20',
-                optimize: true,
-                runs: 200
-              }
-            },
-            id: 'test-compile'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'solidity_compile',
+            arguments: {
+              file: 'contracts/MCPToolTest.sol',
+              version: '0.8.20',
+              optimize: true,
+              runs: 200
+            }
+          },
+          id: 'test-compile'
+        }).then(function (result) {
           let compileData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             compileData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             compileSuccess: compileData?.success || false,
             hasContracts: !!compileData?.contracts,
             hasErrors: !!compileData?.errors,
             contractCount: compileData?.contracts ? Object.keys(compileData.contracts).length : 0,
             errorCount: compileData?.errors?.length || 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -506,36 +498,35 @@ module.exports = {
 
   'Should test get_compilation_result tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'get_compilation_result',
-              arguments: {}
-            },
-            id: 'test-get-result'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'get_compilation_result',
+            arguments: {}
+          },
+          id: 'test-get-result'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             hasContracts: !!resultData?.contracts,
             compileSuccess: resultData?.success,
             contractCount: resultData?.contracts ? Object.keys(resultData.contracts).length : 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -552,30 +543,29 @@ module.exports = {
    */
   'Should test get_user_accounts tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'get_user_accounts',
-              arguments: {
-                includeBalances: true
-              }
-            },
-            id: 'test-accounts'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'get_user_accounts',
+            arguments: {
+              includeBalances: true
+            }
+          },
+          id: 'test-accounts'
+        }).then(function (result) {
           let accountsData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             accountsData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             getSuccess: accountsData?.success || false,
             hasAccounts: !!accountsData?.accounts,
@@ -583,10 +573,10 @@ module.exports = {
             hasSelectedAccount: !!accountsData?.selectedAccount,
             hasEnvironment: !!accountsData?.environment,
             firstAccountHasBalance: accountsData?.accounts?.[0]?.balance !== undefined
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -602,38 +592,37 @@ module.exports = {
 
   'Should test get_current_environment tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'get_current_environment',
-              arguments: {}
-            },
-            id: 'test-environment'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'get_current_environment',
+            arguments: {}
+          },
+          id: 'test-environment'
+        }).then(function (result) {
           let envData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             envData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             getSuccess: envData?.success || false,
             hasEnvironment: !!envData?.environment,
             hasProvider: !!envData?.environment?.provider,
             hasNetwork: !!envData?.environment?.network,
             hasAccounts: !!envData?.environment?.accounts
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -647,33 +636,32 @@ module.exports = {
 
   'Should test deploy_contract tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'deploy_contract',
-              arguments: {
-                contractName: 'MCPToolTest',
-                file: 'contracts/MCPToolTest.sol',
-                constructorArgs: ['100'],
-                value: '0'
-              }
-            },
-            id: 'test-deploy'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'deploy_contract',
+            arguments: {
+              contractName: 'MCPToolTest',
+              file: 'contracts/MCPToolTest.sol',
+              constructorArgs: ['100'],
+              value: '0'
+            }
+          },
+          id: 'test-deploy'
+        }).then(function (result) {
           let deployData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             deployData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             deploySuccess: deployData?.success || false,
             hasTransactionHash: !!deployData?.transactionHash,
@@ -681,10 +669,10 @@ module.exports = {
             hasGasUsed: deployData?.gasUsed !== undefined,
             contractAddress: deployData?.contractAddress || null,
             errorMessage: result.error?.message || deployData?.error || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -702,20 +690,19 @@ module.exports = {
 
   'Should test call_contract tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          // First get deployed contracts to find an address
-          const deployedResult = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'resources/read',
-            params: { uri: 'deployment://active' },
-            id: 'test-get-deployed'
-          });
-
+        // First get deployed contracts to find an address
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'deployment://active' },
+          id: 'test-get-deployed'
+        }).then(function (deployedResult) {
           let deployedData = null;
           if (deployedResult.result?.text) {
             deployedData = JSON.parse(deployedResult.result.text);
@@ -723,13 +710,14 @@ module.exports = {
 
           const contracts = deployedData?.contracts || [];
           if (contracts.length === 0) {
-            return { skipped: true, reason: 'No deployed contracts available' };
+            done({ skipped: true, reason: 'No deployed contracts available' });
+            return;
           }
 
           const testContract = contracts[0];
 
           // Call the contract
-          const result = await aiPlugin.remixMCPServer.handleMessage({
+          return aiPlugin.remixMCPServer.handleMessage({
             method: 'tools/call',
             params: {
               name: 'call_contract',
@@ -742,23 +730,23 @@ module.exports = {
               }
             },
             id: 'test-call'
+          }).then(function (result) {
+            let callData = null;
+            if (!result.error && result.result?.content?.[0]?.text) {
+              callData = JSON.parse(result.result.content[0].text);
+            }
+
+            done({
+              success: !result.error,
+              callSuccess: callData?.success || false,
+              hasResult: callData?.result !== undefined,
+              result: callData?.result || null,
+              errorMessage: result.error?.message || null
+            });
           });
-
-          let callData = null;
-          if (!result.error && result.result?.content?.[0]?.text) {
-            callData = JSON.parse(result.result.content[0].text);
-          }
-
-          return {
-            success: !result.error,
-            callSuccess: callData?.success || false,
-            hasResult: callData?.result !== undefined,
-            result: callData?.result || null,
-            errorMessage: result.error?.message || null
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -775,36 +763,35 @@ module.exports = {
 
   'Should test get_deployed_contracts tool': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'get_deployed_contracts',
-              arguments: {}
-            },
-            id: 'test-get-deployed'
-          });
-
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'get_deployed_contracts',
+            arguments: {}
+          },
+          id: 'test-get-deployed'
+        }).then(function (result) {
           let resultData = null;
           if (!result.error && result.result?.content?.[0]?.text) {
             resultData = JSON.parse(result.result.content[0].text);
           }
 
-          return {
+          done({
             success: !result.error,
             getSuccess: resultData?.success || false,
             hasContracts: !!resultData?.contracts,
             contractCount: resultData?.count || 0
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -821,75 +808,79 @@ module.exports = {
    */
   'Should validate tool arguments': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const tests = [
-            // Missing required argument
-            {
-              name: 'file_read',
-              arguments: {},
-              expectedError: true
+        const tests = [
+          // Missing required argument
+          {
+            name: 'file_read',
+            arguments: {},
+            expectedError: true
+          },
+          // Invalid type
+          {
+            name: 'solidity_compile',
+            arguments: {
+              file: 'test.sol',
+              runs: 'invalid' // Should be number
             },
-            // Invalid type
-            {
-              name: 'solidity_compile',
-              arguments: {
-                file: 'test.sol',
-                runs: 'invalid' // Should be number
-              },
-              expectedError: true
+            expectedError: true
+          },
+          // Invalid value range
+          {
+            name: 'solidity_compile',
+            arguments: {
+              file: 'test.sol',
+              runs: 99999 // Too high
             },
-            // Invalid value range
-            {
-              name: 'solidity_compile',
-              arguments: {
-                file: 'test.sol',
-                runs: 99999 // Too high
-              },
-              expectedError: true
-            }
-          ];
+            expectedError: true
+          }
+        ];
 
-          const results = [];
+        const results = [];
 
-          for (const test of tests) {
-            try {
-              const result = await aiPlugin.remixMCPServer.handleMessage({
-                method: 'tools/call',
-                params: test,
-                id: `test-validation-${test.name}`
-              });
-
-              results.push({
-                tool: test.name,
-                hasError: !!result.error || result.result?.isError,
-                errorMessage: result.error?.message || result.result?.content?.[0]?.text || null,
-                expectedError: test.expectedError
-              });
-            } catch (error) {
-              results.push({
-                tool: test.name,
-                hasError: true,
-                errorMessage: error.message,
-                expectedError: test.expectedError
-              });
-            }
+        // Convert loop to sequential promise chain
+        function processTest(index) {
+          if (index >= tests.length) {
+            done({
+              totalTests: tests.length,
+              results: results,
+              allValidated: results.every(function (r) { return r.hasError === r.expectedError; }),
+              systemStable: true
+            });
+            return;
           }
 
-          return {
-            totalTests: tests.length,
-            results,
-            allValidated: results.every(r => r.hasError === r.expectedError),
-            systemStable: true
-          };
-        } catch (error) {
-          return { error: error.message };
+          const test = tests[index];
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'tools/call',
+            params: test,
+            id: 'test-validation-' + test.name
+          }).then(function (result) {
+            results.push({
+              tool: test.name,
+              hasError: !!result.error || result.result?.isError,
+              errorMessage: result.error?.message || result.result?.content?.[0]?.text || null,
+              expectedError: test.expectedError
+            });
+            processTest(index + 1);
+          }).catch(function (error) {
+            results.push({
+              tool: test.name,
+              hasError: true,
+              errorMessage: error.message,
+              expectedError: test.expectedError
+            });
+            processTest(index + 1);
+          });
         }
+
+        processTest(0);
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -904,31 +895,30 @@ module.exports = {
 
   'Should handle non-existent tools gracefully': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const result = await aiPlugin.remixMCPServer.handleMessage({
-            method: 'tools/call',
-            params: {
-              name: 'non_existent_tool_12345',
-              arguments: {}
-            },
-            id: 'test-nonexistent'
-          });
-
-          return {
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'tools/call',
+          params: {
+            name: 'non_existent_tool_12345',
+            arguments: {}
+          },
+          id: 'test-nonexistent'
+        }).then(function (result) {
+          done({
             hasError: !!result.error,
             errorCode: result.error?.code || null,
             errorMessage: result.error?.message || null,
             systemStable: true
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -945,55 +935,55 @@ module.exports = {
    */
   'Should handle concurrent tool execution': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
-          return { error: 'RemixMCPServer not available' };
+          done({ error: 'RemixMCPServer not available' });
+          return;
         }
 
-        try {
-          const startTime = Date.now();
+        const startTime = Date.now();
 
-          // Execute multiple tools concurrently
-          const promises = [
-            aiPlugin.remixMCPServer.handleMessage({
-              method: 'tools/call',
-              params: { name: 'get_compiler_config', arguments: {} },
-              id: 'concurrent-1'
-            }),
-            aiPlugin.remixMCPServer.handleMessage({
-              method: 'tools/call',
-              params: { name: 'get_user_accounts', arguments: {} },
-              id: 'concurrent-2'
-            }),
-            aiPlugin.remixMCPServer.handleMessage({
-              method: 'tools/call',
-              params: { name: 'get_current_environment', arguments: {} },
-              id: 'concurrent-3'
-            }),
-            aiPlugin.remixMCPServer.handleMessage({
-              method: 'tools/call',
-              params: { name: 'get_compilation_result', arguments: {} },
-              id: 'concurrent-4'
-            })
-          ];
+        // Execute multiple tools concurrently
+        const promises = [
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'tools/call',
+            params: { name: 'get_compiler_config', arguments: {} },
+            id: 'concurrent-1'
+          }),
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'tools/call',
+            params: { name: 'get_user_accounts', arguments: {} },
+            id: 'concurrent-2'
+          }),
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'tools/call',
+            params: { name: 'get_current_environment', arguments: {} },
+            id: 'concurrent-3'
+          }),
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'tools/call',
+            params: { name: 'get_compilation_result', arguments: {} },
+            id: 'concurrent-4'
+          })
+        ];
 
-          const results = await Promise.all(promises);
+        Promise.all(promises).then(function (results) {
           const endTime = Date.now();
 
-          const allSucceeded = results.every(r => !r.error);
+          const allSucceeded = results.every(function (r) { return !r.error; });
           const executionTime = endTime - startTime;
 
-          return {
+          done({
             totalTools: promises.length,
-            allSucceeded,
-            executionTime,
+            allSucceeded: allSucceeded,
+            executionTime: executionTime,
             averageTime: executionTime / promises.length,
             performanceAcceptable: executionTime < 5000 // 5 seconds for 4 tools
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {

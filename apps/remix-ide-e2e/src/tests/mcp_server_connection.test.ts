@@ -37,28 +37,27 @@ module.exports = {
 
   'Should connect to MCP default servers': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.mcpInferencer) {
-          return { error: 'MCP inferencer not available' };
+          done({ error: 'MCP inferencer not available' });
+          return;
         }
 
-        try {
-          // Connect to all default servers - default servers are loaded at startup, see loadMCPServersFromSettings
-          await aiPlugin.mcpInferencer.connectAllServers();
-
+        // Connect to all default servers - default servers are loaded at startup, see loadMCPServersFromSettings
+        aiPlugin.mcpInferencer.connectAllServers().then(function () {
           const connectedServers = aiPlugin.mcpInferencer.getConnectedServers();
           const connectionStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
 
-          return {
-            connectedServers,
-            connectionStatuses,
+          done({
+            connectedServers: connectedServers,
+            connectionStatuses: connectionStatuses,
             hasRemixMcpServer: connectedServers.includes('Remix IDE Server'),
             totalConnected: connectedServers.length
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {
@@ -72,54 +71,61 @@ module.exports = {
 
   'Should handle server disconnection and reconnection': function (browser: NightwatchBrowser) {
     browser
-      .execute(async function () {
+      .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.mcpInferencer) {
-          return { error: 'MCP inferencer not available' };
+          done({ error: 'MCP inferencer not available' });
+          return;
         }
 
-        try {
-          const initialConnectionStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
-          const initialConnectedServers = aiPlugin.mcpInferencer.getConnectedServers();
+        const initialConnectionStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
+        const initialConnectedServers = aiPlugin.mcpInferencer.getConnectedServers();
 
-          await aiPlugin.mcpInferencer.disconnectAllServers();
+        aiPlugin.mcpInferencer.disconnectAllServers().then(function () {
           const disconnectedServers = aiPlugin.mcpInferencer.getConnectedServers();
           const disconnectedStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
 
-          await aiPlugin.mcpInferencer.connectAllServers();
-          const reconnectedServers = aiPlugin.mcpInferencer.getConnectedServers();
-          const reconnectedStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
+          return aiPlugin.mcpInferencer.connectAllServers().then(function () {
+            const reconnectedServers = aiPlugin.mcpInferencer.getConnectedServers();
+            const reconnectedStatuses = aiPlugin.mcpInferencer.getConnectionStatuses();
 
-          return {
-            initialConnectionStatuses: initialConnectionStatuses.map((s: any) => ({
-              serverName: s.serverName,
-              status: s.status,
-              connected: s.status === 'connected'
-            })),
-            disconnectedStatuses: disconnectedStatuses.map((s: any) => ({
-              serverName: s.serverName,
-              status: s.status,
-              connected: s.status === 'connected'
-            })),
-            reconnectedStatuses: reconnectedStatuses.map((s: any) => ({
-              serverName: s.serverName,
-              status: s.status,
-              connected: s.status === 'connected'
-            })),
-            initialConnectedCount: initialConnectedServers.length,
-            disconnectedCount: disconnectedServers.length,
-            reconnectedCount: reconnectedServers.length,
-            reconnectionSuccessful: reconnectedServers.length > 0, // at leat the remix mcp server
-            serverStatusSummary: {
-              totalServers: initialConnectionStatuses.length,
-              initiallyConnected: initialConnectionStatuses.filter((s: any) => s.status === 'connected').length,
-              afterDisconnect: disconnectedStatuses.filter((s: any) => s.status === 'disconnected').length,
-              afterReconnect: reconnectedStatuses.filter((s: any) => s.status === 'connected').length
-            }
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
+            done({
+              initialConnectionStatuses: initialConnectionStatuses.map(function (s: any) {
+                return {
+                  serverName: s.serverName,
+                  status: s.status,
+                  connected: s.status === 'connected'
+                };
+              }),
+              disconnectedStatuses: disconnectedStatuses.map(function (s: any) {
+                return {
+                  serverName: s.serverName,
+                  status: s.status,
+                  connected: s.status === 'connected'
+                };
+              }),
+              reconnectedStatuses: reconnectedStatuses.map(function (s: any) {
+                return {
+                  serverName: s.serverName,
+                  status: s.status,
+                  connected: s.status === 'connected'
+                };
+              }),
+              initialConnectedCount: initialConnectedServers.length,
+              disconnectedCount: disconnectedServers.length,
+              reconnectedCount: reconnectedServers.length,
+              reconnectionSuccessful: reconnectedServers.length > 0, // at leat the remix mcp server
+              serverStatusSummary: {
+                totalServers: initialConnectionStatuses.length,
+                initiallyConnected: initialConnectionStatuses.filter(function (s: any) { return s.status === 'connected'; }).length,
+                afterDisconnect: disconnectedStatuses.filter(function (s: any) { return s.status === 'disconnected'; }).length,
+                afterReconnect: reconnectedStatuses.filter(function (s: any) { return s.status === 'connected'; }).length
+              }
+            });
+          });
+        }).catch(function (error) {
+          done({ error: error.message });
+        });
       }, [], function (result) {
         const data = result.value as any;
         if (data.error) {

@@ -457,7 +457,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register debugging tools
       const tutorialTools = createTutorialsTools();
       this._tools.registerBatch(tutorialTools);
-      console.log(`Registered ${tutorialTools.length} code analysis tools`, 'info');
 
       const totalTools = this._tools.list().length;
 
@@ -485,10 +484,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const deploymentProvider = new DeploymentResourceProvider();
       this._resources.register(deploymentProvider);
 
-      // Register deployment resource provider
+      // Register turorial resource provider
       const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
       this._resources.register(tutorialsProvider);
-      console.log(`Registered tutorials resource provider: ${tutorialsProvider.name}`, 'info');
 
       const totalProviders = this._resources.list().length;
 
