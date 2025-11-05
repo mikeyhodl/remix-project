@@ -31,11 +31,13 @@ import { createFileManagementTools } from './handlers/FileManagementHandler';
 import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
+import { createTutorialsTools } from './handlers/TutorialsHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 import { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
+import { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 
 /**
  * Main Remix MCP Server implementation
@@ -452,6 +454,11 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const codeAnalysisTools = createCodeAnalysisTools();
       this._tools.registerBatch(codeAnalysisTools);
 
+      // Register debugging tools
+      const tutorialTools = createTutorialsTools();
+      this._tools.registerBatch(tutorialTools);
+      console.log(`Registered ${tutorialTools.length} code analysis tools`, 'info');
+
       const totalTools = this._tools.list().length;
 
     } catch (error) {
@@ -477,6 +484,11 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register deployment resource provider
       const deploymentProvider = new DeploymentResourceProvider();
       this._resources.register(deploymentProvider);
+
+      // Register deployment resource provider
+      const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
+      this._resources.register(tutorialsProvider);
+      console.log(`Registered tutorials resource provider: ${tutorialsProvider.name}`, 'info');
 
       const totalProviders = this._resources.list().length;
 

@@ -24,6 +24,7 @@ export enum ResourceCategory {
   PROJECT_FILES = 'project_files',
   CODE = 'CODE',
   COMPILATION_RESULTS = 'compilation_results',
+  TUTORIALS = 'tutorials',
   DEPLOYMENT_DATA = 'deployment_data',
   DEBUG_SESSIONS = 'debug_sessions',
   ANALYSIS_REPORTS = 'analysis_reports',

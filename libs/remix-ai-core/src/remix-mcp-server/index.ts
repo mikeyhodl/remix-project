@@ -22,6 +22,7 @@ export { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 export { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 export { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
+export { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 
 // Middleware
 export {
