@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react'
 import DropdownMenu, { MenuItem } from './DropdownMenu'
 import { AppModal } from '@remix-ui/app'
-import { FormattedMessage, useIntl } from 'react-intl'
-import { handleSolidityScan } from '@remix-project/core-plugin'
-import { SolScanTable } from '@remix-ui/helper'
+import { FormattedMessage } from 'react-intl'
+import { handleSolidityScan } from '@remix-ui/helper'
 import { TrackingContext } from '@remix-ide/tracking'
 
 import { ArrowRightBig, IpfsLogo, SwarmLogo, SettingsLogo, SolidityScanLogo, AnalysisLogo, TsLogo } from '@remix-ui/tabs'
@@ -21,8 +20,6 @@ interface CompileDropdownProps {
 export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugin, disabled, onOpen, onRequestCompileAndPublish, compiledFileName, setCompileState }) => {
   const { trackMatomoEvent } = useContext(TrackingContext)
   const [scriptFiles, setScriptFiles] = useState<string[]>([])
-
-  const intl = useIntl()
 
   const compileThen = async (nextAction: () => void, actionName: string) => {
     setCompileState('compiling')
@@ -159,12 +156,7 @@ export const CompileDropdown: React.FC<CompileDropdownProps> = ({ tabPath, plugi
     await compileThen(async () => {
       const firstSlashIndex = compiledFileName.indexOf('/')
       const finalPath = firstSlashIndex > 0 ? compiledFileName.substring(firstSlashIndex + 1) : compiledFileName
-      await handleSolidityScan(
-        plugin,
-        finalPath,
-        intl.formatMessage({ id: 'solidity.solScan.errModalTitle' }),
-        (scanReport, fileName) => <SolScanTable scanReport={scanReport} fileName={fileName} />
-      )
+      await handleSolidityScan(plugin, finalPath)
     }, 'Run Solidity Scan')
   }
 

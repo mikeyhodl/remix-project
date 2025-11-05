@@ -471,7 +471,7 @@ class Provider {
           resolve(response.result? response.result : response)
         }
       }).catch((err) => {
-        reject(err)
+        reject(err.error ? err.error : err)
       })
     })
   }

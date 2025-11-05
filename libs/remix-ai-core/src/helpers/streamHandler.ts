@@ -123,7 +123,6 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
 
           // Check if this is the finish reason for tool calls
           if (json.choices?.[0]?.finish_reason === "tool_calls" && tool_callback && toolCalls.size > 0) {
-            console.log('OpenAI tool calls completed, calling callback with accumulated tools:', Array.from(toolCalls.values()))
             const response = await tool_callback(Array.from(toolCalls.values()))
             cb("\n\n");
             HandleOpenAIResponse(response, cb, done_cb)
@@ -166,7 +165,6 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
 }
 
 export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
-  console.log('handling stream response', aiResponse)
   // Handle both IAIStreamResponse format and plain response for backward compatibility
   const streamResponse = aiResponse?.streamResponse || aiResponse
   const tool_callback = aiResponse?.callback
@@ -202,21 +200,18 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
           const json = JSON.parse(jsonStr);
           threadId = json?.id || threadId;
           if (json.choices[0].delta.tool_calls && tool_callback){
-            console.log('calling tools in stream:', json.choices[0].delta.tool_calls)
             const response = await tool_callback(json.choices[0].delta.tool_calls)
             cb("\n\n");
             HandleMistralAIResponse(response, cb, done_cb)
-
           } else if (json.choices[0].delta.content){
             const content = json.choices[0].delta.content
             cb(content);
             resultText += content;
           } else {
-            console.log('mistralai stream data not processed!', json.choices[0])
             continue
           }
         } catch (e) {
-          console.error("⚠️ MistralAI Stream parse error:", e);
+          console.error("MistralAI Stream parse error:", e);
         }
       }
     }
@@ -267,7 +262,6 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
               name: json.content_block.name,
               input: ""
             });
-            console.log('Anthropic tool use started:', json.content_block)
           }
 
           // Accumulate tool input deltas
@@ -275,13 +269,11 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             if (currentBlockIndex >= 0 && toolUseBlocks.has(json.index)) {
               const block = toolUseBlocks.get(json.index);
               block.input += json.delta.partial_json;
-              console.log('Anthropic tool input delta accumulated')
             }
           }
 
           // Handle tool calls when message stops for tool use
           if (json.type === "message_delta" && json.delta?.stop_reason === "tool_use" && tool_callback) {
-            console.log('Anthropic message stopped for tool use')
 
             // Convert accumulated tool use blocks to tool calls format
             const toolCalls = Array.from(toolUseBlocks.values()).map(block => ({
@@ -293,7 +285,6 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             }));
 
             if (toolCalls.length > 0) {
-              console.log('calling tools in stream:', toolCalls)
               const response = await tool_callback(toolCalls)
               cb("\n\n");
               HandleAnthropicResponse(response, cb, done_cb)
@@ -307,7 +298,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             resultText += json.delta.text;
           }
         } catch (e) {
-          console.error("⚠️ Anthropic Stream parse error:", e);
+          console.error("Anthropic Stream parse error:", e);
         }
       }
     }
@@ -345,7 +336,6 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
 
           // Handle tool calls in Ollama format
           if (parsed.message?.tool_calls && tool_callback) {
-            console.log('calling tools in stream:', parsed.message.tool_calls)
             const response = await tool_callback(parsed.message.tool_calls)
             cb("\n\n");
             HandleOllamaResponse(response, cb, done_cb, reasoning_cb)

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ICompletions, IGeneration, IParams, AIRequestType, IAIStreamResponse } from "../../types/types";
 import { GenerationParams, CompletionParams, InsertionParams } from "../../types/models";
 import { RemoteInferencer } from "../remote/remoteInference";
@@ -17,6 +18,22 @@ import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
 import { endpointUrls } from "@remix-endpoints-helper"
+import { text } from "stream/consumers";
+
+// Helper function to track events using MatomoManager instance
+function trackMatomoEvent(category: string, action: string, name?: string) {
+  try {
+    if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
+      const matomoInstance = (window as any)._matomoManagerInstance;
+      if (typeof matomoInstance.trackEvent === 'function') {
+        matomoInstance.trackEvent(category, action, name);
+      }
+    }
+  } catch (error) {
+    // Silent fail for tracking
+    console.debug('Matomo tracking failed:', error);
+  }
+}
 
 export class MCPClient {
   private server: IMCPServer;
@@ -30,6 +47,9 @@ export class MCPClient {
   private sseEventSource?: EventSource; // For SSE transport
   private wsConnection?: WebSocket; // For WebSocket transport
   private httpAbortController?: AbortController; // For HTTP request cancellation
+  private resourceListCache?: { resources: IMCPResource[], timestamp: number }; // Cache for HTTP servers
+  private toolListCache?: { tools: IMCPTool[], timestamp: number }; // Cache for HTTP servers
+  private readonly CACHE_TTL = 120000; // 120 seconds cache TTL
 
   constructor(server: IMCPServer, remixMCPServer?: any) {
     this.server = server;
@@ -39,8 +59,8 @@ export class MCPClient {
 
   async connect(): Promise<IMCPInitializeResult> {
     try {
-      console.log(`[MCP] Connecting to server: ${this.server.name} (transport: ${this.server.transport})`);
       this.eventEmitter.emit('connecting', this.server.name);
+      trackMatomoEvent('ai', 'mcp_connect_attempt', `${this.server.name}|${this.server.transport}`);
 
       if (this.server.transport === 'internal') {
         return await this.connectInternal();
@@ -57,8 +77,8 @@ export class MCPClient {
       }
 
     } catch (error) {
-      console.error(`[MCP] Failed to connect to ${this.server.name}:`, error);
       this.eventEmitter.emit('error', this.server.name, error);
+      trackMatomoEvent('ai', 'mcp_connect_failed', `${this.server.name}|${error.message}`);
       throw error;
     }
   }
@@ -68,13 +88,11 @@ export class MCPClient {
       throw new Error(`Internal RemixMCPServer not available for ${this.server.name}`);
     }
 
-    console.log(`[MCP] Connecting to internal RemixMCPServer: ${this.server.name}`);
     const result = await this.remixMCPServer.initialize();
     this.connected = true;
     this.capabilities = result.capabilities;
-
-    console.log(`[MCP] Successfully connected to internal server ${this.server.name}`);
     this.eventEmitter.emit('connected', this.server.name, result);
+    trackMatomoEvent('ai', 'mcp_connect_success', `${this.server.name}|internal`);
     return result;
   }
 
@@ -83,7 +101,6 @@ export class MCPClient {
       throw new Error(`HTTP URL not specified for ${this.server.name}`);
     }
 
-    console.log(`[MCP] Connecting to HTTP MCP server at ${this.server.url}`);
     this.httpAbortController = new AbortController();
 
     // Send initialize request
@@ -112,9 +129,8 @@ export class MCPClient {
     this.connected = true;
     this.capabilities = result.capabilities;
 
-    console.log(`[MCP] Successfully connected to HTTP server ${this.server.name}`);
     this.eventEmitter.emit('connected', this.server.name, result);
-    console.log(`[MCP] Successfully emitted event connected`);
+    trackMatomoEvent('ai', 'mcp_connect_success', `${this.server.name}|http`);
     return result;
   }
 
@@ -122,8 +138,6 @@ export class MCPClient {
     if (!this.server.url) {
       throw new Error(`SSE URL not specified for ${this.server.name}`);
     }
-
-    console.log(`[MCP] Connecting to SSE MCP server at ${this.server.url}`);
 
     return new Promise((resolve, reject) => {
       try {
@@ -140,7 +154,6 @@ export class MCPClient {
               this.capabilities = result.capabilities;
               initialized = true;
 
-              console.log(`[MCP] Successfully connected to SSE server ${this.server.name}`);
               this.eventEmitter.emit('connected', this.server.name, result);
               resolve(result);
             } else {
@@ -153,7 +166,6 @@ export class MCPClient {
         };
 
         this.sseEventSource.onerror = (error) => {
-          console.error(`[MCP] SSE connection error:`, error);
           if (!initialized) {
             reject(new Error(`SSE connection failed for ${this.server.name}`));
           }
@@ -173,8 +185,6 @@ export class MCPClient {
     if (!this.server.url) {
       throw new Error(`WebSocket URL not specified for ${this.server.name}`);
     }
-
-    console.log(`[MCP] Connecting to WebSocket MCP server at ${this.server.url}`);
 
     return new Promise((resolve, reject) => {
       try {
@@ -215,7 +225,6 @@ export class MCPClient {
               this.capabilities = result.capabilities;
               initialized = true;
 
-              console.log(`[MCP] Successfully connected to WebSocket server ${this.server.name}`);
               this.eventEmitter.emit('connected', this.server.name, result);
               resolve(result);
             } else {
@@ -228,7 +237,6 @@ export class MCPClient {
         };
 
         this.wsConnection.onerror = (error) => {
-          console.error(`[MCP] WebSocket error:`, error);
           if (!initialized) {
             reject(new Error(`WebSocket connection failed for ${this.server.name}`));
           }
@@ -236,7 +244,6 @@ export class MCPClient {
         };
 
         this.wsConnection.onclose = () => {
-          console.log(`[MCP] WebSocket connection closed for ${this.server.name}`);
           this.connected = false;
           this.eventEmitter.emit('disconnected', this.server.name);
         };
@@ -248,7 +255,8 @@ export class MCPClient {
   }
 
   private async sendHTTPRequest(request: any): Promise<any> {
-    const response = await fetch(endpointUrls.mcpCorsProxy + this.server.url, {
+    const contractType = new URL(this.server.url).pathname.split('/')[2]
+    const response = await fetch(endpointUrls.mcpCorsProxy + '/' + contractType, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -260,7 +268,6 @@ export class MCPClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[MCP] HTTP error response:`, errorText);
       throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
@@ -285,8 +292,6 @@ export class MCPClient {
 
     // Use commonCorsProxy to bypass CORS restrictions
     // The proxy expects the target URL in the 'proxy' header
-    console.log(`[MCP] Using CORS proxy for SSE init target: ${initUrl}`);
-
     await fetch(endpointUrls.mcpCorsProxy + this.server.url, {
       method: 'POST',
       headers: {
@@ -313,29 +318,29 @@ export class MCPClient {
   }
 
   private handleSSEMessage(message: any): void {
-    console.log(`[MCP] SSE message received:`, message);
     // Handle SSE notifications (resource updates, etc.)
     if (message.method === 'notifications/resources/list_changed') {
+      this.resourceListCache = undefined;
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
+      this.toolListCache = undefined;
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
 
   private handleWebSocketMessage(message: any): void {
-    console.log(`[MCP] WebSocket message received:`, message);
     // Handle WebSocket responses and notifications
     if (message.method === 'notifications/resources/list_changed') {
+      this.resourceListCache = undefined;
       this.eventEmitter.emit('resourcesChanged', this.server.name);
     } else if (message.method === 'notifications/tools/list_changed') {
+      this.toolListCache = undefined;
       this.eventEmitter.emit('toolsChanged', this.server.name);
     }
   }
 
   async disconnect(): Promise<void> {
     if (this.connected) {
-      console.log(`[MCP] Disconnecting from server: ${this.server.name}`);
-
       // Handle different transport types
       if (this.server.transport === 'internal' && this.remixMCPServer) {
         await this.remixMCPServer.stop();
@@ -353,24 +358,21 @@ export class MCPClient {
       this.connected = false;
       this.resources = [];
       this.tools = [];
+      this.resourceListCache = undefined; // Clear cache on disconnect
+      this.toolListCache = undefined; // Clear cache on disconnect
       this.eventEmitter.emit('disconnected', this.server.name);
-      console.log(`[MCP] Disconnected from ${this.server.name}`);
     }
   }
 
   async listResources(): Promise<IMCPResource[]> {
     if (!this.connected) {
-      console.error(`[MCP] Cannot list resources - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
     // Check if server supports resources capability
     if (!this.capabilities?.resources) {
-      console.log(`[MCP] Server ${this.server.name} does not support resources capability`);
       return [];
     }
-
-    console.log(`[MCP] Listing resources from ${this.server.name}...`);
 
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
@@ -384,10 +386,17 @@ export class MCPClient {
       }
 
       this.resources = response.result.resources || [];
-      console.log(`[MCP] Found ${this.resources.length} resources from internal server`);
       return this.resources;
 
     } else if (this.server.transport === 'http') {
+      // Check cache for HTTP servers
+      const now = Date.now();
+      if (this.resourceListCache && (now - this.resourceListCache.timestamp) < this.CACHE_TTL) {
+        console.log(`[MCP] Using cached resource list for ${this.server.name}`);
+        return this.resourceListCache.resources;
+      }
+
+      // Cache miss or expired, fetch from server
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
         id: this.getNextRequestId(),
@@ -400,7 +409,13 @@ export class MCPClient {
       }
 
       this.resources = response.result.resources || [];
-      console.log(`[MCP] Found ${this.resources.length} resources from HTTP server`);
+
+      // Update cache
+      this.resourceListCache = {
+        resources: this.resources,
+        timestamp: now
+      };
+
       return this.resources;
 
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
@@ -416,7 +431,6 @@ export class MCPClient {
               reject(new Error(`Failed to list resources: ${response.error.message}`));
             } else {
               this.resources = response.result.resources || [];
-              console.log(`[MCP] Found ${this.resources.length} resources from WebSocket server`);
               resolve(this.resources);
             }
           }
@@ -438,11 +452,10 @@ export class MCPClient {
 
   async readResource(uri: string): Promise<IMCPResourceContent> {
     if (!this.connected) {
-      console.error(`[MCP] Cannot read resource - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
-    console.log(`[MCP] Reading resource: ${uri} from ${this.server.name}`);
+    trackMatomoEvent('ai', 'mcp_resource_read', `${this.server.name}|${uri}`);
 
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
@@ -455,9 +468,7 @@ export class MCPClient {
         throw new Error(`Failed to read resource: ${response.error.message}`);
       }
 
-      console.log(`[MCP] Resource read successfully from internal server`);
       return response.result;
-
     } else if (this.server.transport === 'http') {
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
@@ -470,9 +481,7 @@ export class MCPClient {
         throw new Error(`Failed to read resource: ${response.error.message}`);
       }
 
-      console.log(`[MCP] Resource read successfully from HTTP server`);
       return response.result;
-
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
       return new Promise((resolve, reject) => {
         const requestId = this.getNextRequestId();
@@ -485,7 +494,6 @@ export class MCPClient {
             if (response.error) {
               reject(new Error(`Failed to read resource: ${response.error.message}`));
             } else {
-              console.log(`[MCP] Resource read successfully from WebSocket server`);
               resolve(response.result);
             }
           }
@@ -507,17 +515,13 @@ export class MCPClient {
 
   async listTools(): Promise<IMCPTool[]> {
     if (!this.connected) {
-      console.error(`[MCP] Cannot list tools - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
     // Check if server supports tools capability
     if (!this.capabilities?.tools) {
-      console.log(`[MCP] Server ${this.server.name} does not support tools capability`);
       return [];
     }
-
-    console.log(`[MCP] Listing tools from ${this.server.name}...`);
 
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
@@ -531,10 +535,16 @@ export class MCPClient {
       }
 
       this.tools = response.result.tools || [];
-      console.log(`[MCP] Found ${this.tools.length} tools from ${this.server.name}`);
       return this.tools;
 
     } else if (this.server.transport === 'http') {
+      // Check cache for HTTP servers
+      const now = Date.now();
+      if (this.toolListCache && (now - this.toolListCache.timestamp) < this.CACHE_TTL) {
+        return this.toolListCache.tools;
+      }
+
+      // Cache miss or expired, fetch from server
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
         id: this.getNextRequestId(),
@@ -547,7 +557,13 @@ export class MCPClient {
       }
 
       this.tools = response.result.tools || [];
-      console.log(`[MCP] Found ${this.tools.length} tools from  ${this.server.name}`);
+
+      // Update cache
+      this.toolListCache = {
+        tools: this.tools,
+        timestamp: now
+      };
+
       return this.tools;
 
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
@@ -563,7 +579,6 @@ export class MCPClient {
               reject(new Error(`Failed to list tools: ${response.error.message}`));
             } else {
               this.tools = response.result.tools || [];
-              console.log(`[MCP] Found ${this.tools.length} tools from WebSocket server`);
               resolve(this.tools);
             }
           }
@@ -585,11 +600,10 @@ export class MCPClient {
 
   async callTool(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
     if (!this.connected) {
-      console.error(`[MCP] Cannot call tool - ${this.server.name} is not connected`);
       throw new Error(`MCP server ${this.server.name} is not connected`);
     }
 
-    console.log(`[MCP] Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
+    trackMatomoEvent('ai', 'mcp_tool_call', `${this.server.name}|${toolCall.name}`);
 
     if (this.server.transport === 'internal' && this.remixMCPServer) {
       const response = await this.remixMCPServer.handleMessage({
@@ -599,12 +613,11 @@ export class MCPClient {
       });
 
       if (response.error) {
+        trackMatomoEvent('ai', 'mcp_tool_call_failed', `${this.server.name}|${toolCall.name}|${response.error.message}`);
         throw new Error(`Failed to call tool: ${response.error.message}`);
       }
-
-      console.log(`[MCP] Tool ${toolCall.name} executed successfully on internal server`);
+      trackMatomoEvent('ai', 'mcp_tool_call_success', `${this.server.name}|${toolCall.name}`);
       return response.result;
-
     } else if (this.server.transport === 'http') {
       const response = await this.sendHTTPRequest({
         jsonrpc: '2.0',
@@ -617,9 +630,7 @@ export class MCPClient {
         throw new Error(`Failed to call tool: ${response.error.message}`);
       }
 
-      console.log(`[MCP] Tool ${toolCall.name} executed successfully on HTTP server`);
       return response.result;
-
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
       return new Promise((resolve, reject) => {
         const requestId = this.getNextRequestId();
@@ -632,7 +643,6 @@ export class MCPClient {
             if (response.error) {
               reject(new Error(`Failed to call tool: ${response.error.message}`));
             } else {
-              console.log(`[MCP] Tool ${toolCall.name} executed successfully on WebSocket server`);
               resolve(response.result);
             }
           }
@@ -686,6 +696,19 @@ export class MCPClient {
     return this.capabilities;
   }
 
+  clearResourceListCache(): void {
+    this.resourceListCache = undefined;
+  }
+
+  clearToolListCache(): void {
+    this.toolListCache = undefined;
+  }
+
+  clearAllCaches(): void {
+    this.resourceListCache = undefined;
+    this.toolListCache = undefined;
+  }
+
   private getNextRequestId(): number {
     return this.requestId++;
   }
@@ -703,6 +726,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private mcpClients: Map<string, MCPClient> = new Map();
   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
   private resourceCache: Map<string, IMCPResourceContent> = new Map();
+  private resourceListCache: Map<string, { resources: IMCPResource[], timestamp: number }> = new Map();
   private cacheTimeout: number = 5000;
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
@@ -712,15 +736,12 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any) {
     super(apiUrl, completionUrl);
     this.remixMCPServer = remixMCPServer;
-    console.log(`[MCP Inferencer] Initializing with ${servers.length} servers:`, servers.map(s => s.name));
     this.initializeMCPServers(servers);
   }
 
   private initializeMCPServers(servers: IMCPServer[]): void {
-    console.log(`[MCP Inferencer] Initializing MCP servers...`);
     for (const server of servers) {
       if (server.enabled !== false) {
-        console.log(`[MCP Inferencer] Setting up client for server: ${server.name}`);
         const client = new MCPClient(
           server,
           server.transport === 'internal' ? this.remixMCPServer : undefined
@@ -733,7 +754,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
         // Set up event listeners
         client.on('connected', (serverName: string, result: IMCPInitializeResult) => {
-          console.log(`[MCP Inferencer] Server connected: ${serverName}`);
           this.connectionStatuses.set(serverName, {
             status: 'connected',
             serverName,
@@ -743,7 +763,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         client.on('error', (serverName: string, error: Error) => {
-          console.error(`[MCP Inferencer] Server error: ${serverName}:`, error);
           this.connectionStatuses.set(serverName, {
             status: 'error',
             serverName,
@@ -754,7 +773,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         client.on('disconnected', (serverName: string) => {
-          console.log(`[MCP Inferencer] Server disconnected: ${serverName}`);
           this.connectionStatuses.set(serverName, {
             status: 'disconnected',
             serverName
@@ -766,7 +784,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   async connectAllServers(): Promise<void> {
-    console.log(`[MCP Inferencer] Connecting to all ${this.mcpClients.size} servers...`);
+    trackMatomoEvent('ai', 'mcp_connect_all_servers', `count:${this.mcpClients.size}`);
     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
       try {
         await client.connect();
@@ -776,14 +794,13 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     await Promise.allSettled(promises);
-    console.log(`[MCP Inferencer] Connection attempts completed`);
+    const connectedCount = this.getConnectedServers().length;
+    trackMatomoEvent('ai', 'mcp_connect_all_complete', `connected:${connectedCount}|total:${this.mcpClients.size}`);
   }
 
   async disconnectAllServers(): Promise<void> {
-    console.log(`[MCP Inferencer] Disconnecting from all servers...`);
     const promises = Array.from(this.mcpClients.values()).map(client => client.disconnect());
     await Promise.allSettled(promises);
-    console.log(`[MCP Inferencer] All servers disconnected`);
     this.resourceCache.clear();
   }
 
@@ -792,11 +809,11 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   async addMCPServer(server: IMCPServer): Promise<void> {
-    console.log(`[MCP Inferencer] Adding MCP server: ${server.name}`);
     if (this.mcpClients.has(server.name)) {
-      console.error(`[MCP Inferencer] Server ${server.name} already exists`);
       throw new Error(`MCP server ${server.name} already exists`);
     }
+
+    trackMatomoEvent('ai', 'mcp_server_add', `${server.name}|${server.transport}`);
 
     const client = new MCPClient(
       server,
@@ -810,7 +827,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
     // Set up event listeners for the new client
     client.on('connected', (serverName: string, result: IMCPInitializeResult) => {
-      console.log(`[MCP Inferencer] Server connected: ${serverName}`);
       this.connectionStatuses.set(serverName, {
         status: 'connected',
         serverName,
@@ -820,7 +836,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     client.on('error', (serverName: string, error: Error) => {
-      console.error(`[MCP Inferencer] Server error: ${serverName}:`, error);
       this.connectionStatuses.set(serverName, {
         status: 'error',
         serverName,
@@ -831,7 +846,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     client.on('disconnected', (serverName: string) => {
-      console.log(`[MCP Inferencer] Server disconnected: ${serverName}`);
       this.connectionStatuses.set(serverName, {
         status: 'disconnected',
         serverName
@@ -840,38 +854,31 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     if (server.autoStart !== false) {
-      console.log(`[MCP Inferencer] Auto-connecting to server: ${server.name}`);
       try {
         await client.connect();
       } catch (error) {
         console.warn(`[MCP Inferencer] Failed to auto-connect to MCP server ${server.name}:`, error);
       }
     }
-    console.log(`[MCP Inferencer] Server ${server.name} added successfully`);
   }
 
   async removeMCPServer(serverName: string): Promise<void> {
-    console.log(`[MCP Inferencer] Removing MCP server: ${serverName}`);
     const client = this.mcpClients.get(serverName);
     if (client) {
+      trackMatomoEvent('ai', 'mcp_server_remove', serverName);
       await client.disconnect();
       this.mcpClients.delete(serverName);
       this.connectionStatuses.delete(serverName);
-      console.log(`[MCP Inferencer] Server ${serverName} removed successfully`);
     } else {
       console.warn(`[MCP Inferencer] Server ${serverName} not found`);
     }
   }
 
   private async enrichContextWithMCPResources(params: IParams, prompt?: string): Promise<string> {
-    console.log(`[MCP Inferencer] Enriching context with MCP resources...`);
     const connectedServers = this.getConnectedServers();
     if (!connectedServers.length) {
-      console.log(`[MCP Inferencer] No connected MCP servers available for enrichment`);
       return "";
     }
-
-    console.log(`[MCP Inferencer] Using ${connectedServers.length} connected servers:`, connectedServers);
 
     // Extract MCP params for configuration (optional)
     const mcpParams = (params as any).mcp as IEnhancedMCPProviderParams;
@@ -885,21 +892,17 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
     // Use intelligent resource selection if enabled
     if (enhancedParams.enableIntentMatching && prompt) {
-      console.log(`[MCP Inferencer] Using intelligent resource selection`);
       return this.intelligentResourceSelection(prompt, enhancedParams);
     }
 
     // Fallback to original logic
-    console.log(`[MCP Inferencer] Using legacy resource selection`);
     return this.legacyResourceSelection(enhancedParams);
   }
 
   private async intelligentResourceSelection(prompt: string, mcpParams: IEnhancedMCPProviderParams): Promise<string> {
     try {
-      console.log(`[MCP Inferencer] Starting intelligent resource selection for prompt: "${prompt.substring(0, 100)}..."`);
       // Analyze user intent
       const intent = await this.intentAnalyzer.analyzeIntent(prompt);
-      console.log(`[MCP Inferencer] Analyzed intent:`, intent);
 
       // Gather all available resources
       const allResources: Array<{ resource: IMCPResource; serverName: string }> = [];
@@ -907,28 +910,23 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       for (const serverName of mcpParams.mcpServers || []) {
         const client = this.mcpClients.get(serverName);
         if (!client || !client.isConnected()) {
-          console.warn(`[MCP Inferencer] Server ${serverName} is not connected, skipping`);
           continue;
         }
 
         try {
-          console.log(`[MCP Inferencer] Listing resources from server: ${serverName}`);
           const resources = await client.listResources();
           resources.forEach(resource => {
             allResources.push({ resource, serverName });
           });
-          console.log(`[MCP Inferencer] Found ${resources.length} resources from ${serverName}`);
         } catch (error) {
           console.warn(`[MCP Inferencer] Failed to list resources from ${serverName}:`, error);
         }
       }
 
       if (allResources.length === 0) {
-        console.log('no resource to be used')
         return "";
       }
 
-      console.log('all resources length', allResources.length)
       // Score resources against intent
       const scoredResources = await this.resourceScoring.scoreResources(
         allResources,
@@ -936,13 +934,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         mcpParams
       );
 
-      console.log('Intent', intent)
-      console.log('scored resources', scoredResources)
-
       // Select best resources
       const selectedResources = this.resourceScoring.selectResources(
         scoredResources,
-        mcpParams.maxResources || 5,
+        mcpParams.maxResources || 3,
         mcpParams.selectionStrategy || 'hybrid'
       );
 
@@ -966,15 +961,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
       // Always add project structure for internal remix MCP server
       const hasInternalServer = this.mcpClients.has('Remix IDE Server')
-      console.log('hasInternalServer project structure:', hasInternalServer)
-      console.log('hasInternalServer project structure:', this.mcpClients)
 
       if (hasInternalServer) {
-        console.log('adding project structure')
         const existingProjectStructure = selectedResources.find(r => r.resource.uri === 'project://structure');
-        console.log('existingProjectStructure project structure', existingProjectStructure)
         if (existingProjectStructure === undefined) {
-          console.log('pushing project stucture')
           selectedResources.push({
             resource: workspaceResource,
             serverName: 'Remix IDE Server',
@@ -984,8 +974,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           });
         }
       }
-
-      console.log(selectedResources)
 
       // Build context from selected resources
       let mcpContext = "";
@@ -998,7 +986,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           const client = this.mcpClients.get(serverName);
           if (client) {
             content = await client.readResource(resource.uri);
-            console.log('read resource', resource.uri, content)
           }
 
           if (content?.text) {
@@ -1012,10 +999,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         }
       }
 
-      console.log('MCP INFERENCER: new context', mcpContext )
       return mcpContext;
     } catch (error) {
-      console.error('Error in intelligent resource selection:', error);
       // Fallback to legacy selection
       return this.legacyResourceSelection(mcpParams);
     }
@@ -1075,93 +1060,138 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       tool_choice: llmFormattedTools.length > 0 ? "auto" : undefined
     };
 
-    console.log(`[MCP Inferencer] Sending request with ${llmFormattedTools.length} available tools in LLM format`);
+    if (llmFormattedTools.length > 0) {
+      trackMatomoEvent('ai', 'mcp_answer_with_tools', `provider:${options.provider}|tools:${llmFormattedTools.length}`);
+    }
 
     try {
       const response = await super.answer(enrichedPrompt, enhancedOptions);
-      console.log('got initial response', response)
-
-      // Track number of tool execution iterations
       let toolExecutionCount = 0;
 
       const toolExecutionCallback = async (tool_calls) => {
-        console.log('calling tool execution callback')
 
         // avoid circular tooling
         if (toolExecutionCount >= this.MAX_TOOL_EXECUTIONS) {
-          console.log(`[MCP Inferencer] Maximum tool execution limit (${this.MAX_TOOL_EXECUTIONS}) reached. Stopping further executions.`);
+          console.warn(`[MCP] Maximum tool execution iterations (${this.MAX_TOOL_EXECUTIONS}) reached`);
           return { streamResponse: await super.answer(enrichedPrompt, options) };
-          return;
         }
 
         toolExecutionCount++;
-        console.log(`[MCP Inferencer] Tool execution iteration ${toolExecutionCount}/${this.MAX_TOOL_EXECUTIONS}`);
-
-        // Handle tool calls in the response
         if (tool_calls && tool_calls.length > 0) {
-          console.log(`[MCP Inferencer] LLM requested ${tool_calls.length} tool calls`);
-          const toolResults = [];
+          trackMatomoEvent('ai', 'mcp_llm_tool_execution', `provider:${options.provider}|count:${tool_calls.length}|iteration:${toolExecutionCount}`);
+          const toolMessages = [];
 
+          // Execute all tools and collect results
           for (const llmToolCall of tool_calls) {
             try {
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
+              console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
 
-              if (options.provider === 'openai'){
-                toolResults.push( {
-                  "role": "assistant",
-                  "tool_calls": [llmToolCall]
-                })
-              }
+              // Extract full text content from MCP result
+              const extractContent = (mcpResult: any): string => {
+                if (!mcpResult?.content) return JSON.stringify(mcpResult);
 
-              const toolResult: any = {
-                role: options.provider === 'anthropic' ? 'user' : 'tool',
-                content: result.content[0]?.text || JSON.stringify(result)
+                return mcpResult.content
+                  .map((item: any) => {
+                    if (typeof item === 'string') return item;
+                    if (item?.text) return item.text;
+                    return JSON.stringify(item);
+                  })
+                  .join('\n');
               };
 
-              if (options.provider !== 'anthropic') {
-                toolResult.tool_call_id = llmToolCall.id;
-              }
+              const toolResultContent = extractContent(result);
 
-              toolResults.push(toolResult);
+              // Format tool result based on provider
+              if (options.provider === 'anthropic') {
+                toolMessages.push({
+                  type: 'tool_result',
+                  tool_use_id: llmToolCall.id,
+                  content: toolResultContent
+                });
+              } else if (options.provider === 'openai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: toolResultContent
+                });
+              } else if (options.provider === 'mistralai') {
+                toolMessages.push({
+                  role: 'tool',
+                  name: mcpToolCall.name,
+                  tool_call_id: llmToolCall.id,
+                  content: toolResultContent
+                });
+              }
             } catch (error) {
-              console.error(`[MCP Inferencer] Tool execution failed:`, error);
+              console.error(`[MCP] Tool execution error for ${llmToolCall.function?.name}:`, error);
+              const errorContent = `Error executing tool: ${error.message}`;
 
-              const errorResult: any = {
-                content: `Error: ${error.message}`
-              };
-
-              if (options.provider !== 'anthropic') {
-                errorResult.tool_call_id = llmToolCall.id;
+              if (options.provider === 'anthropic') {
+                toolMessages.push({
+                  type: 'tool_result',
+                  tool_use_id: llmToolCall.id,
+                  content: errorContent,
+                  is_error: true
+                });
+              } else if (options.provider === 'openai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: errorContent
+                });
+              } else if (options.provider === 'mistralai') {
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: llmToolCall.id,
+                  content: errorContent
+                });
               }
-
-              toolResults.push(errorResult);
             }
           }
 
-          if (toolResults.length > 0) {
-            if (options.provider === 'mistralai'){
-              toolResults.unshift({ role:'assistant', tool_calls: tool_calls })
-              toolResults.unshift({ role:'user', content:enrichedPrompt })
-            } else {
-              toolResults.unshift({ role:'user', content:enrichedPrompt })
+          if (toolMessages.length > 0) {
+            let toolsMessagesArray = [];
+
+            if (options.provider === 'anthropic') {
+              // Anthropic: Convert tool_use blocks to assistant message, then user message with tool_result blocks
+              const toolUseBlocks = tool_calls.map(tc => ({
+                type: 'tool_use',
+                id: tc.id,
+                name: tc.function?.name || '',
+                input: typeof tc.function?.arguments === 'string'
+                  ? JSON.parse(tc.function.arguments || '{}')
+                  : tc.function?.arguments || {}
+              }));
+
+              toolsMessagesArray = [
+                { role: 'assistant', content: toolUseBlocks },
+                { role: 'user', content: toolMessages }
+              ];
+            } else if (options.provider === 'openai' || options.provider === 'mistralai') {
+              // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
+              toolsMessagesArray = [
+                { role: 'assistant', tool_calls: tool_calls },
+                ...toolMessages
+              ];
             }
 
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolResults
+              toolsMessages: toolsMessagesArray
             };
 
-            console.log('finalizing tool request')
-            return { streamResponse: await super.answer("Follow up on tool call ", followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
+            // Send empty prompt - the tool results are in toolsMessages
+            // Don't add extra prompts as they cause Anthropic to summarize instead of using full tool results
+            return { streamResponse: await super.answer('', followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
           }
         }
       }
 
       return { streamResponse: response, callback:toolExecutionCallback } as IAIStreamResponse;
     } catch (error) {
-      console.error(`[MCP Inferencer] Error in enhanced answer:`, error);
       return { streamResponse: await super.answer(enrichedPrompt, options) };
     }
   }
@@ -1179,13 +1209,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       tool_choice: llmFormattedTools.length > 0 ? "auto" : undefined
     };
 
-    console.log(`[MCP Inferencer] Code explaining with ${llmFormattedTools.length} available tools in LLM format`);
-
     try {
       const response = await super.code_explaining(prompt, enrichedContext, enhancedOptions);
 
       if (response?.tool_calls && response.tool_calls.length > 0) {
-        console.log(`[MCP Inferencer] LLM requested ${response.tool_calls.length} tool calls during code explanation`);
         const toolResults = [];
 
         for (const llmToolCall of response.tool_calls) {
@@ -1193,8 +1220,20 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
             const result = await this.executeToolForLLM(mcpToolCall);
 
+            const extractContent = (mcpResult: any): string => {
+              if (!mcpResult?.content) return JSON.stringify(mcpResult);
+
+              return mcpResult.content
+                .map((item: any) => {
+                  if (typeof item === 'string') return item;
+                  if (item?.text) return item.text;
+                  return JSON.stringify(item);
+                })
+                .join('\n');
+            };
+
             const toolResult: any = {
-              content: result.content[0]?.text || JSON.stringify(result)
+              content: extractContent(result)
             };
 
             if (options.provider !== 'anthropic') {
@@ -1203,7 +1242,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
             toolResults.push(toolResult);
           } catch (error) {
-            console.error(`[MCP Inferencer] Tool execution failed:`, error);
             const errorResult: any = {
               content: `Error: ${error.message}`
             };
@@ -1236,7 +1274,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
       return response;
     } catch (error) {
-      console.error(`[MCP Inferencer] Error in enhanced code_explaining:`, error);
       return super.code_explaining(prompt, enrichedContext, options);
     }
   }
@@ -1260,7 +1297,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         try {
           result[serverName] = await client.listResources();
         } catch (error) {
-          console.warn(`Failed to list resources from ${serverName}:`, error);
           result[serverName] = [];
         }
       }
@@ -1277,7 +1313,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         try {
           result[serverName] = await client.listTools();
         } catch (error) {
-          console.warn(`Failed to list tools from ${serverName}:`, error);
           result[serverName] = [];
         }
       }
@@ -1316,8 +1351,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         allTools.push(enhancedTool);
       }
     }
-
-    console.log(`[MCP Inferencer] Available tools for LLM: ${allTools.length} total from ${Object.keys(toolsFromServers).length} servers`);
     return allTools;
   }
 
@@ -1346,7 +1379,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       }));
     }
 
-    console.log(`[MCP Inferencer] Converted ${convertedTools.length} tools to ${provider || 'default'} LLM format`);
     return convertedTools;
   }
 
@@ -1361,7 +1393,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         try {
           parsedArguments = JSON.parse(trimmed);
         } catch (error) {
-          console.log(`[MCP Inferencer] Failed to parse tool arguments, using empty object:`, error);
           parsedArguments = {};
         }
       }
@@ -1377,8 +1408,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
    * Execute a tool call from the LLM
    */
   async executeToolForLLM(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
-    console.log(`[MCP Inferencer] Executing tool for LLM: ${toolCall.name}`);
-
     // Find which server has this tool
     const toolsFromServers = await this.getAllTools();
     let targetServer: string | undefined;
@@ -1393,8 +1422,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-
-    console.log(`[MCP Inferencer] Routing tool '${toolCall.name}' to server '${targetServer}'`);
+    console.log(`executing tool ${toolCall.name} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 
@@ -1406,7 +1434,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       const tools = await this.getAvailableToolsForLLM();
       return tools.length > 0;
     } catch (error) {
-      console.warn(`[MCP Inferencer] Error checking available tools:`, error);
       return false;
     }
   }

@@ -2,13 +2,12 @@ import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
-import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType } from '@remix/remix-ai-core';
+import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
 }
@@ -114,11 +113,9 @@ export class RemixAIPlugin extends Plugin {
     this.aiIsActivated = true
 
     this.on('blockchain', 'transactionExecuted', async () => {
-      console.log('[REMIXAI - ] transactionExecuted: clearing caches')
       this.clearCaches()
     })
     this.on('web3Provider', 'transactionBroadcasted', (txhash) => {
-      console.log('[REMIXAI - ] transactionBroadcasted: clearing caches')
       this.clearCaches()
     });
 
@@ -229,7 +226,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
     useRag = false
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'GenerateNewAIWorkspace', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
 
     if (useRag) {
@@ -273,7 +270,7 @@ export class RemixAIPlugin extends Plugin {
     params.threadId = newThreadID
     params.provider = this.assistantProvider
     useRag = false
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'GenerateNewAIWorkspace', name: 'WorkspaceAgentEdit', isClick: false })
 
     await statusCallback?.('Performing workspace request...')
     if (useRag) {
@@ -344,7 +341,7 @@ export class RemixAIPlugin extends Plugin {
     else {
       console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'remixAI_chat', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'chatting', name: 'remixAI_chat', isClick: false })
   }
 
   async ProcessChatRequestBuffer(params:IParams=GenerationParams){
@@ -379,7 +376,6 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async setAssistantProvider(provider: string) {
-    console.log('switching assistant to', provider)
     if (provider === 'openai' || provider === 'mistralai' || provider === 'anthropic') {
       GenerationParams.provider = provider
       CompletionParams.provider = provider
@@ -438,13 +434,11 @@ export class RemixAIPlugin extends Plugin {
     } else if (provider === 'ollama') {
       const isAvailable = await isOllamaAvailable();
       if (!isAvailable) {
-        console.error('Ollama is not available. Please ensure Ollama is running.')
         return
       }
 
       const bestModel = await getBestAvailableModel();
       if (!bestModel) {
-        console.error('No Ollama models available. Please install a model first.')
         return
       }
 
@@ -487,7 +481,6 @@ export class RemixAIPlugin extends Plugin {
           this.isInferencing = false
         })
 
-        console.log(`Ollama model changed to: ${modelName}`)
       } catch (error) {
         console.error('Failed to set Ollama model:', error)
       }
@@ -507,20 +500,16 @@ export class RemixAIPlugin extends Plugin {
   // MCP Server Management Methods
   async addMCPServer(server: IMCPServer): Promise<void> {
     try {
-      console.log(`[RemixAI Plugin] Adding MCP server: ${server.name}`);
       // Add to local configuration
       this.mcpServers.push(server);
 
       // If MCP inferencer is active, add the server dynamically
       if (this.mcpInferencer) {
-        console.log(`[RemixAI Plugin] Adding server to active MCP inferencer: ${server.name}`);
         await this.mcpInferencer.addMCPServer(server);
       }
 
       // Persist configuration
-      console.log(`[RemixAI Plugin] Persisting MCP server configuration`);
       await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
-      console.log(`[RemixAI Plugin] MCP server ${server.name} added successfully`);
     } catch (error) {
       console.error(`[RemixAI Plugin] Failed to add MCP server ${server.name}:`, error);
       throw error;
@@ -529,28 +518,19 @@ export class RemixAIPlugin extends Plugin {
 
   async removeMCPServer(serverName: string): Promise<void> {
     try {
-      console.log(`[RemixAI Plugin] Removing MCP server: ${serverName}`);
 
-      // Check if it's a built-in server
       const serverToRemove = this.mcpServers.find(s => s.name === serverName);
       if (serverToRemove?.isBuiltIn) {
-        console.error(`[RemixAI Plugin] Cannot remove built-in server: ${serverName}`);
         throw new Error(`Cannot remove built-in server: ${serverName}`);
       }
-
-      // Remove from local configuration
       this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
 
       // If MCP inferencer is active, remove the server dynamically
       if (this.mcpInferencer) {
-        console.log(`[RemixAI Plugin] Removing server from active MCP inferencer: ${serverName}`);
         await this.mcpInferencer.removeMCPServer(serverName);
       }
 
-      // Persist configuration
-      console.log(`[RemixAI Plugin] Persisting updated MCP server configuration`);
       await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
-      console.log(`[RemixAI Plugin] MCP server ${serverName} removed successfully`);
     } catch (error) {
       console.error(`[RemixAI Plugin] Failed to remove MCP server ${serverName}:`, error);
       throw error;
@@ -572,77 +552,50 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async getMCPResources(): Promise<Record<string, any[]>> {
-    console.log(`[RemixAI Plugin] Getting MCP resources`);
     if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
       const resources = await this.mcpInferencer.getAllResources();
-      console.log(`[RemixAI Plugin] Found resources from ${Object.keys(resources).length} servers:`, Object.keys(resources));
       return resources;
     }
-    console.log(`[RemixAI Plugin] No MCP inferencer active`);
     return {};
   }
 
   async getMCPTools(): Promise<Record<string, any[]>> {
-    console.log(`[RemixAI Plugin] Getting MCP tools`);
     if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
       const tools = await this.mcpInferencer.getAllTools();
-      console.log(`[RemixAI Plugin] Found tools from ${Object.keys(tools).length} servers:`, Object.keys(tools));
       return tools;
     }
-    console.log(`[RemixAI Plugin] No MCP inferencer active`);
     return {};
   }
 
   async executeMCPTool(serverName: string, toolName: string, arguments_: Record<string, any>): Promise<any> {
-    console.log(`[RemixAI Plugin] Executing MCP tool: ${toolName} on server: ${serverName}`, arguments_);
     if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
       const result = await this.mcpInferencer.executeTool(serverName, { name: toolName, arguments: arguments_ });
-      console.log(`[RemixAI Plugin] MCP tool execution result:`, result);
       return result;
     }
-    console.error(`[RemixAI Plugin] Cannot execute MCP tool - MCP provider not active (current provider: ${this.assistantProvider})`);
     throw new Error('MCP provider not active');
   }
 
   async loadMCPServersFromSettings(): Promise<void> {
     try {
-      console.log(`[RemixAI Plugin] Loading MCP servers from settings...`);
       const savedServers = await this.call('settings', 'get', 'settings/mcp/servers');
-      console.log(`[RemixAI Plugin] Raw savedServers from settings:`, savedServers);
-      console.log(`[RemixAI Plugin] Type of savedServers:`, typeof savedServers);
       if (savedServers) {
         const loadedServers = JSON.parse(savedServers);
-        // Ensure built-in servers are always present
-        const builtInServers: IMCPServer[] = [
-          {
-            name: 'Remix IDE Server',
-            description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
-            transport: 'internal',
-            autoStart: true,
-            enabled: true,
-            timeout: 5000,
-            isBuiltIn: true
-          }
-        ];
+        // Get built-in servers from config file
+        const builtInServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers.filter(s => s.isBuiltIn);
 
         // Add built-in servers if they don't exist, or ensure they're enabled if they do
         for (const builtInServer of builtInServers) {
           const existingServer = loadedServers.find(s => s.name === builtInServer.name);
           if (!existingServer) {
-            console.log(`[RemixAI Plugin] Adding missing built-in server: ${builtInServer.name}`);
             loadedServers.push(builtInServer);
           } else if (!existingServer.enabled || !existingServer.isBuiltIn) {
             // Force enable and mark as built-in
-            console.log(`[RemixAI Plugin] Ensuring built-in server is enabled: ${builtInServer.name}`);
             existingServer.enabled = true;
             existingServer.isBuiltIn = true;
           }
         }
 
         this.mcpServers = loadedServers;
-        console.log(`[RemixAI Plugin] Loaded ${this.mcpServers.length} MCP servers from settings:`, this.mcpServers.map(s => s.name));
-
-        // Save back to settings if we added/modified built-in servers
         const originalServers = JSON.parse(savedServers);
         const serversChanged = loadedServers.length !== originalServers.length ||
                                loadedServers.some(server => {
@@ -651,44 +604,20 @@ export class RemixAIPlugin extends Plugin {
                                });
 
         if (serversChanged) {
-          console.log(`[RemixAI Plugin] Saving corrected MCP servers to settings`);
           await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(loadedServers));
         }
       } else {
-        console.log(`[RemixAI Plugin] No saved MCP servers found, initializing with defaults`);
-        // Initialize with default MCP servers
-        const defaultServers: IMCPServer[] = [
-          {
-            name: 'Remix IDE Server',
-            description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
-            transport: 'internal',
-            autoStart: true,
-            enabled: true,
-            timeout: 5000,
-            isBuiltIn: true
-          },
-          {
-            name: 'OpenZeppelin Contracts',
-            description: 'OpenZeppelin smart contract library and security tools',
-            transport: 'http',
-            url: 'https://mcp.openzeppelin.com/contracts/solidity/mcp',
-            autoStart: true,
-            enabled: true,
-            timeout: 30000
-          }
-        ];
+        // Initialize with default MCP servers from config file
+        const defaultServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers;
         this.mcpServers = defaultServers;
         // Save default servers to settings
-        console.log(`[RemixAI Plugin] Saving default MCP servers to settings:`, defaultServers);
         await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(defaultServers));
-        console.log(`[RemixAI Plugin] Default MCP servers saved to settings successfully`);
       }
 
       // Initialize MCP inferencer if we have servers and it's not already initialized
       if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer) {
         this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
         this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-          console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
         });
         this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
           console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
@@ -697,66 +626,48 @@ export class RemixAIPlugin extends Plugin {
         // Connect to enabled servers for status tracking
         const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
         if (enabledServers.length > 0) {
-          console.log(`[RemixAI Plugin] Connecting to ${enabledServers.length} enabled MCP servers for status tracking`);
           await this.mcpInferencer.connectAllServers();
-          console.log(`[RemixAI Plugin] Autostart connections completed`);
-
-          // Emit event to notify UI that connections are ready
           this.emit('mcpServersLoaded');
         }
       }
     } catch (error) {
-      console.warn(`[RemixAI Plugin] Failed to load MCP servers from settings:`, error);
       this.mcpServers = [];
     }
   }
 
   async enableMCPEnhancement(): Promise<void> {
-    console.log(`[RemixAI Plugin] Enabling MCP enhancement...`);
     if (!this.mcpServers || this.mcpServers.length === 0) {
-      console.warn(`[RemixAI Plugin] No MCP servers configured, cannot enable enhancement`);
       return;
     }
-    console.log(`[RemixAI Plugin] Enabling MCP enhancement with ${this.mcpServers.length} servers`);
 
     if (!this.mcpInferencer) {
-      console.log(`[RemixAI Plugin] Initializing MCP inferencer`);
       this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-        console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
       });
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-        console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
       });
 
-      console.log(`[RemixAI Plugin] Connecting to all MCP servers...`);
       await this.mcpInferencer.connectAllServers();
     }
 
     this.mcpEnabled = true;
-    console.log(`[RemixAI Plugin] MCP enhancement enabled successfully`);
   }
 
   async disableMCPEnhancement(): Promise<void> {
-    console.log(`[RemixAI Plugin] Disabling MCP enhancement...`);
     this.mcpEnabled = false;
-    console.log(`[RemixAI Plugin] MCP enhancement disabled`);
   }
 
   isMCPEnabled(): boolean {
-    console.log(`[RemixAI Plugin] MCP enabled status: ${this.mcpEnabled}`);
     return this.mcpEnabled;
   }
 
   getIMCPServers(): IMCPServer[] {
-    console.log(`[RemixAI Plugin] Getting MCP servers list (${this.mcpServers.length} servers)`);
     return this.mcpServers;
   }
 
   clearCaches(){
     if (this.mcpInferencer){
       this.mcpInferencer.resetResourceCache()
-      console.log(`[RemixAI Plugin] clearing mcp inference resource cache `)
     }
   }
 }

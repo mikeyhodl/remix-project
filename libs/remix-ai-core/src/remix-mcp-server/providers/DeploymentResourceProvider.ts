@@ -86,8 +86,6 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
         )
       );
 
-      // Add individual deployed contract instance resources
-      console.log('creating deployment contract resources')
       await this.addContractInstances(plugin, resources);
 
     } catch (error) {
@@ -132,7 +130,6 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
   private async addContractInstances(plugin: Plugin, resources: IMCPResource[]): Promise<void> {
     try {
       const deployedContracts:DeployedContractsByNetwork = await plugin.call('udapp' as any, 'getDeployedContracts');
-      console.log('deployedContracts', deployedContracts)
       for (const [networkKey, contracts] of Object.entries(deployedContracts)) {
         if (contracts && typeof contracts === 'object') {
           for (const [address, contractInfo] of Object.entries(contracts)) {

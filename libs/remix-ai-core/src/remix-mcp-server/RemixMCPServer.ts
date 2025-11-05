@@ -124,12 +124,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       };
 
       this.setState(ServerState.RUNNING);
-      console.log('Server initialized successfully', 'info');
 
       return result;
     } catch (error) {
       this.setState(ServerState.ERROR);
-      console.log(`Server initialization failed: ${error.message}`, 'error');
       throw error;
     }
   }
@@ -162,7 +160,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.emit('cache-cleared');
 
     this.setState(ServerState.STOPPED);
-    console.log('Server stopped', 'info');
   }
 
   /**
@@ -220,7 +217,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
       case 'resources/list':
         const resources = await this._resources.getResources();
-        console.log('listing resources', resources)
         return { id: message.id, result: { resources: resources.resources } };
 
       case 'resources/read':
@@ -244,7 +240,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       }
     } catch (error) {
       this._stats.errorCount++;
-      console.log(`Message handling error: ${error.message}`, 'error');
 
       return {
         id: message.id,
@@ -309,8 +304,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.totalToolCalls++;
 
       this.emit('tool-executed', execution);
-      console.log(`Tool executed: ${call.name}`, 'info', { executionId, duration: execution.endTime.getTime() - startTime.getTime() }, 'result:', result);
-
       return result;
 
     } catch (error) {
@@ -320,8 +313,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._stats.errorCount++;
 
       this.emit('tool-executed', execution);
-      console.log(`Tool execution failed: ${call.name}`, 'error', { executionId, error: error.message });
-
       throw error;
     } finally {
       this._activeExecutions.delete(executionId);
@@ -398,14 +389,12 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   clearCache(): void {
     this._resourceCache.clear();
     this.emit('cache-cleared');
-    console.log('Resource cache cleared', 'info');
   }
 
   async refreshResources(): Promise<void> {
     try {
       const result = await this._resources.getResources();
       this.emit('resources-refreshed', result.resources.length);
-      console.log(`Resources refreshed: ${result.resources.length}`, 'info');
     } catch (error) {
       console.log(`Failed to refresh resources: ${error.message}`, 'error');
       throw error;
@@ -427,55 +416,43 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private setupEventHandlers(): void {
     // Tool registry events
     this._tools.on('tool-registered', (toolName: string) => {
-      console.log(`Tool registered: ${toolName}`, 'info');
     });
 
     this._tools.on('tool-unregistered', (toolName: string) => {
-      console.log(`Tool unregistered: ${toolName}`, 'info');
     });
 
     this._tools.on('batch-registered', (registered: string[], failed: Array<{ tool: any; error: Error }>) => {
-      console.log(`Batch registration completed: ${registered.length} successful, ${failed.length} failed`, 'info');
       if (failed.length > 0) {
-        console.log(`Failed tools: ${failed.map(f => f.tool.name).join(', ')}`, 'warning');
       }
     });
 
     // Resource registry events
     this._resources.subscribe((event) => {
-      console.log(`Resource ${event.type}: ${event.resource.uri}`, 'info');
     });
   }
 
   private async initializeDefaultTools(): Promise<void> {
     if (this._tools.list().length > 0) return
     try {
-      console.log('Initializing default tools...', 'info');
-
       // Register compilation tools
       const compilationTools = createCompilationTools();
       this._tools.registerBatch(compilationTools);
-      console.log(`Registered ${compilationTools.length} compilation tools`, 'info');
 
       // Register file management tools
       const fileManagementTools = createFileManagementTools();
       this._tools.registerBatch(fileManagementTools);
-      console.log(`Registered ${fileManagementTools.length} file management tools`, 'info');
 
       // Register deployment tools
       const deploymentTools = createDeploymentTools();
       this._tools.registerBatch(deploymentTools);
-      console.log(`Registered ${deploymentTools.length} deployment tools`, 'info');
 
       // Register debugging tools
       const debuggingTools = createDebuggingTools();
       this._tools.registerBatch(debuggingTools);
-      console.log(`Registered ${debuggingTools.length} debugging tools`, 'info');
 
       // Register debugging tools
       const codeAnalysisTools = createCodeAnalysisTools();
       this._tools.registerBatch(codeAnalysisTools);
-      console.log(`Registered ${codeAnalysisTools.length} code analysis tools`, 'info');
 
       // Register debugging tools
       const tutorialTools = createTutorialsTools();
@@ -483,7 +460,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       console.log(`Registered ${tutorialTools.length} code analysis tools`, 'info');
 
       const totalTools = this._tools.list().length;
-      console.log(`Total tools registered: ${totalTools}`, 'info');
 
     } catch (error) {
       console.log(`Failed to initialize default tools: ${error.message}`, 'error');
@@ -497,22 +473,17 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private async initializeDefaultResourceProviders(): Promise<void> {
     if (this._resources.list().length > 0) return
     try {
-      console.log('Initializing default resource providers...', 'info');
-
       // Register project resource provider
       const projectProvider = new ProjectResourceProvider(this._plugin);
       this._resources.register(projectProvider);
-      console.log(`Registered project resource provider: ${projectProvider.name}`, 'info');
 
       // Register compilation resource provider
       const compilationProvider = new CompilationResourceProvider(this._plugin);
       this._resources.register(compilationProvider);
-      console.log(`Registered compilation resource provider: ${compilationProvider.name}`, 'info');
 
       // Register deployment resource provider
       const deploymentProvider = new DeploymentResourceProvider();
       this._resources.register(deploymentProvider);
-      console.log(`Registered deployment resource provider: ${deploymentProvider.name}`, 'info');
 
       // Register deployment resource provider
       const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
@@ -520,7 +491,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       console.log(`Registered tutorials resource provider: ${tutorialsProvider.name}`, 'info');
 
       const totalProviders = this._resources.list().length;
-      console.log(`Total resource providers registered: ${totalProviders}`, 'info');
 
     } catch (error) {
       console.log(`Failed to initialize default resource providers: ${error.message}`, 'error');

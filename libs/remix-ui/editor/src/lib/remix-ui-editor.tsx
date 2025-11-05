@@ -27,7 +27,7 @@ import { RemixCodeActionProvider } from './providers/codeActionProvider'
 import './remix-ui-editor.css'
 import { circomLanguageConfig, circomTokensProvider } from './syntaxes/circom'
 import { noirLanguageConfig, noirTokensProvider } from './syntaxes/noir'
-import { IPosition, IRange } from 'monaco-editor'
+import type { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
 
@@ -185,7 +185,7 @@ export const EditorUI = (props: EditorUIProps) => {
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts' })}:\n
   \t\t\t\t\t\t\t\tCTRL + Alt + F : ${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts.text1' })}\n
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks' })}:\n
-  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix-project.org/\n
+  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix.live/\n
   \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text2' })}: https://remix-ide.readthedocs.io/en/latest/\n
   \t\t\t\t\t\t\t\tGithub: https://github.com/ethereum/remix-project\n
   \t\t\t\t\t\t\t\tDiscord: https://discord.gg/4b2rE9U4D2\n
@@ -794,7 +794,7 @@ export const EditorUI = (props: EditorUIProps) => {
               setTimeout(async () => {
                 props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
               }, 500)
-              trackMatomoEvent<AIEvent>({ category: 'ai', action: 'vulnerability_check_pasted_code', isClick: true })
+              trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'vulnerability_check_pasted_code', isClick: true })
             })();
           }
         };
@@ -862,7 +862,7 @@ export const EditorUI = (props: EditorUIProps) => {
         if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
           inlineCompletionProvider.currentCompletion.onAccepted()
           inlineCompletionProvider.currentCompletion.accepted = true
-          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'Copilot_Completion_Accepted', isClick: true })
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'Copilot_Completion_Accepted', isClick: true })
         }
       }
     });
@@ -998,7 +998,7 @@ export const EditorUI = (props: EditorUIProps) => {
               }, 150)
             }
           }
-          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'generateDocumentation', isClick: true })
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'generateDocumentation', isClick: true })
         },
       }
     }
@@ -1017,7 +1017,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
-        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'explainFunction', isClick: true })
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },
     }
 
@@ -1041,7 +1041,7 @@ export const EditorUI = (props: EditorUIProps) => {
         setTimeout(async () => {
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
-        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'explainFunction', isClick: true })
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },
     }
 

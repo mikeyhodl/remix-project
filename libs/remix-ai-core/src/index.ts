@@ -14,13 +14,15 @@ import { FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS } from './inferencer
 import { ChatHistory } from './prompts/chat'
 import { downloadLatestReleaseExecutable } from './helpers/inferenceServerReleases'
 import { ChatCommandParser } from './helpers/chatCommandParser'
+import { mcpDefaultServersConfig } from './config/mcpDefaultServers'
 export {
   IModel, IModelResponse, ChatCommandParser,
   ModelType, DefaultModels, ICompletions, IParams, IRemoteModel, buildChatPrompt,
   RemoteInferencer, OllamaInferencer, MCPInferencer, RemixMCPServer, isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHost,
   FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS, createRemixMCPServer,
   InsertionParams, CompletionParams, GenerationParams, AssistantParams,
-  ChatEntry, AIRequestType, ChatHistory, downloadLatestReleaseExecutable
+  ChatEntry, AIRequestType, ChatHistory, downloadLatestReleaseExecutable,
+  mcpDefaultServersConfig
 }
 
 export * from './types/types'

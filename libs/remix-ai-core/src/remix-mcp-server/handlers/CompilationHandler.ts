@@ -98,7 +98,6 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
       let compilationResult: any;
       if (args.file) {
-        console.log('[TOOL] compiling ', args.file, compilerConfig)
         // Compile specific file - need to use plugin API or direct compilation
         const content = await plugin.call('fileManager', 'readFile', args.file);
         const contract = {}
@@ -110,7 +109,6 @@ export class SolidityCompileHandler extends BaseToolHandler {
       } else {
         return this.createErrorResult(`Compilation failed: Workspace compilation not yet implemented. The argument file is not provided`);
       }
-      console.log('compilation result', compilationResult)
       // Process compilation result
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
@@ -118,10 +116,9 @@ export class SolidityCompileHandler extends BaseToolHandler {
         errors: compilationResult.data.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source || {}
+        sources: compilationResult?.source.sources[args.file] || {}
       };
 
-      console.log('emitting compilationFinished event with proper UI trigger')
       // Emit compilationFinished event with correct parameters to trigger UI effects
       plugin.emit('compilationFinished',
         args.file, // source target
@@ -136,13 +133,16 @@ export class SolidityCompileHandler extends BaseToolHandler {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
-            result.contracts[`${fileName}:${contractName}`] = {
-              abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
-              gasEstimates: contract.evm?.gasEstimates || {}
-            };
+            if (fileName.includes(args.file)){
+              result.contracts[`${fileName}:${contractName}`] = {
+                abi: contract.abi || [],
+                // bytecode: contract.evm?.bytecode?.object || '',
+                // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+                // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+                gasEstimates: contract.evm?.gasEstimates || {}
+              };
+            }
+
           }
         }
       }
@@ -176,8 +176,6 @@ export class GetCompilationResultHandler extends BaseToolHandler {
         return this.createErrorResult('No compilation result available');
       }
 
-      console.log('Got latest compilation result', compilationResult)
-
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         contracts: { 'target': compilationResult.source?.target },
@@ -193,9 +191,9 @@ export class GetCompilationResultHandler extends BaseToolHandler {
             const contract = contractData as any;
             result.contracts[`${fileName}:${contractName}`] = {
               abi: contract.abi || [],
-              bytecode: contract.evm?.bytecode?.object || '',
-              deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+              // bytecode: contract.evm?.bytecode?.object || '',
+              // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+              // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
               gasEstimates: contract.evm?.gasEstimates || {}
             };
           }

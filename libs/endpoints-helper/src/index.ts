@@ -18,7 +18,7 @@ type EndpointUrls = {
 
 const defaultUrls: EndpointUrls = {
   corsProxy: 'https://gitproxy.api.remix.live',
-  mcpCorsProxy: "https://mcp.api.remix.live/proxy?url=",
+  mcpCorsProxy: "https://mcp.api.remix.live",
   solidityScan: 'https://solidityscan.api.remix.live',
   ipfsGateway: 'https://jqgt.api.remix.live',
   commonCorsProxy: 'https://common-corsproxy.api.remix.live',
@@ -36,7 +36,7 @@ const defaultUrls: EndpointUrls = {
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
   corsProxy: 'corsproxy',
-  mcpCorsProxy: 'mcpCorsProxy/proxy?url=',
+  mcpCorsProxy: 'mcp',
   solidityScan: 'solidityscan',
   ipfsGateway: 'jqgt',
   commonCorsProxy: 'common-corsproxy',
