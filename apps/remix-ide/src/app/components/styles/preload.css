@@ -6,6 +6,7 @@
   align-items: center;     /* centers .preload-main horizontally */
   height: 100vh;
 }
+
 /* Center the main content while allowing a footer-like tips area below */
 .preload-main {
     display: flex;
@@ -14,14 +15,6 @@
     justify-content: center;
     width: 100%;
     position: relative;
-}
-
-.preload-tips {
-    position: absolute; /* top is set dynamically to sit below the main block */
-    left: 0;
-    right: 0;
-    width: 100%;
-    padding: 0 16px;
 }
 
 .preload-info-container {
@@ -74,6 +67,7 @@
     max-width: 800px;
     margin: 0 auto;
 }
+
 .remix_tips span {
     display: -webkit-box;
     line-clamp: 2;
@@ -81,7 +75,6 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-
 
 .preload-bottom.opt-out {
   position: absolute;

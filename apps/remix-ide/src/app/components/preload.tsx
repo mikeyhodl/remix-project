@@ -1,7 +1,6 @@
 import { RemixApp } from '@remix-ui/app'
 import axios from 'axios'
 import React, { useState, useEffect, useRef } from 'react'
-import { FormattedMessage, useIntl } from 'react-intl'
 import { useTracking, TrackingProvider } from '../contexts/TrackingContext'
 import { TrackingFunction } from '../utils/TrackingFunction'
 import * as packageJson from '../../../../../package.json'
@@ -28,7 +27,6 @@ export const Preload = (props: PreloadProps) => {
   const [showDownloader, setShowDownloader] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLDivElement>(null)
-  const tipsRef = useRef<HTMLDivElement>(null)
   const remixFileSystems = useRef<fileSystems>(new fileSystems())
   const remixIndexedDB = useRef<fileSystem>(new indexedDBFileSystem())
   const localStorageFileSystem = useRef<fileSystem>(new localStorageFS())
@@ -113,7 +111,7 @@ export const Preload = (props: PreloadProps) => {
     }
     async function loadStorage() {
       ; (await remixFileSystems.current.addFileSystem(remixIndexedDB.current)) || trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'indexedDB not supported', isClick: false })
-        ; (await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'localstorage not supported', isClick: false })
+      ; (await remixFileSystems.current.addFileSystem(localStorageFileSystem.current)) || trackMatomoEvent?.({ category: 'Storage', action: 'error', name: 'localstorage not supported', isClick: false })
       await testmigration()
       remixIndexedDB.current.loaded && (await remixIndexedDB.current.checkWorkspaces())
       localStorageFileSystem.current.loaded && (await localStorageFileSystem.current.checkWorkspaces())
@@ -136,7 +134,6 @@ export const Preload = (props: PreloadProps) => {
     } catch (e) {
       console.log(e)
     }
-
 
     return () => {
       abortController.abort();
@@ -206,10 +203,10 @@ export const Preload = (props: PreloadProps) => {
           ) : null}
         </div>
         <div className="preload-bottom opt-out">
-           { tip && <div className='remix_tips text-center mt-3'>
-              <div><b>DID YOU KNOW</b></div>
-              <span>{tip}</span>
-            </div> }
+          { tip && <div className='remix_tips text-center mt-3'>
+            <div><b>DID YOU KNOW</b></div>
+            <span>{tip}</span>
+          </div> }
         </div>
       </div>
     </>
