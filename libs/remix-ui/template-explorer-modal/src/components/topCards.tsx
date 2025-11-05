@@ -16,7 +16,7 @@ export function TopCards() {
           onClick={() => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
             dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: 'Generic' })
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: 'Blank- 1' })
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: 'Blank' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'generic' })
           }}
           style={{
@@ -130,7 +130,7 @@ export function TopCards() {
               const targetFolder = relativePath.split('/')[0]
               await createWorkspaceTemplate(targetFolder, 'blank')
               for (const file of Array.from(e.target.files)) {
-                
+
               }
               await plugin.call('fileManager', 'createFile', '')
               console.log('relativePath', relativePath)
