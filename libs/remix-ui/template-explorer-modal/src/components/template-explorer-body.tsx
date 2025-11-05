@@ -23,7 +23,7 @@ export function TemplateExplorerBody() {
                   {allTags?.filter(filterTheseTags)?.reverse()?.map((tag: any) => (
                     <span
                       key={tag as any}
-                      className={`badge rounded-pill p-2 fw-light ${selectedTag === tag ? 'badge rounded-pill text-info p-2 fw-light' : 'badge rounded-pill text-bg-light p-2 fw-light'}`}
+                      className={`template-tag badge rounded-pill p-2 fw-light ${selectedTag === tag ? 'badge rounded-pill text-info p-2 fw-light' : 'badge rounded-pill text-bg-light p-2 fw-light'}`}
                       onClick={() => handleTagClick(tag as any)}
                     >
                       {tag as any}

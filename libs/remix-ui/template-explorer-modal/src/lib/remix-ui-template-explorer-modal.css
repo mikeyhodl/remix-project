@@ -71,6 +71,10 @@
 }
 
 .explora-topcard:hover {
-  border-color: pink;
+  border: 1px solid #667;
   cursor: pointer !important;
+}
+
+.template-tag {
+  cursor: pointer;
 }

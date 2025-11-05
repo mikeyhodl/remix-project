@@ -101,7 +101,6 @@ export function TopCards() {
           data-id="import-project-topcard"
           className="explora-topcard d-flex flex-row align-items-center p-4 bg-light shadow-sm border-0"
           style={{
-            color: '#d8d8e5',
             borderRadius: '10px',
             height: '76px',
             width: '298px',
@@ -146,8 +145,8 @@ export function TopCards() {
           </span>
 
           <span className="d-flex flex-column flex-grow-1 ms-3">
-            <p className="mb-0 fw-semibold fs-6">Import Project</p>
-            <p className="mb-0 text-secondary small">Import an existing project</p>
+            <p className="mb-0">Import Project</p>
+            <p className="mb-0 fw-light text-wrap">Import an existing project</p>
           </span>
         </div>
       </div>

@@ -18,7 +18,7 @@ export function TemplateExplorer() {
       {dedupedTemplates?.map((template: TemplateCategory, templateIndex) => (
         <div key={template.name} className="template-category mb-4" data-id={`template-category-${template.name}`}>
           <h4 className="category-title mb-3 text-dark" style={{
-            color: '#333',
+            color: '#667',
             paddingBottom: '0.5rem',
             fontSize: '1.2rem',
             fontWeight: '400'
@@ -27,7 +27,7 @@ export function TemplateExplorer() {
           </h4>
 
           {template.description && (
-            <p className="category-description mb-2 text-danger" style={{ color: '#667', fontSize: '0.9rem' }}>
+            <p className="category-description mb-2 text-secondary" style={{ color: '#667', fontSize: '0.9rem' }}>
               {template.description}
             </p>
           )}
@@ -93,7 +93,7 @@ export function TemplateExplorer() {
                       fontWeight: '600',
                       margin: 0,
                       lineHeight: '1.2',
-                      color: theme?.name === 'Light' ? '#1B1D24' : '#FFF'
+                      color: theme?.name === 'Light' ? '#667' : '#a2a3bd'
                     }}>
                       {item.displayName || item.value}
                     </h6>
