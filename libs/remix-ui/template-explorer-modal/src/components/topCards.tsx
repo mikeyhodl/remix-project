@@ -131,7 +131,7 @@ export function TopCards() {
               for (const file of Array.from(e.target.files)) {
 
               }
-              await plugin.call('fileManager', 'createFile', '')
+              // await plugin.call('fileManager', 'createFile', '')
               console.log('relativePath', relativePath)
               return
               uploadFolderInTemplateExplorer(e.target, '/')
