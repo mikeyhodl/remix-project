@@ -1,6 +1,6 @@
 import { RemixApp } from '@remix-ui/app'
 import axios from 'axios'
-import React, { useState, useEffect, useRef, useContext } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { useTracking, TrackingProvider } from '../contexts/TrackingContext'
 import { TrackingFunction } from '../utils/TrackingFunction'
@@ -25,6 +25,9 @@ export const Preload = (props: PreloadProps) => {
   const [supported, setSupported] = useState<boolean>(true)
   const [error, setError] = useState<boolean>(false)
   const [showDownloader, setShowDownloader] = useState<boolean>(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLDivElement>(null)
+  const tipsRef = useRef<HTMLDivElement>(null)
   const remixFileSystems = useRef<fileSystems>(new fileSystems())
   const remixIndexedDB = useRef<fileSystem>(new indexedDBFileSystem())
   const localStorageFileSystem = useRef<fileSystem>(new localStorageFS())
@@ -42,6 +45,7 @@ export const Preload = (props: PreloadProps) => {
   function loadAppComponent() {
     import('../../app')
       .then((AppComponent) => {
+        return
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {
           props.root.render(
@@ -96,6 +100,12 @@ export const Preload = (props: PreloadProps) => {
   }
 
   useEffect (() => {
+    // Remove pre-splash as soon as React preloader mounts
+    try {
+      const splash = document.getElementById('pre-splash')
+      if (splash && splash.parentNode) splash.parentNode.removeChild(splash)
+    } catch (_) { /* noop */ }
+
     if (isElectron()){
       loadAppComponent()
       return
@@ -125,80 +135,78 @@ export const Preload = (props: PreloadProps) => {
     } catch (e) {
       console.log(e)
     }
+
+
     return () => {
       abortController.abort();
     };
-  }, [])
+  }, [tip])
 
   return (
     <>
-      <div className="preload-container">
-        <div className="preload-logo pb-4">
-          {logo}
-          <div className="info-secondary splash">
-            REMIX IDE
-            <br />
-            <span className="version"> v{packageJson.version}</span>
+      <div className="preload-container" ref={containerRef}>
+        <div className="preload-main" ref={mainRef}>
+          <div className="preload-logo text-center">
+            <img src="assets/img/remix-logo-blue.png" alt="Remix logo" width="64" height="64" />
+            <div className="preload-title">REMIX IDE</div>
+            <div className="preload-sub"><span className="version">v{packageJson.version}</span></div>
           </div>
+          {!supported ? (
+            <div className="preload-info-container alert alert-warning">
+              Your browser does not support any of the filesystems required by Remix. Either change the settings in your browser or use a supported browser.
+            </div>
+          ) : null}
+          {error ? (
+            <div className="preload-info-container alert alert-danger text-start">
+              An unknown error has occurred while loading the application.
+              <br></br>
+              Doing a hard refresh might fix this issue:<br></br>
+              <div className="pt-2">
+                Windows:<br></br>- Chrome: CTRL + F5 or CTRL + Reload Button
+                <br></br>- Firefox: CTRL + SHIFT + R or CTRL + F5<br></br>
+              </div>
+              <div className="pt-2">
+                MacOS:<br></br>- Chrome & FireFox: CMD + SHIFT + R or SHIFT + Reload Button<br></br>
+              </div>
+              <div className="pt-2">
+                Linux:<br></br>- Chrome & FireFox: CTRL + SHIFT + R<br></br>
+              </div>
+            </div>
+          ) : null}
+          {showDownloader ? (
+            <div className="preload-info-container alert alert-info">
+              This app will be updated now. Please download a backup of your files now to make sure you don't lose your work.
+              <br></br>
+              You don't need to do anything else, your files will be available when the app loads.
+              <div
+                onClick={async () => {
+                  await downloadBackup()
+                }}
+                data-id="downloadbackup-btn"
+                className="btn btn-primary mt-1"
+              >
+                download backup
+              </div>
+              <div
+                onClick={async () => {
+                  await migrateAndLoad()
+                }}
+                data-id="skipbackup-btn"
+                className="btn btn-primary mt-1"
+              >
+                skip backup
+              </div>
+            </div>
+          ) : null}
+          {supported && !error && !showDownloader ? (
+            <div className='text-center' style={{ marginTop: '16px' }}>
+              <div className="pre-splash-spinner" role="progressbar" aria-label="Loading"></div>
+            </div>
+          ) : null}
         </div>
-        {!supported ? (
-          <div className="preload-info-container alert alert-warning">
-            Your browser does not support any of the filesystems required by Remix. Either change the settings in your browser or use a supported browser.
-          </div>
-        ) : null}
-        {error ? (
-          <div className="preload-info-container alert alert-danger text-start">
-            An unknown error has occurred while loading the application.
-            <br></br>
-            Doing a hard refresh might fix this issue:<br></br>
-            <div className="pt-2">
-              Windows:<br></br>- Chrome: CTRL + F5 or CTRL + Reload Button
-              <br></br>- Firefox: CTRL + SHIFT + R or CTRL + F5<br></br>
-            </div>
-            <div className="pt-2">
-              MacOS:<br></br>- Chrome & FireFox: CMD + SHIFT + R or SHIFT + Reload Button<br></br>
-            </div>
-            <div className="pt-2">
-              Linux:<br></br>- Chrome & FireFox: CTRL + SHIFT + R<br></br>
-            </div>
-          </div>
-        ) : null}
-        {showDownloader ? (
-          <div className="preload-info-container alert alert-info">
-            This app will be updated now. Please download a backup of your files now to make sure you don't lose your work.
-            <br></br>
-            You don't need to do anything else, your files will be available when the app loads.
-            <div
-              onClick={async () => {
-                await downloadBackup()
-              }}
-              data-id="downloadbackup-btn"
-              className="btn btn-primary mt-1"
-            >
-              download backup
-            </div>
-            <div
-              onClick={async () => {
-                await migrateAndLoad()
-              }}
-              data-id="skipbackup-btn"
-              className="btn btn-primary mt-1"
-            >
-              skip backup
-            </div>
-          </div>
-        ) : null}
-        {supported && !error && !showDownloader ? (
-          <div>
-            <div className='text-center'>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-            </div>
-            { tip && <div className='remix_tips text-center mt-3'>
-              <div><b>DID YOU KNOW</b></div>
-              <span>{tip}</span>
-            </div> }
-          </div>
-        ) : null}
+  <div className="preload-bottom opt-out">
+    © 2025 Remix Project
+  </div>
       </div>
     </>
   )
