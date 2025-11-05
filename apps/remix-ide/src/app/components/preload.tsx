@@ -5,6 +5,7 @@ import { FormattedMessage, useIntl } from 'react-intl'
 import { useTracking, TrackingProvider } from '../contexts/TrackingContext'
 import { TrackingFunction } from '../utils/TrackingFunction'
 import * as packageJson from '../../../../../package.json'
+import * as remixDesktopPackageJson from '../../../../../apps/remixdesktop/package.json'
 import { fileSystem, fileSystems } from '../files/fileSystem'
 import { indexedDBFileSystem } from '../files/filesystems/indexedDB'
 import { localStorageFS } from '../files/filesystems/localStorage'
@@ -31,6 +32,7 @@ export const Preload = (props: PreloadProps) => {
   const remixFileSystems = useRef<fileSystems>(new fileSystems())
   const remixIndexedDB = useRef<fileSystem>(new indexedDBFileSystem())
   const localStorageFileSystem = useRef<fileSystem>(new localStorageFS())
+  const version = isElectron() ? remixDesktopPackageJson.version : packageJson.version
   // url parameters to e2e test the fallbacks and error warnings
   const testmigrationFallback = useRef<boolean>(
     window.location.hash.includes('e2e_testmigration_fallback=true') && window.location.host === '127.0.0.1:8080' && window.location.protocol === 'http:'
@@ -45,7 +47,6 @@ export const Preload = (props: PreloadProps) => {
   function loadAppComponent() {
     import('../../app')
       .then((AppComponent) => {
-        return
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {
           props.root.render(
@@ -140,7 +141,7 @@ export const Preload = (props: PreloadProps) => {
     return () => {
       abortController.abort();
     };
-  }, [tip])
+  }, [])
 
   return (
     <>
@@ -149,7 +150,7 @@ export const Preload = (props: PreloadProps) => {
           <div className="preload-logo text-center">
             <img src="assets/img/remix-logo-blue.png" alt="Remix logo" width="64" height="64" />
             <div className="preload-title">REMIX IDE</div>
-            <div className="preload-sub"><span className="version">v{packageJson.version}</span></div>
+            <div className="preload-sub"><span className="version">v{version}</span></div>
           </div>
           {!supported ? (
             <div className="preload-info-container alert alert-warning">
