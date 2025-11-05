@@ -205,11 +205,10 @@ export const Preload = (props: PreloadProps) => {
           ) : null}
         </div>
         <div className="preload-bottom opt-out">
-          {tip ? (
-            <div className="preload-tips" ref={tipsRef}>
-              <FormattedMessage id="preload.tip" defaultMessage="Tip: {tip}" values={{ tip: tip }} />
-            </div>
-          ) : null}
+           { tip && <div className='remix_tips text-center mt-3'>
+              <div><b>DID YOU KNOW</b></div>
+              <span>{tip}</span>
+            </div> }
         </div>
       </div>
     </>
