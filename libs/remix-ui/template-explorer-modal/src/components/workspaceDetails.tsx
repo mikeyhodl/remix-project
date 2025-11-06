@@ -5,12 +5,32 @@ import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/
 import { storageContractCode, ownerContractCode, ballotContractCode } from '../contractCode/remixDefault'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
-import CodeMirror from '@uiw/react-codemirror'
+import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 
 interface WorkspaceDetailsProps {
   strategy?: any
 }
+
+const darkTheme = EditorView.theme({
+  "&": {
+    backgroundColor: "#2a2c3f",
+    color: "#e0e0e0"
+  },
+  ".cm-content": {
+    caretColor: "#ffffff"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#2a2c3f",
+    color: "#6c7293"
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#ffffff"
+  },
+  "&.cm-focused .cm-selectionBackground, ::selection": {
+    backgroundColor: "#3a3d58"
+  }
+}, { dark: true })
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
@@ -36,7 +56,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
             value={storageContractCode('Storage')}
             lang="typescript"
             height="460px"
-            theme={theme?.name === 'Light' ? vscodeLight : vscodeDark}
+            theme={theme?.name === 'Light' ? vscodeLight : darkTheme}
             readOnly={true}
             basicSetup={{
               lineNumbers: false,
@@ -47,7 +67,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
               indentOnInput: false,
               tabSize: 2
             }}
-            extensions={[javascript({ typescript: true })]}
+            extensions={[javascript({ typescript: true }),vscodeDark, darkTheme]}
           />
         </div>
       </div>
