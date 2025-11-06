@@ -73,7 +73,7 @@ export function TopCards() {
           data-id="contract-wizard-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
-            facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'zeppelin', items: []}, templateCategoryStrategy)
+            facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
           }}
           style={{
             borderRadius: '10px',
