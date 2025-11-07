@@ -21,7 +21,7 @@ import { getContractData } from '@remix-project/core-plugin'
 import type { TxResult } from '@remix-project/remix-lib';
 import type { TransactionReceipt } from 'web3'
 import { BrowserProvider } from "ethers"
-import web3, { Web3 } from 'web3'
+import { toNumber, ethers } from 'ethers'
 
 /**
  * Deploy Contract Tool Handler
@@ -131,15 +131,15 @@ export class DeployContractHandler extends BaseToolHandler {
         return this.createErrorResult(`Deployment error: ${e.message || e}`);
       }
 
-      const receipt = (txReturn.txResult.receipt as TransactionReceipt)
+      const receipt = (txReturn.txResult.receipt)
       const result: DeploymentResult = {
-        transactionHash: web3.utils.bytesToHex(receipt.transactionHash),
-        gasUsed: web3.utils.toNumber(receipt.gasUsed),
+        transactionHash: receipt.hash,
+        gasUsed: toNumber(receipt.gasUsed),
         effectiveGasPrice: args.gasPrice || '20000000000',
-        blockNumber: web3.utils.toNumber(receipt.blockNumber),
+        blockNumber: toNumber(receipt.blockNumber),
         logs: receipt.logs,
         contractAddress: receipt.contractAddress,
-        success: receipt.status === BigInt(1) ? true : false
+        success: receipt.status === 1 ? true : false
       };
 
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
@@ -147,6 +147,7 @@ export class DeployContractHandler extends BaseToolHandler {
       return this.createSuccessResult(result);
 
     } catch (error) {
+      console.log(error)
       return this.createErrorResult(`Deployment failed: ${error.message}`);
     }
   }
@@ -297,13 +298,13 @@ export class CallContractHandler extends BaseToolHandler {
       }
 
       // TODO: Execute contract call via Remix Run Tab API
-      const receipt = (txReturn.txResult.receipt as TransactionReceipt)
+      const receipt = (txReturn.txResult.receipt)
       const result: ContractInteractionResult = {
         result: txReturn.returnValue,
-        transactionHash: isView ? undefined : web3.utils.bytesToHex(receipt.transactionHash),
-        gasUsed: web3.utils.toNumber(receipt.gasUsed),
-        logs: receipt.logs,
-        success: receipt.status === BigInt(1) ? true : false
+        transactionHash: isView ? txReturn.txResult.transactionHash : receipt.hash,
+        gasUsed: isView ? 0 : receipt.gasUsed,
+        logs: isView ? undefined : receipt.logs,
+        success: isView ? true : receipt.status === 1 ? true : false
       };
 
       return this.createSuccessResult(result);
@@ -436,8 +437,7 @@ export class SendTransactionHandler extends BaseToolHandler {
       if (!sendAccount) {
         return this.createErrorResult('No account available for sending transaction');
       }
-      const web3: Web3 = await plugin.call('blockchain', 'web3')
-      const ethersProvider = new BrowserProvider(web3.currentProvider)
+      const ethersProvider: BrowserProvider = await plugin.call('blockchain', 'web3')
       const signer = await ethersProvider.getSigner();
       const tx = await signer.sendTransaction({
         from: args.account,
@@ -450,18 +450,17 @@ export class SendTransactionHandler extends BaseToolHandler {
 
       // Wait for the transaction to be mined
       const receipt = await tx.wait()
-      // TODO: Send a real transaction via Remix Run Tab API
-      const mockResult = {
+      const result = {
         success: true,
         transactionHash: receipt.hash,
         from: args.account,
         to: args.to,
         value: args.value || '0',
-        gasUsed: web3.utils.toNumber(receipt.gasUsed),
+        gasUsed: toNumber(receipt.gasUsed),
         blockNumber: receipt.blockNumber
       };
 
-      return this.createSuccessResult(mockResult);
+      return this.createSuccessResult(result);
 
     } catch (error) {
       console.log(error)

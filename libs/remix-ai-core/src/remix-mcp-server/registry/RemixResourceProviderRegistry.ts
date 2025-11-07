@@ -14,6 +14,19 @@ import {
   ResourceCategory
 } from '../types/mcpResources';
 
+function isBigInt(value: unknown): value is bigint {
+  return typeof value === 'bigint';
+}
+
+const replacer = (key: string, value: any) => {
+  if (isBigInt(value)) return value.toString(); // Convert BigInt to string
+  if (typeof value === 'function') return undefined; // Remove functions
+  if (value instanceof Error) {
+    return value.message;
+  }
+  return value;
+}
+
 /**
  * Registry for managing Remix MCP resource providers
  */
@@ -431,7 +444,8 @@ export abstract class BaseResourceProvider implements RemixResourceProvider {
     return {
       uri,
       mimeType: 'application/json',
-      text: JSON.stringify(data, null, 2)
+      text: JSON.stringify(data, replacer, 2)
     };
   }
+
 }

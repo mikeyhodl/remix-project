@@ -446,7 +446,7 @@ export class DirectoryListHandler extends BaseToolHandler {
       const files = await await plugin.call('fileManager', 'readdir', args.path);
       const fileList = [];
 
-      for (const file of files) {
+      for (const file in files) {
         const fullPath = `${args.path}/${file}`;
         try {
           const isDir = await await plugin.call('fileManager', 'isDirectory', fullPath);

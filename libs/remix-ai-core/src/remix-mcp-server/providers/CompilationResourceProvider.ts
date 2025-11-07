@@ -188,14 +188,14 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
         timestamp: new Date().toISOString(),
         contracts: {},
-        errors: compilationResult.data.errors || [],
+        errors: compilationResult.data?.errors || [],
         errorFiles: compilationResult.errFiles || [],
-        warnings: compilationResult?.data.errors.find((error) => error.type === 'Warning') || [],
+        warnings: compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
         sources: compilationResult?.source || {}
       };
 
       // Process contracts
-      if (compilationResult.data.contracts) {
+      if (compilationResult.data?.contracts) {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
@@ -277,9 +277,8 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     try {
       const compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
       let config: any;
-
       if (compilerConfig) {
-        config = JSON.parse(compilerConfig);
+        config = compilerConfig;
       } else {
         config = {
           version: 'latest',

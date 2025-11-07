@@ -119,7 +119,6 @@ export class ContractAgent {
 
       await statusCallback?.('Compiling contracts...')
       const result:CompilationResult = await compilecontracts(this.contracts, this.plugin)
-      console.log('compilation result', result)
       if (!result.compilationSucceeded) {
         await statusCallback?.('Compilation failed, fixing errors...')
         const generatedContracts = (genContrats || []).map(contract =>

@@ -76,7 +76,7 @@ export class RunTab extends ViewPlugin {
   recorder: any
   REACT_API: any
   el: any
-  transactionHistory: Map<string, any> = new Map()
+  allTransactionHistory: Map<string, any> = new Map()
 
   constructor(blockchain: Blockchain, config: any, fileManager: any, editor: any, filePanel: any, compilersArtefacts: CompilerArtefacts, networkModule: any, fileProvider: any, engine: any) {
     super(profile)
@@ -125,7 +125,7 @@ export class RunTab extends ViewPlugin {
           value: result.receipt.value || '0'
         }
 
-        this.transactionHistory.set(result.receipt.contractAddress, deploymentData)
+        this.allTransactionHistory.set(result.receipt.contractAddress, deploymentData)
       }
     })
   }
@@ -149,7 +149,7 @@ export class RunTab extends ViewPlugin {
     if (canCall) {
       env = typeof env === 'string' ? { context: env } : env
       this.emit('setEnvironmentModeReducer', env, this.currentRequest.from)
-      this.transactionHistory.clear()
+      this.allTransactionHistory.clear()
     }
   }
 
@@ -163,7 +163,7 @@ export class RunTab extends ViewPlugin {
 
   clearAllInstances() {
     this.emit('clearAllInstancesReducer')
-    this.transactionHistory.clear()
+    this.allTransactionHistory.clear()
   }
 
   addInstance(address, abi, name, contractData?) {
@@ -199,7 +199,7 @@ export class RunTab extends ViewPlugin {
 
     instances.forEach((instance, index) => {
       if (instance && instance.address) {
-        const txData = this.transactionHistory.get(instance.address)
+        const txData = this.allTransactionHistory.get(instance.address)
 
         const contractInstance = {
           name: instance.name || txData?.contractName || 'Unknown',

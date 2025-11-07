@@ -367,7 +367,7 @@ module.exports = {
         browser.assert.ok(data.hasSuccess !== undefined, 'Should have success flag');
         browser.assert.ok(data.hasContracts, 'Should have contracts object');
         browser.assert.ok(data.hasErrors, 'Should have errors array');
-      });
+      })
   },
 
   'Should read compilation contracts resource': function (browser: NightwatchBrowser) {
@@ -439,7 +439,7 @@ module.exports = {
           done({
             hasContent: !!content,
             mimeType: content.mimeType,
-            hasVersion: !!configData?.version,
+            hasVersion: !!configData?.currentVersion,
             hasOptimize: configData?.optimize !== undefined,
             hasRuns: configData?.runs !== undefined,
             hasEvmVersion: !!configData?.evmVersion,
@@ -459,7 +459,7 @@ module.exports = {
         browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
         browser.assert.ok(data.hasVersion, 'Should have version');
         browser.assert.ok(data.hasOptimize !== undefined, 'Should have optimize flag');
-      });
+      })
   },
 
   /**

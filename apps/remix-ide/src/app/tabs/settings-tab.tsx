@@ -96,7 +96,7 @@ export default class SettingsTab extends ViewPlugin {
   }
 
   set(key, value){
-    this.config[key] = value
+    this.config.set(key, value)
   }
 
   updateCopilotChoice(isChecked) {

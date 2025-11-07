@@ -16,8 +16,7 @@ contract MCPToolTest {
 
     event ValueChanged(uint256 newValue);
 
-    constructor(uint256 _initialValue) {
-        value = _initialValue;
+    constructor() {
         owner = msg.sender;
     }
 
@@ -318,7 +317,7 @@ module.exports = {
             name: 'directory_list',
             arguments: {
               path: '',
-              recursive: false
+              recursive: true
             }
           },
           id: 'test-dir-list'
@@ -329,7 +328,7 @@ module.exports = {
           }
 
           done({
-            success: !result.error,
+            success: !result.result?.isError,
             hasFiles: !!resultData?.files,
             fileCount: resultData?.files?.length || 0,
             listSuccess: resultData?.success || false
@@ -345,7 +344,7 @@ module.exports = {
         }
         browser.assert.ok(data.success, 'Directory list tool should succeed');
         browser.assert.ok(data.listSuccess, 'Directory listing should be successful');
-      });
+      })
   },
 
   /**
@@ -650,7 +649,6 @@ module.exports = {
             arguments: {
               contractName: 'MCPToolTest',
               file: 'contracts/MCPToolTest.sol',
-              constructorArgs: ['100'],
               value: '0'
             }
           },
@@ -662,7 +660,7 @@ module.exports = {
           }
 
           done({
-            success: !result.error,
+            success: !result.isError,
             deploySuccess: deployData?.success || false,
             hasTransactionHash: !!deployData?.transactionHash,
             hasContractAddress: !!deployData?.contractAddress,
@@ -680,12 +678,10 @@ module.exports = {
           return;
         }
         browser.assert.ok(data.success, 'Deploy contract tool should succeed');
-        if (data.deploySuccess) {
-          browser.assert.ok(data.hasContractAddress, 'Should have contract address');
-          browser.assert.ok(data.hasTransactionHash, 'Should have transaction hash');
-          browser.assert.ok(data.hasGasUsed, 'Should have gas used');
-        }
-      });
+        browser.assert.ok(data.hasContractAddress, 'Should have contract address');
+        browser.assert.ok(data.hasTransactionHash, 'Should have transaction hash');
+        browser.assert.ok(data.hasGasUsed, 'Should have gas used');
+      })
   },
 
   'Should test call_contract tool': function (browser: NightwatchBrowser) {
@@ -707,7 +703,6 @@ module.exports = {
           if (deployedResult.result?.text) {
             deployedData = JSON.parse(deployedResult.result.text);
           }
-
           const contracts = deployedData?.contracts || [];
           if (contracts.length === 0) {
             done({ skipped: true, reason: 'No deployed contracts available' });
@@ -737,7 +732,7 @@ module.exports = {
             }
 
             done({
-              success: !result.error,
+              success: !result?.isError,
               callSuccess: callData?.success || false,
               hasResult: callData?.result !== undefined,
               result: callData?.result || null,

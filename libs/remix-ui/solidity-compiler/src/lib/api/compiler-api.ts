@@ -119,7 +119,6 @@ export const CompilerApiMixin = (Base) => class extends Base {
   }
 
   getCompilationResult () {
-    console.log('getting compiler last result', this.compileTabLogic.compiler)
     return this.compileTabLogic.compiler.state.lastCompilationResult
   }
 

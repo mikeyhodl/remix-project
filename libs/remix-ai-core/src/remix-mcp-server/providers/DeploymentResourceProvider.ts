@@ -505,7 +505,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           deploymentTransactions: deployments.length,
           interactionTransactions: interactions.length,
           totalGasUsed,
-          totalCost: `${totalCost.toFixed(9)} ETH`,
+          totalCost: `${totalCost.toFixed(9)}`,
           successRate: totalTxs > 0 ? `${Math.round((successfulTxs / totalTxs) * 100)}%` : '0%',
           successfulTransactions: successfulTxs,
           failedTransactions: totalTxs - successfulTxs
