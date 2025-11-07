@@ -22,7 +22,7 @@ const RemixApp = (props: IRemixAppUi) => {
   const [appReady, setAppReady] = useState<boolean>(false)
   const [showManagePreferencesDialog, setShowManagePreferencesDialog] = useState<boolean>(false)
   const [hideSidePanel, setHideSidePanel] = useState<boolean>(false)
-  const [hidePinnedPanel, setHidePinnedPanel] = useState<boolean>(true)
+  const [hidePinnedPanel, setHidePinnedPanel] = useState<boolean>(props.app.desktopClientMode || true)
   const [maximiseLeftTrigger, setMaximiseLeftTrigger] = useState<number>(0)
   const [enhanceLeftTrigger, setEnhanceLeftTrigger] = useState<number>(0)
   const [resetLeftTrigger, setResetLeftTrigger] = useState<number>(0)
@@ -125,13 +125,15 @@ const RemixApp = (props: IRemixAppUi) => {
       setLocale(nextLocale)
     })
 
-    props.app.pinnedPanel.events.on('pinnedPlugin', () => {
-      setHidePinnedPanel(false)
-    })
+    if (!props.app.desktopClientMode) {
+      props.app.pinnedPanel.events.on('pinnedPlugin', () => {
+        setHidePinnedPanel(false)
+      })
 
-    props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
-      setHidePinnedPanel(true)
-    })
+      props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
+        setHidePinnedPanel(true)
+      })
+    }
 
     setInterval(() => {
       setOnline(window.navigator.onLine)
@@ -158,9 +160,11 @@ const RemixApp = (props: IRemixAppUi) => {
             <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
             {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
             <div className='d-flex flex-column'>
-              <div className='top-bar'>
-                {props.app.topBar.render()}
-              </div>
+              {!props.app.desktopClientMode && (
+                <div className='top-bar'>
+                  {props.app.topBar.render()}
+                </div>
+              )}
               <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
                 <div id="icon-panel" data-id="remixIdeIconPanel" className="custom_icon_panel iconpanel bg-light">
                   {props.app.menuicons.render()}
