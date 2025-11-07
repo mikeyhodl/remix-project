@@ -93,7 +93,9 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
           })
           facade.closeWizard()
           dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
-        }}>Validate Workspace</button>
+        }}>
+          <i className="far fa-plus me-2"></i> Create a new workspace
+        </button>
       </div>
     </section>
   )

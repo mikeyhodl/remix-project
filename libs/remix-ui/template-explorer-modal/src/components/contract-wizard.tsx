@@ -223,7 +223,8 @@ export function ContractWizard () {
                 contractName: state.tokenName
               })
               facade.closeWizard()
-            }}>Validate workspace</button>
+            }}>
+              <i className="far fa-check me-2"></i> Validate workspace</button>
           </div>
         </div>
       </div>
