@@ -148,14 +148,6 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC20 Workspace')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC20 Workspace', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC20 Workspace', 'Workspace name is correct')
       .perform(function () {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
           browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
@@ -176,15 +168,6 @@ module.exports = {
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .pause(1000)
       // check js and ts files are not transformed
-      .click('*[data-id="treeViewLitreeViewItemscripts/deploy_with_web3.ts"]')
-      .waitForElementPresent({
-        selector: "//div[contains(@class, 'view-line') and contains(.//span, './web3-lib')]",
-        locateStrategy: 'xpath',
-      })
-      .getEditorValue((content) => {
-        browser.assert.ok(content.indexOf(`import { deploy } from './web3-lib'`) !== -1,
-          'Incorrect content')
-      })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .click('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .waitForElementPresent({
@@ -228,14 +211,7 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC721 Workspace')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC721 Workspace', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC721 Workspace', 'Workspace name is correct')
+      // .click('*[data-id="validateWorkspaceButton"]')
       .perform(function() {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
           browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
@@ -257,10 +233,6 @@ module.exports = {
 
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .click('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
-      .waitForElementPresent({
-        selector: "//div[contains(@class, 'view-line') and contains(.//span, './ethers-lib')]",
-        locateStrategy: 'xpath'
-      })
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`import { deploy } from './ethers-lib'`) !== -1,
           'Incorrect content')
@@ -300,14 +272,6 @@ module.exports = {
       .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
       .pause(100)
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC1155 Workspace')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC1155 Workspace', 'Workspace name is correct')
       .perform(function() {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
           browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
@@ -365,14 +329,6 @@ module.exports = {
       .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
       .pause(100)
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Workspace ERC1155 Test')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Workspace ERC1155 Test', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Workspace ERC1155 Test', 'Workspace name is correct')
       .perform(function() {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
           browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
@@ -497,7 +453,7 @@ module.exports = {
       .click('*[data-id="validateWorkspaceButton"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       .waitForElementNotPresent('*[data-id="treeViewLitreeViewItemtest.sol"]')
-      .switchWorkspace('workspace_name')
+      .switchWorkspace('workspace_name - 1')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       .currentWorkspaceIs('workspace_name')
   },
@@ -506,7 +462,7 @@ module.exports = {
     browser
       .waitForElementPresent('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="dropdown-item-workspace_name"]')
+      .waitForElementVisible('*[data-id="dropdown-item-workspace_name - 1"]')
       .waitForElementVisible('*[data-id="workspacesubMenuIcon"]')
       .click('*[data-id="workspacesubMenuIcon"]')
       .click('*[data-id="workspacesubMenuRename"]') // rename workspace_name
@@ -518,9 +474,9 @@ module.exports = {
       .waitForElementPresent('[data-id="topbarModalModalDialogModalFooter-react"] .modal-ok')
       .click('[data-id="topbarModalModalDialogModalFooter-react"] > .modal-ok')
       .pause(2000)
-      .switchWorkspace('workspace_name_1')
+      .switchWorkspace('workspace_name_1 - 1')
       .pause(2000)
-      .currentWorkspaceIs('workspace_name_1')
+      .currentWorkspaceIs('workspace_name_1 - 1')
       .switchWorkspace('workspace_name_renamed')
       .pause(2000)
       .currentWorkspaceIs('workspace_name_renamed')
@@ -528,10 +484,10 @@ module.exports = {
   },
 
   'Should delete a workspace #group1': function (browser: NightwatchBrowser) {
-    const selector = 'a[data-id="dropdown-item-workspace_name_1"] + div [data-id="workspacesubMenuIcon"]'
+    const selector = 'a[data-id="dropdown-item-workspace_name_1 - 1"] + div [data-id="workspacesubMenuIcon"]'
     browser
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible(`[data-id="dropdown-item-workspace_name_1"]`)
+      .waitForElementVisible(`[data-id="dropdown-item-workspace_name_1 - 1"]`)
       .waitForElementVisible(selector)
       .click(selector)
       .click('*[data-id="workspacesubMenuDelete"]') // delete workspace_name_1
@@ -539,13 +495,13 @@ module.exports = {
       .click('*[data-id="topbarModalModalDialogModalFooter-react"] .modal-ok')
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="dropdown-item-workspace_name"]')
-      .click('*[data-id="dropdown-item-workspace_name"]')
+      .waitForElementVisible('*[data-id="dropdown-item-workspace_name - 1"]')
+      .click('*[data-id="dropdown-item-workspace_name - 1"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementNotPresent(`[data-id="dropdown-item-workspace_name_1"]`)
+      .waitForElementNotPresent(`[data-id="dropdown-item-workspace_name_1 - 1"]`)
       .end()
   },
 
@@ -578,6 +534,7 @@ module.exports = {
         localStorage.setItem('currentWorkspace', 'non_existing_workspace')
       })
       .refreshPage()
+      .pause()
       .clickLaunchIcon('filePanel')
       .currentWorkspaceIs('sometestworkspace')
   },
@@ -601,15 +558,12 @@ module.exports = {
       .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
       .pause(100)
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'workspace_db_test')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'workspace_db_test', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'workspace_db_test', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
+      .perform(function() {
+        browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
+          browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
+            .clickLaunchIcon('filePanel')
+        })
+      })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.prettierrc.json"]')

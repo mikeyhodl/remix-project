@@ -31,7 +31,7 @@ export function GenericWorkspaceTemplate() {
         <div className="d-flex justify-content-between align-items-center gap-3 mt-3 mb-5">
           <div className="form-check m-0">
             <>
-              <input className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
+              <input data-id={`initializeAsGitRepo-${state.workspaceTemplateChosen.value}`} className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
                 onChange={(e) => dispatch({ type: ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE, payload: e.target.checked })} />
               <label className="form-check-label" htmlFor="initGit">Initialize as a Git repository</label>
             </>

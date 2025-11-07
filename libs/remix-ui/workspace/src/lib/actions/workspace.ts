@@ -164,37 +164,37 @@ export const createWorkspace = async (
       const currentBranch: branch = await dgitPlugin.call('dgitApi', 'currentbranch')
 
       if (!currentBranch) {
-        if (!name || !email) {
-          await plugin.call('notification', 'toast', 'To use Git features, add username and email to the Github section of the Git plugin.')
-        } else {
-          // commit the template as first commit
-          plugin.call('notification', 'toast', 'Creating initial git commit ...')
+        // if (!name || !email) {
+        //   await plugin.call('notification', 'toast', 'To use Git features, add username and email to the Github section of the Git plugin.')
+        // } else {
+        // commit the template as first commit
+        plugin.call('notification', 'toast', 'Creating initial git commit ...')
 
-          await dgitPlugin.call('dgit', 'init')
-          if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-          const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
+        await dgitPlugin.call('dgit', 'init')
+        if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+        const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
 
-          Promise.all(
-            status.map(([filepath, , worktreeStatus]) =>
-              worktreeStatus
-                ? dgitPlugin.call('dgitApi', 'add', {
-                  filepath: removeSlash(filepath),
-                })
-                : dgitPlugin.call('dgitApi', 'rm', {
-                  filepath: removeSlash(filepath),
-                })
-            )
-          ).then(async () => {
-            await dgitPlugin.call('dgitApi', 'commit', {
-              author: {
-                name,
-                email,
-              },
-              message: `Initial commit: remix template ${workspaceTemplateName}`,
-            })
+        Promise.all(
+          status.map(([filepath, , worktreeStatus]) =>
+            worktreeStatus
+              ? dgitPlugin.call('dgitApi', 'add', {
+                filepath: removeSlash(filepath),
+              })
+              : dgitPlugin.call('dgitApi', 'rm', {
+                filepath: removeSlash(filepath),
+              })
+          )
+        ).then(async () => {
+          await dgitPlugin.call('dgitApi', 'commit', {
+            author: {
+              name,
+              email,
+            },
+            message: `Initial commit: remix template ${workspaceTemplateName}`,
           })
-        }
+        })
       }
+      // }
     }
 
     await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)

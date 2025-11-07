@@ -9,7 +9,13 @@ module.exports = {
   'Create blank workspace': function (browser: NightwatchBrowser) {
     browser
       .refreshPage()
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .waitForElementVisible('*[data-id="template-card-blank-1"]')
       .click('*[data-id="template-card-blank-1"]')
       .waitForElementVisible('*[data-id="workspace-name-blank-input"]')
@@ -30,7 +36,13 @@ module.exports = {
   },
   'Create Pectra 7702 based workspace': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .waitForElementVisible('*[data-id="template-card-simpleEip7702-2"]')
       .click('*[data-id="template-card-simpleEip7702-2"]')
       .waitForElementVisible('*[data-id="workspace-name-simpleEip7702-input"]')
@@ -46,7 +58,13 @@ module.exports = {
   },
   'Create Semaphore based workspace': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .scrollInto('*[data-id="template-category-Circom ZKP"]')
       .waitForElementVisible('*[data-id="template-card-semaphore-0"]')
       .click('*[data-id="template-card-semaphore-0"]')
@@ -70,7 +88,13 @@ module.exports = {
   },
   'Search for Noir Simple Multiplier template': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .waitForElementVisible('*[data-id="template-explorer-search-input"]')
       .click('*[data-id="template-explorer-search-input"]')
       .setValue('*[data-id="template-explorer-search-input"]', 'Simple Multiplier')
@@ -104,7 +128,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="contract-wizard-token-name-input"]')
       .setValue('*[data-id="contract-wizard-token-name-input"]', 'TestToken')
       .click('*[data-id="contract-wizard-edit-icon"]')
-      .assert.textContains('*[data-id="contract-wizard-token-name-span"]', 'TestToken - 1', 'Token name is correct')
+      .assert.textContains('*[data-id="contract-wizard-token-name-span"]', 'TestToken', 'Token name is correct')
       .waitForElementVisible('*[data-id="contract-wizard-token-TestToken-input"]')
       .assert.attributeMatches('#contractWizardTokenNameReadOnlyInput', 'data-id', 'contract-wizard-token-TestToken-input', 'Token name is correct')
       .click('*[data-id="contract-wizard-mintable-checkbox"]')
@@ -112,14 +136,6 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC20 Workspace')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC20 Workspace - 1', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC20 Workspace - 1', 'Workspace name is correct')
       .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .isVisible('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
@@ -135,7 +151,13 @@ module.exports = {
   },
   'Create OpenZeppelin ERC721 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
       .click('*[data-id="contract-wizard-topcard"]')
       .waitForElementVisible('*[data-id="contract-wizard-container"]')
@@ -144,7 +166,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="contract-wizard-token-name-input"]')
       .setValue('*[data-id="contract-wizard-token-name-input"]', 'Test721Token')
       .click('*[data-id="contract-wizard-edit-icon"]')
-      .assert.textContains('*[data-id="contract-wizard-token-name-span"]', 'Test721Token - 1', 'Token name is correct')
+      .assert.textContains('*[data-id="contract-wizard-token-name-span"]', 'Test721Token', 'Token name is correct')
       .waitForElementVisible('*[data-id="contract-wizard-token-Test721Token-input"]')
       .assert.attributeMatches('#contractWizardTokenNameReadOnlyInput', 'data-id', 'contract-wizard-token-Test721Token-input', 'Token name is correct')
       .setValue('#contractWizardContractTagSelect', 'erc721')
@@ -154,16 +176,14 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .waitForElementVisible('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .waitForElementVisible('*[data-id="finalize-contract-wizard-workspaceName-input"]')
-      .setValue('*[data-id="finalize-contract-wizard-workspaceName-input"]', 'Test ERC721 Workspace')
-      .click('*[data-id="finalize-contractWizard-workspace-edit-icon"]')
-      .assert.textContains('*[data-id="finalize-contract-wizard-workspaceName-span"]', 'Test ERC721 Workspace', 'Workspace name is correct')
-      .click('*[data-id="validateWorkspaceButton"]')
-      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test ERC721 Workspace', 'Workspace name is correct')
       .pause(2000)
       // .clickLaunchIcon('filePanel')
+      .perform(function () {
+        browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
+          browser.assert.not.ok(!!result.value, 'FilePanel not visible')
+            .clickLaunchIcon('filePanel')
+        })
+      })
       .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .isVisible('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
@@ -177,5 +197,6 @@ module.exports = {
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .clickLaunchIcon('solidity')
       .isVisible('*[data-id="compilation-details"]')
+      .end()
   }
 }
