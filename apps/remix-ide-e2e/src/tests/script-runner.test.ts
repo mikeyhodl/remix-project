@@ -72,10 +72,16 @@ const tests = {
       .pause(2000)
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
       .click('*[data-id="workspacecreate"]')
-      .waitForElementPresent('*[data-id="create-semaphore"]')
-      .scrollAndClick('*[data-id="create-semaphore"]')
-      .modalFooterOKClick('TemplatesSelection')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .scrollInto('*[data-id="template-category-Circom ZKP"]')
+      .waitForElementVisible('*[data-id="template-card-semaphore-0"]')
+      .click('*[data-id="template-card-semaphore-0"]')
+      .click('*[data-id="validate-semaphoreworkspace-button"]')
       // .waitForElementVisible('*[data-id="treeViewLitreeViewItemcircuits/semaphore.circom"]')
       .waitForElementVisible({
         locateStrategy: 'xpath',
@@ -95,9 +101,9 @@ const tests = {
       .click('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacecreate"]')
       // .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="create-introToEIP7702"]')
-      .click('*[data-id="create-introToEIP7702"]')
-      .modalFooterOKClick('TemplatesSelection')
+      .waitForElementVisible('*[data-id="template-card-introToEIP7702-5"]')
+      .click('*[data-id="template-card-introToEIP7702-5"]')
+      .click('*[data-id="validate-simpleEip7702workspace-button"]')
       // .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/Example7702.sol"]')
       .waitForElementVisible({
         locateStrategy: 'xpath',

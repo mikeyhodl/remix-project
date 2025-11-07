@@ -9,7 +9,6 @@ import CodeMirror from '@uiw/react-codemirror'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
-import { createNonClashingNameAsync, createNonClashingTitle } from 'libs/remix-ui/helper/src/lib/remix-ui-helper'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
