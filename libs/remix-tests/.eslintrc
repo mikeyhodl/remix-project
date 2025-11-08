@@ -1,7 +1,6 @@
 { 
     "extends": "../../.eslintrc", 
     "rules": {
-        "@nrwl/nx/enforce-module-boundaries": "off",
         "dot-notation": "off",
         "no-unused-vars": "off",
         "no-use-before-define": "off"
@@ -12,10 +11,5 @@
         "node": true,
         "es6": true
     },
-    "ignorePatterns": [
-        "node_modules/**",
-        "dist/**",
-        "coverage/**",
-        "tmp/**"
-    ] 
+    "ignorePatterns": ["!**/*"] 
 }

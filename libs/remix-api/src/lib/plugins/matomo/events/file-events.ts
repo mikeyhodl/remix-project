@@ -21,11 +21,11 @@ export interface FileExplorerEvent extends MatomoEventBase {
 }
 
 export interface WorkspaceEvent extends MatomoEventBase {
-  category: 'Workspace';
+  category: 'workspace';
   action: 
     | 'switchWorkspace'
-    | 'GIT'
-    | 'createWorkspace';
+    | 'template'
+    | 'GIT';
 }
 
 export interface StorageEvent extends MatomoEventBase {

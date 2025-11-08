@@ -10,7 +10,7 @@ import { DeployMode, MainnetPrompt } from "../types"
 import { displayNotification, fetchProxyDeploymentsSuccess, setDecodedResponse, updateInstancesBalance } from "./payload"
 import { addInstance } from "./actions"
 import { addressToString, logBuilder } from "@remix-ui/helper"
-import { Web3 } from "web3"
+import { isAddress } from "ethers"
 
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
@@ -191,7 +191,7 @@ export const createInstance = async (
         const currentChain = allChains.find(chain => chain.chainId === currentChainId)
 
         if (!currentChain) {
-          const errorMsg = `The current network (Chain ID: ${currentChainId}) is not supported for verification via this plugin. Please switch to a supported network like Sepolia or Mainnet.`
+          const errorMsg = `Could not find chain data for Chain ID: ${currentChainId}. Verification cannot proceed.`
           const errorLog = logBuilder(errorMsg)
           terminalLogger(plugin, errorLog)
           return
@@ -409,8 +409,8 @@ export const isValidContractAddress = async (plugin: RunTab, address: string) =>
   if (!address) {
     return false
   } else {
-    if (Web3.utils.isAddress(address)) {
-      return await plugin.blockchain.web3().eth.getCode(address) !== '0x'
+    if (isAddress(address)) {
+      return await plugin.blockchain.web3().getCode(address) !== '0x'
     } else {
       return false
     }

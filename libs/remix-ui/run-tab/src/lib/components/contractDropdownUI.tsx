@@ -49,21 +49,45 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
 
   useEffect(() => {
     const checkSupport = async () => {
-      if (props.plugin) {
-        const supportedChain = await getSupportedChain(props.plugin)
-        const isSupported = !!supportedChain
-        setNetworkSupported(isSupported)
+      if (props.plugin && props.networkName) {
+        try {
+          const supportedChain = await getSupportedChain(props.plugin)
+          const chainExistsInList = !!supportedChain
 
-        if (isSupported) {
-          const saved = window.localStorage.getItem('deploy-verify-contract-checked')
-          setVerifyChecked(saved !== null ? JSON.parse(saved) : true)
-        } else {
+          let isConfigValid = false
+          if (chainExistsInList) {
+            const status = props.plugin.blockchain.getCurrentNetworkStatus()
+            const currentChainId = status?.network?.id?.toString()
+            if (currentChainId) {
+              isConfigValid = await props.plugin.call(
+                'contract-verification',
+                'isVerificationSupportedForChain',
+                currentChainId
+              )
+            }
+          }
+
+          const isSupported = chainExistsInList && isConfigValid
+          setNetworkSupported(isSupported)
+
+          if (isSupported) {
+            const saved = window.localStorage.getItem('deploy-verify-contract-checked')
+            setVerifyChecked(saved !== null ? JSON.parse(saved) : true)
+          } else {
+            setVerifyChecked(false)
+          }
+        } catch (e) {
+          console.error("Failed to check verification support:", e)
+          setNetworkSupported(false)
           setVerifyChecked(false)
         }
+      } else {
+        setNetworkSupported(false)
+        setVerifyChecked(false)
       }
-    };
+    }
     checkSupport()
-  }, [props.networkName])
+  }, [props.networkName, props.plugin])
 
   useEffect(() => {
     enableContractNames(Object.keys(props.contracts.contractList).length > 0)
@@ -415,6 +439,13 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
       evmVersion = JSON.parse(loadedContractData.metadata).settings.evmVersion
     }
   } catch (err) {}
+
+  const deployButtonTitle = isVerifyChecked
+    ? intl.formatMessage({ id: 'udapp.deployAndVerify', defaultMessage: 'Deploy & Verify' })
+    : intl.formatMessage({ id: 'udapp.deploy' })
+
+  const deployButtonWidthClass = isVerifyChecked ? 'w-auto' : 'w-50'
+
   return (
     <div className="udapp_container mb-2" data-id="contractDropdownContainer">
       <div className="d-flex justify-content-between">
@@ -492,7 +523,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
             </span>
           }
         >
-          <span className="udapp_evmVersion badge alert-warning">
+          <span className="udapp_evmVersion badge alert-warning mb-2">
             <FormattedMessage id="udapp.evmVersion" />: {evmVersion}
           </span>
         </CustomTooltip>
@@ -501,8 +532,14 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
         <div className="udapp_deployDropdown">
           {((contractList[currentFile] && contractList[currentFile].filter((contract) => contract)) || []).length > 0 && loadedContractData && (
             <div>
+              {isNetworkSupported && (
+                <VerificationSettingsUI
+                  isVerifyChecked={isVerifyChecked}
+                  onVerifyCheckedChange={handleVerifyCheckedChange}
+                />
+              )}
               <ContractGUI
-                title={intl.formatMessage({ id: 'udapp.deploy' })}
+                title={deployButtonTitle}
                 getCompilerDetails={props.getCompilerDetails}
                 isDeploy={true}
                 deployOption={deployOptions[currentFile] && deployOptions[currentFile][currentContract] ? deployOptions[currentFile][currentContract].options : null}
@@ -512,7 +549,7 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
                 funcABI={constructorInterface}
                 clickCallBack={clickCallback}
                 inputs={constructorInputs}
-                widthClass="w-50"
+                widthClass={deployButtonWidthClass}
                 evmBC={loadedContractData.bytecodeObject}
                 lookupOnly={false}
                 proxy={props.proxy}
@@ -528,12 +565,6 @@ export function ContractDropdownUI(props: ContractDropdownProps) {
                 plugin={props.plugin}
                 runTabState={props.runTabState}
               />
-              {isNetworkSupported && (
-                <VerificationSettingsUI
-                  isVerifyChecked={isVerifyChecked}
-                  onVerifyCheckedChange={handleVerifyCheckedChange}
-                />
-              )}
             </div>
           )}
         </div>

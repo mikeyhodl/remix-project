@@ -6,7 +6,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, RemixAIEvent, RemixAIAssistantEvent } from '@remix-api'
+import { MatomoEvent, AIEvent, RemixAIAssistantEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
@@ -64,6 +64,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const contextBtnRef = useRef(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const aiChatRef = useRef<HTMLDivElement>(null)
+  const userHasScrolledRef = useRef(false)
+  const lastMessageCountRef = useRef(0)
 
   useOnClickOutside([modelBtnRef, contextBtnRef], () => setShowAssistantOptions(false))
   useOnClickOutside([modelBtnRef, contextBtnRef], () => setShowContextOptions(false))
@@ -158,7 +160,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'current':
         {
-          trackMatomoEvent({ category: 'ai', action: 'AddingAIContext', name: choice, isClick: true })
+          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'AddingAIContext', value: choice, isClick: true })
           const f = await props.plugin.call('fileManager', 'getCurrentFile')
           if (f) files = [f]
           await props.plugin.call('remixAI', 'setContextFiles', { context: 'currentFile' })
@@ -166,7 +168,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'opened':
         {
-          trackMatomoEvent({ category: 'ai', action: 'AddingAIContext', name: choice, isClick: true })
+          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'AddingAIContext', value: choice, isClick: true })
           const res = await props.plugin.call('fileManager', 'getOpenedFiles')
           if (Array.isArray(res)) {
             files = res
@@ -178,7 +180,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         break
       case 'workspace':
         {
-          trackMatomoEvent({ category: 'ai', action: 'AddingAIContext', name: choice, isClick: true })
+          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'AddingAIContext', value: choice, isClick: true })
           await props.plugin.call('remixAI', 'setContextFiles', { context: 'workspace' })
           files = ['@workspace']
         }
@@ -224,13 +226,25 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     props.onMessagesChange?.(messages)
   }, [messages, props.onMessagesChange])
 
-  // always scroll to bottom when messages change
+  // Smart auto-scroll: only scroll to bottom if:
   useEffect(() => {
     const node = historyRef.current
-    if (node && messages.length > 0) {
+    if (!node || messages.length === 0) return
+
+    const isAtBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 100
+    const userSentNewMessage = messages.length > lastMessageCountRef.current &&
+                                messages[messages.length - 1]?.role === 'user'
+    // Auto-scroll conditions:
+    // - User sent a new message (always scroll)
+    // - User hasn't manually scrolled up (userHasScrolledRef is false)
+    // - Currently streaming and user is near bottom
+    if (userSentNewMessage || !userHasScrolledRef.current || (isStreaming && isAtBottom)) {
       node.scrollTop = node.scrollHeight
+      userHasScrolledRef.current = false
     }
-  }, [messages])
+
+    lastMessageCountRef.current = messages.length
+  }, [messages, isStreaming])
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -251,9 +265,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       prev.map(m => (m.id === msgId ? { ...m, sentiment: next } : m))
     )
     if (next === 'like') {
-      trackMatomoEvent<RemixAIAssistantEvent>({ category: 'remixAIAssistant', action: 'likeResponse', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'like-response', isClick: true })
     } else if (next === 'dislike') {
-      trackMatomoEvent<RemixAIAssistantEvent>({ category: 'remixAIAssistant', action: 'dislikeResponse', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'dislike-response', isClick: true })
     }
   }
 
@@ -435,7 +449,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     dispatchActivity('button', 'generateWorkspace')
     if (prompt && prompt.trim()) {
       await sendPrompt(`/workspace ${prompt.trim()}`)
-      trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'GenerateNewAIWorkspaceFromEditMode', name: prompt, isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'GenerateNewAIWorkspaceFromEditMode', name: prompt, isClick: true })
     }
   }, [sendPrompt])
 
@@ -472,14 +486,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           dispatchActivity('button', 'setAssistant')
           setMessages([])
           sendPrompt(`/setAssistant ${assistantChoice}`)
-          trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'SetAIProvider', name: assistantChoice, isClick: true })
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetAIProvider', name: assistantChoice, isClick: true })
           // Log specific Ollama selection
           if (assistantChoice === 'ollama') {
-            trackMatomoEvent({ category: 'ai', action: 'ollama_provider_selected', name: `from:${choiceSetting || 'unknown'}`, isClick: false })
+            trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_provider_selected', value: `from:${choiceSetting || 'unknown'}`, isClick: false })
           }
         } else {
           // This is a fallback, just update the backend silently
-          trackMatomoEvent({ category: 'ai', action: 'ollama_fallback_to_provider', name: `${assistantChoice}|from:${choiceSetting}`, isClick: false })
+          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_fallback_to_provider', value: `${assistantChoice}|from:${choiceSetting}`, isClick: false })
           await props.plugin.call('remixAI', 'setAssistantProvider', assistantChoice)
         }
         setAssistantChoice(assistantChoice || 'mistralai')
@@ -515,7 +529,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               if (!selectedModel && models.length > 0) {
                 const defaultModel = models.find(m => m.includes('codestral')) || models[0]
                 setSelectedModel(defaultModel)
-                trackMatomoEvent({ category: 'ai', action: 'ollama_default_model_selected', name: `${defaultModel}|codestral|total:${models.length}`, isClick: false })
+                trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_default_model_selected', value: `${defaultModel}|codestral|total:${models.length}`, isClick: false })
                 // Sync the default model with the backend
                 try {
                   await props.plugin.call('remixAI', 'setModel', defaultModel)
@@ -542,7 +556,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               sentiment: 'none'
             }])
             // Log Ollama unavailable event
-            trackMatomoEvent({ category: 'ai', action: 'ollama_unavailable', name: 'switching_to_mistralai', isClick: false })
+            trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_unavailable', value: 'switching_to_mistralai', isClick: false })
             // Set failure flag before switching back to prevent success message
             setIsOllamaFailureFallback(true)
             // Automatically switch back to mistralai
@@ -559,7 +573,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             sentiment: 'none'
           }])
           // Log Ollama connection error
-          trackMatomoEvent({ category: 'ai', action: 'ollama_connection_error', name: `${error.message || 'unknown'}|switching_to_mistralai`, isClick: false })
+          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_connection_error', value: `${error.message || 'unknown'}|switching_to_mistralai`, isClick: false })
           // Set failure flag before switching back to prevent success message
           setIsOllamaFailureFallback(true)
           // Switch back to mistralai on error
@@ -582,16 +596,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const previousModel = selectedModel
     setSelectedModel(modelName)
     setShowModelOptions(false)
-    trackMatomoEvent({ category: 'ai', action: 'ollama_model_selected', name: `${modelName}|from:${previousModel || 'none'}`, isClick: true })
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_selected', value: `${modelName}|from:${previousModel || 'none'}`, isClick: true })
     // Update the model in the backend
     try {
       await props.plugin.call('remixAI', 'setModel', modelName)
-      trackMatomoEvent({ category: 'ai', action: 'ollama_model_set_backend_success', name: modelName, isClick: false })
+      trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_success', value: modelName, isClick: false })
     } catch (error) {
       console.warn('Failed to set model:', error)
-      trackMatomoEvent({ category: 'ai', action: 'ollama_model_set_backend_failed', name: `${modelName}|${error.message || 'unknown'}`, isClick: false })
+      trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_failed', value: `${modelName}|${error.message || 'unknown'}`, isClick: false })
     }
-    trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'SetOllamaModel', name: modelName, isClick: true })
+    trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetOllamaModel', name: modelName, isClick: true })
   }, [props.plugin, selectedModel])
 
   // refresh context whenever selection changes (even if selector is closed)
@@ -640,7 +654,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
       if (description && description.trim()) {
         sendPrompt(`/generate ${description.trim()}`)
-        trackMatomoEvent<RemixAIEvent>({ category: 'remixAI', action: 'GenerateNewAIWorkspaceFromModal', name: description, isClick: true })
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'GenerateNewAIWorkspaceFromModal', name: description, isClick: true })
       }
     } catch {
       /* user cancelled */
@@ -662,11 +676,24 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   )
   const chatHistoryRef = useRef<HTMLElement | null>(null)
 
+  // Detect manual user scrolling
   useEffect(() => {
-    if (chatHistoryRef.current) {
-      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
+    const node = historyRef.current
+    if (!node) return
+
+    const handleScroll = () => {
+      const isAtBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 100
+
+      if (!isAtBottom) {
+        userHasScrolledRef.current = true
+      } else {
+        userHasScrolledRef.current = false
+      }
     }
-  }, [messages])
+
+    node.addEventListener('scroll', handleScroll)
+    return () => node.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const maximizePanel = async () => {
     await props.plugin.call('layout', 'maximisePinnedPanel')

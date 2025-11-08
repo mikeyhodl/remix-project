@@ -46,8 +46,7 @@
     "string-similarity": "^4.0.4",
     "tape": "^4.10.1",
     "ts-node": "^8.0.3",
-    "typescript": "^3.4.3",
-    "web3": "^4.1.1"
+    "typescript": "^3.4.3"
   },
   "devDependencies": {
     "tap-spec": "^5.0.0"

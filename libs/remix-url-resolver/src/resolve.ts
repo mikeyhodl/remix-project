@@ -165,7 +165,7 @@ export class RemixURLResolver {
     const npm_urls = ["https://cdn.jsdelivr.net/npm/", "https://unpkg.com/"]
 
     // Runtime configuration for E2E tests (injected via post-build script)
-    const runtimeConfig = typeof window !== 'undefined' && (window as any)['__REMIX_COMPILER_URLS__']
+    const runtimeConfig = typeof window !== 'undefined' ? (window as any)['__REMIX_COMPILER_URLS__'] : undefined
     if (runtimeConfig?.npmURL) {
       npm_urls.unshift(runtimeConfig.npmURL)
     }
