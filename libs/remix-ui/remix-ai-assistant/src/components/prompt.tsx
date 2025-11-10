@@ -213,7 +213,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 </button>
               )}
             </div>
-             <button
+            <button
               data-id="remix-ai-record-audio"
               className={`btn btn-text btn-sm small fw-light mt-2 align-self-end border border-text rounded ${isRecording ? 'btn-danger text-white' : 'text-secondary'}`}
               onClick={handleRecord}
