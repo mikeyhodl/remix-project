@@ -16,7 +16,6 @@ export class QueryParams {
       } else {
         queryString += updatedKeys[y] + '&'
       }
-      
     }
     window.location.hash = queryString.slice(0, -1)
   }

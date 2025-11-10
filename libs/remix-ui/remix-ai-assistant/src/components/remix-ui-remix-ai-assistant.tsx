@@ -15,6 +15,7 @@ import { groupListType } from '../types/componentTypes'
 import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
 import { useAudioTranscription } from '../hooks/useAudioTranscription'
+import { QueryParams } from '@remix-project/remix-lib'
 
 export interface RemixUiRemixAiAssistantProps {
   plugin: Plugin
@@ -49,7 +50,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [contextChoice, setContextChoice] = useState<'none' | 'current' | 'opened' | 'workspace'>(
     'none'
   )
-  const [mcpEnhanced, setMcpEnhanced] = useState(true)
+
+  // Check if MCP is enabled via query parameter
+  const queryParams = new QueryParams()
+  const mcpEnabled = queryParams.exists('mcp')
+
+  const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -567,22 +573,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     fetchAssistantChoice()
   }, [assistantChoice, isOllamaFailureFallback])
 
-  // // Initialize MCP enhancement state
-  // useEffect(() => {
-  //   const initMCPState = async () => {
-  //     try {
-  //       const mcpStatus = await props.plugin.call('remixAI', 'isMCPEnabled')
-  //       setMcpEnhanced(mcpStatus)
-  //     } catch (error) {
-  //       console.warn('Failed to get MCP status:', error)
-  //     }
-  //   }
-  //   initMCPState()
-  // }, [])
-
-  // Handle MCP enhancement toggle
   useEffect(() => {
     const handleMCPToggle = async () => {
+      // Only toggle MCP if it's enabled via query parameter
+      if (!mcpEnabled) {
+        // Ensure MCP is disabled if query param is not set
+        try {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        } catch (error) {
+          console.warn('Failed to disable MCP enhancement:', error)
+        }
+        return
+      }
+
       try {
         if (mcpEnhanced) {
           await props.plugin.call('remixAI', 'enableMCPEnhancement')
@@ -596,7 +599,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     if (mcpEnhanced !== null) { // Only call when state is initialized
       handleMCPToggle()
     }
-  }, [mcpEnhanced])
+  }, [mcpEnhanced, mcpEnabled])
 
   // Fetch available models everytime Ollama is selected
   useEffect(() => {
@@ -834,24 +837,26 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               choice={assistantChoice}
               groupList={aiAssistantGroupList}
             />
-            <div className="border-top mt-2 pt-2">
-              <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
-              <div className="form-check ms-2 mb-2">
-                <input 
-                  className="form-check-input" 
-                  type="checkbox" 
-                  id="mcpEnhancementToggle"
-                  checked={mcpEnhanced}
-                  onChange={(e) => setMcpEnhanced(e.target.checked)}
-                />
-                <label className="form-check-label small" htmlFor="mcpEnhancementToggle">
-                  Enable MCP context enhancement
-                </label>
+            {mcpEnabled && (
+              <div className="border-top mt-2 pt-2">
+                <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
+                <div className="form-check ms-2 mb-2">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="mcpEnhancementToggle"
+                    checked={mcpEnhanced}
+                    onChange={(e) => setMcpEnhanced(e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="mcpEnhancementToggle">
+                    Enable MCP context enhancement
+                  </label>
+                </div>
+                <div className="small text-muted ms-2">
+                  Adds relevant context from configured MCP servers to AI requests
+                </div>
               </div>
-              <div className="small text-muted ms-2">
-                Adds relevant context from configured MCP servers to AI requests
-              </div>
-            </div>
+            )}
           </div>
         )}
         {showModelOptions && assistantChoice === 'ollama' && (
