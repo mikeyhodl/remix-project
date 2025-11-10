@@ -15,6 +15,7 @@ type EndpointUrls = {
     gitHubLoginProxy: string;
   billing: string;
     components: string;
+    sso: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -34,6 +35,7 @@ const defaultUrls: EndpointUrls = {
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   billing: 'https://billing.api.remix.live',
   components: 'https://components.api.remix.live',
+  sso: 'https://sso.api.remix.live',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -53,6 +55,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   gitHubLoginProxy: 'github-login-proxy',
   billing: 'billing',
   components: 'components',
+  sso: 'sso',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
