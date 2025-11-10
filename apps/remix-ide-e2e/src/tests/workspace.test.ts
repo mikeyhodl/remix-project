@@ -499,7 +499,6 @@ module.exports = {
       .click('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .pause()
       .click('*[data-id="dropdown-item-ERC1155 - 1"]')
       .click('*[data-id="workspacesSelect"]')
       .waitForElementNotPresent(`[data-id="dropdown-item-workspace_name_1"]`)
