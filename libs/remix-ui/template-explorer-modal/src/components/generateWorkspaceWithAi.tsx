@@ -23,9 +23,6 @@ export function GenerateWorkspaceWithAi() {
       <div className="d-flex justify-content-end align-items-center mt-3">
         <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
           facade.closeWizard()
-          // setTimeout(() => {
-          //   setIsAiWorkspaceBeingGenerated(true)
-          // }, 2000)
           const statusCallback = (status: string): Promise<void> => {
             console.log('status', status)
             return Promise.resolve()
@@ -33,7 +30,6 @@ export function GenerateWorkspaceWithAi() {
 
           await plugin.call('remixaiassistant', 'handleExternalMessage', 'Please wait while the workspace is being generated!')
           const result = await plugin.call('remixAI' as any, 'generate', state.workspaceName, statusCallback)
-          console.log('result', result)
           if (result.includes('No payload')) {
             await plugin.call('remixaiassistant', 'handleExternalMessage', 'Unfortunately, the workspace generation failed. Please try again with a different prompt.')
             return
