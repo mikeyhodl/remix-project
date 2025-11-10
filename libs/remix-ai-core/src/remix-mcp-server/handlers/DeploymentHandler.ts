@@ -1,3 +1,4 @@
+/* eslint-disable no-async-promise-executor */
 /**
  * Deployment and Contract Interaction Tool Handlers for Remix MCP Server
  */

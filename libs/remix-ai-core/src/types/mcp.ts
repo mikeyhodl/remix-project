@@ -81,7 +81,7 @@ export interface IMCPServerCapabilities {
   prompts?: {
     listChanged?: boolean;
   };
-  logging?: {};
+  logging?: Record<string, any>;
   experimental?: Record<string, any>;
 }
 
@@ -89,7 +89,7 @@ export interface IMCPClientCapabilities {
   resources?: {
     subscribe?: boolean;
   };
-  sampling?: {};
+  sampling?: Record<string, any>;
   roots?: {
     listChanged?: boolean;
   };

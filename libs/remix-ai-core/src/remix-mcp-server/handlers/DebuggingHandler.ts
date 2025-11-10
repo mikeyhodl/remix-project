@@ -5,8 +5,8 @@
 import { ICustomRemixApi } from '@remix-api';
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
-import { 
-  ToolCategory, 
+import {
+  ToolCategory,
   RemixToolDefinition,
   DebugSessionArgs,
   BreakpointArgs,
@@ -153,7 +153,7 @@ export class SetBreakpointHandler extends BaseToolHandler {
 
       // TODO: Set breakpoint via Remix debugger API
       const breakpointId = `bp_${Date.now()}`;
-      
+
       const result: BreakpointResult = {
         success: true,
         breakpointId,
@@ -220,7 +220,7 @@ export class DebugStepHandler extends BaseToolHandler {
   async execute(args: DebugStepArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Execute step via Remix debugger API
-      
+
       const result: DebugStepResult = {
         success: true,
         sessionId: args.sessionId,
@@ -304,7 +304,7 @@ export class DebugWatchHandler extends BaseToolHandler {
     try {
       // TODO: Add watch via Remix debugger API
       const watchId = `watch_${Date.now()}`;
-      
+
       const result = {
         success: true,
         watchId,
@@ -378,7 +378,7 @@ export class DebugEvaluateHandler extends BaseToolHandler {
   async execute(args: DebugEvaluateArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Evaluate expression via Remix debugger API
-      
+
       const result = {
         success: true,
         sessionId: args.sessionId,
@@ -431,7 +431,7 @@ export class GetDebugCallStackHandler extends BaseToolHandler {
   async execute(args: DebugCallStackArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get call stack via Remix debugger API
-      
+
       const result = {
         success: true,
         sessionId: args.sessionId,
@@ -513,7 +513,7 @@ export class GetDebugVariablesHandler extends BaseToolHandler {
   async execute(args: DebugVariablesArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Get variables via Remix debugger API
-      
+
       const result = {
         success: true,
         sessionId: args.sessionId,
@@ -583,7 +583,7 @@ export class StopDebugSessionHandler extends BaseToolHandler {
   async execute(args: { sessionId: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // TODO: Stop debug session via Remix debugger API
-      
+
       const result = {
         success: true,
         sessionId: args.sessionId,
