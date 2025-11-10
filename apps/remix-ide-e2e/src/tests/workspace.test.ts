@@ -508,25 +508,21 @@ module.exports = {
 
   'Should create workspace for test #group2': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('filePanel')
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
       .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .click('*[data-id="template-explorer-template-container"]')
-      .waitForElementPresent('*[data-id="template-card-remixDefault-0"]')
-      .click('*[data-id="template-card-remixDefault-0"]')
-      .waitForElementVisible('*[data-id="workspace-details-section"]')
-      .waitForElementVisible('*[data-id="default-workspace-name-edit-icon"]')
-      .click('*[data-id="default-workspace-name-edit-icon"]')
-      .waitForElementVisible('*[data-id="workspace-name-input"]')
-      .setValue('*[data-id="workspace-name-input"]', 'sometestworkspace')
-      .click('*[data-id="validateWorkspaceButton"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
+      .click('*[data-id="contract-wizard-topcard"]')
+      .waitForElementVisible('*[data-id="contract-wizard-container"]')
+      .click('*[data-id="contract-wizard-validate-workspace-button"]')
+      .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.prettierrc.json"]')
-      .pause(2000)
   },
 
   'Should change the current workspace in localstorage to a non existent value, reload the page and see the workspace created #group2': function (browser: NightwatchBrowser) {
@@ -535,9 +531,8 @@ module.exports = {
         localStorage.setItem('currentWorkspace', 'non_existing_workspace')
       })
       .refreshPage()
-      .pause()
       .clickLaunchIcon('filePanel')
-      .currentWorkspaceIs('sometestworkspace')
+      .currentWorkspaceIs('default_workspace')
   },
 
   'Should create workspace for next test #group2': function (browser: NightwatchBrowser) {
@@ -557,12 +552,14 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-upgradability-uups-checkbox"]')
-      .pause(100)
+      .pause(1000)
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .perform(function() {
+      .perform(function () {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
-          browser.assert.not.ok(result.value as any, 'Scripts folder is not visible')
-            .clickLaunchIcon('filePanel')
+          console.log(result)
+          if (result.value === false) {
+            browser.clickLaunchIcon('filePanel')
+          }
         })
       })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')

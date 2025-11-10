@@ -195,7 +195,7 @@ module.exports = {
       .assert.textContains('*[data-id="default-workspace-name-span"]', 'WORKSPACE_NEW', 'Workspace name is correct')
       .click('*[data-id="validateWorkspaceButton"]')
       .pause(3000)
-      .currentWorkspaceIs('workspace_new - 1')
+      .currentWorkspaceIs('workspace_new')
       .expandAllFolders()
       .waitForElementVisible('li[data-id="treeViewLitreeViewItem.deps/remix-tests/remix_tests.sol"]')
       .waitForElementVisible('li[data-id="treeViewLitreeViewItem.deps/remix-tests/remix_accounts.sol"]')

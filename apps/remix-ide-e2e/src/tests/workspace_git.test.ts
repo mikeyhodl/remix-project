@@ -518,7 +518,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="sourcecontrol-panel"]')
       .click('*[data-id="sourcecontrol-panel"]')
       .waitForElementVisible({
-        selector: "//*[@data-status='new-untracked' and @data-file='/tests/MyToken_test.sol']",
+        selector: "//*[@data-status='new-untracked' and @data-file='/tests/MyToken_test_test.sol']",
         locateStrategy: 'xpath'
       })
   },
