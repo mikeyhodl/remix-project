@@ -124,7 +124,6 @@ const RemixApp = (props: IRemixAppUi) => {
     props.app.localeModule.events.on('localeChanged', (nextLocale) => {
       setLocale(nextLocale)
     })
-    
 
     if (!props.app.desktopClientMode) {
 
@@ -136,7 +135,6 @@ const RemixApp = (props: IRemixAppUi) => {
         if (!isClosed) setHidePinnedPanel(false)
       })
     }
-
 
     setInterval(() => {
       setOnline(window.navigator.onLine)
