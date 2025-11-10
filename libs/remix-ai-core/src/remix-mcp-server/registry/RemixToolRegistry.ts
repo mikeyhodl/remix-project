@@ -1,7 +1,7 @@
 /**
  * Remix Tool Registry Implementation
  */
-import { isBigInt } from 'web3-validator';
+import { isBigInt } from './RemixResourceProviderRegistry';
 import EventEmitter from 'events';
 import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
 import {

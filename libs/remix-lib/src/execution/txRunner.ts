@@ -1,7 +1,7 @@
 'use strict'
 import { EventManager } from '../eventManager'
 import { EOACode7702AuthorizationList } from '@ethereumjs/util'
-import type { TransactionReceipt } from 'web3'
+import type { TransactionReceipt } from 'ethers'
 /*
  * A type that represents a `0x`-prefixed hex string.
  */

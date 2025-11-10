@@ -14,7 +14,7 @@ import {
   ResourceCategory
 } from '../types/mcpResources';
 
-function isBigInt(value: unknown): value is bigint {
+export function isBigInt(value: unknown): value is bigint {
   return typeof value === 'bigint';
 }
 

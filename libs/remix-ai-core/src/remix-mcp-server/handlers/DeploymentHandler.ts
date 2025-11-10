@@ -19,7 +19,6 @@ import {
 import { Plugin } from '@remixproject/engine';
 import { getContractData } from '@remix-project/core-plugin'
 import type { TxResult } from '@remix-project/remix-lib';
-import type { TransactionReceipt } from 'web3'
 import { BrowserProvider } from "ethers"
 import { toNumber, ethers } from 'ethers'
 
