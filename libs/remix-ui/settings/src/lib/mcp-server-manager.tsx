@@ -47,7 +47,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
     try {
       // First try to get servers from the AI plugin (which includes defaults)
       let servers: IMCPServer[] = []
-      
+
       try {
         await plugin.call('remixAI', 'loadMCPServersFromSettings')
         servers = await plugin.call('remixAI', 'getIMCPServers')
@@ -61,7 +61,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
           console.log('Loaded MCP servers from settings:', servers)
         }
       }
-      
+
       setServers(servers)
     } catch (error) {
       console.warn('Failed to load MCP servers:', error)
@@ -81,7 +81,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
       console.log('[MCP Settings] Failed to load MCP connection statuses:', error)
     }
   }
-
 
   const saveServer = async () => {
     try {
@@ -329,8 +328,8 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                   placeholder={
                     formData.transport === 'sse' ? 'http://localhost:8080/sse' :
-                    formData.transport === 'http' ? 'http://localhost:8080/mcp' :
-                    'ws://localhost:8080/ws'
+                      formData.transport === 'http' ? 'http://localhost:8080/mcp' :
+                        'ws://localhost:8080/ws'
                   }
                 />
               </div>
