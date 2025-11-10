@@ -124,20 +124,22 @@ const RemixApp = (props: IRemixAppUi) => {
     props.app.localeModule.events.on('localeChanged', (nextLocale) => {
       setLocale(nextLocale)
     })
+    
 
     if (!props.app.desktopClientMode) {
       props.app.pinnedPanel.events.on('pinnedPlugin', () => {
         setHidePinnedPanel(false)
-      })                              
-    } else  {
+      })
+
+      props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
+        setHidePinnedPanel(true)
+      })
+
       props.app.pinnedPanel.events.on('pinnedPlugin', (profile, isClosed) => {
         if (!isClosed) setHidePinnedPanel(false)
       })
     }
-    props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
-        setHidePinnedPanel(true)
-      })
-    }
+
 
     setInterval(() => {
       setOnline(window.navigator.onLine)
