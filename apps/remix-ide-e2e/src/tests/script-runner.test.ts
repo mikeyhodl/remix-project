@@ -101,8 +101,8 @@ const tests = {
       .click('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacecreate"]')
       // .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="template-card-introToEIP7702-5"]')
-      .click('*[data-id="template-card-introToEIP7702-5"]')
+      .waitForElementVisible('*[data-id="template-card-simpleEip7702-2"]')
+      .click('*[data-id="template-card-simpleEip7702-2"]')
       .click('*[data-id="validate-simpleEip7702workspace-button"]')
       // .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/Example7702.sol"]')
       .waitForElementVisible({
@@ -113,8 +113,8 @@ const tests = {
         locateStrategy: 'xpath',
         selector: "//li[@data-id='UIScriptRunner' and @role='tab']"
       })
-      .waitForElementVisible('[data-id="sr-notloaded-default"]')
-      .waitForElementVisible('[data-id="sr-loaded-ethers6"]')
+      .scrollAndClick('*[data-id="sr-notloaded-ethers6"]')
+      .scrollInto('[data-id="sr-notloaded-default"]')
   },
   'reset to default after template': function (browser: NightwatchBrowser) {
     browser

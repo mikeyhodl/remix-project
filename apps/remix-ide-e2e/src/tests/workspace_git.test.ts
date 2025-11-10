@@ -476,16 +476,28 @@ module.exports = {
 
   'Should create Remix default workspace with files #group5': function (browser: NightwatchBrowser) {
     browser
-      .openTemplateExplorer()
-      .waitForElementPresent('*[data-id="create-ozerc20"]')
-      .scrollAndClick('*[data-id="create-ozerc20"]')
-      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'new_workspace')
-      .modalFooterOKClick('TemplatesSelection')
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="contract-wizard-topcard"]')
+      .click('*[data-id="contract-wizard-topcard"]')
+      .waitForElementVisible('*[data-id="contract-wizard-container"]')
+      .waitForElementVisible('*[data-id="contract-wizard-edit-icon"]')
+      .click('*[data-id="contract-wizard-edit-icon"]')
+      .waitForElementVisible('*[data-id="contract-wizard-token-name-input"]')
+      .setValue('*[data-id="contract-wizard-token-name-input"]', 'MyToken_test')
+      .click('*[data-id="contract-wizard-mintable-checkbox"]')
+      .click('*[data-id="contract-wizard-burnable-checkbox"]')
+      .click('*[data-id="contract-wizard-pausable-checkbox"]')
+      .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
+      .click('*[data-id="contract-wizard-validate-workspace-button"]')
       .clickLaunchIcon('filePanel')
       .pause(1000)
-      .waitForElementVisible('*[data-id="treeViewDivDraggableItemtests/MyToken_test.sol"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken_test.sol"]')
   },
   'Update settings for git #group5': function (browser: NightwatchBrowser) {
     browser.

@@ -39,8 +39,8 @@ module.exports = {
   'Should compile a simple circuit using editor play button #group1': function (browser: NightwatchBrowser) {
     browser
       .click('[data-id="treeViewLitreeViewItemcircuits/simple.circom"]')
-      .waitForElementPresent('[data-path="Semaphore - 1/circuits/simple.circom"]')
-      .waitForElementVisible('[data-path="Semaphore - 1/circuits/simple.circom"]')
+      .waitForElementPresent('[data-path="circuits/simple.circom"]')
+      .waitForElementVisible('[data-path="circuits/simple.circom"]')
       .waitForElementPresent('[data-id="verticalIconsKindcircuit-compiler"]')
       .waitForElementVisible('[data-id="verticalIconsKindcircuit-compiler"]')
       .click('[data-id="compile-action"]')
@@ -71,8 +71,8 @@ module.exports = {
   'Should compile a simple circuit using compile button in circom plugin #group2': function (browser: NightwatchBrowser) {
     browser
       .click('[data-id="treeViewLitreeViewItemcircuits/simple.circom"]')
-      .waitForElementPresent('[data-path="Semaphore - 1/circuits/simple.circom"]')
-      .waitForElementVisible('[data-path="Semaphore - 1/circuits/simple.circom"]')
+      .waitForElementPresent('[data-path="circuits/simple.circom"]')
+      .waitForElementVisible('[data-path="circuits/simple.circom"]')
       .clickLaunchIcon('circuit-compiler')
       .frame(0)
       .waitForElementPresent('button[data-id="compile_circuit_btn"]')
