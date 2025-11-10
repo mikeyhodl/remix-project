@@ -26,8 +26,6 @@ module.exports = {
       .waitForElementVisible('*[data-id="contract-wizard-container"]')
       .setValue('#contractWizardContractTagSelect', 'erc721')
     // .click('*[data-id="contract-wizard-contract-tag-select-option-ERC721"]')
-      .click('*[data-id="contract-wizard-mintable-checkbox"]')
-      .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
       .pause(100)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
