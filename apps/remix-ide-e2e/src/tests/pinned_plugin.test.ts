@@ -60,5 +60,11 @@ module.exports = {
       .waitForElementVisible('*[data-id="movePluginToRight"]')
       .click('*[data-pinnedplugin="movePluginToLeft-udapp"]')
       .end()
+  },
+  'Check if pannel is gone when the app is in destop client mode #group1': function (browser: NightwatchBrowser) {
+    browser
+      .url('http://127.0.0.1:8080/?#activate=udapp,desktopClient')
+      .waitForElementNotPresent('#pinned-panel')
+      .end()
   }
 }

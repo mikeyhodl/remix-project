@@ -40,8 +40,9 @@ export class Topbar extends Plugin {
   registry: Registry
   fileProviders: any
   fileManager: any
+  desktopClientMode: boolean
 
-  constructor(filePanel: FilePanel, git: GitPlugin) {
+  constructor(filePanel: FilePanel, git: GitPlugin, desktopClientMode = false) {
     super(TopBarProfile)
     this.filePanel = filePanel
     this.registry = Registry.getInstance()
@@ -51,6 +52,7 @@ export class Topbar extends Plugin {
     this.git = git
     this.workspaces = []
     this.currentWorkspaceMetadata = null
+    this.desktopClientMode = desktopClientMode
   }
 
   onActivation(): void {
