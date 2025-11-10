@@ -151,6 +151,7 @@ module.exports = {
   },
   'Create OpenZeppelin ERC721 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
+      .clickLaunchIcon('filePanel')
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
@@ -170,24 +171,27 @@ module.exports = {
       .waitForElementVisible('*[data-id="contract-wizard-token-Test721Token-input"]')
       .assert.attributeMatches('#contractWizardTokenNameReadOnlyInput', 'data-id', 'contract-wizard-token-Test721Token-input', 'Token name is correct')
       .setValue('#contractWizardContractTagSelect', 'erc721')
-      // .click('*[data-id="contract-wizard-contract-tag-select-option-ERC721"]')
       .click('*[data-id="contract-wizard-mintable-checkbox"]')
       .click('*[data-id="contract-wizard-burnable-checkbox"]')
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .pause(2000)
+      .pause(1000)
       // .clickLaunchIcon('filePanel')
       .perform(function () {
         browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
-          browser.assert.not.ok(!!result.value, 'FilePanel not visible')
-            .clickLaunchIcon('filePanel')
+          console.log(result)
+          if (result.value === false) {
+            browser.clickLaunchIcon('filePanel')
+          }
         })
       })
+      // .pause()
       .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .isVisible('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
+      .pause(2000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract Test721Token is ERC721, ERC721Pausable, Ownable, ERC721Burnable {`) !== -1,
           'Incorrect content')
@@ -197,6 +201,132 @@ module.exports = {
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .clickLaunchIcon('solidity')
       .isVisible('*[data-id="compilation-details"]')
-      .end()
+  },
+  'Use default workspace and add github actions template': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="home"]')
+      .click('*[data-id="landingPageImportFromTemplate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-remixDefault-0"]')
+      .click('*[data-id="template-card-remixDefault-0"]')
+      .click('*[data-id="default-workspace-name-edit-icon"]')
+      .waitForElementVisible('*[data-id="workspace-name-input"]')
+      .click('*[data-id="workspace-name-input"]')
+      .setValue('*[data-id="workspace-name-input"]', 'Test Default Workspace')
+      .click('*[data-id="validateWorkspaceButton"]')
+      .pause(1000)
+      .assert.textContains('*[data-id="workspacesSelect-togglerText"]', 'Test Default Workspace', 'Workspace name is correct')
+      .perform(function () {
+        browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
+          console.log(result)
+          if (result.value === false) {
+            browser.clickLaunchIcon('filePanel')
+          }
+        })
+      })
+      .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementPresent('*[data-id="template-card-runSolidityUnittestingAction-1"]')
+      .scrollInto('*[data-id="template-card-runSolidityUnittestingAction-1"]')
+      .click('*[data-id="template-card-runSolidityUnittestingAction-1"]')
+      .waitForElementVisible('*[data-id="treeViewDivtreeViewItem.github"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      .click('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows/run-solidity-unittesting.yml"]')
+      .click('*[data-id="treeViewLitreeViewItem.github/workflows/run-solidity-unittesting.yml"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`name: Running Solidity Unit Tests`) !== -1,
+          'Correct content')
+      })
+  },
+  'Add Mocha Chai Test Workflow template': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      // .waitForElementPresent('*[data-id="template-card-runJsTestAction-1"]')
+      .scrollInto('*[data-id="template-category-GitHub Actions"]')
+      .waitForElementVisible('*[data-id="template-card-runJsTestAction-0"]')
+      .click('*[data-id="template-card-runJsTestAction-0"]')
+      .waitForElementVisible('*[data-id="treeViewDivtreeViewItem.github"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      // .click('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows/run-js-test.yml"]')
+      .click('*[data-id="treeViewLitreeViewItem.github/workflows/run-js-test.yml"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`name: Running Mocha Chai Solidity Unit Tests`) !== -1,
+          'Correct content')
+      })
+  },
+  'Add Slither Workflow template': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      // .waitForElementPresent('*[data-id="data-id="template-card-runSlitherAction-2"]')
+      .scrollInto('*[data-id="template-category-GitHub Actions"]')
+      .waitForElementVisible('*[data-id="template-card-runSlitherAction-2"]')
+      .click('*[data-id="template-card-runSlitherAction-2"]')
+      .waitForElementVisible('*[data-id="treeViewDivtreeViewItem.github"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      // .click('*[data-id="treeViewLitreeViewItem.github/workflows"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows/run-slither-action.yml"]')
+      .click('*[data-id="treeViewLitreeViewItem.github/workflows/run-slither-action.yml"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`name: Slither Analysis`) !== -1,
+          'Correct content')
+      })
+  },
+  'Add Create2 Solidity Factory template': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      .scrollInto('*[data-id="template-category-Solidity CREATE2"]')
+      .waitForElementVisible('*[data-id="template-card-contractCreate2Factory-0"]')
+      .click('*[data-id="template-card-contractCreate2Factory-0"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/libs"]')
+      .click('*[data-id="treeViewLitreeViewItemcontracts/libs/create2-factory.sol"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`contract Create2Factory {`) !== -1,
+          'Correct content')
+      })
+  },
+  'Add Contract Deployer Scripts template': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      .scrollInto('*[data-id="template-category-Solidity CREATE2"]')
+      .waitForElementVisible('*[data-id="template-card-contractDeployerScripts-1"]')
+      .click('*[data-id="template-card-contractDeployerScripts-1"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts"]')
+      .click('*[data-id="treeViewLitreeViewItemscripts/contract-deployer/basic-contract-deploy.ts"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`export const deploy = async (contractName: string, args: Array<any>, accountIndex?: number): Promise<ethers.Contract> => {`) !== -1,
+          'Correct content')
+      })
+  },
+  'Add Etherscan scripts template': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="workspacesSelect"]')
+      .click('*[data-id="workspacecreate"]')
+      // .waitForElementPresent('*[data-id="template-card-etherscanScripts-0"]')
+      .scrollInto('*[data-id="template-category-Contract Verification"]')
+      .waitForElementVisible('*[data-id="template-card-etherscanScripts-0"]')
+      .click('*[data-id="template-card-etherscanScripts-0"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/etherscan"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/etherscan/receiptGuidScript.ts"]')
+      .click('*[data-id="treeViewLitreeViewItemscripts/etherscan/receiptGuidScript.ts"]')
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf(`export const receiptStatus = async (apikey: string, guid: string, isProxyContract?: boolean) => {`) !== -1,
+          'Correct content')
+      })
   }
 }

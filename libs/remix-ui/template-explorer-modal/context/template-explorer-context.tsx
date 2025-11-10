@@ -45,8 +45,14 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
 
   const generateUniqueWorkspaceName = async (name: string) => {
     try {
-      const uniqueName = await plugin.call('filePanel', 'getAvailableWorkspaceName', name) as string
-      return uniqueName
+      const workspace = await plugin.call('filePanel', 'workspaceExists', name)
+      if (!workspace) {
+        console.log('Workspace does not exist, returning original name')
+        return name
+      } else {
+        const uniqueName = await plugin.call('filePanel', 'getAvailableWorkspaceName', name) as string
+        return uniqueName
+      }
     } catch (error) {
       console.error(error)
     }

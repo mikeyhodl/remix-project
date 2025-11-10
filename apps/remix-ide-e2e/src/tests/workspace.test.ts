@@ -426,7 +426,6 @@ module.exports = {
       .click('*[data-id="default-workspace-name-edit-icon"]')
       .waitForElementVisible('*[data-id="workspace-name-input"]')
       .setValue('*[data-id="workspace-name-input"]', 'workspace_name')
-      // .modalFooterOKClick('TemplatesSelection')
       .click('*[data-id="validateWorkspaceButton"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       .click('*[data-id="treeViewLitreeViewItemtests"]')
@@ -449,11 +448,10 @@ module.exports = {
       .click('*[data-id="default-workspace-name-edit-icon"]')
       .waitForElementVisible('*[data-id="workspace-name-input"]')
       .setValue('*[data-id="workspace-name-input"]', 'workspace_name_1')
-      // .modalFooterOKClick('TemplatesSelection')
       .click('*[data-id="validateWorkspaceButton"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       .waitForElementNotPresent('*[data-id="treeViewLitreeViewItemtest.sol"]')
-      .switchWorkspace('workspace_name - 1')
+      .switchWorkspace('workspace_name')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests"]')
       .currentWorkspaceIs('workspace_name')
   },
@@ -462,7 +460,7 @@ module.exports = {
     browser
       .waitForElementPresent('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="dropdown-item-workspace_name - 1"]')
+      .waitForElementVisible('*[data-id="dropdown-item-workspace_name"]')
       .waitForElementVisible('*[data-id="workspacesubMenuIcon"]')
       .click('*[data-id="workspacesubMenuIcon"]')
       .click('*[data-id="workspacesubMenuRename"]') // rename workspace_name
@@ -474,9 +472,9 @@ module.exports = {
       .waitForElementPresent('[data-id="topbarModalModalDialogModalFooter-react"] .modal-ok')
       .click('[data-id="topbarModalModalDialogModalFooter-react"] > .modal-ok')
       .pause(2000)
-      .switchWorkspace('workspace_name_1 - 1')
+      .switchWorkspace('workspace_name_1')
       .pause(2000)
-      .currentWorkspaceIs('workspace_name_1 - 1')
+      .currentWorkspaceIs('workspace_name_1')
       .switchWorkspace('workspace_name_renamed')
       .pause(2000)
       .currentWorkspaceIs('workspace_name_renamed')
@@ -484,10 +482,10 @@ module.exports = {
   },
 
   'Should delete a workspace #group1': function (browser: NightwatchBrowser) {
-    const selector = 'a[data-id="dropdown-item-workspace_name_1 - 1"] + div [data-id="workspacesubMenuIcon"]'
+    const selector = 'a[data-id="dropdown-item-workspace_name_1"] + div [data-id="workspacesubMenuIcon"]'
     browser
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible(`[data-id="dropdown-item-workspace_name_1 - 1"]`)
+      .waitForElementVisible(`[data-id="dropdown-item-workspace_name_1"]`)
       .waitForElementVisible(selector)
       .click(selector)
       .click('*[data-id="workspacesubMenuDelete"]') // delete workspace_name_1
@@ -495,13 +493,16 @@ module.exports = {
       .click('*[data-id="topbarModalModalDialogModalFooter-react"] .modal-ok')
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementVisible('*[data-id="dropdown-item-workspace_name - 1"]')
-      .click('*[data-id="dropdown-item-workspace_name - 1"]')
+      .waitForElementVisible('*[data-id="dropdown-item-workspace_name_renamed"]')
+      .click('*[data-id="dropdown-item-workspace_name_renamed"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="workspacesSelect"]')
       .click('*[data-id="workspacesSelect"]')
-      .waitForElementNotPresent(`[data-id="dropdown-item-workspace_name_1 - 1"]`)
+      .pause()
+      .click('*[data-id="dropdown-item-ERC1155 - 1"]')
+      .click('*[data-id="workspacesSelect"]')
+      .waitForElementNotPresent(`[data-id="dropdown-item-workspace_name_1"]`)
       .end()
   },
 
