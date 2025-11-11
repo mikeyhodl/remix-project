@@ -194,21 +194,20 @@ export const initialState: SettingsState = {
     value: '',
     isLoading: false
   },
-<<<<<<< HEAD
   'mcp/servers/enable': {
     value: mcpServersEnable,
     isLoading: false
   },
   'mcp-server-management': {
     value: mcpServerManagement,
-=======
+    isLoading: false
+  },
   'ollama-config': {
     value: ollamaConfig,
     isLoading: false
   },
   'ollama-endpoint': {
     value: ollamaEndpoint,
->>>>>>> 0571313a4a (initial endpoint)
     isLoading: false
   },
   toaster: {
