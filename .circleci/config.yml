@@ -647,37 +647,20 @@ jobs:
           command: |
             set -x
             echo "Starting production build..."
-            NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --verbose 2>&1 | tee build.log || {
+            # Run without Nx Cloud to see full webpack output
+            NX_DAEMON=false NX_SKIP_NX_CACHE=true NX_CLOUD=false NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --skip-nx-cache 2>&1 | tee build.log || {
               EXIT_CODE=$?
               echo "========================================"
               echo "Build failed with exit code $EXIT_CODE"
               echo "========================================"
               echo ""
-              echo "Checking for Nx terminal output cache..."
-              if [ -d "node_modules/.cache/nx/terminalOutputs" ]; then
-                echo "Found terminal outputs, displaying latest:"
-                ls -lht node_modules/.cache/nx/terminalOutputs/ | head -5
-                LATEST_LOG=$(ls -t node_modules/.cache/nx/terminalOutputs/ | head -1)
-                if [ -n "$LATEST_LOG" ]; then
-                  echo ""
-                  echo "========================================"
-                  echo "Contents of $LATEST_LOG:"
-                  echo "========================================"
-                  cat "node_modules/.cache/nx/terminalOutputs/$LATEST_LOG"
-                fi
-              fi
-              echo ""
+              echo "Last 300 lines of build.log:"
               echo "========================================"
-              echo "Last 200 lines of build.log:"
-              echo "========================================"
-              tail -n 200 build.log
+              tail -n 300 build.log
               exit $EXIT_CODE
             }
       - store_artifacts:
           path: ./build.log
-      - store_artifacts:
-          path: ./node_modules/.cache/nx/terminalOutputs
-          destination: nx-terminal-outputs
       - run: "./apps/remix-ide/ci/deploy_remix-<< parameters.script >>.sh"
 
 
