@@ -19,7 +19,7 @@ const profile = {
   maintainedBy: 'Remix',
   permission: true,
   events: [],
-  methods: ['chatPipe', 'handleExternalMessage']
+  methods: ['chatPipe', 'handleExternalMessage', 'getProfile']
 }
 
 export class RemixAIAssistant extends ViewPlugin {
@@ -38,6 +38,10 @@ export class RemixAIAssistant extends ViewPlugin {
     this.element.setAttribute('id', 'remix-ai-assistant')
     this.chatRef = createRef<RemixUiRemixAiAssistantHandle>()
     ;(window as any).remixAIChat = this.chatRef
+  }
+
+  getProfile() {
+    return profile
   }
 
   async onActivation() {

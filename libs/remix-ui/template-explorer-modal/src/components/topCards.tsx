@@ -44,8 +44,9 @@ export function TopCards() {
         <div
           data-id="create-with-ai-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {
+          onClick={async () => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
+            await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
           }}
           style={{
             borderRadius: '10px',

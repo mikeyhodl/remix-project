@@ -1,11 +1,11 @@
 import isElectron from 'is-electron'
 import React, { useContext } from 'react'
-import { TemplateCategory, TemplateItem } from '../../types/template-explorer-types'
+import { ContractWizardAction, TemplateCategory, TemplateExplorerWizardAction, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme, state } = useContext(TemplateExplorerContext)
 
   return (
     <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto" style={{ height: '350px', padding: '1rem' }}>
@@ -61,16 +61,16 @@ export function TemplateExplorer() {
                       facade.closeWizard()
                       return
                     }
-                    if (item?.IsArtefact && item.templateType === undefined) {
-                      // facade.closeWizard()
-                      // return
+                    if (item.displayName.toLowerCase().includes('ai')) {
+                      await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
                     }
-                    if (item.IsArtefact && item.templateType) {
 
+                    const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
+                      dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
+                      dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })
+                      dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: value === 'erc20' ? { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' } : value === 'erc721' ? { value: 'ozerc721', displayName: 'ERC721', tagList: ["ERC721", "Solidity"], description: 'A customizable non-fungible token (NFT) contract' } : { value: 'ozerc1155', displayName: 'ERC1155', tagList: ["ERC1155", "Solidity"], description: 'A customizable multi token contract' } })
                     }
-                    if (item.templateType && item?.IsArtefact === false) {
-
-                    }
+                    switching(item?.tagList?.[0] as 'erc20' | 'erc721' | 'erc1155')
                     facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                   }}
                   onMouseEnter={(e) => {
