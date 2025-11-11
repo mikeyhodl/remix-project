@@ -618,15 +618,15 @@ export function RemixUiTopbar() {
             <i className="fa fa-cog"></i>
           </span>
 
-          {closedPlugin && <div className="d-flex ms-4" >
-            <CustomTooltip placement="bottom-start" tooltipText={`Show ${closedPlugin.displayName} plugin`}>
+          <div className="d-flex ms-4" >
+            <CustomTooltip placement="bottom-start" tooltipText={`Show plugin`}>
               <div 
-                className='codicon codicon-layout-sidebar-right-off fs-4'
+                className={`codicon codicon-layout-sidebar-right${closedPlugin ? '-off' : ''} fs-4`}
                 data-id="restoreClosedPlugin"
                 onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
               ></div>
             </CustomTooltip>
-          </div>}
+          </div>
         </div>
       </div>
     </section>
