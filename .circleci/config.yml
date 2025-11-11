@@ -855,6 +855,3 @@ workflows:
     jobs:
       - deploy-build:
           script: "alpha"
-          filters:
-            branches:
-              only: master
