@@ -647,20 +647,44 @@ jobs:
           command: |
             set -x
             echo "Starting production build..."
-            # Run without Nx Cloud to see full webpack output
-            NX_DAEMON=false NX_SKIP_NX_CACHE=true NX_CLOUD=false NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --skip-nx-cache 2>&1 | tee build.log || {
-              EXIT_CODE=$?
+            # Capture both stdout and stderr separately, then combine
+            NX_DAEMON=false NX_SKIP_NX_CACHE=true NX_CLOUD=false NODE_ENV=production \
+              node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --skip-nx-cache \
+              > build-stdout.log 2> build-stderr.log
+            
+            EXIT_CODE=$?
+            
+            # Combine logs
+            cat build-stdout.log build-stderr.log > build.log
+            
+            if [ $EXIT_CODE -ne 0 ]; then
               echo "========================================"
               echo "Build failed with exit code $EXIT_CODE"
               echo "========================================"
               echo ""
-              echo "Last 300 lines of build.log:"
+              echo "STDERR output:"
               echo "========================================"
-              tail -n 300 build.log
+              cat build-stderr.log
+              echo ""
+              echo "========================================"
+              echo "STDOUT output (last 100 lines):"
+              echo "========================================"
+              tail -n 100 build-stdout.log
+              echo ""
+              echo "Checking for webpack bundle analyzer or other output files..."
+              find dist/apps/remix-ide -type f -name "*.html" -o -name "*.json" | head -20 || true
               exit $EXIT_CODE
-            }
+            fi
+            
+            echo "Build completed successfully"
       - store_artifacts:
           path: ./build.log
+      - store_artifacts:
+          path: ./build-stderr.log
+          destination: stderr.log
+      - store_artifacts:
+          path: ./build-stdout.log
+          destination: stdout.log
       - run: "./apps/remix-ide/ci/deploy_remix-<< parameters.script >>.sh"
 
 
