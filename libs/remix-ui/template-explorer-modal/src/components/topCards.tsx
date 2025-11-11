@@ -5,7 +5,7 @@ import { TemplateExplorerWizardAction } from '../../types/template-explorer-type
 import { createWorkspace, createWorkspaceTemplate, switchToWorkspace, uploadFile, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 
 export function TopCards() {
-  const { dispatch, facade, templateCategoryStrategy, plugin } = useContext(TemplateExplorerContext)
+  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   return (
     <div className="title">
@@ -127,9 +127,10 @@ export function TopCards() {
               if (e.target.files.length === 0 || !e.target.files) return
               let relativePath = e.target.files[0].webkitRelativePath
               let targetFolder = relativePath.split('/')[0]
-              await createWorkspace('/', 'blank', {}, false, undefined, false, false, undefined, undefined)
-              await switchToWorkspace(targetFolder)
-              await uploadFile(e.target, targetFolder)
+              const result = await generateUniqueWorkspaceName(targetFolder)
+              await createWorkspace(result, 'blank', {}, false, undefined, false, false, undefined, undefined)
+              await switchToWorkspace(result)
+              await uploadFile(e.target, '/')
               facade.closeWizard()
               relativePath = null
               targetFolder = null
