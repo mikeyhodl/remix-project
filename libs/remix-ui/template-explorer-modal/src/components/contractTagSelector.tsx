@@ -9,9 +9,6 @@ export function ContractTagSelector (props: any) {
     props.switching(state.contractTag.toLowerCase() as 'erc20' | 'erc721' | 'erc1155')
   }, [state.contractTag, state.contractType])
 
-  // useEffect(() => {
-  //   props.switching(state.contractTag.toLowerCase() as 'erc20' | 'erc721' | 'erc1155')
-  // }, [])
   return (
     <div className="d-flex align-items-center gap-2">
       <DropdownButton id="contract-wizard-language-dropdown" variant="secondary" title="Solidity">

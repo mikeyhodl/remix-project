@@ -173,13 +173,6 @@ export function ContractWizard () {
 
         <div className="col-12 col-lg-9">
           <div className="border rounded p-0 h-100">
-            {/* <Editor
-              data-id="contract-wizard-editor"
-              height="460px"
-              defaultLanguage="typescript"
-              options={{ readOnly: true, minimap: { enabled: false }, theme: theme.currentTheme().name === 'Light' ? 'vs' : 'vs-dark' }}
-              value={strategy.contractCode as string}
-            /> */}
             <CodeMirror
               data-id="contract-wizard-editor"
               value={strategy.contractCode as string}
