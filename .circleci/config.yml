@@ -642,11 +642,20 @@ jobs:
           key: v1-deps-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-      - nx-build-with-fallback:
-          target: "remix-ide"
-          config: "--configuration=production"
-          memory: "8192"
-          fallback_command: "yarn build:production"
+      - run:
+          name: Build remix-ide for production (verbose)
+          command: |
+            set -x
+            echo "Starting production build..."
+            NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --verbose 2>&1 | tee build.log || {
+              echo "Build failed with exit code $?"
+              echo "Last 100 lines of build output:"
+              tail -n 100 build.log
+              exit 1
+            }
+      - store_artifacts:
+          path: ./build.log
+      - run: "./apps/remix-ide/ci/deploy_remix-<< parameters.script >>.sh"
 
 
 workflows:
