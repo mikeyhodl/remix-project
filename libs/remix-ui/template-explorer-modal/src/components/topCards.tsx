@@ -1,11 +1,13 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useContext, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
+import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { createWorkspace, createWorkspaceTemplate, switchToWorkspace, uploadFile, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { ContractWizard } from './contract-wizard'
+import { getErc20ContractCode } from '../utils/contractWizardUtils'
 
 export function TopCards() {
-  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
+  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   return (
     <div className="title">
@@ -74,6 +76,7 @@ export function TopCards() {
           data-id="contract-wizard-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={() => {
+            dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode('erc20', state) })
             facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
           }}
           style={{

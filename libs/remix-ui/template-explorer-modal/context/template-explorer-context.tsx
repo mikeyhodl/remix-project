@@ -16,7 +16,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   const [theme, setTheme] = useState<any>(null)
   const appContext = useContext(AppContext)
   const { plugin } = props
-  const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch)
+  const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch, state)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
 
   useEffect(() => {

@@ -1,22 +1,26 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { GenAiStrategy, WizardStrategy, GenericStrategy, RemixDefaultStrategy, TemplateCategoryStrategy, CookbookStrategy, ScriptsStrategy } from '../../stategies/templateCategoryStrategy'
-import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractTypeStrategy, ContractWizardAction } from '../../types/template-explorer-types'
+import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractTypeStrategy, ContractWizardAction, TemplateExplorerContextType } from '../../types/template-explorer-types'
 import { createWorkspace, getWorkspaces } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
+import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from './contractWizardUtils'
 
 export class TemplateExplorerModalFacade {
   plugin: TemplateExplorerModalPlugin
+  state: TemplateExplorerWizardState
   appContext: appProviderContextType
   dispatch: (action: any) => void
 
-  constructor(plugin: any, appContext: appProviderContextType, dispatch: (action: any) => void) {
+  constructor(plugin: any, appContext: appProviderContextType,
+    dispatch: (action: any) => void, state: TemplateExplorerWizardState) {
     this.plugin = plugin
     this.appContext = appContext
     this.dispatch = dispatch
+    this.state = state
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
@@ -39,8 +43,9 @@ export class TemplateExplorerModalFacade {
     return cleanedTagName
   }
   async switchWizardScreen(dispatch: (action: any) => void, item: TemplateItem, template: TemplateCategory, templateCategoryStrategy: TemplateCategoryStrategy) {
-    console.log('item', item)
-    dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: this.stripDisplayName(item) || item.displayName })
+    console.log('switchWizardScreen', item)
+    dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: item.tagList?.[0] })
+    dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: item.tagList?.[0] })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: item })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.displayName })

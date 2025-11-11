@@ -1,5 +1,5 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React,{ useContext, useEffect, useRef, useState } from 'react'
+import React,{ ReactNode, useContext, useEffect, useRef, useState } from 'react'
 import Editor, { Monaco } from '@monaco-editor/react'
 import * as erc20 from '../contractCode/erc20'
 import { AccessControlType, ContractTypeStrategy, ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
@@ -9,6 +9,7 @@ import CodeMirror from '@uiw/react-codemirror'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
+import { ContractTagSelector } from './contractTagSelector'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -76,24 +77,30 @@ export function ContractWizard () {
   }
 
   useEffect(() => {
-    if (strategy.contractType === 'erc20') {
-      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode(strategy.contractType, strategy) })
-    } else if (strategy.contractType === 'erc721') {
-      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc721ContractCode(strategy.contractType, strategy) })
-    } else if (strategy.contractType === 'erc1155') {
-      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc1155ContractCode(strategy.contractType, strategy) })
+    if (strategy.contractType.toLowerCase() === 'erc20') {
+      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode(strategy.contractType.toLowerCase() as 'erc20', strategy) })
+    } else if (strategy.contractType.toLowerCase() === 'erc721') {
+      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc721ContractCode(strategy.contractType.toLowerCase() as 'erc721', strategy) })
+    } else if (strategy.contractType.toLowerCase() === 'erc1155') {
+      dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc1155ContractCode(strategy.contractType.toLowerCase() as 'erc1155', strategy) })
     }
-  }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
+  }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName, strategy.contractTag])
 
   useEffect(() => {
     console.log('strategy', strategy)
   }, [strategy])
 
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
+    console.log('switching', value)
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
+    dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: value.toUpperCase() })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: value === 'erc20' ? { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' } : value === 'erc721' ? { value: 'ozerc721', displayName: 'ERC721', tagList: ["ERC721", "Solidity"], description: 'A customizable non-fungible token (NFT) contract' } : { value: 'ozerc1155', displayName: 'ERC1155', tagList: ["ERC1155", "Solidity"], description: 'A customizable multi token contract' } })
   }
+
+  const currentValue: 'erc20' | 'erc721' | 'erc1155' = (state?.contractType?.toLowerCase() === 'erc20' || state?.contractType?.toLowerCase() === 'erc721' || state?.contractType?.toLowerCase() === 'erc1155')
+    ? (state.contractType.toLowerCase() as 'erc20' | 'erc721' | 'erc1155')
+    : 'erc20'
 
   return (
     <section className="container-fluid">
@@ -105,20 +112,7 @@ export function ContractWizard () {
             </span>}
             <i data-id="contract-wizard-edit-icon" className={`${showEditModal ? 'fas fa-lock' : "fas fa-edit"}`} onClick={() => setShowEditModal(!showEditModal)}></i>
           </div>
-          <div className="d-flex align-items-center gap-2">
-            <select className="form-select form-select-sm w-auto" defaultValue="Solidity">
-              <option>Solidity</option>
-            </select>
-            <select id="contractWizardContractTagSelect" data-id="contract-wizard-contract-tag-select" className="form-select form-select-sm w-auto" defaultValue={strategy.contractType} onChange={(e) => {
-              switching(e.target.value as 'erc20' | 'erc721' | 'erc1155')
-            }}
-            value={strategy.contractType}
-            >
-              <option data-id="contract-wizard-contract-tag-option-erc20" value="erc20">ERC20</option>
-              <option data-id="contract-wizard-contract-tag-option-erc721" value="erc721">ERC721</option>
-              <option data-id="contract-wizard-contract-tag-option-erc1155" value="erc1155">ERC1155</option>
-            </select>
-          </div>
+          <ContractTagSelector switching={switching} />
         </div>
 
         <div data-id="contract-wizard-container" className="col-12 col-lg-3">

@@ -36,7 +36,7 @@ export const templatesRepository = [
         value: "ozerc20",
         displayName: "ERC20",
         description: "An ERC20 contract with:",
-        tagList: ["Solidity"],
+        tagList: ["ERC20", "Solidity"],
         opts: {
           mintable: true
         },
@@ -45,7 +45,7 @@ export const templatesRepository = [
         value: "ozerc20",
         displayName: "ERC20",
         description: "An ERC20 contract with:",
-        tagList: ["Solidity", "ERC20"],
+        tagList: ["ERC20", "Solidity"],
         opts: {
           mintable: true,
           burnable: true
@@ -71,7 +71,7 @@ export const templatesRepository = [
         value: "ozerc721",
         displayName: "ERC721 (NFT)",
         description: "An ERC721 contract with:",
-        tagList: ["Solidity", "ERC721"],
+        tagList: ["ERC721", "Solidity"],
         opts: {
           mintable: true
         },
@@ -98,14 +98,14 @@ export const templatesRepository = [
       },
       {
         value: "ozerc1155",
-        tagList: ["Solidity"],
+        tagList: ["ERC1155", "Solidity"],
         displayName: "ERC1155",
         description: 'A customizable multi token contract',
       },
       {
         value: "ozerc1155",
         displayName: "ERC1155",
-        tagList: ["Solidity"],
+        tagList: ["ERC1155", "Solidity"],
         description: "An ERC1155 contract with:",
         opts: {
           mintable: true
@@ -125,7 +125,7 @@ export const templatesRepository = [
         value: "ozerc1155",
         displayName: "ERC1155",
         description: "An ERC1155 contract with:",
-        tagList: ["ERC1155"],
+        tagList: ["ERC1155", "Solidity"],
         opts: {
           mintable: true,
           pausable: true
