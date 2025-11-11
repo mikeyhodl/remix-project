@@ -31,6 +31,9 @@ parameters:
   run_libs_only:
     type: boolean
     default: false
+  run_deploy_alpha:
+    type: boolean
+    default: false
 
   # Resource sizing
   resource_class:
@@ -620,7 +623,7 @@ jobs:
   deploy-build:
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: medium+
+    resource_class: large
     environment:
       COMMIT_AUTHOR_EMAIL: "yann@ethereum.org"
       COMMIT_AUTHOR: "Circle CI"
@@ -846,3 +849,12 @@ workflows:
       - post-failed-report:
           requires:
             - build
+
+  deploy_alpha:
+    when: << pipeline.parameters.run_deploy_alpha >>
+    jobs:
+      - deploy-build:
+          script: "alpha"
+          filters:
+            branches:
+              only: master
