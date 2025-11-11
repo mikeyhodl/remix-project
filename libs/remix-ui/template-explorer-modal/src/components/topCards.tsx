@@ -127,7 +127,7 @@ export function TopCards() {
               if (e.target.files.length === 0 || !e.target.files) return
               let relativePath = e.target.files[0].webkitRelativePath
               let targetFolder = relativePath.split('/')[0]
-              await createWorkspace(targetFolder, 'blank', {}, false, undefined, false, false, undefined, undefined)
+              await createWorkspace('/', 'blank', {}, false, undefined, false, false, undefined, undefined)
               await switchToWorkspace(targetFolder)
               await uploadFile(e.target, targetFolder)
               facade.closeWizard()

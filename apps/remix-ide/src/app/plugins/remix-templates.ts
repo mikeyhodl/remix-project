@@ -29,7 +29,9 @@ export class TemplatesPlugin extends Plugin {
   }
 
   async getTemplateReadMeFile(templateName: string) {
+    console.log('templateName', templateName)
     const files = typeof templateWithContent[templateName] === 'function' ? await templateWithContent[templateName]({}, this) : { 'README.md': `# ${templateName} template` }
+    console.log('files', files)
     const readMe = files?.['README.md'] || files?.['README.txt'] || 'No ReadMe file found'
     return { readMe, type: files['README.md'] ? 'md' : files['README.txt'] ? 'txt' : 'none' }
   }

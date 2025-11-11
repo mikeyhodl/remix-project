@@ -85,6 +85,10 @@ export function ContractWizard () {
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName])
 
+  useEffect(() => {
+    console.log('strategy', strategy)
+  }, [strategy])
+
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })
@@ -105,9 +109,11 @@ export function ContractWizard () {
             <select className="form-select form-select-sm w-auto" defaultValue="Solidity">
               <option>Solidity</option>
             </select>
-            <select id="contractWizardContractTagSelect" data-id="contract-wizard-contract-tag-select" className="form-select form-select-sm w-auto" defaultValue="ERC20" onChange={(e) => {
+            <select id="contractWizardContractTagSelect" data-id="contract-wizard-contract-tag-select" className="form-select form-select-sm w-auto" defaultValue={strategy.contractType} onChange={(e) => {
               switching(e.target.value as 'erc20' | 'erc721' | 'erc1155')
-            }}>
+            }}
+            value={strategy.contractType}
+            >
               <option data-id="contract-wizard-contract-tag-option-erc20" value="erc20">ERC20</option>
               <option data-id="contract-wizard-contract-tag-option-erc721" value="erc721">ERC721</option>
               <option data-id="contract-wizard-contract-tag-option-erc1155" value="erc1155">ERC1155</option>

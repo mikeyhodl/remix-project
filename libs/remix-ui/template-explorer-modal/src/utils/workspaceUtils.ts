@@ -31,9 +31,16 @@ export class TemplateExplorerModalFacade {
     })
     this.dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
   }
-
+  stripDisplayName(item: TemplateItem) {
+    let cleanedTagName = ''
+    if (item.value === 'ozerc721') {
+      cleanedTagName = item.displayName.split(' ')[0]
+    }
+    return cleanedTagName
+  }
   async switchWizardScreen(dispatch: (action: any) => void, item: TemplateItem, template: TemplateCategory, templateCategoryStrategy: TemplateCategoryStrategy) {
-
+    console.log('item', item)
+    dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: this.stripDisplayName(item) || item.displayName })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: item })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.displayName })

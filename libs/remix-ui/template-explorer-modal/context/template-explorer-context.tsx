@@ -43,6 +43,10 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     run()
   }, [])
 
+  useEffect(() => {
+    console.log('state', state)
+  }, [state])
+
   const generateUniqueWorkspaceName = async (name: string) => {
     try {
       const workspace = await plugin.call('filePanel', 'workspaceExists', name)

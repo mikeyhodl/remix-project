@@ -13,14 +13,18 @@ export function GenericWorkspaceTemplate() {
   useEffect(() => {
     const run = async () => {
       const readMe = await facade.getTemplateReadMeFile(state.workspaceTemplateChosen.value)
+      console.log('readMe', readMe)
       setReadMe(readMe)
     }
     run()
   }, [state.workspaceTemplateChosen.value])
+  const calculateHeight = () => {
+    return state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('intro to eip-7702') || state.workspaceTemplateChosen.displayName.toLowerCase().includes('simple eip 7702') ? '40%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('circom zkp') ? '50%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('noir zkp') ? '98%' : '80%'
+  }
 
   return (
     <section data-id={`generic-template-section-${state.workspaceTemplateChosen.value}`} className="mx-3 p-2">
-      <div className="d-flex flex-column p-3 bg-light" style={{ height: state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : '50%' }}>
+      <div className="d-flex flex-column p-3 bg-light" style={{ height: calculateHeight() }}>
         <div>
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>
