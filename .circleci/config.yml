@@ -621,6 +621,7 @@ jobs:
           path: ./reports/screenshots
 
   deploy-build:
+  
     docker:
       - image: cimg/node:20.19.0-browsers
     resource_class: large
@@ -641,8 +642,7 @@ jobs:
           key: v1-deps-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-      - run: yarn build:production
-      - run: "./apps/remix-ide/ci/deploy_remix-<< parameters.script >>.sh"
+      - run: NX_VERBOSE_LOGGING=1 yarn build:production
 
 workflows:
   run_file_tests:
