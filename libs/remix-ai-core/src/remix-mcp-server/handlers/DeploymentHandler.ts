@@ -22,6 +22,8 @@ import { getContractData } from '@remix-project/core-plugin'
 import type { TxResult } from '@remix-project/remix-lib';
 import { BrowserProvider } from "ethers"
 import { toNumber, ethers } from 'ethers'
+import { execution } from '@remix-project/remix-lib';
+const { txFormat, txHelper: { makeFullTypeDefinition } } = execution;
 
 /**
  * Deploy Contract Tool Handler
@@ -96,6 +98,9 @@ export class DeployContractHandler extends BaseToolHandler {
 
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
+
+      await plugin.call('sidePanel', 'showContent', 'udapp' )
+
       // Get compilation result to find contract
       const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
       const data = getContractData(args.contractName, compilerAbstract)
@@ -299,8 +304,9 @@ export class CallContractHandler extends BaseToolHandler {
 
       // TODO: Execute contract call via Remix Run Tab API
       const receipt = (txReturn.txResult.receipt)
+      console.log('function call transaction payload:', txReturn)
       const result: ContractInteractionResult = {
-        result: txReturn.returnValue,
+        result: isView ? txFormat.decodeResponse(txReturn.txResult.result, funcABI) : txReturn.returnValue,
         transactionHash: isView ? txReturn.txResult.transactionHash : receipt.hash,
         gasUsed: isView ? 0 : receipt.gasUsed,
         logs: isView ? undefined : receipt.logs,
@@ -536,6 +542,8 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
   }
 
   async execute(args: { environment: string }, plugin: Plugin): Promise<IMCPToolResult> {
+    await plugin.call('sidePanel', 'showContent', 'udapp' )
+
     try {
       const providers = await plugin.call('blockchain', 'getAllProviders')
       const provider = Object.keys(providers).find((p) => p === args.environment)
@@ -724,6 +732,8 @@ export class SetSelectedAccountHandler extends BaseToolHandler {
   }
 
   async execute(args: { address: string }, plugin: Plugin): Promise<IMCPToolResult> {
+    await plugin.call('sidePanel', 'showContent', 'udapp' )
+
     try {
       // Set the selected account through the udapp plugin
       await plugin.call('udapp' as any, 'setAccount', args.address);

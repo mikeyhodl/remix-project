@@ -621,7 +621,6 @@ jobs:
           path: ./reports/screenshots
 
   deploy-build:
-  
     docker:
       - image: cimg/node:20.19.0-browsers
     resource_class: xlarge
