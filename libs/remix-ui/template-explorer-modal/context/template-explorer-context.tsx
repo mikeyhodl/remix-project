@@ -126,9 +126,28 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       .map((template: TemplateCategory) => ({
         ...template,
         items: (template.items || []).filter((item: TemplateItem) => {
-          // Filter by search term
-          const matchesSearch = !searchTerm ||
-            (item.displayName || item.value || '').toLowerCase().includes(searchTerm)
+          // Filter by search term - check multiple fields
+          let matchesSearch = !searchTerm
+          if (searchTerm) {
+            // Check item fields
+            const itemDisplayName = (item.displayName || '').toLowerCase()
+            const itemValue = (item.value || '').toLowerCase()
+            const itemDescription = (item.description || '').toLowerCase()
+            const itemTags = (item.tagList || []).map(tag => tag.toLowerCase()).join(' ')
+
+            // Check category fields
+            const categoryName = (template.name || '').toLowerCase()
+            const categoryDescription = (template.description || '').toLowerCase()
+
+            // Search across all fields
+            matchesSearch =
+              itemDisplayName.includes(searchTerm) ||
+              itemValue.includes(searchTerm) ||
+              itemDescription.includes(searchTerm) ||
+              itemTags.includes(searchTerm) ||
+              categoryName.includes(searchTerm) ||
+              categoryDescription.includes(searchTerm)
+          }
 
           // Filter by selected tag
           const matchesTag = !selectedTag ||
@@ -172,9 +191,13 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
 
     // Find Cookbook from the original template repository
     const cookbookTemplate = (state.templateRepository as TemplateCategory[] || []).find(x => x.name === 'Cookbook')
+    const searchTerm = (state.searchTerm || '').trim().toLowerCase()
 
-    // If Cookbook exists and is not already in processedTemplates, add it as the second item
-    if (cookbookTemplate && !processedTemplates.find(t => t.name === 'Cookbook')) {
+    // Only add Cookbook if there's no search term or if the search term contains "cookbook"
+    const shouldShowCookbook = !searchTerm || searchTerm.includes('cookbook')
+
+    // If Cookbook exists and should be shown and is not already in processedTemplates, add it as the second item
+    if (cookbookTemplate && shouldShowCookbook && !processedTemplates.find(t => t.name === 'Cookbook')) {
       if (processedTemplates.length >= 1) {
         processedTemplates.splice(1, 0, cookbookTemplate)
       } else {
@@ -183,7 +206,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
 
     return processedTemplates
-  }, [filteredTemplates, recentTemplates, state.templateRepository])
+  }, [filteredTemplates, recentTemplates, state.templateRepository, state.searchTerm])
 
   const handleTagClick = (tag: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SELECTED_TAG, payload: state.selectedTag === tag ? null : tag })
