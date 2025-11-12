@@ -6,10 +6,10 @@ import packageJson from '../../../../../package.json'
 import { RemixUIPanelHeader } from '@remix-ui/panel'
 import { PluginViewWrapper } from '@remix-ui/helper'
 
-const pinnedPanel = {
-  name: 'pinnedPanel',
-  displayName: 'Pinned Panel',
-  description: 'Remix IDE pinned panel',
+const rightSidePanel = {
+  name: 'rightSidePanel',
+  displayName: 'Right Side Panel',
+  description: 'Remix IDE right side panel',
   version: packageJson.version,
   methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight', 'closePlugin', 'maximizePlugin',
     'getClosedPlugin'
@@ -17,7 +17,7 @@ const pinnedPanel = {
   events: ['pluginClosed', 'pluginMaximized']
 }
 
-export class PinnedPanel extends AbstractPanel {
+export class RightSidePanel extends AbstractPanel {
   dispatch: React.Dispatch<any> = () => {}
   loggedState: Record<string, any>
   pinnedPanelState: Record<string, any> // pluginProfile, isClosed
@@ -25,7 +25,7 @@ export class PinnedPanel extends AbstractPanel {
   closedPlugin: any
 
   constructor() {
-    super(pinnedPanel)
+    super(rightSidePanel)
   }
 
   onActivation() {

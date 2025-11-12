@@ -103,19 +103,19 @@ const RemixApp = (props: IRemixAppUi) => {
       })
     })
 
-    props.app.layout.event.on('maximisepinnedpanel', () => {
+    props.app.layout.event.on('maximiseRightSidePanel', () => {
       setMaximiseRightTrigger((prev) => {
         return prev + 1
       })
     })
 
-    props.app.layout.event.on('enhancepinnedpanel', () => {
+    props.app.layout.event.on('enhanceRightSidePanel', () => {
       setEnhanceRightTrigger((prev) => {
         return prev + 1
       })
     })
 
-    props.app.layout.event.on('resetpinnedpanel', () => {
+    props.app.layout.event.on('resetRightSidePanel', () => {
       setResetRightTrigger((prev) => {
         return prev + 1
       })
@@ -127,11 +127,11 @@ const RemixApp = (props: IRemixAppUi) => {
 
     if (!props.app.desktopClientMode) {
 
-      props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
+      props.app.rightSidePanel.events.on('unPinnedPlugin', () => {
         setHidePinnedPanel(true)
       })
 
-      props.app.pinnedPanel.events.on('pinnedPlugin', (profile, isClosed) => {
+      props.app.rightSidePanel.events.on('pinnedPlugin', (profile, isClosed) => {
         if (!isClosed) setHidePinnedPanel(false)
       })
     }
@@ -192,7 +192,7 @@ const RemixApp = (props: IRemixAppUi) => {
                   <RemixUIMainPanel layout={props.app.layout}></RemixUIMainPanel>
                 </div>
                 <div id="pinned-panel" ref={pinnedPanelRef} data-id="remixIdePinnedPanel" className={`flex-row-reverse pinnedpanel border-end border-start ${hidePinnedPanel ? 'd-none' : 'd-flex'}`}>
-                  {props.app.pinnedPanel.render()}
+                  {props.app.rightSidePanel.render()}
                 </div>
                 {
                   !hidePinnedPanel &&

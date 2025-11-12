@@ -535,15 +535,6 @@ export function RemixUiTopbar() {
           className="d-flex flex-row align-items-center justify-content-end flex-nowrap"
           style={{ minWidth: '33%' }}
         >
-          {/* {closedPlugin && <div className="d-flex my-auto me-4" style={{ height: '1rem', width: '1rem' }}>
-            <CustomTooltip placement="left-start" tooltipText={`Open ${closedPlugin.displayName} plugin`}>
-              <i
-                className="fa-solid fa-expand-wide fs-4 text-info"
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
-              ></i>
-            </CustomTooltip>
-          </div>} */}
           <>
             <GitHubLogin
               cloneGitRepository={cloneGitRepository}
@@ -623,7 +614,7 @@ export function RemixUiTopbar() {
               <div 
                 className={`codicon codicon-layout-sidebar-right${closedPlugin ? '-off' : ''} fs-4`}
                 data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
+                onClick={() => plugin.call('rightSidePanel', 'maximizePlugin')}
               ></div>
             </CustomTooltip>
           </div>

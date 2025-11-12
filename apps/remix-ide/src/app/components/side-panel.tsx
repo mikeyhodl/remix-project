@@ -71,7 +71,7 @@ export class SidePanel extends AbstractPanel {
 
   async pinView (profile) {
     const active = this.currentFocus()
-    await this.call('pinnedPanel', 'pinView', profile, this.plugins[profile.name]?.view)
+    await this.call('rightSidePanel', 'pinView', profile, this.plugins[profile.name]?.view)
     if (this.plugins[profile.name].active) {
       this.call('menuicons', 'select', 'filePanel')
     }
