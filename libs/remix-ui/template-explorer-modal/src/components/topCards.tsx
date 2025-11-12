@@ -2,7 +2,7 @@
 import React, { useContext, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { createWorkspace, createWorkspaceTemplate, switchToWorkspace, uploadFile, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { createWorkspace, createWorkspaceTemplate, switchToWorkspace, uploadFile, uploadFolder, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { ContractWizard } from './contract-wizard'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 
@@ -134,7 +134,7 @@ export function TopCards() {
               const result = await generateUniqueWorkspaceName(targetFolder)
               await createWorkspace(result, 'blank', {}, false, undefined, false, false, undefined, undefined)
               await switchToWorkspace(result)
-              await uploadFile(e.target, '/')
+              await uploadFolder(e.target, '/')
               facade.closeWizard()
               relativePath = null
               targetFolder = null
