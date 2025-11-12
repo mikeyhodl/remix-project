@@ -61,10 +61,10 @@ export function TemplateExplorer() {
                       facade.closeWizard()
                       return
                     }
+                    facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                     if (item.displayName.toLowerCase().includes('ai')) {
                       await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
                     }
-                    facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
