@@ -1,14 +1,25 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useContext, useEffect } from 'react'
+import React, { useContext } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { createWorkspace, createWorkspaceTemplate, switchToWorkspace, uploadFile, uploadFolder, uploadFolderInTemplateExplorer } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
-import { ContractWizard } from './contract-wizard'
+import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
+
+interface IPersistFile {
+  uploadFolder(target: EventTarget & HTMLInputElement, targetFolder: string): Promise<void>
+}
 
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
+
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+    if (e.target.files.length === 0 || !e.target.files) return
+    const relativePath = e.target.files[0].webkitRelativePath
+    const targetFolder = relativePath.split('/')[0]
+
+  }
   return (
     <div className="title">
       <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
@@ -134,7 +145,7 @@ export function TopCards() {
               const result = await generateUniqueWorkspaceName(targetFolder)
               await createWorkspace(result, 'blank', {}, false, undefined, false, false, undefined, undefined)
               await switchToWorkspace(result)
-              await uploadFolder(e.target, '/')
+              await uploadFolderExcludingRootFolder(e.target, '/')
               facade.closeWizard()
               relativePath = null
               targetFolder = null

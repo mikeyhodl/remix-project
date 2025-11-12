@@ -648,6 +648,32 @@ export const uploadFile = async (target, targetFolder: string, cb?: (err: Error,
   })
 }
 
+export const uploadFolderExcludingRootFolder = async (target, targetFolder: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
+  for (const file of [...target.files]) {
+    const workspaceProvider = plugin.fileProviders.workspace
+    const name = targetFolder === '/' ? file.webkitRelativePath.split('/').slice(1).join('/') : `${targetFolder}/${file.webkitRelativePath}`
+    console.log('name', name)
+    if (!(await workspaceProvider.exists(name))) {
+      loadFile(name, file, workspaceProvider, cb)
+    } else {
+      const modalContent: AppModal = {
+        id: 'overwriteUploadFolderFile',
+        title: 'Confirm overwrite',
+        message: `The file "${name}" already exists! Would you like to overwrite it?`,
+        modalType: ModalTypes.confirm,
+        okLabel: 'OK',
+        cancelLabel: 'Cancel',
+        okFn: () => {
+          loadFile(name, file, workspaceProvider, cb)
+        },
+        cancelFn: () => {},
+        hideFn: () => {},
+      }
+      plugin.call('notification', 'modal', modalContent)
+    }
+  }
+}
+
 export const uploadFolder = async (target, targetFolder: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
   for (const file of [...target.files]) {
     const workspaceProvider = plugin.fileProviders.workspace
