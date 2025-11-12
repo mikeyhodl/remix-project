@@ -624,7 +624,7 @@ jobs:
   
     docker:
       - image: cimg/node:20.19.0-browsers
-    resource_class: large
+    resource_class: xlarge
     environment:
       COMMIT_AUTHOR_EMAIL: "yann@ethereum.org"
       COMMIT_AUTHOR: "Circle CI"
