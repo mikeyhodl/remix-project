@@ -17,7 +17,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, OwnableUpgradeabl
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __Ownable_init(initialOwner);
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -93,7 +93,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, AccessControlUpgr
         public
         initializer
     {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __AccessControl_init();
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -176,7 +176,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, AccessManagedUpgr
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __AccessManaged_init(initialAuthority);
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -244,7 +244,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, AccessManagedUpgr
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __AccessManaged_init(initialAuthority);
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -312,7 +312,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, AccessControlUpgr
         public
         initializer
     {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __AccessControl_init();
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -386,7 +386,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, OwnableUpgradeabl
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __Ownable_init(initialOwner);
         __ERC1155Pausable_init();
         __ERC1155Burnable_init();
@@ -440,7 +440,7 @@ import {ERC1155Pausable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC1155, Ownable, ERC1155Pausable, ERC1155Burnable {
-    constructor(address initialOwner) ERC1155("${contractName}", "MTK") Ownable(initialOwner) {}
+    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -502,7 +502,7 @@ import {ERC1155Pausable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC1155, Ownable, ERC1155Pausable {
-    constructor(address initialOwner) ERC1155("${contractName}", "MTK") Ownable(initialOwner) {}
+    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -537,7 +537,7 @@ import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC1155, Ownable, ERC1155Burnable {
-    constructor(address initialOwner) ERC1155("${contractName}", "MTK") Ownable(initialOwner) {}
+    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -554,7 +554,7 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC1155, Ownable {
-    constructor(address initialOwner) ERC1155("", "MTK") Ownable(initialOwner) {}
+    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -588,7 +588,7 @@ import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ER
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ${contractName} is ERC1155, Ownable, ERC1155Pausable, ERC1155Burnable, ERC1155Supply {
-    constructor(address initialOwner) ERC1155("${contractName}", "MTK") Ownable(initialOwner) {}
+    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -642,7 +642,7 @@ contract ${contractName} is ERC1155, AccessControl, ERC1155Pausable, ERC1155Burn
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    constructor(address defaultAdmin, address pauser, address minter) ERC1155("${contractName}", "MTK") {
+    constructor(address defaultAdmin, address pauser, address minter) ERC1155("") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, pauser);
         _grantRole(MINTER_ROLE, minter);
@@ -917,7 +917,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __Ownable_init(initialOwner);
         __ERC1155Burnable_init();
@@ -975,7 +975,7 @@ import {ERC1155Pausable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 
 contract ${contractName} is ERC1155, AccessManaged, ERC1155Pausable, ERC1155Burnable {
     constructor(address initialAuthority)
-        ERC1155("${contractName}", "MTK")
+        ERC1155("")
         AccessManaged(initialAuthority)
     {}
 
@@ -1080,7 +1080,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __Ownable_init(initialOwner);
         __ERC1155Burnable_init();
@@ -1152,7 +1152,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
         public
         initializer
     {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __AccessControl_init();
         __ERC1155Burnable_init();
@@ -1231,7 +1231,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __AccessManaged_init(initialAuthority);
         __ERC1155Burnable_init();
@@ -1295,7 +1295,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
     }
 
     function initialize(address initialAuthority) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __AccessManaged_init(initialAuthority);
         __ERC1155Burnable_init();
@@ -1352,7 +1352,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
     }
 
     function initialize(address initialOwner) public initializer {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __Ownable_init(initialOwner);
         __ERC1155Burnable_init();
@@ -1400,7 +1400,7 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 
 contract ${contractName} is ERC1155, ERC1155Burnable {
-    constructor() ERC1155("${contractName}", "MTK") {}
+    constructor() ERC1155("") {}
 }
 `
 
@@ -1428,7 +1428,7 @@ contract ${contractName} is Initializable, ERC1155Upgradeable, ERC1155PausableUp
         public
         initializer
     {
-        __ERC1155_init("${contractName}", "MTK");
+        __ERC1155_init("");
         __ERC1155Pausable_init();
         __AccessControl_init();
         __ERC1155Burnable_init();
@@ -1492,7 +1492,7 @@ import {ERC1155Pausable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 contract ${contractName} is ERC1155, ERC1155Pausable, AccessControl {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    constructor(address defaultAdmin, address pauser) ERC1155("${contractName}", "MTK") {
+    constructor(address defaultAdmin, address pauser) ERC1155("") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, pauser);
     }
@@ -1536,7 +1536,7 @@ import {ERC1155Pausable} from "@openzeppelin/contracts/token/ERC1155/extensions/
 
 contract ${contractName} is ERC1155, ERC1155Pausable, AccessManaged {
     constructor(address initialAuthority)
-        ERC1155("${contractName}", "MTK")
+        ERC1155("")
         AccessManaged(initialAuthority)
     {}
 
