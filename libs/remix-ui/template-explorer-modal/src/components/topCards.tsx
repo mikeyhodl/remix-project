@@ -5,10 +5,6 @@ import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/
 import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 
-interface IPersistFile {
-  uploadFolder(target: EventTarget & HTMLInputElement, targetFolder: string): Promise<void>
-}
-
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
