@@ -13,13 +13,6 @@ export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
 
-  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation()
-    if (e.target.files.length === 0 || !e.target.files) return
-    const relativePath = e.target.files[0].webkitRelativePath
-    const targetFolder = relativePath.split('/')[0]
-
-  }
   return (
     <div className="title">
       <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
