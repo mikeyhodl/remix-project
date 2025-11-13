@@ -657,7 +657,7 @@ export const uploadFolderExcludingRootFolder = async (target, targetFolder: stri
   for (const file of [...target.files]) {
     const workspaceProvider = plugin.fileProviders.workspace
     const name = targetFolder === '/' ? file.webkitRelativePath.split('/').slice(1).join('/') : `${targetFolder}/${file.webkitRelativePath}`
-    console.log('name', name)
+    console.log('uploadFolderExcludingRootFolder', `${targetFolder}/${file.webkitRelativePath}`)
     if (!(await workspaceProvider.exists(name))) {
       loadFile(name, file, workspaceProvider, cb)
     } else {

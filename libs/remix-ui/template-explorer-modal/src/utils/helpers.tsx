@@ -388,7 +388,7 @@ export const templatesRepository = [
       {
         value: "sindriScripts",
         tagList: ["ZKP"],
-        displayName: 'Add Sindri ZK scripts',
+        displayName: 'Add Sindri ZK scripts to the current workspace',
         description: 'Use the Sindri API to compile and generate proofs',
 
       },
@@ -419,12 +419,12 @@ export const templatesRepository = [
       {
         value: "contractCreate2Factory",
         tagList: ["Solidity"],
-        displayName: 'Add Create2 Solidity factory',
+        displayName: 'Add Create2 Solidity factory to the current workspace',
         description: 'Factory for deploying a contract using the CREATE2 opcode',
       },
       {
         value: "contractDeployerScripts",
-        displayName: 'Add contract deployer scripts',
+        displayName: 'Add contract deployer scripts to the current workspace',
         description: 'Script for deploying a contract using the CREATE2 opcode',
       }
     ]
@@ -434,7 +434,7 @@ export const templatesRepository = [
     items: [
       {
         value: "etherscanScripts",
-        displayName: 'Add Etherscan scripts',
+        displayName: 'Add Etherscan scripts to the current workspace',
         description: 'Script for verifying a Contract in Etherscan',
       },
     ],
@@ -444,16 +444,16 @@ export const templatesRepository = [
     items: [
       { value: "runJsTestAction",
         displayName: 'Mocha Chai Test Workflow',
-        description: 'A Mocha Chai test workflow in a GitHub CI',
+        description: 'Add files in current workspace to run Mocha Chai test workflow in GitHub CI',
       },
       { value: "runSolidityUnittestingAction",
         displayName: 'Solidity Test Workflow',
-        description: 'Run a Solidity unit test workflow in a GitHub CI',
+        description: 'Add files in current workspace to run Solidity unit test workflow in GitHub CI',
       },
       {
         value: "runSlitherAction",
         displayName: 'Slither Workflow',
-        description: 'Run a Slither security analysis in a GitHub CI',
+        description: 'Add files in current workspace to run Slither security analysis in GitHub CI',
       }
     ],
     IsArtefact: true
@@ -595,146 +595,3 @@ export const metadata = {
   }
 }
 
-// <RemixUIGridView
-//   plugin={plugin}
-//   styleList={""}
-//   logo='assets/img/bgRemi.webp'
-//   enableFilter={true}
-//   showUntagged={true}
-//   showPin={false}
-//   tagList={[
-//     ['Solidity', 'danger'],
-//     ['ZKP', 'warning'],
-//     ['ERC20', 'success'],
-//     ['ERC721', 'secondary'],
-//     ['ERC1155', 'primary'],
-//   ]}
-//   title='Workspace Templates'
-//   description="Select a template to create a workspace or to add it to current workspace"
-//   useInModal={true}
-// >
-//   {
-//     templatesRepository.map(template => {
-//       return (
-//         <RemixUIGridSection
-//           plugin={plugin}
-//           key={template.name}
-//           title={template.name}
-//           tooltipTitle={template.tooltip}
-//           hScrollable={false}
-//         >
-//           {
-//             template.items.map((item, index) => {
-
-//               item.templateType = metadata[item.value]
-//               if (item.templateType && item.templateType.desktopCompatible === false && isElectron()) {
-//                 return (<></>)
-//               }
-
-//               if (item.templateType && item.templateType.disabled === true) return
-
-//               if (!item.opts) {
-//                 return (
-//                   <section className="border border-success" style={{ height: '190px', overflowY: 'auto' }}>
-//                     <RemixUIGridCell
-//                       // plugin={this}
-//                       title={item.displayName}
-//                       key={item.name || index}
-//                       id={item.name}
-//                       searchKeywords={[item.displayName, item.description, template.name]}
-//                       tagList={item.tagList}
-//                       classList={'TSCellStyle'}
-//                     >
-//                       <div className='d-flex justify-content-between h-100 flex-column'>
-//                         <div className='d-flex flex-column'>
-//                           <div>
-//                             {item.description && <span className='text-dark'>{item.description}</span>}
-//                           </div>
-//                           <div className='d-flex flex-wrap mb-2'>
-//                             {(item.opts && item.opts.upgradeable && item.opts.upgradeable === 'uups') && <span className='badgeForCell badge text-secondary'>Upgradeable-UUPS</span>}
-//                             {(item.opts && item.opts.mintable) && <span className='badgeForCell text-secondary'>mintable</span>}
-//                             {(item.opts && item.opts.burnable) && <span className='badgeForCell text-secondary'>burnable</span>}
-//                             {(item.opts && item.opts.pausable) && <span className='badgeForCell text-secondary'>pausable</span>}
-//                           </div>
-//                         </div>
-//                         <div className='align-items-center justify-content-between w-100 d-flex pt- flex-row'>
-//                           {(!template.IsArtefact || !item.IsArtefact) && <CustomTooltip
-//                             placement="auto"
-//                             tooltipId={`overlay-tooltip-new${item.name}`}
-//                             tooltipText="Create a new workspace"
-//                           >
-//                             <span
-//                               data-id={`create-${item.value}${item.opts ? JSON.stringify(item.opts) : ''}`}
-//                               onClick={async () => {
-//                                 if ((item.value as string).toLowerCase().includes('ai')) {
-//                                   // this.aiWorkspaceGenerate()
-//                                 } else {
-//                                   // createWorkspace(item, template)
-//                                 }
-//                               }}
-//                               className="btn btn-sm me-2 border border-primary"
-//                               data-template-name={item.name}
-//                             >
-//                               {isElectron() ?
-//                                 <><i className='fa fa-folder-open me-1'></i>Create</> : 'Create'}
-//                             </span>
-//                           </CustomTooltip>}
-//                           {item.templateType && item.templateType.forceCreateNewWorkspace ? <></> : isElectron() ?
-
-//                             <div className=''>
-//                               <CustomTooltip
-//                                 placement="auto"
-//                                 tooltipId={`overlay-tooltip-add${item.name}`}
-//                                 tooltipText="Add template files to current workspace"
-//                               >
-//                                 <span
-//                                   data-id={`add-${item.value}`}
-//                                   // onClick={async () => addToCurrentElectronFolder(item, template.name)}
-//                                   className="btn btn-sm border"
-//                                 >
-//                                   <i className="fa fa-folder-plus me-1" aria-hidden="true"></i>
-//                              Add here
-//                                 </span>
-//                               </CustomTooltip>
-//                             </div>
-//                             :
-//                             <CustomTooltip
-//                               placement="auto"
-//                               tooltipId={`overlay-tooltip-add${item.name}`}
-//                               tooltipText="Add template files to current workspace"
-//                             >
-//                               <span
-//                                 data-id={`add-${item.value}`}
-//                                 // onClick={async () => addToCurrentWorkspace(item, template)}
-//                                 className="btn btn-sm border"
-//                               >
-//                             Add to current
-//                               </span>
-//                             </CustomTooltip>}
-//                         </div>
-//                       </div>
-//                     </RemixUIGridCell>
-//                   </section>
-//                 ) // end return
-//               } // end if
-//             }) // end map
-//           }
-//           {template.name === 'Cookbook' && <RemixUIGridCell
-//             // plugin={this}
-//             title={"More from Cookbook"}
-//             key={"cookbookMore"}
-//             id={"cookBookMore"}
-//             searchKeywords={["cookbook"]}
-//             tagList={[]}
-//             classList='TSCellStyle'
-//           >
-//             <div className='d-flex justify-content-between h-100 flex-column'>
-//               <span className='pt-2 px-1 h6 text-dark'>{template.description}</span>
-//               <span style={{ cursor: 'pointer' }} className='mt-2 mb-1 btn btn-sm border align-items-left' onClick={() => template.onClick()}>{template.onClickLabel}</span>
-//             </div>
-//           </RemixUIGridCell>}
-//         </RemixUIGridSection>
-//       )
-//     })
-//   }
-// </RemixUIGridView>
