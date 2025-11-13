@@ -1,13 +1,11 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { GenAiStrategy, WizardStrategy, GenericStrategy, RemixDefaultStrategy, TemplateCategoryStrategy, CookbookStrategy, ScriptsStrategy } from '../../stategies/templateCategoryStrategy'
-import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractTypeStrategy, ContractWizardAction, TemplateExplorerContextType } from '../../types/template-explorer-types'
-import { createWorkspace, getWorkspaces } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractWizardAction } from '../../types/template-explorer-types'
+import { createWorkspace } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
-import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
-import { getErc1155ContractCode, getErc20ContractCode, getErc721ContractCode } from './contractWizardUtils'
 
 export class TemplateExplorerModalFacade {
   plugin: TemplateExplorerModalPlugin
@@ -23,8 +21,8 @@ export class TemplateExplorerModalFacade {
     this.state = state
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
-    const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName, dontIncludeReadme } = deps
-    await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName, dontIncludeReadme)
+    const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
+    await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)
   }
 
@@ -104,5 +102,10 @@ export class TemplateExplorerModalFacade {
   async getTemplateReadMeFile(templateName: string) {
     const readMe = await this.plugin.call('remix-templates', 'getTemplateReadMeFile', templateName)
     return { readMe: readMe.readMe, type: readMe.type }
+  }
+
+  async getBlankTemplateConfigFiles() {
+    const files = await this.plugin.call('remix-templates', 'getBlankTemplateConfigFiles', 'blank')
+    return files
   }
 }

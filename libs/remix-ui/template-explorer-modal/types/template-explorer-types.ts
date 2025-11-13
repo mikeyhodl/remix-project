@@ -222,7 +222,6 @@ export interface CreateWorkspaceDeps {
   createCommit?: boolean,
   contractContent?: string,
   contractName?: string,
-  dontIncludeReadme?: boolean
 }
 
 type TemplateItemState = {

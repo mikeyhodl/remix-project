@@ -132,9 +132,30 @@ export function TopCards() {
               let relativePath = e.target.files[0].webkitRelativePath
               let targetFolder = relativePath.split('/')[0]
               const result = await generateUniqueWorkspaceName(targetFolder)
-              await createWorkspace(result, 'blank', {}, false, undefined, false, false, null, null, true)
+              await createWorkspace(result, 'blank', {}, false, undefined, false, false, null, null)
               await switchToWorkspace(result)
+              const remixconfigExists = await plugin.call('fileManager', 'exists', '/remix.config.json')
+              const remixconfigExists1 = await plugin.call('fileManager', 'exists', '/remix.config1.json')
+              const prettierrcExists = await plugin.call('fileManager', 'exists', '.prettierrc.json')
+              const prettierrcExists1 = await plugin.call('fileManager', 'exists', '.prettierrc1.json')
+              const readmeExists = await plugin.call('fileManager', 'exists', 'README.md')
+              if (remixconfigExists && prettierrcExists) {
+                await plugin.call('fileManager', 'remove', 'remix.config.json')
+                await plugin.call('fileManager', 'remove', '.prettierrc.json')
+              }
               await uploadFolderExcludingRootFolder(e.target, '/')
+              if (!remixconfigExists) {
+                await plugin.call('fileManager', 'writeFile', '/remix.config.json', JSON.stringify({ project: targetFolder, version: '1.0.0', IDE: window.location.hostname }, null, 2))
+              }
+              if (!remixconfigExists1) {
+                await plugin.call('fileManager', 'remove', '/remix.config1.json')
+              }
+              if (!prettierrcExists1) {
+                await plugin.call('fileManager', 'remove', '.prettierrc1.json')
+              }
+              if (!readmeExists) {
+                await plugin.call('fileManager', 'remove', 'README.md')
+              }
               facade.closeWizard()
               relativePath = null
               targetFolder = null

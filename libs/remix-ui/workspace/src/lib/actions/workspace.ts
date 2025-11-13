@@ -142,7 +142,6 @@ export const createWorkspace = async (
   createCommit: boolean = true,
   contractContent?: string,
   contractName?: string,
-  dontIncludeReadme?: boolean
 ) => {
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
@@ -152,7 +151,7 @@ export const createWorkspace = async (
   }
   await plugin.fileManager.closeAllFiles()
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
-  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName, dontIncludeReadme)
+  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
   dispatch(createWorkspaceRequest())
   promise.then(async () => {
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
@@ -198,7 +197,7 @@ export const createWorkspace = async (
       // }
     }
 
-    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName, dontIncludeReadme)
+    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)
     // this call needs to be here after the callback because it calls dGitProvider which also calls this function and that would cause an infinite loop
     await plugin.setWorkspaces(await getWorkspaces())
   }).catch((error) => {
@@ -221,7 +220,6 @@ export const populateWorkspace = async (
   createCommit: boolean = false,
   contractContent?: string,
   contractName?: string,
-  dontIncludeReadme?: boolean
 ) => {
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
   if (metadata && metadata.type === 'plugin') {
@@ -236,7 +234,7 @@ export const populateWorkspace = async (
       })
     }, 5000)
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
-    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName, dontIncludeReadme)
+    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
   }
   cb && cb(null)
   if (isGitRepo) {
@@ -256,7 +254,7 @@ export const populateWorkspace = async (
   }
 }
 
-export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string, dontIncludeReadme?: boolean) => {
+export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string) => {
   if (!workspaceName) throw new Error('workspace name cannot be empty')
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('workspace already exists')
@@ -290,7 +288,7 @@ export const decodeBase64 = (b64Payload: string) => {
   return new TextDecoder().decode(bytes);
 }
 
-export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string, dontIncludeReadme?: boolean) => {
+export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string) => {
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
@@ -447,9 +445,6 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       let files = {}
       if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
         files = await templateWithContent[template](opts, contractContent, contractName)
-      } else if (template === 'blank') {
-        //@ts-ignore
-        files = await templateWithContent[template](opts, plugin, dontIncludeReadme)
       }
       else {
         files = await templateWithContent[template](opts, plugin)
@@ -657,7 +652,6 @@ export const uploadFolderExcludingRootFolder = async (target, targetFolder: stri
   for (const file of [...target.files]) {
     const workspaceProvider = plugin.fileProviders.workspace
     const name = targetFolder === '/' ? file.webkitRelativePath.split('/').slice(1).join('/') : `${targetFolder}/${file.webkitRelativePath}`
-    console.log('uploadFolderExcludingRootFolder', `${targetFolder}/${file.webkitRelativePath}`)
     if (!(await workspaceProvider.exists(name))) {
       loadFile(name, file, workspaceProvider, cb)
     } else {
@@ -704,15 +698,6 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
   }
 }
 
-export const uploadFolderInTemplateExplorer = async (target, targetFolder?: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
-  for (const file of [...target.files]) {
-    const workspaceProvider = plugin.fileProviders.workspace
-    const name = targetFolder === '/' ? file.webkitRelativePath : `${targetFolder}/${file.webkitRelativePath}`
-    if (!(await workspaceProvider.exists(name))) {
-      loadFile(name, file, workspaceProvider, cb)
-    }
-  }
-}
 export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
   try {
