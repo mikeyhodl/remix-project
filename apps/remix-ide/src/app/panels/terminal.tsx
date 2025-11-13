@@ -18,7 +18,7 @@ function register(api) { KONSOLES.push(api) }
 const profile = {
   displayName: 'Terminal',
   name: 'terminal',
-  methods: ['log', 'logHtml'],
+  methods: ['log', 'logHtml', 'togglePanel', 'isPanelHidden'],
   events: [],
   description: 'Remix IDE terminal',
   version: packageJson.version
@@ -53,6 +53,7 @@ export default class Terminal extends Plugin {
   _shell: any
   dispatch: any
   terminalApi: any
+  isHidden: boolean
   constructor(opts, api) {
     super(profile)
     this.fileImport = new CompilerImports()
@@ -129,6 +130,25 @@ export default class Terminal extends Plugin {
 
   log(message, type) {
     this.terminalApi.log(message, type)
+  }
+
+  togglePanel() {
+    const terminalPanel = document.querySelector('.terminal-wrap')
+    if (this.isHidden) {
+      this.isHidden = false
+      terminalPanel?.classList.remove('d-none')
+      this.emit('terminalPanelShown')
+      this.event.emit('terminalPanelShown')
+    } else {
+      this.isHidden = true
+      terminalPanel?.classList.add('d-none')
+      this.emit('terminalPanelHidden')
+      this.event.emit('terminalPanelHidden')
+    }
+  }
+
+  isPanelHidden() {
+    return this.isHidden
   }
 
   setDispatch(dispatch) {

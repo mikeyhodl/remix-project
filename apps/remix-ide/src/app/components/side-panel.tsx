@@ -12,13 +12,14 @@ const sidePanel = {
   displayName: 'Side Panel',
   description: 'Remix IDE side panel',
   version: packageJson.version,
-  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'focus', 'showContent']
+  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'focus', 'showContent', 'togglePanel', 'isPanelHidden']
 }
 
 export class SidePanel extends AbstractPanel {
   sideelement: any
   loggedState: any
   dispatch: React.Dispatch<any> = () => {}
+  isHidden: boolean
 
   constructor() {
     super(sidePanel)
@@ -102,6 +103,25 @@ export class SidePanel extends AbstractPanel {
     super.showContent(name)
     this.emit('focusChanged', name)
     this.renderComponent()
+  }
+
+  togglePanel() {
+    const sidePanel = document.querySelector('#side-panel')
+    if (this.isHidden) {
+      this.isHidden = false
+      sidePanel?.classList.remove('d-none')
+      this.emit('leftSidePanelShown')
+      this.events.emit('leftSidePanelShown')
+    } else {
+      this.isHidden = true
+      sidePanel?.classList.add('d-none')
+      this.emit('leftSidePanelHidden')
+      this.events.emit('leftSidePanelHidden')
+    }
+  }
+
+  isPanelHidden() {
+    return this.isHidden
   }
 
   setDispatch(dispatch: React.Dispatch<any>) {

@@ -46,8 +46,9 @@ export function RemixUiTopbar() {
   useOnClickOutside([themeIconRef], () => setShowTheme(false))
   const workspaceRenameInput = useRef()
   const cloneUrlRef = useRef<HTMLInputElement>()
-  const [closedPlugin, setClosedPlugin] = useState<any>(null)
-  const [maximized, setMaximized] = useState<boolean>(false)
+  const [leftPanelHidden, setLeftPanelHidden] = useState<boolean>(false)
+  const [bottomPanelHidden, setBottomPanelHidden] = useState<boolean>(false)
+  const [rightPanelHidden, setRightPanelHidden] = useState<boolean>(false)
 
   const [user, setUser] = useState<GitHubUser | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,16 +94,57 @@ export function RemixUiTopbar() {
   }, [])
 
   useEffect(() => {
-    plugin.event.on('pluginIsClosed', (profile) => {
-      setClosedPlugin(profile)
-      if (maximized) {
-        setMaximized(false)
-      }
+    // Listen to left side panel events
+    plugin.on('sidePanel', 'leftSidePanelHidden', () => {
+      setLeftPanelHidden(true)
     })
-    plugin.event.on('pluginIsMaximized', () => {
-      setClosedPlugin(null)
-      setMaximized(true)
+    plugin.on('sidePanel', 'leftSidePanelShown', () => {
+      setLeftPanelHidden(false)
     })
+
+    // Listen to terminal panel events
+    plugin.on('terminal', 'terminalPanelHidden', () => {
+      setBottomPanelHidden(true)
+    })
+    plugin.on('terminal', 'terminalPanelShown', () => {
+      setBottomPanelHidden(false)
+    })
+
+    // Listen to right side panel events
+    plugin.on('rightSidePanel', 'rightSidePanelHidden', () => {
+      setRightPanelHidden(true)
+    })
+    plugin.on('rightSidePanel', 'rightSidePanelShown', () => {
+      setRightPanelHidden(false)
+    })
+
+    // Initialize panel states
+    const initializePanelStates = async () => {
+      try {
+        const leftHidden = await plugin.call('sidePanel', 'isPanelHidden')
+        setLeftPanelHidden(leftHidden)
+      } catch (e) {}
+
+      try {
+        const bottomHidden = await plugin.call('terminal', 'isPanelHidden')
+        setBottomPanelHidden(bottomHidden)
+      } catch (e) {}
+
+      try {
+        const rightHidden = await plugin.call('rightSidePanel', 'isPanelHidden')
+        setRightPanelHidden(rightHidden)
+      } catch (e) {}
+    }
+    initializePanelStates()
+
+    return () => {
+      plugin.off('sidePanel', 'leftSidePanelHidden')
+      plugin.off('sidePanel', 'leftSidePanelShown')
+      plugin.off('terminal', 'terminalPanelHidden')
+      plugin.off('terminal', 'terminalPanelShown')
+      plugin.off('rightSidePanel', 'rightSidePanelHidden')
+      plugin.off('rightSidePanel', 'rightSidePanelShown')
+    }
   }, [])
 
   useEffect(() => {
@@ -530,6 +572,29 @@ export function RemixUiTopbar() {
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
           />
+          <div className="d-flex ms-4 gap-3" >
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle left panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''} fs-4`}
+                data-id="toggleLeftSidePanel"
+                onClick={() => plugin.call('sidePanel', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle bottom panel`}>
+              <div
+                className={`codicon codicon-layout-panel${bottomPanelHidden ? '-off' : ''} fs-4`}
+                data-id="toggleBottomPanel"
+                onClick={() => plugin.call('terminal', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle right panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-right${rightPanelHidden ? '-off' : ''} fs-4`}
+                data-id="toggleRightSidePanel"
+                onClick={() => plugin.call('rightSidePanel', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+          </div>
         </div>
         <div
           className="d-flex flex-row align-items-center justify-content-end flex-nowrap"
@@ -608,16 +673,6 @@ export function RemixUiTopbar() {
           >
             <i className="fa fa-cog"></i>
           </span>
-
-          <div className="d-flex ms-4" >
-            <CustomTooltip placement="bottom-start" tooltipText={`Show plugin`}>
-              <div 
-                className={`codicon codicon-layout-sidebar-right${closedPlugin ? '-off' : ''} fs-4`}
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('rightSidePanel', 'maximizePlugin')}
-              ></div>
-            </CustomTooltip>
-          </div>
         </div>
       </div>
     </section>

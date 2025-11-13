@@ -11,10 +11,10 @@ const rightSidePanel = {
   displayName: 'Right Side Panel',
   description: 'Remix IDE right side panel',
   version: packageJson.version,
-  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight', 'closePlugin', 'maximizePlugin',
-    'getClosedPlugin'
+  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight', 'closePlugin',
+    'getClosedPlugin', 'togglePanel', 'isPanelHidden'
   ],
-  events: ['pluginClosed', 'pluginMaximized']
+  events: []
 }
 
 export class RightSidePanel extends AbstractPanel {
@@ -23,6 +23,7 @@ export class RightSidePanel extends AbstractPanel {
   pinnedPanelState: Record<string, any> // pluginProfile, isClosed
   highlightStamp: number
   closedPlugin: any
+  isHidden: boolean
 
   constructor() {
     super(rightSidePanel)
@@ -44,7 +45,13 @@ export class RightSidePanel extends AbstractPanel {
 
   async pinView (profile, view) {
     if (this.closedPlugin) {
-      this.maximizePlugin(this.closedPlugin)
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      pinnedPanel?.classList.remove('d-none')
+      this.closedPlugin = null
+      this.isHidden = false
+      window.localStorage.setItem('pinnedPanelState', JSON.stringify({ pluginProfile: profile, isClosed: false }))
+      this.events.emit('rightSidePanelShown')
+      this.emit('rightSidePanelShown')
     }
     const activePlugin = this.currentFocus()
 
@@ -65,6 +72,11 @@ export class RightSidePanel extends AbstractPanel {
         isClosed = true
         await this.closePlugin(profile)
       }
+    }
+    if (!isClosed && !this.closedPlugin) {
+      this.isHidden = false
+      this.events.emit('rightSidePanelShown')
+      this.emit('rightSidePanelShown')
     }
     this.renderComponent()
     this.events.emit('pinnedPlugin', profile, isClosed)
@@ -87,21 +99,32 @@ export class RightSidePanel extends AbstractPanel {
   }
 
   async closePlugin (profile) {
-    const pinnedPanel = document.querySelector('#pinned-panel')
+    const pinnedPanel = document.querySelector('#right-side-panel')
     pinnedPanel.classList.add('d-none')
     this.closedPlugin = profile
+    this.isHidden = true
     window.localStorage.setItem('pinnedPanelState', JSON.stringify({ pluginProfile: profile, isClosed: true }))
-    this.events.emit('pluginClosed', profile)
-    this.emit('pluginClosed', profile)
+    this.events.emit('rightSidePanelHidden')
+    this.emit('rightSidePanelHidden')
   }
 
-  async maximizePlugin (profile) {
-    const pinnedPanel = document.querySelector('#pinned-panel')
-    pinnedPanel.classList.remove('d-none')
-    this.closedPlugin = null
-    window.localStorage.setItem('pinnedPanelState', JSON.stringify({ pluginProfile: profile, isClosed: false }))
-    this.events.emit('pluginMaximized', profile)
-    this.emit('pluginMaximized', profile)
+  togglePanel () {
+    const pinnedPanel = document.querySelector('#right-side-panel')
+    if (this.isHidden) {
+      this.isHidden = false
+      pinnedPanel?.classList.remove('d-none')
+      this.emit('rightSidePanelShown')
+      this.events.emit('rightSidePanelShown')
+    } else {
+      this.isHidden = true
+      pinnedPanel?.classList.add('d-none')
+      this.emit('rightSidePanelHidden')
+      this.events.emit('rightSidePanelHidden')
+    }
+  }
+
+  isPanelHidden() {
+    return this.isHidden
   }
 
   highlight () {
@@ -115,12 +138,12 @@ export class RightSidePanel extends AbstractPanel {
 
   render() {
     return (
-      <section className='panel pinned-panel'> <PluginViewWrapper plugin={this} /></section>
+      <section className='panel right-side-panel'> <PluginViewWrapper plugin={this} /></section>
     )
   }
 
   updateComponent(state: any) {
-    return <RemixPluginPanel header={<RemixUIPanelHeader plugins={state.plugins} pinView={this.pinView.bind(this)} unPinView={this.unPinView.bind(this)} closePlugin={this.closePlugin.bind(this)} maximizePlugin={this.maximizePlugin.bind(this)}></RemixUIPanelHeader>} { ...state } />
+    return <RemixPluginPanel header={<RemixUIPanelHeader plugins={state.plugins} pinView={this.pinView.bind(this)} unPinView={this.unPinView.bind(this)} closePlugin={this.closePlugin.bind(this)}></RemixUIPanelHeader>} { ...state } />
   }
 
   renderComponent() {

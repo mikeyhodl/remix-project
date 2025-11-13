@@ -10,8 +10,7 @@ export interface RemixPanelProps {
   plugins: Record<string, PluginRecord>,
   pinView?: (profile: PluginRecord['profile'], view: PluginRecord['view']) => void,
   unPinView?: (profile: PluginRecord['profile']) => void,
-  closePlugin?: (profile: PluginRecord['profile']) => void,
-  maximizePlugin?: (profile: PluginRecord['profile']) => void
+  closePlugin?: (profile: PluginRecord['profile']) => void
 }
 const RemixUIPanelHeader = (props: RemixPanelProps) => {
   const [plugin, setPlugin] = useState<PluginRecord>()
