@@ -14,6 +14,8 @@ import { ActivityType, ChatMessage } from '../lib/types'
 import { groupListType } from '../types/componentTypes'
 import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
+import { useAudioTranscription } from '../hooks/useAudioTranscription'
+import { QueryParams } from '@remix-project/remix-lib'
 
 export interface RemixUiRemixAiAssistantProps {
   plugin: Plugin
@@ -48,6 +50,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [contextChoice, setContextChoice] = useState<'none' | 'current' | 'opened' | 'workspace'>(
     'none'
   )
+
+  // Check if MCP is enabled via query parameter
+  const queryParams = new QueryParams()
+  const mcpEnabled = queryParams.exists('mcp')
+
+  const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -66,6 +74,58 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const aiChatRef = useRef<HTMLDivElement>(null)
   const userHasScrolledRef = useRef(false)
   const lastMessageCountRef = useRef(0)
+
+  // Ref to hold the sendPrompt function for audio transcription callback
+  const sendPromptRef = useRef<((prompt: string) => Promise<void>) | null>(null)
+
+  // Audio transcription hook
+  const {
+    isRecording,
+    isTranscribing,
+    error: transcriptionError,
+    toggleRecording
+  } = useAudioTranscription({
+    apiKey: 'fw_3ZZeKZ67JHvZKahmHUvo8XTR',
+    model: 'whisper-v3',
+    onTranscriptionComplete: async (text) => {
+      if (sendPromptRef.current) {
+        await sendPromptRef.current(text)
+        trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
+      }
+    },
+    onError: (error) => {
+      console.error('Audio transcription error:', error)
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `**Audio transcription failed.**\n\nError: ${error.message}`,
+        timestamp: Date.now(),
+        sentiment: 'none'
+      }])
+    }
+  })
+
+  // Show transcribing status
+  useEffect(() => {
+    if (isTranscribing) {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '***Transcribing audio...***',
+        timestamp: Date.now(),
+        sentiment: 'none'
+      }])
+    } else {
+      // Remove transcribing message when done
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.content === '***Transcribing audio...***') {
+          return prev.slice(0, -1)
+        }
+        return prev
+      })
+    }
+  }, [isTranscribing])
 
   useOnClickOutside([modelBtnRef, contextBtnRef], () => setShowAssistantOptions(false))
   useOnClickOutside([modelBtnRef, contextBtnRef], () => setShowContextOptions(false))
@@ -445,6 +505,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     },
     [isStreaming, props.plugin]
   )
+
+  // Update ref for audio transcription callback
+  useEffect(() => {
+    sendPromptRef.current = sendPrompt
+  }, [sendPrompt])
+
   const handleGenerateWorkspaceWithPrompt = useCallback(async (prompt: string) => {
     dispatchActivity('button', 'generateWorkspace')
     if (prompt && prompt.trim()) {
@@ -506,6 +572,34 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
     fetchAssistantChoice()
   }, [assistantChoice, isOllamaFailureFallback])
+
+  useEffect(() => {
+    const handleMCPToggle = async () => {
+      // Only toggle MCP if it's enabled via query parameter
+      if (!mcpEnabled) {
+        // Ensure MCP is disabled if query param is not set
+        try {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        } catch (error) {
+          console.warn('Failed to disable MCP enhancement:', error)
+        }
+        return
+      }
+
+      try {
+        if (mcpEnhanced) {
+          await props.plugin.call('remixAI', 'enableMCPEnhancement')
+        } else {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        }
+      } catch (error) {
+        console.warn('Failed to toggle MCP enhancement:', error)
+      }
+    }
+    if (mcpEnhanced !== null) { // Only call when state is initialized
+      handleMCPToggle()
+    }
+  }, [mcpEnhanced, mcpEnabled])
 
   // Fetch available models everytime Ollama is selected
   useEffect(() => {
@@ -632,6 +726,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     )
   }
 
+  const handleRecord = useCallback(async () => {
+    await toggleRecording()
+    if (!isRecording) {
+      trackMatomoEvent({ category: 'ai', action: 'StartAudioRecording', name: 'StartAudioRecording', isClick: true })
+    }
+  }, [toggleRecording, isRecording])
+
   const handleGenerateWorkspace = useCallback(async () => {
     dispatchActivity('button', 'generateWorkspace')
     try {
@@ -736,6 +837,26 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               choice={assistantChoice}
               groupList={aiAssistantGroupList}
             />
+            {mcpEnabled && (
+              <div className="border-top mt-2 pt-2">
+                <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
+                <div className="form-check ms-2 mb-2">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="mcpEnhancementToggle"
+                    checked={mcpEnhanced}
+                    onChange={(e) => setMcpEnhanced(e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="mcpEnhancementToggle">
+                    Enable MCP context enhancement
+                  </label>
+                </div>
+                <div className="small text-muted ms-2">
+                  Adds relevant context from configured MCP servers to AI requests
+                </div>
+              </div>
+            )}
           </div>
         )}
         {showModelOptions && assistantChoice === 'ollama' && (
@@ -783,6 +904,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           handleSetModel={handleSetModel}
           handleModelSelection={handleModelSelection}
           handleGenerateWorkspace={handleGenerateWorkspace}
+          handleRecord={handleRecord}
+          isRecording={isRecording}
           dispatchActivity={dispatchActivity}
           contextBtnRef={contextBtnRef}
           modelBtnRef={modelBtnRef}

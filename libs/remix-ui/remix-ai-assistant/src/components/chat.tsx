@@ -189,13 +189,13 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                             <h6 className="ai-heading ai-h6 fs-6 mb-1" {...props} />
                           ),
                           // Lists
-                          ul: ({ node, ...props }) => (
+                          ul: ({ node, ordered, depth, ...props }) => (
                             <ul className="ai-list ai-list-unordered" {...props} />
                           ),
-                          ol: ({ node, ...props }) => (
+                          ol: ({ node, ordered, depth, start, ...props }) => (
                             <ol className="ai-list ai-list-ordered" {...props} />
                           ),
-                          li: ({ node, ...props }) => (
+                          li: ({ node, ordered, index, siblingCount, checked, ...props }) => (
                             <li className="ai-list-item" {...props} />
                           ),
                           // Links
