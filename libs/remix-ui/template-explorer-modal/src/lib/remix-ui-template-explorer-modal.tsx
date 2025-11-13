@@ -1,17 +1,15 @@
-import React, { useContext, useEffect, useReducer } from 'react'
+import React, { useContext } from 'react'
 import './remix-ui-template-explorer-modal.css'
-import { appActionTypes, AppState } from '@remix-ui/app'
+import { AppState } from '@remix-ui/app'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizard } from '../components/contract-wizard'
 import { WorkspaceDetails } from '../components/workspaceDetails'
-import { initialState, templateExplorerReducer } from '../../reducers/template-explorer-reducer'
 import { TemplateExplorerBody } from '../components/template-explorer-body'
-import { TemplateExplorerWizardAction, TemplateExplorerWizardState } from '../../types/template-explorer-types'
 import { GenericWorkspaceTemplate } from '../components/genericWorkspaceTemplate'
 import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
 import { FinalScreen } from '../components/finalScreen'
-import { ScriptsFinalScreen } from '../components/scriptsFinalScreen'
-
+import { MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
+import TrackingContext from '@remix-ide/tracking'
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
   appState: AppState
@@ -20,7 +18,10 @@ export interface RemixUiTemplateExplorerModalProps {
 export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModalProps) {
 
   const { setSearchTerm, state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
-
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   return (
     <section data-id="template-explorer-modal-react">
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
@@ -34,7 +35,10 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 placeholder="Search"
                 className="form-control template-explorer-modal-search-input ps-5 fw-light"
                 style={{ color: theme?.name === 'Light' ? '#1B1D24' : '#FFF' }}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  trackMatomoEvent({ category: 'templateExplorerModal', action: 'search', value: e.target.value })
+                }}
               />
             </div> : <div>
               <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
@@ -48,6 +52,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div>}
             <button className="template-explorer-modal-close-button" onClick={() => {
               facade.closeWizard()
+              trackMatomoEvent({ category: 'templateExplorerModal', action: 'closeModal', isClick: true })
             }}>
               <i className="fa-solid fa-xmark text-dark"></i>
             </button>

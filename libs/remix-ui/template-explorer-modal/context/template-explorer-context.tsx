@@ -4,7 +4,7 @@ import { TemplateCategory, TemplateExplorerContextType, TemplateExplorerWizardAc
 import { initialState, templateExplorerReducer } from '../reducers/template-explorer-reducer'
 import { metadata, templatesRepository } from '../src/utils/helpers'
 import { AppContext } from '@remix-ui/app'
-import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
+import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/template-explorer-modal'
 import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
 import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
@@ -21,9 +21,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
 
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
-  }, [])
-
-  useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
   }, [])
 
@@ -42,10 +39,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
     run()
   }, [])
-
-  useEffect(() => {
-    console.log('state', state)
-  }, [state])
 
   const generateUniqueWorkspaceName = async (name: string) => {
     try {

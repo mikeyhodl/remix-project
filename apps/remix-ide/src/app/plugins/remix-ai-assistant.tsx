@@ -2,7 +2,6 @@ import React, { useEffect, useRef, createRef } from 'react'
 import { ViewPlugin } from '@remixproject/engine-web'
 import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
-//@ts-ignore
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
 import { trackMatomoEvent } from '@remix-api'

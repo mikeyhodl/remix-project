@@ -86,12 +86,7 @@ export function ContractWizard () {
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName, strategy.contractTag])
 
-  useEffect(() => {
-    console.log('strategy', strategy)
-  }, [strategy])
-
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
-    console.log('switching', value)
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
     dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: value.toUpperCase() })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })

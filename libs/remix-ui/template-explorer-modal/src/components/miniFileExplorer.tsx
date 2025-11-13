@@ -133,6 +133,11 @@ const getFileExtension = (fileName: string) => {
 const styleJson = (child: any) => getFileExtension(child.name) === 'json' ? '#fb923c' : ''
 
 const styleSelected = (child: any) => child.selected ? 'bg-secondary' : ''
+
+/**
+ * Renders a miniature file explorer to show a default workspace file structure.
+ * @returns {JSX.Element}
+ */
 export function MiniFileExplorer() {
   const [selectedStyle, setSelectedStyle] = useState('')
 

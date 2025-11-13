@@ -1,15 +1,12 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React from 'react'
-import { AppAction, AppState } from '@remix-ui/app'
+import { AppAction } from '@remix-ui/app'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { Plugin } from '@remixproject/engine'
 import { EventEmitter } from 'events'
-import { ThemeModule } from '../tabs/theme-module'
 import * as packageJson from '../../../../../package.json'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
-import { ViewPlugin } from '@remixproject/engine-web'
 import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
-import FileManager from '../files/fileManager'
 
 const pluginProfile = {
   name: 'templateexplorermodal',
@@ -22,7 +19,7 @@ const pluginProfile = {
   location: 'none',
   version: packageJson.version,
   permission: true,
-  documentation: 'https://remix-ide.readthedocs.io/en/latest/template-explorer-modal.html'
+  documentation: ''
 }
 
 export class TemplateExplorerModalPlugin extends Plugin {

@@ -111,7 +111,7 @@ import Terminal from './app/panels/terminal'
 import TabProxy from './app/panels/tab-proxy.js'
 import { Plugin } from '@remixproject/engine'
 import BottomBarPanel from './app/components/bottom-bar-panel'
-import { TemplateExplorerModalPlugin } from './app/plugins/remix-template-explorer-modal'
+import { TemplateExplorerModalPlugin } from './app/plugins/template-explorer-modal'
 
 // Tracking now handled by this.track() method using MatomoManager
 

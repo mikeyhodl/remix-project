@@ -4,6 +4,7 @@ import { initialState, templateExplorerReducer } from '../../reducers/template-e
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { RemixMdRenderer } from 'libs/remix-ui/helper/src/lib/components/remix-md-renderer'
+import heightConfig from '../config/height-config.json'
 
 export function GenericWorkspaceTemplate() {
 
@@ -13,13 +14,47 @@ export function GenericWorkspaceTemplate() {
   useEffect(() => {
     const run = async () => {
       const readMe = await facade.getTemplateReadMeFile(state.workspaceTemplateChosen.value)
-      console.log('readMe', readMe)
       setReadMe(readMe)
     }
     run()
   }, [state.workspaceTemplateChosen.value])
   const calculateHeight = () => {
-    return state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('intro to eip-7702') || state.workspaceTemplateChosen.displayName.toLowerCase().includes('simple eip 7702') ? '40%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('circom zkp') ? '50%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('noir zkp') ? '98%' : state.workspaceName.trim().toLowerCase() === 'blank' ? '50%' : '50%'
+    const displayName = state.workspaceTemplateChosen.displayName?.toLowerCase() || ''
+    const templateGroup = state.workspaceTemplateGroupChosen?.toLowerCase() || ''
+    const workspaceName = state.workspaceName?.trim().toLowerCase() || ''
+    const templateType = state.workspaceTemplateChosen.templateType?.type || ''
+
+    for (const rule of heightConfig.rules) {
+      if (rule.type === 'default') {
+        continue
+      }
+
+      if (rule.type === 'exactMatch') {
+        if (rule.field === 'displayName' && displayName === rule.value) {
+          return rule.percentage
+        }
+        if (rule.field === 'workspaceName' && workspaceName === rule.value) {
+          return rule.percentage
+        }
+      }
+
+      if (rule.type === 'includes') {
+        if (rule.field === 'displayName' && displayName.includes(rule.value)) {
+          return rule.percentage
+        }
+        if (rule.field === 'templateGroup' && templateGroup.includes(rule.value)) {
+          return rule.percentage
+        }
+      }
+
+      if (rule.type === 'templateType' && templateType === rule.value) {
+        return rule.percentage
+      }
+    }
+
+    // Return default percentage if no rule matched
+    const defaultRule = heightConfig.rules.find(rule => rule.type === 'default')
+    return defaultRule?.percentage || '50%'
   }
 
   return (

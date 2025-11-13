@@ -65,9 +65,9 @@ export interface TemplateExplorerGenericData {
 }
 
 export interface GenericModal {
-  id: string
+  id?: string
   title?: JSX.Element,
-  message: JSX.Element,
+  message?: JSX.Element,
   footer?: JSX.Element,
   genericData?: any,
   timestamp?: number
@@ -75,7 +75,7 @@ export interface GenericModal {
   showModal?: boolean
   validationFn?: (value: string) => ValidationResult
   // eslint-disable-next-line no-undef
-  okLabel: string | JSX.Element
+  okLabel?: string | JSX.Element
   okFn?: (value?:any) => void
   cancelLabel?: string | JSX.Element
   cancelFn?: (reason?: AppModalCancelTypes) => void,

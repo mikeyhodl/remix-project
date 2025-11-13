@@ -5,7 +5,7 @@ import { createWorkspace } from 'libs/remix-ui/workspace/src/lib/actions/workspa
 import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
-import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/remix-template-explorer-modal'
+import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/template-explorer-modal'
 
 export class TemplateExplorerModalFacade {
   plugin: TemplateExplorerModalPlugin
