@@ -52,7 +52,7 @@ export function GenericWorkspaceTemplate() {
       }
     }
 
-    // Return default percentage if no rule matched
+    //default
     const defaultRule = heightConfig.rules.find(rule => rule.type === 'default')
     return defaultRule?.percentage || '50%'
   }
