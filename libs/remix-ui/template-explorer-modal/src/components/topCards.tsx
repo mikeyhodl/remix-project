@@ -139,6 +139,7 @@ export function TopCards() {
               const prettierrcExists = await plugin.call('fileManager', 'exists', '.prettierrc.json')
               const prettierrcExists1 = await plugin.call('fileManager', 'exists', '.prettierrc1.json')
               const readmeExists = await plugin.call('fileManager', 'exists', 'README.md')
+              const readmeExists1 = await plugin.call('fileManager', 'exists', 'README1.md')
               if (remixconfigExists && prettierrcExists) {
                 await plugin.call('fileManager', 'remove', 'remix.config.json')
                 await plugin.call('fileManager', 'remove', '.prettierrc.json')
@@ -155,6 +156,9 @@ export function TopCards() {
               }
               if (!readmeExists) {
                 await plugin.call('fileManager', 'remove', 'README.md')
+              }
+              if (!readmeExists1) {
+                await plugin.call('fileManager', 'remove', 'README1.md')
               }
               facade.closeWizard()
               relativePath = null
