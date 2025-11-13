@@ -177,7 +177,6 @@ const RemixApp = (props: IRemixAppUi) => {
       <platformContext.Provider value={props.app.platform}>
         <onLineContext.Provider value={online}>
           <AppProvider value={value}>
-            {isAiWorkspaceBeingGenerated && <AiWorkspaceGeneration></AiWorkspaceGeneration>}
             <OriginWarning></OriginWarning>
             <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
             {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
@@ -237,9 +236,7 @@ const RemixApp = (props: IRemixAppUi) => {
             </div>
             <AppDialogs></AppDialogs>
             <DialogViewPlugin></DialogViewPlugin>
-            {appState.genericModalState.showModal &&
-              // <TemplateExplorerProvider plugin={props.app.templateExplorerModal}></TemplateExplorerProvider>
-              props.app.templateExplorerModal.render()
+            {appState.genericModalState.showModal && props.app.templateExplorerModal.render()
             }
           </AppProvider>
         </onLineContext.Provider>

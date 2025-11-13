@@ -229,7 +229,7 @@ export class TemplatesSelectionPlugin extends ViewPlugin {
         this.opts.upgradeable = value
       }
     }
-    console.log('templates', templates(window._intl, this))
+
     return (
       <RemixUIGridView
         plugin={this}
