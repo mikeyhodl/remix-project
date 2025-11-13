@@ -61,6 +61,7 @@ export function TemplateExplorer() {
                       facade.closeWizard()
                       return
                     }
+                    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_TYPE, payload: item.value })
                     facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
                     if (item.displayName.toLowerCase().includes('ai')) {
                       await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))

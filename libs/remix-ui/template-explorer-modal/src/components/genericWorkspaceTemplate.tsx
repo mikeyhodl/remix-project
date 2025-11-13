@@ -19,7 +19,7 @@ export function GenericWorkspaceTemplate() {
     run()
   }, [state.workspaceTemplateChosen.value])
   const calculateHeight = () => {
-    return state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('intro to eip-7702') || state.workspaceTemplateChosen.displayName.toLowerCase().includes('simple eip 7702') ? '40%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('circom zkp') ? '50%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('noir zkp') ? '98%' : '80%'
+    return state.workspaceTemplateChosen.displayName.toLowerCase() === 'stealth drop' ? '95%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('erc20') ? '97%' : state.workspaceTemplateChosen.templateType && state.workspaceTemplateChosen.templateType.type === 'git' ? '97%' : state.workspaceTemplateChosen.displayName.toLowerCase().includes('intro to eip-7702') || state.workspaceTemplateChosen.displayName.toLowerCase().includes('simple eip 7702') ? '40%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('circom zkp') ? '50%' : state.workspaceTemplateGroupChosen.toLowerCase().includes('noir zkp') ? '98%' : state.workspaceName.trim().toLowerCase() === 'blank' ? '50%' : '50%'
   }
 
   return (

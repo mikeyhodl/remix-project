@@ -142,6 +142,7 @@ export const createWorkspace = async (
   createCommit: boolean = true,
   contractContent?: string,
   contractName?: string,
+  dontIncludeReadme?: boolean
 ) => {
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
@@ -151,7 +152,7 @@ export const createWorkspace = async (
   }
   await plugin.fileManager.closeAllFiles()
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
-  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
+  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName, dontIncludeReadme)
   dispatch(createWorkspaceRequest())
   promise.then(async () => {
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
@@ -197,7 +198,7 @@ export const createWorkspace = async (
       // }
     }
 
-    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)
+    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName, dontIncludeReadme)
     // this call needs to be here after the callback because it calls dGitProvider which also calls this function and that would cause an infinite loop
     await plugin.setWorkspaces(await getWorkspaces())
   }).catch((error) => {
@@ -219,7 +220,8 @@ export const populateWorkspace = async (
   isGitRepo: boolean = false,
   createCommit: boolean = false,
   contractContent?: string,
-  contractName?: string
+  contractName?: string,
+  dontIncludeReadme?: boolean
 ) => {
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
   if (metadata && metadata.type === 'plugin') {
@@ -234,7 +236,7 @@ export const populateWorkspace = async (
       })
     }, 5000)
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
-    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName, dontIncludeReadme)
   }
   cb && cb(null)
   if (isGitRepo) {
@@ -254,7 +256,7 @@ export const populateWorkspace = async (
   }
 }
 
-export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string) => {
+export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string, dontIncludeReadme?: boolean) => {
   if (!workspaceName) throw new Error('workspace name cannot be empty')
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('workspace already exists')
@@ -288,7 +290,7 @@ export const decodeBase64 = (b64Payload: string) => {
   return new TextDecoder().decode(bytes);
 }
 
-export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string) => {
+export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string, dontIncludeReadme?: boolean) => {
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
@@ -445,6 +447,9 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       let files = {}
       if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
         files = await templateWithContent[template](opts, contractContent, contractName)
+      } else if (template === 'blank') {
+        //@ts-ignore
+        files = await templateWithContent[template](opts, plugin, dontIncludeReadme)
       }
       else {
         files = await templateWithContent[template](opts, plugin)

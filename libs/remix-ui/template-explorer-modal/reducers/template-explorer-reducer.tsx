@@ -21,6 +21,7 @@ export const initialState: TemplateExplorerWizardState = {
   setWizardStep: (step: WizardStep) => {},
   recentBump: 0,
   contractType: 'erc20',
+  workspaceTemplateType: '',
   contractTag: 'ERC20',
   contractOptions: {
     mintable: false,
@@ -54,6 +55,9 @@ export const templateExplorerReducer = (state: TemplateExplorerWizardState, acti
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP:{
     return { ...state, workspaceTemplateGroupChosen: action.payload }
+  }
+  case TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_TYPE:{
+    return { ...state, workspaceTemplateType: action.payload }
   }
   case TemplateExplorerWizardAction.SET_WORKSPACE_NAME:{
     return { ...state, workspaceName: action.payload }

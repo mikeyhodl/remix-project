@@ -8,6 +8,7 @@ export interface TemplateExplorerWizardState {
   workspaceTemplateChosen: any
   workspaceTemplateGroupChosen: string
   workspaceName: string
+  workspaceTemplateType: string
   defaultWorkspaceName: string
   topLeftNagivationName: string
   initializeAsGitRepo: boolean
@@ -87,7 +88,8 @@ export enum TemplateExplorerWizardAction {
   BACK_ONE_STEP = 'BACK_ONE_STEP',
   SET_SEARCH_TERM = 'SET_SEARCH_TERM',
   SET_WIZARD_STEP = 'SET_WIZARD_STEP',
-  RESET_STATE = 'RESET_STATE'
+  RESET_STATE = 'RESET_STATE',
+  SET_WORKSPACE_TEMPLATE_TYPE = 'SET_WORKSPACE_TEMPLATE_TYPE'
 }
 
 export interface TemplateItem {
@@ -219,7 +221,8 @@ export interface CreateWorkspaceDeps {
   isGitRepo?: boolean,
   createCommit?: boolean,
   contractContent?: string,
-  contractName?: string
+  contractName?: string,
+  dontIncludeReadme?: boolean
 }
 
 type TemplateItemState = {
