@@ -365,11 +365,6 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
         </div>
       </div>
 
-      {/* Info */}
-      <div className="small text-muted">
-        <p className="mb-1">This demo plugin communicates with the SSO plugin (hidden panel) to handle authentication.</p>
-        <p className="mb-0">Tokens are automatically refreshed every 10 minutes.</p>
-      </div>
     </div>
   )
 }
