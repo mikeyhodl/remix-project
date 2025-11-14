@@ -2,11 +2,11 @@ import isElectron from 'is-electron'
 import React, { useContext } from 'react'
 import { ContractWizardAction, TemplateCategory, TemplateExplorerWizardAction, TemplateItem } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
-import { trackMatomoEvent } from '@remix-api'
+import { MatomoCategories, trackMatomoEvent } from '@remix-api'
 
 export function TemplateExplorer() {
 
-  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme, state } = useContext(TemplateExplorerContext)
+  const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme, trackMatomoEvent } = useContext(TemplateExplorerContext)
 
   return (
     <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto">
@@ -49,6 +49,7 @@ export function TemplateExplorer() {
                     }
                     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_TYPE, payload: item.value })
                     facade.switchWizardScreen(dispatch, item, template, templateCategoryStrategy)
+                    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'selectWorkspaceTemplate', name: item.value })
                     if (item.displayName.toLowerCase().includes('ai')) {
                       await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
                     }

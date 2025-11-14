@@ -5,12 +5,18 @@ import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { RemixMdRenderer } from 'libs/remix-ui/helper/src/lib/components/remix-md-renderer'
 import heightConfig from '../config/height-config.json'
+import { MatomoCategories, MatomoEvent, TemplateExplorerModalEvent, trackMatomoEvent } from '@remix-api'
+import TrackingContext from '@remix-ide/tracking'
 
 export function GenericWorkspaceTemplate() {
 
   const { state, theme, dispatch, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [readMe, setReadMe] = useState(null)
   const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   useEffect(() => {
     const run = async () => {
@@ -77,7 +83,10 @@ export function GenericWorkspaceTemplate() {
           <div className="form-check m-0">
             <>
               <input data-id={`initializeAsGitRepo-${state.workspaceTemplateChosen.value}`} className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
-                onChange={(e) => dispatch({ type: ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE, payload: e.target.checked })} />
+                onChange={(e) => {
+                  dispatch({ type: ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE, payload: e.target.checked })
+                  trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'initializeAsGitRepoSelectedInOtherTemplates', name: 'success' })
+                }} />
               <label className="form-check-label" htmlFor="initGit">Initialize as a Git repository</label>
             </>
           </div>
@@ -95,6 +104,7 @@ export function GenericWorkspaceTemplate() {
               contractContent: state.contractCode,
               contractName: state.tokenName
             })
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'createWorkspaceWithGenericTemplate', name: 'success' })
             facade.closeWizard()
           }}>Finish</button>
         </div>

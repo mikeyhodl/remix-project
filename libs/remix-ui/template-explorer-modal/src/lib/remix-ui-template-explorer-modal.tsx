@@ -10,6 +10,7 @@ import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
 import { FinalScreen } from '../components/finalScreen'
 import { MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
 import TrackingContext from '@remix-ide/tracking'
+
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
   appState: AppState

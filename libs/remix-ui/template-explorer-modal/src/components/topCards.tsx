@@ -4,9 +4,10 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
+import { MatomoCategories } from '@remix-api'
 
 export function TopCards() {
-  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state } = useContext(TemplateExplorerContext)
+  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
 
   return (
@@ -20,6 +21,7 @@ export function TopCards() {
             dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: 'Generic' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: 'Blank' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'generic' })
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateBlank', name: 'success' })
           }}
           style={{
             borderRadius: '10px',
@@ -49,6 +51,7 @@ export function TopCards() {
           onClick={async () => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
             await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
           }}
           style={{
             borderRadius: '10px',
@@ -78,6 +81,7 @@ export function TopCards() {
           onClick={() => {
             dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode('erc20', state) })
             facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardContractWizard', name: 'success' })
           }}
           style={{
             borderRadius: '10px',
@@ -144,6 +148,7 @@ export function TopCards() {
               facade.closeWizard()
               relativePath = null
               targetFolder = null
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportProject', name: 'success' })
             }}
             {...enableDirUpload}
           />

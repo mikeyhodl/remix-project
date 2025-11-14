@@ -10,6 +10,8 @@ import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
 import { ContractTagSelector } from './contractTagSelector'
+import { MatomoCategories, MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
+import TrackingContext from '@remix-ide/tracking'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -52,6 +54,10 @@ export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
   const { state, dispatch, theme, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const strategy = state
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {
@@ -211,6 +217,7 @@ export function ContractWizard () {
                 contractContent: state.contractCode,
                 contractName: state.tokenName
               })
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'createWorkspaceWithContractWizard', name: 'success' })
               facade.closeWizard()
             }}>
               <i className="far fa-check me-2"></i> Validate workspace</button>

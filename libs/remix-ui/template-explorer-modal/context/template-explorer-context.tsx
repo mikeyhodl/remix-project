@@ -8,6 +8,8 @@ import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/temp
 import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
 import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
+import { MatomoCategories, MatomoEvent, TemplateExplorerModalEvent } from '@remix-api'
+import TrackingContext from '@remix-ide/tracking'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
@@ -18,7 +20,10 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   const { plugin } = props
   const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch, state)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
-
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   useEffect(() => {
     dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
@@ -56,6 +61,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
 
   const setSearchTerm = (term: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SEARCH_TERM, payload: term })
+    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'search', name: term })
   }
 
   const allTags = useMemo((): string[] => {
@@ -225,7 +231,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

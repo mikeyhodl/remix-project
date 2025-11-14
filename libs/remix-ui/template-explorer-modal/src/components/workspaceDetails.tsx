@@ -7,6 +7,7 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
+import { MatomoCategories, trackMatomoEvent } from '@remix-api'
 
 interface WorkspaceDetailsProps {
   strategy?: any
@@ -33,7 +34,7 @@ const darkTheme = EditorView.theme({
 }, { dark: true })
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
-  const { state, dispatch, facade, theme, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
+  const { state, dispatch, facade, theme, generateUniqueWorkspaceName, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
   const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
   useEffect(() => {
@@ -95,6 +96,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
             isGitRepo: state.initializeAsGitRepo,
             createCommit: true
           })
+          trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'createWorkspaceWithBasicTemplate', name: 'success' })
           facade.closeWizard()
           dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
         }}>

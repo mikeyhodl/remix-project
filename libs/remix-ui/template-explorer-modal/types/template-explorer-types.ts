@@ -3,6 +3,7 @@ import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
 import { TemplateCategoryStrategy } from '../stategies/templateCategoryStrategy'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/template-explorer-modal'
+import { MatomoEvent, TemplateExplorerModalEvent } from '@remix-api'
 
 export interface TemplateExplorerWizardState {
   workspaceTemplateChosen: any
@@ -61,6 +62,7 @@ export interface TemplateExplorerContextType {
   facade: TemplateExplorerModalFacade
   templateCategoryStrategy: TemplateCategoryStrategy
   generateUniqueWorkspaceName: (name: string) => Promise<string>
+  trackMatomoEvent: <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => void
 }
 
 export enum TemplateExplorerWizardAction {
