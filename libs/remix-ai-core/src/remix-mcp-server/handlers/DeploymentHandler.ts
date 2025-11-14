@@ -114,9 +114,8 @@ export class DeployContractHandler extends BaseToolHandler {
           const callbacks = { continueCb: (error, continueTxExecution, cancelCb) => {
             continueTxExecution()
           }, promptCb: () => {}, statusCb: (error) => {
-            console.log(error)
           }, finalCb: (error, contractObject, address: string, txResult: TxResult) => {
-            if (error) return reject(error)
+            if (error) reject(error)
             resolve({ contractObject, address, txResult })
           } }
           const confirmationCb = (network, tx, gasEstimation, continueTxExecution, cancelCb) => {
@@ -261,7 +260,7 @@ export class CallContractHandler extends BaseToolHandler {
       let txReturn
       try {
         txReturn = await new Promise((resolve, reject) => {
-          const params = funcABI.type !== 'fallback' ? args.args.join(',') : ''
+          const params = funcABI.type !== 'fallback' ? (args.args? args.args.join(',') : ''): ''
           plugin.call('blockchain', 'runOrCallContractMethod',
             args.contractName,
             args.abi,
@@ -304,7 +303,6 @@ export class CallContractHandler extends BaseToolHandler {
 
       // TODO: Execute contract call via Remix Run Tab API
       const receipt = (txReturn.txResult.receipt)
-      console.log('function call transaction payload:', txReturn)
       const result: ContractInteractionResult = {
         result: isView ? txFormat.decodeResponse(txReturn.txResult.result, funcABI) : txReturn.returnValue,
         transactionHash: isView ? txReturn.txResult.transactionHash : receipt.hash,
