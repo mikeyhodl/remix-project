@@ -11,8 +11,8 @@ const rightSidePanel = {
   displayName: 'Right Side Panel',
   description: 'Remix IDE right side panel',
   version: packageJson.version,
-  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight', 'closePlugin',
-    'getClosedPlugin', 'togglePanel', 'isPanelHidden'
+  methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight',
+    'getHiddenPlugin', 'togglePanel', 'isPanelHidden'
   ],
   events: []
 }
@@ -20,9 +20,9 @@ const rightSidePanel = {
 export class RightSidePanel extends AbstractPanel {
   dispatch: React.Dispatch<any> = () => {}
   loggedState: Record<string, any>
-  pinnedPanelState: Record<string, any> // pluginProfile, isClosed
+  rightSidePanelState: Record<string, any> // pluginProfile, isHidden
   highlightStamp: number
-  closedPlugin: any
+  hiddenPlugin: any
   isHidden: boolean
 
   constructor() {
@@ -39,17 +39,17 @@ export class RightSidePanel extends AbstractPanel {
       }
     })
 
-    const pinnedPanelState = window.localStorage.getItem('pinnedPanelState')
-    if (!pinnedPanelState) window.localStorage.setItem('pinnedPanelState', JSON.stringify({}))
+    const rightSidePanelState = window.localStorage.getItem('rightSidePanelState')
+    if (!rightSidePanelState) window.localStorage.setItem('rightSidePanelState', JSON.stringify({}))
   }
 
   async pinView (profile, view) {
-    if (this.closedPlugin) {
+    if (this.hiddenPlugin) {
       const pinnedPanel = document.querySelector('#right-side-panel')
       pinnedPanel?.classList.remove('d-none')
-      this.closedPlugin = null
+      this.hiddenPlugin = null
       this.isHidden = false
-      window.localStorage.setItem('pinnedPanelState', JSON.stringify({ pluginProfile: profile, isClosed: false }))
+      window.localStorage.setItem('rightSidePanelState', JSON.stringify({ pluginProfile: profile, isHidden: false }))
       this.events.emit('rightSidePanelShown')
       this.emit('rightSidePanelShown')
     }
@@ -64,23 +64,26 @@ export class RightSidePanel extends AbstractPanel {
     this.addView(profile, view)
     this.plugins[profile.name].pinned = true
     this.plugins[profile.name].active = true
-    let pinnedPanelState = window.localStorage.getItem('pinnedPanelState')
-    let isClosed = false
-    if (pinnedPanelState) {
-      pinnedPanelState = JSON.parse(pinnedPanelState)
-      if (pinnedPanelState['isClosed']) {
-        isClosed = true
-        await this.closePlugin(profile)
+    let rightSidePanelState = window.localStorage.getItem('rightSidePanelState')
+    let isHidden = false
+    if (rightSidePanelState) {
+      rightSidePanelState = JSON.parse(rightSidePanelState)
+      if (rightSidePanelState['isHidden']) {
+        isHidden = true
+        const pinnedPanel = document.querySelector('#right-side-panel')
+        pinnedPanel?.classList.add('d-none')
+        this.hiddenPlugin = profile
+        this.isHidden = true
       }
     }
-    if (!isClosed && !this.closedPlugin) {
+    if (!isHidden && !this.hiddenPlugin) {
       this.isHidden = false
       this.events.emit('rightSidePanelShown')
       this.emit('rightSidePanelShown')
     }
     this.renderComponent()
-    this.events.emit('pinnedPlugin', profile, isClosed)
-    this.emit('pinnedPlugin', profile, isClosed)
+    this.events.emit('pinnedPlugin', profile, isHidden)
+    this.emit('pinnedPlugin', profile, isHidden)
   }
 
   async unPinView (profile) {
@@ -94,18 +97,8 @@ export class RightSidePanel extends AbstractPanel {
     this.emit('unPinnedPlugin', profile)
   }
 
-  getClosedPlugin() {
-    return this.closedPlugin
-  }
-
-  async closePlugin (profile) {
-    const pinnedPanel = document.querySelector('#right-side-panel')
-    pinnedPanel.classList.add('d-none')
-    this.closedPlugin = profile
-    this.isHidden = true
-    window.localStorage.setItem('pinnedPanelState', JSON.stringify({ pluginProfile: profile, isClosed: true }))
-    this.events.emit('rightSidePanelHidden')
-    this.emit('rightSidePanelHidden')
+  getHiddenPlugin() {
+    return this.hiddenPlugin
   }
 
   togglePanel () {
@@ -143,7 +136,7 @@ export class RightSidePanel extends AbstractPanel {
   }
 
   updateComponent(state: any) {
-    return <RemixPluginPanel header={<RemixUIPanelHeader plugins={state.plugins} pinView={this.pinView.bind(this)} unPinView={this.unPinView.bind(this)} closePlugin={this.closePlugin.bind(this)}></RemixUIPanelHeader>} { ...state } />
+    return <RemixPluginPanel header={<RemixUIPanelHeader plugins={state.plugins} pinView={this.pinView.bind(this)} unPinView={this.unPinView.bind(this)} togglePanel={this.togglePanel.bind(this)}></RemixUIPanelHeader>} { ...state } />
   }
 
   renderComponent() {

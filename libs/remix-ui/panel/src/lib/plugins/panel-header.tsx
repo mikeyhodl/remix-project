@@ -10,7 +10,7 @@ export interface RemixPanelProps {
   plugins: Record<string, PluginRecord>,
   pinView?: (profile: PluginRecord['profile'], view: PluginRecord['view']) => void,
   unPinView?: (profile: PluginRecord['profile']) => void,
-  closePlugin?: (profile: PluginRecord['profile']) => void
+  togglePanel?: () => void
 }
 const RemixUIPanelHeader = (props: RemixPanelProps) => {
   const [plugin, setPlugin] = useState<PluginRecord>()
@@ -41,8 +41,8 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
     trackMatomoEvent?.({ category: 'pluginPanel', action: 'pinToLeft', name: plugin.profile.name })
   }
 
-  const closePlugin = async () => {
-    props.closePlugin && props.closePlugin(plugin.profile)
+  const togglePanelHandler = () => {
+    props.togglePanel && props.togglePanel()
   }
 
   const tooltipChild = <i className={`px-1 ms-2 pt-1 pb-2 ${!toggleExpander ? 'fas fa-angle-right' : 'fas fa-angle-down bg-light'}`} aria-hidden="true"></i>
@@ -87,7 +87,7 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
                       <CustomTooltip placement="bottom-end" tooltipText="Hide pinned Plugin">
                         <div
                           className="codicon codicon-close ms-1 fs-5 fw-bold"
-                          onClick={closePlugin}
+                          onClick={togglePanelHandler}
                           data-id="closePinnedPlugin"
                         ></div>
                       </CustomTooltip>
