@@ -119,6 +119,84 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
     plugin.on('sso', 'tokenRefreshed', () => {
       addLog('Token refreshed automatically')
     })
+
+    // Handle popup window requests from SSO plugin
+    plugin.on('sso', 'openWindow', ({ url, id }: { url: string; id: string }) => {
+      addLog(`Opening auth popup: ${url.substring(0, 50)}...`)
+      
+      // Open popup from IDE context (not blocked)
+      const width = 600
+      const height = 700
+      const left = window.screen.width / 2 - width / 2
+      const top = window.screen.height / 2 - height / 2
+      
+      const popup = window.open(
+        url,
+        'sso-auth',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+      )
+      
+      if (!popup) {
+        addLog('Popup blocked! Please allow popups for this site.')
+        plugin.call('sso', 'handlePopupResult', { 
+          id, 
+          success: false, 
+          error: 'Popup blocked by browser' 
+        })
+        return
+      }
+
+      // Monitor popup for completion
+      const checkInterval = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkInterval)
+          addLog('Popup closed')
+        }
+      }, 1000)
+
+      // Listen for auth result from popup
+      const messageHandler = (event: MessageEvent) => {
+        console.log('[SSO Demo] Received message:', event)
+        console.log('[SSO Demo] Message origin:', event.origin)
+        console.log('[SSO Demo] Message data:', event.data)
+        
+        // Validate origin
+        if (!event.origin.includes('ngrok.dev') && !event.origin.includes('localhost')) {
+          console.log('[SSO Demo] Message rejected - invalid origin')
+          return
+        }
+
+        const { type, requestId, user, accessToken, error } = event.data
+        console.log('[SSO Demo] Message type:', type)
+        console.log('[SSO Demo] Request ID:', requestId, 'Expected:', id)
+
+        if (type === 'sso-auth-result' && requestId === id) {
+          console.log('[SSO Demo] Auth result matched!')
+          addLog(`Auth result received: ${error || 'success'}`)
+          clearInterval(checkInterval)
+          window.removeEventListener('message', messageHandler)
+          
+          if (popup && !popup.closed) {
+            popup.close()
+          }
+
+          // Send result back to SSO plugin
+          console.log('[SSO Demo] Calling handlePopupResult with:', { id, success: !error, user, accessToken, error })
+          plugin.call('sso', 'handlePopupResult', {
+            id,
+            success: !error,
+            user,
+            accessToken,
+            error
+          })
+        } else {
+          console.log('[SSO Demo] Message not matched - wrong type or requestId')
+        }
+      }
+
+      console.log('[SSO Demo] Adding message listener')
+      window.addEventListener('message', messageHandler)
+    })
   }, [])
 
   const handleLogin = async (provider: 'google' | 'apple' | 'siwe') => {

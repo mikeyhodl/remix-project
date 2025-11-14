@@ -309,11 +309,11 @@ class AppComponent {
     const ssoPlugin = new IframePlugin({
       name: 'sso',
       displayName: 'SSO Authentication',
-      url: endpointUrls.ssoPlugin,
+      url: `${endpointUrls.ssoPlugin}?ideOrigin=${encodeURIComponent(window.location.origin)}`,
       location: 'hiddenPanel',
       description: 'Manages authentication with OIDC providers and SIWE',
-      methods: ['login', 'logout', 'getUser', 'getToken', 'isAuthenticated'],
-      events: ['authStateChanged', 'tokenRefreshed', 'loginSuccess', 'logoutSuccess']
+      methods: ['login', 'logout', 'getUser', 'getToken', 'isAuthenticated', 'handlePopupResult'],
+      events: ['authStateChanged', 'tokenRefreshed', 'loginSuccess', 'logoutSuccess', 'openWindow', 'loginError']
     })
 
     //---------------- SSO Demo Plugin -------------------------
