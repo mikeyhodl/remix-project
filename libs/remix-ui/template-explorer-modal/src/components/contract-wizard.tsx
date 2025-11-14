@@ -52,7 +52,6 @@ export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
   const { state, dispatch, theme, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const strategy = state
-  const monacoRef = useRef<Monaco>(null)
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {
@@ -99,10 +98,6 @@ export function ContractWizard () {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value.toUpperCase() })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: templateMap[value] })
   }
-
-  const currentValue: 'erc20' | 'erc721' | 'erc1155' = (state?.contractType?.toLowerCase() === 'erc20' || state?.contractType?.toLowerCase() === 'erc721' || state?.contractType?.toLowerCase() === 'erc1155')
-    ? (state.contractType.toLowerCase() as 'erc20' | 'erc721' | 'erc1155')
-    : 'erc20'
 
   return (
     <section className="container-fluid">

@@ -35,18 +35,26 @@ const darkTheme = EditorView.theme({
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
+  const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
+  useEffect(() => {
+    const run = async () => {
+      await facade.setUniqueWorkspaceName(state.workspaceName)
+      setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
+    }
+    run()
+  }, [showEditWorkspaceName, state.workspaceTemplateChosen.value])
 
   return (
-    <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
+    <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light workspace-details-section">
       <div className="p-3 d-flex flex-row align-items-center text-dark">
-        { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{state.workspaceName}</span> }
+        { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={uniqueWorkspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{uniqueWorkspaceName}</span> }
         <i data-id="default-workspace-name-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
       </div>
-      <div className="d-flex flex-row h-100 pt-1 ps-3 pe-3 pb-3" style={{ height: '100%' }}>
-        <div className="" style={{ minHeight: '80%', minWidth: '30%', borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }}>
+      <div className="d-flex flex-row h-100 pt-1 ps-3 pe-3 pb-3 workspace-details-content-wrapper">
+        <div className="workspace-details-file-explorer">
           <MiniFileExplorer />
         </div>
-        <div className="border" style={{ minHeight: '75%', minWidth: '70%', borderTopRightRadius: '10px', borderBottomRightRadius: '10px' }}>
+        <div className="border workspace-details-editor-container">
           <CodeMirror
             data-id="workspace-details-editor"
             value={storageContractCode('Storage')}

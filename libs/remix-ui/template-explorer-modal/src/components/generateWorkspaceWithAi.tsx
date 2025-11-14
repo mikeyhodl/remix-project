@@ -4,7 +4,7 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { AppContext } from '@remix-ui/app'
 
 export function GenerateWorkspaceWithAi() {
-  const { dispatch, plugin, facade, state } = useContext(TemplateExplorerContext)
+  const { dispatch, plugin, facade, state, theme } = useContext(TemplateExplorerContext)
   const { setIsAiWorkspaceBeingGenerated } = useContext(AppContext)
   return (
     <section className="mx-3 p-2">
@@ -14,7 +14,7 @@ export function GenerateWorkspaceWithAi() {
           <span className="badge badge-pill text-primary border mb-2 border-primary">Beta</span>
         </div>
         <div>
-          <textarea className="form-control text-dark" onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })}
+          <textarea className={`form-control ${theme.name === 'Light' ? 'text-dark' : 'text-white'}`} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })}
             placeholder="I want to create a decentralized voting platform with Solidity"
             rows={10}
           />

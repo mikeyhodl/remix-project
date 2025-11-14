@@ -1,7 +1,7 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import { GenAiStrategy, WizardStrategy, GenericStrategy, RemixDefaultStrategy, TemplateCategoryStrategy, CookbookStrategy, ScriptsStrategy } from '../../stategies/templateCategoryStrategy'
 import { TemplateExplorerWizardAction, TemplateItem, TemplateCategory, TemplateExplorerWizardState, ContractWizardAction } from '../../types/template-explorer-types'
-import { createWorkspace } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { createWorkspace, getWorkspaces } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
@@ -12,6 +12,7 @@ export class TemplateExplorerModalFacade {
   state: TemplateExplorerWizardState
   appContext: appProviderContextType
   dispatch: (action: any) => void
+  uniqueWorkspaceName: string
 
   constructor(plugin: any, appContext: appProviderContextType,
     dispatch: (action: any) => void, state: TemplateExplorerWizardState) {
@@ -19,11 +20,31 @@ export class TemplateExplorerModalFacade {
     this.appContext = appContext
     this.dispatch = dispatch
     this.state = state
+    this.uniqueWorkspaceName = state.workspaceName
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
     await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)
+  }
+
+  getUniqueWorkspaceName() {
+    return this.uniqueWorkspaceName
+  }
+
+  async setUniqueWorkspaceName(workspaceName: string) {
+    const uniqueName = await this.plugin.call('filePanel', 'getAvailableWorkspaceName', workspaceName) as string
+    this.uniqueWorkspaceName = uniqueName
+    this.dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: workspaceName })
+  }
+
+  async checkAndReturnUniqueWorkspaceName(workspaceName: string) {
+    const workspaces = await getWorkspaces()
+    const matchingWorkspaces = workspaces.filter((workspace) => workspace.name.toLowerCase().includes(workspaceName.toLowerCase()))
+    if (matchingWorkspaces.length > 0) {
+      return workspaceName + ' - ' + (matchingWorkspaces.length + 1)
+    }
+    return workspaceName
   }
 
   closeWizard() {

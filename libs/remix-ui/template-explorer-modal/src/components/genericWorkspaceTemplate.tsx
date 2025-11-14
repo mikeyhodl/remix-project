@@ -10,11 +10,20 @@ export function GenericWorkspaceTemplate() {
 
   const { state, theme, dispatch, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [readMe, setReadMe] = useState(null)
+  const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
 
   useEffect(() => {
     const run = async () => {
       const readMe = await facade.getTemplateReadMeFile(state.workspaceTemplateChosen.value)
       setReadMe(readMe)
+    }
+    run()
+  }, [state.workspaceTemplateChosen.value])
+
+  useEffect(() => {
+    const run = async () => {
+      await facade.setUniqueWorkspaceName(state.workspaceName)
+      setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
     }
     run()
   }, [state.workspaceTemplateChosen.value])
@@ -61,7 +70,7 @@ export function GenericWorkspaceTemplate() {
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>
         <div>
-          <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className="form-control text-dark" value={state.workspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} />
+          <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className={`form-control ${theme.name === 'Light' ? 'text-dark' : 'text-white'}`} value={uniqueWorkspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} />
         </div>
 
         <div className="d-flex justify-content-between align-items-center gap-3 mt-3 mb-5">
