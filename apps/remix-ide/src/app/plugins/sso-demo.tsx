@@ -243,6 +243,48 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
     }
   }
 
+  const testAPICall = async () => {
+    addLog('Testing API call to /sso/test-auth...')
+    setState(prev => ({ ...prev, loading: true }))
+    
+    const baseUrl = window.location.hostname.includes('localhost') 
+      ? 'http://localhost:3000'
+      : 'https://endpoints-remix-dev.ngrok.dev'
+    
+    const url = `${baseUrl}/sso/test-auth`
+    addLog(`Calling: ${url}`)
+    addLog(`With credentials: include (cookies sent automatically)`)
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include', // Send cookies
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      addLog('✓ Response received:')
+      addLog(JSON.stringify(data, null, 2))
+      
+      if (data.isAuthenticated) {
+        addLog(`✓ Cookie authentication WORKING! User: ${data.user.sub}`)
+      } else {
+        addLog(`⚠ Not authenticated - cookie not sent or invalid`)
+      }
+      
+      setState(prev => ({ ...prev, loading: false }))
+    } catch (error: any) {
+      addLog(`✗ API call failed: ${error.message}`)
+      setState(prev => ({ ...prev, loading: false, error: error.message }))
+    }
+  }
+
   return (
     <div className="p-3">
       <h5 className="mb-3">SSO Authentication Demo</h5>
@@ -311,6 +353,13 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
       {/* Logged in actions */}
       {state.isAuthenticated && (
         <div className="mb-3">
+          <button 
+            className="btn btn-sm btn-info mb-1 w-100"
+            onClick={testAPICall}
+            disabled={state.loading}
+          >
+            {state.loading ? 'Testing...' : 'Test API Call (Cookie Auth)'}
+          </button>
           <button 
             className="btn btn-sm btn-secondary mb-1 w-100"
             onClick={handleRefreshToken}

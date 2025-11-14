@@ -59,7 +59,9 @@ export class SubscriptionPlugin extends Plugin<any, CustomRemixApi> {
 
     try {
       console.log('🔵 SubscriptionPlugin: Making API call to /subscription/' + ghId)
-      const response = await fetch(`${endpointUrls.billing}/subscription/${ghId}`)
+      const response = await fetch(`${endpointUrls.billing}/subscription/${ghId}`, {
+        credentials: 'include' // Send cookies for authentication
+      })
       
       if (response.ok) {
         const data = await response.json()

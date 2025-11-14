@@ -119,7 +119,9 @@ export class SubscriptionManager extends ViewPlugin {
       this.subscriptionData = { ...this.subscriptionData, loadingPlans: true }
       this.renderComponent()
 
-      const response = await fetch(`${endpointUrls.billing}/prices`)
+      const response = await fetch(`${endpointUrls.billing}/prices`, {
+        credentials: 'include' // Send cookies for authentication
+      })
       if (!response.ok) {
         throw new Error('Failed to load plans')
       }
