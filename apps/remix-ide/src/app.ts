@@ -86,7 +86,10 @@ import * as remixLib from '@remix-project/remix-lib'
 import { QueryParams } from '@remix-project/remix-lib'
 import { SearchPlugin } from './app/tabs/search'
 import { ScriptRunnerBridgePlugin } from './app/plugins/script-runner-bridge'
+import { SSODemoPlugin } from './app/plugins/sso-demo'
 import { ElectronProvider } from './app/files/electronProvider'
+import { IframePlugin } from '@remixproject/engine-web'
+import { endpointUrls } from '@remix-endpoints-helper'
 
 const Storage = remixLib.Storage
 import RemixDProvider from './app/files/remixDProvider'
@@ -301,6 +304,20 @@ class AppComponent {
 
     //---------------- Script Runner UI Plugin -------------------------
     const scriptRunnerUI = new ScriptRunnerBridgePlugin(this.engine)
+
+    //---------------- SSO Plugin (Hidden Iframe) -------------------------
+    const ssoPlugin = new IframePlugin({
+      name: 'sso',
+      displayName: 'SSO Authentication',
+      url: endpointUrls.ssoPlugin,
+      location: 'hiddenPanel',
+      description: 'Manages authentication with OIDC providers and SIWE',
+      methods: ['login', 'logout', 'getUser', 'getToken', 'isAuthenticated'],
+      events: ['authStateChanged', 'tokenRefreshed', 'loginSuccess', 'logoutSuccess']
+    })
+
+    //---------------- SSO Demo Plugin -------------------------
+    const ssoDemo = new SSODemoPlugin()
 
     //---- templates
     const templates = new TemplatesPlugin()
@@ -574,7 +591,9 @@ class AppComponent {
       linkLibraries,
       deployLibraries,
       openZeppelinProxy,
-      run.recorder
+      run.recorder,
+      ssoPlugin,
+      ssoDemo
     ])
 
     this.layout.panels = {
@@ -637,6 +656,8 @@ class AppComponent {
       'remixAI',
       'remixaiassistant'
     ])
+    // Activate SSO plugin (hidden iframe for auth)
+    await this.appManager.activatePlugin(['sso'])
     await this.appManager.activatePlugin(['settings'])
 
     await this.appManager.activatePlugin(['walkthrough', 'storage', 'search', 'compileAndRun', 'recorder', 'dgitApi', 'dgit', 'subscription'])

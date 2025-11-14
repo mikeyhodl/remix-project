@@ -14,9 +14,10 @@ type EndpointUrls = {
     vyper2: string;
     solidityScanWebSocket: string;
     gitHubLoginProxy: string;
-  billing: string;
+    billing: string;
     components: string;
     sso: string;
+    ssoPlugin: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -38,6 +39,7 @@ const defaultUrls: EndpointUrls = {
   billing: 'https://billing.api.remix.live',
   components: 'https://components.api.remix.live',
   sso: 'https://sso.api.remix.live',
+  ssoPlugin: 'https://sso-plugin.api.remix.live',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -59,6 +61,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   billing: 'billing',
   components: 'components',
   sso: 'sso',
+  ssoPlugin: 'sso-plugin',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
