@@ -49,6 +49,12 @@
       "percentage": "50%"
     },
     {
+      "type": "exactMatch",
+      "field": "workspaceName",
+      "value": "MultiSig Wallet",
+      "percentage": "80%"
+    },
+    {
       "type": "default",
       "percentage": "50%"
     }

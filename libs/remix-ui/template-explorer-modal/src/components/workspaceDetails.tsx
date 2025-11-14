@@ -36,10 +36,6 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
   const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
 
-  useEffect(() => {
-    console.log('What is state now?', state)
-  }, [state.workspaceName])
-
   return (
     <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
       <div className="p-3 d-flex flex-row align-items-center text-dark">

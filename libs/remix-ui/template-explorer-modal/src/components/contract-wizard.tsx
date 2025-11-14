@@ -89,8 +89,15 @@ export function ContractWizard () {
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
     dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: value.toUpperCase() })
-    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value === 'erc20' ? 'ERC20' : value === 'erc721' ? 'ERC721' : 'ERC1155' })
-    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: value === 'erc20' ? { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' } : value === 'erc721' ? { value: 'ozerc721', displayName: 'ERC721', tagList: ["ERC721", "Solidity"], description: 'A customizable non-fungible token (NFT) contract' } : { value: 'ozerc1155', displayName: 'ERC1155', tagList: ["ERC1155", "Solidity"], description: 'A customizable multi token contract' } })
+
+    const templateMap = {
+      erc20: { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' },
+      erc721: { value: 'ozerc721', displayName: 'ERC721', tagList: ["ERC721", "Solidity"], description: 'A customizable non-fungible token (NFT) contract' },
+      erc1155: { value: 'ozerc1155', displayName: 'ERC1155', tagList: ["ERC1155", "Solidity"], description: 'A customizable multi token contract' }
+    }
+
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: value.toUpperCase() })
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: templateMap[value] })
   }
 
   const currentValue: 'erc20' | 'erc721' | 'erc1155' = (state?.contractType?.toLowerCase() === 'erc20' || state?.contractType?.toLowerCase() === 'erc721' || state?.contractType?.toLowerCase() === 'erc1155')

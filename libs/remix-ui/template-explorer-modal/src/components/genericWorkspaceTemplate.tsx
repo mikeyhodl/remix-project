@@ -18,6 +18,7 @@ export function GenericWorkspaceTemplate() {
     }
     run()
   }, [state.workspaceTemplateChosen.value])
+
   const calculateHeight = () => {
     const displayName = state.workspaceTemplateChosen.displayName?.toLowerCase() || ''
     const templateGroup = state.workspaceTemplateGroupChosen?.toLowerCase() || ''
@@ -29,22 +30,18 @@ export function GenericWorkspaceTemplate() {
         continue
       }
 
-      if (rule.type === 'exactMatch') {
-        if (rule.field === 'displayName' && displayName === rule.value) {
-          return rule.percentage
-        }
-        if (rule.field === 'workspaceName' && workspaceName === rule.value) {
-          return rule.percentage
-        }
+      if (rule.type === 'exactMatch' && rule.field === 'displayName' && displayName === rule.value) {
+        return rule.percentage
+      }
+      if (rule.type === 'exactMatch' && rule.field === 'workspaceName' && workspaceName === rule.value) {
+        return rule.percentage
       }
 
-      if (rule.type === 'includes') {
-        if (rule.field === 'displayName' && displayName.includes(rule.value)) {
-          return rule.percentage
-        }
-        if (rule.field === 'templateGroup' && templateGroup.includes(rule.value)) {
-          return rule.percentage
-        }
+      if (rule.type === 'includes' && rule.field === 'displayName' && displayName.includes(rule.value)) {
+        return rule.percentage
+      }
+      if (rule.type === 'includes' && rule.field === 'templateGroup' && templateGroup.includes(rule.value)) {
+        return rule.percentage
       }
 
       if (rule.type === 'templateType' && templateType === rule.value) {
@@ -59,7 +56,7 @@ export function GenericWorkspaceTemplate() {
 
   return (
     <section data-id={`generic-template-section-${state.workspaceTemplateChosen.value}`} className="mx-3 p-2">
-      <div className="d-flex flex-column p-3 bg-light" style={{ height: calculateHeight() }}>
+      <div className="d-flex flex-column p-3 bg-light" style={{ height: state.workspaceName === 'MultiSig Wallet' ? '90%' : calculateHeight() }}>
         <div>
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>
@@ -93,7 +90,13 @@ export function GenericWorkspaceTemplate() {
           }}>Finish</button>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: '70%' }}>
-          { readMe && readMe?.type === 'md' ? <RemixMdRenderer markDownContent={readMe?.readMe} theme={theme.name} /> : <p className="text-dark">{readMe?.readMe}</p> }
+          {readMe?.readMe && (
+            readMe.type === 'md' ? (
+              <RemixMdRenderer markDownContent={readMe.readMe} theme={theme.name} />
+            ) : (
+              <p className="text-dark">{readMe.readMe}</p>
+            )
+          )}
         </div>
       </div>
     </section>
