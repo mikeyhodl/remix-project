@@ -46,6 +46,11 @@ interface SSODemoState {
   loading: boolean
   error: string | null
   logs: string[]
+  credits: {
+    balance: number
+    free_credits: number
+    paid_credits: number
+  } | null
 }
 
 function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
@@ -55,7 +60,8 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
     token: null,
     loading: false,
     error: null,
-    logs: []
+    logs: [],
+    credits: null
   })
 
   const addLog = (message: string) => {
@@ -156,16 +162,6 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
 
       // Listen for auth result from popup
       const messageHandler = (event: MessageEvent) => {
-        console.log('[SSO Demo] Received message:', event)
-        console.log('[SSO Demo] Message origin:', event.origin)
-        console.log('[SSO Demo] Message data:', event.data)
-        
-        // Validate origin
-        if (!event.origin.includes('ngrok.dev') && !event.origin.includes('localhost')) {
-          console.log('[SSO Demo] Message rejected - invalid origin')
-          return
-        }
-
         const { type, requestId, user, accessToken, error } = event.data
         console.log('[SSO Demo] Message type:', type)
         console.log('[SSO Demo] Request ID:', requestId, 'Expected:', id)
@@ -189,6 +185,13 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
             accessToken,
             error
           })
+          
+          // Auto-fetch credits after successful login
+          if (!error && user) {
+            fetchCredits().catch(err => {
+              console.error('[SSO Demo] Failed to fetch credits after login:', err)
+            })
+          }
         } else {
           console.log('[SSO Demo] Message not matched - wrong type or requestId')
         }
@@ -272,8 +275,19 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
       addLog('✓ Response received:')
       addLog(JSON.stringify(data, null, 2))
       
-      if (data.isAuthenticated) {
-        addLog(`✓ Cookie authentication WORKING! User: ${data.user.sub}`)
+      // Check if response has authentication info
+      if (data.authenticated || data.isAuthenticated) {
+        addLog(`✓ Cookie authentication WORKING! User: ${data.user.sub || data.user.id}`)
+        
+        // Update credits if included in response
+        if (data.credits) {
+          setState(prev => ({ ...prev, credits: data.credits }))
+          addLog(`✓ Credits updated: ${data.credits.balance} total (${data.credits.free_credits} free + ${data.credits.paid_credits} paid)`)
+        }
+        
+        if (data.message && data.message.includes('deducted')) {
+          addLog('✓ 1 credit has been deducted for this API call')
+        }
       } else {
         addLog(`⚠ Not authenticated - cookie not sent or invalid`)
       }
@@ -282,6 +296,78 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
     } catch (error: any) {
       addLog(`✗ API call failed: ${error.message}`)
       setState(prev => ({ ...prev, loading: false, error: error.message }))
+    }
+  }
+
+  const fetchCredits = async () => {
+    addLog('Fetching credit balance...')
+    
+    const baseUrl = window.location.hostname.includes('localhost') 
+      ? 'http://localhost:3000'
+      : 'https://endpoints-remix-dev.ngrok.dev'
+    
+    try {
+      const response = await fetch(`${baseUrl}/credits/balance`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          addLog('⚠ Not authenticated - login required')
+          return
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      setState(prev => ({ ...prev, credits: data }))
+      addLog(`✓ Credits: ${data.balance} (Free: ${data.free_credits}, Paid: ${data.paid_credits})`)
+    } catch (error: any) {
+      addLog(`✗ Failed to fetch credits: ${error.message}`)
+    }
+  }
+
+  const grantCredits = async () => {
+    addLog('Granting 1000 free credits...')
+    setState(prev => ({ ...prev, loading: true }))
+    
+    const baseUrl = window.location.hostname.includes('localhost') 
+      ? 'http://localhost:3000'
+      : 'https://endpoints-remix-dev.ngrok.dev'
+    
+    try {
+      const response = await fetch(`${baseUrl}/credits/grant`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ amount: 1000, reason: 'Test grant from SSO Demo' })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      setState(prev => ({ 
+        ...prev, 
+        loading: false,
+        credits: {
+          balance: data.balance,
+          free_credits: data.free_credits,
+          paid_credits: data.paid_credits
+        }
+      }))
+      addLog(`✓ Granted! New balance: ${data.balance}`)
+    } catch (error: any) {
+      addLog(`✗ Failed to grant credits: ${error.message}`)
+      setState(prev => ({ ...prev, loading: false }))
     }
   }
 
@@ -361,6 +447,20 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
             {state.loading ? 'Testing...' : 'Test API Call (Cookie Auth)'}
           </button>
           <button 
+            className="btn btn-sm btn-success mb-1 w-100"
+            onClick={fetchCredits}
+            disabled={state.loading}
+          >
+            Fetch Credits
+          </button>
+          <button 
+            className="btn btn-sm btn-warning mb-1 w-100"
+            onClick={grantCredits}
+            disabled={state.loading}
+          >
+            {state.loading ? 'Granting...' : 'Grant 1000 Credits'}
+          </button>
+          <button 
             className="btn btn-sm btn-secondary mb-1 w-100"
             onClick={handleRefreshToken}
           >
@@ -373,6 +473,29 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
           >
             {state.loading ? 'Logging out...' : 'Logout'}
           </button>
+        </div>
+      )}
+
+      {/* Credits Display */}
+      {state.credits && (
+        <div className="mb-3">
+          <h6 className="mb-1">Credits:</h6>
+          <div className="card">
+            <div className="card-body p-2">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="small">Total Balance:</span>
+                <span className="badge badge-primary">{state.credits.balance}</span>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="small">Free Credits:</span>
+                <span className="badge badge-success">{state.credits.free_credits}</span>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="small">Paid Credits:</span>
+                <span className="badge badge-info">{state.credits.paid_credits}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
