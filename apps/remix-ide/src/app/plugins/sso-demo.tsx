@@ -199,7 +199,7 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
     })
   }, [])
 
-  const handleLogin = async (provider: 'google' | 'apple' | 'coinbase' | 'siwe') => {
+  const handleLogin = async (provider: 'google' | 'apple' | 'coinbase' | 'discord' | 'siwe') => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     addLog(`Starting login with ${provider}...`)
     try {
@@ -289,6 +289,13 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
               disabled={state.loading}
             >
               {state.loading ? 'Loading...' : 'Coinbase'}
+            </button>
+            <button 
+              className="btn btn-sm btn-primary mb-1"
+              onClick={() => handleLogin('discord')}
+              disabled={state.loading}
+            >
+              {state.loading ? 'Loading...' : 'Discord'}
             </button>
             <button 
               className="btn btn-sm btn-primary mb-1"
