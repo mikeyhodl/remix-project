@@ -338,11 +338,10 @@ module.exports = {
       .click('*[data-id="workspace-name-input"]')
       .setValue('*[data-id="workspace-name-input"]', 'ChangedWorkspaceName ')
       .click('*[data-id="default-workspace-name-edit-icon"]')
-      .pause()
       .waitForElementVisible('*[data-id="default-workspace-name-span"]')
       .click('*[data-id="validateWorkspaceButton"]')
-      .switchWorkspace('ChangedWorkspaceName')
       .currentWorkspaceIs('ChangedWorkspaceName')
+      .switchWorkspace('Basic')
       .end()
   }
 }
