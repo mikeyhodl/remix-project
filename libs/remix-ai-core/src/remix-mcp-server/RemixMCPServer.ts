@@ -39,6 +39,11 @@ import { CompilationResourceProvider } from './providers/CompilationResourceProv
 import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
 import { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 
+// Import middleware
+import { SecurityMiddleware } from './middleware/SecurityMiddleware';
+import { ValidationMiddleware } from './middleware/ValidationMiddleware';
+import { MCPConfigManager } from './config/MCPConfigManager';
+
 /**
  * Main Remix MCP Server implementation
  */
@@ -53,6 +58,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private _resourceCache: Map<string, ResourceCacheEntry> = new Map();
   private _auditLog: AuditLogEntry[] = [];
   private _startTime: Date = new Date();
+  private _securityMiddleware: SecurityMiddleware;
+  private _validationMiddleware: ValidationMiddleware;
+  private _configManager: MCPConfigManager;
 
   constructor(plugin, config: RemixMCPServerConfig) {
     super();
@@ -70,6 +78,19 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       errorCount: 0,
       lastActivity: new Date()
     };
+
+    // Initialize config manager
+    this._configManager = new MCPConfigManager(this._plugin);
+
+    // Initialize middleware with tool registry (will be updated after config is loaded)
+    this._securityMiddleware = new SecurityMiddleware(
+      this._tools as RemixToolRegistry,
+      this._configManager
+    );
+    this._validationMiddleware = new ValidationMiddleware(
+      this._plugin,
+      this._configManager
+    );
 
     this.setupEventHandlers();
   }
@@ -97,7 +118,11 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   }
 
   get plugin(): any{
-    return this.plugin
+    return this._plugin
+  }
+
+  get configManager(): MCPConfigManager {
+    return this._configManager
   }
 
   /**
@@ -107,8 +132,26 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     try {
       this.setState(ServerState.STARTING);
 
-      await this.initializeDefaultTools();
+      // Load configuration from workspace .mcp.config.json
+      try {
+        await this._configManager.loadConfig();
+        console.log('[RemixMCPServer] MCP configuration loaded and connected to middlewares');
+        console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
 
+        // Verify middleware connection
+        const securityConfig = this._configManager.getSecurityConfig();
+        const validationConfig = this._configManager.getValidationConfig();
+        console.log('[RemixMCPServer] Middlewares connected:');
+        console.log(`  - SecurityMiddleware: using ${securityConfig.excludeTools?.length || 0} excluded tools, ${securityConfig.allowTools?.length || 0} allowed tools`);
+        console.log(`  - ValidationMiddleware: strictMode=${validationConfig.strictMode}, ${Object.keys(validationConfig.toolValidation || {}).length} tool-specific rules`);
+
+        // Start polling for config file changes (every 5 seconds)
+        this._configManager.startPolling(5000);
+      } catch (error) {
+        console.log(`[RemixMCPServer] Failed to load MCP config: ${error.message}, using defaults`);
+      }
+
+      await this.initializeDefaultTools();
       await this.initializeDefaultResourceProviders();
 
       this.setupCleanupIntervals();
@@ -120,7 +163,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
           name: this._config.name,
           version: this._config.version
         },
-        instructions: `Remix IDE MCP Server initialized. Available tools: ${this._tools.list().length}, Resource providers: ${this._resources.list().length}`
+        instructions: `Remix IDE MCP Server initialized. Available tools: ${this._tools.list().length}, Resource providers: ${this._resources.list().length}. Configuration loaded from workspace.`
       };
 
       this.setState(ServerState.RUNNING);
@@ -145,6 +188,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    */
   async stop(): Promise<void> {
     this.setState(ServerState.STOPPING);
+
+    // Stop config polling
+    this._configManager.stopPolling();
 
     // Cancel active tool executions
     for (const [id, execution] of this._activeExecutions) {
@@ -253,7 +299,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   }
 
   /**
-   * Execute a tool
+   * Execute a tool with security and validation middleware
    */
   private async executeTool(call: IMCPToolCall): Promise<IMCPToolResult> {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -266,7 +312,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       status: 'running',
       context: {
         workspace: await this.getCurrentWorkspace(),
-        user: 'default', // TODO: Get actual user
+        user: 'remixIDE', // TODO: Get actual user
         permissions: ["*"] // TODO: Get actual permissions
       }
     };
@@ -275,11 +321,52 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.emit('tool-executed', execution);
 
     try {
-      // Check permissions
-      const permissionCheck = await this.checkPermissions(`tool:${call.name}`, 'default');
-      if (!permissionCheck.allowed) {
-        throw new Error(`Permission denied: ${permissionCheck.reason}`);
+      const context = {
+        workspace: execution.context.workspace,
+        currentFile: await this.getCurrentFile(),
+        permissions: execution.context.permissions,
+        timestamp: Date.now(),
+        requestId: executionId
+      };
+
+      // STEP 1: Security Validation (uses MCPConfigManager for dynamic config)
+      console.log(`[RemixMCPServer] Step 1: Security validation for tool '${call.name}' (using MCPConfigManager)`);
+      const securityResult = await this._securityMiddleware.validateToolCall(call, context, this._plugin);
+
+      if (!securityResult.allowed) {
+        console.log(`[RemixMCPServer] Security validation FAILED for tool '${call.name}': ${securityResult.reason}`);
+        throw new Error(`Security validation failed: ${securityResult.reason}`);
       }
+      console.log(`[RemixMCPServer] Security validation PASSED for tool '${call.name}'`);
+
+      // STEP 2: Input Validation (uses MCPConfigManager for dynamic config)
+      console.log(`[RemixMCPServer] Step 2: Input validation for tool '${call.name}' (using MCPConfigManager)`);
+      const toolDefinition = this._tools.get(call.name);
+      const inputSchema = toolDefinition?.inputSchema;
+
+      const validationResult = await this._validationMiddleware.validateToolCall(
+        call,
+        inputSchema,
+        context,
+        this._plugin
+      );
+
+      if (!validationResult.valid) {
+        const errorMessages = validationResult.errors.map(e => e.message).join(', ');
+        console.log(`[RemixMCPServer] Input validation FAILED for tool '${call.name}': ${errorMessages}`);
+        throw new Error(`Input validation failed: ${errorMessages}`);
+      }
+
+      // Log warnings if any
+      if (validationResult.warnings.length > 0) {
+        const warnings = validationResult.warnings.map(w => w.message).join(', ');
+        console.log(`[RemixMCPServer] Input validation warnings for tool '${call.name}': ${warnings}`);
+      } else {
+        console.log(`[RemixMCPServer] Input validation PASSED for tool '${call.name}'`);
+      }
+
+      // STEP 3: Tool Execution
+      console.log(`[RemixMCPServer] Step 3: Executing tool '${call.name}'`);
 
       // Set timeout
       const timeout = this._config.toolTimeout || 30000;
@@ -288,14 +375,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       });
 
       // Execute tool
-      const toolPromise = this._tools.execute(call, {
-        workspace: execution.context.workspace,
-        currentFile: await this.getCurrentFile(),
-        permissions: execution.context.permissions,
-        timestamp: Date.now(),
-        requestId: executionId
-      }, this._plugin);
-
+      const toolPromise = this._tools.execute(call, context, this._plugin);
       const result = await Promise.race([toolPromise, timeoutPromise]);
 
       // Update execution status
@@ -303,6 +383,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       execution.endTime = new Date();
       this._stats.totalToolCalls++;
 
+      console.log(`[RemixMCPServer] Tool '${call.name}' executed successfully`);
       this.emit('tool-executed', execution);
       return result;
 
@@ -312,8 +393,12 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       execution.endTime = new Date();
       this._stats.errorCount++;
 
+      console.log(`[RemixMCPServer] Tool '${call.name}' execution FAILED: ${error.message}`);
       this.emit('tool-executed', execution);
-      throw error;
+      return {
+        isError:true,
+        content: [{ type: 'text', text:error.message }]
+      }
     } finally {
       this._activeExecutions.delete(executionId);
     }
@@ -399,6 +484,39 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       console.log(`Failed to refresh resources: ${error.message}`, 'error');
       throw error;
     }
+  }
+
+  /**
+   * Reload MCP configuration from workspace
+   */
+  async reloadConfig(): Promise<void> {
+    try {
+      console.log('[RemixMCPServer] Reloading MCP configuration...');
+      const mcpConfig = await this._configManager.reloadConfig();
+      console.log('[RemixMCPServer] Configuration reloaded successfully');
+      console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
+      this.emit('config-reloaded', mcpConfig);
+    } catch (error) {
+      console.log(`[RemixMCPServer] Failed to reload config: ${error.message}`);
+      throw error;
+    }
+  }
+
+  getMCPConfig() {
+    return this._configManager.getConfig();
+  }
+
+  updateMCPConfig(partialConfig: Partial<any>): void {
+    this._configManager.updateConfig(partialConfig);
+    console.log('[RemixMCPServer] Configuration updated at runtime');
+    this.emit('config-updated', this._configManager.getConfig());
+  }
+
+  /**
+   * Check if config polling is active
+   */
+  isConfigPollingActive(): boolean {
+    return this._configManager.isPolling();
   }
 
   /**
@@ -496,9 +614,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }
   }
 
-  /**
-   * Setup cleanup intervals
-   */
   private setupCleanupIntervals(): void {
     setInterval(() => {
       const now = Date.now();
@@ -516,20 +631,14 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }, 300000);
   }
 
-  /**
-   * Get current workspace
-   */
   private async getCurrentWorkspace(): Promise<string> {
     try {
       return await this.plugin.call('filePanel', 'getCurrentWorkspace')
     } catch (error) {
-      return 'default';
+      return '';
     }
   }
 
-  /**
-   * Get current file
-   */
   private async getCurrentFile(): Promise<string> {
     try {
       return await this.plugin.call('fileManager', 'getCurrentFile');

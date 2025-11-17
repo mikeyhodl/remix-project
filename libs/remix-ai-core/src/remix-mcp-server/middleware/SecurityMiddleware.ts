@@ -5,16 +5,9 @@
 import { Plugin } from '@remixproject/engine';
 import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
 import { ToolExecutionContext } from '../types/mcpTools';
-
-export interface SecurityConfig {
-  maxRequestsPerMinute: number;
-  maxFileSize: number;
-  allowedFileTypes: string[];
-  blockedPaths: string[];
-  requirePermissions: boolean;
-  enableAuditLog: boolean;
-  maxExecutionTime: number;
-}
+import { RemixToolRegistry } from '../registry/RemixToolRegistry';
+import { MCPSecurityConfig } from '../types/mcpConfig';
+import { MCPConfigManager } from '../config/MCPConfigManager';
 
 export interface SecurityValidationResult {
   allowed: boolean;
@@ -40,8 +33,26 @@ export class SecurityMiddleware {
   private rateLimitTracker = new Map<string, { count: number; resetTime: number }>();
   private auditLog: AuditLogEntry[] = [];
   private blockedIPs = new Set<string>();
+  private toolRegistry?: RemixToolRegistry;
+  private configManager?: MCPConfigManager;
+  private config: MCPSecurityConfig;
 
-  constructor(private config: SecurityConfig) {}
+  constructor(toolRegistry?: RemixToolRegistry, configManager?: MCPConfigManager) {
+    this.toolRegistry = toolRegistry;
+    this.configManager = configManager;
+
+    this.config = configManager.getSecurityConfig() as MCPSecurityConfig;
+  }
+
+  /**
+   * Get current security config (refreshes from ConfigManager if available)
+   */
+  private getConfig(): MCPSecurityConfig {
+    if (this.configManager) {
+      return this.configManager.getSecurityConfig();
+    }
+    return this.config;
+  }
 
   /**
    * Validate a tool call before execution
@@ -52,8 +63,16 @@ export class SecurityMiddleware {
     plugin: Plugin
   ): Promise<SecurityValidationResult> {
     const startTime = Date.now();
+    const config = this.getConfig();
 
     try {
+      // Check if tool is allowed (exclude/allow lists)
+      const toolAllowedResult = this.checkToolAllowed(call.name);
+      if (!toolAllowedResult.allowed) {
+        this.logAudit(call, context, 'blocked', toolAllowedResult.reason, startTime, 'high');
+        return toolAllowedResult;
+      }
+
       // Rate limiting check
       const rateLimitResult = this.checkRateLimit(context);
       if (!rateLimitResult.allowed) {
@@ -103,6 +122,48 @@ export class SecurityMiddleware {
   }
 
   /**
+   * Check if tool is allowed based on exclude/allow lists
+   */
+  private checkToolAllowed(toolName: string): SecurityValidationResult {
+    const config = this.getConfig();
+
+    // Use ConfigManager if available
+    if (this.configManager) {
+      const allowed = this.configManager.isToolAllowed(toolName);
+      if (!allowed) {
+        return {
+          allowed: false,
+          reason: `Tool '${toolName}' is not allowed by configuration`,
+          risk: 'high'
+        };
+      }
+      return { allowed: true, risk: 'low' };
+    }
+
+    // Check exclude list
+    if (config.excludeTools && config.excludeTools.includes(toolName)) {
+      return {
+        allowed: false,
+        reason: `Tool '${toolName}' is excluded by security configuration`,
+        risk: 'high'
+      };
+    }
+
+    // Check allow list (if set, only allow tools in the list)
+    if (config.allowTools && config.allowTools.length > 0) {
+      if (!config.allowTools.includes(toolName)) {
+        return {
+          allowed: false,
+          reason: `Tool '${toolName}' is not in the allowed tools list`,
+          risk: 'high'
+        };
+      }
+    }
+
+    return { allowed: true, risk: 'low' };
+  }
+
+  /**
    * Wrap tool execution with security monitoring
    */
   async secureExecute<T>(
@@ -149,9 +210,17 @@ export class SecurityMiddleware {
    * Check rate limiting for user/session
    */
   private checkRateLimit(context: ToolExecutionContext): SecurityValidationResult {
+    const config = this.getConfig();
     const identifier = context.userId || context.sessionId || 'anonymous';
     const now = Date.now();
     const resetTime = Math.floor(now / 60000) * 60000 + 60000; // Next minute
+
+    // Check if rate limiting is disabled
+    if (config.rateLimit && !config.rateLimit.enabled) {
+      return { allowed: true, risk: 'low' };
+    }
+
+    const maxRequests = config.rateLimit?.requestsPerMinute || config.maxRequestsPerMinute;
 
     const userLimit = this.rateLimitTracker.get(identifier);
     if (!userLimit || userLimit.resetTime <= now) {
@@ -159,10 +228,10 @@ export class SecurityMiddleware {
       return { allowed: true, risk: 'low' };
     }
 
-    if (userLimit.count >= this.config.maxRequestsPerMinute) {
+    if (userLimit.count >= maxRequests) {
       return {
         allowed: false,
-        reason: `Rate limit exceeded: ${userLimit.count}/${this.config.maxRequestsPerMinute} requests per minute`,
+        reason: `Rate limit exceeded: ${userLimit.count}/${maxRequests} requests per minute`,
         risk: 'medium'
       };
     }
@@ -298,6 +367,8 @@ export class SecurityMiddleware {
    * Validate file path for security issues
    */
   private validateFilePath(path: string): SecurityValidationResult {
+    const config = this.getConfig();
+
     // Check for path traversal attacks
     if (path.includes('..') || path.includes('~')) {
       return {
@@ -316,12 +387,43 @@ export class SecurityMiddleware {
       };
     }
 
+    // Use ConfigManager if available
+    if (this.configManager) {
+      const allowed = this.configManager.isPathAllowed(path);
+      if (!allowed) {
+        return {
+          allowed: false,
+          reason: 'Path not allowed by configuration',
+          risk: 'high'
+        };
+      }
+      return { allowed: true, risk: 'low' };
+    }
+
     // Check blocked paths
-    for (const blockedPath of this.config.blockedPaths) {
+    for (const blockedPath of config.blockedPaths) {
       if (path.includes(blockedPath)) {
         return {
           allowed: false,
           reason: `Path contains blocked segment: ${blockedPath}`,
+          risk: 'high'
+        };
+      }
+    }
+
+    // Check allowed paths (if set, only allow paths matching patterns)
+    if (config.allowedPaths && config.allowedPaths.length > 0) {
+      let pathAllowed = false;
+      for (const allowedPattern of config.allowedPaths) {
+        if (path.includes(allowedPattern) || this.matchPattern(path, allowedPattern)) {
+          pathAllowed = true;
+          break;
+        }
+      }
+      if (!pathAllowed) {
+        return {
+          allowed: false,
+          reason: 'Path not in allowed paths list',
           risk: 'high'
         };
       }
@@ -340,6 +442,22 @@ export class SecurityMiddleware {
     }
 
     return { allowed: true, risk: 'low' };
+  }
+
+  /**
+   * Match a string against a pattern (supports wildcards)
+   */
+  private matchPattern(str: string, pattern: string): boolean {
+    // Convert glob pattern to regex
+    const regexPattern = pattern
+      .replace(/\./g, '\\.')
+      .replace(/\*\*/g, '___DOUBLESTAR___')
+      .replace(/\*/g, '[^/]*')
+      .replace(/___DOUBLESTAR___/g, '.*')
+      .replace(/\?/g, '.');
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(str);
   }
 
   private validateInputSanitization(call: IMCPToolCall): SecurityValidationResult {
@@ -386,21 +504,21 @@ export class SecurityMiddleware {
   }
 
   /**
-   * Get required permissions for a tool (placeholder)
+   * Get required permissions for a tool from the registry
+   * Returns ['*'] (all permissions) if no specific permissions are defined
    */
   private getRequiredPermissions(toolName: string): string[] {
-    // This would typically come from the tool registry
-    // TODO update the tools
-    const toolPermissions: Record<string, string[]> = {
-      'file_write': ['file:write'],
-      'file_delete': ['file:delete'],
-      'deploy_contract': ['deploy:contract'],
-      'call_contract': ['contract:interact'],
-      'debug_start': ['debug:start'],
-      'solidity_compile': ['compile:solidity']
-    };
+    if (this.toolRegistry) {
+      const toolDefinition = this.toolRegistry.get(toolName);
+      if (toolDefinition && toolDefinition.permissions && toolDefinition.permissions.length > 0) {
+        console.log(`[SecurityMiddleware] Tool '${toolName}' requires permissions:`, toolDefinition.permissions);
+        return toolDefinition.permissions;
+      }
+    }
 
-    return toolPermissions[toolName] || [];
+    // If no permissions found, grant all permissions (wildcard)
+    console.log(`[SecurityMiddleware] Tool '${toolName}' has no specific permissions defined, granting all permissions (*)`);
+    return ['*'];
   }
 
   /**
@@ -460,13 +578,3 @@ export class SecurityMiddleware {
     return this.blockedIPs.has(ip);
   }
 }
-
-export const defaultSecurityConfig: SecurityConfig = {
-  maxRequestsPerMinute: 60,
-  maxFileSize: 1024 * 1024 * 2, // 2MB
-  allowedFileTypes: ['sol', 'js', 'ts', 'json', 'md', 'txt', 'toml', 'yaml', 'yml'],
-  blockedPaths: ['.env', '.git', 'node_modules', '.ssh', 'private', 'secret'],
-  requirePermissions: true,
-  enableAuditLog: true,
-  maxExecutionTime: 30000 // 30 seconds
-};

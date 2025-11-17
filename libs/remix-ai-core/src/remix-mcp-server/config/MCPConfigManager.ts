@@ -1,0 +1,215 @@
+/**
+ * MCP Configuration Manager
+ * Loads and manages .mcp.config.json configuration
+ */
+
+import { Plugin } from '@remixproject/engine';
+import { MCPConfig, defaultMCPConfig, minimalMCPConfig } from '../types/mcpConfig';
+
+export class MCPConfigManager {
+  private config: MCPConfig;
+  private plugin: Plugin;
+  private configPath: string = 'artifacts/.mcp.config.json';
+  private pollingInterval?: NodeJS.Timeout;
+
+  constructor(plugin: Plugin) {
+    this.plugin = plugin;
+    this.config = defaultMCPConfig;
+  }
+
+  async loadConfig(): Promise<MCPConfig> {
+    try {
+
+      const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+
+      if (exists) {
+        const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
+        const userConfig = JSON.parse(configContent);
+        // Merge with defaults
+        this.config = this.mergeConfig(defaultMCPConfig, userConfig);
+      } else {
+        this.config = minimalMCPConfig;
+        // Create default config file
+        await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
+      }
+
+      return this.config;
+    } catch (error) {
+      this.config = defaultMCPConfig;
+      return this.config;
+    }
+  }
+
+  async saveConfig(config: MCPConfig): Promise<void> {
+    try {
+      const configContent = JSON.stringify(config, null, 2);
+
+      await this.plugin.call('fileManager', 'writeFile', this.configPath, configContent);
+      this.config = config;
+
+      console.log(`[MCPConfigManager] Config saved to: ${this.configPath}`);
+    } catch (error) {
+      console.error(`[MCPConfigManager] Error saving config: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async createDefaultConfig(): Promise<void> {
+    try {
+
+      const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+      if (exists) {
+        console.log('[MCPConfigManager] Config file already exists, skipping creation');
+        return;
+      }
+
+      await this.saveConfig(defaultMCPConfig);
+      console.log('[MCPConfigManager] Default config file created');
+    } catch (error) {
+      console.error(`[MCPConfigManager] Error creating default config: ${error.message}`);
+      throw error;
+    }
+  }
+
+  getConfig(): MCPConfig {
+    return this.config;
+  }
+
+  getSecurityConfig() {
+    return this.config.security;
+  }
+
+  getValidationConfig() {
+    return this.config.validation;
+  }
+
+  getResourceConfig() {
+    return this.config.resources;
+  }
+
+  updateConfig(partialConfig: Partial<MCPConfig>): void {
+    this.config = this.mergeConfig(this.config, partialConfig);
+    console.log('[MCPConfigManager] Config updated at runtime');
+  }
+
+  isToolAllowed(toolName: string): boolean {
+    const { excludeTools, allowTools } = this.config.security;
+
+    if (excludeTools && excludeTools.includes(toolName)) {
+      return false;
+    }
+
+    if (allowTools && allowTools.length > 0) {
+      return allowTools.includes(toolName);
+    }
+
+    return true;
+  }
+
+  isPathAllowed(path: string): boolean {
+    const { blockedPaths, allowedPaths } = this.config.security;
+
+    if (blockedPaths) {
+      for (const blocked of blockedPaths) {
+        if (path.includes(blocked)) {
+          return false;
+        }
+      }
+    }
+
+    // If allowedPaths is set, only allow paths matching patterns
+    if (allowedPaths && allowedPaths.length > 0) {
+      let allowed = false;
+      for (const allowedPattern of allowedPaths) {
+        if (path.includes(allowedPattern) || this.matchPattern(path, allowedPattern)) {
+          allowed = true;
+          break;
+        }
+      }
+      return allowed;
+    }
+
+    // Otherwise, allow by default
+    return true;
+  }
+
+  private matchPattern(str: string, pattern: string): boolean {
+    // Convert glob pattern to regex
+    const regexPattern = pattern
+      .replace(/\./g, '\\.')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.');
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(str);
+  }
+
+  private mergeConfig(base: any, override: any): any {
+    const result = { ...base };
+
+    for (const key in override) {
+      if (override[key] !== undefined) {
+        if (typeof override[key] === 'object' && !Array.isArray(override[key]) && override[key] !== null) {
+          result[key] = this.mergeConfig(base[key] || {}, override[key]);
+        } else {
+          result[key] = override[key];
+        }
+      }
+    }
+
+    return result;
+  }
+
+  async reloadConfig(): Promise<MCPConfig> {
+    return this.loadConfig();
+  }
+
+  /**
+   * Get configuration summary for logging
+   */
+  getConfigSummary(): string {
+    const config = this.getConfig();
+    return JSON.stringify({
+      version: config.version,
+      security: {
+        excludeTools: config.security.excludeTools?.length || 0,
+        allowTools: config.security.allowTools?.length || 0,
+        rateLimitEnabled: config.security.rateLimit?.enabled || false,
+        maxRequestsPerMinute: config.security.rateLimit?.requestsPerMinute || config.security.maxRequestsPerMinute
+      },
+      validation: {
+        strictMode: config.validation.strictMode,
+        schemasEnabled: config.validation.validateSchemas,
+        toolValidationRules: Object.keys(config.validation.toolValidation || {}).length
+      },
+      resources: {
+        cacheEnabled: config.resources?.enableCache || false,
+        cacheTTL: config.resources?.cacheTTL || 0
+      }
+    }, null, 2);
+  }
+
+  startPolling(intervalMs: number = 10000): void {
+    if (this.pollingInterval) {
+      return;
+    }
+
+    this.pollingInterval = setInterval(async () => {
+      try {
+        await this.reloadConfig();
+      } catch (error) {
+      }
+    }, intervalMs);
+  }
+
+  stopPolling(): void {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = undefined;
+    }
+  }
+
+  isPolling(): boolean {
+    return !!this.pollingInterval;
+  }
+}
