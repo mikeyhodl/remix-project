@@ -17,7 +17,7 @@
         "main": "apps/quick-dapp/src/main.tsx",
         "polyfills": "apps/quick-dapp/src/polyfills.ts",
         "tsConfig": "apps/quick-dapp/tsconfig.app.json",
-        "assets": ["apps/quick-dapp/src/profile.json", "apps/quick-dapp/src/assets/edit-dapp.png"],
+        "assets": ["apps/quick-dapp/src/profile.json", "apps/quick-dapp/src/assets/sparkling.png"],
         "styles": ["apps/quick-dapp/src/index.css"],
         "scripts": [],
         "webpackConfig": "apps/quick-dapp/webpack.config.js"
