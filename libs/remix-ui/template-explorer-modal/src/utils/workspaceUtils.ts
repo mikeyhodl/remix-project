@@ -38,15 +38,6 @@ export class TemplateExplorerModalFacade {
     this.dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: workspaceName })
   }
 
-  async checkAndReturnUniqueWorkspaceName(workspaceName: string) {
-    const workspaces = await getWorkspaces()
-    const matchingWorkspaces = workspaces.filter((workspace) => workspace.name.toLowerCase().includes(workspaceName.toLowerCase()))
-    if (matchingWorkspaces.length > 0) {
-      return workspaceName + ' - ' + (matchingWorkspaces.length + 1)
-    }
-    return workspaceName
-  }
-
   closeWizard() {
     this.appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,

@@ -28,11 +28,12 @@ export function GenericWorkspaceTemplate() {
 
   useEffect(() => {
     const run = async () => {
-      await facade.setUniqueWorkspaceName(state.workspaceName)
-      setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
+      const result = await generateUniqueWorkspaceName(state.workspaceName)
+      setUniqueWorkspaceName(result)
+      dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
     }
     run()
-  }, [state.workspaceTemplateChosen.value])
+  }, [state.workspaceTemplateChosen.value, state.wizardStep])
 
   const calculateHeight = () => {
     const displayName = state.workspaceTemplateChosen.displayName?.toLowerCase() || ''
@@ -78,7 +79,7 @@ export function GenericWorkspaceTemplate() {
         <div>
           <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className={`form-control ${theme.name === 'Light' ? 'text-dark' : 'text-white'}`} value={uniqueWorkspaceName} onChange={(e) => {
             setUniqueWorkspaceName(e.target.value)
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
           }} />
         </div>
 
@@ -95,10 +96,8 @@ export function GenericWorkspaceTemplate() {
           </div>
 
           <button className="btn btn-primary btn-sm mx-3" data-id={`validate-${state.workspaceTemplateChosen.value}workspace-button`} onClick={async () => {
-            const result = await generateUniqueWorkspaceName(state.workspaceName)
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: result })
             await facade.createWorkspace({
-              workspaceName: result,
+              workspaceName: uniqueWorkspaceName,
               workspaceTemplateName: state.workspaceTemplateChosen.value,
               opts: state.contractOptions,
               isEmpty: false,
