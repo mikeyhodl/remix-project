@@ -27,7 +27,6 @@ export type HardFork =
 export const evmMap: Map<HardFork, { chainId: ChainInfo[], minCompilerVersion: string }> = new Map([
   ['prague', {
     chainId: [
-
     ],
     minCompilerVersion: "0.8.24+commit.e11b9ed9",
     evmVersion: 'prague'
@@ -76,48 +75,42 @@ export const evmMap: Map<HardFork, { chainId: ChainInfo[], minCompilerVersion: s
   }],
   ['petersburg', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" },
       { id: 5, name: "Goerli" },
-      { id: 11155111, name: "Sepolia" }
     ],
     minCompilerVersion: "0.5.5+commit.47a71e8f",
     evmVersion: 'petersburg'
   }],
   ['constantinople', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" },
       { id: 5, name: "Goerli" },
-      { id: 11155111, name: "Sepolia" }
     ],
     minCompilerVersion: "0.5.5+commit.47a71e8f",
     evmVersion: 'constantinople'
   }],
   ['byzantium', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" }
+      { id: 5, name: "Goerli" },
     ],
     minCompilerVersion: "0.4.21+commit.dfe3193c",
     evmVersion: 'byzantium'
   }],
   ['spuriousDragon', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" }
+      { id: 5, name: "Goerli" },
     ],
     minCompilerVersion: "0.4.9+commit.364da425",
     evmVersion: 'spuriousDragon'
   }],
   ['tangerineWhistle', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" }
+      { id: 5, name: "Goerli" },
     ],
     minCompilerVersion: "0.4.0+commit.acd334c9",
     evmVersion: 'tangerineWhistle'
   }],
   ['homestead', {
     chainId: [
-      { id: 1, name: "Ethereum Mainnet" },
       { id: 5, name: "Goerli" },
-      { id: 11155111, name: "Sepolia" }
     ],
     minCompilerVersion: "0.1.2+commit.d0d36e3",
     evmVersion: 'homestead'
