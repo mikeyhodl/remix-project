@@ -111,7 +111,7 @@ module.exports = {
       .click('*[data-id="treeViewDivDraggableItemsrc/main.nr"]')
       .waitForElementVisible('*[data-id="compile-action"]')
   },
-  'Create OpenZeppelin ERC20 template with Contract Wizard #pr': function (browser: NightwatchBrowser) {
+  'Create OpenZeppelin ERC20 template with Contract Wizard': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
