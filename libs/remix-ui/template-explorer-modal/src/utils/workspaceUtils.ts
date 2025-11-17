@@ -23,6 +23,17 @@ export class TemplateExplorerModalFacade {
     this.uniqueWorkspaceName = state.workspaceName
   }
   async createWorkspace(deps: CreateWorkspaceDeps) {
+    const workspaceExists = await this.plugin.call('filePanel', 'workspaceExists', deps.workspaceName)
+    if (workspaceExists) {
+      this.closeWizard()
+      await this.plugin.call('notification', 'alert', {
+        id: 'workspaceAlreadyExistsError',
+        title: 'Workspace already exists',
+        message: 'Please choose a different workspace name',
+        type: 'error'
+      })
+      return
+    }
     const { workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName } = deps
     await createWorkspace(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
     this.plugin.emit('createWorkspaceReducerEvent', workspaceName, workspaceTemplateName, opts, false, cb, isGitRepo)

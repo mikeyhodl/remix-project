@@ -342,6 +342,27 @@ module.exports = {
       .click('*[data-id="validateWorkspaceButton"]')
       .currentWorkspaceIs('ChangedWorkspaceName')
       .switchWorkspace('Basic')
+  },
+  'Creating a workspace with the same name as an existing one should show an error': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-remixDefault-0"]')
+      .click('*[data-id="template-card-remixDefault-0"]')
+      .waitForElementVisible('*[data-id="default-workspace-name-edit-icon"]')
+      .click('*[data-id="default-workspace-name-edit-icon"]')
+      .waitForElementVisible('*[data-id="workspace-name-input"]')
+      .click('*[data-id="workspace-name-input"]')
+      .setValue('*[data-id="workspace-name-input"]', 'Basic')
+      .click('*[data-id="default-workspace-name-edit-icon"]')
+      .click('*[data-id="validateWorkspaceButton"]')
+      .pause(1000)
+      .waitForElementVisible('*[data-id="workspaceAlreadyExistsErrorModalDialogModalTitle-react"]')
+      .click('*[data-id="workspaceAlreadyExistsError-modal-footer-ok-react"]')
       .end()
   }
 }
