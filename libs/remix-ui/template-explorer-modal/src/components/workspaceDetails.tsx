@@ -51,7 +51,7 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
         { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={uniqueWorkspaceName} onChange={(e) => {
           setUniqueWorkspaceName(e.target.value)
           dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
-        }} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{uniqueWorkspaceName}</span> }
+        }} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{state.workspaceName}</span> }
         <i data-id="default-workspace-name-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
       </div>
       <div className="d-flex flex-row h-100 pt-1 ps-3 pe-3 pb-3 workspace-details-content-wrapper">
