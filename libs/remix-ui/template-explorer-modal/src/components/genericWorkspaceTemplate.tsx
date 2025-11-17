@@ -76,7 +76,10 @@ export function GenericWorkspaceTemplate() {
           <label className="form-label text-uppercase small mb-1">Workspace name</label>
         </div>
         <div>
-          <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className={`form-control ${theme.name === 'Light' ? 'text-dark' : 'text-white'}`} value={uniqueWorkspaceName} onChange={(e) => dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })} />
+          <input name="workspaceName" data-id={`workspace-name-${state.workspaceTemplateChosen.value}-input`} type="text" className={`form-control ${theme.name === 'Light' ? 'text-dark' : 'text-white'}`} value={uniqueWorkspaceName} onChange={(e) => {
+            setUniqueWorkspaceName(e.target.value)
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
+          }} />
         </div>
 
         <div className="d-flex justify-content-between align-items-center gap-3 mt-3 mb-5">
