@@ -111,7 +111,7 @@ module.exports = {
       .click('*[data-id="treeViewDivDraggableItemsrc/main.nr"]')
       .waitForElementVisible('*[data-id="compile-action"]')
   },
-  'Create OpenZeppelin ERC20 template with Contract Wizard': function (browser: NightwatchBrowser) {
+  'Create OpenZeppelin ERC20 template with Contract Wizard #pr': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -130,9 +130,9 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .isVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
+      .waitForElementVisible('*[data-id="treeViewDivDraggableItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
-      .isVisible('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract TestToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {`) !== -1,
@@ -173,9 +173,9 @@ module.exports = {
           }
         })
       })
-      .isVisible('*[data-id="treeViewLitreeViewItemremix.config.json"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
-      .isVisible('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts/Test721Token.sol"]')
       .pause(2000)
       .getEditorValue((content) => {

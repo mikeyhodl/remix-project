@@ -38,7 +38,7 @@ module.exports = {
       .click('[data-id="settingsTabSavegithub-config"]')
   },
 
-  'Should create and initialize a GIT repository #group1': function (browser: NightwatchBrowser) {
+  'Should create and initialize a GIT repository #group1 #pr': function (browser: NightwatchBrowser) {
     browser
       // .waitForElementNotVisible('[data-id="workspaceGitPanel"]')
       .click('*[data-id="workspacesSelect"]')
@@ -53,13 +53,13 @@ module.exports = {
       .click('*[data-id="workspace-name-blank-input"]')
       .setValue('*[data-id="workspace-name-blank-input"]', 'workspace_blank_git')
       .click('[data-id="initializeAsGitRepo-blank"]')
-      .click('*[data-id="validateWorkspaceButton"]')
+      .click('*[data-id="validate-blankworkspace-button"]')
       // eslint-disable-next-line dot-notation
       .pause(100)
       .waitForElementVisible('[data-id="workspaceGitPanel"]')
       .waitForElementContainsText('[data-id="workspaceGitBranchesDropdown"]', 'main')
   },
-  'check git for the commit #group1': function (browser: NightwatchBrowser) {
+  'check git for the commit #group1 #pr': function (browser: NightwatchBrowser) {
     browser.
       clickLaunchIcon('dgit')
       .click('*[data-id="commits-panel"]')
