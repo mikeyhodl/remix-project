@@ -36,15 +36,14 @@ const darkTheme = EditorView.theme({
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme, generateUniqueWorkspaceName, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
-  const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
+  const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(state.workspaceName)
   useEffect(() => {
     const run = async () => {
       const result = await generateUniqueWorkspaceName(state.workspaceName)
       setUniqueWorkspaceName(result)
-      dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
     }
     run()
-  }, [showEditWorkspaceName, state.workspaceTemplateChosen.value, state.wizardStep])
+  }, [state.contractType, state.contractTag])
 
   return (
     <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light workspace-details-section">
@@ -52,7 +51,9 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
         { showEditWorkspaceName ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm" value={uniqueWorkspaceName} onChange={(e) => {
           setUniqueWorkspaceName(e.target.value)
           dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
-        }} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{uniqueWorkspaceName}</span> }
+        }} /> : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">
+          {uniqueWorkspaceName}
+        </span> }
         <i data-id="default-workspace-name-edit-icon" className="fa-solid fa-edit ms-2" onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
       </div>
       <div className="d-flex flex-row h-100 pt-1 ps-3 pe-3 pb-3 workspace-details-content-wrapper">
