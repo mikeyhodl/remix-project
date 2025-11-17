@@ -9,7 +9,7 @@ module.exports = {
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
   },
-  'Should not be able to create GIT without credentials #group1': function (browser: NightwatchBrowser) {
+  'Should be able to create GIT without credentials #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
       .click('*[data-id="workspacesSelect"]')
@@ -25,9 +25,8 @@ module.exports = {
       .setValue('*[data-id="workspace-name-input"]', 'workspace_blank')
       .click('[data-id="initGitRepositoryLabel"]')
       .click('*[data-id="validateWorkspaceButton"]')
-      .pause(100)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
-      .waitForElementNotPresent('*[data-id="treeViewLitreeViewItem.git"]')
+      .waitForElementPresent('*[data-id="treeViewLitreeViewItem.git"]')
       .waitForElementVisible('[data-id="treeViewDivtreeViewItemREADME.txt"]')
   },
   'Should add credentials #group1 #group2 #group3': function (browser: NightwatchBrowser) {
