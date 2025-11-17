@@ -94,7 +94,6 @@ export function ContractWizard () {
 
   useEffect(() => {
     const run = async () => {
-      console.log('state.workspaceName', state.workspaceName)
       await facade.setUniqueWorkspaceName(state.workspaceName)
       setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
     }
