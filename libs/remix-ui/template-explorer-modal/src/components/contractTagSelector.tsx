@@ -11,17 +11,18 @@ export function ContractTagSelector (props: any) {
 
   return (
     <div className="d-flex align-items-center gap-2">
-      <DropdownButton id="contract-wizard-language-dropdown" variant="secondary" title="Solidity">
+      <DropdownButton id="contract-wizard-language-dropdown" data-id="contract-wizard-language-dropdown" variant="secondary" title="Solidity">
         <Dropdown.Item>Solidity</Dropdown.Item>
       </DropdownButton>
       <DropdownButton
         id="contract-wizard-contract-type-dropdown"
+        data-id="contract-wizard-contract-type-dropdown"
         title={`${state.contractTag}`}
         variant="secondary"
       >
-        <Dropdown.Item onClick={() => props.switching('erc20')}>ERC20</Dropdown.Item>
-        <Dropdown.Item onClick={() => props.switching('erc721')}>ERC721</Dropdown.Item>
-        <Dropdown.Item onClick={() => props.switching('erc1155')}>ERC1155</Dropdown.Item>
+        <Dropdown.Item data-id="contract-wizard-contract-type-dropdown-item-erc20" onClick={() => props.switching('erc20')}>ERC20</Dropdown.Item>
+        <Dropdown.Item data-id="contract-wizard-contract-type-dropdown-item-erc721" onClick={() => props.switching('erc721')}>ERC721</Dropdown.Item>
+        <Dropdown.Item data-id="contract-wizard-contract-type-dropdown-item-erc1155" onClick={() => props.switching('erc1155')}>ERC1155</Dropdown.Item>
       </DropdownButton>
     </div>
   )

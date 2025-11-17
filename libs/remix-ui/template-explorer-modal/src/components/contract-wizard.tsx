@@ -53,6 +53,7 @@ const darkTheme = EditorView.theme({
 export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
   const { state, dispatch, theme, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
+  const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
   const strategy = state
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
@@ -91,6 +92,15 @@ export function ContractWizard () {
     }
   }, [strategy.contractType, strategy.contractOptions, strategy.contractAccessControl, strategy.contractUpgradability, strategy.contractName, strategy.contractTag])
 
+  useEffect(() => {
+    const run = async () => {
+      console.log('state.workspaceName', state.workspaceName)
+      await facade.setUniqueWorkspaceName(state.workspaceName)
+      setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
+    }
+    run()
+  }, [state.workspaceTemplateChosen.value, showEditModal, state.workspaceName])
+
   const switching = (value: 'erc20' | 'erc721' | 'erc1155') => {
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: value })
     dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: value.toUpperCase() })
@@ -110,8 +120,11 @@ export function ContractWizard () {
       <div className="row g-3">
         <div className="col-12 d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            {showEditModal ? <input data-id="contract-wizard-token-name-input" className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} /> : <span data-id="contract-wizard-token-name-span" className={`fw-semibold fs-6 ${theme?.name === 'Light' ? 'text-dark' : 'text-white'}`}>
-              {state.tokenName}
+            {showEditModal ? <input data-id="contract-wizard-workspace-name-input" className="form-control form-control-sm" value={uniqueWorkspaceName} onChange={(e) => {
+              setUniqueWorkspaceName(e.target.value)
+              dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
+            }} /> : <span data-id="contract-wizard-workspace-name-span" className={`fw-semibold fs-6 ${theme?.name === 'Light' ? 'text-dark' : 'text-white'}`}>
+              {uniqueWorkspaceName}
             </span>}
             <i data-id="contract-wizard-edit-icon" className={`${showEditModal ? 'fas fa-lock' : "fas fa-edit"}`} onClick={() => setShowEditModal(!showEditModal)}></i>
           </div>
@@ -123,7 +136,7 @@ export function ContractWizard () {
             <div className="mb-3">
               <div className="fw-semibold mb-2">Contract settings</div>
               <label data-id="contract-wizard-token-name-label" className="form-label text-uppercase small mb-1">Token name</label>
-              <input id="contractWizardTokenNameReadOnlyInput" data-id={`contract-wizard-token-${strategy.tokenName}-input`} className="form-control form-control-sm" placeholder="My Token" value={state.tokenName} readOnly />
+              <input data-id="contract-wizard-token-name-input" className="form-control form-control-sm" value={state.tokenName} onChange={(e) => updateContractName(e.target.value)} />
             </div>
 
             <div className="mb-3">
