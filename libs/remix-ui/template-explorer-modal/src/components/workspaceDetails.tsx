@@ -39,11 +39,12 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(facade.getUniqueWorkspaceName())
   useEffect(() => {
     const run = async () => {
-      await facade.setUniqueWorkspaceName(state.workspaceName)
-      setUniqueWorkspaceName(facade.getUniqueWorkspaceName())
+      const result = await generateUniqueWorkspaceName(state.workspaceName)
+      setUniqueWorkspaceName(result)
+      dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
     }
     run()
-  }, [showEditWorkspaceName, state.workspaceTemplateChosen.value])
+  }, [showEditWorkspaceName, state.workspaceTemplateChosen.value, state.wizardStep])
 
   return (
     <section data-id="workspace-details-section" className="d-flex flex-column gap-3 bg-light workspace-details-section">
@@ -89,10 +90,8 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
         </div>
 
         <button className="btn btn-primary btn-sm" data-id="validateWorkspaceButton" onClick={async () => {
-          const result = await generateUniqueWorkspaceName(state.workspaceName)
-          dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: result })
           await facade.createWorkspace({
-            workspaceName: result,
+            workspaceName: uniqueWorkspaceName,
             workspaceTemplateName: state.workspaceTemplateChosen.value,
             opts: { },
             isEmpty: false,
