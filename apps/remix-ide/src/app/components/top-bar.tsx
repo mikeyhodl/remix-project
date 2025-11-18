@@ -22,6 +22,7 @@ const TopBarProfile = {
   description: '',
   version: packageJson.version,
   icon: '',
+  location: 'none',
   methods: ['getWorkspaces', 'createWorkspace', 'renameWorkspace', 'deleteWorkspace', 'getCurrentWorkspace', 'setWorkspace'],
   events: ['setWorkspace', 'workspaceRenamed', 'workspaceDeleted', 'workspaceCreated'],
 }

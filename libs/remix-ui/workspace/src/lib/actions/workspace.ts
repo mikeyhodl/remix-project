@@ -139,17 +139,19 @@ export const createWorkspace = async (
   isEmpty = false,
   cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
   isGitRepo: boolean = false,
-  createCommit: boolean = true
+  createCommit: boolean = true,
+  contractContent?: string,
+  contractName?: string,
 ) => {
   if (plugin.registry.get('platform').api.isDesktop()) {
     if (workspaceTemplateName) {
-      await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts)
+      await plugin.call('remix-templates', 'loadTemplateInNewWindow', workspaceTemplateName, opts, contractContent, contractName)
     }
     return
   }
   await plugin.fileManager.closeAllFiles()
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
-  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata)
+  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
   dispatch(createWorkspaceRequest())
   promise.then(async () => {
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
@@ -162,40 +164,40 @@ export const createWorkspace = async (
       const currentBranch: branch = await dgitPlugin.call('dgitApi', 'currentbranch')
 
       if (!currentBranch) {
-        if (!name || !email) {
-          await plugin.call('notification', 'toast', 'To use Git features, add username and email to the Github section of the Git plugin.')
-        } else {
-          // commit the template as first commit
-          plugin.call('notification', 'toast', 'Creating initial git commit ...')
+        // if (!name || !email) {
+        //   await plugin.call('notification', 'toast', 'To use Git features, add username and email to the Github section of the Git plugin.')
+        // } else {
+        // commit the template as first commit
+        plugin.call('notification', 'toast', 'Creating initial git commit ...')
 
-          await dgitPlugin.call('dgit', 'init')
-          if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts)
-          const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
+        await dgitPlugin.call('dgit', 'init')
+        if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+        const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
 
-          Promise.all(
-            status.map(([filepath, , worktreeStatus]) =>
-              worktreeStatus
-                ? dgitPlugin.call('dgitApi', 'add', {
-                  filepath: removeSlash(filepath),
-                })
-                : dgitPlugin.call('dgitApi', 'rm', {
-                  filepath: removeSlash(filepath),
-                })
-            )
-          ).then(async () => {
-            await dgitPlugin.call('dgitApi', 'commit', {
-              author: {
-                name,
-                email,
-              },
-              message: `Initial commit: remix template ${workspaceTemplateName}`,
-            })
+        Promise.all(
+          status.map(([filepath, , worktreeStatus]) =>
+            worktreeStatus
+              ? dgitPlugin.call('dgitApi', 'add', {
+                filepath: removeSlash(filepath),
+              })
+              : dgitPlugin.call('dgitApi', 'rm', {
+                filepath: removeSlash(filepath),
+              })
+          )
+        ).then(async () => {
+          await dgitPlugin.call('dgitApi', 'commit', {
+            author: {
+              name,
+              email,
+            },
+            message: `Initial commit: remix template ${workspaceTemplateName}`,
           })
-        }
+        })
       }
+      // }
     }
 
-    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit)
+    await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)
     // this call needs to be here after the callback because it calls dGitProvider which also calls this function and that would cause an infinite loop
     await plugin.setWorkspaces(await getWorkspaces())
   }).catch((error) => {
@@ -215,7 +217,9 @@ export const populateWorkspace = async (
   isEmpty = false,
   cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
   isGitRepo: boolean = false,
-  createCommit: boolean = false
+  createCommit: boolean = false,
+  contractContent?: string,
+  contractName?: string,
 ) => {
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
   if (metadata && metadata.type === 'plugin') {
@@ -229,7 +233,9 @@ export const populateWorkspace = async (
         plugin.call('notification', 'toast', 'error adding template ' + (e.message || e))
       })
     }, 5000)
-  } else if (!isEmpty && !(isGitRepo && createCommit)) await loadWorkspacePreset(workspaceTemplateName, opts)
+  } else if (!isEmpty && !(isGitRepo && createCommit)) {
+    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+  }
   cb && cb(null)
   if (isGitRepo) {
     await checkGit()
@@ -248,8 +254,8 @@ export const populateWorkspace = async (
   }
 }
 
-export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType) => {
-  if (!workspaceName) throw new Error('Workspace name cannot be empty')
+export const createWorkspaceTemplate = async (workspaceName: string, template: WorkspaceTemplate = 'remixDefault', metadata?: TemplateType, contractContent?: string, contractName?: string) => {
+  if (!workspaceName) throw new Error('workspace name cannot be empty')
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('Workspace already exists')
   else if (metadata && metadata.type === 'git') {
@@ -282,7 +288,7 @@ export const decodeBase64 = (b64Payload: string) => {
   return new TextDecoder().decode(bytes);
 }
 
-export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?) => {
+export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string) => {
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
@@ -436,7 +442,13 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
 
       await trackMatomoEventAsync(plugin, { category: 'workspace', action: 'template', name: template, isClick: false })
       // @ts-ignore
-      const files = await templateWithContent[template](opts, plugin)
+      let files = {}
+      if (template === 'ozerc20' || template === 'ozerc721' || template === 'ozerc1155') {
+        files = await templateWithContent[template](opts, contractContent, contractName)
+      }
+      else {
+        files = await templateWithContent[template](opts, plugin)
+      }
       for (const file in files) {
         try {
           const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
@@ -636,6 +648,31 @@ export const uploadFile = async (target, targetFolder: string, cb?: (err: Error,
   })
 }
 
+export const uploadFolderExcludingRootFolder = async (target, targetFolder: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
+  for (const file of [...target.files]) {
+    const workspaceProvider = plugin.fileProviders.workspace
+    const name = targetFolder === '/' ? file.webkitRelativePath.split('/').slice(1).join('/') : `${targetFolder}/${file.webkitRelativePath}`
+    if (!(await workspaceProvider.exists(name))) {
+      loadFile(name, file, workspaceProvider, cb)
+    } else {
+      const modalContent: AppModal = {
+        id: 'overwriteUploadFolderFile',
+        title: 'Confirm overwrite',
+        message: `The file "${name}" already exists! Would you like to overwrite it?`,
+        modalType: ModalTypes.confirm,
+        okLabel: 'OK',
+        cancelLabel: 'Cancel',
+        okFn: () => {
+          loadFile(name, file, workspaceProvider, cb)
+        },
+        cancelFn: () => {},
+        hideFn: () => {},
+      }
+      plugin.call('notification', 'modal', modalContent)
+    }
+  }
+}
+
 export const uploadFolder = async (target, targetFolder: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
   for (const file of [...target.files]) {
     const workspaceProvider = plugin.fileProviders.workspace
@@ -660,6 +697,7 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
     }
   }
 }
+
 export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
   try {
