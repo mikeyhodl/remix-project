@@ -28,7 +28,7 @@ const REMIX_REGISTRAR_ABI = [
 function DeployPanel(): JSX.Element {
   const intl = useIntl()
   const { appState, dispatch } = useContext(AppContext);
-  const { title, details } = appState.instance; 
+  const { title, details, logo } = appState.instance; 
   const [showIpfsSettings, setShowIpfsSettings] = useState(false);
   const [ipfsHost, setIpfsHost] = useState('');
   const [ipfsPort, setIpfsPort] = useState('');
@@ -182,6 +182,30 @@ function DeployPanel(): JSX.Element {
 
       let modifiedHtml = indexHtmlContent;
 
+      let logoDataUrl = '';
+      if (logo && logo.byteLength > 0) {
+        try {
+          const base64data = btoa(
+            new Uint8Array(logo).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          logoDataUrl = 'data:image/jpeg;base64,' + base64data;
+        } catch (err) {
+          console.error('Logo conversion failed during deploy:', err);
+        }
+      }
+
+      const injectionScript = `
+        <script>
+          window.__QUICK_DAPP_CONFIG__ = {
+            logo: "${logoDataUrl}",
+            title: ${JSON.stringify(title || '')},
+            details: ${JSON.stringify(details || '')}
+          };
+        </script>
+      `;
+
+      modifiedHtml = modifiedHtml.replace('</head>', `${injectionScript}\n</head>`);
+      
       modifiedHtml = modifiedHtml.replace(
         /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, 
         '<script type="module" src="./app.js"></script>'

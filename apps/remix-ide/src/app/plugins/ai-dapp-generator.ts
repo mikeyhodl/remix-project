@@ -176,6 +176,7 @@ export class AIDappGenerator extends Plugin {
 
   private createInitialMessage(options: GenerateDappOptions): string {
     const providerCode = this.getProviderCode()
+    
     return `
       You MUST generate a new DApp based on the following requirements.
       
@@ -188,6 +189,21 @@ export class AIDappGenerator extends Plugin {
       - Contract Address: ${options.address}
       - Network (Chain ID): ${options.chainId}
       - Contract ABI: ${JSON.stringify(options.abi)}
+
+      **ROBUST NETWORK CHECK:**
+      When generating the network check logic in \`src/App.jsx\`, you MUST implement a robust comparison that handles both Hexadecimal (e.g., "0x...") and Decimal formats.
+      
+      **Do NOT compare strings directly.** Instead, convert both values to \`BigInt\` for comparison.
+      
+      **Required Code Pattern:**
+      \`\`\`javascript
+      const TARGET_CHAIN_ID = "${options.chainId}"; // Decimal from Remix
+      // ... inside connectWallet ...
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (BigInt(chainId) !== BigInt(TARGET_CHAIN_ID)) {
+         // Switch network logic...
+      }
+      \`\`\`
       
       **User's Design Request:**
       Please build the DApp based on this description:

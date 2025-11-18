@@ -22,6 +22,7 @@ function App(): JSX.Element {
     messages: null,
   })
   const [appState, dispatch] = useReducer(appReducer, appInitialState);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   useEffect(() => {
     updateState(appState);
   }, [appState]);
@@ -43,6 +44,20 @@ function App(): JSX.Element {
       remixClient.on('locale', 'localeChanged', (locale: any) => {
         setLocale(locale)
       })
+      // @ts-ignore
+      remixClient.on('ai-dapp-generator', 'generationProgress', (progress: any) => {
+        if (progress.status === 'started') {
+          setIsAiLoading(true);
+        }
+      });
+      // @ts-ignore
+      remixClient.on('ai-dapp-generator', 'dappGenerated', () => {
+        setIsAiLoading(false);
+      });
+      // @ts-ignore
+      remixClient.on('ai-dapp-generator', 'dappUpdated', () => {
+        setIsAiLoading(false);
+      });
     });
   }, []);
   return (
@@ -64,7 +79,7 @@ function App(): JSX.Element {
           </div>
         ) : (
           <div className="row m-0 pt-3">
-            <CreateInstance />
+            <CreateInstance isAiLoading={isAiLoading} />
           </div>
         )}
         <LoadingScreen />
