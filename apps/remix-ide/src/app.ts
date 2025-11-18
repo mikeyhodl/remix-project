@@ -110,6 +110,7 @@ import Terminal from './app/panels/terminal'
 import TabProxy from './app/panels/tab-proxy.js'
 import { Plugin } from '@remixproject/engine'
 import BottomBarPanel from './app/components/bottom-bar-panel'
+import { TemplateExplorerModalPlugin } from './app/plugins/template-explorer-modal'
 
 // Tracking now handled by this.track() method using MatomoManager
 
@@ -156,6 +157,7 @@ class AppComponent {
   popupPanel: PopupPanel
   statusBar: StatusBar
   topBar: Topbar
+  templateExplorerModal: TemplateExplorerModalPlugin
   settings: SettingsTab
   params: any
   desktopClientMode: boolean
@@ -260,6 +262,7 @@ class AppComponent {
       }
     }
 
+    this.templateExplorerModal = new TemplateExplorerModalPlugin()
     // SERVICES
     // ----------------- gist service ---------------------------------
     this.gistHandler = new GistHandler()
@@ -398,6 +401,8 @@ class AppComponent {
 
     const templateSelection = new TemplatesSelectionPlugin()
 
+    const templateExplorerModal = this.templateExplorerModal
+
     const walletConnect = new WalletConnect()
 
     this.engine.register([
@@ -523,7 +528,7 @@ class AppComponent {
 
     const bottomBarPanel = new BottomBarPanel()
 
-    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, this.topBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
+    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
 
     // CONTENT VIEWS & DEFAULT PLUGINS
     const openZeppelinProxy = new OpenZeppelinProxy(blockchain)
@@ -565,6 +570,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder
     ])
+    this.engine.register([templateExplorerModal, this.topBar])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },
@@ -603,8 +609,9 @@ class AppComponent {
     ])
 
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
-    await this.appManager.activatePlugin(['topbar'])
+    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal'])
     await this.appManager.activatePlugin(['statusBar'])
+    // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])
     await this.appManager.activatePlugin(['sidePanel']) // activating  host plugin separately
     await this.appManager.activatePlugin(['pinnedPanel'])
