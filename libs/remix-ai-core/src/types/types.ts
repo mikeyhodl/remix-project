@@ -26,12 +26,6 @@ export interface IExtractedImport {
   isLibrary: boolean;
 }
 
-export interface IModelRequirements{
-  backend: string,
-  minSysMemory: number,
-  GPURequired: boolean,
-  MinGPUVRAM: number,
-}
 
 export interface IContextType {
   context: 'currentFile' | 'workspace'|'openedFiles' | 'none'
@@ -44,26 +38,9 @@ export interface ISimilaritySearchConfig {
   enabled?: boolean;
 }
 
-export interface IModel {
-  name: string;
-  task: string;
-  downloadUrl: string;
-  modelName: string;
-  modelType: ModelType;
-  modelReqs: IModelRequirements;
-  downloadPath?: string;
-  provider?: string;
-}
 export interface IRemoteModel {
   completionUrl: string;
   apiUrl: string;
-}
-
-export interface IModelResponse {
-  output: string;
-  error: string;
-  success: boolean;
-  model: IModel;
 }
 
 export interface ICompletions{

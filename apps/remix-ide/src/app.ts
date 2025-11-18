@@ -59,7 +59,6 @@ import { xtermPlugin } from './app/plugins/electron/xtermPlugin'
 import { ripgrepPlugin } from './app/plugins/electron/ripgrepPlugin'
 import { compilerLoaderPlugin, compilerLoaderPluginDesktop } from './app/plugins/electron/compilerLoaderPlugin'
 import { appUpdaterPlugin } from './app/plugins/electron/appUpdaterPlugin'
-import { remixAIDesktopPlugin } from './app/plugins/electron/remixAIDesktopPlugin'
 import { RemixAIPlugin } from './app/plugins/remixAIPlugin'
 import { SlitherHandleDesktop } from './app/plugins/electron/slitherPlugin'
 import { SlitherHandle } from './app/files/slither-handle'
@@ -323,7 +322,7 @@ class AppComponent {
     const contractFlattener = new ContractFlattener()
 
     // ----------------- AI --------------------------------------
-    const remixAI = new RemixAIPlugin(isElectron())
+    const remixAI = new RemixAIPlugin()
     const remixAiAssistant = new RemixAIAssistant()
 
     // ----------------- import content service ------------------------
@@ -477,8 +476,6 @@ class AppComponent {
       this.engine.register([circom])
       const appUpdater = new appUpdaterPlugin()
       this.engine.register([appUpdater])
-      const remixAIDesktop = new remixAIDesktopPlugin()
-      this.engine.register([remixAIDesktop])
       const desktopHost = new DesktopHost()
       this.engine.register([desktopHost])
       const githubAuthHandler = new GitHubAuthHandler()
