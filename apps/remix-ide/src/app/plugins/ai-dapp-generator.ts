@@ -176,12 +176,52 @@ export class AIDappGenerator extends Plugin {
 
   private createInitialMessage(options: GenerateDappOptions): string {
     const providerCode = this.getProviderCode()
-    return `. \n The website should interact the smart contract deployed at this address: ${options.address} on ${options.chainId} network. The ABI of the contract is: ${JSON.stringify(options.abi)}. Put the following code in the header to be able to connect to the blockchain:${providerCode}. Follow the design and features proposed in this description: ${options.description}`  
+    return `
+      You MUST generate a new DApp based on the following requirements.
+      
+      **MOST IMPORTANT RULE:** You MUST follow the file structure and code templates
+      defined in the system prompt. Specifically, you MUST use the
+      \`window.__QUICK_DAPP_CONFIG__\` object in \`index.html\` and \`src/App.jsx\`
+      to handle the DApp's title, details, and logo.
+      
+      **Contract Details:**
+      - Contract Address: ${options.address}
+      - Network (Chain ID): ${options.chainId}
+      - Contract ABI: ${JSON.stringify(options.abi)}
+      
+      **User's Design Request:**
+      Please build the DApp based on this description:
+      "${options.description}"
+      
+      **Provider Code:**
+      Also, ensure the following provider injection script is in the \`<head>\`
+      of \`index.html\`:
+      ${providerCode}
+      
+      Remember: Return ALL project files in the 'START_TITLE' format as
+      instructed in the system prompt.
+    `  
   }
 
   private createUpdateMessage(description: string, currentFiles: Pages): string {
     const filesString = JSON.stringify(currentFiles, null, 2);
-    return `Here is the full code of my current project:\n\n${filesString}\n\nNow, please apply the following update based on this current code: ${description}. Remember to return ALL project files in the specified START_TITLE format.`
+    return `
+      IMPORTANT: The user has provided context in this message (like new Title or Details).
+      You MUST prioritize the information in this message over the
+      file contents I am providing below.
+      
+      User's request and context:
+      ${description}
+
+      ---
+      
+      Here is the full code of my current project (which might be outdated):
+      ${filesString}
+
+      Please apply the update. Remember to return ALL project files 
+      in the 'START_TITLE' format and follow the
+      window.__QUICK_DAPP_CONFIG__ template.
+    `
   }
 
   private getProviderCode(): string {

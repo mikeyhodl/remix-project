@@ -91,12 +91,47 @@ function EditHtmlTemplate(): JSX.Element {
       }
 
     } catch (e) {
+      console.error('Error reading DApp files:', e);
+      setIframeError(`Failed to read DApp files: ${e.message}`);
       setIsBuilding(false);
       return;
     }
 
     const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
     if (!doc) {
+      setIsBuilding(false);
+      return;
+    }
+
+    const { logo, title, details } = appState.instance;
+    let logoDataUrl = '';
+    let injectionScript = '';
+
+    if (logo && logo.byteLength > 0) {
+      try {
+        const base64data = btoa(
+          new Uint8Array(logo).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        logoDataUrl = 'data:image/jpeg;base64,' + base64data;
+      } catch (err) {
+        console.error('Failed to convert logo to Base64:', err);
+        setIframeError('Failed to process uploaded logo. Preview will continue without it.');
+      }
+    }
+
+    try {
+      injectionScript = `
+        <script>
+          window.__QUICK_DAPP_CONFIG__ = {
+            logo: "${logoDataUrl}",
+            title: ${JSON.stringify(title || '')},
+            details: ${JSON.stringify(details || '')}
+          };
+        </script>
+      `;
+    } catch (err) {
+      console.error('Failed to stringify DApp config:', err);
+      setIframeError(`Failed to prepare DApp config: ${err.message}`);
       setIsBuilding(false);
       return;
     }
@@ -116,31 +151,32 @@ function EditHtmlTemplate(): JSX.Element {
 
         let finalHtml = indexHtmlContent;
         if (!finalHtml) {
+          setIframeError('index.html content not found.');
           setIsBuilding(false);
           return;
         }
         
-        finalHtml = finalHtml.replace('</head>', `${ext}\n</head>`);
-        
+        finalHtml = finalHtml.replace('</head>', `${injectionScript}\n${ext}\n</head>`);
+
         const scriptTag = `\n<script type="module">${result.js}</script>\n`;
-        
         finalHtml = finalHtml.replace(
           /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, 
           scriptTag
         );
-        
         finalHtml = finalHtml.replace(
           /<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/, 
           ''
         );
-        
+
         doc.open();
         doc.write(finalHtml);
         doc.close();
 
       } else {
+        let finalHtml = indexHtmlContent;
+        finalHtml = finalHtml.replace('</head>', `${injectionScript}\n${ext}\n</head>`);
         doc.open();
-        doc.write(indexHtmlContent.replace('</head>', `${ext}\n</head>`));
+        doc.write(finalHtml);
         doc.close();
       }
     } catch (e) {
@@ -255,49 +291,7 @@ function EditHtmlTemplate(): JSX.Element {
 
   return (
     <Row className="m-0 h-100">
-      {/* First Column: Logo, Title, Instructions, Preview */}
       <Col xs={12} lg={8} className="pe-3 d-flex flex-column h-100">
-        {/* Logo and Title Section */}
-        <Row className="mb-3 flex-shrink-0">
-          <Col xs="auto">
-            <ImageUpload />
-          </Col>
-          <Col>
-            <Form.Group className="mb-2">
-              <Form.Control
-                data-id="dappTitle"
-                placeholder={intl.formatMessage({ id: 'quickDapp.dappTitle' })}
-                value={title}
-                onChange={({ target: { value } }) => {
-                  dispatch({
-                    type: 'SET_INSTANCE',
-                    payload: {
-                      title: value,
-                    },
-                  });
-                }}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Control
-                as="textarea"
-                rows={2}
-                data-id="dappInstructions"
-                placeholder={intl.formatMessage({ id: 'quickDapp.dappInstructions' })}
-                value={details}
-                onChange={({ target: { value } }) => {
-                  dispatch({
-                    type: 'SET_INSTANCE',
-                    payload: {
-                      details: value,
-                    },
-                  });
-                }}
-              />
-            </Form.Group>
-          </Col>
-        </Row>
-
         {/* Preview Section */}
         <Row className="flex-grow-1 mb-3">
           <Col xs={12} className="d-flex flex-column h-100">

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Form, Button, Alert, Card } from 'react-bootstrap';
+import { Form, Button, Alert, Card, Row, Col, Collapse } from 'react-bootstrap';
 import { ethers, namehash } from 'ethers';
 import { FormattedMessage, useIntl } from 'react-intl';
 import {
@@ -7,8 +7,6 @@ import {
   resetInstance,
   getInfoFromNatSpec,
 } from '../../actions';
-import { ThemeUI } from './theme';
-import { CustomTooltip } from '@remix-ui/helper';
 import { AppContext } from '../../contexts';
 import IpfsHttpClient from 'ipfs-http-client';
 import { readDappFiles } from '../EditHtmlTemplate';
@@ -16,19 +14,21 @@ import { InBrowserVite } from '../../InBrowserVite';
 import * as contentHash  from 'content-hash';
 import { CID } from 'multiformats/cid';
 
+const REMIX_BASE_DOMAIN = 'remixdapp.eth';
+const REMIX_REGISTRAR_ADDRESS = '0x72b3F26BB531b8815D5dE64f5e67B854aa066530';
+
 const ENS_RESOLVER_ABI = [
   "function setContenthash(bytes32 node, bytes calldata hash) external"
+];
+
+const REMIX_REGISTRAR_ABI = [
+  "function register(string label, bytes contenthash) external returns (bytes32 subnode)"
 ];
 
 function DeployPanel(): JSX.Element {
   const intl = useIntl()
   const { appState, dispatch } = useContext(AppContext);
-  const { verified, natSpec, noTerminal } = appState.instance;
-  const [formVal, setFormVal] = useState<any>({
-    shortname: localStorage.getItem('__DISQUS_SHORTNAME') || '',
-    shareTo: [],
-  });
-
+  const { title, details } = appState.instance; 
   const [showIpfsSettings, setShowIpfsSettings] = useState(false);
   const [ipfsHost, setIpfsHost] = useState('');
   const [ipfsPort, setIpfsPort] = useState('');
@@ -41,6 +41,20 @@ function DeployPanel(): JSX.Element {
   const [ensName, setEnsName] = useState('');
   const [isEnsLoading, setIsEnsLoading] = useState(false);
   const [ensResult, setEnsResult] = useState({ success: '', error: '' });
+
+  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
+  const [isPublishOpen, setIsPublishOpen] = useState(true);
+  const [isEnsOpen, setIsEnsOpen] = useState(true);
+
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader: any = new FileReader()
+      reader.onloadend = () => {
+        dispatch({ type: 'SET_INSTANCE', payload: { logo: reader.result } })
+      }
+      reader.readAsArrayBuffer(e.target.files[0])
+    }
+  }
 
   const getRemixIpfsSettings = () => {
     let result = null;
@@ -98,16 +112,6 @@ function DeployPanel(): JSX.Element {
     };
     loadGlobalIpfsSettings();
   }, []);
-
-  const setShareTo = (type: string) => {
-    let shareTo = formVal.shareTo;
-    if (formVal.shareTo.includes(type)) {
-      shareTo = shareTo.filter((item: string) => item !== type);
-    } else {
-      shareTo.push(type);
-    }
-    setFormVal({ ...formVal, shareTo });
-  };
 
   const handleIpfsDeploy = async () => {
     setIsDeploying(true);
@@ -220,7 +224,8 @@ function DeployPanel(): JSX.Element {
     setIsEnsLoading(true);
     setEnsResult({ success: '', error: '' });
 
-    if (!ensName || !deployResult.cid) {
+    const rawInput = ensName.trim();
+    if (!rawInput || !deployResult.cid) {
       setEnsResult({ success: '', error: 'ENS name or IPFS CID is missing.' });
       setIsEnsLoading(false);
       return;
@@ -243,38 +248,80 @@ function DeployPanel(): JSX.Element {
 
       const userAddress = await signer.getAddress();
 
-      const ownerAddress = await provider.resolveName(ensName);
+      const pureCid = deployResult.cid.replace(/^ipfs:\/\//, '');
+      const cidParsed = CID.parse(pureCid);
+      const cidForEns = cidParsed.version === 0 ? pureCid : cidParsed.toV0().toString();
+      const chHex = '0x' + contentHash.encode('ipfs-ns', cidForEns);
+
+      const lower = rawInput.toLowerCase();
+      const isRemixFullSubdomain = lower.endsWith(`.${REMIX_BASE_DOMAIN}`);
+      const hasDot = lower.includes('.');
+
+      if (!hasDot || isRemixFullSubdomain) {
+        let label = lower;
+        if (isRemixFullSubdomain) {
+          label = lower.replace(`.${REMIX_BASE_DOMAIN}`, '');
+        }
+        if (!label) {
+          throw new Error('Subdomain label is empty.');
+        }
+
+        const registrar = new ethers.Contract(
+          REMIX_REGISTRAR_ADDRESS,
+          REMIX_REGISTRAR_ABI,
+          signer
+        );
+
+        const tx = await registrar.register(label, chHex);
+        setEnsResult({ success: 'Transaction sent. Waiting for confirmation...', error: '' });
+        await tx.wait();
+
+        const fullName = `${label}.${REMIX_BASE_DOMAIN}`;
+        setEnsResult({
+          success: `'${fullName}' has been linked to the new DApp CID successfully!`,
+          error: ''
+        });
+        return;
+      }
+
+      const ensDomain = rawInput;
+      const ownerAddress = await provider.resolveName(ensDomain);
 
       if (!ownerAddress) {
-        throw new Error(`'${ensName}' is not registered.`);
+        throw new Error(`'${ensDomain}' is not registered.`);
       }
       if (ownerAddress.toLowerCase() !== userAddress.toLowerCase()) {
-        throw new Error(`The current wallet (${userAddress.slice(0, 6)}...) does not match the address record of '${ensName}'.`);
+        throw new Error(`The current wallet (${userAddress.slice(0, 6)}...) does not match the address record of '${ensDomain}'.`);
       }
 
-      const resolver = await provider.getResolver(ensName);
+      const resolver = await provider.getResolver(ensDomain);
       if (!resolver) {
-        throw new Error(`Resolver for '${ensName}' was not found.`);
+        throw new Error(`Resolver for '${ensDomain}' was not found.`);
       }
 
-      const writeableResolver = new ethers.Contract(resolver.address, ENS_RESOLVER_ABI, signer);
+      const writeableResolver = new ethers.Contract(
+        resolver.address,
+        ENS_RESOLVER_ABI,
+        signer
+      );
 
-      const pureCid = deployResult.cid.replace(/^ipfs:\/\//, '');
-      const cidForEns = CID.parse(pureCid).version === 0 ? pureCid : CID.parse(pureCid).toV0().toString();
-
-      const chHex = '0x' + contentHash.encode('ipfs-ns', cidForEns);
-      const node = namehash(ensName);
-
+      const node = namehash(ensDomain);
       const tx = await writeableResolver.setContenthash(node, chHex);
       setEnsResult({ success: 'Transaction sent. Waiting for confirmation...', error: '' });
       await tx.wait();
 
-      setEnsResult({ success: `'${ensName}' has been updated to the new DApp CID successfully!`, error: '' });
+      setEnsResult({
+        success: `'${ensDomain}' has been updated to the new DApp CID successfully!`,
+        error: ''
+      });
     } catch (e: any) {
       console.error(e);
-      let message = e.message;
+      let message = e.message || String(e);
       if (e.code === 'UNSUPPORTED_OPERATION' && e.message?.includes('setContenthash')) {
         message = "The current resolver doesn't support 'setContenthash'. You may need to switch to the Public Resolver in the ENS Manager.";
+      }
+      if (e.code === 'CALL_EXCEPTION') {
+        message = message || 'The transaction reverted. The subdomain may already be taken, or you might not be the owner.';
       }
       setEnsResult({ success: '', error: `Failed to update ENS: ${message}` });
     } finally {
@@ -283,241 +330,176 @@ function DeployPanel(): JSX.Element {
   };
 
   return (
-    <div className="d-inline-block">
-      <h3 className="mb-3" data-id="quick-dapp-admin">QuickDapp <FormattedMessage id="quickDapp.admin" /></h3>
-      <Button
-        size="sm"
-        style={{ height: 32 }}
-        data-id="resetFunctions"
-        onClick={() => {
-          resetInstance();
-        }}
-      >
-        <FormattedMessage id="quickDapp.resetFunctions" />
-      </Button>
-      <Button
-        size="sm"
-        style={{ height: 32, width: 100 }}
-        data-id="deleteDapp"
-        className="ms-3"
-        onClick={() => {
-          emptyInstance();
-        }}
-      >
-        <FormattedMessage id="quickDapp.deleteDapp" />
-      </Button>
-      <Form>
-        <Form.Group className="mb-2" controlId="formShareTo">
-          <Form.Label className="text-uppercase mb-0">
-            <FormattedMessage id="quickDapp.shareTo" />
-          </Form.Label>
-          <br />
-          <div className="d-inline-flex align-items-center form-check">
-            <input
-              id="shareToTwitter"
-              className="form-check-input"
-              type="checkbox"
-              name="group1"
-              value="twitter"
-              onChange={(e) => {
-                setShareTo(e.target.value);
-              }}
-              checked={formVal.shareTo.includes('twitter')}
-            />
+    <div>
+      <Card className="mb-2">
+        <Card.Header
+          onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+          aria-controls="dapp-details-collapse"
+          aria-expanded={isDetailsOpen}
+          className="d-flex justify-content-between bg-transparent border-0"
+          style={{ cursor: 'pointer' }}
+        >
+          Dapp details
+          <i className={`fas ${isDetailsOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+        </Card.Header>
+        <Collapse in={isDetailsOpen}>
+          <Card.Body id="dapp-details-collapse">
+            <Form.Group className="mb-3" controlId="formDappLogo">
+              <Form.Label className="text-uppercase mb-0">Dapp logo</Form.Label>
+              <Form.Control
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+              <Form.Text>64x64px (Optional)</Form.Text>
+            </Form.Group>
 
-            <label
-              htmlFor="shareToTwitter"
-              className="m-0 form-check-label"
-              style={{ paddingTop: 1 }}
-            >
-              Twitter
-            </label>
-          </div>
-          <div className="d-inline-flex align-items-center form-check ms-3">
-            <input
-              id="shareToFacebook"
-              className="form-check-input"
-              type="checkbox"
-              name="group1"
-              value="facebook"
-              onChange={(e) => {
-                setShareTo(e.target.value);
-              }}
-              checked={formVal.shareTo.includes('facebook')}
-            />
+            <Form.Group className="mb-3" controlId="formDappTitle">
+              <Form.Label className="text-uppercase mb-0">Dapp Title</Form.Label>
+              <Form.Control
+                data-id="dappTitle"
+                placeholder={intl.formatMessage({ id: 'quickDapp.dappTitle' })}
+                value={title}
+                onChange={({ target: { value } }) => {
+                  dispatch({
+                    type: 'SET_INSTANCE',
+                    payload: { title: value },
+                  });
+                }}
+              />
+            </Form.Group>
 
-            <label
-              htmlFor="shareToFacebook"
-              className="m-0 form-check-label"
-              style={{ paddingTop: 1 }}
-            >
-              Facebook
-            </label>
-          </div>
-        </Form.Group>
-        <Form.Group className="mb-2" controlId="formShareTo">
-          <Form.Label className="text-uppercase mb-0">
-            <FormattedMessage id="quickDapp.useNatSpec" />
-          </Form.Label>
-          <br />
-          <span
-            data-id="useNatSpec"
-            id="useNatSpec"
-            className="btn ai-switch ps-0 py-0"
-            onClick={async () => {
-              getInfoFromNatSpec(!natSpec.checked);
-            }}
+            <Form.Group className="mb-3" controlId="formDappDescription">
+              <Form.Label className="text-uppercase mb-0">Dapp Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                data-id="dappInstructions"
+                placeholder={intl.formatMessage({ id: 'quickDapp.dappInstructions' })}
+                value={details}
+                onChange={({ target: { value } }) => {
+                  dispatch({
+                    type: 'SET_INSTANCE',
+                    payload: { details: value },
+                  });
+                }}
+              />
+            </Form.Group>
+
+          </Card.Body>
+        </Collapse>
+      </Card>
+      
+      <Card className="mb-2">
+        <Card.Header
+          onClick={() => setIsPublishOpen(!isPublishOpen)}
+          aria-controls="publish-settings-collapse"
+          aria-expanded={isPublishOpen}
+          className="d-flex justify-content-between bg-transparent border-0"
+          style={{ cursor: 'pointer' }}
+        >
+          Publish settings
+          <i className={`fas ${isPublishOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+        </Card.Header>
+        <Collapse in={isPublishOpen}>
+          <Card.Body id="publish-settings-collapse">
+            <Form>
+              {showIpfsSettings && (
+                <>
+                  <h5 className="mb-2"><FormattedMessage id="quickDapp.ipfsSettings" defaultMessage="IPFS Settings" /></h5>
+                  {showIpfsSettings && (!ipfsHost || !ipfsPort || !ipfsProtocol) && (
+                    <Alert variant="info" className="mb-2 small">
+                      <FormattedMessage
+                        id="quickDapp.ipfsSettings.info"
+                        defaultMessage="No global IPFS settings found. Please provide credentials below, or configure them in the 'Settings' plugin."
+                      />
+                    </Alert>
+                  )}
+                  <Form.Group className="mb-2" controlId="formIpfsHost">
+                    <Form.Label className="text-uppercase mb-0">IPFS Host</Form.Label>
+                    <Form.Control type="text" placeholder="e.g., ipfs.infura.io" value={ipfsHost} onChange={(e) => setIpfsHost(e.target.value)} />
+                  </Form.Group>
+                  <Form.Group className="mb-2" controlId="formIpfsPort">
+                    <Form.Label className="text-uppercase mb-0">IPFS Port</Form.Label>
+                    <Form.Control type="text" placeholder="e.g., 5001" value={ipfsPort} onChange={(e) => setIpfsPort(e.target.value)} />
+                  </Form.Group>
+                  <Form.Group className="mb-2" controlId="formIpfsProtocol">
+                    <Form.Label className="text-uppercase mb-0">IPFS Protocol</Form.Label>
+                    <Form.Control type="text" placeholder="e.g., https" value={ipfsProtocol} onChange={(e) => setIpfsProtocol(e.target.value)} />
+                  </Form.Group>
+                  <Form.Group className="mb-2" controlId="formIpfsProjectId">
+                    <Form.Label className="text-uppercase mb-0">Project ID (Optional)</Form.Label>
+                    <Form.Control type="text" placeholder="Infura Project ID" value={ipfsProjectId} onChange={(e) => setIpfsProjectId(e.target.value)} />
+                  </Form.Group>
+                  <Form.Group className="mb-2" controlId="formIpfsProjectSecret">
+                    <Form.Label className="text-uppercase mb-0">Project Secret (Optional)</Form.Label>
+                    <Form.Control type="password" placeholder="Infura Project Secret" value={ipfsProjectSecret} onChange={(e) => setIpfsProjectSecret(e.target.value)} />
+                  </Form.Group>
+                  <hr />
+                </>
+              )}
+              
+              <Button
+                data-id="deployDapp-IPFS"
+                variant="primary"
+                type="button"
+                className="mt-3 w-100"
+                onClick={handleIpfsDeploy}
+                disabled={isDeploying || (showIpfsSettings && !ipfsHost)}
+              >
+                {isDeploying ? (
+                  <><i className="fas fa-spinner fa-spin me-1"></i> <FormattedMessage id="quickDapp.deploying" defaultMessage="Deploying..." /></>
+                ) : (
+                  <FormattedMessage id="quickDapp.deployToIPFS" defaultMessage="Deploy to IPFS" />
+                )}
+              </Button>
+
+              {deployResult.cid && (
+                <Alert variant="success" className="mt-3 small" style={{ wordBreak: 'break-all' }}>
+                  <div className="fw-bold">Deployed Successfully!</div>
+                  <div><strong>CID:</strong> {deployResult.cid}</div>
+                  <hr className="my-2" />
+                  <a href={`https://gateway.ipfs.io/ipfs/${deployResult.cid}`} target="_blank" rel="noopener noreferrer">
+                    View on ipfs.io Gateway
+                  </a>
+                </Alert>
+              )}
+              {deployResult.error && (
+                <Alert variant="danger" className="mt-3 small">
+                  {deployResult.error}
+                </Alert>
+              )}
+
+            </Form>
+          </Card.Body>
+        </Collapse>
+      </Card>
+
+      {deployResult.cid && (
+        <Card className="mb-2">
+          <Card.Header
+            onClick={() => setIsEnsOpen(!isEnsOpen)}
+            aria-controls="ens-settings-collapse"
+            aria-expanded={isEnsOpen}
+            className="d-flex justify-content-between bg-transparent border-0"
+            style={{ cursor: 'pointer' }}
           >
-            <CustomTooltip
-              placement="top"
-              tooltipText={intl.formatMessage({ id: 'quickDapp.useNatSpecTooltip' })}
-            >
-              <i
-                className={
-                  natSpec.checked
-                    ? 'fas fa-toggle-on fa-lg'
-                    : 'fas fa-toggle-off fa-lg'
-                }
-              ></i>
-            </CustomTooltip>
-          </span>
-        </Form.Group>
-        <Form.Group className="mb-2" controlId="formVerified">
-          <Form.Label className="text-uppercase mb-0">
-            <FormattedMessage id="quickDapp.verifiedByEtherscan" />
-          </Form.Label>
-          <div className="d-flex py-1 align-items-center form-check">
-            <input
-              id="verifiedByEtherscan"
-              className="form-check-input"
-              type="checkbox"
-              onChange={(e) => {
-                dispatch({
-                  type: 'SET_INSTANCE',
-                  payload: { verified: e.target.checked },
-                });
-              }}
-              checked={verified}
-            />
-
-            <label
-              htmlFor="verifiedByEtherscan"
-              className="m-0 form-check-label"
-              style={{ paddingTop: 1 }}
-            >
-              <FormattedMessage id="quickDapp.verified" />
-            </label>
-          </div>
-        </Form.Group>
-        <Form.Group className="mb-2" controlId="formNoTerminal">
-          <Form.Label className="text-uppercase mb-0">
-            <FormattedMessage id="quickDapp.noTerminal" />
-          </Form.Label>
-          <div className="d-flex py-1 align-items-center form-check">
-            <input
-              id="noTerminal"
-              className="form-check-input"
-              type="checkbox"
-              onChange={(e) => {
-                dispatch({
-                  type: 'SET_INSTANCE',
-                  payload: { noTerminal: e.target.checked },
-                });
-              }}
-              checked={noTerminal}
-            />
-
-            <label
-              htmlFor="noTerminal"
-              className="m-0 form-check-label"
-              style={{ paddingTop: 1 }}
-            >
-              <FormattedMessage id="quickDapp.no" />
-            </label>
-          </div>
-        </Form.Group>
-
-        <ThemeUI />
-        
-        {showIpfsSettings && (
-          <>
-            <hr />
-            <h5 className="mb-2"><FormattedMessage id="quickDapp.ipfsSettings" defaultMessage="IPFS Settings" /></h5>
-            {showIpfsSettings && (!ipfsHost || !ipfsPort || !ipfsProtocol) && (
-              <Alert variant="info" className="mb-2 small">
-                <FormattedMessage
-                  id="quickDapp.ipfsSettings.info"
-                  defaultMessage="No global IPFS settings found. Please provide credentials below, or configure them in the 'Settings' plugin."
-                />
-              </Alert>
-            )}
-            <Form.Group className="mb-2" controlId="formIpfsHost">
-              <Form.Label className="text-uppercase mb-0">IPFS Host</Form.Label>
-              <Form.Control type="text" placeholder="e.g., ipfs.infura.io" value={ipfsHost} onChange={(e) => setIpfsHost(e.target.value)} />
-            </Form.Group>
-            <Form.Group className="mb-2" controlId="formIpfsPort">
-              <Form.Label className="text-uppercase mb-0">IPFS Port</Form.Label>
-              <Form.Control type="text" placeholder="e.g., 5001" value={ipfsPort} onChange={(e) => setIpfsPort(e.target.value)} />
-            </Form.Group>
-            <Form.Group className="mb-2" controlId="formIpfsProtocol">
-              <Form.Label className="text-uppercase mb-0">IPFS Protocol</Form.Label>
-              <Form.Control type="text" placeholder="e.g., https" value={ipfsProtocol} onChange={(e) => setIpfsProtocol(e.target.value)} />
-            </Form.Group>
-            <Form.Group className="mb-2" controlId="formIpfsProjectId">
-              <Form.Label className="text-uppercase mb-0">Project ID (Optional)</Form.Label>
-              <Form.Control type="text" placeholder="Infura Project ID" value={ipfsProjectId} onChange={(e) => setIpfsProjectId(e.target.value)} />
-            </Form.Group>
-            <Form.Group className="mb-2" controlId="formIpfsProjectSecret">
-              <Form.Label className="text-uppercase mb-0">Project Secret (Optional)</Form.Label>
-              <Form.Control type="password" placeholder="Infura Project Secret" value={ipfsProjectSecret} onChange={(e) => setIpfsProjectSecret(e.target.value)} />
-            </Form.Group>
-          </>
-        )}
-        <hr />
-
-        <Button
-          data-id="deployDapp-IPFS"
-          variant="primary"
-          type="button"
-          className="mt-3 w-100"
-          onClick={handleIpfsDeploy}
-          disabled={isDeploying || (showIpfsSettings && !ipfsHost)}
-        >
-          {isDeploying ? (
-            <><i className="fas fa-spinner fa-spin me-1"></i> <FormattedMessage id="quickDapp.deploying" defaultMessage="Deploying..." /></>
-          ) : (
-            <FormattedMessage id="quickDapp.deployToIPFS" defaultMessage="Deploy to IPFS" />
-          )}
-        </Button>
-
-        {deployResult.cid && (
-          <Alert variant="success" className="mt-3 small" style={{ wordBreak: 'break-all' }}>
-            <div className="fw-bold">Deployed Successfully!</div>
-            <div><strong>CID:</strong> {deployResult.cid}</div>
-            <hr className="my-2" />
-            <a href={`https://gateway.ipfs.io/ipfs/${deployResult.cid}`} target="_blank" rel="noopener noreferrer">
-              View on ipfs.io Gateway
-            </a>
-          </Alert>
-        )}
-        {deployResult.error && (
-          <Alert variant="danger" className="mt-3 small">
-            {deployResult.error}
-          </Alert>
-        )}
-
-        {deployResult.cid && (
-          <Card className="mt-3">
-            <Card.Body>
-              <h5 className="mb-3">Link to ENS</h5>
+            Link to ENS
+            <i className={`fas ${isEnsOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+          </Card.Header>
+          <Collapse in={isEnsOpen}>
+            <Card.Body id="ens-settings-collapse">
               <Form.Group className="mb-2" controlId="formEnsName">
-                <Form.Label className="text-uppercase mb-0">ENS Name</Form.Label>
+                <Form.Label className="text-uppercase mb-0">ENS Domain</Form.Label>
                 <Form.Control 
                   type="text" 
-                  placeholder="e.g., my-dapp.eth" 
+                  placeholder="e.g., my-app.eth OR my-app" 
                   value={ensName} 
                   onChange={(e) => setEnsName(e.target.value)} 
                 />
+                <Form.Text>
+                  Enter your full ENS domain (e.g., `my-dapp.eth`) or a subdomain name (e.g., `my-app`) to use `my-app.remixdapp.eth`.
+                </Form.Text>
               </Form.Group>
               <Button 
                 variant="secondary" 
@@ -526,9 +508,9 @@ function DeployPanel(): JSX.Element {
                 disabled={isEnsLoading || !ensName}
               >
                 {isEnsLoading ? (
-                  <><i className="fas fa-spinner fa-spin me-1"></i> Linking to ENS...</>
+                  <><i className="fas fa-spinner fa-spin me-1"></i> Linking...</>
                 ) : (
-                  'Link ENS Name (Mainnet Only)'
+                  'Link ENS Name'
                 )}
               </Button>
               {ensResult.success && (
@@ -537,10 +519,32 @@ function DeployPanel(): JSX.Element {
               {ensResult.error && (
                 <Alert variant="danger" className="mt-3 small">{ensResult.error}</Alert>
               )}
+
             </Card.Body>
-          </Card>
-        )}
-      </Form>
+          </Collapse>
+        </Card>
+      )}
+
+      <div className="mt-3">
+        <Button
+          size="sm"
+          variant="outline-secondary"
+          data-id="resetFunctions"
+          onClick={() => { resetInstance(); }}
+        >
+          <FormattedMessage id="quickDapp.resetFunctions" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline-danger"
+          data-id="deleteDapp"
+          className="ms-3"
+          onClick={() => { emptyInstance(); }}
+        >
+          <FormattedMessage id="quickDapp.deleteDapp" />
+        </Button>
+      </div>
+
     </div>
   );
 }

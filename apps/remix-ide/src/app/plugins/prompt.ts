@@ -42,7 +42,15 @@ ${TITLE_PAGE_START}index.html${TITLE_PAGE_END}
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      window.__QUICK_DAPP_CONFIG__ = window.__QUICK_DAPP_CONFIG__ || { 
+        logo: "", title: "", details: "" 
+      };
+    </script>
     <title>DApp</title>
+    <script>
+      document.title = window.__QUICK_DAPP_CONFIG__?.title || 'My DApp';
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="./src/index.css">
   </head>
@@ -81,10 +89,24 @@ import { ethers } from 'ethers';
 // ... including ABI, address, wallet connection, etc.
 
 const App = () => {
+  const config = window.__QUICK_DAPP_CONFIG__ || {};
+  const logoDataUrl = config.logo;
+  const dappTitle = config.title || "My DApp";
+  const dappDetails = config.details || "My DApp Description";
+
   // AI-generated React logic will go here
   return (
     <div>
-      <h1>My DApp</h1>
+      {logoDataUrl && (
+        <img 
+          src={logoDataUrl} 
+          alt="DApp Logo" 
+          style={{ maxHeight: '80px', margin: '1rem auto' }} 
+        />
+      )}
+      <h1>{dappTitle}</h1>
+      <p>{dappDetails}</p>
+
       {/* AI-generated UI will go here */}
     </div>
   );
@@ -120,7 +142,15 @@ ${TITLE_PAGE_START}index.html${TITLE_PAGE_END}
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      window.__QUICK_DAPP_CONFIG__ = window.__QUICK_DAPP_CONFIG__ || { 
+        logo: "", title: "", details: "" 
+      };
+    </script>
     <title>DApp</title>
+    <script>
+      document.title = window.__QUICK_DAPP_CONFIG__?.title || 'My DApp';
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="./src/index.css">
   </head>
@@ -159,10 +189,24 @@ import { ethers } from 'ethers';
 // ... including ABI, address, wallet connection, etc.
 
 const App = () => {
+  const config = window.__QUICK_DAPP_CONFIG__ || {};
+  const logoDataUrl = config.logo;
+  const dappTitle = config.title || "My DApp";
+  const dappDetails = config.details || "My DApp Description";
+  
   // AI-generated React logic will go here
   return (
     <div>
-      <h1>My DApp</h1>
+      {logoDataUrl && (
+        <img 
+          src={logoDataUrl} 
+          alt="DApp Logo" 
+          style={{ maxHeight: '80px', margin: '1rem auto' }} 
+        />
+      )}
+      <h1>{dappTitle}</h1>
+      <p>{dappDetails}</p>
+
       {/* AI-generated UI will go here */}
     </div>
   );
