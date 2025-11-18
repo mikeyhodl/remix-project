@@ -88,7 +88,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     error: transcriptionError,
     toggleRecording
   } = useAudioTranscription({
-    apiKey: 'fw_3ZZeKZ67JHvZKahmHUvo8XTR',
     model: 'whisper-v3',
     onTranscriptionComplete: async (text) => {
       if (sendPromptRef.current) {
