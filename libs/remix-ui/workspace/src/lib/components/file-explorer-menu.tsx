@@ -4,13 +4,14 @@ import { FormattedMessage } from 'react-intl'
 import { Placement } from 'react-bootstrap/esm/types'
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
+import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, FileExplorerEvent } from '@remix-api'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
   const platform = useContext(platformContext)
+  const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = FileExplorerEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -90,7 +91,16 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
       <>
 
         <span data-id="spanContaining" className="ps-0 pb-1 w-50">
-          {state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
+          <button className="btn btn-secondary w-100 mb-3" onClick={async () => {
+            await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
+            appContext.appStateDispatch({
+              type: appActionTypes.showGenericModal,
+              payload: true
+            })
+          }}>
+            <i className="far fa-plus text-white me-3"></i> <span className="text-white fw-semibold">Create</span>
+          </button>
+          {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
             if (platforms && !platforms.includes(platform)) return null
             if (action === 'uploadFile') {
               return (
@@ -219,7 +229,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 </CustomTooltip>
               )
             }
-          })}
+          }) : null}
         </span>
       </>)
   )
