@@ -51,11 +51,11 @@ export function TopCards() {
           width: '298px'
         }}
       >
-        <li className="d-flex flex-row align-items-center">
+        <li className="d-flex flex-row align-items-center import-option-item">
           <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
-        <li className="d-flex flex-row align-items-center">
+        <li className="d-flex flex-row align-items-center import-option-item">
           <i className="me-2 far fa-upload"></i><span className="fw-light">Import from local file system</span></li>
-        <li className="d-flex flex-row align-items-center">
+        <li className="d-flex flex-row align-items-center import-option-item">
           <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
       </ul>
     )

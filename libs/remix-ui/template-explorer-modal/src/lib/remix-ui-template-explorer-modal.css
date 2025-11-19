@@ -188,3 +188,15 @@
   background-color: transparent;
   cursor: pointer !important;
 }
+
+.import-option-item {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.import-option-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
