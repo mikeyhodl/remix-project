@@ -13,11 +13,11 @@ import TrackingContext from '@remix-ide/tracking'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
-export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin }) => {
+export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin, fileMode: boolean }) => {
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const [theme, setTheme] = useState<any>(null)
   const appContext = useContext(AppContext)
-  const { plugin } = props
+  const { plugin, fileMode } = props
   const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch, state)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -44,6 +44,10 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
     run()
   }, [])
+
+  useEffect(() => {
+    facade.setManageCategory(fileMode ? 'Files' : 'Template')
+  }, [fileMode])
 
   const generateUniqueWorkspaceName = async (name: string) => {
     try {
@@ -231,7 +235,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent, fileMode }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>
