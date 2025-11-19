@@ -79,7 +79,7 @@ export function TopCards() {
           </span>
           <span className="d-flex flex-column flex-grow-1 ms-3">
             <p className="mb-0">Create with AI</p>
-            <p className="mb-0 fw-light text-wrap">Generate a workspace with AI</p>
+            <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Generate a workspace with AI' : 'Generate files with AI'}</p>
           </span>
         </div>
         <div
@@ -109,7 +109,7 @@ export function TopCards() {
           </span>
           <span className="d-flex flex-column flex-grow-1 ms-3">
             <p className="mb-0">Contract Wizard</p>
-            <p className="mb-0 fw-light text-wrap">Create a new contract with the OpenZeppelin Wizard</p>
+            <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Create a new contract with the OpenZeppelin Wizard' : 'Create a contract with the OpenZeppelin Wizard'}</p>
           </span>
         </div>
         <div
@@ -165,8 +165,8 @@ export function TopCards() {
           </span>
 
           <span className="d-flex flex-column flex-grow-1 ms-3">
-            <p className="mb-0">Import Project</p>
-            <p className="mb-0 fw-light text-wrap">Import an existing project</p>
+            <p className="mb-0">{state.manageCategory === 'Template' ? 'Import Project' : 'Import Files'}</p>
+            <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Import an existing project' : 'Import existing files'}</p>
           </span>
         </div>
       </div>
