@@ -49,6 +49,10 @@ export class TemplateExplorerModalFacade {
     this.dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: workspaceName })
   }
 
+  setManageCategory(category: 'Template' | 'Files') {
+    this.dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: category })
+  }
+
   closeWizard() {
     this.appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
