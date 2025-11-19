@@ -49,9 +49,16 @@ export function TopCards() {
           data-id="create-with-ai-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={async () => {
-            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
-            await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
-            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
+            if (state.manageCategory === 'Template') {
+              dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
+              await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
+            } else {
+              dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'aiFileGeneration' })
+              await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
+              facade.closeWizard()
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateFileWithAi', name: 'success' })
+            }
           }}
           style={{
             borderRadius: '10px',
