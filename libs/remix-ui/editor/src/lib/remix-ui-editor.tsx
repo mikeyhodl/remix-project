@@ -1017,9 +1017,11 @@ export const EditorUI = (props: EditorUIProps) => {
         const message = intl.formatMessage({ id: 'editor.explainFunctionByAI' }, { content:context, currentFunction: currentFunction.current })
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
-          // Check if right side panel has a hidden plugin and show it
-          const hiddenPlugin = await props.plugin.call('rightSidePanel', 'getHiddenPlugin')
-          if (hiddenPlugin) await props.plugin.call('rightSidePanel', 'togglePanel')
+          // Show right side panel if it's hidden
+          const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+          if (isPanelHidden) {
+            await props.plugin.call('rightSidePanel', 'togglePanel')
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
@@ -1044,9 +1046,11 @@ export const EditorUI = (props: EditorUIProps) => {
 
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
-          // Check if right side panel has a hidden plugin and show it
-          const hiddenPlugin = await props.plugin.call('rightSidePanel', 'getHiddenPlugin')
-          if (hiddenPlugin) await props.plugin.call('rightSidePanel', 'togglePanel')
+          // Show right side panel if it's hidden
+          const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+          if (isPanelHidden) {
+            await props.plugin.call('rightSidePanel', 'togglePanel')
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
