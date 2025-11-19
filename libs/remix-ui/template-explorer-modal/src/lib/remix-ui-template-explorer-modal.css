@@ -179,3 +179,12 @@
   border-top-right-radius: 10px;
   border-bottom-right-radius: 10px;
 }
+
+.import-files {
+  cursor: pointer;
+}
+
+.import-files:hover {
+  background-color: transparent;
+  cursor: pointer !important;
+}

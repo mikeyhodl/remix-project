@@ -1,33 +1,69 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useRef, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 import { MatomoCategories } from '@remix-api'
+import { useOnClickOutside } from 'libs/remix-ui/remix-ai-assistant/src/components/onClickOutsideHook'
 
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   const [importFiles, setImportFiles] = useState(false)
+  const [importOptionsPosition, setImportOptionsPosition] = useState({ top: 0, left: 0 })
+  const importCardRef = useRef<HTMLDivElement>(null)
+  useOnClickOutside([importCardRef], () => setImportFiles(false))
+
+  useEffect(() => {
+    if (importFiles && importCardRef.current) {
+      const card = importCardRef.current
+      const container = card.offsetParent as HTMLElement
+
+      if (container) {
+        const cardRect = card.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+
+        setImportOptionsPosition({
+          top: cardRect.bottom - containerRect.top + 8, // 8px gap below the card
+          left: cardRect.left - containerRect.left
+        })
+      } else {
+        // Fallback: use offsetTop/offsetLeft if offsetParent is not available
+        setImportOptionsPosition({
+          top: card.offsetTop + card.offsetHeight + 8, // 8px gap below the card
+          left: card.offsetLeft
+        })
+      }
+    }
+  }, [importFiles])
 
   const ImportOptions = () => {
 
     return (
-      <ul className="list-unstyled p-3 gap-2">
+      <ul
+        className="list-unstyled p-3 gap-2 d-flex flex-column align-items-start justify-content-end bg-light position-absolute text-white"
+        style={{
+          borderRadius: '10px',
+          zIndex: 1000,
+          top: `${importOptionsPosition.top}px`,
+          left: `${importOptionsPosition.left}px`,
+          width: '298px'
+        }}
+      >
         <li className="d-flex flex-row align-items-center">
-          <i className="me-2 far fa-cube"></i><span>Import from IPFS</span></li>
+          <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
         <li className="d-flex flex-row align-items-center">
-          <i className="me-2 far fa-upload"></i><span>Import from local file system</span></li>
+          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from local file system</span></li>
         <li className="d-flex flex-row align-items-center">
-          <i className="me-2 far fa-upload"></i><span>Import from https</span></li>
+          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
       </ul>
     )
   }
 
   return (
     <div className="title">
-      <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3">
+      <div className="d-flex flex-row flex-wrap justify-content-center align-items-center gap-3 mb-3" style={{ position: 'relative' }}>
         <div
           data-id="create-blank-workspace-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
@@ -128,13 +164,14 @@ export function TopCards() {
           </span>
         </div>
         <div
+          ref={importCardRef}
           data-id="import-project-topcard"
-          className="explora-topcard d-flex flex-row align-items-center p-4 bg-light shadow-sm border-0"
+          className="explora-topcard d-flex flex-row align-items-center p-4 shadow-sm import-files border border-light"
           style={{
             borderRadius: '10px',
             height: '76px',
             width: '298px',
-            cursor: 'pointer',
+            backgroundColor: 'transparent',
             transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s'
           }}
           onClick={() => {
