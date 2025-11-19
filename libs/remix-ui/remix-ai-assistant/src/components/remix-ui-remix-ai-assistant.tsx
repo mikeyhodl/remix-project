@@ -1,3 +1,4 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, MutableRefObject, useContext } from 'react'
 import '../css/remix-ai-assistant.css'
 
@@ -7,6 +8,7 @@ import '../css/color.css'
 import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
 import { MatomoEvent, AIEvent, RemixAIAssistantEvent } from '@remix-api'
+//@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
@@ -14,11 +16,12 @@ import { ActivityType, ChatMessage } from '../lib/types'
 import { groupListType } from '../types/componentTypes'
 import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
+import { RemixAIAssistant } from 'apps/remix-ide/src/app/plugins/remix-ai-assistant'
 import { useAudioTranscription } from '../hooks/useAudioTranscription'
 import { QueryParams } from '@remix-project/remix-lib'
 
 export interface RemixUiRemixAiAssistantProps {
-  plugin: Plugin
+  plugin: RemixAIAssistant
   queuedMessage: { text: string; timestamp: number } | null
   initialMessages?: ChatMessage[]
   onMessagesChange?: (msgs: ChatMessage[]) => void
@@ -251,6 +254,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       console.error('Failed to refresh context:', err)
     }
   }, [props.plugin])
+
+  useEffect(() => {
+    if (props.plugin.externalMessage) {
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: props.plugin.externalMessage, timestamp: Date.now(), sentiment: 'none' }])
+    }
+  }, [props.plugin.externalMessage])
 
   useEffect(() => {
     const update = () => refreshContext(contextChoice)

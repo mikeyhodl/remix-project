@@ -25,7 +25,6 @@ const profile = {
   displayName: 'Blockchain',
   description: 'Blockchain - Logic',
   methods: ['dumpState', 'getCode', 'getTransactionReceipt', 'addProvider', 'removeProvider', 'getCurrentFork', 'isSmartAccount', 'getAccounts', 'web3VM', 'web3', 'getProvider', 'getCurrentProvider', 'getCurrentNetworkStatus', 'getCurrentNetworkCurrency', 'getAllProviders', 'getPinnedProviders', 'changeExecutionContext', 'getProviderObject', 'runTx', 'getBalanceInEther', 'getCurrentProvider', 'deployContractAndLibraries', 'runOrCallContractMethod'],
-
   version: packageJson.version
 }
 
@@ -123,6 +122,7 @@ export class Blockchain extends Plugin {
         this.registeredPluginEvents.push(plugin.name)
         this.on(plugin.name, 'chainChanged', () => {
           if (plugin.name === this.executionContext.executionContext) {
+            this.changeExecutionContext({ context: plugin.name }, null, null, null)
             this.detectNetwork((error, network) => {
               this.networkStatus = { network, error }
               if (network.networkNativeCurrency) this.networkNativeCurrency = network.networkNativeCurrency
@@ -594,7 +594,7 @@ export class Blockchain extends Plugin {
       // TODO: this try catch feels like an anti pattern, can/should be
       // removed, but for now keeping the original logic
       try {
-        const fee = this.calculateFee(tx.gas, gasPrice)
+        const fee = this.calculateFee(tx.gasLimit, gasPrice)
         txFeeText = ' ' + this.fromWei(fee, false, 'ether') + ' Ether'
         priceStatus = true
       } catch (e) {
