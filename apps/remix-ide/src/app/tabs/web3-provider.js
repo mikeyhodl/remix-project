@@ -22,21 +22,42 @@ export class Web3ProviderModule extends Plugin {
     this.blockchain = blockchain
   }
 
+  async updateRemix(txHash) {
+    const receipt = await this.tryTillReceiptAvailable(txHash)
+    if (!receipt.contractAddress) {
+      console.log('receipt available but contract address not present', receipt)
+      return
+    }
+    const contractAddressStr = addressToString(receipt.contractAddress)
+    const contractData = await this.call('compilerArtefacts', 'getContractDataFromAddress', contractAddressStr)
+    if (contractData) {
+      const data = await this.call('compilerArtefacts', 'getCompilerAbstract', contractData.file)
+      const contractObject = {
+        name: contractData.name,
+        abi: contractData.contract.abi,
+        compiler: data,
+        contract: {
+          file : contractData.file,
+          object: contractData.contract
+        }
+      }
+      this.call('udapp', 'addInstance', contractAddressStr, contractData.contract.abi, contractData.name, contractObject)
+      await this.call('compilerArtefacts', 'addResolvedContract', contractAddressStr, data)
+    }
+  }
+
   /*
     that is used by plugins to call the current ethereum provider.
     Should be taken carefully and probably not be release as it is now.
   */
   sendAsync(payload) {
-
     return new Promise((resolve, reject) => {
       this.askUserPermission('sendAsync', `Calling ${payload.method} with parameters ${JSON.stringify(payload.params, replacer, '\t')}`).then(
         async (result) => {
           if (result) {
-            const provider = this.blockchain.web3()
+            const provider = this.blockchain.getProviderObject().provider
             const resultFn = async (error, response) => {
-              let message
-              // For a non-array of payload, result will be at index 0
-              if (Array.isArray(response) && !Array.isArray(payload)) message = response[0]
+              const message = response && response.result && response.result.jsonrpc ? response.result : response
               if (error) {
                 // Handle 'The method "debug_traceTransaction" does not exist / is not available.' error
                 if(error.message && error.code && error.code === -32601) {
@@ -55,39 +76,20 @@ export class Web3ProviderModule extends Plugin {
                 return reject(errorMsg)
               }
               if (payload.method === 'eth_sendTransaction') {
-                if (payload.params.length && !payload.params[0].to && message.result) {
+                const txHash = response && response.result && response.result.jsonrpc ? response.result.result : response.result
+                if (payload.params.length && !payload.params[0].to && txHash) {
+                  this.emit('transactionBroadcasted', txHash)
                   setTimeout(async () => {
-                    this.emit('transactionBroadcasted', message.result)
-                    const receipt = await this.tryTillReceiptAvailable(message.result)
-                    if (!receipt.contractAddress) {
-                      console.log('receipt available but contract address not present', receipt)
-                      return
-                    }
-                    const contractAddressStr = addressToString(receipt.contractAddress)
-                    const contractData = await this.call('compilerArtefacts', 'getContractDataFromAddress', contractAddressStr)
-                    if (contractData) {
-                      const data = await this.call('compilerArtefacts', 'getCompilerAbstract', contractData.file)
-                      const contractObject = {
-                        name: contractData.name,
-                        abi: contractData.contract.abi,
-                        compiler: data,
-                        contract: {
-                          file : contractData.file,
-                          object: contractData.contract
-                        }
-                      }
-                      this.call('udapp', 'addInstance', contractAddressStr, contractData.contract.abi, contractData.name, contractObject)
-                      await this.call('compilerArtefacts', 'addResolvedContract', contractAddressStr, data)
-                    }
-                  }, 50)
-                  await this.call('blockchain', 'dumpState')
+                    this.updateRemix(txHash)         
+                  }, 1000)
+                  this.call('blockchain', 'dumpState')
                 }
               }
               resolve(message)
             }
             try {
               // browserProvider._send(payload: JsonRpcPayload | Array<JsonRpcPayload>) => Promise<Array<JsonRpcResult | JsonRpcError>>
-              resultFn(null, await provider._send(payload))
+              resultFn(null, await provider.sendAsync(payload))
             } catch (e) {
               resultFn(e.error ? e.error : e)
             }
