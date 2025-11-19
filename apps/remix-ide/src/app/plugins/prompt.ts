@@ -23,6 +23,7 @@ You MUST generate separate files for HTML, CSS, and JavaScript (JSX).
 You MUST use React with JSX syntax (not "text/babel" scripts).
 You MUST use ethers.js (v6) for all blockchain interactions.
 The user's contract address, ABI, and network info will be provided in the main prompt.
+**Design Requirement:** You MUST intelligently place the 'logo', 'title', and 'details' from \`window.__QUICK_DAPP_CONFIG__\` into the UI (e.g., placing the logo/title in a Navbar and details in a Hero section), do not just dump them at the top.
 
 Return EACH file using the specified "TITLE_PAGE_START" format.
 The file structure MUST be:
@@ -94,20 +95,23 @@ const App = () => {
   const dappTitle = config.title || "My DApp";
   const dappDetails = config.details || "My DApp Description";
 
-  // AI-generated React logic will go here
+  // AI-generated React logic will go here. 
+  // IMPORTANT: Use the variables above in a nice layout (Navbar, Hero, etc).
   return (
-    <div>
-      {logoDataUrl && (
-        <img 
-          src={logoDataUrl} 
-          alt="DApp Logo" 
-          style={{ maxHeight: '80px', margin: '1rem auto' }} 
-        />
-      )}
-      <h1>{dappTitle}</h1>
-      <p>{dappDetails}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Dynamic Navbar Example */}
+      <nav className="bg-white shadow p-4 flex items-center justify-between">
+        <div className="flex items-center">
+           {logoDataUrl && <img src={logoDataUrl} alt="Logo" className="h-8 w-auto mr-3" />}
+           <h1 className="text-xl font-bold">{dappTitle}</h1>
+        </div>
+      </nav>
 
-      {/* AI-generated UI will go here */}
+      <main className="container mx-auto p-6">
+        <p className="text-gray-600 mb-8">{dappDetails}</p>
+
+        {/* AI-generated UI interaction logic will go here */}
+      </main>
     </div>
   );
 };
@@ -123,6 +127,7 @@ You MUST generate separate files for HTML, CSS, and JavaScript (JSX).
 You MUST use React with JSX syntax (not "text/babel" scripts).
 You MUST use ethers.js (v6) for all blockchain interactions.
 The user's contract address, ABI, and network info will be provided in the main prompt.
+**Design Requirement:** You MUST intelligently place the 'logo', 'title', and 'details' from \`window.__QUICK_DAPP_CONFIG__\` into the UI (e.g., placing the logo/title in a Navbar and details in a Hero section), do not just dump them at the top.
 
 Return EACH file using the specified "TITLE_PAGE_START" format.
 The file structure MUST be:
@@ -194,20 +199,23 @@ const App = () => {
   const dappTitle = config.title || "My DApp";
   const dappDetails = config.details || "My DApp Description";
   
-  // AI-generated React logic will go here
+  // AI-generated React logic will go here.
+  // IMPORTANT: Use the variables above in a nice layout (Navbar, Hero, etc).
   return (
-    <div>
-      {logoDataUrl && (
-        <img 
-          src={logoDataUrl} 
-          alt="DApp Logo" 
-          style={{ maxHeight: '80px', margin: '1rem auto' }} 
-        />
-      )}
-      <h1>{dappTitle}</h1>
-      <p>{dappDetails}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Dynamic Navbar Example */}
+      <nav className="bg-white shadow p-4 flex items-center justify-between">
+        <div className="flex items-center">
+           {logoDataUrl && <img src={logoDataUrl} alt="Logo" className="h-8 w-auto mr-3" />}
+           <h1 className="text-xl font-bold">{dappTitle}</h1>
+        </div>
+      </nav>
 
-      {/* AI-generated UI will go here */}
+      <main className="container mx-auto p-6">
+        <p className="text-gray-600 mb-8">{dappDetails}</p>
+
+        {/* AI-generated UI interaction logic will go here */}
+      </main>
     </div>
   );
 };

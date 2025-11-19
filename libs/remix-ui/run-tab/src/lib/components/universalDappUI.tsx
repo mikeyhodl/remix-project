@@ -316,13 +316,13 @@ export function UniversalDappUI(props: UdappProps) {
                               <div className="mb-2">
                                 <span>Please describe how you would want the design to look like.</span>
                               </div>
-                              <div>A new tab with the new website when the generation is done. This might take up to 2 minutes.</div>
-                              <button className="btn btn-secondary btn-sm ms-2" onClick={async () => {
+                              <div>This might take up to 2 minutes.</div>
+                              {/* <button className="btn btn-secondary btn-sm ms-2" onClick={async () => {
                                 await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
                                 const lastGenerated = await props.plugin.call('ai-dapp-generator', 'getLastGeneratedDapp', address)
                                 props.editInstance(address, props.instance.abi, props.instance.name, data.artefact.devdoc, data.artefact.metadata, lastGenerated)
                                 props.plugin.call('manager', 'deactivatePlugin', 'iframeContent')
-                              }}>Reset Dapp</button>
+                              }}>Reset Dapp</button> */}
                             </ul>
                         )
                         const modalContent = {
@@ -340,6 +340,13 @@ export function UniversalDappUI(props: UdappProps) {
                         // @ts-ignore – the notification plugin's modal signature
                         props.plugin.call('notification', 'modal', modalContent)
                       })
+
+                      await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
+                      try {
+                        await props.plugin.call('quick-dapp', 'clearInstance')
+                      } catch (e) {
+                        console.warn('Quick Dapp clean up failed (plugin might not be loaded yet):', e)
+                      }
 
                       // Use the AI DApp Generator plugin
                       await generateAIDappWithPlugin(description, address, data, props)

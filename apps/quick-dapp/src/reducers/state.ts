@@ -11,6 +11,7 @@ export const appInitialState: any = {
     theme: 'Dark',
     userInput: { methods: {} },
     natSpec: { checked: false, methods: {} },
+    logo: null,
   },
 };
 

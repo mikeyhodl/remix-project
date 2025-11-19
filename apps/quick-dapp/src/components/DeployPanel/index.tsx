@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Form, Button, Alert, Card, Row, Col, Collapse } from 'react-bootstrap';
 import { ethers, namehash } from 'ethers';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -45,6 +45,15 @@ function DeployPanel(): JSX.Element {
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [isPublishOpen, setIsPublishOpen] = useState(true);
   const [isEnsOpen, setIsEnsOpen] = useState(true);
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRemoveLogo = () => {
+    dispatch({ type: 'SET_INSTANCE', payload: { logo: null } });
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
+    }
+  };
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -370,7 +379,18 @@ function DeployPanel(): JSX.Element {
           <Card.Body id="dapp-details-collapse">
             <Form.Group className="mb-3" controlId="formDappLogo">
               <Form.Label className="text-uppercase mb-0">Dapp logo</Form.Label>
+              {logo && logo.byteLength > 0 && (
+                <span 
+                  onClick={handleRemoveLogo} 
+                  style={{ cursor: 'pointer', fontSize: '0.8rem' }} 
+                  className="ms-1"
+                  title="Remove logo"
+                >
+                  <i className="fas fa-trash me-1"></i>
+                </span>
+              )}
               <Form.Control
+                ref={logoInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}

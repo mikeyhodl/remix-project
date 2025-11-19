@@ -43,6 +43,7 @@ function EditHtmlTemplate(): JSX.Element {
   const [showIframe, setShowIframe] = useState(true);
   const [isBuilderReady, setIsBuilderReady] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [isAiUpdating, setIsAiUpdating] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const builderRef = useRef<InBrowserVite | null>(null);
@@ -188,6 +189,8 @@ function EditHtmlTemplate(): JSX.Element {
   }
 
   const handleChatMessage = async (message: string) => {
+    setIsAiUpdating(true);
+
     try {
     const currentFiles = new Map<string, string>();
     await readDappFiles('dapp', currentFiles);
@@ -243,12 +246,13 @@ function EditHtmlTemplate(): JSX.Element {
     }
 
     await Promise.all(writePromises);
-    runBuild();
 
     } catch (error) {
       const errorMsg = (error instanceof Error) ? error.message : String(error);
       console.error('[DEBUG-LOG E] (ERROR) handleChatMessage:', errorMsg);
       setIframeError('Failed to update DApp via AI: ' + errorMsg);
+    } finally {
+      setIsAiUpdating(false);
     }
   };
 
@@ -289,6 +293,14 @@ function EditHtmlTemplate(): JSX.Element {
     }
   }, [isBuilderReady, htmlTemplate]);
 
+  useEffect(() => {
+    if (isBuilderReady && !isAiUpdating && htmlTemplate) {
+      setTimeout(() => {
+        runBuild();
+      }, 0);
+    }
+  }, [isBuilderReady, isAiUpdating, htmlTemplate]);
+
   return (
     <Row className="m-0 h-100">
       <Col xs={12} lg={8} className="pe-3 d-flex flex-column h-100">
@@ -315,7 +327,14 @@ function EditHtmlTemplate(): JSX.Element {
             </div>
             <Card className="border flex-grow-1 d-flex">
               <Card.Body className="p-0 d-flex flex-column">
-                {showIframe ? (
+                {isAiUpdating ? (
+                  <div className="d-flex flex-column align-items-center justify-content-center h-100 text-center p-4" style={{ minHeight: '400px' }}>
+                    <i className="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i>
+                    <h6 className="text-muted">
+                      Your dapp is being created by RemixAI Assistant.
+                    </h6>
+                  </div>
+                ) : showIframe ? (
                   <iframe
                     ref={iframeRef}
                     style={{

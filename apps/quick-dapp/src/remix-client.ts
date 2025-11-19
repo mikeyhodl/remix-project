@@ -1,14 +1,15 @@
 import { PluginClient } from '@remixproject/plugin';
 import { createClient } from '@remixproject/plugin-webview';
-import { initInstance } from './actions';
+import { initInstance, emptyInstance } from './actions';
 
 class RemixClient extends PluginClient {
   constructor() {
     super();
+    this.methods = ['edit', 'clearInstance'];
     createClient(this);
   }
 
-  edit({ address, abi, network, name, devdoc, methodIdentifiers, solcVersion, htmlTemplate }: any): void {
+  edit({ address, abi, network, name, devdoc, methodIdentifiers, solcVersion, htmlTemplate, pages }: any): void {
     initInstance({
       address,
       abi,
@@ -17,8 +18,13 @@ class RemixClient extends PluginClient {
       devdoc,
       methodIdentifiers,
       solcVersion,
-      htmlTemplate
+      htmlTemplate,
+      pages
     });
+  }
+
+  clearInstance(): void {
+    emptyInstance();
   }
 }
 
