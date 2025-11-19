@@ -1,4 +1,5 @@
 import { bytesToHex, toChecksumAddress } from '@ethereumjs/util'
+import { ProcessLoadingParams } from '../types/remix-helper'
 
 export const extractNameFromKey = (key: string): string => {
   if (!key) return
@@ -172,5 +173,65 @@ export const getTimeAgo = (timestamp: number): string => {
   if (diffInSeconds > 0) return diffInSeconds === 1 ? '1 second ago' : `${diffInSeconds} seconds ago`
 
   return 'just now'
+}
+
+export const processLoading = ({ type, importUrl, contentImport, workspaceProvider, plugin, onLoading, onSuccess, onError, trackEvent }: ProcessLoadingParams) => {
+  trackEvent({
+    category: 'hometab',
+    action: 'filesSection',
+    name: 'importFrom' + type,
+    isClick: true
+  })
+
+  // Handle IPFS prefix logic
+  let finalUrl = importUrl
+  const startsWith = importUrl.substring(0, 4)
+  if ((type === 'ipfs' || type === 'IPFS') && startsWith !== 'ipfs' && startsWith !== 'IPFS') {
+    finalUrl = 'ipfs://' + importUrl
+  }
+
+  // Loading callback
+  const loadingCb = (loadingMsg: string) => {
+    onLoading(loadingMsg)
+  }
+
+  // Completion callback
+  const cb = async (error, content, cleanUrl, type, url) => {
+    if (error) {
+      onError(error.message || error)
+      return
+    }
+
+    try {
+      const filePath = type + '/' + cleanUrl
+      if (await workspaceProvider.exists(filePath)) {
+        onError('File already exists in workspace')
+        return
+      }
+
+      workspaceProvider.addExternal(filePath, content, url)
+
+      // Select file panel if plugin is available
+      if (plugin && plugin.call) {
+        await plugin.call('menuicons', 'select', 'filePanel')
+      }
+
+      onSuccess()
+    } catch (e) {
+      onError(e.message || e)
+    }
+  }
+
+  // Execute import
+  return new Promise<void>((resolve, reject) => {
+    contentImport.import(finalUrl, loadingCb, (error: any, ...args: [any, string, string, string]) => {
+      cb(error, ...args)
+      if (error) {
+        reject(error)
+      } else {
+        resolve()
+      }
+    })
+  })
 }
 
