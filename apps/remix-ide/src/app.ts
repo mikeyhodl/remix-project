@@ -531,7 +531,7 @@ class AppComponent {
 
     const bottomBarPanel = new BottomBarPanel()
 
-    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, this.topBar, filePanel, pluginManagerComponent, this.settings, this.rightSidePanel, this.popupPanel, bottomBarPanel])
+    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, filePanel, pluginManagerComponent, this.settings, this.rightSidePanel, this.popupPanel, bottomBarPanel])
 
     // CONTENT VIEWS & DEFAULT PLUGINS
     const openZeppelinProxy = new OpenZeppelinProxy(blockchain)

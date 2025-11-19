@@ -582,7 +582,7 @@ export function RemixUiTopbar() {
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
             openTemplateExplorer={openTemplateExplorer}
           />
-          <div className="d-flex ms-4 gap-3" >
+          <div className="d-flex ms-4 gap-3 align-items-center" >
             <CustomTooltip placement="bottom-start" tooltipText={`Toggle left panel`}>
               <div
                 className={`codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''} fs-4`}

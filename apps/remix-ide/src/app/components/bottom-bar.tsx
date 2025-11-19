@@ -64,11 +64,9 @@ export const BottomBar = ({ plugin }: BottomBarProps) => {
     }
     setExplaining(true)
     try {
-      // Check if pinned panel has a closed plugin and maximize it
-      const closedPlugin = await plugin.call('pinnedPanel', 'getClosedPlugin')
-      if (closedPlugin) {
-        await plugin.call('pinnedPanel', 'maximizePlugin', closedPlugin)
-      }
+      // Check if right side panel has a hidden plugin and show it
+      const hiddenPlugin = await plugin.call('rightSidePanel', 'getHiddenPlugin')
+      if (hiddenPlugin) await plugin.call('rightSidePanel', 'togglePanel')
 
       await plugin.call('menuicons', 'select', 'remixaiassistant')
       await new Promise((resolve) => setTimeout(resolve, 500))
