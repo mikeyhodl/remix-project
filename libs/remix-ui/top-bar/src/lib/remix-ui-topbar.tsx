@@ -69,6 +69,7 @@ export function RemixUiTopbar() {
   };
 
   async function openTemplateExplorer(): Promise<void> {
+    await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', false)
     appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
       payload: true

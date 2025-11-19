@@ -1,5 +1,5 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
@@ -9,6 +9,21 @@ import { MatomoCategories } from '@remix-api'
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
+  const [importFiles, setImportFiles] = useState(false)
+
+  const ImportOptions = () => {
+
+    return (
+      <ul className="list-unstyled p-3 gap-2">
+        <li className="d-flex flex-row align-items-center">
+          <i className="me-2 far fa-cube"></i><span>Import from IPFS</span></li>
+        <li className="d-flex flex-row align-items-center">
+          <i className="me-2 far fa-upload"></i><span>Import from local file system</span></li>
+        <li className="d-flex flex-row align-items-center">
+          <i className="me-2 far fa-upload"></i><span>Import from https</span></li>
+      </ul>
+    )
+  }
 
   return (
     <div className="title">
@@ -122,7 +137,13 @@ export function TopCards() {
             cursor: 'pointer',
             transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s'
           }}
-          onClick={() => document.getElementById('importProjectInput')?.click()}
+          onClick={() => {
+            if (state.manageCategory === 'Template') {
+              document.getElementById('importProjectInput')?.click()
+            } else {
+              setImportFiles(!importFiles)
+            }
+          }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
             e.currentTarget.style.transform = 'translateY(-2px)';
@@ -132,33 +153,35 @@ export function TopCards() {
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          <input
-            type="file"
-            id="importProjectInput"
-            multiple
-            className="d-none"
-            onChange={async (e) => {
-              e.stopPropagation()
-              if (e.target.files.length === 0 || !e.target.files) return
-              let relativePath = e.target.files[0].webkitRelativePath
-              let targetFolder = relativePath.split('/')[0]
-              const result = await generateUniqueWorkspaceName(targetFolder)
-              await createWorkspace(result, 'emtpy ' as any, {}, false, undefined, false, false, null, null)
-              await switchToWorkspace(result)
-              const remixconfigExists = await plugin.call('fileManager', 'exists', '/remix.config.json')
-              const prettierrcExists = await plugin.call('fileManager', 'exists', '.prettierrc.json')
-              if (remixconfigExists && prettierrcExists) {
-                await plugin.call('fileManager', 'remove', 'remix.config.json')
-                await plugin.call('fileManager', 'remove', '.prettierrc.json')
-              }
-              await uploadFolderExcludingRootFolder(e.target, '/')
-              facade.closeWizard()
-              relativePath = null
-              targetFolder = null
-              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportProject', name: 'success' })
-            }}
-            {...enableDirUpload}
-          />
+          {state.manageCategory === 'Template' ? (
+            <input
+              type="file"
+              id="importProjectInput"
+              multiple
+              className="d-none"
+              onChange={async (e) => {
+                e.stopPropagation()
+                if (e.target.files.length === 0 || !e.target.files) return
+                let relativePath = e.target.files[0].webkitRelativePath
+                let targetFolder = relativePath.split('/')[0]
+                const result = await generateUniqueWorkspaceName(targetFolder)
+                await createWorkspace(result, 'emtpy ' as any, {}, false, undefined, false, false, null, null)
+                await switchToWorkspace(result)
+                const remixconfigExists = await plugin.call('fileManager', 'exists', '/remix.config.json')
+                const prettierrcExists = await plugin.call('fileManager', 'exists', '.prettierrc.json')
+                if (remixconfigExists && prettierrcExists) {
+                  await plugin.call('fileManager', 'remove', 'remix.config.json')
+                  await plugin.call('fileManager', 'remove', '.prettierrc.json')
+                }
+                await uploadFolderExcludingRootFolder(e.target, '/')
+                facade.closeWizard()
+                relativePath = null
+                targetFolder = null
+                trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportProject', name: 'success' })
+              }}
+              {...enableDirUpload}
+            />) : null
+          }
 
           <span className="d-flex flex-shrink-0">
             <i className="fa-2x fas fa-upload"></i>
@@ -169,6 +192,7 @@ export function TopCards() {
             <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Import an existing project' : 'Import existing files'}</p>
           </span>
         </div>
+        {importFiles && <ImportOptions />}
       </div>
     </div>
   )

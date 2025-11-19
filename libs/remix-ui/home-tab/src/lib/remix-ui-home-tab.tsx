@@ -74,6 +74,7 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   }
 
   const openTemplateSelection = async () => {
+    await plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', false)
     appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
       payload: true

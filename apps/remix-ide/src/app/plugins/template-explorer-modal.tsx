@@ -50,7 +50,7 @@ export class TemplateExplorerModalPlugin extends Plugin {
   }
 
   updateTemplateExplorerInFileMode(fileMode: boolean) {
-    console.log('updateTemplateExplorerInFileMode', fileMode)
+    if (this.fileMode === fileMode) return
     this.fileMode = fileMode
     this.renderComponent()
   }
