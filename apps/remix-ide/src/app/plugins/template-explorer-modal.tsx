@@ -12,7 +12,7 @@ const pluginProfile = {
   name: 'templateexplorermodal',
   displayName: 'Template Explorer Modal',
   description: 'Template Explorer Modal',
-  methods: ['addArtefactsToWorkspace'],
+  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode'],
   events: [],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
@@ -27,12 +27,14 @@ export class TemplateExplorerModalPlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   event: any
   appStateDispatch: any
+  fileMode: boolean
   constructor() {
     super(pluginProfile)
     this.element = document.createElement('div')
     this.element.setAttribute('id', 'template-explorer-modal')
     this.dispatch = () => { }
     this.event = new EventEmitter()
+    this.fileMode = false
   }
 
   async onActivation(): Promise<void> {
@@ -45,6 +47,12 @@ export class TemplateExplorerModalPlugin extends Plugin {
         console.error(err)
       }
     })
+  }
+
+  updateTemplateExplorerInFileMode(fileMode: boolean) {
+    console.log('updateTemplateExplorerInFileMode', fileMode)
+    this.fileMode = fileMode
+    this.renderComponent()
   }
 
   onDeactivation(): void {
@@ -76,7 +84,7 @@ export class TemplateExplorerModalPlugin extends Plugin {
 
   updateComponent(state: any) {
     return (
-      <TemplateExplorerProvider plugin={state} />
+      <TemplateExplorerProvider fileMode={this.fileMode} plugin={state} />
     )
   }
 }
