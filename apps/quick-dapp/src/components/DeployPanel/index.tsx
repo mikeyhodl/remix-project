@@ -11,7 +11,6 @@ import { AppContext } from '../../contexts';
 import IpfsHttpClient from 'ipfs-http-client';
 import { readDappFiles } from '../EditHtmlTemplate';
 import { InBrowserVite } from '../../InBrowserVite';
-import * as contentHash  from 'content-hash';
 import { CID } from 'multiformats/cid';
 
 const REMIX_BASE_DOMAIN = 'remixdapp.eth';
@@ -282,12 +281,11 @@ function DeployPanel(): JSX.Element {
       }
 
       const userAddress = await signer.getAddress();
-
       const pureCid = deployResult.cid.replace(/^ipfs:\/\//, '');
-      const cidParsed = CID.parse(pureCid);
-      const cidForEns = cidParsed.version === 0 ? pureCid : cidParsed.toV0().toString();
-      const chHex = '0x' + contentHash.encode('ipfs-ns', cidForEns);
-
+      const cidObject = CID.parse(pureCid);
+      const cidV1 = cidObject.toV1(); 
+      const ipfsContentHashBytes = new Uint8Array([0xe3, 0x01, ...cidV1.bytes]);
+      const chHex = ethers.hexlify(ipfsContentHashBytes);
       const lower = rawInput.toLowerCase();
       const isRemixFullSubdomain = lower.endsWith(`.${REMIX_BASE_DOMAIN}`);
       const hasDot = lower.includes('.');
