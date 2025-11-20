@@ -1,11 +1,11 @@
 import { PluginClient } from '@remixproject/plugin';
 import { createClient } from '@remixproject/plugin-webview';
-import { initInstance, emptyInstance } from './actions';
+import { initInstance, emptyInstance, setAiLoading } from './actions';
 
 class RemixClient extends PluginClient {
   constructor() {
     super();
-    this.methods = ['edit', 'clearInstance'];
+    this.methods = ['edit', 'clearInstance', 'startAiLoading'];
     createClient(this);
   }
 
@@ -26,6 +26,11 @@ class RemixClient extends PluginClient {
   clearInstance(): void {
     emptyInstance();
   }
+
+  startAiLoading(): void {
+    setAiLoading(true);
+  }
+
 }
 
 export default new RemixClient();

@@ -41,6 +41,7 @@ function DeployPanel(): JSX.Element {
   const [ensName, setEnsName] = useState('');
   const [isEnsLoading, setIsEnsLoading] = useState(false);
   const [ensResult, setEnsResult] = useState({ success: '', error: '' });
+  const [ensGatewayUrl, setEnsGatewayUrl] = useState('');
 
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [isPublishOpen, setIsPublishOpen] = useState(true);
@@ -256,6 +257,7 @@ function DeployPanel(): JSX.Element {
   const handleEnsLink = async () => {
     setIsEnsLoading(true);
     setEnsResult({ success: '', error: '' });
+    setEnsGatewayUrl('');
 
     const rawInput = ensName.trim();
     if (!rawInput || !deployResult.cid) {
@@ -314,6 +316,7 @@ function DeployPanel(): JSX.Element {
           success: `'${fullName}' has been linked to the new DApp CID successfully!`,
           error: ''
         });
+        setEnsGatewayUrl(`https://${fullName}.limo`);
         return;
       }
 
@@ -347,6 +350,7 @@ function DeployPanel(): JSX.Element {
         success: `'${ensDomain}' has been updated to the new DApp CID successfully!`,
         error: ''
       });
+      setEnsGatewayUrl(`https://${ensDomain}.limo`);
     } catch (e: any) {
       console.error(e);
       let message = e.message || String(e);
@@ -541,7 +545,7 @@ function DeployPanel(): JSX.Element {
                   value={ensName} 
                   onChange={(e) => setEnsName(e.target.value)} 
                 />
-                <Form.Text>
+                <Form.Text className="d-block">
                   Enter your full ENS domain (e.g., `my-dapp.eth`) or a subdomain name (e.g., `my-app`) to use `my-app.remixdapp.eth`.
                 </Form.Text>
               </Form.Group>
@@ -558,7 +562,15 @@ function DeployPanel(): JSX.Element {
                 )}
               </Button>
               {ensResult.success && (
-                <Alert variant="success" className="mt-3 small">{ensResult.success}</Alert>
+                <Alert variant="success" className="mt-3 small">
+                  <div className="mb-2">{ensResult.success}</div>
+                  <hr className="my-2" />
+                  {ensGatewayUrl && (
+                    <a href={ensGatewayUrl} target="_blank" rel="noopener noreferrer">
+                      {ensGatewayUrl}
+                    </a>
+                  )}
+                </Alert>
               )}
               {ensResult.error && (
                 <Alert variant="danger" className="mt-3 small">{ensResult.error}</Alert>
@@ -574,7 +586,7 @@ function DeployPanel(): JSX.Element {
           size="sm"
           variant="outline-secondary"
           data-id="resetFunctions"
-          onClick={() => { resetInstance(); }}
+          onClick={() => { resetInstance();handleRemoveLogo();}}
         >
           <FormattedMessage id="quickDapp.resetFunctions" />
         </Button>

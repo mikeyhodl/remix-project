@@ -362,7 +362,6 @@ const data =
     const markerRegex = /<<<<<<< START_TITLE (.*?) >>>>>>> END_TITLE/g;
 
     if (!content.match(markerRegex)) {
-      console.warn('[AI-DAPP-LOG] parsePages: AI 응답에서 START_TITLE 마커를 찾을 수 없습니다.');
       return pages;
     }
 
@@ -376,10 +375,7 @@ const data =
         const fileContent = extractHtmlContent(rawFileContent);
         
         if (fileContent) {
-          console.log(`[AI-DAPP-LOG] parsePages: 파일명 "${filename}" 파싱 성공.`);
           pages[filename] = fileContent;
-        } else {
-          console.warn(`[AI-DAPP-LOG] parsePages: 파일명 "${filename}"의 내용은 찾았으나, 내용이 비어있습니다.`);
         }
       }
     }

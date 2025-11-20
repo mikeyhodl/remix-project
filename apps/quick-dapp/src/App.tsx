@@ -22,7 +22,8 @@ function App(): JSX.Element {
     messages: null,
   })
   const [appState, dispatch] = useReducer(appReducer, appInitialState);
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const { isAiLoading } = appState;
+
   useEffect(() => {
     updateState(appState);
   }, [appState]);
@@ -47,16 +48,16 @@ function App(): JSX.Element {
       // @ts-ignore
       remixClient.on('ai-dapp-generator', 'generationProgress', (progress: any) => {
         if (progress.status === 'started') {
-          setIsAiLoading(true);
+          dispatch({ type: 'SET_AI_LOADING', payload: true });
         }
       });
       // @ts-ignore
       remixClient.on('ai-dapp-generator', 'dappGenerated', () => {
-        setIsAiLoading(false);
+        dispatch({ type: 'SET_AI_LOADING', payload: false });
       });
       // @ts-ignore
       remixClient.on('ai-dapp-generator', 'dappUpdated', () => {
-        setIsAiLoading(false);
+        dispatch({ type: 'SET_AI_LOADING', payload: false });
       });
     });
   }, []);

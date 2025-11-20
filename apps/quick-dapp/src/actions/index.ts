@@ -277,3 +277,10 @@ export const selectTheme = async (selectedTheme: string) => {
     }
   }
 };
+
+export const setAiLoading = async (isLoading: boolean) => {
+  await dispatch({
+    type: 'SET_AI_LOADING',
+    payload: isLoading,
+  });
+};

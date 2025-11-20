@@ -1,5 +1,6 @@
 export const appInitialState: any = {
   loading: { screen: true },
+  isAiLoading: false,
   instance: {
     name: '',
     address: '',
@@ -27,6 +28,12 @@ export const appReducer = (state = appInitialState, action: any): any => {
     return {
       ...state,
       instance: { ...state.instance, ...action.payload },
+    };
+
+  case 'SET_AI_LOADING':
+    return {
+      ...state,
+      isAiLoading: action.payload,
     };
 
   default:

@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState, useRef } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import IpfsHttpClient from 'ipfs-http-client'
 import { UdappProps } from '../types'
@@ -30,6 +30,7 @@ export function UniversalDappUI(props: UdappProps) {
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [evmBC, setEvmBC] = useState(null)
   const [instanceBalance, setInstanceBalance] = useState(0)
+  const isGenerating = useRef(false)
 
   useEffect(() => {
     if (!props.instance.abi) {
@@ -341,6 +342,13 @@ export function UniversalDappUI(props: UdappProps) {
                         props.plugin.call('notification', 'modal', modalContent)
                       })
 
+                      if (isGenerating.current) {
+                        await props.plugin.call('notification', 'toast', 'AI generation is already in progress.')
+                        return
+                      }
+
+                      isGenerating.current = true
+
                       await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
                       try {
                         await props.plugin.call('quick-dapp', 'clearInstance')
@@ -348,13 +356,22 @@ export function UniversalDappUI(props: UdappProps) {
                         console.warn('Quick Dapp clean up failed (plugin might not be loaded yet):', e)
                       }
 
+                      try {
+                        await props.plugin.call('quick-dapp', 'startAiLoading')
+                      } catch (e) {
+                        console.warn('Failed to start loading state:', e)
+                      }
+
                       // Use the AI DApp Generator plugin
                       await generateAIDappWithPlugin(description, address, data, props)
+                      await props.plugin.call('tabs', 'focus', 'quick-dapp')
                       } catch (error) {
                         if (error.message !== 'Canceled' && error.message !== 'Hide') {
                           console.error('Error generating DApp:', error)
                           await props.plugin.call('terminal', 'log', { type: 'error', value: error.message })
                         }
+                      } finally {
+                        isGenerating.current = false
                       }
                     }}
                   ></i>
