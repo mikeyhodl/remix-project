@@ -138,12 +138,10 @@ export default class Terminal extends Plugin {
       this.isHidden = false
       terminalPanel?.classList.remove('d-none')
       this.emit('terminalPanelShown')
-      this.event.emit('terminalPanelShown')
     } else {
       this.isHidden = true
       terminalPanel?.classList.add('d-none')
       this.emit('terminalPanelHidden')
-      this.event.emit('terminalPanelHidden')
     }
   }
 
