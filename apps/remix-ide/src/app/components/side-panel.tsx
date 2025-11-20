@@ -29,6 +29,22 @@ export class SidePanel extends AbstractPanel {
 
   onActivation() {
     this.renderComponent()
+    // Initialize isHidden state from panelStates in localStorage
+    const panelStatesStr = window.localStorage.getItem('panelStates')
+    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+
+    if (panelStates.leftSidePanel) {
+      this.isHidden = panelStates.leftSidePanel.isHidden || false
+    } else {
+      // Initialize with default state if not found
+      this.isHidden = false
+      // Note: pluginProfile will be set when showContent is called
+      panelStates.leftSidePanel = {
+        isHidden: this.isHidden,
+        pluginProfile: null
+      }
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+    }
     // Toggle content
     this.on('menuicons', 'toggleContent', (name) => {
       if (!this.plugins[name]) return
@@ -102,6 +118,12 @@ export class SidePanel extends AbstractPanel {
   async showContent(name) {
     super.showContent(name)
     this.emit('focusChanged', name)
+    // Save active plugin to panelStates
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    if (!panelStates.leftSidePanel) panelStates.leftSidePanel = {}
+    panelStates.leftSidePanel.pluginProfile = this.plugins[name]?.profile
+    panelStates.leftSidePanel.isHidden = this.isHidden || false
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
     this.renderComponent()
   }
 
@@ -118,6 +140,14 @@ export class SidePanel extends AbstractPanel {
       this.emit('leftSidePanelHidden')
       this.events.emit('leftSidePanelHidden')
     }
+    // Persist the hidden state and active plugin to panelStates
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    const activePlugin = this.currentFocus()
+    panelStates.leftSidePanel = {
+      isHidden: this.isHidden,
+      pluginProfile: this.plugins[activePlugin]?.profile
+    }
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
   }
 
   isPanelHidden() {

@@ -39,18 +39,36 @@ export class RightSidePanel extends AbstractPanel {
       }
     })
 
-    // Initialize isHidden state from localStorage
-    const rightSidePanelState = window.localStorage.getItem('rightSidePanelState')
-    if (rightSidePanelState) {
-      try {
-        const state = JSON.parse(rightSidePanelState)
-        this.isHidden = state.isHidden || false
-      } catch (e) {
-        this.isHidden = false
+    // Initialize isHidden state from panelStates in localStorage
+    const panelStatesStr = window.localStorage.getItem('panelStates')
+    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+
+    if (panelStates.rightSidePanel) {
+      this.isHidden = panelStates.rightSidePanel.isHidden || false
+
+      // Apply d-none class to hide the panel on reload if it was hidden
+      if (this.isHidden) {
+        const pinnedPanel = document.querySelector('#right-side-panel')
+        pinnedPanel?.classList.add('d-none')
+        // Initialize hiddenPlugin from panelStates if we have a pluginProfile
+        if (panelStates.rightSidePanel.pluginProfile) {
+          this.hiddenPlugin = panelStates.rightSidePanel.pluginProfile
+        } else {
+          this.hiddenPlugin = null
+        }
+      } else {
+        this.hiddenPlugin = null
       }
     } else {
+      // Initialize with default state if not found
       this.isHidden = false
-      window.localStorage.setItem('rightSidePanelState', JSON.stringify({}))
+      this.hiddenPlugin = null
+      // Note: pluginProfile will be set when a plugin is pinned
+      panelStates.rightSidePanel = {
+        isHidden: this.isHidden,
+        pluginProfile: null
+      }
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
     }
   }
 
@@ -60,7 +78,10 @@ export class RightSidePanel extends AbstractPanel {
       pinnedPanel?.classList.remove('d-none')
       this.hiddenPlugin = null
       this.isHidden = false
-      window.localStorage.setItem('rightSidePanelState', JSON.stringify({ pluginProfile: profile, isHidden: false }))
+      // Update panelStates
+      const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+      panelStates.rightSidePanel = { isHidden: false, pluginProfile: profile }
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
       this.events.emit('rightSidePanelShown')
       this.emit('rightSidePanelShown')
     }
@@ -75,23 +96,33 @@ export class RightSidePanel extends AbstractPanel {
     this.addView(profile, view)
     this.plugins[profile.name].pinned = true
     this.plugins[profile.name].active = true
-    let rightSidePanelState = window.localStorage.getItem('rightSidePanelState')
+    // Read isHidden state from panelStates
+    const panelStates = window.localStorage.getItem('panelStates')
     let isHidden = false
-    if (rightSidePanelState) {
-      rightSidePanelState = JSON.parse(rightSidePanelState)
-      if (rightSidePanelState['isHidden']) {
-        isHidden = true
-        const pinnedPanel = document.querySelector('#right-side-panel')
-        pinnedPanel?.classList.add('d-none')
-        this.hiddenPlugin = profile
-        this.isHidden = true
-      }
+    if (panelStates) {
+      try {
+        const states = JSON.parse(panelStates)
+        if (states.rightSidePanel?.isHidden) {
+          isHidden = true
+          const pinnedPanel = document.querySelector('#right-side-panel')
+          pinnedPanel?.classList.add('d-none')
+          this.hiddenPlugin = profile
+          this.isHidden = true
+        }
+      } catch (e) {}
     }
     if (!isHidden && !this.hiddenPlugin) {
       this.isHidden = false
       this.events.emit('rightSidePanelShown')
       this.emit('rightSidePanelShown')
     }
+    // Save pinned plugin profile to panelStates
+    const updatedPanelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    updatedPanelStates.rightSidePanel = {
+      isHidden: isHidden,
+      pluginProfile: profile
+    }
+    window.localStorage.setItem('panelStates', JSON.stringify(updatedPanelStates))
     this.renderComponent()
     this.events.emit('pinnedPlugin', profile, isHidden)
     this.emit('pinnedPlugin', profile, isHidden)
@@ -103,6 +134,11 @@ export class RightSidePanel extends AbstractPanel {
     if (activePlugin !== profile.name) throw new Error(`Plugin ${profile.name} is not pinned`)
     await this.call('sidePanel', 'unPinView', profile, this.plugins[profile.name].view)
     super.remove(profile.name)
+    // Clear hiddenPlugin and panel state from localStorage
+    this.hiddenPlugin = null
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    delete panelStates.rightSidePanel
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
     this.renderComponent()
     this.events.emit('unPinnedPlugin', profile)
     this.emit('unPinnedPlugin', profile)
@@ -125,12 +161,15 @@ export class RightSidePanel extends AbstractPanel {
       this.emit('rightSidePanelHidden')
       this.events.emit('rightSidePanelHidden')
     }
-    // Persist the hidden state to localStorage
-    const activePlugin = this.currentFocus()
-    if (activePlugin && this.plugins[activePlugin]) {
-      const profile = this.plugins[activePlugin].profile
-      window.localStorage.setItem('rightSidePanelState', JSON.stringify({ pluginProfile: profile, isHidden: this.isHidden }))
+    // Persist the hidden state to panelStates, preserving pluginProfile
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    const currentPlugin = this.currentFocus()
+    const pluginProfile = currentPlugin && this.plugins[currentPlugin] ? this.plugins[currentPlugin].profile : null
+    panelStates.rightSidePanel = {
+      isHidden: this.isHidden,
+      pluginProfile: pluginProfile
     }
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
     // Re-render to update the toggle icon
     this.renderComponent()
   }

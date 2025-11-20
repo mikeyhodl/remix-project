@@ -115,6 +115,26 @@ export default class Terminal extends Plugin {
 
   onActivation() {
     this.renderComponent()
+    // Initialize isHidden state from panelStates in localStorage
+    const panelStatesStr = window.localStorage.getItem('panelStates')
+    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+
+    if (panelStates.bottomPanel) {
+      this.isHidden = panelStates.bottomPanel.isHidden || false
+      // Apply d-none class to hide the terminal on reload if it was hidden
+      if (this.isHidden) {
+        const terminalPanel = document.querySelector('.terminal-wrap')
+        terminalPanel?.classList.add('d-none')
+      }
+    } else {
+      // Initialize with default state if not found
+      this.isHidden = false
+      panelStates.bottomPanel = {
+        isHidden: this.isHidden,
+        pluginProfile: this.profile
+      }
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+    }
   }
 
   onDeactivation() {
@@ -143,6 +163,13 @@ export default class Terminal extends Plugin {
       terminalPanel?.classList.add('d-none')
       this.emit('terminalPanelHidden')
     }
+    // Persist the hidden state and plugin profile to panelStates
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    panelStates.bottomPanel = {
+      isHidden: this.isHidden,
+      pluginProfile: this.profile
+    }
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
   }
 
   isPanelHidden() {
