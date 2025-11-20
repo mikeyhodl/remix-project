@@ -19,6 +19,8 @@ import { ResourceScoring } from "../../services/resourceScoring";
 import { RemixMCPServer } from '@remix/remix-ai-core';
 import { endpointUrls } from "@remix-endpoints-helper"
 import { text } from "stream/consumers";
+import { CodeExecutor } from "./codeExecutor";
+import { ToolApiGenerator } from "./toolApiGenerator";
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
@@ -1362,29 +1364,51 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   async getToolsForLLMRequest(provider?: string): Promise<any[]> {
     const mcpTools = await this.getAvailableToolsForLLM();
 
-    // Format tools based on provider
-    let convertedTools: any[];
-
-    if (provider === 'anthropic') {
-      // Anthropic format: direct object with name, description, input_schema
-      convertedTools = mcpTools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        input_schema: tool.inputSchema
-      }));
-    } else {
-      // OpenAI and other providers format: type + function wrapper
-      convertedTools = mcpTools.map(tool => ({
-        type: "function",
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema
-        }
-      }));
+    if (mcpTools.length === 0) {
+      return [];
     }
 
-    return convertedTools;
+    // Generate compact tool descriptions
+    const apiGenerator = new ToolApiGenerator();
+    const apiDescription = apiGenerator.generateAPIDescription();
+    const toolsList = apiGenerator.generateToolsList(mcpTools);
+
+    console.log('toolsList', toolsList);
+
+    // Create single execute_tool with TypeScript API definitions
+    const executeToolDef = {
+      name: "execute_tool",
+      description: `Execute TypeScript code to interact with the Remix IDE API.
+
+${apiDescription}
+
+${toolsList}`,
+      input_schema: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "TypeScript code to execute. Use callMCPTool(toolName, args) to call available tools."
+          }
+        },
+        required: ["code"]
+      }
+    };
+
+    // Format based on provider
+    if (provider === 'anthropic') {
+      return [executeToolDef];
+    } else {
+      // OpenAI and other providers format
+      return [{
+        type: "function",
+        function: {
+          name: executeToolDef.name,
+          description: executeToolDef.description,
+          parameters: executeToolDef.input_schema
+        }
+      }];
+    }
   }
 
   convertLLMToolCallToMCP(llmToolCall: any): IMCPToolCall {
@@ -1413,7 +1437,137 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
    * Execute a tool call from the LLM
    */
   async executeToolForLLM(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
-    // Find which server has this tool
+    // Handle code execution mode
+    if (toolCall.name === 'execute_tool') {
+      const code = toolCall.arguments?.code;
+      if (!code || typeof code !== 'string') {
+        throw new Error('execute_tool requires a code argument');
+      }
+
+      // Create code executor with callback to execute actual MCP tools
+      const codeExecutor = new CodeExecutor(
+        async (innerToolCall: IMCPToolCall) => {
+          // Find which server has this tool
+          const toolsFromServers = await this.getAllTools();
+          let targetServer: string | undefined;
+
+          for (const [serverName, tools] of Object.entries(toolsFromServers)) {
+            if (tools.some(tool => tool.name === innerToolCall.name)) {
+              targetServer = serverName;
+              break;
+            }
+          }
+
+          if (!targetServer) {
+            throw new Error(`Tool '${innerToolCall.name}' not found in any connected MCP server`);
+          }
+
+          console.log(`[MCP Code Mode] Executing tool ${innerToolCall.name} from server ${targetServer}`);
+          const result = await this.executeTool(targetServer, innerToolCall);
+          console.log(`[MCP Code Mode] inner tool ${innerToolCall.name} produced result`)
+          console.log(result)
+          return result
+        },
+        30000 // 30 second timeout
+      );
+
+      // Execute the code
+      const result = await codeExecutor.execute(code);
+      console.log(`[MCP Code Mode] inner tool executed with result`, result);
+
+      // Convert code execution result to MCP tool result format
+      if (result.success) {
+        const content = [];
+
+        // Add all tool call results with their full payloads
+        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
+          content.push({
+            type: 'text' as const,
+            text: `Tool Calls (${result.toolCallRecords.length}):`
+          });
+
+          for (const record of result.toolCallRecords) {
+            const toolResult = record.result.content
+              .map((c: any) => c.text || JSON.stringify(c))
+              .join('\n');
+
+            content.push({
+              type: 'text' as const,
+              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
+            });
+          }
+        }
+
+        if (result.output) {
+          content.push({
+            type: 'text' as const,
+            text: `\nConsole Output:\n${result.output}`
+          });
+        }
+
+        if (result.returnValue !== undefined) {
+          content.push({
+            type: 'text' as const,
+            text: `\nReturn Value:\n${JSON.stringify(result.returnValue, null, 2)}`
+          });
+        }
+
+        content.push({
+          type: 'text' as const,
+          text: `\nExecution Stats:\n- Time: ${result.executionTime}ms\n- Tools Called: ${result.toolsCalled.join(', ') || 'none'}`
+        });
+
+        return {
+          content: content.length > 0 ? content : [{ type: 'text', text: 'Code executed successfully with no output' }],
+          isError: false
+        };
+      } else {
+        const content = [];
+
+        content.push({
+          type: 'text' as const,
+          text: `Code Execution Error:\n${result.error}`
+        });
+
+        // Include tool call results even on error
+        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
+          content.push({
+            type: 'text' as const,
+            text: `\nTool Calls Before Error (${result.toolCallRecords.length}):`
+          });
+
+          for (const record of result.toolCallRecords) {
+            const toolResult = record.result.content
+              .map((c: any) => c.text || JSON.stringify(c))
+              .join('\n');
+
+            content.push({
+              type: 'text' as const,
+              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
+            });
+          }
+        }
+
+        if (result.output) {
+          content.push({
+            type: 'text' as const,
+            text: `\nConsole Output:\n${result.output}`
+          });
+        }
+
+        content.push({
+          type: 'text' as const,
+          text: `\nExecution Time: ${result.executionTime}ms`
+        });
+
+        return {
+          content,
+          isError: true
+        };
+      }
+    }
+
+    // Fallback: Legacy direct tool execution (should not be reached with code mode)
     const toolsFromServers = await this.getAllTools();
     let targetServer: string | undefined;
 
@@ -1427,7 +1581,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-    console.log(`executing tool ${toolCall.name} from server ${targetServer}`)
+    console.log(`[MCP Legacy Mode] Executing tool ${toolCall.name} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 

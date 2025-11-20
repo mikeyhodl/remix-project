@@ -204,3 +204,51 @@ export interface IMCPAwareParams {
   /** MCP-specific parameters */
   mcp?: IEnhancedMCPProviderParams;
 }
+
+/**
+ * Record of a single tool call during code execution
+ */
+export interface IToolCallRecord {
+  /** Name of the tool that was called */
+  name: string;
+  /** Arguments passed to the tool */
+  arguments: Record<string, any>;
+  /** Full result payload from the tool */
+  result: IMCPToolResult;
+  /** Execution time for this specific tool call in milliseconds */
+  executionTime: number;
+}
+
+/**
+ * Code execution result for MCP code mode
+ */
+export interface ICodeExecutionResult {
+  /** Whether the execution was successful */
+  success: boolean;
+  /** Console output from the execution */
+  output: string;
+  /** Error message if execution failed */
+  error?: string;
+  /** Execution time in milliseconds */
+  executionTime: number;
+  /** List of MCP tools called during execution */
+  toolsCalled: string[];
+  /** Full records of all tool calls with their payloads */
+  toolCallRecords: IToolCallRecord[];
+  /** Return value from the executed code */
+  returnValue?: any;
+}
+
+/**
+ * Execution context provided to code execution sandbox
+ */
+export interface IExecutionContext {
+  /** Execute an MCP tool by name */
+  executeToolCall: (name: string, args: Record<string, any>) => Promise<IMCPToolResult>;
+  /** Console interface for logging */
+  console: {
+    log: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+    warn: (...args: any[]) => void;
+  };
+}

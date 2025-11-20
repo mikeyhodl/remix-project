@@ -98,13 +98,13 @@ export class DeployContractHandler extends BaseToolHandler {
 
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-
-      await plugin.call('sidePanel', 'showContent', 'udapp' )
-
+      console.log("Executing deploy_contract with", args.file)
       // Get compilation result to find contract
       const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
       const data = getContractData(args.contractName, compilerAbstract)
       if (!data) {
+        console.log("compilerAbstract", compilerAbstract)
+        console.log("data", data)
         return this.createErrorResult(`Could not retrieve contract data for '${args.contractName}'`);
       }
 
@@ -136,6 +136,7 @@ export class DeployContractHandler extends BaseToolHandler {
       }
 
       const receipt = (txReturn.txResult.receipt)
+      console.log("receipt is", receipt)
       const result: DeploymentResult = {
         transactionHash: receipt.hash,
         gasUsed: toNumber(receipt.gasUsed),
@@ -145,7 +146,7 @@ export class DeployContractHandler extends BaseToolHandler {
         contractAddress: receipt.contractAddress,
         success: receipt.status === 1 ? true : false
       };
-
+      await plugin.call('sidePanel', 'showContent', 'udapp' )
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
 
       return this.createSuccessResult(result);
