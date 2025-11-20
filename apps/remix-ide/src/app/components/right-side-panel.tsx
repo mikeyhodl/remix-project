@@ -73,7 +73,8 @@ export class RightSidePanel extends AbstractPanel {
   }
 
   async pinView (profile, view) {
-    if (this.hiddenPlugin) {
+    // Only show the panel if we're pinning a different plugin than the one that's currently hidden
+    if (this.hiddenPlugin && this.hiddenPlugin.name !== profile.name) {
       const pinnedPanel = document.querySelector('#right-side-panel')
       pinnedPanel?.classList.remove('d-none')
       this.hiddenPlugin = null

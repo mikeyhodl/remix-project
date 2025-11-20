@@ -35,6 +35,11 @@ export class SidePanel extends AbstractPanel {
 
     if (panelStates.leftSidePanel) {
       this.isHidden = panelStates.leftSidePanel.isHidden || false
+      // Apply d-none class to hide the panel on reload if it was hidden
+      if (this.isHidden) {
+        const sidePanel = document.querySelector('#side-panel')
+        sidePanel?.classList.add('d-none')
+      }
     } else {
       // Initialize with default state if not found
       this.isHidden = false
