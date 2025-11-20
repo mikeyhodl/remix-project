@@ -46,6 +46,16 @@ export class Web3ProviderModule extends Plugin {
     }
   }
 
+  async request (payload) {
+    const res = await this.sendAsync(payload)
+    if (res && res.error) throw new Error(res.error)
+    return res.result
+  } 
+
+  send (payload) {
+    return this.sendAsync(payload)
+  }
+
   /*
     that is used by plugins to call the current ethereum provider.
     Should be taken carefully and probably not be release as it is now.
@@ -89,7 +99,7 @@ export class Web3ProviderModule extends Plugin {
             }
             try {
               // browserProvider._send(payload: JsonRpcPayload | Array<JsonRpcPayload>) => Promise<Array<JsonRpcResult | JsonRpcError>>
-              resultFn(null, await provider.sendAsync(payload))
+              resultFn(null, await provider.send(payload))
             } catch (e) {
               resultFn(e.error ? e.error : e)
             }

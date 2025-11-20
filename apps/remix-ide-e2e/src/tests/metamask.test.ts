@@ -270,7 +270,7 @@ const tests = {
       .pause(1000)
       .journalChildIncludes('0xec72bbabeb47a3a766af449674a45a91a6e94e35ebf0ae3c644b66def7bd387f1c0b34d970c9f4a1e9398535e5860b35e82b2a8931b7c9046b7766a53e66db3d1b')
   },
-  'Should add and run sendETH script on Sepolia using MetaMask': function (browser: NightwatchBrowser) {
+  'Should add and run sendETH script on Sepolia using MetaMask #pr': function (browser: NightwatchBrowser) {
     browser
       .waitForElementPresent('*[data-id="remixIdeSidePanel"]')
       .clickLaunchIcon('filePanel')
