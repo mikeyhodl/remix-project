@@ -84,11 +84,11 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
                           <i aria-hidden="true" className="mt-1 px-2 fak fa-fa-dock-l"></i>
                         </CustomTooltip>
                       </div>
-                      <CustomTooltip placement="bottom-end" tooltipText="Hide pinned Plugin">
+                      <CustomTooltip placement="bottom-end" tooltipText="Hide Panel">
                         <div
                           className="codicon codicon-close ms-1 fs-5 fw-bold"
                           onClick={togglePanelHandler}
-                          data-id="closePinnedPlugin"
+                          data-id="hideRightSidePanel"
                         ></div>
                       </CustomTooltip>
                     </>

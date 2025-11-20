@@ -8,7 +8,7 @@ module.exports = {
     init(browser, done)
   },
 
-  'Check if RemixAI plugin is pinned #group1': function (browser: NightwatchBrowser) {
+  'Check if RemixAI plugin is pinned to right side panel on load #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="movePluginToLeft"]')
       .waitForElementVisible('*[data-id="remix-ai-assistant-starter-beginner-0"]')
@@ -17,7 +17,7 @@ module.exports = {
       .click('*[data-id="movePluginToLeft"]')
       .waitForElementVisible('*[data-pinnedPlugin="movePluginToRight-remixaiassistant"]')
   },
-  'Pin Solidity Compiler plugin #group1': function (browser: NightwatchBrowser) {
+  'Pin Solidity Compiler plugin to right side panel #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('solidity')
       .pause(2000)
@@ -26,19 +26,19 @@ module.exports = {
       .waitForElementVisible('*[data-pinnedPlugin="movePluginToLeft-solidity"]')
       .clickLaunchIcon('filePanel')
   },
-  'Close Solidity Compiler Plugin and restore it #group1': function (browser: NightwatchBrowser) {
+  'Toggle right side panel to hide pinned plugin and restore it #group1': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="closePinnedPlugin"]')
-      .click('*[data-id="closePinnedPlugin"]')
+      .waitForElementVisible('*[data-id="hideRightSidePanel"]')
+      .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
       .waitForElementVisible('*[data-id="restoreClosedPlugin"')
       .click('*[data-id="restoreClosedPlugin"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
-  'Close Solidity Compiler Plugin, reload IDE, it should be closed and restore it #group1': function (browser: NightwatchBrowser) {
+  'Toggle right side panel, reload IDE, panel state should persist #group1': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="closePinnedPlugin"]')
-      .click('*[data-id="closePinnedPlugin"]')
+      .waitForElementVisible('*[data-id="hideRightSidePanel"]')
+      .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
       .waitForElementVisible('*[data-id="restoreClosedPlugin"')
       .refresh()
@@ -46,12 +46,12 @@ module.exports = {
       .click('*[data-id="restoreClosedPlugin"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
-  'Swap pinned Solidity Compiler Plugin with RemixAI Assistant when pinned plugin is closed #group1': function (browser: NightwatchBrowser) {
+  'Swap pinned plugin from right side panel when panel is hidden #group1': function (browser: NightwatchBrowser) {
     browser
       .refreshPage()
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
-      .waitForElementVisible('*[data-id="closePinnedPlugin"]')
-      .click('*[data-id="closePinnedPlugin"]')
+      .waitForElementVisible('*[data-id="hideRightSidePanel"]')
+      .click('*[data-id="hideRightSidePanel"]')
       .waitForElementVisible('*[data-id="restoreClosedPlugin"]')
       .clickLaunchIcon('udapp')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-udapp"]')
@@ -61,7 +61,7 @@ module.exports = {
       .click('*[data-pinnedplugin="movePluginToLeft-udapp"]')
       .end()
   },
-  'Check if pannel is gone when the app is in destop client mode #group1': function (browser: NightwatchBrowser) {
+  'Check if right side panel is hidden when app is in desktop client mode #group1': function (browser: NightwatchBrowser) {
     browser
       .url('http://127.0.0.1:8080/?#activate=udapp,desktopClient')
       .waitForElementNotPresent('#right-side-panel')
