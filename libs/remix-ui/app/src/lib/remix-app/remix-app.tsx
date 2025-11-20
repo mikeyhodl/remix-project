@@ -152,6 +152,14 @@ const RemixApp = (props: IRemixAppUi) => {
       props.app.rightSidePanel.events.on('pinnedPlugin', (profile, isHidden) => {
         if (!isHidden) setHidePinnedPanel(false)
       })
+
+      props.app.rightSidePanel.events.on('rightSidePanelShown', () => {
+        setHidePinnedPanel(false)
+      })
+
+      props.app.rightSidePanel.events.on('rightSidePanelHidden', () => {
+        setHidePinnedPanel(true)
+      })
     }
 
     setInterval(() => {

@@ -39,8 +39,19 @@ export class RightSidePanel extends AbstractPanel {
       }
     })
 
+    // Initialize isHidden state from localStorage
     const rightSidePanelState = window.localStorage.getItem('rightSidePanelState')
-    if (!rightSidePanelState) window.localStorage.setItem('rightSidePanelState', JSON.stringify({}))
+    if (rightSidePanelState) {
+      try {
+        const state = JSON.parse(rightSidePanelState)
+        this.isHidden = state.isHidden || false
+      } catch (e) {
+        this.isHidden = false
+      }
+    } else {
+      this.isHidden = false
+      window.localStorage.setItem('rightSidePanelState', JSON.stringify({}))
+    }
   }
 
   async pinView (profile, view) {
@@ -114,6 +125,14 @@ export class RightSidePanel extends AbstractPanel {
       this.emit('rightSidePanelHidden')
       this.events.emit('rightSidePanelHidden')
     }
+    // Persist the hidden state to localStorage
+    const activePlugin = this.currentFocus()
+    if (activePlugin && this.plugins[activePlugin]) {
+      const profile = this.plugins[activePlugin].profile
+      window.localStorage.setItem('rightSidePanelState', JSON.stringify({ pluginProfile: profile, isHidden: this.isHidden }))
+    }
+    // Re-render to update the toggle icon
+    this.renderComponent()
   }
 
   isPanelHidden() {
