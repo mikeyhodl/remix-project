@@ -53,24 +53,94 @@ export class SidePanel extends AbstractPanel {
     // Toggle content
     this.on('menuicons', 'toggleContent', (name) => {
       if (!this.plugins[name]) return
-      if (this.plugins[name].active) {
-        // TODO: Only keep `this.emit` (issue#2210)
-        this.emit('toggle', name)
-        this.events.emit('toggle', name)
+
+      // If panel is hidden, always show it when any icon is clicked
+      if (this.isHidden) {
+        this.isHidden = false
+
+        // Immediately remove d-none class for instant visual feedback
+        const sidePanel = document.querySelector('#side-panel')
+        sidePanel?.classList.remove('d-none')
+
+        // Update localStorage before showing content
+        const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+        if (!panelStates.leftSidePanel) panelStates.leftSidePanel = {}
+        panelStates.leftSidePanel.isHidden = false
+        panelStates.leftSidePanel.pluginProfile = this.plugins[name]?.profile
+        window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+
+        this.showContent(name)
+        this.emit('leftSidePanelShown')
+        this.events.emit('leftSidePanelShown')
         return
       }
+
+      // Panel is visible - check if plugin is active
+      if (this.plugins[name].active) {
+        // Plugin is active, so toggling will hide the panel
+        this.isHidden = true
+
+        // Immediately add d-none class for instant visual feedback
+        const sidePanel = document.querySelector('#side-panel')
+        sidePanel?.classList.add('d-none')
+
+        // Update localStorage
+        const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+        panelStates.leftSidePanel = {
+          isHidden: true,
+          pluginProfile: this.plugins[name]?.profile
+        }
+        window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+
+        // Emit explicit panel state events for proper synchronization
+        this.emit('leftSidePanelHidden')
+        this.events.emit('leftSidePanelHidden')
+        return
+      }
+
+      // Plugin is not active, show it
+      const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+      if (!panelStates.leftSidePanel) panelStates.leftSidePanel = {}
+      panelStates.leftSidePanel.isHidden = false
+      panelStates.leftSidePanel.pluginProfile = this.plugins[name]?.profile
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+
       this.showContent(name)
-      // TODO: Only keep `this.emit` (issue#2210)
-      this.emit('showing', name)
-      this.events.emit('showing', name)
+      this.emit('leftSidePanelShown')
+      this.events.emit('leftSidePanelShown')
     })
     // Force opening
     this.on('menuicons', 'showContent', (name) => {
       if (!this.plugins[name]) return
-      this.showContent(name)
-      // TODO: Only keep `this.emit` (issue#2210)
-      this.emit('showing', name)
-      this.events.emit('showing', name)
+
+      // Read the saved state from localStorage to check if panel should stay hidden
+      const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+      const savedIsHidden = panelStates.leftSidePanel?.isHidden
+
+      // If panel is currently hidden AND it was intentionally hidden (saved in localStorage),
+      // just load content without showing the panel (this happens during initialization)
+      if (this.isHidden && savedIsHidden === true) {
+        this.showContent(name)
+        return
+      }
+
+      // Otherwise, force show the panel if it's hidden
+      if (this.isHidden) {
+        this.isHidden = false
+
+        // Update localStorage
+        if (!panelStates.leftSidePanel) panelStates.leftSidePanel = {}
+        panelStates.leftSidePanel.isHidden = false
+        panelStates.leftSidePanel.pluginProfile = this.plugins[name]?.profile
+        window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+
+        this.showContent(name)
+        this.emit('leftSidePanelShown')
+        this.events.emit('leftSidePanelShown')
+      } else {
+        // Panel is already visible, just switch content
+        this.showContent(name)
+      }
     })
   }
 

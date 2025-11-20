@@ -127,22 +127,25 @@ export function RemixUiTopbar() {
       setRightPanelHidden(false)
     })
 
-    // Initialize panel states
+    // Initialize panel states from localStorage
     const initializePanelStates = async () => {
       try {
-        const leftHidden = await plugin.call('sidePanel', 'isPanelHidden')
-        setLeftPanelHidden(leftHidden)
-      } catch (e) {}
-
-      try {
-        const bottomHidden = await plugin.call('terminal', 'isPanelHidden')
-        setBottomPanelHidden(bottomHidden)
-      } catch (e) {}
-
-      try {
-        const rightHidden = await plugin.call('rightSidePanel', 'isPanelHidden')
-        setRightPanelHidden(rightHidden)
-      } catch (e) {}
+        const panelStatesStr = window.localStorage.getItem('panelStates')
+        if (panelStatesStr) {
+          const panelStates = JSON.parse(panelStatesStr)
+          if (panelStates.leftSidePanel) {
+            setLeftPanelHidden(panelStates.leftSidePanel.isHidden || false)
+          }
+          if (panelStates.bottomPanel) {
+            setBottomPanelHidden(panelStates.bottomPanel.isHidden || false)
+          }
+          if (panelStates.rightSidePanel) {
+            setRightPanelHidden(panelStates.rightSidePanel.isHidden || false)
+          }
+        }
+      } catch (e) {
+        console.error('Error reading panel states:', e)
+      }
     }
     initializePanelStates()
 

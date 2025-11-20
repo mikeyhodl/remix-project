@@ -86,6 +86,15 @@ const RemixApp = (props: IRemixAppUi) => {
 
   function setListeners() {
     if (!props.app.desktopClientMode){
+      // Listen to explicit panel state events instead of toggle
+      props.app.sidePanel.events.on('leftSidePanelHidden', () => {
+        setHideSidePanel(true)
+      })
+      props.app.sidePanel.events.on('leftSidePanelShown', () => {
+        setHideSidePanel(false)
+      })
+
+      // Keep legacy event listeners for backward compatibility
       props.app.sidePanel.events.on('toggle', () => {
         setHideSidePanel((prev) => {
           return !prev
