@@ -10,6 +10,7 @@ import { GenerateWorkspaceWithAi } from '../components/generateWorkspaceWithAi'
 import { FinalScreen } from '../components/finalScreen'
 import { MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
 import TrackingContext from '@remix-ide/tracking'
+import { ImportFromIpfs } from '../components/importFromIpfs'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
@@ -63,7 +64,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
           {state.wizardStep === 'genAI' ? <GenerateWorkspaceWithAi /> : null}
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}
           {state.wizardStep === 'remixdefault' ? <WorkspaceDetails strategy={state} /> : null}
-          {state.wizardStep === 'confirm' ? <FinalScreen /> : null}
+          {state.wizardStep === 'importFiles' ? <ImportFromIpfs /> : null}
         </div>
       </section>
     </section>

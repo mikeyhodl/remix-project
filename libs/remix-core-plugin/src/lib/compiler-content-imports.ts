@@ -6,7 +6,7 @@ const profile = {
   name: 'contentImport',
   displayName: 'content import',
   version: '0.0.1',
-  methods: ['resolve', 'resolveAndSave', 'isExternalUrl', 'resolveGithubFolder']
+  methods: ['resolve', 'resolveAndSave', 'isExternalUrl', 'resolveGithubFolder', 'import']
 }
 
 export type ResolvedImport = {

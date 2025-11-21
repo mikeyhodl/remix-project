@@ -6,6 +6,7 @@ import { CreateWorkspaceDeps } from '../../types/template-explorer-types'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { appProviderContextType } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/template-explorer-modal'
+import { processLoading } from '@remix-ui/helper'
 
 export class TemplateExplorerModalFacade {
   plugin: TemplateExplorerModalPlugin
@@ -51,6 +52,42 @@ export class TemplateExplorerModalFacade {
 
   setManageCategory(category: 'Template' | 'Files') {
     this.dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: category })
+  }
+
+  async processLoadingExternalUrls(url: string, type: string) {
+    const contentImport = {
+      import: (url, loadingCb, cb) => {
+        this.plugin.call('contentImport', 'import', url, loadingCb, cb)
+      }
+    }
+    const workspaceProvider = {
+      exists: async (path) => {
+        return await this.plugin.call('fileManager', 'exists', path)
+      },
+      addExternal: async (path, content, url) => {
+        const workspaceProvider = await this.plugin.call('fileManager', 'getProviderByName', 'workspace')
+        return await workspaceProvider.addExternal(path, content, url)
+      }
+    }
+    await processLoading({
+      type,
+      importUrl: url,
+      contentImport,
+      workspaceProvider,
+      plugin: this.plugin,
+      trackEvent: () => {},
+      onSuccess: () => {
+        this.closeWizard()
+      },
+      onError: (err) => {
+        this.plugin.call('notification', 'alert', {
+          id: 'importError',
+          title: 'Import Error',
+          message: typeof err === 'string' ? err : err.message,
+          type: 'error'
+        })
+      }
+    })
   }
 
   closeWizard() {

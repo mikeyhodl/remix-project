@@ -54,7 +54,13 @@ export function TopCards() {
           width: '298px'
         }}
       >
-        <li className="d-flex flex-row align-items-center import-option-item">
+        <li
+          className="d-flex flex-row align-items-center import-option-item"
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+          }}
+        >
           <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
         <li
           className="d-flex flex-row align-items-center import-option-item"
@@ -81,7 +87,13 @@ export function TopCards() {
             />
           <span className="fw-light">Import from local file system</span>
         </li>
-        <li className="d-flex flex-row align-items-center import-option-item">
+        <li
+          className="d-flex flex-row align-items-center import-option-item"
+          onClick={() => {
+            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles'})
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+          }}
+        >
           <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
       </ul>
     )
@@ -131,7 +143,6 @@ export function TopCards() {
               await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
             } else {
-              dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'aiFileGeneration' })
               await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
               facade.closeWizard()
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateFileWithAi', name: 'success' })
