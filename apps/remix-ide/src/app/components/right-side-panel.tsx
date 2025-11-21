@@ -151,6 +151,10 @@ export class RightSidePanel extends AbstractPanel {
 
   togglePanel () {
     const pinnedPanel = document.querySelector('#right-side-panel')
+    // Persist the hidden state to panelStates, preserving pluginProfile
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    const currentPlugin = this.currentFocus()
+    const pluginProfile = currentPlugin && this.plugins[currentPlugin] ? this.plugins[currentPlugin].profile : null
     if (this.isHidden) {
       this.isHidden = false
       pinnedPanel?.classList.remove('d-none')
@@ -158,14 +162,11 @@ export class RightSidePanel extends AbstractPanel {
       this.events.emit('rightSidePanelShown')
     } else {
       this.isHidden = true
+      this.hiddenPlugin = pluginProfile
       pinnedPanel?.classList.add('d-none')
       this.emit('rightSidePanelHidden')
       this.events.emit('rightSidePanelHidden')
     }
-    // Persist the hidden state to panelStates, preserving pluginProfile
-    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
-    const currentPlugin = this.currentFocus()
-    const pluginProfile = currentPlugin && this.plugins[currentPlugin] ? this.plugins[currentPlugin].profile : null
     panelStates.rightSidePanel = {
       isHidden: this.isHidden,
       pluginProfile: pluginProfile

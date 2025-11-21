@@ -26,13 +26,12 @@ module.exports = {
       .waitForElementVisible('*[data-pinnedPlugin="movePluginToLeft-solidity"]')
       .clickLaunchIcon('filePanel')
   },
-  'Toggle right side panel to hide pinned plugin and restore it #group1': function (browser: NightwatchBrowser) {
+  'Toggle right side panel to hide and show pinned plugin #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
-      .waitForElementVisible('*[data-id="restoreClosedPlugin"')
-      .click('*[data-id="restoreClosedPlugin"]')
+      .click('*[data-id="toggleRightSidePanel"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
   'Toggle right side panel, reload IDE, panel state should persist #group1': function (browser: NightwatchBrowser) {
@@ -40,10 +39,9 @@ module.exports = {
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
-      .waitForElementVisible('*[data-id="restoreClosedPlugin"')
       .refresh()
-      .waitForElementVisible('*[data-id="restoreClosedPlugin"')
-      .click('*[data-id="restoreClosedPlugin"]')
+      .waitForElementVisible('*[data-id="toggleRightSidePanel"')
+      .click('*[data-id="toggleRightSidePanel"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
   'Swap pinned plugin from right side panel when panel is hidden #group1': function (browser: NightwatchBrowser) {
@@ -52,7 +50,6 @@ module.exports = {
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
-      .waitForElementVisible('*[data-id="restoreClosedPlugin"]')
       .clickLaunchIcon('udapp')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-udapp"]')
       .click('*[data-id="movePluginToRight"]')
