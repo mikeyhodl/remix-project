@@ -2,7 +2,7 @@
 import React, { useContext, useState, useRef, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { createWorkspace, switchToWorkspace, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { createWorkspace, switchToWorkspace, uploadFolder, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 import { MatomoCategories } from '@remix-api'
 import { useOnClickOutside } from 'libs/remix-ui/remix-ai-assistant/src/components/onClickOutsideHook'
@@ -13,7 +13,9 @@ export function TopCards() {
   const [importFiles, setImportFiles] = useState(false)
   const [importOptionsPosition, setImportOptionsPosition] = useState({ top: 0, left: 0 })
   const importCardRef = useRef<HTMLDivElement>(null)
-  useOnClickOutside([importCardRef], () => setImportFiles(false))
+  const importOptionRef = useRef(null)
+  const importFileInputRef = useRef(null)
+  useOnClickOutside([importCardRef, importOptionRef], () => setImportFiles(false))
 
   useEffect(() => {
     if (importFiles && importCardRef.current) {
@@ -43,6 +45,7 @@ export function TopCards() {
     return (
       <ul
         className="list-unstyled p-3 gap-2 d-flex flex-column align-items-start justify-content-end bg-light position-absolute text-white"
+        ref={importOptionRef}
         style={{
           borderRadius: '10px',
           zIndex: 1000,
@@ -53,8 +56,31 @@ export function TopCards() {
       >
         <li className="d-flex flex-row align-items-center import-option-item">
           <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
-        <li className="d-flex flex-row align-items-center import-option-item">
-          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from local file system</span></li>
+        <li
+          className="d-flex flex-row align-items-center import-option-item"
+          onClick={() => {
+            importFileInputRef.current?.click()
+          }}
+        >
+          <i className="me-2 far fa-upload"></i>
+          <input
+              ref={importFileInputRef}
+              type="file"
+              id="importFilesInput"
+              multiple
+              className="d-none"
+              onChange={async (e) => {
+                e.stopPropagation()
+                if (e.target.files.length === 0 || !e.target.files) return
+                await uploadFolder(e.target, '/')
+                setImportFiles(false)
+                trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportFiles', name: 'success' })
+                facade.closeWizard()
+              }}
+              {...enableDirUpload}
+            />
+          <span className="fw-light">Import from local file system</span>
+        </li>
         <li className="d-flex flex-row align-items-center import-option-item">
           <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
       </ul>
