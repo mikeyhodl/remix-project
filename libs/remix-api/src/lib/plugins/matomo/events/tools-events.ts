@@ -105,6 +105,7 @@ export interface TemplateExplorerModalEvent extends MatomoEventBase {
     | 'closeModal'
     | 'search'
     | 'addScriptsToWorkspace'
+    | 'addContractFileToWorkspace'
     | 'selectWorkspaceTemplate'
     | 'createWorkspaceFromTemplate'
     | 'createWorkspaceWithAiRequestSent'

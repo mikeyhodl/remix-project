@@ -12,6 +12,7 @@ import { EditorView } from '@codemirror/view'
 import { ContractTagSelector } from './contractTagSelector'
 import { MatomoCategories, MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
 import TrackingContext from '@remix-ide/tracking'
+import { exit } from 'process'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -114,6 +115,32 @@ export function ContractWizard () {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: templateMap[value] })
   }
 
+  const validateAndCreateWorkspace = async () => {
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
+    await facade.createWorkspace({
+      workspaceName: uniqueWorkspaceName,
+      workspaceTemplateName: state.workspaceTemplateChosen.value,
+      opts: state.contractOptions,
+      isEmpty: false,
+      isGitRepo: state.initializeAsGitRepo,
+      createCommit: true,
+      contractContent: state.contractCode,
+      contractName: state.tokenName
+    })
+    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'createWorkspaceWithContractWizard', name: 'success' })
+    facade.closeWizard()
+  }
+
+  const validateAndCreateContractFile = async () => {
+    const exists = await facade.plugin.call('fileManager', 'exists', '/contracts')
+    if (!exists) {
+      await facade.plugin.call('fileManager', 'mkdir', 'contracts')
+    }
+    await facade.plugin.call('fileManager', 'writeFileNoRewrite', `/contracts/${state.contractName}.sol`, state.contractCode)
+    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'addContractFileToWorkspace'})
+    facade.closeWizard()
+  }
+
   return (
     <section className="container-fluid">
       <div className="row g-3">
@@ -206,31 +233,26 @@ export function ContractWizard () {
               extensions={[javascript({ typescript: true }),vscodeDark, darkTheme]}
             />
           </div>
-          <div className="d-flex justify-content-between align-items-center gap-3 mt-3">
-            <div className="form-check m-0">
+          <div className="d-flex mt-3 justify-content-between align-items-center gap-3">
+            {state.manageCategory === 'Template' ? <div className="form-check m-0">
               <>
                 <input data-id="contract-wizard-initialize-as-git-repo-checkbox" className="form-check-input" type="checkbox" id="initGit" checked={state.initializeAsGitRepo}
                   onChange={(e) => dispatch({ type: ContractWizardAction.INITIALIZE_AS_GIT_REPO_UPDATE, payload: e.target.checked })} />
                 <label className="form-check-label" htmlFor="initGit">Initialize as a Git repository</label>
               </>
-            </div>
+            </div> : <div className="w-50"></div>}
 
-            <button data-id="contract-wizard-validate-workspace-button" className="btn btn-primary btn-sm" onClick={async () => {
-              dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
-              await facade.createWorkspace({
-                workspaceName: uniqueWorkspaceName,
-                workspaceTemplateName: state.workspaceTemplateChosen.value,
-                opts: state.contractOptions,
-                isEmpty: false,
-                isGitRepo: state.initializeAsGitRepo,
-                createCommit: true,
-                contractContent: state.contractCode,
-                contractName: state.tokenName
-              })
-              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'createWorkspaceWithContractWizard', name: 'success' })
-              facade.closeWizard()
-            }}>
-              <i className="far fa-check me-2"></i> Validate workspace</button>
+            <button data-id="contract-wizard-validate-workspace-button" className="btn btn-primary btn-sm justify-content-end" onClick={async () => {
+              if (state.manageCategory === 'Files') {
+                await validateAndCreateContractFile()
+              } else {
+                await validateAndCreateWorkspace()
+              }
+            }}
+            >
+              <i className="far fa-check me-2"></i> 
+              Validate workspace
+            </button>
           </div>
         </div>
       </div>
