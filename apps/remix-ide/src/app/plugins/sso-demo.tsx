@@ -126,7 +126,7 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
       addLog('Token refreshed automatically')
     })
 
-    // Handle popup window requests from SSO plugin
+    // Handle popup window requests from SSO plugin (for OIDC providers only, not SIWE)
     plugin.on('sso', 'openWindow', ({ url, id }: { url: string; id: string }) => {
       addLog(`Opening auth popup: ${url.substring(0, 50)}...`)
       
@@ -160,7 +160,7 @@ function SSODemoView({ plugin }: { plugin: SSODemoPlugin }) {
         }
       }, 1000)
 
-      // Listen for auth result from popup
+      // Listen for auth result from popup (OIDC providers only)
       const messageHandler = (event: MessageEvent) => {
         const { type, requestId, user, accessToken, error } = event.data
         console.log('[SSO Demo] Message type:', type)
