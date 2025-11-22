@@ -160,12 +160,19 @@ export class Topbar extends Plugin {
   }
 
   async getLatestReleaseNotesUrl () {
-    const response = await this.getLatestUpdates()
-    const data: UpdateInfo[] = response
-    const interim = data.find(x => x.action.label.includes('Release notes'))
-    const targetUrl = interim.action.url
-    const currentReleaseVersion = packageJson.version
-    return [targetUrl, currentReleaseVersion]
+    try {
+      const response = await this.getLatestUpdates()
+      const data: UpdateInfo[] = response
+      const interim = data.find(x => x.action && x.action.label && x.action.label.includes('Release notes'))
+      if (interim && interim.action && interim.action.url) {
+        const targetUrl = interim.action.url
+        const currentReleaseVersion = packageJson.version
+        return [targetUrl, currentReleaseVersion]
+      }
+    } catch (error) {
+      console.error('Error fetching release notes:', error)
+    }
+    return [null, packageJson.version]
   }
 
   setDispatch(dispatch: React.Dispatch<any>) {

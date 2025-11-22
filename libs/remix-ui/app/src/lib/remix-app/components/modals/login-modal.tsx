@@ -19,35 +19,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     }
   }
 
-  const providers: Array<{ id: AuthProvider; label: string; icon: string; description: string }> = [
+  const providers: Array<{ id: AuthProvider; label: string; icon: JSX.Element; description: string }> = [
     {
       id: 'google',
       label: 'Google',
-      icon: '🔵',
+      icon: <i className="fab fa-google" style={{ color: '#DB4437' }}></i>,
       description: 'Sign in with your Google account'
     },
     {
       id: 'discord',
       label: 'Discord',
-      icon: '💬',
+      icon: <i className="fab fa-discord" style={{ color: '#5865F2' }}></i>,
       description: 'Sign in with your Discord account'
     },
     {
       id: 'siwe',
       label: 'Ethereum Wallet',
-      icon: '🦊',
+      icon: <i className="fab fa-ethereum" style={{ color: '#627EEA' }}></i>,
       description: 'Sign in with MetaMask, Coinbase Wallet, or any Ethereum wallet'
     },
     {
       id: 'apple',
       label: 'Apple',
-      icon: '🍎',
+      icon: <i className="fab fa-apple"></i>,
       description: 'Sign in with your Apple ID'
     },
     {
       id: 'coinbase',
       label: 'Coinbase',
-      icon: '🔷',
+      icon: <i className="fas fa-coins" style={{ color: '#0052FF' }}></i>,
       description: 'Sign in with your Coinbase account (OAuth currently disabled)'
     }
   ]
@@ -109,7 +109,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                     opacity: loading || provider.id === 'coinbase' ? 0.6 : 1
                   }}
                 >
-                  <span className="me-3" style={{ fontSize: '2rem' }}>
+                  <span className="me-3" style={{ fontSize: '1.5rem', width: '32px', textAlign: 'center' }}>
                     {provider.icon}
                   </span>
                   <div className="flex-grow-1 text-start">
