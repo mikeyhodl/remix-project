@@ -6,6 +6,7 @@ import ManagePreferencesDialog from './components/modals/managePreferences'
 import OriginWarning from './components/modals/origin-warning'
 import DragBar from './components/dragbar/dragbar'
 import { AppProvider } from './context/provider'
+import { AuthProvider } from './context/auth-context'
 import AppDialogs from './components/modals/dialogs'
 import DialogViewPlugin from './components/modals/dialogViewPlugin'
 import { appProviderContextType, onLineContext, platformContext } from './context/context'
@@ -157,16 +158,17 @@ const RemixApp = (props: IRemixAppUi) => {
       <platformContext.Provider value={props.app.platform}>
         <onLineContext.Provider value={online}>
           <AppProvider value={value}>
-            <OriginWarning></OriginWarning>
-            <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
-            {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
-            <div className='d-flex flex-column'>
-              {!props.app.desktopClientMode && (
-                <div className='top-bar'>
-                  {props.app.topBar.render()}
-                </div>
-              )}
-              <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
+            <AuthProvider appManager={props.app.appManager}>
+              <OriginWarning></OriginWarning>
+              <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
+              {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
+              <div className='d-flex flex-column'>
+                {!props.app.desktopClientMode && (
+                  <div className='top-bar'>
+                    {props.app.topBar.render()}
+                  </div>
+                )}
+                <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
                 <div id="icon-panel" data-id="remixIdeIconPanel" className="custom_icon_panel iconpanel bg-light">
                   {props.app.menuicons.render()}
                 </div>
@@ -213,9 +215,10 @@ const RemixApp = (props: IRemixAppUi) => {
               <div className="statusBar fixed-bottom">
                 {props.app.statusBar.render()}
               </div>
-            </div>
-            <AppDialogs></AppDialogs>
-            <DialogViewPlugin></DialogViewPlugin>
+              </div>
+              <AppDialogs></AppDialogs>
+              <DialogViewPlugin></DialogViewPlugin>
+            </AuthProvider>
           </AppProvider>
         </onLineContext.Provider>
       </platformContext.Provider>

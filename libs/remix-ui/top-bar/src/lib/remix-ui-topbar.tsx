@@ -17,6 +17,7 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
+import { LoginButton } from '@remix-ui/app'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
@@ -579,6 +580,11 @@ export function RemixUiTopbar() {
               logOutOfGithub={logOutOfGithub}
               publishToGist={publishToGist}
               loginWithGitHub={loginWithGitHub}
+            />
+            <LoginButton 
+              variant="compact" 
+              showCredits={true}
+              className="ms-2"
             />
             {appContext?.appState?.hasActiveSubscription ? (
               <Button
