@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react'
 import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
+import { Profile } from '@remixproject/plugin-utils'
 
 export interface Credits {
   balance: number
@@ -94,19 +95,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
   // Wait for plugin to be ready
   useEffect(() => {
     if (!plugin) return
-    
+
     // Small delay to ensure plugin is activated
     const timer = setTimeout(() => {
       setIsReady(true)
     }, 5000)
-    
+
     return () => clearTimeout(timer)
   }, [plugin])
 
   // Initialize auth state on mount
   useEffect(() => {
     if (!isReady || !plugin) return
-    
+
     const initAuth = async () => {
       try {
         const isAuth = await plugin.isAuthenticated()
@@ -116,7 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
           if (user && token) {
             dispatch({ type: 'AUTH_SUCCESS', payload: { user, token } })
           }
-          
+
           // Fetch credits
           const credits = await plugin.getCredits()
           if (credits) {
@@ -149,8 +150,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
     }
 
     console.log('[AuthContext] Setting up event listeners, plugin.on exists:', typeof plugin.on)
-    plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
-    plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
+    plugin.call('manager', 'isActive', 'auth').then((result) => {
+      if (result) {
+        plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
+        plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
+      } else {
+        plugin.on('manager', 'activate', (profile: Profile) => {
+          switch (profile.name) {
+            case 'auth':
+              plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
+              plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
+              break
+          }
+        })
+      }
+    })
     console.log('[AuthContext] Event listeners registered')
 
     return () => {
@@ -164,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
       dispatch({ type: 'AUTH_FAILURE', payload: 'Authentication system not ready' })
       throw new Error('Authentication system not ready')
     }
-    
+
     try {
       dispatch({ type: 'AUTH_START' })
       await plugin.login(provider)
@@ -176,7 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
 
   const logout = async () => {
     if (!isReady || !plugin) return
-    
+
     try {
       await plugin.logout()
       dispatch({ type: 'LOGOUT' })
