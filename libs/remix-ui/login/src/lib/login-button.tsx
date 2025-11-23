@@ -55,7 +55,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
           onClick={() => setShowModal(true)}
           data-id="login-button"
         >
-          {variant === 'compact' ? '🔐 Login' : '🔐 Sign In'}
+          Log In
         </button>
         {showModal && <LoginModal onClose={() => setShowModal(false)} />}
       </>

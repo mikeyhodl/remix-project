@@ -136,7 +136,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
         right: 0,
         bottom: 0,
         zIndex: 2000,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         alignItems: 'center',
         justifyContent: 'center'
       }}
@@ -150,19 +149,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
       >
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Sign In to Remix IDE</h5>
-            <button
-              type="button"
-              className="close"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <h5 className="modal-title">Log in to Remix IDE</h5>
+            <div className="close" data-id="loginModal" onClick={onClose} style={{ marginLeft: 'auto', cursor: 'pointer' }}>
+              <i className="fas fa-times"></i>
+            </div>
           </div>
           <div className="modal-body">
             <p className="text-muted mb-4">
-              Choose your preferred authentication method to access Remix features and manage your credits.
+              Choose your preferred authentication method to access special Remix features and manage your credits.
             </p>
 
             {error && (
@@ -214,7 +208,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
 
             <div className="mt-4 text-center">
               <small className="text-muted">
-                By signing in, you agree to our Terms of Service and Privacy Policy
+                By signing in, you agree to our{' '}
+                <a href="https://remix.live/termsandconditions" target="_blank" rel="noopener noreferrer">
+                  Terms and Conditions
+                </a>
               </small>
             </div>
           </div>
