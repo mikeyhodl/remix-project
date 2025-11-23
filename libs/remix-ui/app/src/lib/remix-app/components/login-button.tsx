@@ -27,6 +27,17 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
   }
 
+  const getProviderDisplayName = (provider: string) => {
+    const providerNames: Record<string, string> = {
+      'google': 'Google',
+      'apple': 'Apple',
+      'discord': 'Discord',
+      'coinbase': 'Coinbase Wallet',
+      'siwe': 'Ethereum'
+    }
+    return providerNames[provider] || provider
+  }
+
   const getUserDisplayName = () => {
     if (!user) return 'Unknown'
     if (user.name) return user.name
@@ -75,7 +86,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
             >
               <div className="dropdown-header">
                 <div><strong>{getUserDisplayName()}</strong></div>
-                <div className="text-muted small">{user.provider}</div>
+                <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
               </div>
               {credits && (
                 <>
@@ -134,7 +145,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
           data-id="user-menu-compact"
           title={getUserDisplayName()}
         >
-          👤
+          {getUserDisplayName()}
         </button>
         {showDropdown && (
           <>
@@ -150,7 +161,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
             >
               <div className="dropdown-header">
                 <div><strong>{getUserDisplayName()}</strong></div>
-                <div className="text-muted small">{user.provider}</div>
+                <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
               </div>
               {credits && showCredits && (
                 <>
@@ -213,7 +224,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
             >
               <div className="dropdown-header">
                 <div><strong>{getUserDisplayName()}</strong></div>
-                <div className="text-muted small">{user.provider}</div>
+                <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
                 {user.email && <div className="text-muted small">{user.email}</div>}
                 {user.address && <div className="text-muted small font-monospace">{formatAddress(user.address)}</div>}
               </div>
