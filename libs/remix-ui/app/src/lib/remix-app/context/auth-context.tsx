@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react'
 import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
-import { AuthPlugin } from '../plugins/auth-plugin'
 
 export interface Credits {
   balance: number
@@ -85,7 +84,7 @@ const initialState: AuthState = {
 
 interface AuthProviderProps {
   children: ReactNode
-  plugin: AuthPlugin
+  plugin: any
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) => {
@@ -99,7 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
     // Small delay to ensure plugin is activated
     const timer = setTimeout(() => {
       setIsReady(true)
-    }, 100)
+    }, 5000)
     
     return () => clearTimeout(timer)
   }, [plugin])
@@ -133,6 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
 
     // Listen to auth plugin events
     const handleAuthStateChanged = (authState: any) => {
+      console.log('[AuthContext] Auth state changed:', authState)
       if (authState.isAuthenticated && authState.user) {
         dispatch({
           type: 'AUTH_SUCCESS',
@@ -144,15 +144,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
     }
 
     const handleCreditsUpdated = (credits: Credits) => {
+      console.log('[AuthContext] Credits updated:', credits)
       dispatch({ type: 'UPDATE_CREDITS', payload: credits })
     }
 
+    console.log('[AuthContext] Setting up event listeners, plugin.on exists:', typeof plugin.on)
     plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
     plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
+    console.log('[AuthContext] Event listeners registered')
 
     return () => {
-      plugin.off('auth', 'authStateChanged')
-      plugin.off('auth', 'creditsUpdated')
+      plugin.off('auth', 'authStateChanged', handleAuthStateChanged)
+      plugin.off('auth', 'creditsUpdated', handleCreditsUpdated)
     }
   }, [plugin, isReady])
 

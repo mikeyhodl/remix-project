@@ -49,6 +49,7 @@ import { EnvironmentExplorer } from './app/providers/environment-explorer'
 import { FileDecorator } from './app/plugins/file-decorator'
 import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
+import { AuthPlugin } from './app/plugins/auth-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
 import { fsPlugin } from './app/plugins/electron/fsPlugin'
@@ -163,6 +164,7 @@ class AppComponent {
   statusBar: StatusBar
   topBar: Topbar
   settings: SettingsTab
+  authPlugin: AuthPlugin
   params: any
   desktopClientMode: boolean
 
@@ -580,6 +582,8 @@ class AppComponent {
       contentImport
     )
 
+    this.authPlugin = new AuthPlugin()
+
     this.engine.register([
       compileTab,
       run,
@@ -592,6 +596,7 @@ class AppComponent {
       deployLibraries,
       openZeppelinProxy,
       run.recorder,
+      this.authPlugin,
       ssoPlugin,
       ssoDemo
     ])
@@ -656,8 +661,9 @@ class AppComponent {
       'remixAI',
       'remixaiassistant'
     ])
-    // Activate SSO plugin (hidden iframe for auth)
+    // Activate SSO plugin first, then Auth plugin (Auth depends on SSO)
     await this.appManager.activatePlugin(['sso'])
+    await this.appManager.activatePlugin(['auth'])
     await this.appManager.activatePlugin(['settings'])
 
     await this.appManager.activatePlugin(['walkthrough', 'storage', 'search', 'compileAndRun', 'recorder', 'dgitApi', 'dgit', 'subscription'])

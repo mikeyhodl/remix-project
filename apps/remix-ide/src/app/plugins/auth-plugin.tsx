@@ -93,8 +93,18 @@ export class AuthPlugin extends Plugin {
   }
 
   onActivation(): void {
+    console.log('[AuthPlugin] Activated')
+    
+    // Debug: Log queue status
+    setInterval(() => {
+      if ((this as any).queue && (this as any).queue.length > 0) {
+        console.log('[AuthPlugin] Queue:', (this as any).queue)
+      }
+    }, 2000)
+    
     // Listen to SSO plugin events and forward them
     this.on('sso', 'authStateChanged', (authState: any) => {
+      console.log('[AuthPlugin] authStateChanged received:', authState)
       this.emit('authStateChanged', authState)
       // Auto-refresh credits on auth change
       if (authState.isAuthenticated) {
@@ -103,6 +113,7 @@ export class AuthPlugin extends Plugin {
     })
 
     this.on('sso', 'loginSuccess', (data: any) => {
+      console.log('[AuthPlugin] loginSuccess received:', data)
       this.emit('authStateChanged', { 
         isAuthenticated: true, 
         user: data.user,
@@ -112,6 +123,7 @@ export class AuthPlugin extends Plugin {
     })
 
     this.on('sso', 'loginError', (data: any) => {
+      console.log('[AuthPlugin] loginError received:', data)
       this.emit('authStateChanged', { 
         isAuthenticated: false, 
         user: null,
@@ -121,6 +133,7 @@ export class AuthPlugin extends Plugin {
     })
 
     this.on('sso', 'logout', () => {
+      console.log('[AuthPlugin] logout received')
       this.emit('authStateChanged', { 
         isAuthenticated: false, 
         user: null,
@@ -130,6 +143,7 @@ export class AuthPlugin extends Plugin {
 
     // Handle popup opening from SSO plugin
     this.on('sso', 'openWindow', ({ url, id }: { url: string; id: string }) => {
+      console.log('[AuthPlugin] openWindow received:', url, id)
       const width = 600
       const height = 700
       const left = window.screen.width / 2 - width / 2
@@ -153,22 +167,29 @@ export class AuthPlugin extends Plugin {
 
       // Listen for auth result from popup
       const messageHandler = (event: MessageEvent) => {
+        console.log('[AuthPlugin] Message received:', event.data, 'from origin:', event.origin)
         const { type, requestId, user, accessToken, error } = event.data
 
         if (type === 'sso-auth-result' && requestId === id) {
+          console.log('[AuthPlugin] Auth result matched, closing popup')
           cleanup()
           
           try {
             if (popup && !popup.closed) popup.close()
           } catch (e) {}
 
+          console.log('[AuthPlugin] Calling handlePopupResult with:', {id, success: !error, user, accessToken, error})
           this.call('sso', 'handlePopupResult', {
             id,
             success: !error,
             user,
             accessToken,
             error
-          }).catch(console.error)
+          }).then(() => {
+            console.log('[AuthPlugin] handlePopupResult call succeeded')
+          }).catch((err) => {
+            console.error('[AuthPlugin] handlePopupResult call failed:', err)
+          })
         }
       }
 

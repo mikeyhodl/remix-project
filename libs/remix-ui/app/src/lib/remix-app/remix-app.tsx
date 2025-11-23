@@ -7,7 +7,6 @@ import OriginWarning from './components/modals/origin-warning'
 import DragBar from './components/dragbar/dragbar'
 import { AppProvider } from './context/provider'
 import { AuthProvider } from './context/auth-context'
-import { AuthPlugin } from './plugins/auth-plugin'
 import AppDialogs from './components/modals/dialogs'
 import DialogViewPlugin from './components/modals/dialogViewPlugin'
 import { appProviderContextType, onLineContext, platformContext } from './context/context'
@@ -22,7 +21,6 @@ interface IRemixAppUi {
 }
 const RemixApp = (props: IRemixAppUi) => {
   const [appReady, setAppReady] = useState<boolean>(false)
-  const [authPlugin] = useState(() => new AuthPlugin())
   const [showManagePreferencesDialog, setShowManagePreferencesDialog] = useState<boolean>(false)
   const [hideSidePanel, setHideSidePanel] = useState<boolean>(false)
   const [hidePinnedPanel, setHidePinnedPanel] = useState<boolean>(props.app.desktopClientMode || true)
@@ -55,14 +53,10 @@ const RemixApp = (props: IRemixAppUi) => {
         setAppReady(true)
         props.app.activate()
         setListeners()
-        // Activate auth plugin
-        props.app.appManager.activatePlugin('auth')
       })
       setLocale(props.app.localeModule.currentLocale())
     }
     if (props.app) {
-      // Register auth plugin
-      props.app.appManager.registerPlugin(authPlugin)
       activateApp()
     }
   }, [])
@@ -164,7 +158,7 @@ const RemixApp = (props: IRemixAppUi) => {
       <platformContext.Provider value={props.app.platform}>
         <onLineContext.Provider value={online}>
           <AppProvider value={value}>
-            <AuthProvider plugin={authPlugin}>
+            <AuthProvider plugin={props.app.authPlugin}>
               <OriginWarning></OriginWarning>
               <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
               {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}

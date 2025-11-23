@@ -72,7 +72,7 @@ export const GitHubLogin: React.FC<GitHubLoginProps> = ({
         ) : (
           <div className="d-flex flex-nowrap align-items-center flex-row justify-content-center">
             <i className="fab fa-github me-1"></i>
-            <span>connect with github</span>
+            <span>Connect with GitHub</span>
           </div>
         )}
       </Button>
