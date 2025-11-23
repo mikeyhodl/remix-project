@@ -97,9 +97,6 @@
             "@remix-ui/settings": [
               "libs/remix-ui/settings/src/index.ts"
             ],
-            "@remix-ui/subscription-manager": [
-              "libs/remix-ui/subscription-manager/src/index.ts"
-            ],
             "@remix-ui/solidity-compile-details": [
               "libs/remix-ui/solidity-compile-details/src/index.ts"
             ],
