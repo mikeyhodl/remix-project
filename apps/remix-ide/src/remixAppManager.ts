@@ -94,7 +94,9 @@ let requiredModules = [
   'remixaiassistant',
   'topbar',
   'githubAuthHandler',
-  'desktopClient'
+  'desktopClient',
+  'sso',
+  'auth'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)

@@ -85,7 +85,6 @@ import * as remixLib from '@remix-project/remix-lib'
 import { QueryParams } from '@remix-project/remix-lib'
 import { SearchPlugin } from './app/tabs/search'
 import { ScriptRunnerBridgePlugin } from './app/plugins/script-runner-bridge'
-import { SSODemoPlugin } from './app/plugins/sso-demo'
 import { ElectronProvider } from './app/files/electronProvider'
 import { IframePlugin } from '@remixproject/engine-web'
 import { endpointUrls } from '@remix-endpoints-helper'
@@ -315,9 +314,6 @@ class AppComponent {
       methods: ['login', 'logout', 'getUser', 'getToken', 'isAuthenticated', 'handlePopupResult'],
       events: ['authStateChanged', 'tokenRefreshed', 'loginSuccess', 'logoutSuccess', 'openWindow', 'loginError']
     })
-
-    //---------------- SSO Demo Plugin -------------------------
-    const ssoDemo = new SSODemoPlugin()
 
     //---- templates
     const templates = new TemplatesPlugin()
@@ -589,8 +585,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder,
       this.authPlugin,
-      ssoPlugin,
-      ssoDemo
+      ssoPlugin
     ])
 
     this.layout.panels = {
