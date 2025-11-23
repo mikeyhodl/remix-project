@@ -17,7 +17,7 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
-import { LoginButton } from '@remix-ui/app'
+import { LoginButton } from '@remix-ui/login'
 
 export function RemixUiTopbar() {
   const intl = useIntl()

@@ -214,7 +214,10 @@
             ],
             "@remix-ide/tracking": [
               "apps/remix-ide/src/app/contexts/TrackingContext"
-            ]
+            ],
+            "@remix-ui/login": [
+              "libs/remix-ui/login/src/index.ts"
+            ],
         }
     }
 }

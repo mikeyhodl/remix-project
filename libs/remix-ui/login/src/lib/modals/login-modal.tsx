@@ -1,6 +1,6 @@
 import React from 'react'
 import { AuthProvider } from '@remix-api'
-import { useAuth } from '../../context/auth-context'
+import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
 
 interface LoginModalProps {
   onClose: () => void

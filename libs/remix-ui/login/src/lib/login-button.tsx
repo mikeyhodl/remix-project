@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/auth-context'
+import { useAuth } from '../../../app/src/lib/remix-app/context/auth-context'
 import { LoginModal } from './modals/login-modal'
 
 interface LoginButtonProps {
