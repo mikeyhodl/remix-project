@@ -28,12 +28,27 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
     <div className={`d-flex align-items-center ${className}`}>
       <div className="dropdown">
         <button
-          className="btn btn-sm btn-success dropdown-toggle"
+          className="btn btn-sm btn-success dropdown-toggle d-flex flex-nowrap align-items-center"
           type="button"
           onClick={() => setShowDropdown(!showDropdown)}
           data-id="user-badge"
         >
-          ✓ {getUserDisplayName()}
+          {user.picture ? (
+            <img 
+              src={user.picture} 
+              alt="Avatar" 
+              className="me-1" 
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <span className="me-1">✓</span>
+          )}
+          <span>{getUserDisplayName()}</span>
           {showCredits && credits && (
             <span className="badge bg-light text-dark ms-2">
               {credits.balance} credits
@@ -46,6 +61,20 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
             style={{ position: 'absolute', right: 0, top: '100%' }}
           >
             <div className="dropdown-header">
+              {user.picture && (
+                <div className="d-flex justify-content-center mb-2">
+                  <img 
+                    src={user.picture} 
+                    alt="Avatar" 
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+              )}
               <div><strong>{getUserDisplayName()}</strong></div>
               <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
             </div>

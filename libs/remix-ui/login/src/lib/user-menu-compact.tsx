@@ -26,12 +26,25 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   return (
     <div className={`position-relative ${className}`}>
       <button
-        className="btn btn-sm btn-success"
+        className="btn btn-sm btn-success d-flex flex-nowrap align-items-center"
         onClick={() => setShowDropdown(!showDropdown)}
         data-id="user-menu-compact"
         title={getUserDisplayName()}
       >
-        {getUserDisplayName()}
+        <span>{getUserDisplayName()}</span>
+        {user.picture && (
+          <img 
+            src={user.picture} 
+            alt="Avatar" 
+            className="ms-1" 
+            style={{
+              width: '25px',
+              height: '25px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
       </button>
       {showDropdown && (
         <>
@@ -46,6 +59,20 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
             }}
           >
             <div className="dropdown-header">
+              {user.picture && (
+                <div className="d-flex justify-content-center mb-2">
+                  <img 
+                    src={user.picture} 
+                    alt="Avatar" 
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+              )}
               <div><strong>{getUserDisplayName()}</strong></div>
               <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
             </div>
