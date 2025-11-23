@@ -31,13 +31,6 @@
 	<link rel="stylesheet" href="assets/fontawesome/css/all.css">
 	<script src="assets/js/browserfs.min.js"></script>
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-	<!-- Paddle Billing SDK: load once globally -->
-	<script
-	  src="https://cdn.paddle.com/paddle/v2/paddle.js"
-	  defer
-	  onload="console.log('[Paddle][index.html] paddle.js loaded, global:', !!window.Paddle)"
-	  onerror="console.error('[Paddle][index.html] failed to load paddle.js')"
-	></script>
 
 	<!-- Decide splash theme & inject theme CSS ASAP; update Desktop label/OS -->
 	<script src="assets/js/pre-splash.js"></script>
@@ -103,21 +96,6 @@
 
 	<!-- Electron/OS and theme work done in pre-splash.js -->
 	<div id="root"></div>
-
-	<script>
-	  // Debug helper: report when window.Paddle becomes available
-	  (function() {
-	    var reported = false;
-	    function tick() {
-	      if (window.Paddle && !reported) {
-	        reported = true;
-	        console.log('[Paddle][index.html] window.Paddle detected');
-	      }
-	      if (!reported) setTimeout(tick, 100);
-	    }
-	    tick();
-	  })();
-	</script>
 	<!-- <script type="text/javascript" src="assets/js/loader.js"></script> -->
 	<script type="text/javascript" src="assets/js/intro.min.js"></script>
 	<script type="text/javascript" src="assets/js/parser/antlr.js"></script>

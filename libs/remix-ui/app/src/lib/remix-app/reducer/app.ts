@@ -43,11 +43,5 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
     }
   }
 
-  case appActionTypes.setHasActiveSubscription: {
-    return {
-      ...state,
-      hasActiveSubscription: action.payload
-    }
-  }
   }
 }
