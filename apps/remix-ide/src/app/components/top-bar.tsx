@@ -22,6 +22,7 @@ const TopBarProfile = {
   description: '',
   version: packageJson.version,
   icon: '',
+  location: 'none',
   methods: ['getWorkspaces', 'createWorkspace', 'renameWorkspace', 'deleteWorkspace', 'getCurrentWorkspace', 'setWorkspace'],
   events: ['setWorkspace', 'workspaceRenamed', 'workspaceDeleted', 'workspaceCreated'],
 }
@@ -160,19 +161,12 @@ export class Topbar extends Plugin {
   }
 
   async getLatestReleaseNotesUrl () {
-    try {
-      const response = await this.getLatestUpdates()
-      const data: UpdateInfo[] = response
-      const interim = data.find(x => x.action && x.action.label && x.action.label.includes('Release notes'))
-      if (interim && interim.action && interim.action.url) {
-        const targetUrl = interim.action.url
-        const currentReleaseVersion = packageJson.version
-        return [targetUrl, currentReleaseVersion]
-      }
-    } catch (error) {
-      console.error('Error fetching release notes:', error)
-    }
-    return [null, packageJson.version]
+    const response = await this.getLatestUpdates()
+    const data: UpdateInfo[] = response
+    const interim = data.find(x => x.action.label.toLowerCase().includes('release notes'))
+    const targetUrl = interim?.action?.url
+    const currentReleaseVersion = packageJson.version
+    return [targetUrl, currentReleaseVersion]
   }
 
   setDispatch(dispatch: React.Dispatch<any>) {

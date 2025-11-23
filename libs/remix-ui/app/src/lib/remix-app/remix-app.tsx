@@ -1,3 +1,4 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useEffect, useReducer, useRef, useState } from 'react'
 import './style/remix-app.css'
 import { RemixUIMainPanel } from '@remix-ui/panel'
@@ -15,6 +16,9 @@ import { appReducer } from './reducer/app'
 import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
+import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
+import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
+import { AiWorkspaceGeneration } from './components/modals/aiworkspace-generation'
 
 interface IRemixAppUi {
   app: any
@@ -41,11 +45,25 @@ const RemixApp = (props: IRemixAppUi) => {
   const [appState, appStateDispatch] = useReducer(appReducer, {
     ...appInitialState,
     showPopupPanel: !window.localStorage.getItem('did_show_popup_panel') && !isElectron(),
-    connectedToDesktop: props.app.desktopClientMode ? desktopConnectionType .disconnected : desktopConnectionType .disabled
+    connectedToDesktop: props.app.desktopClientMode ? desktopConnectionType.disconnected : desktopConnectionType.disabled,
+    genericModalState: {
+      id: '',
+      title: <div>Default Title</div>,
+      message: <div>Default Message</div>,
+      footer: <div>Default Footer</div>,
+      okLabel: 'Default Ok Label',
+      okFn: () => { },
+      cancelLabel: 'Default Cancel Label',
+      cancelFn: () => { },
+      width: '720px',
+      height: '720px',
+      showModal: false
+    }
   })
+  const [isAiWorkspaceBeingGenerated, setIsAiWorkspaceBeingGenerated] = useState<boolean>(false)
 
   useEffect(() => {
-    if (props.app.params && props.app.params.activate && props.app.params.activate.split(',').includes('desktopClient')){
+    if (props.app.params && props.app.params.activate && props.app.params.activate.split(',').includes('desktopClient')) {
       setHideSidePanel(true)
     }
     async function activateApp() {
@@ -65,10 +83,10 @@ const RemixApp = (props: IRemixAppUi) => {
     if (!appState.showPopupPanel) {
       window.localStorage.setItem('did_show_popup_panel', 'true')
     }
-  },[appState.showPopupPanel])
+  }, [appState.showPopupPanel])
 
   function setListeners() {
-    if (!props.app.desktopClientMode){
+    if (!props.app.desktopClientMode) {
       props.app.sidePanel.events.on('toggle', () => {
         setHideSidePanel((prev) => {
           return !prev
@@ -149,7 +167,9 @@ const RemixApp = (props: IRemixAppUi) => {
     showEnter: props.app.showEnter,
     modal: props.app.notification,
     appState: appState,
-    appStateDispatch: appStateDispatch
+    appStateDispatch: appStateDispatch,
+    isAiWorkspaceBeingGenerated: isAiWorkspaceBeingGenerated,
+    setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated
   }
 
   return (
@@ -169,55 +189,57 @@ const RemixApp = (props: IRemixAppUi) => {
                   </div>
                 )}
                 <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
-                <div id="icon-panel" data-id="remixIdeIconPanel" className="custom_icon_panel iconpanel bg-light">
-                  {props.app.menuicons.render()}
-                </div>
-                <div
-                  ref={sidePanelRef}
-                  id="side-panel"
-                  data-id="remixIdeSidePanel"
-                  className={`sidepanel border-end border-start ${hideSidePanel ? 'd-none' : ''}`}
-                >
-                  {props.app.sidePanel.render()}
-                </div>
-                <DragBar
-                  enhanceTrigger={enhanceLeftTrigger}
-                  resetTrigger={resetLeftTrigger}
-                  maximiseTrigger={maximiseLeftTrigger}
-                  minWidth={305}
-                  refObject={sidePanelRef}
-                  hidden={hideSidePanel}
-                  setHideStatus={setHideSidePanel}
-                  layoutPosition='left'
-                ></DragBar>
-                <div id="main-panel" data-id="remixIdeMainPanel" className="mainpanel d-flex">
-                  <RemixUIMainPanel layout={props.app.layout}></RemixUIMainPanel>
-                </div>
-                <div id="pinned-panel" ref={pinnedPanelRef} data-id="remixIdePinnedPanel" className={`flex-row-reverse pinnedpanel border-end border-start ${hidePinnedPanel ? 'd-none' : 'd-flex'}`}>
-                  {props.app.pinnedPanel.render()}
-                </div>
-                {
-                  !hidePinnedPanel &&
+                  <div id="icon-panel" data-id="remixIdeIconPanel" className="custom_icon_panel iconpanel bg-light">
+                    {props.app.menuicons.render()}
+                  </div>
+                  <div
+                    ref={sidePanelRef}
+                    id="side-panel"
+                    data-id="remixIdeSidePanel"
+                    className={`sidepanel border-end border-start ${hideSidePanel ? 'd-none' : ''}`}
+                  >
+                    {props.app.sidePanel.render()}
+                  </div>
                   <DragBar
-                    enhanceTrigger={enhanceRightTrigger}
-                    resetTrigger={resetRightTrigger}
-                    maximiseTrigger={maximiseRightTrigger}
-                    minWidth={331}
-                    refObject={pinnedPanelRef}
-                    hidden={hidePinnedPanel}
-                    setHideStatus={setHidePinnedPanel}
-                    layoutPosition='right'
+                    enhanceTrigger={enhanceLeftTrigger}
+                    resetTrigger={resetLeftTrigger}
+                    maximiseTrigger={maximiseLeftTrigger}
+                    minWidth={305}
+                    refObject={sidePanelRef}
+                    hidden={hideSidePanel}
+                    setHideStatus={setHideSidePanel}
+                    layoutPosition='left'
                   ></DragBar>
-                }
-                <div>{props.app.hiddenPanel.render()}</div>
-              </div>
-              {/* <div>{props.app.popupPanel.render()}</div> */}
-              <div className="statusBar fixed-bottom">
-                {props.app.statusBar.render()}
-              </div>
+                  <div id="main-panel" data-id="remixIdeMainPanel" className="mainpanel d-flex">
+                    <RemixUIMainPanel layout={props.app.layout}></RemixUIMainPanel>
+                  </div>
+                  <div id="pinned-panel" ref={pinnedPanelRef} data-id="remixIdePinnedPanel" className={`flex-row-reverse pinnedpanel border-end border-start ${hidePinnedPanel ? 'd-none' : 'd-flex'}`}>
+                    {props.app.pinnedPanel.render()}
+                  </div>
+                  {
+                    !hidePinnedPanel &&
+                    <DragBar
+                      enhanceTrigger={enhanceRightTrigger}
+                      resetTrigger={resetRightTrigger}
+                      maximiseTrigger={maximiseRightTrigger}
+                      minWidth={331}
+                      refObject={pinnedPanelRef}
+                      hidden={hidePinnedPanel}
+                      setHideStatus={setHidePinnedPanel}
+                      layoutPosition='right'
+                    ></DragBar>
+                  }
+                  <div>{props.app.hiddenPanel.render()}</div>
+                </div>
+                {/* <div>{props.app.popupPanel.render()}</div> */}
+                <div className="statusBar fixed-bottom">
+                  {props.app.statusBar.render()}
+                </div>
               </div>
               <AppDialogs></AppDialogs>
               <DialogViewPlugin></DialogViewPlugin>
+              {appState.genericModalState.showModal && props.app.templateExplorerModal.render()
+              }
             </AuthProvider>
           </AppProvider>
         </onLineContext.Provider>

@@ -43,5 +43,11 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
     }
   }
 
+  case appActionTypes.showGenericModal: {
+    return {
+      ...state,
+      genericModalState: { ...state.genericModalState, showModal: action.payload }
+    }
+  }
   }
 }

@@ -5,7 +5,7 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
-import { appPlatformTypes, platformContext, AppContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
+import { AppContext, appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { TopbarContext } from '../context/topbarContext'
 import { WorkspacesDropdown } from '../components/WorkspaceDropdown'
@@ -18,6 +18,7 @@ import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-to
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
+import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
@@ -67,6 +68,13 @@ export function RemixUiTopbar() {
   const handleLoginError = (error: string) => {
     setError(error);
   };
+
+  async function openTemplateExplorer(): Promise<void> {
+    appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
+    })
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('github_token');
@@ -532,6 +540,7 @@ export function RemixUiTopbar() {
             setCurrentMenuItemName={setCurrentMenuItemName}
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
+            openTemplateExplorer={openTemplateExplorer}
           />
         </div>
         <div

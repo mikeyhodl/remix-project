@@ -5,6 +5,7 @@ import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
 import { AppContext, AppModal } from '@remix-ui/app'
 import { MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
+//@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
 import { reducerActions, reducerListener, initialState } from './actions/editor'
@@ -160,6 +161,7 @@ const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
   const intl = useIntl()
   const appContext = useContext(AppContext)
+  //@ts-ignore
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = EditorEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -1015,6 +1017,11 @@ export const EditorUI = (props: EditorUIProps) => {
         const message = intl.formatMessage({ id: 'editor.explainFunctionByAI' }, { content:context, currentFunction: currentFunction.current })
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
+          // Check if pinned panel has a closed plugin and maximize it
+          const closedPlugin = await props.plugin.call('pinnedPanel', 'getClosedPlugin')
+          if (closedPlugin) {
+            await props.plugin.call('pinnedPanel', 'maximizePlugin', closedPlugin)
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
@@ -1039,6 +1046,11 @@ export const EditorUI = (props: EditorUIProps) => {
 
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
+          // Check if pinned panel has a closed plugin and maximize it
+          const closedPlugin = await props.plugin.call('pinnedPanel', 'getClosedPlugin')
+          if (closedPlugin) {
+            await props.plugin.call('pinnedPanel', 'maximizePlugin', closedPlugin)
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
