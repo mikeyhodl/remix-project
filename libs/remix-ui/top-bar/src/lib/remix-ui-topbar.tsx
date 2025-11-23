@@ -152,33 +152,6 @@ export function RemixUiTopbar() {
     loadCurrentTheme()
   }, []);
 
-  // Check subscription when GitHub user changes
-  useEffect(() => {
-    if (!plugin || !appContext?.appState?.gitHubUser?.id) return
-    
-    const ghId = appContext.appState.gitHubUser.id.toString()
-    console.log('GitHub user detected, checking subscription for:', ghId)
-    plugin.call('subscription' as any, 'checkSubscription', ghId)
-  }, [plugin, appContext?.appState?.gitHubUser])
-
-  // Listen to subscription status changes
-  useEffect(() => {
-    if (!plugin || !appContext || !appContext.appStateDispatch) return
-
-    const handleSubscriptionChanged = (status: any) => {
-      // status is an object: { hasActiveSubscription, ghId, subscription }
-      appContext.appStateDispatch({
-        type: 'SET_HAS_ACTIVE_SUBSCRIPTION' as any,
-        payload: status.hasActiveSubscription || false
-      })
-    }
-
-    plugin.on('subscription' as any, 'subscriptionStatusChanged', handleSubscriptionChanged)
-
-    return () => {
-      plugin.off('subscription' as any, 'subscriptionStatusChanged')
-    }
-  }, [plugin, appContext])
 
   const subItems = useMemo(() => {
     return [
@@ -586,35 +559,6 @@ export function RemixUiTopbar() {
               showCredits={true}
               className="ms-2"
             />
-            {appContext?.appState?.hasActiveSubscription ? (
-              <Button
-                className="btn btn-topbar btn-sm ms-2"
-                variant="warning"
-                data-id="topbar-pro-badge"
-                onClick={async () => {
-                  await plugin.call('manager', 'activatePlugin', 'subscriptionManager')
-                  await plugin.call('tabs', 'focus', 'subscriptionManager')
-                  trackMatomoEvent({ category: 'topbar', action: 'header', name: 'ProBadge', isClick: true })
-                }}
-                title="Manage your Remix Pro subscription"
-              >
-                Pro
-              </Button>
-            ) : (
-              <Button
-                className="btn btn-topbar btn-sm ms-2"
-                variant="warning"
-                data-id="topbar-go-pro"
-                onClick={async () => {
-                  await plugin.call('manager', 'activatePlugin', 'subscriptionManager')
-                  await plugin.call('tabs', 'focus', 'subscriptionManager')
-                  trackMatomoEvent({ category: 'topbar', action: 'header', name: 'GoPro', isClick: true })
-                }}
-                title="View subscription plans"
-              >
-                Go Pro
-              </Button>
-            )}
           </>
           <Dropdown className="ms-3" data-id="topbar-themeIcon" show={showTheme} ref={themeIconRef}>
             <Dropdown.Toggle

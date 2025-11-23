@@ -659,16 +659,6 @@ export const loadGitHubUserFromToken = async () => {
         dispatch(setScopes(data.scopes))
         dispatch(setUserEmails(data.emails))
         
-        // Check subscription status via subscription plugin
-        try {
-          const ghId = data.user.id?.toString()
-          if (ghId) {
-            await plugin.call('subscription' as any, 'checkSubscription', ghId)
-          }
-        } catch (e) {
-          console.error('Failed to check subscription via plugin:', e)
-        }
-        
         sendToGitLog({
           type: 'success',
           message: `Github user loaded...`
