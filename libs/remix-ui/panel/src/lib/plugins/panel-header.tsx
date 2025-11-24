@@ -63,6 +63,21 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
     )
   }
 
+  const RunDeployHeading = () => {
+
+    return (
+      <section className="px-3 pt-2 pb-0 d-flex flex-row">
+        <div className="bg-light rounded-4 p-2" style={{ height: '60px', width: '70px' }}>
+          <img src="assets/img/deployAndRun.webp" alt="Deploy And Run Transactions" className="img-fluid" height={50} width={50} style={{ filter: 'invert(1)' }} />
+        </div>
+        <div className="d-flex flex-column ms-2">
+          <h6>Deploy And Run Transactions</h6>
+          <div className="">Execute, save and replay transactions.</div>
+        </div>
+      </section>
+    )
+  }
+
   const PluginHeading = ({ plugin }: {plugin: PluginRecord}) => {
 
     return (

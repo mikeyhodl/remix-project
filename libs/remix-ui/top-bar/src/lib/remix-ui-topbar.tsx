@@ -571,7 +571,7 @@ export function RemixUiTopbar() {
               data-id="topbar-themeIcon-toggle"
               style={{
                 padding: '0.35rem 0.5rem',
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
               }}
               onClick={async () => {
                 setShowTheme(!showTheme)
