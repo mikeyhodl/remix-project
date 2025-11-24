@@ -70,27 +70,27 @@ export function TopCards() {
         >
           <i className="me-2 far fa-upload"></i>
           <input
-              ref={importFileInputRef}
-              type="file"
-              id="importFilesInput"
-              multiple
-              className="d-none"
-              onChange={async (e) => {
-                e.stopPropagation()
-                if (e.target.files.length === 0 || !e.target.files) return
-                await uploadFolder(e.target, '/')
-                setImportFiles(false)
-                trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportFiles', name: 'success' })
-                facade.closeWizard()
-              }}
-              {...enableDirUpload}
-            />
+            ref={importFileInputRef}
+            type="file"
+            id="importFilesInput"
+            multiple
+            className="d-none"
+            onChange={async (e) => {
+              e.stopPropagation()
+              if (e.target.files.length === 0 || !e.target.files) return
+              await uploadFolder(e.target, '/')
+              setImportFiles(false)
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportFiles', name: 'success' })
+              facade.closeWizard()
+            }}
+            {...enableDirUpload}
+          />
           <span className="fw-light">Import from local file system</span>
         </li>
         <li
           className="d-flex flex-row align-items-center import-option-item"
           onClick={() => {
-            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles'})
+            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
           }}
         >
@@ -138,15 +138,22 @@ export function TopCards() {
           data-id="create-with-ai-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
           onClick={async () => {
+            const currentPinned = await plugin.call('pinnedPanel', 'currentFocus')
+            let aiPluginProfile = await plugin.call('remixaiassistant', 'getProfile')
             if (state.manageCategory === 'Template') {
               dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
-              await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
+              if (currentPinned !== aiPluginProfile.name) {
+                await plugin.call('sidePanel', 'pinView', aiPluginProfile)
+              }
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
             } else {
-              await plugin.call('sidePanel', 'pinView', await plugin.call('remixaiassistant', 'getProfile'))
+              if (currentPinned !== aiPluginProfile.name) {
+                await plugin.call('sidePanel', 'pinView', aiPluginProfile)
+              }
               facade.closeWizard()
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateFileWithAi', name: 'success' })
             }
+            aiPluginProfile = null
           }}
           style={{
             borderRadius: '10px',
