@@ -164,6 +164,8 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       )
   }, [state.selectedTag, state.searchTerm, state.templateRepository])
 
+  const fileModeOnlyCategories = useMemo(() => new Set(['GitHub Actions', 'Contract Verification', 'Solidity CREATE2', 'Generic ZKP']), [])
+
   const dedupedTemplates = useMemo((): TemplateCategory[] => {
     const recentSet = new Set<string>((recentTemplates || []).map((t: any) => t && t.value))
     const seen = new Set<string>()
@@ -180,7 +182,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       return unique
     }
 
-    const processedTemplates = (filteredTemplates || []).map((group: any) => ({
+    let processedTemplates = (filteredTemplates || []).map((group: any) => ({
       ...group,
       items: makeUniqueItems(group && group.items ? group.items : [])
     })).filter((g: any) => {
@@ -192,12 +194,20 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
       )
     })
 
+    if (state.manageCategory === 'Template') {
+      // Hide file-only categories when managing templates (workspace creation mode).
+      processedTemplates = processedTemplates.filter((category: TemplateCategory) => !fileModeOnlyCategories.has(category?.name))
+    } else if (state.manageCategory === 'Files') {
+      // In file mode, only surface the file-only categories.
+      processedTemplates = processedTemplates.filter((category: TemplateCategory) => fileModeOnlyCategories.has(category?.name))
+    }
+
     // Find Cookbook from the original template repository
     const cookbookTemplate = (state.templateRepository as TemplateCategory[] || []).find(x => x.name === 'Cookbook')
     const searchTerm = (state.searchTerm || '').trim().toLowerCase()
 
     // Only add Cookbook if there's no search term or if the search term contains "cookbook"
-    const shouldShowCookbook = !searchTerm || searchTerm.includes('cookbook')
+    const shouldShowCookbook = state.manageCategory !== 'Files' && (!searchTerm || searchTerm.includes('cookbook'))
 
     // If Cookbook exists and should be shown and is not already in processedTemplates, add it as the second item
     if (cookbookTemplate && shouldShowCookbook && !processedTemplates.find(t => t.name === 'Cookbook')) {
@@ -209,7 +219,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
 
     return processedTemplates
-  }, [filteredTemplates, recentTemplates, state.templateRepository, state.searchTerm])
+  }, [filteredTemplates, recentTemplates, state.manageCategory, state.templateRepository, state.searchTerm, fileModeOnlyCategories])
 
   const handleTagClick = (tag: string) => {
     dispatch({ type: TemplateExplorerWizardAction.SET_SELECTED_TAG, payload: state.selectedTag === tag ? null : tag })
