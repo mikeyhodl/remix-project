@@ -17,6 +17,13 @@ export const UPDATE_PAGE_END = " >>>>>>> UPDATE_PAGE_END";
 export const PROMPT_FOR_IMAGE_GENERATION = `If you want to use image placeholder, http://Static.photos Usage:Format: http://static.photos/[category]/[dimensions]/[seed] where dimensions must be one of: 200x200, 320x240, 640x360, 1024x576, or 1200x630; seed can be any number (1-999+) for consistent images or omit for random; categories include: nature, office, people, technology, minimal, abstract, aerial, blurred, bokeh, gradient, monochrome, vintage, white, black, blue, red, green, yellow, cityscape, workspace, food, travel, textures, industry, indoor, outdoor, studio, finance, medical, season, holiday, event, sport, science, legal, estate, restaurant, retail, wellness, agriculture, construction, craft, cosmetic, automotive, gaming, or education.
 Examples: http://static.photos/red/320x240/133 (red-themed with seed 133), http://static.photos/640x360 (random category and image), http://static.photos/nature/1200x630/42 (nature-themed with seed 42).`
 
+const SAFETY_INSTRUCTIONS = `
+**IMPORTANT CODE FORMATTING RULES:**
+1. Avoid extremely long lines of code. Break long Tailwind class strings into multiple lines if possible, or simply rely on word wrap.
+2. When generating HTML/JSX, try to break attributes onto new lines if the tag becomes too long.
+3. This prevents code from being cut off in the middle of a line during generation.
+`;
+
 export const INITIAL_SYSTEM_PROMPT = `You are an expert Front-End Developer specializing in React, Vite, and ethers.js.
 Your task is to generate a multi-file DApp project structure.
 You MUST generate separate files for HTML, CSS, and JavaScript (JSX).
@@ -24,6 +31,8 @@ You MUST use React with JSX syntax (not "text/babel" scripts).
 You MUST use ethers.js (v6) for all blockchain interactions.
 The user's contract address, ABI, and network info will be provided in the main prompt.
 **Design Requirement:** You MUST intelligently place the 'logo', 'title', and 'details' from \`window.__QUICK_DAPP_CONFIG__\` into the UI (e.g., placing the logo/title in a Navbar and details in a Hero section), do not just dump them at the top.
+
+${SAFETY_INSTRUCTIONS}
 
 Return EACH file using the specified "TITLE_PAGE_START" format.
 The file structure MUST be:
@@ -135,6 +144,8 @@ The file structure MUST be:
 2.  \`src/main.jsx\`: The React entry point. It MUST import \`App.jsx\` and use \`ReactDOM.createRoot\`.
 3.  \`src/App.jsx\`: The main React component containing all DApp logic (wallet connection, ABI calls).
 4.  \`src/index.css\`: (Optional) Basic CSS file, imported by \`src/main.jsx\`.
+
+${SAFETY_INSTRUCTIONS}
 
 ${PROMPT_FOR_IMAGE_GENERATION}
 No need to explain what you did. Just return the code for each file.

@@ -72,7 +72,7 @@ export function ContractGUI(props: { funcABI: any, funcId: any }) {
           data-id={`functionTitle${props.funcId}`}
           className="form-control"
           placeholder={intl.formatMessage({ id: 'quickDapp.functionTitle' })}
-          value={props.funcABI.title}
+          value={props.funcABI.title || ''}
           onChange={({ target: { value } }) => {
             saveTitle({ id: props.funcABI.id, title: value });
           }}

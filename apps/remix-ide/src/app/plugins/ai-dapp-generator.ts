@@ -256,42 +256,103 @@ export class AIDappGenerator extends Plugin {
     const apikey = param.get()['fireworksapikey']
 
     if (!apikey) {
-      throw new Error('Fireworks API key not found in URL parameters. Please add ?fireworksapikey=your_key to the URL.')
+      throw new Error('Fireworks API key not found. Please check URL parameters.')
     }
-    
-    const response = await fetch("https://api.fireworks.ai/inference/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apikey}`
-      },
-      body: JSON.stringify({
-        model: "accounts/fireworks/models/deepseek-v3p1-terminus",
-        max_tokens: 4096,
-        top_p: 1,
-        top_k: 40,
-        presence_penalty: 0,
-        frequency_penalty: 0,
-        temperature: 0.6,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ]
+
+    let currentMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ]
+
+    let accumulatedContent = ""
+    let finishReason = "length"
+    let loopCount = 0
+    const MAX_LOOPS = 5
+
+    console.log('[AI-DAPP] Starting generation...')
+
+    while (finishReason === "length" && loopCount < MAX_LOOPS) {
+      loopCount++
+      
+      const response = await fetch("https://api.fireworks.ai/inference/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apikey}`
+        },
+        body: JSON.stringify({
+          model: "accounts/fireworks/models/deepseek-v3p1-terminus",
+          max_tokens: 4096,
+          top_p: 1,
+          top_k: 40,
+          presence_penalty: 0,
+          frequency_penalty: 0,
+          temperature: 0.6,
+          messages: currentMessages
+        })
       })
-    })
 
-    const json = await response.json()
+      const json = await response.json()
 
-    if (json.error) {
-      throw new Error(`LLM API Error: ${JSON.stringify(json.error)}`)
+      if (json.error) throw new Error(`LLM API Error: ${JSON.stringify(json.error)}`)
+      if (!json.choices?.[0]?.message) throw new Error('Invalid response from LLM API')
+
+      let content = json.choices[0].message.content
+      finishReason = json.choices[0].finish_reason
+
+      if (loopCount > 1) {
+        content = content.replace(/^```[\w]*\n?/, "")
+      }
+
+      if (accumulatedContent.length > 0) {
+        const lastLines = accumulatedContent.trimEnd().split('\n')
+        const lastLine = lastLines[lastLines.length - 1].trim()
+        
+        const firstNewlineIndex = content.indexOf('\n')
+        let firstLineOfNewContent = ""
+        
+        if (firstNewlineIndex !== -1) {
+            firstLineOfNewContent = content.substring(0, firstNewlineIndex).trim()
+        } else {
+            firstLineOfNewContent = content.trim()
+        }
+
+        if (lastLine.length > 5 && firstLineOfNewContent.includes(lastLine)) {
+            content = firstNewlineIndex !== -1 ? content.substring(firstNewlineIndex + 1) : ""
+        }
+      }
+
+      if (finishReason === "length") {
+        const lastNewlineIndex = content.lastIndexOf('\n')
+        
+        if (lastNewlineIndex !== -1 && lastNewlineIndex < content.length - 1) {
+            content = content.substring(0, lastNewlineIndex + 1)
+        }
+      } else {
+        content = content.replace(/```$/, "")
+      }
+
+      accumulatedContent += content
+
+      if (finishReason === "length") {
+        const allLines = accumulatedContent.trim().split('\n')
+        const lastCompleteLine = allLines[allLines.length - 1]
+
+        currentMessages.push({ role: "assistant", content: content })
+        
+        currentMessages.push({ 
+          role: "user", 
+          content: `You stopped due to length limits. The last line you wrote completely was:
+"${lastCompleteLine}"
+
+Please continue generating the code starting immediately AFTER that line. 
+Do NOT repeat that line. 
+Do NOT output markdown code blocks.` 
+        })
+      }
     }
-
-    if (!json.choices || !json.choices[0] || !json.choices[0].message) {
-      throw new Error('Invalid response from LLM API')
-    }
-    console.log('LLM Response:', json)
-    return json.choices[0].message.content
+    return accumulatedContent
   }
 }
 
@@ -317,8 +378,29 @@ const data =
         "completion_tokens": 2802
     }
 }
+  
+  const cleanFileContent = (content: string, filename: string): string => {
+    let cleaned = content.trim()
 
-// Helper function to ensure HTML has complete structure
+    cleaned = cleaned.replace(/^```[\w-]*\n?/gm, '')
+    cleaned = cleaned.replace(/```$/gm, '')
+
+    const strayTags = ['javascript', 'typescript', 'html', 'css', 'jsx', 'tsx', 'json']
+    for (const tag of strayTags) {
+      if (cleaned.toLowerCase().startsWith(tag)) {
+        const regex = new RegExp(`^${tag}\\s*\\n?`, 'i')
+        cleaned = cleaned.replace(regex, '')
+      }
+    }
+
+    if (filename.endsWith('.html')) {
+      cleaned = cleaned.replace(/(<script[^>]*>)\s*javascript\s*/gi, '$1\n')
+    }
+
+    return cleaned.trim()
+  }
+
+  // Helper function to ensure HTML has complete structure
   const ensureCompleteHtml = (html: string): string => {
     let completeHtml = html;
 
@@ -359,29 +441,33 @@ const data =
 
   const parsePages = (content: string) => {
     const pages = {}
-    const markerRegex = /<<<<<<< START_TITLE (.*?) >>>>>>> END_TITLE/g;
+    const markerRegex = /<<<<<<< START_TITLE (.*?) >>>>>>> END_TITLE/g
 
     if (!content.match(markerRegex)) {
-      return pages;
+      return pages
     }
 
-    const parts = content.split(markerRegex);
+    const parts = content.split(markerRegex)
     
     for (let i = 1; i < parts.length; i += 2) {
-      const filename = parts[i].trim();
-      const rawFileContent = parts[i + 1];
+      const filename = parts[i].trim()
+      let rawFileContent = parts[i + 1]
 
       if (filename && rawFileContent) {
-        const fileContent = extractHtmlContent(rawFileContent);
+        let cleanContent = cleanFileContent(rawFileContent, filename)
         
-        if (fileContent) {
-          pages[filename] = fileContent;
+        if (filename.endsWith('.html')) {
+            cleanContent = ensureCompleteHtml(cleanContent)
+        }
+
+        if (cleanContent) {
+          pages[filename] = cleanContent;
         }
       }
     }
     
-    return pages;
-  };
+    return pages
+  }
 
 /**
  * Parse formatted HTML content with special markers

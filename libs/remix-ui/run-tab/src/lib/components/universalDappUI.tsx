@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useContext, useEffect, useState, useRef } from 'react'
+import React, { useContext, useEffect, useState, useRef, useCallback } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import IpfsHttpClient from 'ipfs-http-client'
 import { UdappProps } from '../types'
@@ -30,12 +30,35 @@ export function UniversalDappUI(props: UdappProps) {
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [evmBC, setEvmBC] = useState(null)
   const [instanceBalance, setInstanceBalance] = useState(0)
+  
   const isGenerating = useRef(false)
+  const [useNewAiBuilder, setUseNewAiBuilder] = useState(false)
+
+  const checkUrlParams = useCallback(() => {
+    const qp = new QueryParams()
+    const params = qp.get()
+    const hasKey = !!params['fireworksapikey']
+    
+    setUseNewAiBuilder(prev => {
+      if (prev !== hasKey) {
+        console.log('[UniversalDappUI] API Key status changed:', hasKey)
+        return hasKey
+      }
+      return prev
+    })
+  }, [])
+
+  useEffect(() => {
+    checkUrlParams()
+    window.addEventListener('hashchange', checkUrlParams)
+    return () => {
+      window.removeEventListener('hashchange', checkUrlParams)
+    }
+  }, [checkUrlParams])
 
   useEffect(() => {
     if (!props.instance.abi) {
       const abi = txHelper.sortAbiFunction(props.instance.contractData.abi)
-
       setContractABI(abi)
     } else {
       setContractABI(props.instance.abi)
@@ -303,7 +326,9 @@ export function UniversalDappUI(props: UdappProps) {
             </span>
             <div></div>
             <div className="btn d-flex p-0 align-self-center">
-              {props.exEnvironment && (
+              
+              {/* [V2 Logic] New AI Builder Mode (Sparkles) */}
+              {useNewAiBuilder && props.exEnvironment && (
                 <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappEditTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextEdit" />}>
                   <i
                     data-id="instanceEditIcon"
@@ -318,12 +343,6 @@ export function UniversalDappUI(props: UdappProps) {
                                 <span>Please describe how you would want the design to look like.</span>
                               </div>
                               <div>This might take up to 2 minutes.</div>
-                              {/* <button className="btn btn-secondary btn-sm ms-2" onClick={async () => {
-                                await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
-                                const lastGenerated = await props.plugin.call('ai-dapp-generator', 'getLastGeneratedDapp', address)
-                                props.editInstance(address, props.instance.abi, props.instance.name, data.artefact.devdoc, data.artefact.metadata, lastGenerated)
-                                props.plugin.call('manager', 'deactivatePlugin', 'iframeContent')
-                              }}>Reset Dapp</button> */}
                             </ul>
                         )
                         const modalContent = {
@@ -338,7 +357,7 @@ export function UniversalDappUI(props: UdappProps) {
                           cancelFn: () => setTimeout(() => reject(new Error('Canceled')), 0),
                           hideFn: () => setTimeout(() => reject(new Error('Hide')), 0)
                         }
-                        // @ts-ignore – the notification plugin's modal signature
+                        // @ts-ignore
                         props.plugin.call('notification', 'modal', modalContent)
                       })
 
@@ -351,20 +370,19 @@ export function UniversalDappUI(props: UdappProps) {
 
                       await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
                       try {
-                        await props.plugin.call('quick-dapp', 'clearInstance')
+                        await props.plugin.call('quick-dapp-v2', 'clearInstance')
                       } catch (e) {
                         console.warn('Quick Dapp clean up failed (plugin might not be loaded yet):', e)
                       }
 
                       try {
-                        await props.plugin.call('quick-dapp', 'startAiLoading')
+                        await props.plugin.call('quick-dapp-v2', 'startAiLoading')
                       } catch (e) {
                         console.warn('Failed to start loading state:', e)
                       }
 
-                      // Use the AI DApp Generator plugin
                       await generateAIDappWithPlugin(description, address, data, props)
-                      await props.plugin.call('tabs', 'focus', 'quick-dapp')
+                      await props.plugin.call('tabs', 'focus', 'quick-dapp-v2')
                       } catch (error) {
                         if (error.message !== 'Canceled' && error.message !== 'Hide') {
                           console.error('Error generating DApp:', error)
@@ -377,6 +395,20 @@ export function UniversalDappUI(props: UdappProps) {
                   ></i>
                 </CustomTooltip>
               )}
+
+              {/* [V1 Logic] Legacy Edit Mode (Pencil) */}
+              {!useNewAiBuilder && props.exEnvironment && props.exEnvironment.startsWith('injected') && (
+                <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappEditTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextEdit" />}>
+                  <i
+                    data-id="instanceEditIcon"
+                    className="fas fa-edit"
+                    onClick={() => {
+                      props.editInstance(props.instance)
+                    }}
+                  ></i>
+                </CustomTooltip>
+              )}
+
             </div>
           </div>
           { props.instance.isPinned && props.instance.pinnedAt ? (
@@ -547,4 +579,3 @@ const generateAIDappWithPlugin = async (description: string, address: string, co
     await props.plugin.call('terminal', 'log', { type: 'error', value: error.message })
   }
 }
-

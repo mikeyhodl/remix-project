@@ -58,6 +58,7 @@ const pluginCategories: Record<string, number[]> = {
   'doc-gen': [7],
   'LearnEth': [7],
   'quick-dapp': [7, 2],
+  'quick-dapp-v2': [7, 2],
   'remixGuide': [7],
   'UIScriptRunner': [7],
   'sentio-remix-plugin': [7],
