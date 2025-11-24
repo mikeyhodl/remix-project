@@ -97,10 +97,12 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
               type: appActionTypes.showGenericModal,
               payload: true
             })
-          }}>
+          }}
+          data-id="fileExplorerCreateButton"
+          >
             <i className="far fa-plus text-white me-3"></i> <span className="text-white fw-semibold">Create</span>
           </button>
-          {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
+          {/* {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
             if (platforms && !platforms.includes(platform)) return null
             if (action === 'uploadFile') {
               return (
@@ -229,7 +231,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 </CustomTooltip>
               )
             }
-          }) : null}
+          }) : null} */}
         </span>
       </>)
   )

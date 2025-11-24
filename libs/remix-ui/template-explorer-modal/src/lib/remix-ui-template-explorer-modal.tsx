@@ -25,7 +25,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
     baseTrackEvent?.<T>(event)
   }
   return (
-    <section data-id="template-explorer-modal-react">
+    <section data-id="template-explorer-modal-react" data-path={`templateExplorerModal-${state.manageCategory}`}>
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
         <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: props.appState.genericModalState.width, height: props.appState.genericModalState.height }}>
           <div className="template-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">

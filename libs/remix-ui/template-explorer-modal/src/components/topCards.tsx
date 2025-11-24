@@ -6,6 +6,7 @@ import { createWorkspace, switchToWorkspace, uploadFolder, uploadFolderExcluding
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 import { MatomoCategories } from '@remix-api'
 import { useOnClickOutside } from 'libs/remix-ui/remix-ai-assistant/src/components/onClickOutsideHook'
+import { createNewFile } from 'libs/remix-ui/workspace/src/lib/actions'
 
 export function TopCards() {
   const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
@@ -53,6 +54,7 @@ export function TopCards() {
           left: `${importOptionsPosition.left}px`,
           width: '298px'
         }}
+        data-id="importOptionsMenu"
       >
         <li
           className="d-flex flex-row align-items-center import-option-item"
@@ -60,6 +62,7 @@ export function TopCards() {
             dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
           }}
+          data-id="importOptionsMenuIPFS"
         >
           <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
         <li
@@ -67,6 +70,7 @@ export function TopCards() {
           onClick={() => {
             importFileInputRef.current?.click()
           }}
+          data-id="importOptionsMenuLocalFileSystem"
         >
           <i className="me-2 far fa-upload"></i>
           <input
@@ -93,6 +97,7 @@ export function TopCards() {
             dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
           }}
+          data-id="importOptionsMenuHTTPS"
         >
           <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
       </ul>
@@ -105,12 +110,18 @@ export function TopCards() {
         <div
           data-id="create-blank-workspace-topcard"
           className={`explora-topcard d-flex flex-row align-items-center bg-light p-4 shadow-sm border-0`}
-          onClick={() => {
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: 'Generic' })
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: 'Blank' })
-            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'generic' })
-            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateBlank', name: 'success' })
+          onClick={async () => {
+            if (state.manageCategory === 'Template') {
+              dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
+              dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: 'Generic' })
+              dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: 'Blank' })
+              dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'generic' })
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateBlank', name: 'success' })
+            } else {
+              // plugin.call('fileManager', '', '')
+              await createNewFile('blank', '/')
+              facade.closeWizard()
+            }
           }}
           style={{
             borderRadius: '10px',
