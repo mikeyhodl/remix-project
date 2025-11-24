@@ -49,6 +49,7 @@ export class CodeExecutor {
 
     try {
       this.validateCode(code);
+      console.log('[MCP Code mode] - Executing code \n', code)
       const context = this.createExecutionContext();
       const result = await this.executeWithTimeout(code, context);
       const executionTime = Date.now() - startTime;
@@ -78,8 +79,6 @@ export class CodeExecutor {
   private validateCode(code: string): void {
     // Check for dangerous patterns
     const dangerousPatterns = [
-      /\brequire\s*\(/,
-      /\bimport\s+/,
       /\bprocess\./,
       /\b__dirname\b/,
       /\b__filename\b/,

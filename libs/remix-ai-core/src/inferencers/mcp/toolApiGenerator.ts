@@ -8,14 +8,32 @@ export class ToolApiGenerator {
   generateAPIDescription(): string {
     return `
 Use callMCPTool(toolName, args) to call tools. You can perform multiple tasks by chaining tool calls.
+Each callMCPTool returns a object according to this interface
+export interface IMCPToolResult {
+  content: Array<{
+    type: 'text' | 'image' | 'resource';
+    text?: string;
+    data?: string;
+    mimeType?: string;
+  }>;
+  isError?: boolean;
+}
 
 Examples:
-// Single task
-const file = await callMCPTool('file_read', { path: 'contract.sol' });
+// Reading files - returns string content directly
+const fileContent = await callMCPTool('file_read', { path: 'contract.sol' });
+const modified = fileContent.replace('old', 'new');
 
-// Multiple tasks
+// Multiple tasks 1
 const compiled = await callMCPTool('solidity_compile', { file: 'contract.sol' });
 const deployed = await callMCPTool('deploy_contract', { contractName: 'MyToken' });
+
+// Multiple tasks 2
+const fileContent = await callMCPTool('file_read', { path:'contract.sol' });
+const content = JSON.parse(fileContent.content[0].text).content
+const updatedContent = fileContent.replace('contract Subscription', 'contract MySubscriptionContract');
+await callMCPTool('file_write', { path: 'ccontract.sol', content: updatedContent });
+
 
 // With loops for batch operations
 const files = ['contracts/Token.sol', 'contracts/NFT.sol', 'contracts/DAO.sol'];

@@ -772,10 +772,7 @@ ${toolsList}`,
             throw new Error(`Tool '${innerToolCall.name}' not found in any connected MCP server`);
           }
 
-          console.log(`[MCP Code Mode] Executing tool ${innerToolCall.name} from server ${targetServer}`);
           const result = await this.executeTool(targetServer, innerToolCall);
-          console.log(`[MCP Code Mode] inner tool ${innerToolCall.name} produced result`)
-          console.log(result)
           return result
         },
         30000 // 30 second timeout

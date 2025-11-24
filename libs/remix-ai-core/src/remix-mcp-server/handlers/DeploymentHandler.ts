@@ -136,7 +136,6 @@ export class DeployContractHandler extends BaseToolHandler {
       }
 
       const receipt = (txReturn.txResult.receipt)
-      console.log("receipt is", receipt)
       const result: DeploymentResult = {
         transactionHash: receipt.hash,
         gasUsed: toNumber(receipt.gasUsed),
