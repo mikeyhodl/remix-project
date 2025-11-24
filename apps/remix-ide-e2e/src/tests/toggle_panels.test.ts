@@ -83,8 +83,64 @@ module.exports = {
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-udapp"]')
       .waitForElementVisible('.codicon-layout-sidebar-right')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-solidity"]')
-      .click('*[data-pinnedplugin="movePluginToLeft-udapp"]')
-      .end()
+  },
+  'Hide left side panel using toggle icon on top bar #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('#side-panel')
+      .waitForElementVisible('.codicon-layout-sidebar-left')
+      .click('*[data-id="toggleLeftSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left-off')
+      .waitForElementNotVisible('#side-panel')
+      // Make sure other panels are visible
+      .waitForElementVisible('#right-side-panel')
+      .waitForElementVisible('.terminal-wrap')
+  },
+  'Reload & use vertical icon panel and top bar toggle icon to toggle left side bar #group1': function (browser: NightwatchBrowser) {
+    browser
+      .refreshPage()
+      .waitForElementVisible('.codicon-layout-sidebar-left-off')
+      .waitForElementNotVisible('#side-panel')
+      .waitForElementVisible('*[data-id="verticalIconsKindsolidity"]')
+      .click('*[data-id="verticalIconsKindsolidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left')
+      .waitForElementVisible('#side-panel')
+      .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-solidity"]')
+      .click('*[data-id="toggleLeftSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left-off')
+      .waitForElementNotVisible('#side-panel')
+      .click('*[data-id="toggleLeftSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left')
+      .waitForElementVisible('#side-panel')
+  },
+  'Hide bottom terminal panel using toggle icon on top bar #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('.codicon-layout-panel')
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.codicon-layout-panel-off')
+      .waitForElementNotVisible('.terminal-wrap')
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('.codicon-layout-panel')
+  },
+  'Hide all three panels using toggle icons on top bar, reload and ensure all are hidden #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="toggleLeftSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left')
+      .waitForElementVisible('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.codicon-layout-panel')
+      .waitForElementVisible('*[data-id="toggleRightSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
+      .click('*[data-id="toggleRightSidePanelIcon"]')
+      .click('*[data-id="toggleLeftSidePanelIcon"]')
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .refreshPage()
+      .waitForElementVisible('.codicon-layout-sidebar-left-off')
+      .waitForElementNotVisible('#side-panel')
+      .waitForElementVisible('.codicon-layout-panel-off')
+      .waitForElementNotVisible('.terminal-wrap')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementNotVisible('#right-side-panel')
   },
   'Check if right side panel is hidden when app is in desktop client mode #group1': function (browser: NightwatchBrowser) {
     browser
