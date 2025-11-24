@@ -44,24 +44,29 @@ export class RightSidePanel extends AbstractPanel {
     let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
 
     if (panelStates.rightSidePanel) {
-      this.isHidden = panelStates.rightSidePanel.isHidden || false
-
-      // Apply d-none class to hide the panel on reload if it was hidden
-      if (this.isHidden) {
-        const pinnedPanel = document.querySelector('#right-side-panel')
-        pinnedPanel?.classList.add('d-none')
-        // Initialize hiddenPlugin from panelStates if we have a pluginProfile
-        if (panelStates.rightSidePanel.pluginProfile) {
+      // If no plugin profile exists, ensure the panel is hidden
+      if (!panelStates.rightSidePanel.pluginProfile) {
+        this.isHidden = true
+        this.hiddenPlugin = null
+      } else {
+        this.isHidden = panelStates.rightSidePanel.isHidden || false
+        // Apply d-none class to hide the panel on reload if it was hidden
+        if (this.isHidden) {
           this.hiddenPlugin = panelStates.rightSidePanel.pluginProfile
         } else {
           this.hiddenPlugin = null
         }
-      } else {
-        this.hiddenPlugin = null
+      }
+
+      if (this.isHidden) {
+        const pinnedPanel = document.querySelector('#right-side-panel')
+        pinnedPanel?.classList.add('d-none')
+        this.emit('rightSidePanelHidden')
+        this.events.emit('rightSidePanelHidden')
       }
     } else {
-      // Initialize with default state if not found
-      this.isHidden = false
+      // Initialize with default state if not found - no plugin pinned means hidden
+      this.isHidden = true
       this.hiddenPlugin = null
       // Note: pluginProfile will be set when a plugin is pinned
       panelStates.rightSidePanel = {
@@ -69,23 +74,14 @@ export class RightSidePanel extends AbstractPanel {
         pluginProfile: null
       }
       window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      pinnedPanel?.classList.add('d-none')
+      this.emit('rightSidePanelHidden')
+      this.events.emit('rightSidePanelHidden')
     }
   }
 
   async pinView (profile, view) {
-    // Only show the panel if we're pinning a different plugin than the one that's currently hidden
-    if (this.hiddenPlugin && this.hiddenPlugin.name !== profile.name) {
-      const pinnedPanel = document.querySelector('#right-side-panel')
-      pinnedPanel?.classList.remove('d-none')
-      this.hiddenPlugin = null
-      this.isHidden = false
-      // Update panelStates
-      const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
-      panelStates.rightSidePanel = { isHidden: false, pluginProfile: profile }
-      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
-      this.events.emit('rightSidePanelShown')
-      this.emit('rightSidePanelShown')
-    }
     const activePlugin = this.currentFocus()
 
     if (activePlugin === profile.name) throw new Error(`Plugin ${profile.name} already pinned`)
@@ -97,36 +93,50 @@ export class RightSidePanel extends AbstractPanel {
     this.addView(profile, view)
     this.plugins[profile.name].pinned = true
     this.plugins[profile.name].active = true
-    // Read isHidden state from panelStates
-    const panelStates = window.localStorage.getItem('panelStates')
-    let isHidden = false
-    if (panelStates) {
-      try {
-        const states = JSON.parse(panelStates)
-        if (states.rightSidePanel?.isHidden) {
-          isHidden = true
-          const pinnedPanel = document.querySelector('#right-side-panel')
-          pinnedPanel?.classList.add('d-none')
-          this.hiddenPlugin = profile
-          this.isHidden = true
-        }
-      } catch (e) {}
-    }
-    if (!isHidden && !this.hiddenPlugin) {
+
+    // When pinning a plugin, check if panel was hidden because no plugin was pinned
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    const wasHiddenWithNoPlugin = this.isHidden && !panelStates.rightSidePanel?.pluginProfile
+
+    // Show the panel if it was hidden due to no plugin being pinned
+    if (wasHiddenWithNoPlugin) {
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      pinnedPanel?.classList.remove('d-none')
+      this.hiddenPlugin = null
       this.isHidden = false
       this.events.emit('rightSidePanelShown')
       this.emit('rightSidePanelShown')
+    } else if (this.hiddenPlugin && this.hiddenPlugin.name !== profile.name) {
+      // Only show the panel if we're pinning a different plugin than the one that's currently hidden
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      pinnedPanel?.classList.remove('d-none')
+      this.hiddenPlugin = null
+      this.isHidden = false
+      this.events.emit('rightSidePanelShown')
+      this.emit('rightSidePanelShown')
+    } else if (this.hiddenPlugin && this.hiddenPlugin.name === profile.name) {
+      // If we're pinning the same plugin that was hidden, keep it hidden
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      pinnedPanel?.classList.add('d-none')
+      this.hiddenPlugin = profile
+      this.isHidden = true
     }
+
+    if (!this.isHidden && !this.hiddenPlugin) {
+      this.events.emit('rightSidePanelShown')
+      this.emit('rightSidePanelShown')
+    }
+
     // Save pinned plugin profile to panelStates
     const updatedPanelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
     updatedPanelStates.rightSidePanel = {
-      isHidden: isHidden,
+      isHidden: this.isHidden,
       pluginProfile: profile
     }
     window.localStorage.setItem('panelStates', JSON.stringify(updatedPanelStates))
     this.renderComponent()
-    this.events.emit('pinnedPlugin', profile, isHidden)
-    this.emit('pinnedPlugin', profile, isHidden)
+    this.events.emit('pinnedPlugin', profile, this.isHidden)
+    this.emit('pinnedPlugin', profile, this.isHidden)
   }
 
   async unPinView (profile) {
@@ -135,14 +145,22 @@ export class RightSidePanel extends AbstractPanel {
     if (activePlugin !== profile.name) throw new Error(`Plugin ${profile.name} is not pinned`)
     await this.call('sidePanel', 'unPinView', profile, this.plugins[profile.name].view)
     super.remove(profile.name)
-    // Clear hiddenPlugin and panel state from localStorage
+    // Clear hiddenPlugin and set panel to hidden state when no plugin is pinned
     this.hiddenPlugin = null
+    this.isHidden = true
+    const pinnedPanel = document.querySelector('#right-side-panel')
+    pinnedPanel?.classList.add('d-none')
     const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
-    delete panelStates.rightSidePanel
+    panelStates.rightSidePanel = {
+      isHidden: true,
+      pluginProfile: null
+    }
     window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
     this.renderComponent()
     this.events.emit('unPinnedPlugin', profile)
     this.emit('unPinnedPlugin', profile)
+    this.emit('rightSidePanelHidden')
+    this.events.emit('rightSidePanelHidden')
   }
 
   getHiddenPlugin() {
@@ -155,6 +173,26 @@ export class RightSidePanel extends AbstractPanel {
     const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
     const currentPlugin = this.currentFocus()
     const pluginProfile = currentPlugin && this.plugins[currentPlugin] ? this.plugins[currentPlugin].profile : null
+
+    // Check if no plugin is pinned
+    if (!pluginProfile) {
+      this.call('notification', 'toast', 'No plugin pinned on right side panel')
+      // Ensure the panel is hidden and toggle icon is off
+      if (!this.isHidden) {
+        this.isHidden = true
+        pinnedPanel?.classList.add('d-none')
+        this.emit('rightSidePanelHidden')
+        this.events.emit('rightSidePanelHidden')
+        panelStates.rightSidePanel = {
+          isHidden: this.isHidden,
+          pluginProfile: null
+        }
+        window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+        this.renderComponent()
+      }
+      return
+    }
+
     if (this.isHidden) {
       this.isHidden = false
       pinnedPanel?.classList.remove('d-none')
