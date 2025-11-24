@@ -98,13 +98,10 @@ export class DeployContractHandler extends BaseToolHandler {
 
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log("Executing deploy_contract with", args.file)
       // Get compilation result to find contract
       const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
       const data = getContractData(args.contractName, compilerAbstract)
       if (!data) {
-        console.log("compilerAbstract", compilerAbstract)
-        console.log("data", data)
         return this.createErrorResult(`Could not retrieve contract data for '${args.contractName}'`);
       }
 

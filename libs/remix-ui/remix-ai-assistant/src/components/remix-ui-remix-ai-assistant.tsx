@@ -387,7 +387,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
         // callback to update parsing status with minimum display time
         const updateParsingStatus = (status: string): Promise<void> => {
-          console.log(status)
           setMessages(prev =>
             prev.map(m => (m.id === parsingId ? { ...m, content: `***${status}***` } : m))
           )
@@ -450,7 +449,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
           )
-          // Add MistralAI handler here if available
           break;
         case 'anthropic':
           HandleAnthropicResponse(
@@ -462,7 +460,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
           )
-          // Add Anthropic handler here if available
           break;
         case 'ollama':
         {
