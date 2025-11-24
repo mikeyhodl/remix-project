@@ -7,10 +7,19 @@ module.exports = {
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
   },
-
+  'Check if all three toggle icons are visible on topbar #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="toggleLeftSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-left')
+      .waitForElementVisible('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.codicon-layout-panel')
+      .waitForElementVisible('*[data-id="toggleRightSidePanelIcon"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
+  },
   'Check if RemixAI plugin is pinned to right side panel on load #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="movePluginToLeft"]')
+      .waitForElementVisible('*[data-id="toggleRightSidePanelIcon"]')
       .waitForElementVisible('*[data-id="remix-ai-assistant-starter-beginner-0"]')
       .waitForElementVisible('*[data-id="remix-ai-assistant-starter-intermediate-1"]')
       .waitForElementVisible('*[data-id="remix-ai-assistant-starter-expert-2"]')
@@ -31,7 +40,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
-      .click('*[data-id="toggleRightSidePanel"]')
+      .click('*[data-id="toggleRightSidePanelIcon"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
   'Toggle right side panel, reload IDE, panel state should persist #group1': function (browser: NightwatchBrowser) {
@@ -40,8 +49,8 @@ module.exports = {
       .click('*[data-id="hideRightSidePanel"]')
       .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
       .refresh()
-      .waitForElementVisible('*[data-id="toggleRightSidePanel"')
-      .click('*[data-id="toggleRightSidePanel"]')
+      .waitForElementVisible('*[data-id="toggleRightSidePanelIcon"')
+      .click('*[data-id="toggleRightSidePanelIcon"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
   },
   'Swap pinned plugin from right side panel when panel is hidden #group1': function (browser: NightwatchBrowser) {
