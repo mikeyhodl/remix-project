@@ -150,6 +150,7 @@ export function TopCards() {
               if (currentPinned !== aiPluginProfile.name) {
                 await plugin.call('sidePanel', 'pinView', aiPluginProfile)
               }
+              await plugin.call('remixaiassistant', 'handleExternalMessage', 'What file do you want me to create?')
               facade.closeWizard()
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateFileWithAi', name: 'success' })
             }
