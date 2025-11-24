@@ -100,7 +100,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
           }}
           data-id="fileExplorerCreateButton"
           >
-            <i className="far fa-plus text-white me-3"></i> <span className="text-white fw-semibold">Create</span>
+            <i className="far fa-plus text-white me-1"></i> <span className="text-white fw-semibold">Create</span>
           </button>
           {/* {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
             if (platforms && !platforms.includes(platform)) return null
