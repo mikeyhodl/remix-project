@@ -2,9 +2,6 @@ import { IMCPTool } from "../../types/mcp";
 
 export class ToolApiGenerator {
 
-  /**
-   * Generate minimal API usage instructions
-   */
   generateAPIDescription(): string {
     return `
 Use callMCPTool(toolName, args) to call tools. You can perform multiple tasks by chaining tool calls.
@@ -72,9 +69,6 @@ for (const file of files) {
     return list;
   }
 
-  /**
-   * Convert JSON schema type to TypeScript type
-   */
   private jsonSchemaToTsType(schema: any): string {
     if (!schema.type) {
       return 'any';
