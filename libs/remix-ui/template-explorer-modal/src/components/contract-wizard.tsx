@@ -12,7 +12,6 @@ import { EditorView } from '@codemirror/view'
 import { ContractTagSelector } from './contractTagSelector'
 import { MatomoCategories, MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
 import TrackingContext from '@remix-ide/tracking'
-import { exit } from 'process'
 
 const defaultStrategy: ContractTypeStrategy = {
   contractType: 'erc20',
@@ -145,14 +144,14 @@ export function ContractWizard () {
     <section className="container-fluid">
       <div className="row g-3">
         <div className="col-12 d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2">
+          {state.manageCategory === 'Template' ? <div className="d-flex align-items-center gap-2">
             {showEditModal ? <input data-id="contract-wizard-workspace-name-input" className="form-control form-control-sm" value={uniqueWorkspaceName} onChange={(e) => {
               setUniqueWorkspaceName(e.target.value)
             }} /> : <span data-id="contract-wizard-workspace-name-span" className={`fw-semibold fs-6 ${theme?.name === 'Light' ? 'text-dark' : 'text-white'}`}>
               {uniqueWorkspaceName}
             </span>}
             <i data-id="contract-wizard-edit-icon" className={`${showEditModal ? 'fas fa-lock ms-4' : " ms-4 fas fa-edit"}`} onClick={() => setShowEditModal(!showEditModal)}></i>
-          </div>
+          </div> : <div className="w-50"></div>}
           <ContractTagSelector switching={switching} />
         </div>
 
@@ -250,7 +249,7 @@ export function ContractWizard () {
               }
             }}
             >
-              <i className="far fa-check me-2"></i> 
+              <i className="far fa-check me-2"></i>
               Validate workspace
             </button>
           </div>
