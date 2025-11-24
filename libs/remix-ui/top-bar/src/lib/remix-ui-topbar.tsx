@@ -586,21 +586,21 @@ export function RemixUiTopbar() {
             openTemplateExplorer={openTemplateExplorer}
           />
           <div className="d-flex ms-4 gap-3 align-items-center" >
-            <CustomTooltip placement="bottom-start" tooltipText={`Toggle left panel`}>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Left Side Panel`}>
               <div
                 className={`codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''} fs-4`}
                 data-id="toggleLeftSidePanelIcon"
                 onClick={() => plugin.call('sidePanel', 'togglePanel')}
               ></div>
             </CustomTooltip>
-            <CustomTooltip placement="bottom-start" tooltipText={`Toggle bottom panel`}>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Bottom Panel`}>
               <div
                 className={`codicon codicon-layout-panel${bottomPanelHidden ? '-off' : ''} fs-4`}
                 data-id="toggleBottomPanelIcon"
                 onClick={() => plugin.call('terminal', 'togglePanel')}
               ></div>
             </CustomTooltip>
-            <CustomTooltip placement="bottom-start" tooltipText={`Toggle right panel`}>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Right Side Panel`}>
               <div
                 className={`codicon codicon-layout-sidebar-right${rightPanelHidden ? '-off' : ''} fs-4`}
                 data-id="toggleRightSidePanelIcon"

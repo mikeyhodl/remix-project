@@ -26,7 +26,14 @@ module.exports = {
       .waitForElementVisible('*[data-id="remix-ai-assistant-starter-expert-2"]')
       .click('*[data-id="movePluginToLeft"]')
       .waitForElementVisible('*[data-pinnedPlugin="movePluginToRight-remixaiassistant"]')
-      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off') // check the icon toggling on top bar
+      .click('*[data-id="toggleRightSidePanelIcon"]') // Check for toaster if plugin on the right side is moved to left, no plugin is pinned on the right side
+      .waitForElementVisible(
+        {
+          selector: "//*[@data-shared='tooltipPopup' and contains(.,'No plugin pinned on the Right Side Panel')]",
+          locateStrategy: 'xpath'
+        }
+      )
   },
   'Pin Solidity Compiler plugin to right side panel #group1': function (browser: NightwatchBrowser) {
     browser
@@ -35,25 +42,31 @@ module.exports = {
       .waitForElementVisible('*[data-id="movePluginToRight"]')
       .click('*[data-id="movePluginToRight"]')
       .waitForElementVisible('*[data-pinnedPlugin="movePluginToLeft-solidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
       .clickLaunchIcon('filePanel')
   },
   'Toggle right side panel to hide and show pinned plugin #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
-      .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementNotVisible('#right-side-panel') // check the right side panel is not rendered
       .click('*[data-id="toggleRightSidePanelIcon"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
   },
   'Toggle right side panel, reload IDE, panel state should persist #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
-      .waitForElementNotVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementNotVisible('#right-side-panel')
       .refresh()
       .waitForElementVisible('*[data-id="toggleRightSidePanelIcon"')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
       .click('*[data-id="toggleRightSidePanelIcon"]')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
   },
   'Swap pinned plugin from right side panel when panel is hidden #group1': function (browser: NightwatchBrowser) {
     browser
@@ -61,11 +74,15 @@ module.exports = {
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-solidity"]')
       .waitForElementVisible('*[data-id="hideRightSidePanel"]')
       .click('*[data-id="hideRightSidePanel"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementNotVisible('#right-side-panel')
       .clickLaunchIcon('udapp')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-udapp"]')
       .click('*[data-id="movePluginToRight"]')
+      .waitForElementVisible('#right-side-panel')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-udapp"]')
-      .waitForElementVisible('*[data-id="movePluginToRight"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
+      .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-solidity"]')
       .click('*[data-pinnedplugin="movePluginToLeft-udapp"]')
       .end()
   },
