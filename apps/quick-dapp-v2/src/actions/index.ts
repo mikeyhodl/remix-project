@@ -2,21 +2,10 @@ import axios from 'axios';
 import { omitBy } from 'lodash';
 import semver from 'semver';
 import { execution } from '@remix-project/remix-lib';
-import SurgeClient from '@drafish/surge-client';
 import remixClient from '../remix-client';
 import { themeMap } from '../components/DeployPanel/theme';
-import { endpointUrls } from "@remix-endpoints-helper"
 
 const { encodeFunctionId } = execution.txHelper;
-
-const surgeClient = new SurgeClient({
-  // surge backend doesn't support cross-domain, that's why the proxy goes
-  // here is the codebase of proxy: https://github.com/remix-project-org/remix-wildcard/blob/master/src/hosts/common-corsproxy.ts
-  proxy: endpointUrls.commonCorsProxy,
-  onError: (err: Error) => {
-    console.log(err);
-  },
-});
 
 const getVersion = (solcVersion) => {
   let version = '0.8.25'
@@ -131,164 +120,31 @@ export const getInfoFromNatSpec = async (value: boolean) => {
   });
 };
 
-export const deploy = async (payload: any, callback: any) => {
-  const surgeToken = localStorage.getItem('__SURGE_TOKEN');
-  const surgeEmail = localStorage.getItem('__SURGE_EMAIL');
-  let isLogin = false;
-  if (surgeToken && surgeEmail === payload.email) {
-    try {
-      await surgeClient.whoami();
-      isLogin = true;
-    } catch (error) {
-      /* empty */
-    }
-  }
-  if (!isLogin) {
-    try {
-      await surgeClient.login({
-        user: payload.email,
-        password: payload.password,
-      });
-      localStorage.setItem('__SURGE_EMAIL', payload.email);
-      localStorage.setItem('__SURGE_PASSWORD', payload.password);
-      localStorage.setItem('__DISQUS_SHORTNAME', payload.shortname);
-    } catch (error: any) {
-      callback({ code: 'ERROR', error: error.message });
-      return;
-    }
-  }
-
-  const { data } = await axios.get(
-    // It's the json file contains all the static files paths of dapp-template.
-    // It's generated through the build process automatically.
-    `${window.origin}/plugins/remix-dapp/manifest.json`
-  );
-
-  const paths = Object.keys(data);
-
-  const { logo, ...instance } = state.instance;
-
-  const instanceJson = JSON.stringify({
-    ...instance,
-    shortname: payload.shortname,
-    shareTo: payload.shareTo,
-    showLogo: !!logo,
-  })
-
-  const files: Record<string, string> = {
-    'dir/assets/instance.json': instanceJson,
-  };
-
-  // console.log(
-  //   JSON.stringify({
-  //     ...instance,
-  //     shareTo: payload.shareTo,
-  //   })
-  // );
-
-  for (let index = 0; index < paths.length; index++) {
-    const path = paths[index];
-    // download all the static files from the dapp-template domain.
-    // here is the codebase of dapp-template: https://github.com/drafish/remix-dapp
-    const resp = await axios.get(`${window.origin}/plugins/remix-dapp/${path}`);
-    files[`dir/${path}`] = resp.data;
-  }
-
-  if (logo) {
-    files['dir/assets/logo.png'] = logo
-  }
-  files['dir/CORS'] = '*'
-  files['dir/index.html'] = files['dir/index.html'].replace(
-    'assets/css/themes/remix-dark_tvx1s2.css',
-    themeMap[instance.theme].url
-  );
-
-  try {
-    await surgeClient.publish({
-      files,
-      domain: `${payload.subdomain}.surge.sh`,
-      onProgress: ({
-        id,
-        progress,
-        file,
-      }: {
-        id: string;
-        progress: number;
-        file: string;
-      }) => {
-        // console.log({ id, progress, file });
-      },
-      onTick: (tick: string) => {},
-    });
-  } catch ({ message }: any) {
-    if (message === '403') {
-      callback({ code: 'ERROR', error: 'this domain belongs to someone else' });
-    } else {
-      callback({ code: 'ERROR', error: 'gateway timeout, please try again' });
-    }
-    return;
-  }
-
-  try {
-    // some times deployment might fail even if it says successfully, that's why we need to do the double check.
-    const instanceResp = await axios.get(`https://${payload.subdomain}.surge.sh/assets/instance.json`);
-    if (instanceResp.status === 200 && JSON.stringify(instanceResp.data) === instanceJson) {
-      callback({ code: 'SUCCESS', error: '' });
-      return;
-    }
-  } catch (error) {}
-  callback({ code: 'ERROR', error: 'deploy failed, please try again' });
-  return;
-
-};
-
-export const teardown = async (payload: any, callback: any) => {
-  const surgeToken = localStorage.getItem('__SURGE_TOKEN');
-  const surgeEmail = localStorage.getItem('__SURGE_EMAIL');
-  let isLogin = false;
-  if (surgeToken && surgeEmail === payload.email) {
-    try {
-      await surgeClient.whoami();
-      isLogin = true;
-    } catch (error) {
-      /* empty */
-    }
-  }
-  if (!isLogin) {
-    try {
-      await surgeClient.login({
-        user: payload.email,
-        password: payload.password,
-      });
-      localStorage.setItem('__SURGE_EMAIL', payload.email);
-      localStorage.setItem('__SURGE_PASSWORD', payload.password);
-      localStorage.setItem('__DISQUS_SHORTNAME', payload.shortname);
-    } catch (error: any) {
-      callback({ code: 'ERROR', error: error.message });
-      return;
-    }
-  }
-
-  try {
-    await surgeClient.teardown(`${payload.subdomain}.surge.sh`);
-  } catch ({ message }: any) {
-    if (message === '403') {
-      callback({ code: 'ERROR', error: 'this domain belongs to someone else' });
-    } else {
-      callback({ code: 'ERROR', error: 'gateway timeout, please try again' });
-    }
-    return;
-  }
-  callback({ code: 'SUCCESS', error: '' });
-  return;
-}
-
 export const initInstance = async ({
   methodIdentifiers,
   devdoc,
   solcVersion,
+  htmlTemplate,
   ...payload
 }: any) => {
+  // If HTML template is provided, use simplified initialization
+  if (htmlTemplate) {
+    await dispatch({
+      type: 'SET_INSTANCE',
+      payload: {
+        ...payload,
+        htmlTemplate,
+        abi: {},
+        items: {},
+        containers: [],
+        natSpec: { checked: false, methods: {} },
+        solcVersion: solcVersion ? getVersion(solcVersion) : { version: '0.8.25', canReceive: true },
+      },
+    });
+    return;
+  }
+
+  // Original ABI-based initialization (kept for backward compatibility)
   const functionHashes: any = {};
   const natSpec: any = { checked: false, methods: {} };
   if (methodIdentifiers && devdoc) {
@@ -324,18 +180,20 @@ export const initInstance = async ({
 
   const abi: any = {};
   const lowLevel: any = {}
-  payload.abi.forEach((item: any) => {
-    if (item.type === 'function') {
-      item.id = encodeFunctionId(item);
-      abi[item.id] = item;
-    }
-    if (item.type === 'fallback') {
-      lowLevel.fallback = item;
-    }
-    if (item.type === 'receive') {
-      lowLevel.receive = item;
-    }
-  });
+  if (payload.abi) {
+    payload.abi.forEach((item: any) => {
+      if (item.type === 'function') {
+        item.id = encodeFunctionId(item);
+        abi[item.id] = item;
+      }
+      if (item.type === 'fallback') {
+        lowLevel.fallback = item;
+      }
+      if (item.type === 'receive') {
+        lowLevel.receive = item;
+      }
+    });
+  }
   const ids = Object.keys(abi);
   const items =
     ids.length > 2
@@ -345,8 +203,6 @@ export const initInstance = async ({
       }
       : { A: ids };
 
-  // const logo = await axios.get('https://dev.remix-dapp.pages.dev/logo.png', { responseType: 'arraybuffer' })
-
   await dispatch({
     type: 'SET_INSTANCE',
     payload: {
@@ -355,9 +211,8 @@ export const initInstance = async ({
       items,
       containers: Object.keys(items),
       natSpec,
-      solcVersion: getVersion(solcVersion),
+      solcVersion: solcVersion ? getVersion(solcVersion) : { version: '0.8.25', canReceive: true },
       ...lowLevel,
-      // logo: logo.data,
     },
   });
 };
@@ -394,11 +249,14 @@ export const emptyInstance = async () => {
       name: '',
       address: '',
       network: '',
+      htmlTemplate: '',
+      pages: {},
       abi: {},
       items: {},
       containers: [],
       title: '',
       details: '',
+      logo: null,
       theme: 'Dark',
       userInput: { methods: {} },
       natSpec: { checked: false, methods: {} },
@@ -418,4 +276,11 @@ export const selectTheme = async (selectedTheme: string) => {
       break;
     }
   }
+};
+
+export const setAiLoading = async (isLoading: boolean) => {
+  await dispatch({
+    type: 'SET_AI_LOADING',
+    payload: isLoading,
+  });
 };
