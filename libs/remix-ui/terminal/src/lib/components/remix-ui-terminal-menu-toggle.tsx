@@ -1,14 +1,35 @@
 import { CustomTooltip } from '@remix-ui/helper'
-import React, { useContext, useEffect } from 'react' // eslint-disable-line
+import React, { useEffect, useState } from 'react' // eslint-disable-line
 import { FormattedMessage } from 'react-intl'
-import { TerminalContext } from '../context'
-import { RemixUiTerminalProps, TOGGLE } from '../types/terminalTypes'
+import { RemixUiTerminalProps } from '../types/terminalTypes'
 export const RemixUITerminalMenuToggle = (props: RemixUiTerminalProps) => {
 
-  const { terminalState, dispatch } = useContext(TerminalContext)
+  const [isPanelHidden, setIsPanelHidden] = useState(false)
 
-  function handleToggleTerminal(event: any): void {
-    dispatch({ type: TOGGLE })
+  useEffect(() => {
+    // Initialize panel hidden state
+    const initPanelState = async () => {
+      const hidden = await props.plugin.call('terminal', 'isPanelHidden')
+      setIsPanelHidden(hidden)
+    }
+    initPanelState()
+
+    // Listen for panel visibility changes
+    const handlePanelShown = () => setIsPanelHidden(false)
+    const handlePanelHidden = () => setIsPanelHidden(true)
+
+    props.plugin.on('terminal', 'terminalPanelShown', handlePanelShown)
+    props.plugin.on('terminal', 'terminalPanelHidden', handlePanelHidden)
+
+    return () => {
+      props.plugin.off('terminal', 'terminalPanelShown')
+      props.plugin.off('terminal', 'terminalPanelHidden')
+    }
+  }, [])
+
+  async function handleToggleTerminal(): Promise<void> {
+    // Toggle the bottom terminal panel using terminal-wrap component
+    await props.plugin.call('terminal', 'togglePanel')
   }
 
   return (
@@ -17,10 +38,10 @@ export const RemixUITerminalMenuToggle = (props: RemixUiTerminalProps) => {
         placement="top"
         tooltipId="terminalToggle"
         tooltipClasses="text-nowrap"
-        tooltipText={terminalState.isOpen ? <FormattedMessage id="terminal.hideTerminal" /> : <FormattedMessage id="terminal.showTerminal" />}
+        tooltipText={<FormattedMessage id="terminal.hideTerminal" />}
       >
         <i
-          className={`mx-2 remix_ui_terminal_toggleTerminal fas ${terminalState.isOpen ? 'fa-angle-double-down' : 'fa-angle-double-up'}`}
+          className={`mx-2 codicon codicon-close fw-bold fs-5`}
           data-id="terminalToggleIcon"
           onClick={handleToggleTerminal}
         ></i>
