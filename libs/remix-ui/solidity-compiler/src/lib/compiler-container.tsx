@@ -444,7 +444,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
     if (state.useFileConfiguration) await createNewConfigFile()
     _setCompilerVersionFromPragma(currentFile)
-    let externalCompType
+    let externalCompType = 'remix'
     if (hhCompilation) externalCompType = 'hardhat'
     else if (truffleCompilation) externalCompType = 'truffle'
     else if (foundryCompilation) externalCompType = 'foundry'

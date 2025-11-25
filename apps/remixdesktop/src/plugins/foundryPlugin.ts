@@ -82,20 +82,22 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             const cmd = `forge build`
             const options = { cwd: this.currentSharedFolder, shell: true }
             const child = spawn(cmd, options)
-            let result = ''
             let error = ''
             child.stdout.on('data', (data) => {
-                const msg = `[Foundry Compilation]: ${data.toString()}`
-                console.log('\x1b[32m%s\x1b[0m', msg)
-                result += msg + '\n'
+                if (data.toString().includes('Error')) {
+                    this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${data.toString()}` })
+                } else {
+                    const msg = `[Foundry] ${data.toString()}`
+                    console.log('\x1b[32m%s\x1b[0m', msg)
+                    this.call('terminal', 'log', { type: 'log', value: msg })
+                }
             })
             child.stderr.on('data', (err) => {
-                error += `[Foundry Compilation]: ${err.toString()} \n`
+                error += err.toString() + '\n'
+                this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${err.toString()}` })
             })
             child.on('close', () => {
-                if (error && result) resolve(error + result)
-                else if (error) reject(error)
-                else resolve(result)
+                resolve('')
             })
         })
     }

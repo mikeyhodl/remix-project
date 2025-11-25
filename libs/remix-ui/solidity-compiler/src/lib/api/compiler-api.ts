@@ -377,7 +377,7 @@ export const CompilerApiMixin = (Base) => class extends Base {
           if (await this.getAppParameter('hardhat-compilation')) this.compileTabLogic.runCompiler('hardhat')
           else if (await this.getAppParameter('truffle-compilation')) this.compileTabLogic.runCompiler('truffle')
           else if (await this.getAppParameter('foundry-compilation')) this.compileTabLogic.runCompiler('foundry')
-          else this.compileTabLogic.runCompiler(undefined).catch((error) => {
+          else this.compileTabLogic.runCompiler('remix').catch((error) => {
             this.call('notification', 'toast', error.message)
           })
         } else if (this.currentFile && this.currentFile.endsWith('.circom')) {
