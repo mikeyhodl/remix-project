@@ -219,6 +219,26 @@ export class RightSidePanel extends AbstractPanel {
   }
 
   highlight () {
+    // If the right side panel is hidden, unhide it when a pinned icon is clicked
+    if (this.isHidden) {
+      const pinnedPanel = document.querySelector('#right-side-panel')
+      this.isHidden = false
+      this.hiddenPlugin = null
+      pinnedPanel?.classList.remove('d-none')
+      this.emit('rightSidePanelShown')
+      this.events.emit('rightSidePanelShown')
+
+      // Update localStorage
+      const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+      const currentPlugin = this.currentFocus()
+      const pluginProfile = currentPlugin && this.plugins[currentPlugin] ? this.plugins[currentPlugin].profile : null
+      panelStates.rightSidePanel = {
+        isHidden: false,
+        pluginProfile: pluginProfile
+      }
+      window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
+    }
+
     this.highlightStamp = Date.now()
     this.renderComponent()
   }

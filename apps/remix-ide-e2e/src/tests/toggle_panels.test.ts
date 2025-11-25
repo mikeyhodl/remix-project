@@ -84,6 +84,20 @@ module.exports = {
       .waitForElementVisible('.codicon-layout-sidebar-right')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-solidity"]')
   },
+  'Click vertical icon of pinned plugin to unhide right side panel #group1': function (browser: NightwatchBrowser) {
+    browser
+      .refreshPage()
+      .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-udapp"]')
+      .waitForElementVisible('#right-side-panel')
+      .click('*[data-id="hideRightSidePanel"]')
+      .waitForElementVisible('.codicon-layout-sidebar-right-off')
+      .waitForElementNotVisible('#right-side-panel')
+      // Click the vertical icon for the pinned plugin (udapp)
+      .click('*[data-id="verticalIconsKindudapp"]')
+      .waitForElementVisible('#right-side-panel')
+      .waitForElementVisible('.codicon-layout-sidebar-right')
+      .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-udapp"]')
+  },
   'Hide left side panel using toggle icon on top bar #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('#side-panel')
