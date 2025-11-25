@@ -115,6 +115,21 @@ export class Layout extends Plugin {
       }
     })
 
+    this.on('rightSidePanel', 'rightSidePanelShown', async () => {
+      const current = await this.call('rightSidePanel', 'currentFocus')
+      if (this.enhanced[current]) {
+        this.event.emit('enhanceRightSidePanel')
+      }
+
+      if (this.maximized[current]) {
+        this.event.emit('maximiseRightSidePanel')
+      }
+
+      if (!this.enhanced[current] && !this.maximized[current]) {
+        this.event.emit('resetRightSidePanel')
+      }
+    })
+
     document.addEventListener('keypress', e => {
       if (e.shiftKey && e.ctrlKey) {
         if (e.code === 'KeyF') {
