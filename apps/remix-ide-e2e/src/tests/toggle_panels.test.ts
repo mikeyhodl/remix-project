@@ -123,6 +123,23 @@ module.exports = {
       .waitForElementVisible('.terminal-wrap')
       .waitForElementVisible('.codicon-layout-panel')
   },
+  'Hide bottom terminal panel using hideBottomPanel icon (close icon) #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="hideBottomPanel"]')
+      .click('*[data-id="hideBottomPanel"]')
+      .waitForElementNotVisible('.terminal-wrap')
+      // Show the terminal again using top bar toggle icon
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="hideBottomPanel"]')
+      // Hide again using hideBottomPanel
+      .click('*[data-id="hideBottomPanel"]')
+      .waitForElementNotVisible('.terminal-wrap')
+      // Show again using hideBottomPanel (requires clicking top bar toggle first to show terminal bar)
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .waitForElementVisible('.terminal-wrap')
+  },
   'Hide all three panels using toggle icons on top bar, reload and ensure all are hidden #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="toggleLeftSidePanelIcon"]')
