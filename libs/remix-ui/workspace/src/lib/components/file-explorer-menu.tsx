@@ -91,22 +91,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   ]
 
   const itemAction = async (action: string) => {
-    if (action === 'importFromIpfs' || action === 'importFromHttps') {
-      await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
-      await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
-      appContext.appStateDispatch({
-        type: appActionTypes.showGenericModal,
-        payload: true
-      })
-    } else if (action === 'createNewFile') {
-      await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
-      appContext.appStateDispatch({
-        type: appActionTypes.showGenericModal,
-        payload: true
-      })
-    } else if (action === 'createNewFolder') {
-      props.createNewFolder()
-    } else if (action === 'localFileSystem') {
+    if (action === 'localFileSystem') {
       inputRef.current?.click()
     }
   }
@@ -136,11 +121,12 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
             <Dropdown show={isCreateMenuOpen} onToggle={(next) => setIsCreateMenuOpen(next)}>
               <Dropdown.Toggle
                 as={Button}
+                variant="secondary"
                 className="w-100 mb-1 d-flex flex-row align-items-center justify-content-center border"
                 data-id="fileExplorerCreateButton"
                 onClick={() => setIsCreateMenuOpen((prev) => !prev)}
                 style={{
-                  backgroundColor: '#333446',
+                  // backgroundColor: '#333446',
                   color: '#fff'
                 }}
               >
@@ -153,7 +139,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 </div>
               </Dropdown.Toggle>
               <Dropdown.Menu className="w-100 custom-dropdown-items bg-light">
-                {menuItems.filter((item) => item.action === 'newBlankFile' || item.action === 'createNewFile' || item.action === 'createNewFolder').map(({ action, title, icon, placement, platforms }, index) => {
+                {menuItems.filter((item) => item.action === 'newBlankFile').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
                       key={index}
@@ -168,12 +154,52 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     </Dropdown.Item>
                   )
                 })}
+                {menuItems.filter((item) => item.action === 'createNewFile').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={async () => {
+                        await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
+                        // await global.plugin.call('templateexplorermodal', 'resetIpfsMode', false)
+                        appContext.appStateDispatch({
+                          type: appActionTypes.showGenericModal,
+                          payload: true
+                        })
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'createNewFolder').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={async () => {
+                        props.createNewFolder()
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
                 {menuItems.filter((item) => item.action === 'importFromIpfs').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
                       key={index}
-                      onClick={() => {
-                        itemAction(action);
+                      onClick={async () => {
+                        // await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
+                        await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+                        appContext.appStateDispatch({
+                          type: appActionTypes.showGenericModal,
+                          payload: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -204,8 +230,13 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                   return (
                     <Dropdown.Item
                       key={index}
-                      onClick={() => {
-                        itemAction(action);
+                      onClick={async () => {
+                        // await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
+                        await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+                        appContext.appStateDispatch({
+                          type: appActionTypes.showGenericModal,
+                          payload: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">

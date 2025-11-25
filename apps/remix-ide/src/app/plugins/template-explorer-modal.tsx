@@ -13,8 +13,8 @@ const pluginProfile = {
   name: 'templateexplorermodal',
   displayName: 'Template Explorer Modal',
   description: 'Template Explorer Modal',
-  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode', 'importFromExternal', 'externalSourceImported'],
-  events: ['externalSourceImported'],
+  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode', 'importFromExternal', 'resetIpfsMode', 'resetFileMode'],
+  events: [],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
   location: 'none',
@@ -57,6 +57,18 @@ export class TemplateExplorerModalPlugin extends Plugin {
   updateTemplateExplorerInFileMode(fileMode: boolean) {
     if (this.fileMode === fileMode) return
     this.fileMode = fileMode
+    this.renderComponent()
+  }
+
+  resetFileMode() {
+    console.log('resetFileMode hit!')
+    this.fileMode = false
+    this.renderComponent()
+  }
+
+  resetIpfsMode() {
+    console.log('resetIpfsMode hit!')
+    this.ipfsMode = false
     this.renderComponent()
   }
 

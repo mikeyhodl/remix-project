@@ -55,12 +55,10 @@ export class TemplateExplorerModalFacade {
   }
 
   orchestrateImportFromExternalSource() {
-    this.appContext.appStateDispatch({
-      type: appActionTypes.showGenericModal,
-      payload: true
-    })
-    this.dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
-    this.dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+    if (this.plugin.ipfsMode) {
+      this.dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
+      this.dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+    }
   }
 
   async processLoadingExternalUrls(url: string, type: string) {
@@ -99,12 +97,14 @@ export class TemplateExplorerModalFacade {
     })
   }
 
-  closeWizard() {
+  async closeWizard() {
     this.appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
       payload: false
     })
     this.dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
+    await this.plugin.call('templateexplorermodal', 'resetFileMode')
+    await this.plugin.call('templateexplorermodal', 'resetIpfsMode')
   }
   stripDisplayName(item: TemplateItem) {
     let cleanedTagName = ''
@@ -164,11 +164,13 @@ export class TemplateExplorerModalFacade {
     }
   }
 
-  resetExplorerWizard(dispatch: (action: any) => TemplateExplorerWizardState) {
+  async resetExplorerWizard(dispatch: (action: any) => TemplateExplorerWizardState) {
     dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'reset' })
     dispatch({ type: TemplateExplorerWizardAction.SELECT_TEMPLATE, payload: '' })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: '' })
-    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' })
+    dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' });
+    await this.plugin.call('templateexplorermodal', 'resetFileMode')
+    await this.plugin.call('templateexplorermodal', 'resetIpfsMode')
   }
 
   async getTemplateReadMeFile(templateName: string) {

@@ -11,6 +11,7 @@ import { FinalScreen } from '../components/finalScreen'
 import { MatomoEvent, TemplateExplorerModalEvent,WorkspaceEvent } from '@remix-api'
 import TrackingContext from '@remix-ide/tracking'
 import { ImportFromIpfs } from '../components/importFromIpfs'
+import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 
 export interface RemixUiTemplateExplorerModalProps {
   dispatch: any
@@ -19,7 +20,7 @@ export interface RemixUiTemplateExplorerModalProps {
 
 export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModalProps) {
 
-  const { setSearchTerm, state, dispatch, facade, theme } = useContext(TemplateExplorerContext)
+  const { setSearchTerm, state, dispatch, facade, theme, plugin } = useContext(TemplateExplorerContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -27,7 +28,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
   return (
     <section data-id="template-explorer-modal-react" data-path={`templateExplorerModal-${state.manageCategory}`}>
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
-        <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: props.appState.genericModalState.width, height: props.appState.genericModalState.height }}>
+        <div className="template-explorer-modal-container border bg-dark p-2 template-explorer-modal-responsive">
           <div className="template-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">
             {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
               <input
@@ -45,15 +46,23 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div> : <div>
               <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
                 <button className="btn" onClick={() => {
-                  facade.resetExplorerWizard(dispatch as any)
+                  console.log('what is state now', state)
+                  if (state.wizardStep === 'importFiles') {
+                    dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
+                    facade.resetExplorerWizard(dispatch as any)
+                  } else {
+                    facade.resetExplorerWizard(dispatch as any)
+                  }
                 }}>
                   <i className="fa-solid fa-chevron-left me-2"></i>
                   {state.manageCategory === 'Template' ? 'Template List' : state.manageCategory === 'Files' && state.wizardStep === 'importFiles' ? 'Import files from External Source' : 'Add to current workspace'}
                 </button>
               </div>
             </div>}
-            <button className="template-explorer-modal-close-button" onClick={() => {
-              facade.closeWizard()
+            <button className="template-explorer-modal-close-button" onClick={async () => {
+              facade.closeWizard();
+              await plugin.call('templateexplorermodal', 'resetFileMode')
+              await plugin.call('templateexplorermodal', 'resetIpfsMode')
               trackMatomoEvent({ category: 'templateExplorerModal', action: 'closeModal', isClick: true })
             }}>
               <i className="fa-solid fa-xmark text-dark"></i>

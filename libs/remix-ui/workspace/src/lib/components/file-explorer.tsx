@@ -609,7 +609,7 @@ export const FileExplorer = (props: FileExplorerProps) => {
             data-id={`treeViewDivMenu`}
             className={`d-flex flex-row align-items-center`}
           >
-            <span className="w-100 ps-2 mt-1">
+            <span className="w-100 px-2 mt-1">
               <div onClick={handleFileExplorerMenuClick}>
                 <FileExplorerMenu
                   title={''}
