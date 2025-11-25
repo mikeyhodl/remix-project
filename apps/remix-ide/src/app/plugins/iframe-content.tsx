@@ -3,7 +3,7 @@ import { ViewPlugin } from '@remixproject/engine-web'
 import React from 'react' // eslint-disable-line
 import { PluginViewWrapper } from '@remix-ui/helper'
 
-const _paq = (window._paq = window._paq || [])
+const _paq = (window._paq = window._paq || []) // eslint-disable-line
 
 const profile = {
   name: 'iframeContent',
