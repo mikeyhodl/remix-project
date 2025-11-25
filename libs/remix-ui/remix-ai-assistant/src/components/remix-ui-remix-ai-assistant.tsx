@@ -56,7 +56,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   // Check if MCP is enabled via query parameter
   const queryParams = new QueryParams()
-  const mcpEnabled = queryParams.exists('mcp')
+  const mcpEnabled = queryParams.exists('experimental')
 
   const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
