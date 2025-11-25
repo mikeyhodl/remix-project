@@ -37,12 +37,11 @@ export function UniversalDappUI(props: UdappProps) {
   const checkUrlParams = useCallback(() => {
     const qp = new QueryParams()
     const params = qp.get()
-    const hasKey = !!params['fireworksapikey']
+    const hasFlag = params['experimental'] === 'true'
     
     setUseNewAiBuilder(prev => {
-      if (prev !== hasKey) {
-        console.log('[UniversalDappUI] API Key status changed:', hasKey)
-        return hasKey
+      if (prev !== hasFlag) {
+        return hasFlag
       }
       return prev
     })

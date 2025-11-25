@@ -10,9 +10,10 @@ import { AppContext } from '../../contexts';
 import { readDappFiles } from '../EditHtmlTemplate';
 import { InBrowserVite } from '../../InBrowserVite';
 
-const REMIX_ENDPOINT = 'http://localhost:4000';
-// const REMIX_ENDPOINT = 'https://...remixproject.org';
-// need 3 urls
+// const REMIX_ENDPOINT_IPFS = 'http://localhost:4000/quickdapp-ipfs';
+// const REMIX_ENDPOINT_ENS = 'http://localhost:4000/ens-service';
+const REMIX_ENDPOINT_IPFS = 'https://quickdapp-ipfs.api.remix.live';
+const REMIX_ENDPOINT_ENS = 'https://quickdapp-ens.api.remix.live';
 
 function DeployPanel(): JSX.Element {
   const intl = useIntl()
@@ -126,7 +127,7 @@ function DeployPanel(): JSX.Element {
       const blob = new Blob([modifiedHtml], { type: 'text/html' });
       formData.append('file', blob, 'index.html');
 
-      const response = await fetch(`${REMIX_ENDPOINT}/quickdapp-ipfs/upload`, {
+      const response = await fetch(`${REMIX_ENDPOINT_IPFS}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -175,7 +176,7 @@ function DeployPanel(): JSX.Element {
       const accounts = await provider.send('eth_requestAccounts', []);
       const ownerAddress = accounts[0];
 
-      const response = await fetch(`${REMIX_ENDPOINT}/ens-service/register`, {
+      const response = await fetch(`${REMIX_ENDPOINT_ENS}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
