@@ -154,6 +154,23 @@ module.exports = {
       .click('*[data-id="toggleBottomPanelIcon"]')
       .waitForElementVisible('.terminal-wrap')
   },
+  'Terminal panel automatically unhides when log is added #group1': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .click('*[data-id="hideBottomPanel"]')
+      .waitForElementNotVisible('.terminal-wrap')
+      .waitForElementVisible('.codicon-layout-panel-off')
+      // Execute a script that will generate a log
+      .addFile('test_log.ts', { content: 'console.log("test")' })
+      .pause(1000)
+      .clickLaunchIcon('solidity')
+      .pause(1000)
+      .click('*[data-id="compile-action"]') // run script
+      .pause(2000)
+      // Terminal should automatically unhide when compilation logs are generated
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('.codicon-layout-panel')
+  },
   'Hide all three panels using toggle icons on top bar, reload and ensure all are hidden #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="toggleLeftSidePanelIcon"]')

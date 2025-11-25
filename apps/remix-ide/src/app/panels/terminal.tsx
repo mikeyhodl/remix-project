@@ -145,11 +145,34 @@ export default class Terminal extends Plugin {
   }
 
   logHtml(html) {
+    // Unhide terminal panel if it's hidden when a log is added
+    if (this.isHidden) {
+      this.showPanel()
+    }
     this.terminalApi.logHtml(html)
   }
 
   log(message, type) {
+    // Unhide terminal panel if it's hidden when a log is added
+    if (this.isHidden) {
+      this.showPanel()
+    }
     this.terminalApi.log(message, type)
+  }
+
+  showPanel() {
+    const terminalPanel = document.querySelector('.terminal-wrap')
+    this.isHidden = false
+    terminalPanel?.classList.remove('d-none')
+    this.emit('terminalPanelShown')
+
+    // Persist the state
+    const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
+    panelStates.bottomPanel = {
+      isHidden: this.isHidden,
+      pluginProfile: this.profile
+    }
+    window.localStorage.setItem('panelStates', JSON.stringify(panelStates))
   }
 
   togglePanel() {
