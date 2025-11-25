@@ -51,8 +51,7 @@ export const Toaster = (props: ToasterProps) => {
 
   return (
     <SonnerToaster
-      position="bottom-center"
-      offset="25vh"
+      position="top-right"
       toastOptions={{
         className: 'remixui_sonner_toast',
       }}
