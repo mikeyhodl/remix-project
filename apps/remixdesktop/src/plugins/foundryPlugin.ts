@@ -40,7 +40,6 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
 
     async onActivation(): Promise<void> {
         console.log('Foundry plugin activated')
-        this.call('terminal', 'log', { type: 'log', value: 'Foundry plugin activated' })
         this.on('fs' as any, 'workingDirChanged', async (path: string) => {
             console.log('workingDirChanged foundry', path)
             this.currentSharedFolder = path

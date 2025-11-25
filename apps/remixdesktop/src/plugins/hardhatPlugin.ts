@@ -39,7 +39,6 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
 
     async onActivation(): Promise<void> {
         console.log('Hardhat plugin activated')
-        this.call('terminal', 'log', { type: 'log', value: 'Hardhat plugin activated' })
         
         this.on('fs' as any, 'workingDirChanged', async (path: string) => {
             console.log('workingDirChanged hardhat', path)
