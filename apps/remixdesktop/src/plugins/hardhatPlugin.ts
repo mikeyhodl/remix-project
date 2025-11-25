@@ -59,9 +59,9 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
         }
       }
     
-      compile(configPath: string) {
+      compile() {
         return new Promise((resolve, reject) => {
-          const cmd = `npx hardhat compile --config ${utils.normalizePath(configPath)}`
+          const cmd = `npx hardhat compile`
           const options = { cwd: this.currentSharedFolder, shell: true }
           const child = spawn(cmd, options)
           let result = ''

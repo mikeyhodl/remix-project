@@ -106,16 +106,16 @@ export const CompilerApiMixin = (Base) => class extends Base {
     this.call('compileAndRun', 'runScriptAfterCompilation', fileName)
   }
 
-  compileWithHardhat (configFile) {
-    return this.call('hardhat', 'compile', configFile)
+  compileWithHardhat () {
+    return this.call('hardhat', 'compile')
   }
 
-  compileWithFoundry (configFile) {
-    return this.call('foundry', 'compile', configFile)
+  compileWithFoundry () {
+    return this.call('foundry', 'compile')
   }
 
-  compileWithTruffle (configFile) {
-    return this.call('truffle', 'compile', configFile)
+  compileWithTruffle () {
+    return this.call('truffle', 'compile')
   }
 
   logToTerminal (content) {

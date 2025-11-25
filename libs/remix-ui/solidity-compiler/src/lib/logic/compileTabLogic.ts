@@ -183,6 +183,7 @@ export class CompileTabLogic {
     try {
       if (this.api.getFileManagerMode() === 'localhost' || this.api.isDesktop()) {
         if (externalCompType === 'hardhat') {
+          /*
           const { currentVersion, optimize, runs } = this.compiler.state
           if (currentVersion) {
             const fileContent = `module.exports = {
@@ -197,16 +198,18 @@ export class CompileTabLogic {
             `
             const configFilePath = 'remix-compiler.config.js'
             this.api.writeFile(configFilePath, fileContent)
+            */
             if (window._matomoManagerInstance) {
               window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithHardhat')
             }
-            this.api.compileWithHardhat(configFilePath).then((result) => {
+            this.api.compileWithHardhat().then((result) => {
               this.api.logToTerminal({ type: 'log', value: result })
             }).catch((error) => {
               this.api.logToTerminal({ type: 'error', value: error })
             })
           }
         } else if (externalCompType === 'truffle') {
+          /*
           const { currentVersion, optimize, runs, evmVersion } = this.compiler.state
           if (currentVersion) {
             const fileContent = `module.exports = {
@@ -225,16 +228,18 @@ export class CompileTabLogic {
             }`
             const configFilePath = 'remix-compiler.config.js'
             this.api.writeFile(configFilePath, fileContent)
+            */
             if (window._matomoManagerInstance) {
               window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithTruffle')
             }
-            this.api.compileWithTruffle(configFilePath).then((result) => {
+            this.api.compileWithTruffle().then((result) => {
               this.api.logToTerminal({ type: 'log', value: result })
             }).catch((error) => {
               this.api.logToTerminal({ type: 'error', value: error })
             })
           }
         } else if (externalCompType === 'foundry') {
+          /*
           const { currentVersion, optimize, runs } = this.compiler.state
           if (currentVersion) {
             const fileContent = `module.exports = {
@@ -249,10 +254,11 @@ export class CompileTabLogic {
             `
             const configFilePath = 'remix-compiler.config.js'
             this.api.writeFile(configFilePath, fileContent)
+            */
             if (window._matomoManagerInstance) {
               window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithFoundry')
             }
-            this.api.compileWithFoundry(configFilePath).then((result) => {
+            this.api.compileWithFoundry().then((result) => {
               this.api.logToTerminal({ type: 'log', value: result })
             }).catch((error) => {
               this.api.logToTerminal({ type: 'error', value: error })

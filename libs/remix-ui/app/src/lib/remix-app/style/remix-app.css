@@ -9,6 +9,7 @@ pre {
 }
 .remixIDE            {
   width              : 100%;
+  height             : 95vh;
   overflow           : hidden;
   flex-direction     : row;
   display            : flex;
