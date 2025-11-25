@@ -18,7 +18,7 @@ export const RemixUITerminalMenuToggle = (props: RemixUiTerminalProps) => {
         tooltipText={<FormattedMessage id="terminal.hideTerminal" />}
       >
         <i
-          className={`mx-2 codicon codicon-close fw-bold fs-5`}
+          className="mx-2 codicon codicon-close fw-bold fs-6"
           data-id="hideBottomPanel"
           onClick={handleToggleTerminal}
         ></i>
