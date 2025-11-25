@@ -31,7 +31,7 @@ export class SidePanel extends AbstractPanel {
     this.renderComponent()
     // Initialize isHidden state from panelStates in localStorage
     const panelStatesStr = window.localStorage.getItem('panelStates')
-    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+    const panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
 
     if (panelStates.leftSidePanel) {
       this.isHidden = panelStates.leftSidePanel.isHidden || false

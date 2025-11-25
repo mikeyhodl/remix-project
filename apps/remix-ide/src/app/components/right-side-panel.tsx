@@ -41,7 +41,7 @@ export class RightSidePanel extends AbstractPanel {
 
     // Initialize isHidden state from panelStates in localStorage
     const panelStatesStr = window.localStorage.getItem('panelStates')
-    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+    const panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
 
     if (panelStates.rightSidePanel) {
       // If no plugin profile exists, ensure the panel is hidden

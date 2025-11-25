@@ -117,7 +117,7 @@ export default class Terminal extends Plugin {
     this.renderComponent()
     // Initialize isHidden state from panelStates in localStorage
     const panelStatesStr = window.localStorage.getItem('panelStates')
-    let panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
+    const panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
 
     if (panelStates.bottomPanel) {
       this.isHidden = panelStates.bottomPanel.isHidden || false
