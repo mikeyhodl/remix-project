@@ -54,6 +54,15 @@ export class TemplateExplorerModalFacade {
     this.dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: category })
   }
 
+  orchestrateImportFromExternalSource() {
+    this.appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
+    })
+    this.dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
+    this.dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+  }
+
   async processLoadingExternalUrls(url: string, type: string) {
     const contentImport = {
       import: (url, loadingCb, cb) => {
@@ -106,7 +115,6 @@ export class TemplateExplorerModalFacade {
   }
   async switchWizardScreen(dispatch: (action: any) => void, item: TemplateItem, template: TemplateCategory, templateCategoryStrategy: TemplateCategoryStrategy) {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: item.displayName })
-    // this.setUniqueWorkspaceName(item.displayName)
     dispatch({ type: ContractWizardAction.CONTRACT_TYPE_UPDATED, payload: item.tagList?.[0] })
     dispatch({ type: ContractWizardAction.CONTRACT_TAG_UPDATE, payload: item.tagList?.[0] })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: item })

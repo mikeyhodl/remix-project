@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useMemo, useReducer, useSt
 import { TemplateCategory, TemplateExplorerContextType, TemplateExplorerWizardAction, TemplateItem } from '../types/template-explorer-types'
 import { initialState, templateExplorerReducer } from '../reducers/template-explorer-reducer'
 import { metadata, templatesRepository } from '../src/utils/helpers'
-import { AppContext } from '@remix-ui/app'
+import { appActionTypes, AppContext } from '@remix-ui/app'
 import { TemplateExplorerModalPlugin } from 'apps/remix-ide/src/app/plugins/template-explorer-modal'
 import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
 import { TemplateExplorerModalFacade } from '../src/utils/workspaceUtils'
@@ -13,11 +13,11 @@ import TrackingContext from '@remix-ide/tracking'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
-export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin, fileMode: boolean }) => {
+export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin, fileMode: boolean, ipfsMode: boolean }) => {
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const [theme, setTheme] = useState<any>(null)
   const appContext = useContext(AppContext)
-  const { plugin, fileMode } = props
+  const { plugin, fileMode, ipfsMode } = props
   const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch, state)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -48,6 +48,10 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   useEffect(() => {
     facade.setManageCategory(fileMode ? 'Files' : 'Template')
   }, [fileMode])
+
+  useEffect(() => {
+    facade.orchestrateImportFromExternalSource()
+  }, [ipfsMode])
 
   const generateUniqueWorkspaceName = async (name: string) => {
     try {
@@ -245,7 +249,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent, fileMode }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent, fileMode, ipfsMode }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

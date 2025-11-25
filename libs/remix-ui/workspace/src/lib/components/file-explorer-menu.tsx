@@ -1,7 +1,4 @@
-import { CustomTooltip } from '@remix-ui/helper'
-import React, {useState, useEffect, useContext, useRef, useReducer} from 'react' //eslint-disable-line
-import { FormattedMessage } from 'react-intl'
-import { Placement } from 'react-bootstrap/esm/types'
+import React, {useState, useContext, useRef} from 'react' //eslint-disable-line
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
 import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
@@ -17,81 +14,9 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const trackMatomoEvent = <T extends MatomoEvent = FileExplorerEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
   }
-  const [showDropdown, setShowDropdown] = useState(false)
-  // const [state, setState] = useState({
-  //   menuItems: [
-  //     {
-  //       action: 'newBlankFile',
-  //       title: 'New blank file',
-  //       icon: 'far fa-plus',
-  //       placement: 'top',
-  //       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'createNewFile',
-  //       title: 'Create new file',
-  //       icon: 'far fa-file',
-  //       placement: 'top',
-  //       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'createNewFolder',
-  //       title: 'Create new folder',
-  //       icon: 'far fa-folder',
-  //       placement: 'top',
-  //       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'uploadFile',
-  //       title: 'Upload files into current Workspace',
-  //       icon: 'far fa-upload',
-  //       placement: 'top',
-  //       platforms:[appPlatformTypes.web]
-  //     },
-  //     {
-  //       action: 'uploadFolder',
-  //       title: 'Upload folder into current Workspace',
-  //       icon: 'far fa-folder-upload',
-  //       placement: 'top',
-  //       platforms:[appPlatformTypes.web]
-  //     },
-  //     {
-  //       action: 'importFromIpfs',
-  //       title: 'Import files from ipfs',
-  //       icon: 'fa-regular fa-cube',
-  //       placement: 'top',
-  //       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'importFromHttps',
-  //       title: 'Import files with https',
-  //       icon: 'fa-solid fa-link',
-  //       placement: 'top',
-  //       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'initializeWorkspaceAsGitRepo',
-  //       title: 'Initialize Workspace as a git repository',
-  //       icon: 'fa-brands fa-git-alt',
-  //       placement: 'top',
-  //       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
-  //     },
-  //     {
-  //       action: 'revealInExplorer',
-  //       title: 'Reveal Workspace in explorer',
-  //       icon: 'fas fa-eye',
-  //       placement: 'top',
-  //       platforms: [appPlatformTypes.desktop]
-  //     }
-  //   ].filter(
-  //     (item) =>
-  //       props.menuItems &&
-  //       props.menuItems.find((name) => {
-  //         return name === item.action
-  //       })
-  //   ),
-  //   actions: {}
-  // })
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false)
+
   const menuItems = [
     {
       action: 'newBlankFile',
@@ -165,9 +90,14 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
     }
   ]
 
-  const itemAction = async (action: string, e?: React.ChangeEvent<HTMLInputElement>) => {
-
+  const itemAction = async (action: string) => {
     if (action === 'importFromIpfs' || action === 'importFromHttps') {
+      await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
+      await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+      appContext.appStateDispatch({
+        type: appActionTypes.showGenericModal,
+        payload: true
+      })
     } else if (action === 'createNewFile') {
       await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
       appContext.appStateDispatch({
@@ -177,54 +107,117 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
     } else if (action === 'createNewFolder') {
       props.createNewFolder()
     } else if (action === 'localFileSystem') {
-      e.target.click()
+      inputRef.current?.click()
     }
   }
 
   const enableDirUpload = { directory: '', webkitdirectory: '' }
 
   return (
-    (!global.fs.browser.isSuccessfulWorkspace ? null :
-      <>
+    <>
+      <input
+        ref={inputRef}
+        id="localFileSystemUpload"
+        data-id="fileExplorerLocalFileSystemUpload"
+        type="file"
+        onChange={(e) => {
+          e.stopPropagation()
+          props.uploadFolder(e.target)
+          e.target.value = null
+          setIsCreateMenuOpen(false)
+        }}
+        {...enableDirUpload}
+        multiple
+      />
+      {!global.fs.browser.isSuccessfulWorkspace ? null :
+        <>
 
-        <span data-id="spanContaining" className="ps-0 pb-1 w-50">
-          <Dropdown>
-            <Dropdown.Toggle
-              as={Button}
-              className="w-100 mb-1 d-flex flex-row align-items-center justify-content-center border"
-              data-id="fileExplorerCreateButton"
-              style={{
-                backgroundColor: '#333446',
-                color: '#fff'
-              }}
-            >
-              <div className="w-50"></div>
-              <div
-                className="d-flex flex-row align-items-center justify-items-start me-5 w-50"
+          <span data-id="spanContaining" className="ps-0 pb-1 w-50">
+            <Dropdown show={isCreateMenuOpen} onToggle={(next) => setIsCreateMenuOpen(next)}>
+              <Dropdown.Toggle
+                as={Button}
+                className="w-100 mb-1 d-flex flex-row align-items-center justify-content-center border"
+                data-id="fileExplorerCreateButton"
+                onClick={() => setIsCreateMenuOpen((prev) => !prev)}
+                style={{
+                  backgroundColor: '#333446',
+                  color: '#fff'
+                }}
               >
-                <i className="far fa-plus text-white me-2"></i>
-                <span className="text-white fw-semibold">Create</span>
-              </div>
-            </Dropdown.Toggle>
-            <Dropdown.Menu className="w-100 custom-dropdown-items bg-light">
-              {menuItems.filter((item) => item.action !== 'uploadFile' && item.action !== 'uploadFolder' && item.action !== 'initializeWorkspaceAsGitRepo' && item.action !== 'revealInExplorer').map(({ action, title, icon, placement, platforms }, index) => {
-                return (
-                  <Dropdown.Item
-                    key={index}
-                    onClick={() => {
-                      itemAction(action)
-                    }}
-                  >
-                    <a href={`#${action}`} className="text-decoration-none">
-                      <i className={icon}></i>
-                      <span className="ps-2">{title}</span>
-                    </a>
-                  </Dropdown.Item>
-                )
-              })}
-            </Dropdown.Menu>
-          </Dropdown>
-          {/* {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
+                <div className="w-50"></div>
+                <div
+                  className="d-flex flex-row align-items-center justify-items-start me-5 w-50"
+                >
+                  <i className="far fa-plus text-white me-2"></i>
+                  <span className="text-white fw-semibold">Create</span>
+                </div>
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="w-100 custom-dropdown-items bg-light">
+                {menuItems.filter((item) => item.action === 'newBlankFile' || item.action === 'createNewFile' || item.action === 'createNewFolder').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={() => {
+                        itemAction(action);
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'importFromIpfs').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={() => {
+                        itemAction(action);
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'localFileSystem').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        itemAction(action)
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'importFromHttps').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      key={index}
+                      onClick={() => {
+                        itemAction(action);
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+              </Dropdown.Menu>
+            </Dropdown>
+            {/* {1 - 1 === 2 ?state.menuItems.map(({ action, title, icon, placement, platforms }, index) => {
             if (platforms && !platforms.includes(platform)) return null
             if (action === 'uploadFile') {
               return (
@@ -354,8 +347,9 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
               )
             }
           }) : null} */}
-        </span>
-      </>)
+          </span>
+        </>}
+    </>
   )
 }
 

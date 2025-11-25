@@ -65,6 +65,7 @@ export interface TemplateExplorerContextType {
   generateUniqueWorkspaceName: (name: string) => Promise<string>
   trackMatomoEvent: <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => void
   fileMode: boolean
+  ipfsMode: boolean
 }
 
 export enum TemplateExplorerWizardAction {

@@ -7,13 +7,14 @@ import { EventEmitter } from 'events'
 import * as packageJson from '../../../../../package.json'
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 import { WorkspaceTemplate } from 'libs/remix-ui/workspace/src/lib/types'
+import { TemplateExplorerModalFacade } from 'libs/remix-ui/template-explorer-modal/src/utils/workspaceUtils'
 
 const pluginProfile = {
   name: 'templateexplorermodal',
   displayName: 'Template Explorer Modal',
   description: 'Template Explorer Modal',
-  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode'],
-  events: [],
+  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode', 'importFromExternal', 'externalSourceImported'],
+  events: ['externalSourceImported'],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
   location: 'none',
@@ -25,9 +26,11 @@ const pluginProfile = {
 export class TemplateExplorerModalPlugin extends Plugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
-  event: any
+  event: EventEmitter
   appStateDispatch: any
   fileMode: boolean
+  ipfsMode: boolean
+
   constructor() {
     super(pluginProfile)
     this.element = document.createElement('div')
@@ -35,6 +38,8 @@ export class TemplateExplorerModalPlugin extends Plugin {
     this.dispatch = () => { }
     this.event = new EventEmitter()
     this.fileMode = false
+    this.ipfsMode = false
+
   }
 
   async onActivation(): Promise<void> {
@@ -55,6 +60,11 @@ export class TemplateExplorerModalPlugin extends Plugin {
     this.renderComponent()
   }
 
+  importFromExternal(ipfsMode: boolean) {
+    if (this.ipfsMode === ipfsMode) return
+    this.ipfsMode = ipfsMode
+    this.renderComponent()
+  }
   onDeactivation(): void {
 
   }
@@ -76,15 +86,17 @@ export class TemplateExplorerModalPlugin extends Plugin {
     )
   }
 
-  renderComponent(): void {
+  renderComponent() {
     this.dispatch({
-      ...this
+      ...this,
+      ipfsMode: this.ipfsMode,
+      fileMode: this.fileMode,
     })
   }
 
   updateComponent(state: any) {
     return (
-      <TemplateExplorerProvider fileMode={this.fileMode} plugin={state} />
+      <TemplateExplorerProvider fileMode={state.fileMode} plugin={state} ipfsMode={state.ipfsMode} />
     )
   }
 }
