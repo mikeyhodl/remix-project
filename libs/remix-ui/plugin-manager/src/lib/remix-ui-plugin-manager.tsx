@@ -162,9 +162,9 @@ export const RemixUiPluginManager = ({ pluginComponent }: RemixUiPluginManagerPr
   const getFilteredPlugins = () => {
     let plugins = [...pluginComponent.activePlugins, ...pluginComponent.inactivePlugins]
 
-    const HIDDEN_PLUGINS = ['ai-dapp-generator'];
+    const HIDDEN_PLUGINS = ['ai-dapp-generator']
     plugins = plugins.filter(profile => !HIDDEN_PLUGINS.includes(profile.name))
-    
+
     if (filterByRemix) {
       plugins = plugins.filter(profile => profile.maintainedBy?.toLowerCase() === 'remix')
     }
