@@ -351,11 +351,11 @@ export interface InstanceContainerProps {
   getFuncABIInputs: (funcABI: FuncABI) => string
   exEnvironment: string
   editInstance: (
-    addressOrInstance: string | UdappInstance, 
-    abi?: any, 
-    name?: string, 
-    devdoc?: any, 
-    metadata?: string, 
+    addressOrInstance: string | UdappInstance,
+    abi?: any,
+    name?: string,
+    devdoc?: any,
+    metadata?: string,
     htmlTemplate?: any
   ) => void
   plugin: RunTab
@@ -473,11 +473,11 @@ export interface UdappProps {
   getFuncABIInputs: (funcABI: FuncABI) => string
   exEnvironment: string
   editInstance: (
-    addressOrInstance: string | UdappInstance, 
-    abi?: any, 
-    name?: string, 
-    devdoc?: any, 
-    metadata?: string, 
+    addressOrInstance: string | UdappInstance,
+    abi?: any,
+    name?: string,
+    devdoc?: any,
+    metadata?: string,
     htmlTemplate?: any
   ) => void
   plugin: RunTab

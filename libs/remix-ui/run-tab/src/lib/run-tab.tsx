@@ -104,7 +104,6 @@ export function RunTabUI(props: RunTabProps) {
       }
     } catch (e) {
       setSolcVersion({ version, canReceive: true })
-      console.log(e)
     }
   }
 
@@ -452,9 +451,8 @@ export function RunTabUI(props: RunTabProps) {
             getFuncABIInputs={getFuncABIValues}
             exEnvironment={runTab.selectExEnv}
             editInstance={(addressOrInstance, abi, name, devdoc, metadata, htmlTemplate) => {
-              console.log('[RunTab] editInstance called. Type:', typeof addressOrInstance)
 
-              let payload = {
+              const payload = {
                 address: '',
                 abi: null,
                 name: '',
@@ -470,14 +468,14 @@ export function RunTabUI(props: RunTabProps) {
               try {
                 if (typeof addressOrInstance === 'object' && addressOrInstance !== null) {
                   targetPlugin = 'quick-dapp'
-                  
+
                   const instance = addressOrInstance as any
                   const { metadata: metaFromInst, abi: abiFromInst, object } = instance.contractData || {}
-                  
+
                   payload.address = instance.address
                   payload.abi = abiFromInst
                   payload.name = instance.name
-                  
+
                   if (object) {
                     payload.devdoc = object.devdoc
                     payload.methodIdentifiers = object.evm?.methodIdentifiers

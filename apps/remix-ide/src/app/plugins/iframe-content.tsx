@@ -50,7 +50,7 @@ export class IframeContent extends ViewPlugin {
       </div>
     )
   }
-  
+
   updateComponent() {
     return <iframe srcDoc={this.content} />
   }

@@ -30,7 +30,7 @@ export function UniversalDappUI(props: UdappProps) {
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [evmBC, setEvmBC] = useState(null)
   const [instanceBalance, setInstanceBalance] = useState(0)
-  
+
   const isGenerating = useRef(false)
   const [useNewAiBuilder, setUseNewAiBuilder] = useState(false)
 
@@ -38,7 +38,7 @@ export function UniversalDappUI(props: UdappProps) {
     const qp = new QueryParams()
     const params = qp.get()
     const hasFlag = params['experimental'] === 'true'
-    
+
     setUseNewAiBuilder(prev => {
       if (prev !== hasFlag) {
         return hasFlag
@@ -325,7 +325,7 @@ export function UniversalDappUI(props: UdappProps) {
             </span>
             <div></div>
             <div className="btn d-flex p-0 align-self-center">
-              
+
               {/* [V2 Logic] New AI Builder Mode (Sparkles) */}
               {useNewAiBuilder && props.exEnvironment && (
                 <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappEditTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextEdit" />}>
@@ -343,45 +343,45 @@ export function UniversalDappUI(props: UdappProps) {
                               </div>
                               <div>This might take up to 2 minutes.</div>
                             </ul>
-                        )
-                        const modalContent = {
-                          id: 'generate-website-ai',
-                          title: 'Generate a Dapp UI with AI',
-                          message: modalMessage,
-                          placeholderText: 'E.g: "The website should have a dark theme, and show the account address and balance on top. The website should be responsive and look good on mobile. There should be a button to connect the wallet, and a button to refresh the balance, with a nice layout and design."',
-                          modalType: ModalTypes.textarea,
-                          okLabel: 'Generate',
-                          cancelLabel: 'Cancel',
-                          okFn: (value: string) => setTimeout(() => resolve(value), 0),
-                          cancelFn: () => setTimeout(() => reject(new Error('Canceled')), 0),
-                          hideFn: () => setTimeout(() => reject(new Error('Hide')), 0)
+                          )
+                          const modalContent = {
+                            id: 'generate-website-ai',
+                            title: 'Generate a Dapp UI with AI',
+                            message: modalMessage,
+                            placeholderText: 'E.g: "The website should have a dark theme, and show the account address and balance on top. The website should be responsive and look good on mobile. There should be a button to connect the wallet, and a button to refresh the balance, with a nice layout and design."',
+                            modalType: ModalTypes.textarea,
+                            okLabel: 'Generate',
+                            cancelLabel: 'Cancel',
+                            okFn: (value: string) => setTimeout(() => resolve(value), 0),
+                            cancelFn: () => setTimeout(() => reject(new Error('Canceled')), 0),
+                            hideFn: () => setTimeout(() => reject(new Error('Hide')), 0)
+                          }
+                          // @ts-ignore
+                          props.plugin.call('notification', 'modal', modalContent)
+                        })
+
+                        if (isGenerating.current) {
+                          await props.plugin.call('notification', 'toast', 'AI generation is already in progress.')
+                          return
                         }
-                        // @ts-ignore
-                        props.plugin.call('notification', 'modal', modalContent)
-                      })
 
-                      if (isGenerating.current) {
-                        await props.plugin.call('notification', 'toast', 'AI generation is already in progress.')
-                        return
-                      }
+                        isGenerating.current = true
 
-                      isGenerating.current = true
+                        await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
+                        try {
+                          await props.plugin.call('quick-dapp-v2', 'clearInstance')
+                        } catch (e) {
+                          console.warn('Quick Dapp clean up failed (plugin might not be loaded yet):', e)
+                        }
 
-                      await props.plugin.call('ai-dapp-generator', 'resetDapp', address)
-                      try {
-                        await props.plugin.call('quick-dapp-v2', 'clearInstance')
-                      } catch (e) {
-                        console.warn('Quick Dapp clean up failed (plugin might not be loaded yet):', e)
-                      }
+                        try {
+                          await props.plugin.call('quick-dapp-v2', 'startAiLoading')
+                        } catch (e) {
+                          console.warn('Failed to start loading state:', e)
+                        }
 
-                      try {
-                        await props.plugin.call('quick-dapp-v2', 'startAiLoading')
-                      } catch (e) {
-                        console.warn('Failed to start loading state:', e)
-                      }
-
-                      await generateAIDappWithPlugin(description, address, data, props)
-                      await props.plugin.call('tabs', 'focus', 'quick-dapp-v2')
+                        await generateAIDappWithPlugin(description, address, data, props)
+                        await props.plugin.call('tabs', 'focus', 'quick-dapp-v2')
                       } catch (error) {
                         if (error.message !== 'Canceled' && error.message !== 'Hide') {
                           console.error('Error generating DApp:', error)
@@ -542,15 +542,15 @@ const generateAIDappWithPlugin = async (description: string, address: string, co
 
     for (const [rawFilename, content] of Object.entries(pages)) {
       const safeParts = rawFilename.replace(/\\/g, '/')
-                                   .split('/')
-                                   .filter(part => part !== '..' && part !== '.' && part !== '');
-      
+        .split('/')
+        .filter(part => part !== '..' && part !== '.' && part !== '');
+
       if (safeParts.length === 0) {
-        continue; 
+        continue;
       }
       const safeFilename = safeParts.join('/');
       const fullPath = 'dapp/' + safeFilename;
-      
+
       if (safeParts.length > 1) {
         const subFolders = safeParts.slice(0, -1);
         let currentPath = 'dapp';
@@ -563,13 +563,13 @@ const generateAIDappWithPlugin = async (description: string, address: string, co
       }
       await props.plugin.call('fileManager', 'writeFile', fullPath, content)
     }
-    
+
     props.editInstance(
-      address, 
-      props.instance.abi, 
-      props.instance.name, 
-      contractData.artefact.devdoc, 
-      contractData.artefact.metadata, 
+      address,
+      props.instance.abi,
+      props.instance.name,
+      contractData.artefact.devdoc,
+      contractData.artefact.metadata,
       pages
     )
 

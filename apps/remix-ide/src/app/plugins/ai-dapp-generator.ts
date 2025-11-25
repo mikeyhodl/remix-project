@@ -27,10 +27,9 @@ interface Pages {
     [key: string]: string
 }
 
-
 export class AIDappGenerator extends Plugin {
   private contexts: Map<string, DappGenerationContext> = new Map()
-  
+
   constructor() {
     super(profile)
   }
@@ -55,7 +54,7 @@ export class AIDappGenerator extends Plugin {
       const pages = parsePages(htmlContent)
       context.messages = [
         { role: 'user', content: message },
-       { role: 'assistant', content: htmlContent }
+        { role: 'assistant', content: htmlContent }
       ]
       this.saveContext(options.address, context)
 
@@ -79,7 +78,7 @@ export class AIDappGenerator extends Plugin {
    * Update an existing DApp with new description
    */
   async updateDapp(address: string, description: string, currentFiles: Pages): Promise<Pages> {
-      const context = this.getOrCreateContext(address)
+    const context = this.getOrCreateContext(address)
 
     if (context.messages.length === 0) {
       throw new Error('No existing DApp found for this address. Please generate one first.')
@@ -91,7 +90,7 @@ export class AIDappGenerator extends Plugin {
     try {
       const htmlContent = await this.callLLMAPI(context.messages, FOLLOW_UP_SYSTEM_PROMPT)
 
-      const pages = parsePages(htmlContent) 
+      const pages = parsePages(htmlContent)
 
       if (Object.keys(pages).length === 0) {
         throw new Error("AI failed to return valid file structure. Check logs.");
@@ -175,7 +174,7 @@ export class AIDappGenerator extends Plugin {
 
   private createInitialMessage(options: GenerateDappOptions): string {
     const providerCode = this.getProviderCode()
-    
+
     return `
       You MUST generate a new DApp based on the following requirements.
       
@@ -215,7 +214,7 @@ export class AIDappGenerator extends Plugin {
       
       Remember: Return ALL project files in the 'START_TITLE' format as
       instructed in the system prompt.
-    `  
+    `
   }
 
   private createUpdateMessage(description: string, currentFiles: Pages): string {
@@ -251,9 +250,8 @@ export class AIDappGenerator extends Plugin {
   }
 
   private async callLLMAPI(messages: any[], systemPrompt: string): Promise<string> {
-    const BACKEND_URL = "https://quickdapp-ai.api.remix.live/generate"; 
-    // const BACKEND_URL = "http://localhost:4000/dapp-generator/generate"; 
-
+    const BACKEND_URL = "https://quickdapp-ai.api.remix.live/generate";
+    // const BACKEND_URL = "http://localhost:4000/dapp-generator/generate";
 
     try {
       const response = await fetch(BACKEND_URL, {
@@ -274,7 +272,7 @@ export class AIDappGenerator extends Plugin {
       }
 
       const json = await response.json();
-      
+
       return json.content;
 
     } catch (error) {
@@ -283,76 +281,76 @@ export class AIDappGenerator extends Plugin {
     }
   }
 }
-  
-  const cleanFileContent = (content: string, filename: string): string => {
-    let cleaned = content.trim()
 
-    cleaned = cleaned.replace(/^```[\w-]*\n?/gm, '')
-    cleaned = cleaned.replace(/```$/gm, '')
+const cleanFileContent = (content: string, filename: string): string => {
+  let cleaned = content.trim()
 
-    const strayTags = ['javascript', 'typescript', 'html', 'css', 'jsx', 'tsx', 'json']
-    for (const tag of strayTags) {
-      if (cleaned.toLowerCase().startsWith(tag)) {
-        const regex = new RegExp(`^${tag}\\s*\\n?`, 'i')
-        cleaned = cleaned.replace(regex, '')
-      }
+  cleaned = cleaned.replace(/^```[\w-]*\n?/gm, '')
+  cleaned = cleaned.replace(/```$/gm, '')
+
+  const strayTags = ['javascript', 'typescript', 'html', 'css', 'jsx', 'tsx', 'json']
+  for (const tag of strayTags) {
+    if (cleaned.toLowerCase().startsWith(tag)) {
+      const regex = new RegExp(`^${tag}\\s*\\n?`, 'i')
+      cleaned = cleaned.replace(regex, '')
     }
-
-    if (filename.endsWith('.html')) {
-      cleaned = cleaned.replace(/(<script[^>]*>)\s*javascript\s*/gi, '$1\n')
-    }
-
-    return cleaned.trim()
   }
 
-  // Helper function to ensure HTML has complete structure
-  const ensureCompleteHtml = (html: string): string => {
-    let completeHtml = html;
+  if (filename.endsWith('.html')) {
+    cleaned = cleaned.replace(/(<script[^>]*>)\s*javascript\s*/gi, '$1\n')
+  }
 
-    // Add missing head closing tag
-    if (completeHtml.includes("<head>") && !completeHtml.includes("</head>")) {
-      completeHtml += "\n</head>";
-    }
+  return cleaned.trim()
+}
 
-    // Add missing body closing tag
-    if (completeHtml.includes("<body") && !completeHtml.includes("</body>")) {
-      completeHtml += "\n</body>";
-    }
+// Helper function to ensure HTML has complete structure
+const ensureCompleteHtml = (html: string): string => {
+  let completeHtml = html;
 
-    // Add missing html closing tag
-    if (!completeHtml.includes("</html>")) {
-      completeHtml += "\n</html>";
-    }
+  // Add missing head closing tag
+  if (completeHtml.includes("<head>") && !completeHtml.includes("</head>")) {
+    completeHtml += "\n</head>";
+  }
 
-    return completeHtml;
-  };
+  // Add missing body closing tag
+  if (completeHtml.includes("<body") && !completeHtml.includes("</body>")) {
+    completeHtml += "\n</body>";
+  }
 
-  const parsePages = (content: string) => {
-    const pages = {}
-    const markerRegex = /<<<<<<< START_TITLE (.*?) >>>>>>> END_TITLE/g
+  // Add missing html closing tag
+  if (!completeHtml.includes("</html>")) {
+    completeHtml += "\n</html>";
+  }
 
-    if (!content.match(markerRegex)) {
-      return pages
-    }
+  return completeHtml;
+};
 
-    const parts = content.split(markerRegex)
-    
-    for (let i = 1; i < parts.length; i += 2) {
-      const filename = parts[i].trim()
-      let rawFileContent = parts[i + 1]
+const parsePages = (content: string) => {
+  const pages = {}
+  const markerRegex = /<<<<<<< START_TITLE (.*?) >>>>>>> END_TITLE/g
 
-      if (filename && rawFileContent) {
-        let cleanContent = cleanFileContent(rawFileContent, filename)
-        
-        if (filename.endsWith('.html')) {
-            cleanContent = ensureCompleteHtml(cleanContent)
-        }
-
-        if (cleanContent) {
-          pages[filename] = cleanContent;
-        }
-      }
-    }
-    
+  if (!content.match(markerRegex)) {
     return pages
   }
+
+  const parts = content.split(markerRegex)
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const filename = parts[i].trim()
+    const rawFileContent = parts[i + 1]
+
+    if (filename && rawFileContent) {
+      let cleanContent = cleanFileContent(rawFileContent, filename)
+
+      if (filename.endsWith('.html')) {
+        cleanContent = ensureCompleteHtml(cleanContent)
+      }
+
+      if (cleanContent) {
+        pages[filename] = cleanContent;
+      }
+    }
+  }
+
+  return pages
+}
