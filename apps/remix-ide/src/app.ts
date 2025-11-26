@@ -26,7 +26,6 @@ import { RemixAIAssistant } from './app/plugins/remix-ai-assistant'
 import { SolidityUmlGen } from './app/plugins/solidity-umlgen'
 import { VyperCompilationDetailsPlugin } from './app/plugins/vyper-compilation-details'
 import { ContractFlattener } from './app/plugins/contractFlattener'
-import { IframeContent } from './app/plugins/iframe-content'
 
 import { WalkthroughService } from './walkthroughService'
 
@@ -320,9 +319,6 @@ class AppComponent {
     //---------------- Solidity UML Generator -------------------------
     const solidityumlgen = new SolidityUmlGen(appManager)
 
-    // ----------------- IframeContent Plugin -------------------------
-    const iframeContent = new IframeContent(appManager)
-
     // ----------------- Compilation Details ----------------------------
     const compilationDetails = new CompilationDetailsPlugin(appManager)
     const vyperCompilationDetails = new VyperCompilationDetailsPlugin(appManager)
@@ -456,7 +452,6 @@ class AppComponent {
       this.walkthroughService,
       search,
       solidityumlgen,
-      iframeContent,
       compilationDetails,
       vyperCompilationDetails,
       remixGuide,
