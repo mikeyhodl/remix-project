@@ -98,9 +98,6 @@ export class DeployContractHandler extends BaseToolHandler {
 
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-
-      await plugin.call('sidePanel', 'showContent', 'udapp' )
-
       // Get compilation result to find contract
       const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
       const data = getContractData(args.contractName, compilerAbstract)
@@ -145,7 +142,7 @@ export class DeployContractHandler extends BaseToolHandler {
         contractAddress: receipt.contractAddress,
         success: receipt.status === 1 ? true : false
       };
-
+      await plugin.call('sidePanel', 'showContent', 'udapp' )
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
 
       return this.createSuccessResult(result);
