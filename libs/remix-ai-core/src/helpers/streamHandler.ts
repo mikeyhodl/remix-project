@@ -1,4 +1,3 @@
-import { ChatHistory } from '../prompts/chat';
 import { JsonStreamParser, IAIStreamResponse } from '../types/types';
 
 export const HandleSimpleResponse = async (response, cb?: (streamText: string) => void) => {

@@ -246,7 +246,7 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
       ol: ({ node, ...props }) => (
         <ol className="ai-list ai-list-ordered" {...props} />
       ),
-      li: ({ node, ...props }) => (
+      li: ({ node, ordered, ...props }) => (
         <li className="ai-list-item" {...props} />
       ),
       // Links

@@ -95,7 +95,7 @@ export function RemixMdRenderer({ markDownContent, theme }: { markDownContent: s
         ol: ({ node, ...props }) => (
           <ol className="ai-list ai-list-ordered" {...props} />
         ),
-        li: ({ node, ...props }) => (
+        li: ({ node, ordered, ...props }) => (
           <li className="ai-list-item" {...props} />
         ),
         // Links
