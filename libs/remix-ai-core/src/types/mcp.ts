@@ -125,35 +125,19 @@ export interface IMCPProviderParams {
   toolTimeout?: number;
 }
 
-/**
- * Intent analysis results
- */
 export interface IUserIntent {
-  /** Primary intent type */
   type: 'coding' | 'documentation' | 'debugging' | 'explanation' | 'generation' | 'completion';
-  /** Confidence score 0-1 */
   confidence: number;
-  /** Extracted keywords */
   keywords: string[];
-  /** Detected domains */
   domains: string[];
-  /** Query complexity level */
   complexity: 'low' | 'medium' | 'high';
-  /** Original query */
   originalQuery: string;
 }
 
-/**
- * Resource relevance score
- */
 export interface IResourceScore {
-  /** Resource reference */
   resource: IMCPResource;
-  /** Server name */
   serverName: string;
-  /** Overall relevance score 0-1 */
   score: number;
-  /** Breakdown of score components */
   components: {
     keywordMatch: number;
     domainRelevance: number;
@@ -161,91 +145,48 @@ export interface IResourceScore {
     priority: number;
     freshness: number;
   };
-  /** Explanation of why this resource was selected */
   reasoning: string;
 }
 
-/**
- * Enhanced resource selection result
- */
 export interface IResourceSelectionResult {
-  /** Selected resources with scores */
   selectedResources: IResourceScore[];
-  /** Total resources considered */
   totalResourcesConsidered: number;
-  /** Selection strategy used */
   strategy: 'priority' | 'semantic' | 'hybrid';
-  /** Intent analysis result */
   intent: IUserIntent;
 }
 
-/**
- * Extended MCP provider configuration with intent matching
- */
 export interface IEnhancedMCPProviderParams extends IMCPProviderParams {
-  /** Enable intelligent resource selection */
   enableIntentMatching?: boolean;
-  /** Minimum relevance score threshold */
   relevanceThreshold?: number;
-  /** Resource selection strategy */
   selectionStrategy?: 'priority' | 'semantic' | 'hybrid';
-  /** Domain-specific weights */
   domainWeights?: Record<string, number>;
-  /** Enable query expansion */
   enableQueryExpansion?: boolean;
-  /** Maximum query expansion terms */
   maxExpansionTerms?: number;
 }
 
-/**
- * Extended IParams interface with MCP support
- */
 export interface IMCPAwareParams {
-  /** MCP-specific parameters */
   mcp?: IEnhancedMCPProviderParams;
 }
 
-/**
- * Record of a single tool call during code execution
- */
 export interface IToolCallRecord {
-  /** Name of the tool that was called */
   name: string;
-  /** Arguments passed to the tool */
   arguments: Record<string, any>;
-  /** Full result payload from the tool */
   result: IMCPToolResult;
-  /** Execution time for this specific tool call in milliseconds */
   executionTime: number;
 }
 
-/**
- * Code execution result for MCP code mode
- */
 export interface ICodeExecutionResult {
-  /** Whether the execution was successful */
   success: boolean;
-  /** Console output from the execution */
   output: string;
-  /** Error message if execution failed */
   error?: string;
-  /** Execution time in milliseconds */
   executionTime: number;
-  /** List of MCP tools called during execution */
   toolsCalled: string[];
-  /** Full records of all tool calls with their payloads */
   toolCallRecords: IToolCallRecord[];
-  /** Return value from the executed code */
   returnValue?: any;
 }
 
-/**
- * Execution context provided to code execution sandbox
- */
 export interface IExecutionContext {
-  /** Execute an MCP tool by name */
   executeToolCall: (name: string, args: Record<string, any>) => Promise<IMCPToolResult>;
-  /** Console interface for logging */
   console: {
     log: (...args: any[]) => void;
     error: (...args: any[]) => void;
