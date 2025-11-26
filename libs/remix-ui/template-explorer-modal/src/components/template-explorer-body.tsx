@@ -14,7 +14,7 @@ export function TemplateExplorerBody() {
       <TopCards />
       {
         (dedupedTemplates.length === 0) ? <NotFound /> : (
-          <div className="body overflow-y-hidden pt-3">
+          <div className="body overflow-y-hidden pt-2">
             <>
               <label data-id="templateExplorerBodyLabel" className="text-dark fs-5">{state.manageCategory === 'Template' ? 'Workspace Templates' : 'File Templates'}</label>
               <div className="">

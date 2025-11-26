@@ -28,7 +28,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
   return (
     <section data-id="template-explorer-modal-react" data-path={`templateExplorerModal-${state.manageCategory}`}>
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
-        <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: '70dvw', height: '78dvh' }}>
+        <div className="template-explorer-modal-container border bg-dark p-2" style={{ width: '768px', height: '768px' }}>
           <div className="template-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">
             {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <div className="d-flex flex-row gap-2 w-100 mx-3 my-2">
               <input
@@ -46,10 +46,9 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
             </div> : <div>
               <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
                 <button className="btn" onClick={() => {
-                  console.log('what is state now', state)
-                  if (state.wizardStep === 'importFiles') {
+                  if (state.wizardStep === 'importFiles' || state.manageCategory === 'Files') {
+                    dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'template' })
                     dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
-                    facade.resetExplorerWizard(dispatch as any)
                   } else {
                     facade.resetExplorerWizard(dispatch as any)
                   }

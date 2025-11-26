@@ -106,7 +106,7 @@ export function TopCards() {
 
   return (
     <div className="title">
-      <div className="row g-3 mb-3" style={{ position: 'relative' }}>
+      <div className="row g-3 mb-1" style={{ position: 'relative' }}>
         <div className="col-6">
           <div
             data-id="create-blank-workspace-topcard"

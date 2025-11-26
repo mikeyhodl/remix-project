@@ -61,13 +61,11 @@ export class TemplateExplorerModalPlugin extends Plugin {
   }
 
   resetFileMode() {
-    console.log('resetFileMode hit!')
     this.fileMode = false
     this.renderComponent()
   }
 
   resetIpfsMode() {
-    console.log('resetIpfsMode hit!')
     this.ipfsMode = false
     this.renderComponent()
   }

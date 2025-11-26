@@ -9,6 +9,7 @@ export function TemplateExplorer() {
   const { metadata, dedupedTemplates, plugin, dispatch, facade, templateCategoryStrategy, theme, trackMatomoEvent } = useContext(TemplateExplorerContext)
 
   return (
+
     <div data-id="template-explorer-template-container" className="template-explorer-container overflow-y-auto">
 
       {dedupedTemplates?.map((template: TemplateCategory, templateIndex) => (
@@ -72,22 +73,22 @@ export function TemplateExplorer() {
                       <div className="options-badges d-flex flex-wrap">
                         {item.opts.upgradeable && (
                           <span className="badge bg-success badge-uups">
-                            UUPS
+                      UUPS
                           </span>
                         )}
                         {item.opts.mintable && (
                           <span className="badge bg-warning text-dark badge-mint">
-                            Mint
+                      Mint
                           </span>
                         )}
                         {item.opts.burnable && (
                           <span className="badge bg-danger badge-burn">
-                            Burn
+                      Burn
                           </span>
                         )}
                         {item.opts.pausable && (
                           <span className="badge bg-secondary badge-pause">
-                            Pause
+                      Pause
                           </span>
                         )}
                       </div>
