@@ -149,7 +149,7 @@ export function TopCards() {
             </span>
             <span className="d-flex flex-column flex-grow-1 ms-2 ms-md-3">
               <p className="mb-0 fw-semibold">Create blank</p>
-              <p className="mb-0 fw-light text-wrap">Create an empty workspace</p>
+              <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Create an empty workspace' : 'Create a blank file'}</p>
             </span>
           </div>
         </div>
