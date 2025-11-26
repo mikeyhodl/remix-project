@@ -147,7 +147,7 @@ export class DeployContractHandler extends BaseToolHandler {
         logs: receipt.logs,
         contractAddress: receipt.contractAddress,
         success: receipt.status === 1 ? true : false
-      }      
+      }
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
 
       return this.createSuccessResult(result);
