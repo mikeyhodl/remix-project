@@ -304,6 +304,14 @@ function EditHtmlTemplate(): JSX.Element {
   return (
     <Row className="m-0 h-100">
       <Col xs={12} lg={8} className="pe-3 d-flex flex-column h-100">
+        <Row>
+          {/* Chat Section */}
+          <div className="flex-grow-1 mb-3" style={{ minHeight: '30px' }}>
+            <ChatBox
+              onSendMessage={handleChatMessage}
+            />
+          </div>
+        </Row>
         {/* Preview Section */}
         <Row className="flex-grow-1 mb-3">
           <Col xs={12} className="d-flex flex-column h-100">
@@ -312,7 +320,7 @@ function EditHtmlTemplate(): JSX.Element {
                 <FormattedMessage id="quickDapp.preview" defaultMessage="Preview" />
               </h5>
               <Button 
-                variant="outline-primary" 
+                variant="primary" 
                 size="sm" 
                 onClick={runBuild} 
                 disabled={isBuilding}
@@ -340,7 +348,7 @@ function EditHtmlTemplate(): JSX.Element {
                     style={{
                       width: '100%',
                       height: '100%',
-                      minHeight: '400px',
+                      minHeight: '800px',
                       border: 'none',
                       backgroundColor: 'white',
                       flex: '1'
@@ -368,14 +376,6 @@ function EditHtmlTemplate(): JSX.Element {
               </Card.Body>
             </Card>
           </Col>
-        </Row>
-        <Row>
-          {/* Chat Section */}
-          <div className="flex-grow-1 mb-3" style={{ minHeight: '300px' }}>
-            <ChatBox
-              onSendMessage={handleChatMessage}
-            />
-          </div>
         </Row>
       </Col>
 
