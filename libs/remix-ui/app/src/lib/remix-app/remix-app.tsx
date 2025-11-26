@@ -1,3 +1,4 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useEffect, useReducer, useRef, useState } from 'react'
 import './style/remix-app.css'
 import { RemixUIMainPanel } from '@remix-ui/panel'
@@ -14,6 +15,9 @@ import { appReducer } from './reducer/app'
 import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
 import { desktopConnectionType } from '@remix-api'
+import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-modal/src/lib/remix-ui-template-explorer-modal'
+import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
+import { AiWorkspaceGeneration } from './components/modals/aiworkspace-generation'
 
 interface IRemixAppUi {
   app: any
@@ -40,8 +44,22 @@ const RemixApp = (props: IRemixAppUi) => {
   const [appState, appStateDispatch] = useReducer(appReducer, {
     ...appInitialState,
     showPopupPanel: !window.localStorage.getItem('did_show_popup_panel') && !isElectron(),
-    connectedToDesktop: props.app.desktopClientMode ? desktopConnectionType .disconnected : desktopConnectionType .disabled
+    connectedToDesktop: props.app.desktopClientMode ? desktopConnectionType .disconnected : desktopConnectionType .disabled,
+    genericModalState: {
+      id: '',
+      title: <div>Default Title</div>,
+      message: <div>Default Message</div>,
+      footer: <div>Default Footer</div>,
+      okLabel: 'Default Ok Label',
+      okFn: () => { },
+      cancelLabel: 'Default Cancel Label',
+      cancelFn: () => { },
+      width: '720px',
+      height: '720px',
+      showModal: false
+    }
   })
+  const [isAiWorkspaceBeingGenerated, setIsAiWorkspaceBeingGenerated] = useState<boolean>(false)
 
   useEffect(() => {
     if (props.app.params && props.app.params.activate && props.app.params.activate.split(',').includes('desktopClient')){
@@ -148,7 +166,9 @@ const RemixApp = (props: IRemixAppUi) => {
     showEnter: props.app.showEnter,
     modal: props.app.notification,
     appState: appState,
-    appStateDispatch: appStateDispatch
+    appStateDispatch: appStateDispatch,
+    isAiWorkspaceBeingGenerated: isAiWorkspaceBeingGenerated,
+    setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated
   }
 
   return (
@@ -216,6 +236,8 @@ const RemixApp = (props: IRemixAppUi) => {
             </div>
             <AppDialogs></AppDialogs>
             <DialogViewPlugin></DialogViewPlugin>
+            {appState.genericModalState.showModal && props.app.templateExplorerModal.render()
+            }
           </AppProvider>
         </onLineContext.Provider>
       </platformContext.Provider>

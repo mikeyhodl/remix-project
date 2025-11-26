@@ -975,9 +975,12 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         }
       }
 
+      // Sort resources from less relevant to most relevant (ascending by score) -> contex reduction when sending payload
+      const sortedResources = selectedResources.sort((a, b) => a.score - b.score);
+
       // Build context from selected resources
       let mcpContext = "";
-      for (const scoredResource of selectedResources) {
+      for (const scoredResource of sortedResources) {
         const { resource, serverName } = scoredResource;
 
         try {
@@ -1088,6 +1091,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall);
               console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
+              console.log("[MCP] Tool result", result);
 
               // Extract full text content from MCP result
               const extractContent = (mcpResult: any): string => {
@@ -1185,7 +1189,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
             // Send empty prompt - the tool results are in toolsMessages
             // Don't add extra prompts as they cause Anthropic to summarize instead of using full tool results
-            return { streamResponse: await super.answer('', followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
+            if (options.provider === 'openai' || options.provider === 'mistralai') return { streamResponse: await super.answer(prompt, followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
+            else return { streamResponse: await super.answer("", followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
           }
         }
       }
