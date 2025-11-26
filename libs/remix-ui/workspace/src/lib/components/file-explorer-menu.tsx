@@ -5,6 +5,7 @@ import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, FileExplorerEvent } from '@remix-api'
 import { Button, Dropdown } from 'react-bootstrap'
+import { createNewFile } from '../actions'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
@@ -140,9 +141,10 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'newBlankFile').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-newBlankFile"
                       key={index}
-                      onClick={() => {
-                        itemAction(action);
+                      onClick={async () => {
+                        await createNewFile('blank', '/')
                       }}
                     >
                       <span className="text-decoration-none">
@@ -155,10 +157,10 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'createNewFile').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-createNewFile"
                       key={index}
                       onClick={async () => {
                         await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
-                        // await global.plugin.call('templateexplorermodal', 'resetIpfsMode', false)
                         appContext.appStateDispatch({
                           type: appActionTypes.showGenericModal,
                           payload: true
@@ -175,6 +177,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'createNewFolder').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-createNewFolder"
                       key={index}
                       onClick={async () => {
                         props.createNewFolder()
@@ -190,6 +193,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'importFromIpfs').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-importFromIpfs"
                       key={index}
                       onClick={async () => {
                         // await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
@@ -210,6 +214,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'localFileSystem').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-localFileSystem"
                       key={index}
                       onClick={(e) => {
                         e.preventDefault()
@@ -227,6 +232,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 {menuItems.filter((item) => item.action === 'importFromHttps').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
+                      data-id="fileExplorerCreateButton-importFromHttps"
                       key={index}
                       onClick={async () => {
                         await global.plugin.call('templateexplorermodal', 'importFromHttps', true)
