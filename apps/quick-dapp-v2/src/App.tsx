@@ -68,20 +68,28 @@ function App(): JSX.Element {
         appState,
       }}
     >
-      <IntlProvider locale={locale.code} messages={locale.messages}>
-        {appState.instance.htmlTemplate ? (
-          <div className="container-fluid pt-3">
-            <EditHtmlTemplate />
-          </div>
-        ) : Object.keys(appState.instance.abi).length > 0 ? (
-          <div className="row m-0 pt-3">
-            <EditInstance />
-            <DeployPanel />
+      <IntlProvider locale={locale.code} messages={locale.messages || {}}>
+        {!locale.messages ? (
+          <div className="text-center pt-5">
+            <i className="fas fa-spinner fa-spin fa-2x"></i>
           </div>
         ) : (
-          <div className="row m-0 pt-3">
-            <CreateInstance isAiLoading={isAiLoading} />
-          </div>
+          <>
+            {appState.instance.htmlTemplate ? (
+              <div className="container-fluid pt-3">
+                <EditHtmlTemplate />
+              </div>
+            ) : Object.keys(appState.instance.abi).length > 0 ? (
+              <div className="row m-0 pt-3">
+                <EditInstance />
+                <DeployPanel />
+              </div>
+            ) : (
+              <div className="row m-0 pt-3">
+                <CreateInstance isAiLoading={isAiLoading} />
+              </div>
+            )}
+          </>
         )}
         <LoadingScreen />
       </IntlProvider>

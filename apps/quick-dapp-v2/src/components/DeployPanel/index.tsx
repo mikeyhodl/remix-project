@@ -30,8 +30,20 @@ function DeployPanel(): JSX.Element {
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
   const [isPublishOpen, setIsPublishOpen] = useState(true);
   const [isEnsOpen, setIsEnsOpen] = useState(true);
+  const [ensError, setEnsError] = useState('');
 
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const validateEnsName = (name: string) => {
+    const regex = /^[a-z0-9-]+$/;
+    
+    if (!name) return '';
+    if (name.length < 3) return 'Name must be at least 3 characters.';
+    if (!regex.test(name)) return 'Only lowercase letters, numbers, and hyphens are allowed.';
+    if (name.startsWith('-') || name.endsWith('-')) return 'Name cannot start or end with a hyphen.';
+    
+    return '';
+  };
 
   const handleRemoveLogo = () => {
     dispatch({ type: 'SET_INSTANCE', payload: { logo: null } });
@@ -159,6 +171,12 @@ function DeployPanel(): JSX.Element {
 
     const label = ensName.trim().toLowerCase();
     
+    const validationError = validateEnsName(label);
+    if (validationError) {
+        setEnsError(validationError);
+        return;
+    }
+
     if (!label || !deployResult.cid) {
       setEnsResult({ ...ensResult, error: 'ENS label or IPFS CID is missing.' });
       setIsEnsLoading(false);
@@ -269,9 +287,9 @@ function DeployPanel(): JSX.Element {
         </Card.Header>
         <Collapse in={isPublishOpen}>
           <Card.Body>
-            <Alert variant="info" className="small">
+            <Alert variant="info">
               <i className="fas fa-info-circle me-2"></i>
-              Deploy your DApp to IPFS using Remix's centralized gateway. No personal IPFS keys required.
+              Deploy your DApp to IPFS using Remix's gateway. No personal IPFS keys required.
             </Alert>
               
             <Button
@@ -288,13 +306,12 @@ function DeployPanel(): JSX.Element {
             </Button>
 
             {deployResult.cid && (
-              <Alert variant="success" className="mt-3 small" style={{ wordBreak: 'break-all' }}>
+              <Alert variant="success" className="mt-3" style={{ wordBreak: 'break-all' }}>
                 <div className="fw-bold">Deployed Successfully!</div>
                 <div><strong>CID:</strong> {deployResult.cid}</div>
-                <hr className="my-2" />
-                <a href={deployResult.gatewayUrl} target="_blank" rel="noopener noreferrer">
-                  View DApp
-                </a>
+                <div className="mt-1">
+                  <strong>Domain:</strong> <a href={deployResult.gatewayUrl} target="_blank" rel="noopener noreferrer">View DApp</a>
+                </div>
               </Alert>
             )}
             {deployResult.error && (
@@ -319,12 +336,11 @@ function DeployPanel(): JSX.Element {
           </Card.Header>
           <Collapse in={isEnsOpen}>
             <Card.Body>
-              <Alert variant="info" className="small">
+              <Alert variant="info">
                 <i className="fas fa-gas-pump me-2"></i>
                 Register a <strong>.remixdapp.eth</strong> subdomain on Arbitrum. 
                 Remix covers the gas fees!
               </Alert>
-
               <Form.Group className="mb-2">
                 <Form.Label className="text-uppercase mb-0">Subdomain Label</Form.Label>
                 <div className="input-group">
@@ -333,15 +349,28 @@ function DeployPanel(): JSX.Element {
                     placeholder="myapp" 
                     value={ensName} 
                     onChange={(e) => {
-                      setEnsName(e.target.value)
-                      if (ensResult.success) setEnsResult({ ...ensResult, success: '', txHash: '', domain: '' })
+                      const val = e.target.value.toLowerCase();
+                      setEnsName(val);
+                      const errorMsg = validateEnsName(val);
+                      setEnsError(errorMsg);
+                      if (ensResult.success || ensResult.error) {
+                        setEnsResult({ success: '', error: '', txHash: '', domain: '' });
+                      }
                     }}
+                    isInvalid={!!ensError}
                   />
                   <span className="input-group-text">.remixdapp.eth</span>
                 </div>
-                {!ensResult.success && (
-                  <Form.Text className="text-muted">
-                    Preview: <strong>https://{ensName || 'myapp'}.remixdapp.eth.limo</strong>
+                {ensError && (
+                  <Form.Text className="text-danger">
+                    <i className="fas fa-exclamation-circle me-1"></i>
+                    {ensError}
+                  </Form.Text>
+                )}
+                {!ensError && ensName && !ensResult.success && (
+                  <Form.Text className="text-success">
+                    <i className="fas fa-check-circle me-1"></i>
+                    Valid name format
                   </Form.Text>
                 )}
               </Form.Group>
@@ -350,7 +379,7 @@ function DeployPanel(): JSX.Element {
                 variant="secondary" 
                 className="w-100" 
                 onClick={handleEnsLink} 
-                disabled={isEnsLoading || !ensName}
+                disabled={isEnsLoading || !ensName || !!ensError}
               >
                 {isEnsLoading ? (
                   <><i className="fas fa-spinner fa-spin me-1"></i> Registering...</>
@@ -360,8 +389,7 @@ function DeployPanel(): JSX.Element {
               </Button>
 
               {ensResult.success && (
-                <Alert variant="success" className="mt-3 small">
-                  <div className="fw-bold mb-1">Success!</div>
+                <Alert variant="success" className="mt-3">
                   <div>{ensResult.success}</div>
                   <div className="mt-1">
                     <strong>Domain:</strong> <a href={`https://${ensResult.domain}.limo`} target="_blank" rel="noreferrer">{ensResult.domain}</a>
@@ -380,14 +408,14 @@ function DeployPanel(): JSX.Element {
       <div className="mt-3">
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="secondary"
           onClick={() => { resetInstance(); handleRemoveLogo(); }}
         >
           <FormattedMessage id="quickDapp.resetFunctions" />
         </Button>
         <Button
           size="sm"
-          variant="outline-danger"
+          variant="danger"
           className="ms-3"
           onClick={() => { emptyInstance(); }}
         >
