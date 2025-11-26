@@ -395,14 +395,7 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
 
           // Handle tool calls in Ollama format
           if (parsed.message?.tool_calls && tool_callback) {
-            // Show tool execution status with spinner
-            reasoning_cb?.('__TOOL_EXECUTING__');
-
             const response = await tool_callback(parsed.message.tool_calls)
-
-            // Clear status - will be replaced by streaming content
-            reasoning_cb?.('__TOOL_DONE__');
-
             cb("\n\n");
             HandleOllamaResponse(response, cb, done_cb, reasoning_cb)
             return;
