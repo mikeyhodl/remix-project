@@ -25,12 +25,6 @@ const modified = fileContent.replace('old', 'new');
 const compiled = await callMCPTool('solidity_compile', { file: 'contract.sol' });
 const deployed = await callMCPTool('deploy_contract', { contractName: 'MyToken' });
 
-// Multiple tasks 2
-const fileContent = await callMCPTool('file_read', { path:'contract.sol' });
-const content = JSON.parse(fileContent.content[0].text).content
-const updatedContent = fileContent.replace('contract Subscription', 'contract MySubscriptionContract');
-await callMCPTool('file_write', { path: 'ccontract.sol', content: updatedContent });
-
 
 // With loops for batch operations
 const files = ['contracts/Token.sol', 'contracts/NFT.sol', 'contracts/DAO.sol'];
