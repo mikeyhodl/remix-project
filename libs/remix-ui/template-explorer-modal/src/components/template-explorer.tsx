@@ -44,7 +44,7 @@ export function TemplateExplorer() {
                     if (item.value === 'cookbook') {
                       await plugin.call('manager', 'activatePlugin', 'cookbookdev')
                       await plugin.call('sidePanel', 'focus', 'cookbookdev')
-                      // trackMatomoEvent({ category: 'templateExplorerModal', action: 'selectWorkspaceTemplate', value: item.value })
+                      trackMatomoEvent({ category: 'templateExplorerModal', action: 'selectWorkspaceTemplate', value: item.value })
                       facade.closeWizard()
                       return
                     }
