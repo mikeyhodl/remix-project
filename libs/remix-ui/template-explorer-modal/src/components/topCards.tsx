@@ -59,6 +59,9 @@ export function TopCards() {
         <li
           className="d-flex flex-row align-items-center import-option-item"
           onClick={() => {
+            if (state.manageCategory === 'Template') {
+              dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
+            }
             dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
           }}
