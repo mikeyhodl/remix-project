@@ -124,6 +124,9 @@ export function TopCards() {
                 facade.closeWizard()
               }
             }}
+            style={{
+              borderRadius: '10px'
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
               e.currentTarget.style.transform = 'translateY(-2px)'
@@ -165,6 +168,9 @@ export function TopCards() {
               }
               aiPluginProfile = null
             }}
+            style={{
+              borderRadius: '10px'
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
               e.currentTarget.style.transform = 'translateY(-2px)'
@@ -192,6 +198,9 @@ export function TopCards() {
               facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardContractWizard', name: 'success' })
             }}
+            style={{
+              borderRadius: '10px'
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
               e.currentTarget.style.transform = 'translateY(-2px)'
@@ -217,7 +226,8 @@ export function TopCards() {
             className="explora-topcard d-flex flex-row align-items-center p-3 p-md-4 shadow-sm import-files border border-light h-100"
             style={{
               backgroundColor: 'transparent',
-              transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s'
+              transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s',
+              borderRadius: '10px'
             }}
             onClick={() => {
               if (state.manageCategory === 'Template') {
@@ -226,6 +236,7 @@ export function TopCards() {
                 setImportFiles(!importFiles)
               }
             }}
+
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
               e.currentTarget.style.transform = 'translateY(-2px)';
