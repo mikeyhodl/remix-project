@@ -52,13 +52,9 @@ const darkTheme = EditorView.theme({
 
 export function ContractWizard () {
   const [showEditModal, setShowEditModal] = useState(false)
-  const { state, dispatch, theme, facade, generateUniqueWorkspaceName } = useContext(TemplateExplorerContext)
+  const { state, dispatch, theme, facade, generateUniqueWorkspaceName, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(state.workspaceName)
   const strategy = state
-  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
-  const trackMatomoEvent = <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => {
-    baseTrackEvent?.<T>(event)
-  }
 
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {

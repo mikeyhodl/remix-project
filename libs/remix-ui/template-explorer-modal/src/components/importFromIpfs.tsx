@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
+import { MatomoCategories } from '@remix-api'
 
 export function ImportFromIpfs(props: any) {
-  const { facade, state } = useContext(TemplateExplorerContext)
+  const { facade, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const [externalResourceName, setExternalResourceName] = useState('')
   const [externalResourceNameError, setExternalResourceNameError] = useState('')
 
@@ -28,6 +28,7 @@ export function ImportFromIpfs(props: any) {
         const type = externalResourceName.startsWith('ipfs://') ? 'ipfs' : 'https'
         await facade.processLoadingExternalUrls(externalResourceName, type)
         facade.closeWizard()
+        trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', name: externalResourceName.startsWith('ipf') ? 'importFromIpfs' : 'importFromHttps' })
       }}
       disabled={externalResourceName.length < 7}
       >

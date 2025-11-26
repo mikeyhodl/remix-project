@@ -4,7 +4,7 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
 import { createWorkspace, switchToWorkspace, uploadFolder, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
-import { MatomoCategories } from '@remix-api'
+import { MatomoCategories, TemplateExplorerModalEvent, MatomoEvent } from '@remix-api'
 import { useOnClickOutside } from 'libs/remix-ui/remix-ai-assistant/src/components/onClickOutsideHook'
 import { createNewFile } from 'libs/remix-ui/workspace/src/lib/actions'
 
@@ -64,6 +64,7 @@ export function TopCards() {
             }
             dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', name: 'success' })
           }}
           data-id="importOptionsMenuIPFS"
         >
@@ -87,7 +88,7 @@ export function TopCards() {
               if (e.target.files.length === 0 || !e.target.files) return
               await uploadFolder(e.target, '/')
               setImportFiles(false)
-              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardImportFiles', name: 'success' })
+              trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', name: 'success' })
               facade.closeWizard()
             }}
             {...enableDirUpload}
@@ -102,6 +103,7 @@ export function TopCards() {
             }
             dispatch({ type: TemplateExplorerWizardAction.IMPORT_HTTPS, payload: 'importHttps' })
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importHttps' })
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importHttps', name: 'success' })
           }}
           data-id="importOptionsMenuHTTPS"
         >

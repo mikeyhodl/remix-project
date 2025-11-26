@@ -124,6 +124,8 @@ export interface TemplateExplorerModalEvent extends MatomoEventBase {
     | 'initializeAsGitRepoSelectedInOtherTemplates'
     | 'createWorkspaceWithContractWizard'
     | 'createWorkspaceWithGenericTemplate'
+    | 'importFiles'
+    | 'importHttps'
 }
 
 export interface ScriptExecutorEvent extends MatomoEventBase {
