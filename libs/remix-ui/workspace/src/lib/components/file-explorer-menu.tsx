@@ -145,6 +145,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       key={index}
                       onClick={async () => {
                         await createNewFile('blank', '/')
+                        await global.plugin.call('notification', 'toast', 'File created successfully')
                       }}
                     >
                       <span className="text-decoration-none">

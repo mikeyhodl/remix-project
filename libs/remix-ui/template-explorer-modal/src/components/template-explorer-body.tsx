@@ -5,18 +5,24 @@ import { TemplateExplorerContext } from '../../context/template-explorer-context
 import { NotFound } from './notfound'
 
 export function TemplateExplorerBody() {
-  const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates, state } = useContext(TemplateExplorerContext)
+  const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates, state, theme, trackMatomoEvent } = useContext(TemplateExplorerContext)
 
   const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
-
+  console.log('theme', theme)
   return (
     <section className="mx-4">
       <TopCards />
       {
         (dedupedTemplates.length === 0) ? <NotFound /> : (
-          <div className="body overflow-y-hidden pt-2">
+          <div className={"body overflow-y-hidden pt-2"}>
             <>
-              <label data-id="templateExplorerBodyLabel" className="text-dark fs-5">{state.manageCategory === 'Template' ? 'Workspace Templates' : 'File Templates'}</label>
+              <div className="d-flex flex-column gap-1">
+                <label
+                  data-id="templateExplorerBodyLabel"
+                  className={theme?.name === 'Dark' ? 'text-white-force fs-5' : 'text-dark fs-5'}
+                >{state.manageCategory === 'Template' ? 'Workspace Templates' : 'File Templates'}</label>
+                {state.manageCategory === 'Files' && <label htmlFor="templateExplorerBodySubheading" className={theme?.name === 'Dark' ? 'text-white-force fs-6 mb-3' : 'text-dark fs-6 mb-3'}>Choose a template to add files to your workspace</label>}
+              </div>
               <div className="">
                 <div data-id="templateExplorerBodyTags" className="d-flex flex-wrap align-items-center gap-2">
 

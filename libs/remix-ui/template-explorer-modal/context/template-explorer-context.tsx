@@ -25,8 +25,15 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     baseTrackEvent?.<T>(event)
   }
   useEffect(() => {
+    const checkTheme = async () => {
+      if (theme === null) {
+        const currentTheme = await plugin.call('theme', 'currentTheme')
+        setTheme(currentTheme)
+      }
+    }
     dispatch({ type: TemplateExplorerWizardAction.SET_TEMPLATE_REPOSITORY, payload: templatesRepository })
     dispatch({ type: TemplateExplorerWizardAction.SET_METADATA, payload: metadata })
+    checkTheme()
   }, [])
 
   useEffect(() => {

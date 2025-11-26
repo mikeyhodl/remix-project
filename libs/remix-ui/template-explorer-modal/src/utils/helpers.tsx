@@ -16,7 +16,7 @@ export const templatesRepository = [
       },
       { value: "accountAbstraction", displayName: 'Account Abstraction', IsArtefact: true, description: 'A repo about ERC-4337 and EIP-7702',
       },
-      { value: 'remixAiTemplate', tagList: ['AI'], displayName: 'RemixAI Template Generation', IsArtefact: true, description: 'AI generated workspace. Workspace gets generated with a user prompt.',
+      { value: 'remixAiTemplate', tagList: ['AI'], displayName: 'RemixAI Template Generation', IsArtefact: true, description: 'AI generated workspace.',//'AI generated workspace. Workspace gets generated with a user prompt.',
       },
       { value: "introToEIP7702", displayName: 'Intro to EIP-7702', IsArtefact: true, description: 'A contract for demoing EIP-7702',
       },
@@ -388,7 +388,7 @@ export const templatesRepository = [
       {
         value: "sindriScripts",
         tagList: ["ZKP"],
-        displayName: 'Add Sindri ZK scripts to the current workspace',
+        displayName: 'Add Sindri ZK scripts',
         description: 'Use the Sindri API to compile and generate proofs',
 
       },
@@ -418,13 +418,12 @@ export const templatesRepository = [
     items: [
       {
         value: "contractCreate2Factory",
-        tagList: ["Solidity"],
-        displayName: 'Add Create2 Solidity factory to the current workspace',
+        displayName: 'Add Create2 Solidity factory',
         description: 'Factory for deploying a contract using the CREATE2 opcode',
       },
       {
         value: "contractDeployerScripts",
-        displayName: 'Add contract deployer scripts to the current workspace',
+        displayName: 'Add contract deployer scripts',
         description: 'Script for deploying a contract using the CREATE2 opcode',
       }
     ]
@@ -434,7 +433,7 @@ export const templatesRepository = [
     items: [
       {
         value: "etherscanScripts",
-        displayName: 'Add Etherscan scripts to the current workspace',
+        displayName: 'Add Etherscan scripts',
         description: 'Script for verifying a Contract in Etherscan',
       },
     ],
@@ -444,16 +443,16 @@ export const templatesRepository = [
     items: [
       { value: "runJsTestAction",
         displayName: 'Mocha Chai Test Workflow',
-        description: 'Add files in current workspace to run Mocha Chai test workflow in GitHub CI',
+        description: 'Add files to run Mocha Chai test workflow in GitHub CI',
       },
       { value: "runSolidityUnittestingAction",
         displayName: 'Solidity Test Workflow',
-        description: 'Add files in current workspace to run Solidity unit test workflow in GitHub CI',
+        description: 'Add files to run Solidity unit test workflow in GitHub CI',
       },
       {
         value: "runSlitherAction",
         displayName: 'Slither Workflow',
-        description: 'Add files in current workspace to run Slither security analysis in GitHub CI',
+        description: 'Add files to run Slither security analysis in GitHub CI',
       }
     ],
     IsArtefact: true

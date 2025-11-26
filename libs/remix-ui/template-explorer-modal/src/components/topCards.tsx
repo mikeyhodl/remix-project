@@ -28,13 +28,13 @@ export function TopCards() {
         const containerRect = container.getBoundingClientRect()
 
         setImportOptionsPosition({
-          top: cardRect.bottom - containerRect.top + 8, // 8px gap below the card
+          top: cardRect.bottom - containerRect.top - 8, // 8px gap below the card
           left: cardRect.left - containerRect.left
         })
       } else {
         // Fallback: use offsetTop/offsetLeft if offsetParent is not available
         setImportOptionsPosition({
-          top: card.offsetTop + card.offsetHeight + 8, // 8px gap below the card
+          top: card.offsetTop + card.offsetHeight - 8, // 8px gap below the card
           left: card.offsetLeft
         })
       }
@@ -45,7 +45,7 @@ export function TopCards() {
 
     return (
       <ul
-        className="list-unstyled p-3 gap-2 d-flex flex-column align-items-start justify-content-end bg-light position-absolute text-white"
+        className="list-unstyled p-3 gap-2 d-flex flex-column align-items-start justify-content-end bg-light position-absolute"
         ref={importOptionRef}
         style={{
           borderRadius: '10px',
@@ -57,7 +57,7 @@ export function TopCards() {
         data-id="importOptionsMenu"
       >
         <li
-          className="d-flex flex-row align-items-center import-option-item"
+          className="d-flex flex-row align-items-center import-option-item "
           onClick={() => {
             if (state.manageCategory === 'Template') {
               dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
@@ -118,7 +118,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="create-blank-workspace-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
             onClick={async () => {
               if (state.manageCategory === 'Template') {
                 dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
@@ -130,6 +130,7 @@ export function TopCards() {
                 // plugin.call('fileManager', '', '')
                 await createNewFile('blank', '/')
                 facade.closeWizard()
+                plugin.call('notification', 'toast', 'File created successfully')
               }
             }}
             style={{
@@ -156,7 +157,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="create-with-ai-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
             onClick={async () => {
               const currentPinned = await plugin.call('pinnedPanel', 'currentFocus')
               let aiPluginProfile = await plugin.call('remixaiassistant', 'getProfile')
@@ -200,7 +201,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="contract-wizard-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
             onClick={() => {
               dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode('erc20', state) })
               facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
@@ -223,7 +224,7 @@ export function TopCards() {
             </span>
             <span className="d-flex flex-column flex-grow-1 ms-2 ms-md-3">
               <p className="mb-0 fw-semibold">Contract Wizard</p>
-              <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Create a new contract with the OpenZeppelin Wizard' : 'Create a contract with the OpenZeppelin Wizard'}</p>
+              <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Create a new workspace with the OpenZeppelin Wizard' : 'Create a contract file with the OpenZeppelin Wizard'}</p>
             </span>
           </div>
         </div>
@@ -231,7 +232,7 @@ export function TopCards() {
           <div
             ref={importCardRef}
             data-id="import-project-topcard"
-            className="explora-topcard d-flex flex-row align-items-center p-3 p-md-4 shadow-sm import-files border border-light h-100"
+            className="explora-topcard d-flex flex-row align-items-center p-3  shadow-sm import-files border border-light h-100 text-white-force"
             style={{
               backgroundColor: 'transparent',
               transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s',

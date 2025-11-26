@@ -54,7 +54,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                   }
                 }}>
                   <i className="fa-solid fa-chevron-left me-2"></i>
-                  {state.manageCategory === 'Template' ? 'Template List' : state.manageCategory === 'Files' && state.wizardStep === 'importFiles' ? 'Import files from External Source' : 'Add to current workspace'}
+                  {state.manageCategory === 'Template' ? 'Back to Workspace Templates' : 'Back to File Templates'}
                 </button>
               </div>
             </div>}
