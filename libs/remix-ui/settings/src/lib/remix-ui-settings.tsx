@@ -28,7 +28,7 @@ const settingsConfig = Registry.getInstance().get('settingsConfig').api
 
 // Check if MCP is enabled via query parameter
 const queryParams = new QueryParams()
-const mcpEnabled = queryParams.exists('mcp')
+const mcpEnabled = queryParams.exists('experimental')
 
 const settingsSections: SettingsSection[] = [
   {

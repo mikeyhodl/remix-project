@@ -24,13 +24,13 @@ export class RemoteInferencer implements ICompletions, IGeneration {
   protected sanitizePromptByteSize(prompt: string, provider?: string): string {
     // Provider-specific max byte limits
     const providerLimits: Record<string, number> = {
-      'mistralai': 30000,
-      'anthropic': 40000,
-      'openai': 40000
+      'mistralai': 80000,
+      'anthropic': 80000,
+      'openai': 80000
     };
 
-    // Get max bytes based on provider, default to 50KB
-    const maxBytes = provider ? (providerLimits[provider.toLowerCase()] || 50000) : 50000;
+    // Get max bytes based on provider, default to 80KB
+    const maxBytes = provider ? (providerLimits[provider.toLowerCase()] || 80000) : 80000;
 
     const encoder = new TextEncoder();
     const promptBytes = encoder.encode(prompt); // rough estimation, real size might be 10% more
