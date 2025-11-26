@@ -1,10 +1,11 @@
 /* Sonner toast styling */
 .remixui_sonner_toast {
   border-radius: 8px;
-  padding: 16px 24px;
-  font-size: 14px;
-  min-width: 300px;
-  max-width: 500px;
+  padding: 20px 28px;
+  font-weight: 700 !important;
+  font-size: 19px !important;
+  min-width: 350px;
+  max-width: 600px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -20,15 +21,17 @@
 }
 
 [data-sonner-toast] {
-  background: var(--bs-body-bg, #f8f9fa) !important;
-  color: var(--bs-dark, #212529) !important;
+  background:var(--bs-primary, #212529) !important;
+  color: var(--bs-info-text-emphasis, #212529) !important;
   border: 0px solid var(--bs-dark, #6c757d) !important;
-  font-weight: 500;
+  font-weight: 700 !important;
+  font-size: 19px !important;
 }
 
 [data-sonner-toast][data-styled="true"] {
-  padding: 16px 24px !important;
+  padding: 20px 28px !important;
   gap: 12px !important;
+  font-weight: 700 !important;
 }
 
 /* Dark theme support */
@@ -37,4 +40,5 @@
   background: var(--bs-dark, #212529) !important;
   color: var(--bs-light, #f8f9fa) !important;
   border: 0px solid var(--bs-secondary, #6c757d) !important;
+  font-weight: 700 !important;
 }

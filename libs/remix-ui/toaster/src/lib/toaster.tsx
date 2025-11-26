@@ -15,10 +15,11 @@ export const Toaster = (props: ToasterProps) => {
   useEffect(() => {
     if (props.message) {
       // Show toast using Sonner
-      const duration = props.timeOut || 2000
+      const duration = props.timeOut || 120000
 
       if (typeof props.message === 'string') {
         toast(props.message, {
+          unstyled: true,
           duration,
           onDismiss: () => {
             props.handleHide && props.handleHide()
@@ -31,7 +32,7 @@ export const Toaster = (props: ToasterProps) => {
         // For JSX elements, use toast.custom
         toast.custom(
           () => (
-            <div className="remixui_custom_toast">
+            <div className="remixui_sonner_toast alert alert-info bg-light">
               {props.message}
             </div>
           ),
@@ -53,7 +54,8 @@ export const Toaster = (props: ToasterProps) => {
     <SonnerToaster
       position="top-right"
       toastOptions={{
-        className: 'remixui_sonner_toast',
+        className: 'remixui_sonner_toast alert alert-info bg-light',
+        unstyled: true
       }}
     />
   )
