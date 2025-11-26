@@ -39,7 +39,7 @@ export function TemplateExplorer() {
                 <div
                   data-id={`template-card-${item.value}-${itemIndex}`}
                   key={`${templateIndex}-${itemIndex}`}
-                  className="template-card bg-light border-0"
+                  className="template-card bg-light border-0 px-3 py-3"
                   onClick={async () => {
                     if (item.value === 'cookbook') {
                       await plugin.call('manager', 'activatePlugin', 'cookbookdev')
