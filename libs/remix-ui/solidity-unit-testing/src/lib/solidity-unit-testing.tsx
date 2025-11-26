@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, ReactElement, useContext } from 're
 import { FormattedMessage, useIntl } from 'react-intl'
 import * as semver from 'semver'
 import { eachOfSeries } from 'async' // eslint-disable-line
-import type Web3 from 'web3'
 import { canUseWorker, urlFromVersion } from '@remix-project/remix-solidity'
 import { Renderer } from '@remix-ui/renderer' // eslint-disable-line
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
@@ -10,8 +9,8 @@ import { format } from 'util'
 import './css/style.css'
 import { CustomTooltip } from '@remix-ui/helper'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
-
-const _paq = ((window as any)._paq = (window as any)._paq || []) // eslint-disable-line @typescript-eslint/no-explicit-any
+import { TrackingContext } from '@remix-ide/tracking'
+import { MatomoEvent, SolidityUnitTestingEvent } from '@remix-api'
 
 interface TestObject {
   fileName: string
@@ -30,7 +29,7 @@ interface TestResultInterface {
   expected?: string | number
   location?: string
   hhLogs?: []
-  web3?: Web3
+  provider?: any
   debugTxHash?: string
   rendered?: boolean
 }
@@ -45,6 +44,10 @@ interface FinalResult {
 export const SolidityUnitTesting = (props: Record<string, any>) => {
   // eslint-disable-line @typescript-eslint/no-explicit-any
   const platform = useContext(platformContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = SolidityUnitTestingEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const { helper, testTab, initialPath } = props
   const { testTabLogic } = testTab
 
@@ -253,11 +256,11 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     return fileName ? fileName.replace(/\//g, '_').replace(/\./g, '_') + testSuite : fileName
   }
 
-  const startDebug = async (txHash: string, web3: Web3) => {
+  const startDebug = async (txHash: string, provider: any) => {
     isDebugging.current = true
     if (!(await testTab.appManager.isActive('debugger'))) await testTab.appManager.activatePlugin('debugger')
     testTab.call('menuicons', 'select', 'debugger')
-    testTab.call('debugger', 'debug', txHash, web3)
+    testTab.call('debugger', 'debug', txHash, provider)
   }
 
   const printHHLogs = (logsArr: Record<string, any>[], testName: string) => {
@@ -276,7 +279,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       }
       finalLogs = finalLogs + '&emsp;' + formattedLog + '\n'
     }
-    _paq.push(['trackEvent', 'solidityUnitTesting', 'hardhat', 'console.log'])
+    trackMatomoEvent({ category: 'solidityUnitTesting', action: 'hardhat', name: 'console.log', isClick: true })
     testTab.call('terminal', 'logHtml', { type: 'log', value: finalLogs })
   }
 
@@ -355,9 +358,9 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
       if (!test.rendered) {
         let debugBtn
         if (test.debugTxHash) {
-          const { web3, debugTxHash } = test
+          const { provider, debugTxHash } = test
           debugBtn = (
-            <div id={test.value.replaceAll(' ', '_')} className="btn border btn btn-sm ms-1" style={{ cursor: 'pointer' }} onClick={() => startDebug(debugTxHash, web3)}>
+            <div id={test.value.replaceAll(' ', '_')} className="btn border btn btn-sm ms-1" style={{ cursor: 'pointer' }} onClick={() => startDebug(debugTxHash, provider)}>
               <CustomTooltip
                 placement={'top-start'}
                 tooltipClasses="text-nowrap"
@@ -662,7 +665,7 @@ export const SolidityUnitTesting = (props: Record<string, any>) => {
     const tests: string[] = selectedTests.current
     if (!tests || !tests.length) return
     else setProgressBarHidden(false)
-    _paq.push(['trackEvent', 'solidityUnitTesting', 'runTests', 'nbTestsRunning' + tests.length])
+    trackMatomoEvent({ category: 'solidityUnitTesting', action: 'runTests', name: 'nbTestsRunning' + tests.length, isClick: true })
     eachOfSeries(tests, (value: string, key: string, callback: any) => {
       // eslint-disable-line @typescript-eslint/no-explicit-any
       if (hasBeenStopped.current) return

@@ -5,7 +5,7 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
-import { appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
+import { AppContext, appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { TopbarContext } from '../context/topbarContext'
 import { WorkspacesDropdown } from '../components/WorkspaceDropdown'
@@ -15,14 +15,20 @@ import { GitHubUser } from 'libs/remix-api/src/lib/types/git'
 import { GitHubCallback } from '../topbarUtils/gitOauthHandler'
 import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
-
-const _paq = window._paq || []
+import { TrackingContext } from '@remix-ide/tracking'
+import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
+import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
   const [showDropdown, setShowDropdown] = useState(false)
   const platform = useContext(platformContext)
   const global = useContext(TopbarContext)
+  const appContext = useContext(AppContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = TopbarEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const plugin = global.plugin
   const LOCALHOST = ' - connect to localhost - '
   const NO_WORKSPACE = ' - none - '
@@ -61,6 +67,13 @@ export function RemixUiTopbar() {
   const handleLoginError = (error: string) => {
     setError(error);
   };
+
+  async function openTemplateExplorer(): Promise<void> {
+    appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
+    })
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('github_token');
@@ -288,13 +301,13 @@ export function RemixUiTopbar() {
 
   const loginWithGitHub = async () => {
     global.plugin.call('dgit', 'login')
-    _paq.push(['trackEvent', 'topbar', 'GIT', 'login'])
+    trackMatomoEvent({ category: 'topbar', action: 'GIT', name: 'login', isClick: true })
   }
 
   const logOutOfGithub = async () => {
     global.plugin.call('dgit', 'logOut')
 
-    _paq.push(['trackEvent', 'topbar', 'GIT', 'logout'])
+    trackMatomoEvent({ category: 'topbar', action: 'GIT', name: 'logout', isClick: true })
   }
 
   const handleTypingUrl = () => {
@@ -386,7 +399,7 @@ export function RemixUiTopbar() {
     try {
       await switchToWorkspace(name)
       handleExpandPath([])
-      _paq.push(['trackEvent', 'Workspace', 'switchWorkspace', name])
+      trackMatomoEvent<WorkspaceEvent>({ category: 'workspace', action: 'switchWorkspace', name: name, isClick: true })
     } catch (e) {
       global.modal(
         intl.formatMessage({ id: 'filePanel.workspace.switch' }),
@@ -464,7 +477,7 @@ export function RemixUiTopbar() {
             className="d-flex align-items-center justify-content-between me-3 cursor-pointer"
             onClick={async () => {
               await plugin.call('tabs', 'focus', 'home')
-              _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+              trackMatomoEvent({ category: 'topbar', action: 'header', name: 'Home', isClick: true })
             }}
             data-id="verticalIconsHomeIcon"
           >
@@ -474,7 +487,7 @@ export function RemixUiTopbar() {
               className="remixui_homeIcon"
               onClick={async () => {
                 await plugin.call('tabs', 'focus', 'home')
-                _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+                trackMatomoEvent({ category: 'topbar', action: 'header', name: 'Home', isClick: true })
               }}
             >
               <BasicLogo />
@@ -484,7 +497,7 @@ export function RemixUiTopbar() {
               style={{ fontSize: '1.2rem' }}
               onClick={async () => {
                 await plugin.call('tabs', 'focus', 'home')
-                _paq.push(['trackEvent', 'topbar', 'header', 'Home'])
+                trackMatomoEvent({ category: 'topbar', action: 'header', name: 'Home', isClick: true })
               }}
             >
               Remix
@@ -525,6 +538,7 @@ export function RemixUiTopbar() {
             setCurrentMenuItemName={setCurrentMenuItemName}
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
+            openTemplateExplorer={openTemplateExplorer}
           />
         </div>
         <div
@@ -607,7 +621,7 @@ export function RemixUiTopbar() {
               const isActive = await plugin.call('manager', 'isActive', 'settings')
               if (!isActive) await plugin.call('manager', 'activatePlugin', 'settings')
               await plugin.call('tabs', 'focus', 'settings')
-              _paq.push(['trackEvent', 'topbar', 'header', 'Settings'])
+              trackMatomoEvent({ category: 'topbar', action: 'header', name: 'Settings', isClick: true })
             }}
             data-id="topbar-settingsIcon"
           >

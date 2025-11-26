@@ -1,17 +1,17 @@
 import { envChangeNotification } from "@remix-ui/helper"
 import { RunTab } from "../types/run-tab"
+import { trackMatomoEvent } from '@remix-api'
 import { setExecutionContext, setFinalContext, updateAccountBalances, fillAccountsList } from "./account"
-import { addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider, setPinnedChainId, setExecEnv } from "./actions"
-import { addDeployOption, clearAllInstances, clearRecorderCount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess, fetchAccountsListRequest } from "./payload"
+import { setAccount, addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider, setPinnedChainId, setExecEnv } from "./actions"
+import { addDeployOption, clearAllInstances, clearRecorderCount, setSelectedAccount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess, fetchAccountsListRequest } from "./payload"
 import { updateInstanceBalance } from './deploy'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import BN from 'bn.js'
-import { Web3 } from 'web3'
 import { Plugin } from "@remixproject/engine"
 import { getNetworkProxyAddresses } from "./deploy"
 import { shortenAddress } from "@remix-ui/helper"
+import { parseUnits } from "ethers"
 
-const _paq = window._paq = window._paq || []
 let dispatch: React.Dispatch<any> = () => {}
 
 export const setEventsDispatch = (reducerDispatch: React.Dispatch<any>) => {
@@ -114,6 +114,10 @@ export const setupEvents = (plugin: RunTab) => {
     dispatch(clearAllInstances())
   })
 
+  plugin.on('udapp', 'setAccountReducer', (account: string) => {
+    setAccount(dispatch, account)
+  })
+
   plugin.on('udapp', 'addInstanceReducer', (address, abi, name, contractData?) => {
     addInstance(dispatch, { contractData, abi, address, name })
   })
@@ -136,6 +140,7 @@ export const setupEvents = (plugin: RunTab) => {
           const accountsMap = {}
           accounts.map(account => { accountsMap[account] = shortenAddress(account, '0')})
           dispatch(fetchAccountsListSuccess(accountsMap))
+          dispatch(setSelectedAccount((window as any).ethereum.selectedAddress || accounts[0]))
         })
       } else if (activatedPlugin && activatedPlugin.name === 'walletconnect') {
         plugin.on('walletconnect', 'accountsChanged', async (accounts: Array<string>) => {
@@ -238,7 +243,7 @@ const migrateSavedContracts = async (plugin) => {
 }
 
 const broadcastCompilationResult = async (compilerName: string, plugin: RunTab, dispatch: React.Dispatch<any>, file, source, languageVersion, data, input?) => {
-  _paq.push(['trackEvent', 'udapp', 'broadcastCompilationResult', compilerName])
+  await trackMatomoEvent(plugin, { category: 'udapp', action: 'broadcastCompilationResult', name: compilerName, isClick: false })
   // TODO check whether the tab is configured
   const compiler = new CompilerAbstract(languageVersion, data, source, input)
   plugin.compilersArtefacts[languageVersion] = compiler
@@ -287,7 +292,7 @@ export const resetAndInit = (plugin: RunTab) => {
         const number = plugin.REACT_API.sendValue
         const unit = plugin.REACT_API.sendUnit
 
-        cb(null, Web3.utils.toWei(number, unit))
+        cb(null, parseUnits(number, unit))
       } catch (e) {
         cb(e)
       }

@@ -5,11 +5,16 @@ import { Placement } from 'react-bootstrap/esm/types'
 import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
-const _paq = (window._paq = window._paq || [])
+import { TrackingContext } from '@remix-ide/tracking'
+import { MatomoEvent, FileExplorerEvent } from '@remix-api'
 
 export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const global = useContext(FileSystemContext)
   const platform = useContext(platformContext)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = FileExplorerEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const [state, setState] = useState({
     menuItems: [
       {
@@ -28,14 +33,14 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
       },
       {
         action: 'uploadFile',
-        title: 'Upload files into current workspace',
+        title: 'Upload files into current Workspace',
         icon: 'far fa-upload',
         placement: 'top',
         platforms:[appPlatformTypes.web]
       },
       {
         action: 'uploadFolder',
-        title: 'Upload folder into current workspace',
+        title: 'Upload folder into current Workspace',
         icon: 'far fa-folder-upload',
         placement: 'top',
         platforms:[appPlatformTypes.web]
@@ -56,10 +61,17 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
       },
       {
         action: 'initializeWorkspaceAsGitRepo',
-        title: 'Initialize workspace as a git repository',
+        title: 'Initialize Workspace as a git repository',
         icon: 'fa-brands fa-git-alt',
         placement: 'top',
         platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
+      },
+      {
+        action: 'revealInExplorer',
+        title: 'Reveal Workspace in explorer',
+        icon: 'fas fa-eye',
+        placement: 'top',
+        platforms: [appPlatformTypes.desktop]
       }
     ].filter(
       (item) =>
@@ -102,7 +114,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.uploadFile(e.target)
                         e.target.value = null
                       }}
@@ -133,7 +145,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       type="file"
                       onChange={(e) => {
                         e.stopPropagation()
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.uploadFolder(e.target)
                         e.target.value = null
                       }}
@@ -159,7 +171,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     className={icon + ' mx-1 remixui_menuItem'}
                     key={`index-${action}-${placement}-${icon}`}
                     onClick={() => {
-                      _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                      trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                       props.handleGitInit()
                     }}
                   >
@@ -181,7 +193,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     data-id={'fileExplorerNewFile' + action}
                     onClick={(e) => {
                       e.stopPropagation()
-                      _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                      trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                       if (action === 'createNewFile') {
                         props.createNewFile()
                       } else if (action === 'createNewFolder') {
@@ -189,11 +201,14 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       } else if (action === 'publishToGist' || action == 'updateGist') {
                         props.publishToGist()
                       } else if (action === 'importFromIpfs') {
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.importFromIpfs('Ipfs', 'ipfs hash', ['ipfs://QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH'], 'ipfs://')
                       } else if (action === 'importFromHttps') {
-                        _paq.push(['trackEvent', 'fileExplorer', 'fileAction', action])
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
                         props.importFromHttps('Https', 'http/https raw content', ['https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/token/ERC20/ERC20.sol'])
+                      } else if (action === 'revealInExplorer') {
+                        trackMatomoEvent({ category: 'fileExplorer', action: 'fileAction', name: action, isClick: true })
+                        props.revealInExplorer()
                       } else {
                         state.actions[action]()
                       }

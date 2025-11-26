@@ -1,9 +1,12 @@
-import React, { useState, useRef, useEffect, useReducer } from 'react' // eslint-disable-line
+import React, { useState, useRef, useEffect, useReducer, useContext } from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import { diffLines } from 'diff'
 import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
-import { AppModal } from '@remix-ui/app'
+import { AppContext, AppModal } from '@remix-ui/app'
+import { MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
+//@ts-ignore
+import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
 import { reducerActions, reducerListener, initialState } from './actions/editor'
 import { solidityTokensProvider, solidityLanguageConfig } from './syntaxes/solidity'
@@ -25,10 +28,9 @@ import { RemixCodeActionProvider } from './providers/codeActionProvider'
 import './remix-ui-editor.css'
 import { circomLanguageConfig, circomTokensProvider } from './syntaxes/circom'
 import { noirLanguageConfig, noirTokensProvider } from './syntaxes/noir'
-import { IPosition, IRange } from 'monaco-editor'
+import type { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
-const _paq = (window._paq = window._paq || [])
 
 // Key for localStorage
 const HIDE_PASTE_WARNING_KEY = 'remixide.hide_paste_warning';
@@ -158,6 +160,12 @@ export interface EditorUIProps {
 const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
   const intl = useIntl()
+  const appContext = useContext(AppContext)
+  //@ts-ignore
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = EditorEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const [, setCurrentBreakpoints] = useState({})
@@ -179,10 +187,10 @@ export const EditorUI = (props: EditorUIProps) => {
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts' })}:\n
   \t\t\t\t\t\t\t\tCTRL + Alt + F : ${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts.text1' })}\n
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks' })}:\n
-  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix-project.org/\n
+  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix.live/\n
   \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text2' })}: https://remix-ide.readthedocs.io/en/latest/\n
   \t\t\t\t\t\t\t\tGithub: https://github.com/ethereum/remix-project\n
-  \t\t\t\t\t\t\t\tDiscord: https://discord.gg/4b2rE9U4D2\n
+  \t\t\t\t\t\t\t\tDiscord: https://discord.gg/snsrYVU4Q7\n
   \t\t\t\t\t\t\t\tMedium: https://medium.com/remix-ide\n
   \t\t\t\t\t\t\t\tX: https://x.com/ethereumremix\n
   `
@@ -203,21 +211,24 @@ export const EditorUI = (props: EditorUIProps) => {
 
   const formatColor = (name) => {
     let color = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-    if (color.length === 4) {
+    if (color.length === 4 && color.startsWith('#')) {
       color = color.concat(color.substr(1))
     }
     return color
   }
+
   const defineAndSetTheme = (monaco) => {
     const themeType = props.themeType === 'dark' ? 'vs-dark' : 'vs'
     const themeName = props.themeType === 'dark' ? 'remix-dark' : 'remix-light'
+    const isDark = props.themeType === 'dark'
+
     // see https://microsoft.github.io/monaco-editor/playground.html#customizing-the-appearence-exposed-colors
     const lightColor = formatColor('--bs-light')
     const infoColor = formatColor('--bs-info')
     const darkColor = formatColor('--bs-dark')
     const secondaryColor = formatColor('--bs-body-bg')
     const primaryColor = formatColor('--bs-primary')
-    const textColor = formatColor('--text') || darkColor
+    const textColor = formatColor('--bs-body-color') || darkColor
     const textbackground = formatColor('--bs-body-bg') || lightColor
     const blueColor = formatColor('--bs-blue')
     const successColor = formatColor('--bs-success')
@@ -345,7 +356,21 @@ export const EditorUI = (props: EditorUIProps) => {
   useEffect(() => {
     if (!monacoRef.current) return
     defineAndSetTheme(monacoRef.current)
-  })
+  }, [props.themeType]) // Only re-run when theme type changes
+
+  // Listen for theme changes to redefine the theme when CSS is loaded
+  useEffect(() => {
+    if (!monacoRef.current) return
+
+    const handleThemeChange = () => {
+      // Small delay to ensure CSS variables are available after theme switch
+      setTimeout(() => {
+        defineAndSetTheme(monacoRef.current)
+      }, 100)
+    }
+
+    props.plugin.on('theme', 'themeChanged', handleThemeChange)
+  }, [monacoRef.current])
 
   useEffect(() => {
     props.plugin.on('fileManager', 'currentFileChanged', (file: string) => {
@@ -449,7 +474,7 @@ export const EditorUI = (props: EditorUIProps) => {
     }
   }, [props.currentFile, props.isDiff])
 
-  const inlineCompletionProvider = new RemixInLineCompletionProvider(props, monacoRef.current)
+  const inlineCompletionProvider = new RemixInLineCompletionProvider(props, monacoRef.current, trackMatomoEvent)
 
   const convertToMonacoDecoration = (decoration: lineText | sourceAnnotation | sourceMarker, typeOfDecoration: string) => {
     if (typeOfDecoration === 'sourceAnnotationsPerFile') {
@@ -771,7 +796,7 @@ export const EditorUI = (props: EditorUIProps) => {
               setTimeout(async () => {
                 props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
               }, 500)
-              _paq.push(['trackEvent', 'ai', 'remixAI', 'vulnerability_check_pasted_code'])
+              trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'vulnerability_check_pasted_code', isClick: true })
             })();
           }
         };
@@ -828,7 +853,7 @@ export const EditorUI = (props: EditorUIProps) => {
           )
         }
         props.plugin.call('notification', 'modal', modalContent)
-        _paq.push(['trackEvent', 'editor', 'onDidPaste', 'more_than_10_lines'])
+        trackMatomoEvent({ category: 'editor', action: 'onDidPaste', name: 'more_than_10_lines', isClick: false })
       }
     })
 
@@ -839,7 +864,7 @@ export const EditorUI = (props: EditorUIProps) => {
         if (changes.some(change => change.text === inlineCompletionProvider.currentCompletion.item.insertText)) {
           inlineCompletionProvider.currentCompletion.onAccepted()
           inlineCompletionProvider.currentCompletion.accepted = true
-          _paq.push(['trackEvent', 'ai', 'remixAI', 'Copilot_Completion_Accepted'])
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'Copilot_Completion_Accepted', isClick: true })
         }
       }
     });
@@ -975,7 +1000,7 @@ export const EditorUI = (props: EditorUIProps) => {
               }, 150)
             }
           }
-          _paq.push(['trackEvent', 'ai', 'remixAI', 'generateDocumentation'])
+          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'generateDocumentation', isClick: true })
         },
       }
     }
@@ -992,9 +1017,14 @@ export const EditorUI = (props: EditorUIProps) => {
         const message = intl.formatMessage({ id: 'editor.explainFunctionByAI' }, { content:context, currentFunction: currentFunction.current })
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
+          // Check if pinned panel has a closed plugin and maximize it
+          const closedPlugin = await props.plugin.call('pinnedPanel', 'getClosedPlugin')
+          if (closedPlugin) {
+            await props.plugin.call('pinnedPanel', 'maximizePlugin', closedPlugin)
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
         }, 500)
-        _paq.push(['trackEvent', 'ai', 'remixAI', 'explainFunction'])
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },
     }
 
@@ -1016,9 +1046,14 @@ export const EditorUI = (props: EditorUIProps) => {
 
         await props.plugin.call('popupPanel', 'showPopupPanel', true)
         setTimeout(async () => {
+          // Check if pinned panel has a closed plugin and maximize it
+          const closedPlugin = await props.plugin.call('pinnedPanel', 'getClosedPlugin')
+          if (closedPlugin) {
+            await props.plugin.call('pinnedPanel', 'maximizePlugin', closedPlugin)
+          }
           await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
         }, 500)
-        _paq.push(['trackEvent', 'ai', 'remixAI', 'explainFunction'])
+        trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },
     }
 
@@ -1166,6 +1201,91 @@ export const EditorUI = (props: EditorUIProps) => {
 
     // hide the module resolution error. We have to remove this when we know how to properly resolve imports.
     monacoRef.current.languages.typescript.typescriptDefaults.setDiagnosticsOptions({ diagnosticCodesToIgnore: [2792]})
+
+    // Configure TypeScript compiler options for JSX/TSX support
+    monacoRef.current.languages.typescript.typescriptDefaults.setCompilerOptions({
+      jsx: monacoRef.current.languages.typescript.JsxEmit.React,
+      jsxFactory: 'React.createElement',
+      reactNamespace: 'React',
+      allowNonTsExtensions: true,
+      allowJs: true,
+      target: monacoRef.current.languages.typescript.ScriptTarget.Latest,
+      moduleResolution: monacoRef.current.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monacoRef.current.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
+      skipLibCheck: true,
+      resolveJsonModule: true,
+      isolatedModules: true,
+    })
+
+    // Configure JavaScript compiler options for JSX support
+    monacoRef.current.languages.typescript.javascriptDefaults.setCompilerOptions({
+      jsx: monacoRef.current.languages.typescript.JsxEmit.React,
+      jsxFactory: 'React.createElement',
+      reactNamespace: 'React',
+      allowNonTsExtensions: true,
+      target: monacoRef.current.languages.typescript.ScriptTarget.Latest,
+      moduleResolution: monacoRef.current.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monacoRef.current.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
+      skipLibCheck: true,
+      resolveJsonModule: true,
+      isolatedModules: true,
+      checkJs: false,
+    })
+
+    // Enable JSX diagnostics for JavaScript
+    monacoRef.current.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    })
+
+    // Enable HTML and CSS validation
+    monacoRef.current.languages.html.htmlDefaults.setOptions({
+      format: {
+        tabSize: 2,
+        insertSpaces: true,
+        wrapLineLength: 120,
+        unformatted: 'wbr',
+        contentUnformatted: 'pre,code,textarea',
+        indentInnerHtml: false,
+        preserveNewLines: true,
+        maxPreserveNewLines: null,
+        indentHandlebars: false,
+        endWithNewline: false,
+        extraLiners: 'head, body, /html',
+        wrapAttributes: 'auto'
+      },
+      suggest: { html5: true }
+    })
+
+    monacoRef.current.languages.css.cssDefaults.setOptions({
+      validate: true,
+      lint: {
+        compatibleVendorPrefixes: 'ignore',
+        vendorPrefix: 'warning',
+        duplicateProperties: 'warning',
+        emptyRules: 'warning',
+        importStatement: 'ignore',
+        boxModel: 'ignore',
+        universalSelector: 'ignore',
+        zeroUnits: 'ignore',
+        fontFaceProperties: 'warning',
+        hexColorLength: 'error',
+        argumentsInColorFunction: 'error',
+        unknownProperties: 'warning',
+        ieHack: 'ignore',
+        unknownVendorSpecificProperties: 'ignore',
+        propertyIgnoredDueToDisplay: 'warning',
+        important: 'ignore',
+        float: 'ignore',
+        idSelector: 'ignore'
+      }
+    })
 
     // Register a tokens provider for the language
     monacoRef.current.languages.setMonarchTokensProvider('remix-solidity', solidityTokensProvider as any)

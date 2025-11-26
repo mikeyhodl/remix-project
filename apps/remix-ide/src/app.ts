@@ -40,7 +40,6 @@ import { Blockchain } from './blockchain/blockchain'
 import { MergeVMProvider, LondonVMProvider, BerlinVMProvider, ShanghaiVMProvider, CancunVMProvider, PectraVMProvider } from './app/providers/vm-provider'
 import { MainnetForkVMProvider } from './app/providers/mainnet-vm-fork-provider'
 import { SepoliaForkVMProvider } from './app/providers/sepolia-vm-fork-provider'
-import { GoerliForkVMProvider } from './app/providers/goerli-vm-fork-provider'
 import { CustomForkVMProvider } from './app/providers/custom-vm-fork-provider'
 import { HardhatProvider } from './app/providers/hardhat-provider'
 import { GanacheProvider } from './app/providers/ganache-provider'
@@ -75,6 +74,7 @@ import { Matomo } from './app/plugins/matomo'
 import { DesktopClient } from './app/plugins/desktop-client'
 import { DesktopHost } from './app/plugins/electron/desktopHostPlugin'
 import { WalletConnect } from './app/plugins/walletconnect'
+import { AIDappGenerator } from './app/plugins/ai-dapp-generator'
 
 import { TemplatesSelectionPlugin } from './app/plugins/templates-selection/templates-selection-plugin'
 
@@ -94,6 +94,7 @@ import Config from './config'
 import FileManager from './app/files/fileManager'
 import FileProvider from "./app/files/fileProvider"
 import { appPlatformTypes } from '@remix-ui/app'
+import { MatomoEvent } from '@remix-api'
 
 import DGitProvider from './app/files/dgitProvider'
 import WorkspaceFileProvider from './app/files/workspaceFileProvider'
@@ -111,8 +112,9 @@ import Terminal from './app/panels/terminal'
 import TabProxy from './app/panels/tab-proxy.js'
 import { Plugin } from '@remixproject/engine'
 import BottomBarPanel from './app/components/bottom-bar-panel'
+import { TemplateExplorerModalPlugin } from './app/plugins/template-explorer-modal'
 
-const _paq = (window._paq = window._paq || [])
+// Tracking now handled by this.track() method using MatomoManager
 
 export class platformApi {
   get name() {
@@ -157,9 +159,22 @@ class AppComponent {
   popupPanel: PopupPanel
   statusBar: StatusBar
   topBar: Topbar
+  templateExplorerModal: TemplateExplorerModalPlugin
   settings: SettingsTab
   params: any
   desktopClientMode: boolean
+
+  // Tracking method that uses the global MatomoManager instance
+  track(event: MatomoEvent) {
+    try {
+      const matomoManager = window._matomoManagerInstance
+      if (matomoManager && matomoManager.trackEvent) {
+        matomoManager.trackEvent(event)
+      }
+    } catch (error) {
+      console.debug('Tracking error:', error)
+    }
+  }
   constructor() {
     const PlatFormAPi = new platformApi()
     Registry.getInstance().put({
@@ -217,36 +232,23 @@ class AppComponent {
     this.workspace = pluginLoader.get()
     if (pluginLoader.current === 'queryParams') {
       this.workspace.map((workspace) => {
-        _paq.push(['trackEvent', 'App', 'queryParams-activated', workspace])
+        this.track({ category: 'App', action: 'queryParams-activated', name: workspace, isClick: false })
       })
     }
     this.engine = new RemixEngine()
     this.engine.register(appManager)
 
-    const matomoDomains = {
-      'alpha.remix.live': 27,
-      'beta.remix.live': 25,
-      'remix.ethereum.org': 23,
-      '6fd22d6fe5549ad4c4d8fd3ca0b7816b.mod': 35 // remix desktop
-    }
+    // Check if we should show the Matomo consent dialog using the MatomoManager
+    const matomoManager = (window as any)._matomoManagerInstance;
+    const configApi = Registry.getInstance().get('config').api;
+    this.showMatomo = matomoManager ? matomoManager.shouldShowConsentDialog(configApi) : false;
 
-    // _paq.push(['trackEvent', 'App', 'load']);
-    this.matomoConfAlreadySet = Registry.getInstance().get('config').api.exists('settings/matomo-perf-analytics')
-    this.matomoCurrentSetting = Registry.getInstance().get('config').api.get('settings/matomo-perf-analytics')
+    // Store config values for backwards compatibility
+    this.matomoConfAlreadySet = configApi.exists('settings/matomo-perf-analytics');
+    this.matomoCurrentSetting = configApi.get('settings/matomo-perf-analytics');
 
-    const electronTracking = (window as any).electronAPI ? await (window as any).electronAPI.canTrackMatomo() : false
-
-    const lastMatomoCheck = window.localStorage.getItem('matomo-analytics-consent')
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const e2eforceMatomoToShow = window.localStorage.getItem('showMatomo') && window.localStorage.getItem('showMatomo') === 'true'
-    const contextShouldShowMatomo = matomoDomains[window.location.hostname] || e2eforceMatomoToShow || electronTracking
-    const shouldRenewConsent = this.matomoCurrentSetting === false && (!lastMatomoCheck || new Date(Number(lastMatomoCheck)) < sixMonthsAgo) // it is set to false for more than 6 months.
-    this.showMatomo = contextShouldShowMatomo && (!this.matomoConfAlreadySet || shouldRenewConsent)
-
-    if (this.showMatomo && shouldRenewConsent) {
-      _paq.push(['trackEvent', 'Matomo', 'refreshMatomoPermissions']);
+    if (this.showMatomo) {
+      this.track({ category: 'MatomoManager', action: 'showConsentDialog', isClick: false });
     }
 
     this.walkthroughService = new WalkthroughService(appManager)
@@ -262,6 +264,7 @@ class AppComponent {
       }
     }
 
+    this.templateExplorerModal = new TemplateExplorerModalPlugin()
     // SERVICES
     // ----------------- gist service ---------------------------------
     this.gistHandler = new GistHandler()
@@ -310,6 +313,9 @@ class AppComponent {
     //---- matomo
     const matomo = new Matomo()
 
+    //---- AI DApp Generator
+    const aiDappGenerator = new AIDappGenerator()
+
     //---------------- Solidity UML Generator -------------------------
     const solidityumlgen = new SolidityUmlGen(appManager)
 
@@ -350,7 +356,6 @@ class AppComponent {
     const vmProviderCustomFork = new CustomForkVMProvider(blockchain)
     const vmProviderMainnetFork = new MainnetForkVMProvider(blockchain)
     const vmProviderSepoliaFork = new SepoliaForkVMProvider(blockchain)
-    const vmProviderGoerliFork = new GoerliForkVMProvider(blockchain)
     const vmProviderShanghai = new ShanghaiVMProvider(blockchain)
     const vmProviderCancun = new CancunVMProvider(blockchain)
     const vmProviderPectra = new PectraVMProvider(blockchain)
@@ -401,6 +406,8 @@ class AppComponent {
 
     const templateSelection = new TemplatesSelectionPlugin()
 
+    const templateExplorerModal = this.templateExplorerModal
+
     const walletConnect = new WalletConnect()
 
     this.engine.register([
@@ -435,7 +442,6 @@ class AppComponent {
       vmProviderBerlin,
       vmProviderLondon,
       vmProviderSepoliaFork,
-      vmProviderGoerliFork,
       vmProviderMainnetFork,
       vmProviderCustomFork,
       hardhatProvider,
@@ -455,6 +461,7 @@ class AppComponent {
       git,
       pluginStateLogger,
       matomo,
+      aiDappGenerator,
       templateSelection,
       scriptRunnerUI,
       remixAI,
@@ -523,13 +530,13 @@ class AppComponent {
     const pluginManagerComponent = new PluginManagerComponent(appManager, this.engine)
     const filePanel = new Filepanel(appManager, contentImport)
     this.statusBar = new StatusBar(filePanel, this.menuicons)
-    this.topBar = new Topbar(filePanel, git)
+    this.topBar = new Topbar(filePanel, git, this.desktopClientMode)
     const landingPage = new LandingPage(appManager, this.menuicons, fileManager, filePanel, contentImport)
     this.settings = new SettingsTab(Registry.getInstance().get('config').api, editor)//, appManager)
 
     const bottomBarPanel = new BottomBarPanel()
 
-    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, this.topBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
+    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
 
     // CONTENT VIEWS & DEFAULT PLUGINS
     const openZeppelinProxy = new OpenZeppelinProxy(blockchain)
@@ -571,6 +578,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder
     ])
+    this.engine.register([templateExplorerModal, this.topBar])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },
@@ -605,12 +613,14 @@ class AppComponent {
       'web3Provider',
       'offsetToLineColumnConverter',
       'pluginStateLogger',
-      'matomo'
+      'matomo',
+      'ai-dapp-generator'
     ])
 
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
-    await this.appManager.activatePlugin(['topbar'])
+    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal'])
     await this.appManager.activatePlugin(['statusBar'])
+    // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])
     await this.appManager.activatePlugin(['sidePanel']) // activating  host plugin separately
     await this.appManager.activatePlugin(['pinnedPanel'])
@@ -685,7 +695,7 @@ class AppComponent {
               if (callDetails.length > 1) {
                 this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
                 // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                _paq.push(['trackEvent', 'App', 'queryParams-calls', this.params.call])
+                this.track({ category: 'App', action: 'queryParams-calls', name: this.params.call, isClick: false })
                 //@ts-ignore
                 await this.appManager.call(...callDetails).catch(console.error)
               }
@@ -696,7 +706,7 @@ class AppComponent {
 
               // call all functions in the list, one after the other
               for (const call of calls) {
-                _paq.push(['trackEvent', 'App', 'queryParams-calls', call])
+                this.track({ category: 'App', action: 'queryParams-calls', name: call, isClick: false })
                 const callDetails = call.split('//')
                 if (callDetails.length > 1) {
                   this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)

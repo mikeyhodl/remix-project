@@ -16,6 +16,8 @@ const swarmPrivateBeeAddress = config.get('settings/swarm-private-bee-address') 
 const swarmPostageStampId = config.get('settings/swarm-postage-stamp-id') || ''
 const sindriAccessToken = config.get('settings/sindri-access-token') || ''
 const etherscanAccessToken = config.get('settings/etherscan-access-token') || ''
+const mcpServersEnable = config.get('settings/mcp/servers/enable') || false
+const mcpServerManagement = config.get('settings/mcp-server-management') || false
 const ollamaEndpoint = config.get('settings/ollama-endpoint') || 'http://localhost:11434'
 
 let githubConfig = config.get('settings/github-config') || false
@@ -93,7 +95,7 @@ export const initialState: SettingsState = {
     isLoading: false
   },
   'matomo-analytics': {
-    value: config.get('settings/matomo-analytics') || true,
+    value: true, // Deprecated --- IGNORE ---
     isLoading: false
   },
   'auto-completion': {
@@ -190,6 +192,14 @@ export const initialState: SettingsState = {
   },
   'ai-privacy-policy': {
     value: '',
+    isLoading: false
+  },
+  'mcp/servers/enable': {
+    value: mcpServersEnable,
+    isLoading: false
+  },
+  'mcp-server-management': {
+    value: mcpServerManagement,
     isLoading: false
   },
   'ollama-config': {

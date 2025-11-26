@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { AccountProps } from '../types'
@@ -7,12 +7,15 @@ import { PassphrasePrompt } from './passphrase'
 import { shortenAddress, CustomMenu, CustomToggle, CustomTooltip } from '@remix-ui/helper'
 import { eip7702Constants } from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
-const _paq = window._paq = window._paq || []
+import { TrackingContext } from '@remix-ide/tracking'
+import { UdappEvent } from '@remix-api'
 
 export function AccountUI(props: AccountProps) {
   const { selectedAccount, loadedAccounts } = props.accounts
   const { selectExEnv, personalMode, networkName } = props
   const accounts = Object.keys(loadedAccounts)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends UdappEvent = UdappEvent>(event: T) => baseTrackEvent?.<T>(event)
   const [plusOpt, setPlusOpt] = useState({
     classList: '',
     title: ''
@@ -76,7 +79,7 @@ export function AccountUI(props: AccountProps) {
         delegationAuthorizationAddressRef.current = null
         return
       }
-      const code = await props.runTabPlugin.blockchain.web3().eth.getCode(selectedAccount)
+      const code = await props.runTabPlugin.blockchain.web3().getCode(selectedAccount)
       if (code && code.startsWith(eip7702Constants.EIP7702_CODE_INDICATOR_FLAG)) {
         // see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md delegation indicator
         const address = '0x' + code.replace(eip7702Constants.EIP7702_CODE_INDICATOR_FLAG, '')
@@ -189,7 +192,7 @@ export function AccountUI(props: AccountProps) {
             href="https://docs.safe.global/advanced/smart-account-overview#safe-smart-account"
             target="_blank"
             rel="noreferrer noopener"
-            onClick={() => _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'learnMore'])}
+            onClick={() => trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'learnMore', isClick: true })}
             className="mb-3 d-inline-block link-primary"
           >
             Learn more
@@ -227,12 +230,12 @@ export function AccountUI(props: AccountProps) {
       ),
       intl.formatMessage({ id: 'udapp.continue' }),
       () => {
-        _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'createClicked'])
+        trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'createClicked', isClick: true })
         props.createNewSmartAccount()
       },
       intl.formatMessage({ id: 'udapp.cancel' }),
       () => {
-        _paq.push(['trackEvent', 'udapp', 'safeSmartAccount', 'cancelClicked'])
+        trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'cancelClicked', isClick: true })
       }
     )
   }
@@ -262,7 +265,7 @@ export function AccountUI(props: AccountProps) {
         try {
           await props.delegationAuthorization(delegationAuthorizationAddressRef.current)
           setContractHasDelegation(true)
-          _paq.push(['trackEvent', 'udapp', 'contractDelegation', 'create'])
+          trackMatomoEvent({ category: 'udapp', action: 'contractDelegation', name: 'create', isClick: false })
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -288,7 +291,7 @@ export function AccountUI(props: AccountProps) {
           await props.delegationAuthorization('0x0000000000000000000000000000000000000000')
           delegationAuthorizationAddressRef.current = ''
           setContractHasDelegation(false)
-          _paq.push(['trackEvent', 'udapp', 'contractDelegation', 'remove'])
+          trackMatomoEvent({ category: 'udapp', action: 'contractDelegation', name: 'remove', isClick: false })
         } catch (e) {
           props.runTabPlugin.call('terminal', 'log', { type: 'error', value: e.message })
         }
@@ -303,7 +306,7 @@ export function AccountUI(props: AccountProps) {
   }
 
   const signMessage = () => {
-    _paq.push(['trackEvent', 'udapp', 'signUsingAccount', `selectExEnv: ${selectExEnv}`])
+    trackMatomoEvent({ category: 'udapp', action: 'signUsingAccount', name: `selectExEnv: ${selectExEnv}`, isClick: false })
     if (!accounts[0]) {
       return props.tooltip(intl.formatMessage({ id: 'udapp.tooltipText1' }))
     }
@@ -451,7 +454,7 @@ export function AccountUI(props: AccountProps) {
           <i id="remixRunSignMsg" data-id="settingsRemixRunSignMsg" className="mx-1 fas fa-edit udapp_icon" aria-hidden="true" onClick={signMessage}></i>
         </CustomTooltip> : null }
         <span className='mx-1'>
-          <CopyToClipboard className="fas fa-copy p-0" tip={intl.formatMessage({ id: 'udapp.copyAccount' })} content={selectedAccount} direction="top" />
+          <CopyToClipboard data-id="udapp-copy-account-address" className="fas fa-copy p-0" tip={intl.formatMessage({ id: 'udapp.copyAccount' })} content={selectedAccount} direction="top" />
         </span>
         { enableDelegationAuthorization ? (<span className="mx-1 mt-1">
           <CustomTooltip placement={'top'} tooltipClasses="text-wrap" tooltipId="remixDelegationAuthTooltip" tooltipText={"Using EIP 7702 in Remix"}>

@@ -1,9 +1,11 @@
 import { ActivityType } from "../lib/types"
-import React, { MutableRefObject, Ref, useEffect, useRef, useState } from 'react'
+import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState } from 'react'
 import GroupListMenu from "./contextOptMenu"
 import { AiContextType, groupListType } from '../types/componentTypes'
 import { AiAssistantType } from '../types/componentTypes'
 import { CustomTooltip } from "@remix-ui/helper"
+import { AIEvent, MatomoEvent } from '@remix-api';
+import { TrackingContext } from '@remix-ide/tracking'
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -30,6 +32,8 @@ export interface PromptAreaProps {
   handleSetModel: () => void
   handleModelSelection: (modelName: string) => void
   handleGenerateWorkspace: () => void
+  handleRecord: () => void
+  isRecording: boolean
   dispatchActivity: (type: ActivityType, payload?: any) => void
   contextBtnRef: React.RefObject<HTMLButtonElement>
   modelBtnRef: React.RefObject<HTMLButtonElement>
@@ -43,8 +47,6 @@ export interface PromptAreaProps {
   isMaximized: boolean
   setIsMaximized: React.Dispatch<React.SetStateAction<boolean>>
 }
-
-const _paq = (window._paq = window._paq || [])
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
   input,
@@ -70,6 +72,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleSetModel,
   handleModelSelection,
   handleGenerateWorkspace,
+  handleRecord,
+  isRecording,
   dispatchActivity,
   contextBtnRef,
   modelBtnRef,
@@ -83,6 +87,10 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   isMaximized,
   setIsMaximized
 }) => {
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
 
   return (
     <>
@@ -125,7 +133,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'ask' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('ask')
-                  _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'ask'])
+                  trackMatomoEvent({ category: 'ai', action: 'ModeSwitch', name: 'ask', isClick: true })
                 }}
                 title="Ask mode - Chat with AI"
               >
@@ -136,7 +144,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 className={`btn btn-sm ${aiMode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'} px-2`}
                 onClick={() => {
                   setAiMode('edit')
-                  _paq.push(['trackEvent', 'remixAI', 'ModeSwitch', 'edit'])
+                  trackMatomoEvent({ category: 'ai', action: 'ModeSwitch', name: 'edit', isClick: true })
                 }}
                 title="Edit mode - Edit workspace code"
               >
@@ -205,6 +213,15 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 </button>
               )}
             </div>
+            <button
+              data-id="remix-ai-record-audio"
+              className={`btn btn-text btn-sm small fw-light mt-2 align-self-end border border-text rounded ${isRecording ? 'btn-danger text-white' : 'text-secondary'}`}
+              onClick={handleRecord}
+              title={isRecording ? 'Stop recording' : 'Record audio'}
+            >
+              <i className={`fa ${isRecording ? 'fa-stop' : 'fa-microphone'} me-1`}></i>
+              {isRecording ? 'Stop' : 'Audio Prompt'}
+            </button>
             <button
               data-id="remix-ai-workspace-generate"
               className="btn btn-text btn-sm small fw-light text-secondary mt-2 align-self-end border border-text rounded"

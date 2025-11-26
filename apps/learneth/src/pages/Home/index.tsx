@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { CustomTooltip } from "@remix-ui/helper"
 import { Link } from 'react-router-dom'
 import { useAppSelector } from '../../redux/hooks'
 import RepoImporter from '../../components/RepoImporter'
 import FiltersPanel from './FiltersPanel'
+import { trackMatomoEvent } from '@remix-api'
+import remixClient from '../../remix-client'
 import './index.css'
 
 type LevelKey = '1' | '2' | '3'
@@ -58,6 +61,13 @@ function HomePage(): JSX.Element {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedLevels, setSelectedLevels] = useState<number[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [completedTutorials, setCompletedTutorials] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    // Load completed tutorials from localStorage
+    const completed = JSON.parse(localStorage.getItem('learneth_completed_tutorials') || '{}')
+    setCompletedTutorials(completed)
+  }, [])
 
   const allTags = useMemo(() => {
     if (!selectedRepo) return []
@@ -174,6 +184,14 @@ function HomePage(): JSX.Element {
                   <div className="d-flex align-items-center">
                     <Antenna level={r.levelNum} />
                     <span className="small fw-medium text-body-emphasis">{r.levelText}</span>
+                    {completedTutorials[r.id] && (
+                      <CustomTooltip
+                        placement={"auto"}
+                        tooltipId="tutorialCompletedTooltip"
+                        tooltipClasses="text-nowrap"
+                        tooltipText={<span>{'Completed'}</span>}
+                      ><i className="text-success ms-2 fas fa-check"></i></CustomTooltip>
+                    )}
                   </div>
                   <MetaRight stepsLen={r.stepsLen} duration={r.duration} />
                 </div>
@@ -181,7 +199,12 @@ function HomePage(): JSX.Element {
                   <h5 className="card-title mb-1 title-clamp-2 text-body-emphasis">{r.name}</h5>
                   {!!r.subtitle && <p className="text-body-secondary small mb-2 subtitle-clamp-1 text-body-emphasis">{r.subtitle}</p>}
                   <p className="mt-2 mb-0 text-muted body-clamp-4">{r.preview}</p>
-                  <Link to={`/list?id=${r.id}`} className="stretched-link" onClick={() => (window as any)._paq.push(['trackEvent', 'learneth', 'start_workshop', r.name])}/>
+                  <Link to={`/list?id=${r.id}`} className="stretched-link" onClick={() => trackMatomoEvent(remixClient, { 
+                    category: 'learneth', 
+                    action: 'start_workshop', 
+                    name: r.name, 
+                    isClick: true 
+                  })}/>
                 </div>
               </article>
             ))

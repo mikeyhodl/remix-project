@@ -18,14 +18,8 @@ import { run } from './actions/staticAnalysisActions'
 import { BasicTitle, calculateWarningStateEntries } from './components/BasicTitle'
 import { Nav, TabContainer } from 'react-bootstrap'
 import { CustomTooltip } from '@remix-ui/helper'
-import { appPlatformTypes, platformContext } from '@remix-ui/app'
-
-declare global {
-  interface Window {
-    _paq: any
-  }
-}
-const _paq = (window._paq = window._paq || []) //eslint-disable-line
+import { appPlatformTypes, platformContext, AppContext } from '@remix-ui/app'
+import { TrackingContext } from '@remix-ide/tracking'
 
 /* eslint-disable-next-line */
 export interface RemixUiStaticAnalyserProps {
@@ -39,6 +33,8 @@ type tabSelectionType = 'remix' | 'solhint' | 'slither' | 'none'
 export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
   const [runner] = useState(new CodeAnalysis())
   const platform = useContext(platformContext)
+  const appContext = useContext(AppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   const preProcessModules = (arr: any) => {
     return arr.map((Item, i) => {
@@ -801,6 +797,45 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
       .flat()
       .every((el) => categoryIndex.includes(el))
   }
+
+  useEffect(() => {
+    const analyzeHandler = () => {
+      run(
+        state.data,
+        state.source,
+        state.file,
+        state,
+        props,
+        isSupportedVersion,
+        showSlither,
+        categoryIndex,
+        groupedModules,
+        runner,
+        trackMatomoEvent,
+        message,
+        showWarnings,
+        allWarnings,
+        warningContainer,
+        calculateWarningStateEntries,
+        warningState,
+        setHints,
+        hints,
+        setSlitherWarnings,
+        setSsaWarnings,
+        slitherEnabled,
+        setStartAnalysis,
+        solhintEnabled,
+        basicEnabled
+      )
+    }
+
+    props.analysisModule.on('solidityStaticAnalysis', 'analyze', analyzeHandler)
+
+    return () => {
+      props.analysisModule.off('solidityStaticAnalysis', 'analyze')
+    }
+  }, [state.data, state.source, state.file, state, props])
+
   return (
     <div className="analysis_3ECCBV px-3 pb-1">
       <div className="my-2 d-flex flex-column align-items-left">
@@ -872,7 +907,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
                   categoryIndex,
                   groupedModules,
                   runner,
-                  _paq,
+                  trackMatomoEvent,
                   message,
                   showWarnings,
                   allWarnings,
@@ -908,7 +943,7 @@ export const RemixUiStaticAnalyser = (props: RemixUiStaticAnalyserProps) => {
                   categoryIndex,
                   groupedModules,
                   runner,
-                  _paq,
+                  trackMatomoEvent,
                   message,
                   showWarnings,
                   allWarnings,
