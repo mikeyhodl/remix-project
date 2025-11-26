@@ -3,7 +3,7 @@ import { RunTab } from "../types/run-tab"
 import { trackMatomoEvent } from '@remix-api'
 import { setExecutionContext, setFinalContext, updateAccountBalances, fillAccountsList } from "./account"
 import { setAccount, addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider, setPinnedChainId, setExecEnv } from "./actions"
-import { addDeployOption, clearAllInstances, clearRecorderCount, setSelectedAccount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess, fetchAccountsListRequest } from "./payload"
+import { addDeployOption, clearAllInstances, clearRecorderCount, setSelectedAccount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess, fetchAccountsListRequest, setSendUnit } from "./payload"
 import { updateInstanceBalance } from './deploy'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import BN from 'bn.js'
@@ -26,6 +26,10 @@ export const setupEvents = (plugin: RunTab) => {
     provider: null,
     chainId: null
   }
+  plugin.on('remixAI', 'setValueRequest', (value, unit) => {
+    dispatch(setSendUnit(unit))
+    dispatch(setSendValue(value))
+  })
   plugin.blockchain.events.on('newTransaction', (tx, receipt) => {
     plugin.emit('newTransaction', tx, receipt)
   })
