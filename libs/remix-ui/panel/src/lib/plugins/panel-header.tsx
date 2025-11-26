@@ -49,7 +49,7 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
 
   return (
     <header className="d-flex flex-column">
-      <div className="swapitHeader px-3 pt-2 pb-0 d-flex flex-row">
+      <div className="swapitHeader ps-3 pe-2 pt-2 pb-0 d-flex flex-row">
         <h6 className="pt-0 mb-1" data-id="sidePanelSwapitTitle">
           {plugin?.profile?.name && <FormattedMessage id={`${plugin.profile.name}.displayName`} defaultMessage={plugin?.profile?.displayName || plugin?.profile?.name} />}
         </h6>
@@ -81,7 +81,7 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
                     <>
                       <div className='d-flex' data-id="movePluginToLeft" data-pinnedplugin={`movePluginToLeft-${plugin.profile.name}`} onClick={unPinPlugin}>
                         <CustomTooltip placement="auto-end" tooltipId="unPinnedMsg" tooltipClasses="text-nowrap" tooltipText={<FormattedMessage id="panel.unPinnedMsg" />}>
-                          <div className="codicon codicon-layout-sidebar-left-dock ms-2 fs-5 fw-bold"></div>
+                          <div className="codicon codicon-layout-sidebar-left-dock ms-2 fs-6 fw-bold lh-1" style={{marginTop: '2px'}}></div>
                         </CustomTooltip>
                       </div>
                       <CustomTooltip placement="bottom-end" tooltipText="Hide Panel">
@@ -96,7 +96,7 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
                   <RenderIfNot condition={plugin.pinned}>
                     <div className='d-flex' data-id="movePluginToRight" data-pinnedplugin={`movePluginToRight-${plugin.profile.name}`} onClick={pinPlugin}>
                       <CustomTooltip placement="auto-end" tooltipId="pinnedMsg" tooltipClasses="text-nowrap" tooltipText={<FormattedMessage id="panel.pinnedMsg" />}>
-                        <div className="codicon codicon-layout-sidebar-right-dock ms-2 fs-5 fw-bold"></div>
+                        <div className="codicon codicon-layout-sidebar-right-dock ms-2 fs-6 fw-bold lh-1" style={{marginTop: '2px'}}></div>
                       </CustomTooltip>
                     </div>
                   </RenderIfNot>
