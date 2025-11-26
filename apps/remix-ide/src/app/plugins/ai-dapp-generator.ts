@@ -174,7 +174,7 @@ export class AIDappGenerator extends Plugin {
 
   private createInitialMessage(options: GenerateDappOptions): string {
     const providerCode = this.getProviderCode()
-    
+
     return `
       You MUST generate a new DApp based on the following requirements.
       
@@ -340,7 +340,7 @@ export class AIDappGenerator extends Plugin {
 
       Remember: Return ALL project files in the 'START_TITLE' format as
       instructed in the system prompt.
-    `  
+    `
   }
 
   private createUpdateMessage(description: string, currentFiles: Pages): string {
