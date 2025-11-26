@@ -41,7 +41,7 @@ export interface TemplateExplorerWizardState {
   manageCategory: 'Template' | 'Files'
 }
 
-export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'ModifyWorkspace' | 'confirm' | 'scripts' | 'aiFileGeneration' | 'importFiles'
+export type WizardStep = 'template' | 'finishSetup' | 'wizard' | 'import' | 'genAI' | 'generic' | 'remixdefault' | 'cookbook' | 'back' | 'reset' | 'ModifyWorkspace' | 'confirm' | 'scripts' | 'aiFileGeneration' | 'importFiles' | 'importHttps'
 
 export interface TemplateExplorerContextType {
   plugin: TemplateExplorerModalPlugin
@@ -66,6 +66,7 @@ export interface TemplateExplorerContextType {
   trackMatomoEvent: <T extends MatomoEvent = TemplateExplorerModalEvent>(event: T) => void
   fileMode: boolean
   ipfsMode: boolean
+  httpImportMode: boolean
 }
 
 export enum TemplateExplorerWizardAction {
@@ -96,7 +97,8 @@ export enum TemplateExplorerWizardAction {
   RESET_STATE = 'RESET_STATE',
   SET_WORKSPACE_TEMPLATE_TYPE = 'SET_WORKSPACE_TEMPLATE_TYPE',
   SET_MANAGE_CATEGORY = 'SET_MANAGE_CATEGORY',
-  IMPORT_FILES = 'IMPORT_FILES'
+  IMPORT_FILES = 'IMPORT_FILES',
+  IMPORT_HTTPS = 'IMPORT_HTTPS'
 }
 
 export interface TemplateItem {

@@ -229,8 +229,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     <Dropdown.Item
                       key={index}
                       onClick={async () => {
-                        // await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
-                        await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+                        await global.plugin.call('templateexplorermodal', 'importFromHttps', true)
                         appContext.appStateDispatch({
                           type: appActionTypes.showGenericModal,
                           payload: true

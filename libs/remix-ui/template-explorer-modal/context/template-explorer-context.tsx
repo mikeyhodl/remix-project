@@ -13,11 +13,11 @@ import TrackingContext from '@remix-ide/tracking'
 
 export const TemplateExplorerContext = createContext<TemplateExplorerContextType>({} as any)
 
-export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin, fileMode: boolean, ipfsMode: boolean }) => {
+export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalPlugin, fileMode: boolean, ipfsMode: boolean, httpImportMode: boolean }) => {
   const [state, dispatch] = useReducer(templateExplorerReducer, initialState)
   const [theme, setTheme] = useState<any>(null)
   const appContext = useContext(AppContext)
-  const { plugin, fileMode, ipfsMode } = props
+  const { plugin, fileMode, ipfsMode, httpImportMode } = props
   const facade = new TemplateExplorerModalFacade(plugin, appContext, dispatch, state)
   const templateCategoryStrategy = new TemplateCategoryStrategy()
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -50,8 +50,9 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   }, [fileMode])
 
   useEffect(() => {
+    console.log('mode', state)
     facade.orchestrateImportFromExternalSource()
-  }, [ipfsMode])
+  }, [ipfsMode, httpImportMode])
 
   const generateUniqueWorkspaceName = async (name: string) => {
     try {
@@ -249,7 +250,7 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
     }
   }
 
-  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent, fileMode, ipfsMode }
+  const contextValue = { templateRepository: state.templateRepository, metadata: state.metadata, selectedTag: state.selectedTag, recentTemplates, filteredTemplates, dedupedTemplates, handleTagClick, clearFilter, addRecentTemplate, RECENT_KEY, allTags, plugin, setSearchTerm, dispatch, state, theme, facade, templateCategoryStrategy, generateUniqueWorkspaceName, trackMatomoEvent, fileMode, ipfsMode, httpImportMode }
 
   return (
     <TemplateExplorerContext.Provider value={contextValue}>

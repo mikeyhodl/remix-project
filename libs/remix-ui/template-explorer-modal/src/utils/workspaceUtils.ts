@@ -58,6 +58,12 @@ export class TemplateExplorerModalFacade {
     if (this.plugin.ipfsMode) {
       this.dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
       this.dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+      this.dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
+    }
+    if (this.plugin.httpImportMode) {
+      this.dispatch({ type: TemplateExplorerWizardAction.IMPORT_HTTPS, payload: 'importHttps' })
+      this.dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+      this.dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
     }
   }
 
@@ -105,6 +111,7 @@ export class TemplateExplorerModalFacade {
     this.dispatch({ type: TemplateExplorerWizardAction.RESET_STATE })
     await this.plugin.call('templateexplorermodal', 'resetFileMode')
     await this.plugin.call('templateexplorermodal', 'resetIpfsMode')
+    await this.plugin.call('templateexplorermodal', 'resetHttpsMode')
   }
   stripDisplayName(item: TemplateItem) {
     let cleanedTagName = ''
@@ -171,6 +178,7 @@ export class TemplateExplorerModalFacade {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: '' });
     await this.plugin.call('templateexplorermodal', 'resetFileMode')
     await this.plugin.call('templateexplorermodal', 'resetIpfsMode')
+    await this.plugin.call('templateexplorermodal', 'resetHttpsMode')
   }
 
   async getTemplateReadMeFile(templateName: string) {

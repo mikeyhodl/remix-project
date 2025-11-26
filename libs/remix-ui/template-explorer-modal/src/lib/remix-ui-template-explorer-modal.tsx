@@ -73,6 +73,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
           {state.wizardStep === 'wizard' ? <ContractWizard /> : null}
           {state.wizardStep === 'remixdefault' ? <WorkspaceDetails strategy={state} /> : null}
           {state.wizardStep === 'importFiles' ? <ImportFromIpfs /> : null}
+          {state.wizardStep === 'importHttps' ? <ImportFromIpfs /> : null}
         </div>
       </section>
     </section>

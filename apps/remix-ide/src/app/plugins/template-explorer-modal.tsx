@@ -13,7 +13,7 @@ const pluginProfile = {
   name: 'templateexplorermodal',
   displayName: 'Template Explorer Modal',
   description: 'Template Explorer Modal',
-  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode', 'importFromExternal', 'resetIpfsMode', 'resetFileMode'],
+  methods: ['addArtefactsToWorkspace', 'updateTemplateExplorerInFileMode', 'importFromExternal', 'resetIpfsMode', 'resetFileMode', 'importFromHttps', 'resetHttpsMode'],
   events: [],
   maintainedBy: 'Remix',
   kind: 'templateexplorermodal',
@@ -30,6 +30,7 @@ export class TemplateExplorerModalPlugin extends Plugin {
   appStateDispatch: any
   fileMode: boolean
   ipfsMode: boolean
+  httpImportMode: boolean
 
   constructor() {
     super(pluginProfile)
@@ -39,7 +40,7 @@ export class TemplateExplorerModalPlugin extends Plugin {
     this.event = new EventEmitter()
     this.fileMode = false
     this.ipfsMode = false
-
+    this.httpImportMode = false
   }
 
   async onActivation(): Promise<void> {
@@ -70,9 +71,20 @@ export class TemplateExplorerModalPlugin extends Plugin {
     this.renderComponent()
   }
 
+  resetHttpsMode() {
+    this.httpImportMode = false
+    this.renderComponent()
+  }
+
   importFromExternal(ipfsMode: boolean) {
     if (this.ipfsMode === ipfsMode) return
     this.ipfsMode = ipfsMode
+    this.renderComponent()
+  }
+
+  importFromHttps(httpImportMode: boolean) {
+    if (this.httpImportMode === httpImportMode) return
+    this.httpImportMode = httpImportMode
     this.renderComponent()
   }
   onDeactivation(): void {
@@ -101,12 +113,13 @@ export class TemplateExplorerModalPlugin extends Plugin {
       ...this,
       ipfsMode: this.ipfsMode,
       fileMode: this.fileMode,
+      httpImportMode: this.httpImportMode,
     })
   }
 
   updateComponent(state: any) {
     return (
-      <TemplateExplorerProvider fileMode={state.fileMode} plugin={state} ipfsMode={state.ipfsMode} />
+      <TemplateExplorerProvider fileMode={state.fileMode} plugin={state} ipfsMode={state.ipfsMode} httpImportMode={state.httpImportMode} />
     )
   }
 }
