@@ -57,7 +57,6 @@ export const TemplateExplorerProvider = (props: { plugin: TemplateExplorerModalP
   }, [fileMode])
 
   useEffect(() => {
-    console.log('is it ipfs or https mode?', state)
     facade.orchestrateImportFromExternalSource()
   }, [ipfsMode, httpImportMode])
 

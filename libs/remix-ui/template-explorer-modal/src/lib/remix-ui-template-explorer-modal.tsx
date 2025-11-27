@@ -58,7 +58,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 </button>
               </div>
             </div>}
-            <button className="template-explorer-modal-close-button" onClick={async () => {
+            <button data-id="template-explorer-modal-close-button" className="template-explorer-modal-close-button" onClick={async () => {
               facade.closeWizard();
               await plugin.call('templateexplorermodal', 'resetFileMode')
               await plugin.call('templateexplorermodal', 'resetIpfsMode')

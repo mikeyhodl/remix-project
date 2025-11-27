@@ -14,7 +14,7 @@ export function ImportFromIpfs(props: any) {
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
       <div className="pt-3 d-flex flex-column text-dark mx-3 my-3">
         <label className={`form-label small mb-3 text-dark fs-6 ${theme?.name === 'Dark' ? 'text-white-force' : 'text-dark'}`}>{state.manageCategory === 'Files' && state.wizardStep === 'importFiles' ? (<span>Enter the IPFS link you would like to import.<br /> (e.g. ipfs://QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH)</span>) : state.manageCategory === 'Files' && state.wizardStep === 'importHttps' ? (<span>Enter the HTTPS link you would like to import. (e.g. https://example.com/contract.sol)</span>) : null}</label>
-        <input data-id="finalize-contract-wizard-workspaceName-input" type="text" className="form-control form-control-lg" value={externalResourceName} onChange={async (e) => {
+        <input data-id="importFromExternalSource-input" type="text" className="form-control form-control-lg" value={externalResourceName} onChange={async (e) => {
           setExternalResourceName(e.target.value)
         }} />
         {externalResourceNameError.length > 0 && externalResourceName.length > 0 ? <span className="text-danger fw-light mt-1 justify-content-start fs-6">{externalResourceNameError}</span> : null }

@@ -67,6 +67,26 @@ export class TemplateExplorerModalFacade {
     }
   }
 
+  async checkIfAddedFilesExist() {
+    const filesToCheck = ['.github/workflows/run-js-test.yml', '.github/workflows/run-slither-action.yml', '.github/workflows/run-solidity-unittesting.yml', 'contracts/libs/create2-factory.sol', 'scripts/contract-deployer/basic-contract-deploy.ts', 'scripts/contract-deployer/create2-factory-deploy.ts', 'etherscan/verifyScript.ts', 'etherscan/receiptGuidScript.ts', 'sindri/run_compile.ts', 'sindri/run_prove.ts', 'sindri/utils.ts']
+    for (const file of filesToCheck) {
+      const fileExists = await this.plugin.call('fileManager', 'exists', file)
+      if (fileExists) {
+        await this.plugin.call('notification', 'toast', 'File already exists in workspace')
+        return true
+      } else {
+        return
+      }
+    }
+    const fileExists = await this.plugin.call('fileManager', 'exists', filesToCheck[0])
+    if (fileExists) {
+      return true
+    } else {
+      await this.plugin.call('notification', 'toast', 'File does not exist in workspace')
+      return
+    }
+  }
+
   async processLoadingExternalUrls(url: string, type: string) {
     const contentImport = {
       import: (url, loadingCb, cb) => {
@@ -130,6 +150,12 @@ export class TemplateExplorerModalFacade {
     if (template.name.toLowerCase().includes('github actions') || template.name.toLowerCase().includes('contract verification') || template.name.toLowerCase().includes('solidity create2') || template.name.toLowerCase().includes( 'generic zkp')) {
       templateCategoryStrategy.setStrategy(new ScriptsStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
+      // const filesExist = await this.checkIfAddedFilesExist()
+      // if (filesExist) {
+      //   await this.plugin.call('notification', 'toast', 'File already exists in workspace')
+      //   this.closeWizard()
+      //   return
+      // }
       await this.plugin.call('templateexplorermodal', 'addArtefactsToWorkspace', item.value, {}, false, (err: Error) => {
         if (err) {
           console.error(err)

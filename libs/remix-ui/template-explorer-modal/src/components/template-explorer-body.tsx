@@ -8,7 +8,7 @@ export function TemplateExplorerBody() {
   const { selectedTag, allTags, handleTagClick, clearFilter, dedupedTemplates, state, theme, trackMatomoEvent } = useContext(TemplateExplorerContext)
 
   const filterTheseTags = tag => tag !== 'Circom' && tag !== 'All' && tag !== 'Noir' && tag !== 'AI'
-  console.log('theme', theme)
+
   return (
     <section className="mx-4">
       <TopCards />

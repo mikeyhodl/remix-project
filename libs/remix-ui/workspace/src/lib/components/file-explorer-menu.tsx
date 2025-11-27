@@ -108,7 +108,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
         type="file"
         onChange={(e) => {
           e.stopPropagation()
-          props.uploadFolder(e.target)
+          props.uploadFile(e.target)
           e.target.value = null
           setIsCreateMenuOpen(false)
         }}

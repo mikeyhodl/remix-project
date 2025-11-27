@@ -57,14 +57,14 @@ export function TemplateExplorer() {
                   }}
                 >
                   <div className="card-header mb-1">
-                    <h6 className={`card-title mb-1 ${theme?.name === 'Dark' ? 'text-white-force' : 'card-title-light'}`}>
+                    <h6 className={`card-title mb-1 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'card-title-light'}`}>
                       {item.displayName || item.value}
                     </h6>
 
                   </div>
                   <div className="card-body d-flex flex-column justify-content-between overflow-y-auto">
                     {item.description && (
-                      <p className={theme?.name === 'Dark' ? 'card-description mb-1 text-white-force text-wrap text-truncate overflow-hidden' : 'card-description mb-1 text-dark text-wrap text-truncate overflow-hidden'}>
+                      <p className={theme?.name === 'Dark' ? 'card-description mb-1 text-white-dimmed text-wrap text-truncate overflow-hidden' : 'card-description mb-1 text-dark text-wrap text-truncate overflow-hidden'}>
                         {item.description}
                       </p>
                     )}

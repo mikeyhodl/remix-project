@@ -2,14 +2,14 @@
 import React, { useContext, useState, useRef, useEffect } from 'react'
 import { TemplateExplorerContext } from '../../context/template-explorer-context'
 import { ContractWizardAction, TemplateExplorerWizardAction } from '../../types/template-explorer-types'
-import { createWorkspace, switchToWorkspace, uploadFolder, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { createWorkspace, switchToWorkspace, uploadFile, uploadFolder, uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 import { getErc20ContractCode } from '../utils/contractWizardUtils'
 import { MatomoCategories, TemplateExplorerModalEvent, MatomoEvent } from '@remix-api'
 import { useOnClickOutside } from 'libs/remix-ui/remix-ai-assistant/src/components/onClickOutsideHook'
 import { createNewFile } from 'libs/remix-ui/workspace/src/lib/actions'
 
 export function TopCards() {
-  const { dispatch, facade, templateCategoryStrategy, plugin, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
+  const { dispatch, facade, templateCategoryStrategy, plugin, theme, generateUniqueWorkspaceName, state, trackMatomoEvent } = useContext(TemplateExplorerContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   const [importFiles, setImportFiles] = useState(false)
   const [importOptionsPosition, setImportOptionsPosition] = useState({ top: 0, left: 0 })
@@ -81,17 +81,16 @@ export function TopCards() {
             ref={importFileInputRef}
             type="file"
             id="importFilesInput"
-            multiple
             className="d-none"
             onChange={async (e) => {
               e.stopPropagation()
               if (e.target.files.length === 0 || !e.target.files) return
-              await uploadFolder(e.target, '/')
+              await uploadFile(e.target, '/')
               setImportFiles(false)
               trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', name: 'success' })
               facade.closeWizard()
+              await plugin.call('notification', 'toast', 'Files imported successfully')
             }}
-            {...enableDirUpload}
           />
           <span className="fw-light">Import from local file system</span>
         </li>
@@ -118,7 +117,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="create-blank-workspace-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'text-dark'}`}
             onClick={async () => {
               if (state.manageCategory === 'Template') {
                 dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: { value: 'blank', displayName: 'Blank', tagList: ["Blank", "Solidity"], description: 'A blank project' } })
@@ -157,7 +156,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="create-with-ai-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'text-dark'}`}
             onClick={async () => {
               const currentPinned = await plugin.call('pinnedPanel', 'currentFocus')
               let aiPluginProfile = await plugin.call('remixaiassistant', 'getProfile')
@@ -201,7 +200,7 @@ export function TopCards() {
         <div className="col-6">
           <div
             data-id="contract-wizard-topcard"
-            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 text-white-force`}
+            className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'text-dark'}`}
             onClick={() => {
               dispatch({ type: ContractWizardAction.CONTRACT_CODE_UPDATE, payload: getErc20ContractCode('erc20', state) })
               facade.switchWizardScreen(dispatch, { value: 'ozerc20', displayName: 'ERC20', tagList: ["ERC20", "Solidity"], description: 'A customizable fungible token contract' }, { name: 'OpenZeppelin', items: []}, templateCategoryStrategy)
@@ -232,7 +231,7 @@ export function TopCards() {
           <div
             ref={importCardRef}
             data-id="import-project-topcard"
-            className="explora-topcard d-flex flex-row align-items-center p-3  shadow-sm import-files border border-light h-100 text-white-force"
+            className={`explora-topcard d-flex flex-row align-items-center p-3  shadow-sm import-files border border-light h-100 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'text-dark'}`}
             style={{
               backgroundColor: 'transparent',
               transition: 'background 0.3s, transform 0.2s, box-shadow 0.2s',
