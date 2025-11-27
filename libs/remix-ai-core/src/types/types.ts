@@ -26,7 +26,6 @@ export interface IExtractedImport {
   isLibrary: boolean;
 }
 
-
 export interface IContextType {
   context: 'currentFile' | 'workspace'|'openedFiles' | 'none'
   files?: { fileName: string; content: string }[]
