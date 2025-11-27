@@ -3,23 +3,31 @@ import {Toaster as SonnerToaster, toast} from 'sonner'
 
 import './toaster.css'
 
+// Export toast so callers can use toast.dismiss(id)
+export {toast}
+
 /* eslint-disable-next-line */
 export interface ToasterProps {
   message: string | JSX.Element
-  timeOut?: number
+  timeout?: number
   handleHide?: () => void
   timestamp?: number
+  id?: string | number
+  onToastCreated?: (toastId: string | number) => void
 }
 
 export const Toaster = (props: ToasterProps) => {
   useEffect(() => {
     if (props.message) {
       // Show toast using Sonner
-      const duration = props.timeOut || 120000
+      const duration = props.timeout || 2000
       const showCloseButton = duration > 5000
 
+      let toastId: string | number
+
       if (typeof props.message === 'string') {
-        toast(props.message, {
+        toastId = toast(props.message, {
+          id: props.id,
           unstyled: true,
           duration,
           closeButton: showCloseButton,
@@ -32,13 +40,14 @@ export const Toaster = (props: ToasterProps) => {
         })
       } else {
         // For JSX elements, use toast.custom
-        toast.custom(
+        toastId = toast.custom(
           () => (
             <div className="remixui_sonner_toast alert alert-info bg-light">
               {props.message}
             </div>
           ),
           {
+            id: props.id,
             duration,
             closeButton: showCloseButton,
             onDismiss: () => {
@@ -49,6 +58,11 @@ export const Toaster = (props: ToasterProps) => {
             }
           }
         )
+      }
+
+      // Call the callback with the toast ID so caller can dismiss it later
+      if (props.onToastCreated) {
+        props.onToastCreated(toastId)
       }
     }
   }, [props.message, props.timestamp])

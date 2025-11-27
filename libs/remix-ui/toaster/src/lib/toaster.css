@@ -42,3 +42,45 @@
   border: 0px solid var(--bs-secondary, #6c757d) !important;
   font-weight: 700 !important;
 }
+
+/* Close button styling */
+[data-sonner-toast] [data-close-button] {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent !important;
+  border: none;
+  color: var(--bs-info-text-emphasis, #212529) !important;
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05) !important;
+  transform: scale(1.1);
+}
+
+[data-sonner-toast] [data-close-button] svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dark theme close button */
+[data-sonner-toast][data-theme="dark"] [data-close-button],
+.dark [data-sonner-toast] [data-close-button] {
+  color: var(--bs-light, #f8f9fa) !important;
+}
+
+[data-sonner-toast][data-theme="dark"] [data-close-button]:hover,
+.dark [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
