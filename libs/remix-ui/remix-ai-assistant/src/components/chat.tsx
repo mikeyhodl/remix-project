@@ -116,6 +116,12 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                     )}
                   </div>
                 </div>
+                {msg.role === 'assistant' && msg.isExecutingTools && (
+                  <div className="tool-execution-indicator mt-2 text-muted">
+                    <i className="fa fa-spinner fa-spin me-2"></i>
+                    <span>Executing tools...</span>
+                  </div>
+                )}
 
                 {/* Feedback buttons */}
                 {msg.role === 'assistant' && (
@@ -246,7 +252,7 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
       ol: ({ node, ...props }) => (
         <ol className="ai-list ai-list-ordered" {...props} />
       ),
-      li: ({ node, ...props }) => (
+      li: ({ node, ordered, ...props }) => (
         <li className="ai-list-item" {...props} />
       ),
       // Links
