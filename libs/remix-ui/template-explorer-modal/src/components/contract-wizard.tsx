@@ -134,6 +134,7 @@ export function ContractWizard () {
     await facade.plugin.call('fileManager', 'writeFileNoRewrite', `/contracts/${state.contractName}.sol`, state.contractCode)
     trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'addContractFileToWorkspace' })
     facade.closeWizard()
+    await facade.plugin.call('notification', 'toast', 'Contract file created successfully')
   }
 
   return (
