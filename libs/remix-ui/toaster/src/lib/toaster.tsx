@@ -16,11 +16,13 @@ export const Toaster = (props: ToasterProps) => {
     if (props.message) {
       // Show toast using Sonner
       const duration = props.timeOut || 120000
+      const showCloseButton = duration > 5000
 
       if (typeof props.message === 'string') {
         toast(props.message, {
           unstyled: true,
           duration,
+          closeButton: showCloseButton,
           onDismiss: () => {
             props.handleHide && props.handleHide()
           },
@@ -38,6 +40,7 @@ export const Toaster = (props: ToasterProps) => {
           ),
           {
             duration,
+            closeButton: showCloseButton,
             onDismiss: () => {
               props.handleHide && props.handleHide()
             },
