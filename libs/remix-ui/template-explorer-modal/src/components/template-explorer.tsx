@@ -39,7 +39,7 @@ export function TemplateExplorer() {
                 <div
                   data-id={`template-card-${item.value}-${itemIndex}`}
                   key={`${templateIndex}-${itemIndex}`}
-                  className={theme?.name === 'Dark'? "template-card bg-light border-0 px-3 py-3 text-white-force" : "template-card bg-dark border-0 px-3 py-3"}
+                  className={theme?.name === 'Dark'? "template-card bg-light border-0 px-3 py-3" : "template-card bg-dark border-0 px-3 py-3"}
                   onClick={async () => {
                     if (item.value === 'cookbook') {
                       await plugin.call('manager', 'activatePlugin', 'cookbookdev')
@@ -64,7 +64,7 @@ export function TemplateExplorer() {
                   </div>
                   <div className="card-body d-flex flex-column justify-content-between overflow-y-auto">
                     {item.description && (
-                      <p className={theme?.name === 'Dark' ? 'card-description mb-1 text-white-dimmed text-wrap text-truncate overflow-hidden' : 'card-description mb-1 text-dark text-wrap text-truncate overflow-hidden'}>
+                      <p className={theme?.name === 'Dark' ? 'card-description mb-1 text-dark text-wrap text-truncate overflow-hidden' : 'card-description mb-1 text-dark text-wrap text-truncate overflow-hidden'}>
                         {item.description}
                       </p>
                     )}
