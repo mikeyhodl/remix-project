@@ -16,6 +16,88 @@ export interface ToasterProps {
   onToastCreated?: (toastId: string | number) => void
 }
 
+export interface ToasterContainerProps {
+  toasts: ToasterProps[]
+}
+
+// Individual toast trigger component (no UI, just triggers toast)
+export const ToastTrigger = (props: ToasterProps) => {
+  const mountedRef = React.useRef(false)
+
+  useEffect(() => {
+    // Only trigger on mount, not on updates
+    if (!mountedRef.current && props.message && props.id) {
+      mountedRef.current = true
+
+      // Show toast using Sonner - Sonner handles deduplication via ID automatically
+      const duration = props.timeout || 2000
+      const showCloseButton = duration > 5000
+
+      if (typeof props.message === 'string') {
+        const toastId = toast(props.message, {
+          id: props.id,
+          unstyled: true,
+          duration,
+          closeButton: showCloseButton,
+          onDismiss: () => {
+            props.handleHide && props.handleHide()
+          },
+          onAutoClose: () => {
+            props.handleHide && props.handleHide()
+          }
+        })
+        console.log('toastId', toastId, props.id)
+      } else {
+        // For JSX elements, use toast.custom
+        const toastId = toast.custom(
+          () => (
+            <div className="remixui_sonner_toast alert alert-info bg-light">
+              {props.message}
+            </div>
+          ),
+          {
+            id: props.id,
+            duration,
+            closeButton: showCloseButton,
+            onDismiss: () => {
+              props.handleHide && props.handleHide()
+            },
+            onAutoClose: () => {
+              props.handleHide && props.handleHide()
+            }
+          }
+        )
+        console.log('toastId', toastId, props.id)
+      }
+    }
+  }, [])
+
+  return null
+}
+
+// Container component that renders the Sonner toaster and all toast triggers
+export const ToasterContainer = (props: ToasterContainerProps) => {
+  return (
+    <>
+      <SonnerToaster
+        position="top-right"
+        gap={12}
+        toastOptions={{
+          className: 'remixui_sonner_toast alert alert-info bg-light',
+          unstyled: true
+        }}
+      />
+      {props.toasts.map((toastProps) => (
+        <ToastTrigger
+          key={toastProps.id || toastProps.timestamp}
+          {...toastProps}
+        />
+      ))}
+    </>
+  )
+}
+
+// Legacy component for backward compatibility
 export const Toaster = (props: ToasterProps) => {
   useEffect(() => {
     if (props.message) {
@@ -26,6 +108,7 @@ export const Toaster = (props: ToasterProps) => {
       let toastId: string | number
 
       if (typeof props.message === 'string') {
+        
         toastId = toast(props.message, {
           id: props.id,
           unstyled: true,
@@ -38,6 +121,7 @@ export const Toaster = (props: ToasterProps) => {
             props.handleHide && props.handleHide()
           }
         })
+        console.log('toastId', toastId, props.id)
       } else {
         // For JSX elements, use toast.custom
         toastId = toast.custom(
@@ -58,6 +142,7 @@ export const Toaster = (props: ToasterProps) => {
             }
           }
         )
+        console.log('toastId', toastId, props.id)
       }
 
       // Call the callback with the toast ID so caller can dismiss it later
@@ -67,15 +152,8 @@ export const Toaster = (props: ToasterProps) => {
     }
   }, [props.message, props.timestamp])
 
-  return (
-    <SonnerToaster
-      position="top-right"
-      toastOptions={{
-        className: 'remixui_sonner_toast alert alert-info bg-light',
-        unstyled: true
-      }}
-    />
-  )
+  return <div></div>     
 }
+
 
 export default Toaster

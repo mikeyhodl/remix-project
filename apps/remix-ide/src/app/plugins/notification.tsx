@@ -11,7 +11,7 @@ interface INotificationApi {
   methods: {
     modal: (args: AppModal) => void
     alert: (args: AlertModal) => void
-    toast: (message: string) => void
+    toast: (message: string) => number
     hideToaster: (id: number) => void
   }
 }
@@ -43,12 +43,13 @@ export class NotificationPlugin extends Plugin implements MethodApi<INotificatio
     return this.dispatcher.alert(args)
   }
 
-  async toast(message: string | JSX.Element, timeout?: number) {
-    this.toastId++
-    return this.dispatcher.toast(message, timeout, this.toastId)
+  async toast(message: string | JSX.Element, timeout?: number, timestamp?: number): Promise<number>  {
+    timestamp = timestamp || Date.now()
+    this.dispatcher.toast(message, timeout, timestamp)
+    return timestamp
   }
 
   async hideToaster(id: number) {
-    toast.dismiss(id)
+    toast.dismiss('toast-' + id)
   }
 }
