@@ -111,7 +111,8 @@ export interface IParams {
 
 export interface IAIStreamResponse{
   streamResponse: any,
-  callback?: any
+  callback?: any,
+  toolExecutionStatusCallback?: (isExecuting: boolean) => void
 }
 
 export enum AIRequestType {
