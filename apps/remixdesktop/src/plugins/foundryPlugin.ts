@@ -54,12 +54,16 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
         this.cachePath = utils.absolutePath('cache', this.currentSharedFolder)
         console.log('Foundry plugin checking for', this.buildPath, this.cachePath)
         if (fs.existsSync(this.buildPath) && fs.existsSync(this.cachePath)) {
-            this.listenOnFoundryCompilation()
+            // this.listenOnFoundryCompilation()
         } else {
-            this.listenOnFoundryFolder()
+            // this.listenOnFoundryFolder()
         }
+        this.on('fileManager', 'currentFileChanged', async (currentFile: string) => {
+            const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+            this.emitContract(basename(currentFile), cache)
+        })
     }
-
+    /*
     listenOnFoundryFolder() {
         console.log('Foundry out folder doesn\'t exist... waiting for the compilation.')
         try {
@@ -76,6 +80,7 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             console.log(e)
         }
     }
+    */
 
     compile() {
         return new Promise((resolve, reject) => {
@@ -96,12 +101,15 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
                 error += err.toString() + '\n'
                 this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${err.toString()}` })
             })
-            child.on('close', () => {
+            child.on('close', async () => {
+                const currentFile = await this.call('fileManager', 'getCurrentFile')
+                const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+                this.emitContract(basename(currentFile), cache)
                 resolve('')
             })
         })
     }
-
+    /*
     checkPath() {
         if (!fs.existsSync(this.buildPath) || !fs.existsSync(this.cachePath)) {
             this.listenOnFoundryFolder()
@@ -109,25 +117,32 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
         }
         if (!fs.existsSync(join(this.cachePath, 'solidity-files-cache.json'))) return false
         return true
-    }
+    }*/
 
     private async emitContract(file: string, cache) {
-        const path = join(this.buildPath, file) // out/Counter.sol/
-        const compilationResult = {
-            input: {},
-            output: {
-                contracts: {},
-                sources: {}
-            },
-            inputSources: { sources: {}, target: '' },
-            solcVersion: null,
-            compilationTarget: null
+        try {
+            console.log('emitContract', file, this.buildPath, this.cachePath)
+            const path = join(this.buildPath, file) // out/Counter.sol/
+            const compilationResult = {
+                input: {},
+                output: {
+                    contracts: {},
+                    sources: {}
+                },
+                inputSources: { sources: {}, target: '' },
+                solcVersion: null,
+                compilationTarget: null
+            }
+            compilationResult.inputSources.target = file
+            await this.readContract(path, compilationResult, cache)
+            console.log('Foundry compilation detected, emitting contract', file, compilationResult)
+            this.emit('compilationFinished', compilationResult.compilationTarget, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)
+        } catch (e) {
+            console.log('Error emitting contract', e)
         }
-        compilationResult.inputSources.target = file
-        await this.readContract(path, compilationResult, cache)
-        this.emit('compilationFinished', compilationResult.compilationTarget, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)
     }
 
+    /*
     private async processArtifact() {
         if (!this.checkPath()) return
         const folderFiles = await fs.promises.readdir(this.buildPath) // "out" folder
@@ -157,15 +172,19 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             console.log(e)
         }
     }
+    */
 
+    /*
     async triggerProcessArtifact() {
         // prevent multiple calls
         clearTimeout(this.processingTimeout)
         this.processingTimeout = setTimeout(async () => await this.processArtifact(), 1000)
     }
+    */
 
     listenOnFoundryCompilation() {
         try {
+            /*
             console.log('Foundry out folder exists... processing the artifact.')
             if (this.watcher) this.watcher.close()
             this.watcher = chokidar.watch(this.cachePath, { depth: 0, ignorePermissionErrors: true, ignoreInitial: true })
@@ -174,6 +193,7 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             this.watcher.on('unlink', async () => await this.triggerProcessArtifact())
             // process the artifact on activation
             this.triggerProcessArtifact()
+            */
         } catch (e) {
             console.log(e)
         }
@@ -254,7 +274,9 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
 
     async sync() {
         console.log('syncing Foundry with Remix...')
-        this.processArtifact()
+        const currentFile = await this.call('fileManager', 'getCurrentFile')
+        const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+        this.emitContract(basename(currentFile), cache)
     }
 }
 
