@@ -1,7 +1,7 @@
 import React from 'react';
 import { compile, helper, Source, CompilerInputOptions, compilerInputFactory, CompilerInput } from '@remix-project/remix-solidity'
 import { CompileTabLogic, parseContracts } from '@remix-ui/solidity-compiler' // eslint-disable-line
-import type { ConfigurationSettings, iSolJsonBinData } from '@remix-project/remix-lib'
+import { ConfigurationSettings, iSolJsonBinData, execution } from '@remix-project/remix-lib'
 
 export const CompilerApiMixin = (Base) => class extends Base {
   currentFile: string
@@ -359,6 +359,11 @@ export const CompilerApiMixin = (Base) => class extends Base {
     }
     this.compiler.event.register('compilationFinished', this.data.eventHandlers.onCompilationFinished)
 
+    this.on('foundry', 'compilationFinished', (target, sources, lang, output, version) => {
+      const contract = output.contracts[target][Object.keys(output.contracts[target])[0]]
+      sources.target = target
+      this.data.eventHandlers.onCompilationFinished(true, output, sources, JSON.stringify(contract.metadata), version)
+    })
     this.data.eventHandlers.onThemeChanged = (theme) => {
       const invert = theme.quality === 'dark' ? 1 : 0
       const img = document.getElementById('swarmLogo')
@@ -401,7 +406,8 @@ export const CompilerApiMixin = (Base) => class extends Base {
       }
       const contractMap = {}
       const contractsDetails = {}
-      this.compiler.visitContracts((contract) => {
+
+      execution.txHelper.visitContracts(data.contracts, (contract) => {
         contractMap[contract.name] = contract
         contractsDetails[contract.name] = parseContracts(
           contract.name,
