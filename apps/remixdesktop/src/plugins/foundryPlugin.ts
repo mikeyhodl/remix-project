@@ -88,13 +88,18 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             const options = { cwd: this.currentSharedFolder, shell: true }
             const child = spawn(cmd, options)
             let error = ''
-            child.stdout.on('data', (data) => {
+            child.stdout.on('data', async (data) => {
                 if (data.toString().includes('Error')) {
                     this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${data.toString()}` })
                 } else {
                     const msg = `[Foundry] ${data.toString()}`
                     console.log('\x1b[32m%s\x1b[0m', msg)
                     this.call('terminal', 'log', { type: 'log', value: msg })
+                    if (data.toString().includes('No files changed, compilation skipped')) {
+                        const currentFile = await this.call('fileManager', 'getCurrentFile')
+                        const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+                        this.emitContract(basename(currentFile), cache)
+                    }
                 }
             })
             child.stderr.on('data', (err) => {
@@ -268,7 +273,8 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
                 bytecode: contentJSON.bytecode,
                 deployedBytecode: contentJSON.deployedBytecode,
                 methodIdentifiers: contentJSON.methodIdentifiers
-            }
+            },
+            metadata: contentJSON.metadata
         }
     }
 
