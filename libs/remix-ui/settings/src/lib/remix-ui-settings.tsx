@@ -28,7 +28,7 @@ const settingsConfig = Registry.getInstance().get('settingsConfig').api
 
 // Check if MCP is enabled via query parameter
 const queryParams = new QueryParams()
-const mcpEnabled = queryParams.exists('mcp')
+const mcpEnabled = queryParams.exists('experimental')
 
 const settingsSections: SettingsSection[] = [
   {
@@ -128,6 +128,16 @@ const settingsSections: SettingsSection[] = [
           action: 'link',
           link: 'https://remix-ide.readthedocs.io/en/latest/ai.html'
         }
+      },
+      {
+        name: 'ollama-config',
+        label: 'settings.ollamaConfig',
+        description: 'settings.ollamaConfigDescription',
+        type: 'toggle',
+        toggleUIOptions: [{
+          name: 'ollama-endpoint',
+          type: 'text'
+        }]
       }]
     },
     ...(mcpEnabled ? [{
