@@ -32,26 +32,44 @@ export const ToastTrigger = (props: ToasterProps) => {
       // Show toast using Sonner - Sonner handles deduplication via ID automatically
       const duration = props.timeout || 2000
       const showCloseButton = duration > 5000
+      const showLoadingIcon = duration > 2000
 
       if (typeof props.message === 'string') {
-        const toastId = toast(props.message, {
-          id: props.id,
-          unstyled: true,
-          duration,
-          closeButton: showCloseButton,
-          onDismiss: () => {
-            props.handleHide && props.handleHide()
-          },
-          onAutoClose: () => {
-            props.handleHide && props.handleHide()
+        const toastId = toast.custom(
+          () => (
+            <div>
+              {showLoadingIcon && (
+                <span className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {props.message}
+            </div>
+          ),
+          {
+            id: props.id,
+            unstyled: true,
+            duration,
+            closeButton: showCloseButton,
+            onDismiss: () => {
+              props.handleHide && props.handleHide()
+            },
+            onAutoClose: () => {
+              props.handleHide && props.handleHide()
+            }
           }
-        })
+        )
         console.log('toastId', toastId, props.id)
       } else {
         // For JSX elements, use toast.custom
         const toastId = toast.custom(
           () => (
-            <div className="remixui_sonner_toast alert alert-info bg-light">
+            <div>
+              {showLoadingIcon && (
+                <span className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
               {props.message}
             </div>
           ),
@@ -104,29 +122,47 @@ export const Toaster = (props: ToasterProps) => {
       // Show toast using Sonner
       const duration = props.timeout || 2000
       const showCloseButton = duration > 5000
+      const showLoadingIcon = duration > 2000
 
       let toastId: string | number
 
       if (typeof props.message === 'string') {
-        
-        toastId = toast(props.message, {
-          id: props.id,
-          unstyled: true,
-          duration,
-          closeButton: showCloseButton,
-          onDismiss: () => {
-            props.handleHide && props.handleHide()
-          },
-          onAutoClose: () => {
-            props.handleHide && props.handleHide()
+
+        toastId = toast.custom(
+          () => (
+            <div className="remixui_sonner_toast alert alert-info bg-light">
+              {showLoadingIcon && (
+                <span className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {props.message}
+            </div>
+          ),
+          {
+            id: props.id,
+            unstyled: true,
+            duration,
+            closeButton: showCloseButton,
+            onDismiss: () => {
+              props.handleHide && props.handleHide()
+            },
+            onAutoClose: () => {
+              props.handleHide && props.handleHide()
+            }
           }
-        })
+        )
         console.log('toastId', toastId, props.id)
       } else {
         // For JSX elements, use toast.custom
         toastId = toast.custom(
           () => (
             <div className="remixui_sonner_toast alert alert-info bg-light">
+              {showLoadingIcon && (
+                <span className="spinner-border spinner-border-sm me-2" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
               {props.message}
             </div>
           ),
