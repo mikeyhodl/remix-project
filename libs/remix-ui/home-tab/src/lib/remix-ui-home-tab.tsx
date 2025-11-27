@@ -69,11 +69,6 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     plugin.on('terminal', 'terminalPanelHidden', () => {
       setIsTerminalHidden(true)
     })
-
-    return () => {
-      plugin.off('terminal', 'terminalPanelShown')
-      plugin.off('terminal', 'terminalPanelHidden')
-    }
   }, [])
 
   const startLearnEth = async () => {
