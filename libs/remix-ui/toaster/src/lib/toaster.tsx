@@ -59,7 +59,6 @@ export const ToastTrigger = (props: ToasterProps) => {
             }
           }
         )
-        console.log('toastId', toastId, props.id)
       } else {
         // For JSX elements, use toast.custom
         const toastId = toast.custom(
@@ -85,7 +84,6 @@ export const ToastTrigger = (props: ToasterProps) => {
             }
           }
         )
-        console.log('toastId', toastId, props.id)
       }
     }
   }, [])
@@ -152,7 +150,6 @@ export const Toaster = (props: ToasterProps) => {
             }
           }
         )
-        console.log('toastId', toastId, props.id)
       } else {
         // For JSX elements, use toast.custom
         toastId = toast.custom(
@@ -178,7 +175,6 @@ export const Toaster = (props: ToasterProps) => {
             }
           }
         )
-        console.log('toastId', toastId, props.id)
       }
 
       // Call the callback with the toast ID so caller can dismiss it later
