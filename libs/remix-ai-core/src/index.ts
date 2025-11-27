@@ -20,7 +20,7 @@ export {
   RemoteInferencer, OllamaInferencer, MCPInferencer, RemixMCPServer, isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHost,
   FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS, createRemixMCPServer,
   InsertionParams, CompletionParams, GenerationParams, AssistantParams,
-  ChatEntry, AIRequestType, ChatHistory,
+  ChatEntry, AIRequestType, ChatHistory, resetOllamaHostOnSettingsChange,
   mcpDefaultServersConfig
 }
 
