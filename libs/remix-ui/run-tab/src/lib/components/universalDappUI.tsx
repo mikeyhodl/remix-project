@@ -36,8 +36,7 @@ export function UniversalDappUI(props: UdappProps) {
 
   const checkUrlParams = useCallback(() => {
     const qp = new QueryParams()
-    const params = qp.get()
-    const hasFlag = params['experimental'] === 'true'
+    const hasFlag = qp.exists('experimental')
 
     setUseNewAiBuilder(prev => {
       if (prev !== hasFlag) {
