@@ -125,7 +125,6 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 data-id="fileExplorerCreateButton"
                 onClick={() => setIsCreateMenuOpen((prev) => !prev)}
                 style={{
-                  // backgroundColor: '#333446',
                   color: '#fff'
                 }}
               >
@@ -197,7 +196,6 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       data-id="fileExplorerCreateButton-importFromIpfs"
                       key={index}
                       onClick={async () => {
-                        // await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
                         await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
                         appContext.appStateDispatch({
                           type: appActionTypes.showGenericModal,

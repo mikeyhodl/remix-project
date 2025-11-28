@@ -150,12 +150,6 @@ export class TemplateExplorerModalFacade {
     if (template.name.toLowerCase().includes('github actions') || template.name.toLowerCase().includes('contract verification') || template.name.toLowerCase().includes('solidity create2') || template.name.toLowerCase().includes( 'generic zkp')) {
       templateCategoryStrategy.setStrategy(new ScriptsStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
-      // const filesExist = await this.checkIfAddedFilesExist()
-      // if (filesExist) {
-      //   await this.plugin.call('notification', 'toast', 'File already exists in workspace')
-      //   this.closeWizard()
-      //   return
-      // }
       await this.plugin.call('templateexplorermodal', 'addArtefactsToWorkspace', item.value, {}, false, (err: Error) => {
         if (err) {
           console.error(err)

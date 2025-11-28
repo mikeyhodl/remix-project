@@ -192,7 +192,7 @@ export default class Filepanel extends ViewPlugin {
 
   uploadFolder(target) {
     return new Promise((resolve, reject) => {
-      return this.emit('uploadFolderReducerEvent', '/', target, (err, data) => {
+      this.emit('uploadFolderReducerEvent', '/', target, (err, data) => {
         if (err) reject(err)
         else resolve(data)
       })

@@ -7,9 +7,6 @@ export function ImportFromIpfs(props: any) {
   const [externalResourceName, setExternalResourceName] = useState('')
   const [externalResourceNameError, setExternalResourceNameError] = useState('')
 
-  useEffect(() => {
-    console.log('state', state)
-  }, [state])
   return (
     <section className="d-flex flex-column gap-3 bg-light" style={{ height: '80%' }}>
       <div className="pt-3 d-flex flex-column text-dark mx-3 my-3">
@@ -22,7 +19,7 @@ export function ImportFromIpfs(props: any) {
 
       <button className="btn btn-primary btn-lg mx-3" data-id="validateWorkspaceButton" onClick={async () => {
         if (!externalResourceName.startsWith('ipfs://') && !externalResourceName.startsWith('https://')) {
-          setExternalResourceNameError('Your url must start with the proper protocol prefix of either ipfs:// or https://')
+          setExternalResourceNameError('Your URL must start with the proper protocol prefix of either ipfs:// or https://')
           return
         }
         const type = externalResourceName.startsWith('ipfs://') ? 'ipfs' : 'https'

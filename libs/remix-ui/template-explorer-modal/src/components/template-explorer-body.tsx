@@ -21,7 +21,7 @@ export function TemplateExplorerBody() {
                   data-id="templateExplorerBodyLabel"
                   className={theme?.name === 'Dark' ? 'text-white-force fs-5' : 'text-dark fs-5'}
                 >{state.manageCategory === 'Template' ? 'Workspace Templates' : 'File Templates'}</label>
-                {state.manageCategory === 'Files' && <label htmlFor="templateExplorerBodySubheading" className={theme?.name === 'Dark' ? 'text-white-force fs-6 mb-3' : 'text-dark fs-6 mb-3'}>Choose a template to add files to your workspace</label>}
+                {state.manageCategory === 'Files' && <label htmlFor="templateExplorerBodySubheading" className={theme?.name === 'Dark' ? 'text-white-force fs-6 mb-3' : 'text-dark fs-6 mb-3'}>Choose a template to add files to your current workspace</label>}
               </div>
               <div className="">
                 <div data-id="templateExplorerBodyTags" className="d-flex flex-wrap align-items-center gap-2">
