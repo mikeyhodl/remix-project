@@ -52,14 +52,15 @@ module.exports = {
       .waitForElementPresent('[data-id="contextMenuItemcopyFileName"]')
       .click('[data-id="contextMenuItemcopyFileName"]')
       .click('[data-id="treeViewLitreeViewItemcontracts"]')
-      .rightClickCustom('[data-id="treeViewUltreeViewMenu"]')
+      .rightClickCustom('[data-id="treeViewLitreeViewItemcontracts"]')
       .click('*[data-id="contextMenuItemnewFile"]')
       .pause(1000)
       .waitForElementVisible('*[data-id$="fileExplorerTreeItemInput"]')
+      .pause(1000)
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.CONTROL + 'v')
       .pause(1000)
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/README1.txt"]', 7000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/README.txt"]', 7000)
   },
   'Should copy file name and paste in root with right click and it will contain a new file #group1 ': function (browser: NightwatchBrowser) {
     browser
