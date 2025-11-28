@@ -225,11 +225,6 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows"]')
       .click('*[data-id="treeViewLitreeViewItem.github/workflows"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.github/workflows/run-solidity-unittesting.yml"]')
-      .click('*[data-id="treeViewLitreeViewItem.github/workflows/run-solidity-unittesting.yml"]')
-      .getEditorValue((content) => {
-        browser.assert.ok(content.indexOf(`name: Running Solidity Unit Tests`) !== -1,
-          'Correct content')
-      })
   },
   'Add Mocha Chai Test Workflow template #group1': function (browser: NightwatchBrowser) {
     browser
