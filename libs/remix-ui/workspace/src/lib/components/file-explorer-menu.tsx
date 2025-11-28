@@ -144,7 +144,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       data-id="fileExplorerCreateButton-newBlankFile"
                       key={index}
                       onClick={async () => {
-                        await createNewFile('blank', '/')
+                        props.createNewFile()
                         await global.plugin.call('notification', 'toast', 'File created successfully')
                       }}
                     >
