@@ -20,15 +20,16 @@ module.exports = {
       .click('[data-id="fileExplorerCreateButton-newBlankFile"]')
       .waitForElementVisible('*[data-id$="fileExplorerTreeItemInput"]')
       .pause(1000)
-      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.COMMAND + 'v')
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.CONTROL + 'v')
       .pause(1000)
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
-      .pause()
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME1.txt"]', 7000)
   },
   'Should copy file name and paste in another folder with new file button and it will contain a new file #group1 ': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('li[data-id="treeViewLitreeViewItemREADME.txt"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.txt"]')
+      .click('*[data-id="treeViewLitreeViewItemREADME.txt"]')
+      .pause(1000)
       .rightClick('li[data-id="treeViewLitreeViewItemREADME.txt"]')
       .waitForElementPresent('[data-id="contextMenuItemcopyFileName"]')
       .click('[data-id="contextMenuItemcopyFileName"]')
@@ -37,9 +38,11 @@ module.exports = {
       .moveTo(null, 0, 0, () => {
         browser.click('*[data-id="fileExplorerHoverIcons-createNewFile"]')
       })
+      .pause(1500)
       .waitForElementVisible('*[data-id$="fileExplorerTreeItemInput"]')
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.CONTROL + 'v')
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
+      .pause()
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests/README.txt"]', 7000)
   },
   'Should copy file name and paste in another folder that has the same filename with new file button and it will contain a new file #group1 ': function (browser: NightwatchBrowser) {
