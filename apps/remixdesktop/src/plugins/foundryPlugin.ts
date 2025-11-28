@@ -41,7 +41,6 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
     async onActivation(): Promise<void> {
         console.log('Foundry plugin activated')
         this.on('fs' as any, 'workingDirChanged', async (path: string) => {
-            console.log('workingDirChanged foundry', path)
             this.currentSharedFolder = path
             this.startListening()
         })
@@ -52,36 +51,12 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
     startListening() {
         this.buildPath = utils.absolutePath('out', this.currentSharedFolder)
         this.cachePath = utils.absolutePath('cache', this.currentSharedFolder)
-        console.log('Foundry plugin checking for', this.buildPath, this.cachePath)
-        if (fs.existsSync(this.buildPath) && fs.existsSync(this.cachePath)) {
-            // this.listenOnFoundryCompilation()
-        } else {
-            // this.listenOnFoundryFolder()
-        }
         this.on('fileManager', 'currentFileChanged', async (currentFile: string) => {
             const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
             this.emitContract(basename(currentFile), cache)
         })
     }
-    /*
-    listenOnFoundryFolder() {
-        console.log('Foundry out folder doesn\'t exist... waiting for the compilation.')
-        try {
-            if (this.watcher) this.watcher.close()
-            this.watcher = chokidar.watch(this.currentSharedFolder, { depth: 1, ignorePermissionErrors: true, ignoreInitial: true })
-            // watch for new folders
-            this.watcher.on('addDir', (path: string) => {
-                console.log('add dir foundry', path)
-                if (fs.existsSync(this.buildPath) && fs.existsSync(this.cachePath)) {
-                    this.listenOnFoundryCompilation()
-                }
-            })
-        } catch (e) {
-            console.log(e)
-        }
-    }
-    */
-
+    
     compile() {
         return new Promise((resolve, reject) => {
             const cmd = `forge build`
@@ -114,19 +89,9 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             })
         })
     }
-    /*
-    checkPath() {
-        if (!fs.existsSync(this.buildPath) || !fs.existsSync(this.cachePath)) {
-            this.listenOnFoundryFolder()
-            return false
-        }
-        if (!fs.existsSync(join(this.cachePath, 'solidity-files-cache.json'))) return false
-        return true
-    }*/
-
+    
     private async emitContract(file: string, cache) {
         try {
-            console.log('emitContract', file, this.buildPath, this.cachePath)
             const path = join(this.buildPath, file) // out/Counter.sol/
             const compilationResult = {
                 input: {},
@@ -140,67 +105,9 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             }
             compilationResult.inputSources.target = file
             await this.readContract(path, compilationResult, cache)
-            console.log('Foundry compilation detected, emitting contract', file, compilationResult)
             this.emit('compilationFinished', compilationResult.compilationTarget, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)
         } catch (e) {
             console.log('Error emitting contract', e)
-        }
-    }
-
-    /*
-    private async processArtifact() {
-        if (!this.checkPath()) return
-        const folderFiles = await fs.promises.readdir(this.buildPath) // "out" folder
-        console.log('Foundry compilation detected, processing artifact...', folderFiles)
-        try {
-            const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
-            const currentFile = await this.call('fileManager', 'getCurrentFile')
-            // name of folders are file names
-            for (const file of folderFiles) {
-                if (file !== basename(currentFile)) {
-                    await this.emitContract(file, cache)
-                }                
-            }
-            if (folderFiles.includes(basename(currentFile))) {
-                console.log('emitting current file', currentFile, basename(currentFile))
-                await this.emitContract(basename(currentFile), cache) // we emit the current file at the end to make sure it is the last one
-            }
-            
-            clearTimeout(this.logTimeout)
-            this.logTimeout = setTimeout(() => {
-                // @ts-ignore
-                // this.call('terminal', 'log', { type: 'log', value: `receiving compilation result from Foundry. Select a file to populate the contract interaction interface.` })
-                console.log('Syncing compilation result from Foundry')
-            }, 1000)
-
-        } catch (e) {
-            console.log(e)
-        }
-    }
-    */
-
-    /*
-    async triggerProcessArtifact() {
-        // prevent multiple calls
-        clearTimeout(this.processingTimeout)
-        this.processingTimeout = setTimeout(async () => await this.processArtifact(), 1000)
-    }
-    */
-
-    listenOnFoundryCompilation() {
-        try {
-            /*
-            console.log('Foundry out folder exists... processing the artifact.')
-            if (this.watcher) this.watcher.close()
-            this.watcher = chokidar.watch(this.cachePath, { depth: 0, ignorePermissionErrors: true, ignoreInitial: true })
-            this.watcher.on('change', async () => await this.triggerProcessArtifact())
-            this.watcher.on('add', async () => await this.triggerProcessArtifact())
-            this.watcher.on('unlink', async () => await this.triggerProcessArtifact())
-            // process the artifact on activation
-            this.triggerProcessArtifact()
-            */
-        } catch (e) {
-            console.log(e)
         }
     }
 
