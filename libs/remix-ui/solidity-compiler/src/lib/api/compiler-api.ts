@@ -364,6 +364,13 @@ export const CompilerApiMixin = (Base) => class extends Base {
       sources.target = target
       this.data.eventHandlers.onCompilationFinished(true, output, sources, JSON.stringify(contract.metadata), version)
     })
+
+    this.on('hardhat', 'compilationFinished', (target, sources, lang, output, version) => {
+      const contract = output.contracts[target][Object.keys(output.contracts[target])[0]]
+      sources.target = target
+      this.data.eventHandlers.onCompilationFinished(true, output, sources, JSON.stringify(contract.metadata), version)
+    })
+
     this.data.eventHandlers.onThemeChanged = (theme) => {
       const invert = theme.quality === 'dark' ? 1 : 0
       const img = document.getElementById('swarmLogo')
