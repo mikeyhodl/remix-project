@@ -158,19 +158,27 @@ export function TopCards() {
             data-id="create-with-ai-topcard"
             className={`explora-topcard d-flex flex-row align-items-center bg-light p-3 p-md-4 shadow-sm border-0 h-100 ${theme?.name === 'Dark' ? 'text-white-dimmed' : 'text-dark'}`}
             onClick={async () => {
-              const currentPinned = await plugin.call('rightSidePanel', 'currentFocus')
               let aiPluginProfile = await plugin.call('remixaiassistant', 'getProfile')
               if (state.manageCategory === 'Template') {
                 dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'genAI' })
-                if (currentPinned !== aiPluginProfile.name) {
-                  await plugin.call('sidePanel', 'pinView', aiPluginProfile)
+                const hiddenPlugin = await plugin.call('rightSidePanel', 'getHiddenPlugin')
+                if (hiddenPlugin && hiddenPlugin.name === aiPluginProfile.name) {
+                  await plugin.call('rightSidePanel', 'togglePanel')
+                } else {
+                  await plugin.call('menuicons', 'select', 'remixaiassistant')
+                  await new Promise((resolve) => setTimeout(resolve, 500))
                 }
                 trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateWithAi', name: 'success' })
               } else {
-                if (currentPinned !== aiPluginProfile.name) {
-                  await plugin.call('sidePanel', 'pinView', aiPluginProfile)
+                const hiddenPlugin = await plugin.call('rightSidePanel', 'getHiddenPlugin')
+                if (hiddenPlugin && hiddenPlugin.name === aiPluginProfile.name) {
+                  await plugin.call('rightSidePanel', 'togglePanel')
+                  await plugin.call('remixaiassistant', 'handleExternalMessage', 'What file do you want me to create?')
+                } else {
+                  await plugin.call('menuicons', 'select', 'remixaiassistant')
+                  await plugin.call('remixaiassistant', 'handleExternalMessage', 'What file do you want me to create?')
+                  await new Promise((resolve) => setTimeout(resolve, 500))
                 }
-                await plugin.call('remixaiassistant', 'handleExternalMessage', 'What file do you want me to create?')
                 facade.closeWizard()
                 trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardCreateFileWithAi', name: 'success' })
               }

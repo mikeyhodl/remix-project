@@ -134,6 +134,7 @@ export function ContractWizard () {
     await facade.plugin.call('fileManager', 'writeFileNoRewrite', `/contracts/${state.contractName}.sol`, state.contractCode)
     trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'addContractFileToWorkspace' })
     facade.closeWizard()
+    await facade.plugin.call('fileManager', 'open', `/contracts/${state.contractName}.sol`)
     await facade.plugin.call('notification', 'toast', 'Contract file created successfully')
   }
 
@@ -247,7 +248,7 @@ export function ContractWizard () {
             }}
             >
               <i className="far fa-check me-2"></i>
-              Validate workspace
+              {state.manageCategory === 'Files' ? 'Create contract file' : 'Validate workspace'}
             </button>
           </div>
         </div>
