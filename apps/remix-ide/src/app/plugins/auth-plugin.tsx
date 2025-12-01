@@ -1,5 +1,6 @@
 import { Plugin } from '@remixproject/engine'
 import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
+import { endpointUrls } from '@remix-endpoints-helper'
 
 export interface Credits {
   balance: number
@@ -63,20 +64,38 @@ export class AuthPlugin extends Plugin {
   }
 
   async getCredits(): Promise<Credits | null> {
-    const baseUrl = window.location.hostname.includes('localhost')
-      ? 'http://localhost:3000'
-      : 'https://endpoints-remix-dev.ngrok.dev'
-
     try {
-      const response = await fetch(`${baseUrl}/credits/balance`, {
+      // Get the JWT token from SSO plugin
+      const token = await this.getToken()
+      
+      console.log('[AuthPlugin] Fetching credits from:', endpointUrls.credits)
+      console.log('[AuthPlugin] Token available:', !!token)
+
+      const headers: any = { 
+        'Accept': 'application/json'
+      }
+      
+      // Add Authorization header if we have a token
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`${endpointUrls.credits}/balance`, {
         method: 'GET',
-        credentials: 'include',
-        headers: { 'Accept': 'application/json' }
+        credentials: 'include',  // Also send cookies as fallback
+        headers
       })
+
+      console.log('[AuthPlugin] Credits response status:', response.status)
 
       if (response.ok) {
         return await response.json()
       }
+      
+      if (response.status === 401) {
+        console.warn('[AuthPlugin] Not authenticated for credits')
+      }
+      
       return null
     } catch (error) {
       console.error('[AuthPlugin] Failed to fetch credits:', error)

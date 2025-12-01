@@ -26,7 +26,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
         const baseUrl = window.location.hostname.includes('localhost')
           ? 'http://localhost:3000'
           : window.location.hostname.includes('ngrok')
-          ? 'https://endpoints-remix-dev.ngrok.dev'
+          ? 'https://api-remix-dev.ngrok.dev'
           : 'https://sso.api.remix.live'
 
         const response = await fetch(`${baseUrl}/sso/providers`, {
