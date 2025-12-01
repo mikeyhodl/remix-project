@@ -343,10 +343,11 @@ export class OllamaInferencer extends RemoteInferencer implements ICompletions, 
   }
 
   private _buildPayload(prompt: string, payload: any, system?: string, promptWithHistory?: any) {
+    promptWithHistory.length>0 ? promptWithHistory.push({ role: "user", content: prompt }) : promptWithHistory
     return {
       model: this.model_name,
       system: system || CHAT_PROMPT,
-      messages: promptWithHistory ? promptWithHistory : [{ role: "assistant", content: system }, { role: "user", content: prompt }],
+      messages: promptWithHistory.length>0 ? promptWithHistory : [{ role: "user", content: prompt }],
       ...payload
     };
   }
