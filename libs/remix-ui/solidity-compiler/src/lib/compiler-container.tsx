@@ -775,7 +775,14 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
               tooltipClasses="text-nowrap"
               tooltipText={<FormattedMessage id="solidity.addACustomCompilerWithURL" />}
             >
-              <span className="fas fa-plus border-0 p-0 ms-3" onClick={() => promptCompiler()}></span>
+              <span
+                className={`fas fa-plus border-0 p-0 ms-3 ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}
+                onClick={() => !(hhCompilation || foundryCompilation) && promptCompiler()}
+                style={{
+                  cursor: (hhCompilation || foundryCompilation) ? 'not-allowed' : 'pointer',
+                  opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
+                }}
+              ></span>
             </CustomTooltip>
             <CustomTooltip
               placement="bottom"
@@ -783,31 +790,66 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
               tooltipClasses="text-nowrap"
               tooltipText={<FormattedMessage id="solidity.seeCompilerLicense" />}
             >
-              <span className="far fa-file-certificate border-0 p-0 ms-2" onClick={() => showCompilerLicense()}></span>
+              <span
+                className={`far fa-file-certificate border-0 p-0 ms-2 ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}
+                onClick={() => !(hhCompilation || foundryCompilation) && showCompilerLicense()}
+                style={{
+                  cursor: (hhCompilation || foundryCompilation) ? 'not-allowed' : 'pointer',
+                  opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
+                }}
+              ></span>
             </CustomTooltip>
             { solJsonBinData && solJsonBinData.selectorList && solJsonBinData.selectorList.length > 0 ? (
-              <CompilerDropdown
-                allversions={solJsonBinData.selectorList}
-                customVersions={state.customVersions}
-                selectedVersion={state.selectedVersion}
-                defaultVersion={state.defaultVersion}
-                handleLoadVersion={handleLoadVersion}
-                _shouldBeAdded={_shouldBeAdded}
-                onlyDownloaded={state.onlyDownloaded}
-              ></CompilerDropdown>):null}
+              <div style={{
+                pointerEvents: (hhCompilation || foundryCompilation) ? 'none' : 'auto'
+              }}>
+                <CompilerDropdown
+                  allversions={solJsonBinData.selectorList}
+                  customVersions={state.customVersions}
+                  selectedVersion={state.selectedVersion}
+                  defaultVersion={state.defaultVersion}
+                  handleLoadVersion={handleLoadVersion}
+                  _shouldBeAdded={_shouldBeAdded}
+                  onlyDownloaded={state.onlyDownloaded}
+                  disabled={hhCompilation || foundryCompilation}
+                ></CompilerDropdown>
+              </div>
+            ):null}
           </div>
-          <div className="mb-2 flex-row-reverse d-flex flex-row form-check">
+          <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
             <label htmlFor="nightlies" data-id="compilerNightliesBuild" className="pt-0 form-check-label">
               <FormattedMessage id="solidity.includeNightlyBuilds" />
             </label>
-            <input className="me-2 form-check-input" id="nightlies" type="checkbox" onChange={handleNightliesChange} checked={state.includeNightlies} />
+            <input
+              className="me-2 form-check-input"
+              id="nightlies"
+              type="checkbox"
+              onChange={handleNightliesChange}
+              checked={state.includeNightlies}
+              disabled={hhCompilation || foundryCompilation}
+              style={{
+                cursor: (hhCompilation || foundryCompilation) ? 'not-allowed' : 'pointer',
+                opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
+              }}
+            />
           </div>
           {platform === appPlatformTypes.desktop ?
-            <div className="mb-2 flex-row-reverse d-flex flex-row form-check">
-              <input className="me-2 form-check-input" id="downloadedcompilers" type="checkbox" onChange={handleOnlyDownloadedChange} checked={state.onlyDownloaded} />
+            <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
               <label htmlFor="downloadedcompilers" data-id="compilerNightliesBuild" className="form-check-label">
                 <FormattedMessage id="solidity.downloadedCompilers" />
               </label>
+              <input
+                className="me-2 form-check-input"
+                id="downloadedcompilers"
+                type="checkbox"
+                onChange={handleOnlyDownloadedChange}
+                checked={state.onlyDownloaded}
+                disabled={hhCompilation || foundryCompilation}
+                style={{
+                  cursor: (hhCompilation || foundryCompilation) ? 'not-allowed' : 'pointer',
+                  opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
+                }}
+              />
             </div>:null}
           <div className="mt-2 remixui_compilerConfig form-check">
             <input
@@ -920,11 +962,20 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
             </div>
           )}
         </div>
-        <div className="d-flex px-4 remixui_compilerConfigSection justify-content-between" onClick={() => {
-          // Track advanced configuration toggle
-          trackMatomoEvent({ category: 'compilerContainer', action: 'advancedConfigToggle', name: !toggleExpander ? 'expanded' : 'collapsed', isClick: true })
-          toggleConfigurations()
-        }}>
+        <div
+          className={`d-flex px-4 remixui_compilerConfigSection justify-content-between ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}
+          onClick={() => {
+            if (hhCompilation || foundryCompilation) return
+            // Track advanced configuration toggle
+            trackMatomoEvent({ category: 'compilerContainer', action: 'advancedConfigToggle', name: !toggleExpander ? 'expanded' : 'collapsed', isClick: true })
+            toggleConfigurations()
+          }}
+          style={{
+            cursor: (hhCompilation || foundryCompilation) ? 'not-allowed' : 'pointer',
+            opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1,
+            pointerEvents: (hhCompilation || foundryCompilation) ? 'none' : 'auto'
+          }}
+        >
           <div className="d-flex">
             <label className="remixui_compilerConfigSection">
               <FormattedMessage id="solidity.advancedConfigurations" />
@@ -932,6 +983,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
           </div>
           <div>
             <span data-id="scConfigExpander" onClick={() => {
+              if (hhCompilation || foundryCompilation) return
               // Track advanced configuration toggle
               trackMatomoEvent({ category: 'compilerContainer', action: 'advancedConfigToggle', name: !toggleExpander ? 'expanded' : 'collapsed', isClick: true })
               toggleConfigurations()
