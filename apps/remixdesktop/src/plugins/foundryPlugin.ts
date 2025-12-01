@@ -55,6 +55,26 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
             this.emitContract(basename(currentFile), cache)
         })
+        this.listenOnFoundryCompilation()
+    }
+
+     listenOnFoundryCompilation() {
+        try {
+            if (this.watcher) this.watcher.close()
+            this.watcher = chokidar.watch(this.cachePath, { depth: 0, ignorePermissionErrors: true, ignoreInitial: true })
+            this.watcher.on('change', async () => {
+                const currentFile = await this.call('fileManager', 'getCurrentFile')
+                const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+                this.emitContract(basename(currentFile), cache)
+            })
+            this.watcher.on('add', async () => {
+                const currentFile = await this.call('fileManager', 'getCurrentFile')
+                const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
+                this.emitContract(basename(currentFile), cache)
+            })
+        } catch (e) {
+            console.log(e)
+        }
     }
     
     compile() {
