@@ -115,7 +115,6 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
         target: null
       }
       for (const file of files) {
-        console.log('Foundry emitContract checking file', file)
         if (file.endsWith('.dbg.json')) { // "artifacts/contracts/Greeter.sol/Greeter.dbg.json"
           const stdFile = file.replace('.dbg.json', '.json')
           const contentStd = await fs.promises.readFile(join(contractFilePath, stdFile), { encoding: 'utf-8' })
