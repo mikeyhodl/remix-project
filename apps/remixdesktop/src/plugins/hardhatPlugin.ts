@@ -48,10 +48,29 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
 
     startListening() {
       this.buildPath = utils.absolutePath('artifacts/contracts', this.currentSharedFolder)
+      this.cachePath = utils.absolutePath('cache', this.currentSharedFolder)
       this.on('fileManager', 'currentFileChanged', async (currentFile: string) => {
           this.emitContract(basename(currentFile))
       })
+      this.listenOnHardhatCompilation()
     }
+
+    listenOnHardhatCompilation() {
+        try {
+          if (this.watcher) this.watcher.close()
+          this.watcher = chokidar.watch(this.cachePath, { depth: 0, ignorePermissionErrors: true, ignoreInitial: true })
+          this.watcher.on('change', async () => {
+              const currentFile = await this.call('fileManager', 'getCurrentFile')
+              this.emitContract(basename(currentFile))
+          })
+          this.watcher.on('add', async () => {
+              const currentFile = await this.call('fileManager', 'getCurrentFile')
+              this.emitContract(basename(currentFile))
+          })
+        } catch (e) {
+          console.log('listenOnHardhatCompilation', e)
+        }
+      }
     
     compile() {
       return new Promise((resolve, reject) => {
