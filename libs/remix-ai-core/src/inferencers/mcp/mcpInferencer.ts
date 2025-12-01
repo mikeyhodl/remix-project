@@ -51,8 +51,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any, baseInferencer?: RemoteInferencer) {
     super(apiUrl, completionUrl);
     this.remixMCPServer = remixMCPServer;
-    // Use provided base inferencer or default to this instance
-    this.baseInferencer = baseInferencer || this;
+    this.baseInferencer = baseInferencer;
     this.initializeMCPServers(servers);
   }
 
