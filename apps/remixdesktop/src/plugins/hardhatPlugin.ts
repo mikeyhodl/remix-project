@@ -80,16 +80,16 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
         let error = ''
         child.stdout.on('data', (data) => {
             if (data.toString().includes('Error')) {
-                this.call('terminal', 'log', { type: 'error', value: `[Hardhat] ${data.toString()}` })
+                this.call('terminal', 'log', { type: 'error', value: `${data.toString()}` })
             } else {
-                const msg = `[Hardhat] ${data.toString()}`
+                const msg = `${data.toString()}`
                 console.log('\x1b[32m%s\x1b[0m', msg)
                 this.call('terminal', 'log', { type: 'log', value: msg })
             }
         })
         child.stderr.on('data', (err) => {
             error += err.toString() + '\n'
-            this.call('terminal', 'log', { type: 'error', value: `[Hardhat] ${err.toString()}` })
+            this.call('terminal', 'log', { type: 'error', value: `${err.toString()}` })
         })
         child.on('close', async () => {
             const currentFile = await this.call('fileManager', 'getCurrentFile')
@@ -100,7 +100,6 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
     }
 
     private async emitContract(file: string) {
-      console.log('emitContract', file, this.buildPath)
       const contractFilePath = join(this.buildPath, file)
       const stat = await fs.promises.stat(contractFilePath)
       if (!stat.isDirectory()) return
@@ -125,7 +124,6 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
 
           const path = join(contractFilePath, jsonDbg.buildInfo)
           const content = await fs.promises.readFile(path, { encoding: 'utf-8' })
-          console.log('Hardhat compilation detected, feeding artifact file', path, content)
           await this.feedContractArtifactFile(content, compilationResult)
         }
         if (compilationResult.target) {
@@ -134,7 +132,6 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
             ...compilationResult.output,
             contracts: { [compilationResult.target]: compilationResult.output.contracts[compilationResult.target] }
           }
-          console.log('Hardhat compilation detected, emitting contract', compilationResult.target, compilationResult)
           this.emit('compilationFinished', compilationResult.target, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)
         }
       }

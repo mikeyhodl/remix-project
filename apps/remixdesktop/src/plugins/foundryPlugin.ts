@@ -85,16 +85,16 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
             let error = ''
             child.stdout.on('data', async (data) => {
                 if (data.toString().includes('Error')) {
-                    this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${data.toString()}` })
+                    this.call('terminal', 'log', { type: 'error', value: `${data.toString()}` })
                 } else {
-                    const msg = `[Foundry] ${data.toString()}`
+                    const msg = `${data.toString()}`
                     console.log('\x1b[32m%s\x1b[0m', msg)
                     this.call('terminal', 'log', { type: 'log', value: msg })
                 }
             })
             child.stderr.on('data', (err) => {
                 error += err.toString() + '\n'
-                this.call('terminal', 'log', { type: 'error', value: `[Foundry] ${err.toString()}` })
+                this.call('terminal', 'log', { type: 'error', value: `${err.toString()}` })
             })
             child.on('close', async () => {
                 const currentFile = await this.call('fileManager', 'getCurrentFile')
