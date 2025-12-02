@@ -9,7 +9,7 @@ import { CompileAndRun } from './app/tabs/compile-and-run'
 import { PluginStateLogger } from './app/tabs/state-logger'
 import { SidePanel } from './app/components/side-panel'
 import { HiddenPanel } from './app/components/hidden-panel'
-import { PinnedPanel } from './app/components/pinned-panel'
+import { RightSidePanel } from './app/components/right-side-panel'
 import { PopupPanel } from './app/components/popup-panel'
 import { LandingPage } from './app/ui/landing-page/landing-page'
 import { MainPanel } from './app/components/main-panel'
@@ -59,7 +59,6 @@ import { xtermPlugin } from './app/plugins/electron/xtermPlugin'
 import { ripgrepPlugin } from './app/plugins/electron/ripgrepPlugin'
 import { compilerLoaderPlugin, compilerLoaderPluginDesktop } from './app/plugins/electron/compilerLoaderPlugin'
 import { appUpdaterPlugin } from './app/plugins/electron/appUpdaterPlugin'
-import { remixAIDesktopPlugin } from './app/plugins/electron/remixAIDesktopPlugin'
 import { RemixAIPlugin } from './app/plugins/remixAIPlugin'
 import { SlitherHandleDesktop } from './app/plugins/electron/slitherPlugin'
 import { SlitherHandle } from './app/files/slither-handle'
@@ -74,6 +73,7 @@ import { Matomo } from './app/plugins/matomo'
 import { DesktopClient } from './app/plugins/desktop-client'
 import { DesktopHost } from './app/plugins/electron/desktopHostPlugin'
 import { WalletConnect } from './app/plugins/walletconnect'
+import { AIDappGenerator } from './app/plugins/ai-dapp-generator'
 
 import { TemplatesSelectionPlugin } from './app/plugins/templates-selection/templates-selection-plugin'
 
@@ -111,6 +111,7 @@ import Terminal from './app/panels/terminal'
 import TabProxy from './app/panels/tab-proxy.js'
 import { Plugin } from '@remixproject/engine'
 import BottomBarPanel from './app/components/bottom-bar-panel'
+import { TemplateExplorerModalPlugin } from './app/plugins/template-explorer-modal'
 
 // Tracking now handled by this.track() method using MatomoManager
 
@@ -153,10 +154,11 @@ class AppComponent {
   menuicons: VerticalIcons
   sidePanel: SidePanel
   hiddenPanel: HiddenPanel
-  pinnedPanel: PinnedPanel
+  rightSidePanel: RightSidePanel
   popupPanel: PopupPanel
   statusBar: StatusBar
   topBar: Topbar
+  templateExplorerModal: TemplateExplorerModalPlugin
   settings: SettingsTab
   params: any
   desktopClientMode: boolean
@@ -261,6 +263,7 @@ class AppComponent {
       }
     }
 
+    this.templateExplorerModal = new TemplateExplorerModalPlugin()
     // SERVICES
     // ----------------- gist service ---------------------------------
     this.gistHandler = new GistHandler()
@@ -309,6 +312,9 @@ class AppComponent {
     //---- matomo
     const matomo = new Matomo()
 
+    //---- AI DApp Generator
+    const aiDappGenerator = new AIDappGenerator()
+
     //---------------- Solidity UML Generator -------------------------
     const solidityumlgen = new SolidityUmlGen(appManager)
 
@@ -323,7 +329,7 @@ class AppComponent {
     const contractFlattener = new ContractFlattener()
 
     // ----------------- AI --------------------------------------
-    const remixAI = new RemixAIPlugin(isElectron())
+    const remixAI = new RemixAIPlugin()
     const remixAiAssistant = new RemixAIAssistant()
 
     // ----------------- import content service ------------------------
@@ -399,6 +405,8 @@ class AppComponent {
 
     const templateSelection = new TemplatesSelectionPlugin()
 
+    const templateExplorerModal = this.templateExplorerModal
+
     const walletConnect = new WalletConnect()
 
     this.engine.register([
@@ -452,6 +460,7 @@ class AppComponent {
       git,
       pluginStateLogger,
       matomo,
+      aiDappGenerator,
       templateSelection,
       scriptRunnerUI,
       remixAI,
@@ -477,8 +486,6 @@ class AppComponent {
       this.engine.register([circom])
       const appUpdater = new appUpdaterPlugin()
       this.engine.register([appUpdater])
-      const remixAIDesktop = new remixAIDesktopPlugin()
-      this.engine.register([remixAIDesktop])
       const desktopHost = new DesktopHost()
       this.engine.register([desktopHost])
       const githubAuthHandler = new GitHubAuthHandler()
@@ -514,7 +521,7 @@ class AppComponent {
     this.menuicons = new VerticalIcons()
     this.sidePanel = new SidePanel()
     this.hiddenPanel = new HiddenPanel()
-    this.pinnedPanel = new PinnedPanel()
+    this.rightSidePanel = new RightSidePanel()
     this.popupPanel = new PopupPanel()
 
     const pluginManagerComponent = new PluginManagerComponent(appManager, this.engine)
@@ -526,7 +533,7 @@ class AppComponent {
 
     const bottomBarPanel = new BottomBarPanel()
 
-    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, this.topBar, filePanel, pluginManagerComponent, this.settings, this.pinnedPanel, this.popupPanel, bottomBarPanel])
+    this.engine.register([this.menuicons, landingPage, this.hiddenPanel, this.sidePanel, this.statusBar, filePanel, pluginManagerComponent, this.settings, this.rightSidePanel, this.popupPanel, bottomBarPanel])
 
     // CONTENT VIEWS & DEFAULT PLUGINS
     const openZeppelinProxy = new OpenZeppelinProxy(blockchain)
@@ -568,6 +575,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder
     ])
+    this.engine.register([templateExplorerModal, this.topBar])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },
@@ -602,15 +610,17 @@ class AppComponent {
       'web3Provider',
       'offsetToLineColumnConverter',
       'pluginStateLogger',
-      'matomo'
+      'matomo',
+      'ai-dapp-generator'
     ])
 
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
-    await this.appManager.activatePlugin(['topbar'])
+    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal'])
     await this.appManager.activatePlugin(['statusBar'])
+    // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])
     await this.appManager.activatePlugin(['sidePanel']) // activating  host plugin separately
-    await this.appManager.activatePlugin(['pinnedPanel'])
+    await this.appManager.activatePlugin(['rightSidePanel'])
     await this.appManager.activatePlugin(['popupPanel'])
     await this.appManager.activatePlugin(['home'])
     await this.appManager.activatePlugin(['settings', 'config'])
@@ -724,11 +734,11 @@ class AppComponent {
       document.body.appendChild(loadedElement)
     })
 
-    this.appManager.on('pinnedPanel', 'pinnedPlugin', (pluginProfile) => {
+    this.appManager.on('rightSidePanel', 'pinnedPlugin', (pluginProfile) => {
       localStorage.setItem('pinnedPlugin', JSON.stringify(pluginProfile))
     })
 
-    this.appManager.on('pinnedPanel', 'unPinnedPlugin', () => {
+    this.appManager.on('rightSidePanel', 'unPinnedPlugin', () => {
       localStorage.setItem('pinnedPlugin', '')
     })
 

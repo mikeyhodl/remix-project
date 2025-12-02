@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ICompletions, IGeneration, IParams, AIRequestType, IAIStreamResponse } from "../../types/types";
-import { GenerationParams, CompletionParams, InsertionParams } from "../../types/models";
+import { ICompletions, IGeneration, IParams, IAIStreamResponse } from "../../types/types";
+import { GenerationParams } from "../../types/models";
 import { RemoteInferencer } from "../remote/remoteInference";
 import {
   IMCPServer,
@@ -11,11 +11,13 @@ import {
   IMCPToolResult,
   IMCPConnectionStatus,
   IMCPInitializeResult,
-  IEnhancedMCPProviderParams,
+  IEnhancedMCPProviderParams
 } from "../../types/mcp";
 import { IntentAnalyzer } from "../../services/intentAnalyzer";
 import { ResourceScoring } from "../../services/resourceScoring";
-import { MCPClient } from './mcpClient';
+import { CodeExecutor } from "./codeExecutor";
+import { ToolApiGenerator } from "./toolApiGenerator";
+import { MCPClient } from "./mcpClient";
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
@@ -40,16 +42,16 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private mcpClients: Map<string, MCPClient> = new Map();
   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
   private resourceCache: Map<string, IMCPResourceContent> = new Map();
-  private resourceListCache: Map<string, { resources: IMCPResource[], timestamp: number }> = new Map();
-  private cacheTimeout: number = 5000;
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
   private remixMCPServer?: any; // Internal RemixMCPServer instance
   private MAX_TOOL_EXECUTIONS = 10;
+  private baseInferencer: RemoteInferencer; // The actual inferencer to use (could be Ollama or Remote)
 
-  constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any) {
+  constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any, baseInferencer?: RemoteInferencer) {
     super(apiUrl, completionUrl);
     this.remixMCPServer = remixMCPServer;
+    this.baseInferencer = baseInferencer;
     this.initializeMCPServers(servers);
   }
 
@@ -382,15 +384,15 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
 
     try {
-      const response = await super.answer(enrichedPrompt, enhancedOptions);
+      const response = await this.baseInferencer.answer(enrichedPrompt, enhancedOptions);
       let toolExecutionCount = 0;
 
-      const toolExecutionCallback = async (tool_calls) => {
+      const toolExecutionStatusCallback = async (tool_calls) => {
 
         // avoid circular tooling
         if (toolExecutionCount >= this.MAX_TOOL_EXECUTIONS) {
           console.warn(`[MCP] Maximum tool execution iterations (${this.MAX_TOOL_EXECUTIONS}) reached`);
-          return { streamResponse: await super.answer(enrichedPrompt, options) };
+          return { streamResponse: await this.baseInferencer.answer(enrichedPrompt, options) };
         }
 
         toolExecutionCount++;
@@ -503,15 +505,15 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
             // Send empty prompt - the tool results are in toolsMessages
             // Don't add extra prompts as they cause Anthropic to summarize instead of using full tool results
-            if (options.provider === 'openai' || options.provider === 'mistralai') return { streamResponse: await super.answer(prompt, followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
-            else return { streamResponse: await super.answer("", followUpOptions), callback: toolExecutionCallback } as IAIStreamResponse;
+            if (options.provider === 'openai' || options.provider === 'mistralai') return { streamResponse: await this.baseInferencer.answer(prompt, followUpOptions), callback: toolExecutionStatusCallback } as IAIStreamResponse;
+            else return { streamResponse: await this.baseInferencer.answer("", followUpOptions), callback: toolExecutionStatusCallback } as IAIStreamResponse;
           }
         }
       }
 
-      return { streamResponse: response, callback:toolExecutionCallback } as IAIStreamResponse;
+      return { streamResponse: response, callback:toolExecutionStatusCallback } as IAIStreamResponse;
     } catch (error) {
-      return { streamResponse: await super.answer(enrichedPrompt, options) };
+      return { streamResponse: await this.baseInferencer.answer(enrichedPrompt, options) };
     }
   }
 
@@ -529,7 +531,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     };
 
     try {
-      const response = await super.code_explaining(prompt, enrichedContext, enhancedOptions);
+      const response = await this.baseInferencer.code_explaining(prompt, enrichedContext, enhancedOptions);
 
       if (response?.tool_calls && response.tool_calls.length > 0) {
         const toolResults = [];
@@ -587,13 +589,13 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             ]
           };
 
-          return super.code_explaining("", "", followUpOptions);
+          return this.baseInferencer.code_explaining("", "", followUpOptions);
         }
       }
 
       return response;
     } catch (error) {
-      return super.code_explaining(prompt, enrichedContext, options);
+      return this.baseInferencer.code_explaining(prompt, enrichedContext, options);
     }
   }
 
@@ -676,29 +678,49 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   async getToolsForLLMRequest(provider?: string): Promise<any[]> {
     const mcpTools = await this.getAvailableToolsForLLM();
 
-    // Format tools based on provider
-    let convertedTools: any[];
-
-    if (provider === 'anthropic') {
-      // Anthropic format: direct object with name, description, input_schema
-      convertedTools = mcpTools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        input_schema: tool.inputSchema
-      }));
-    } else {
-      // OpenAI and other providers format: type + function wrapper
-      convertedTools = mcpTools.map(tool => ({
-        type: "function",
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema
-        }
-      }));
+    if (mcpTools.length === 0) {
+      return [];
     }
 
-    return convertedTools;
+    // Generate compact tool descriptions
+    const apiGenerator = new ToolApiGenerator();
+    const apiDescription = apiGenerator.generateAPIDescription();
+    const toolsList = apiGenerator.generateToolsList(mcpTools);
+
+    // Create single execute_tool with TypeScript API definitions
+    const executeToolDef = {
+      name: "execute_tool",
+      description: `Execute TypeScript code to interact with the Remix IDE API.
+
+${apiDescription}
+
+${toolsList}`,
+      input_schema: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "TypeScript code to execute. Use callMCPTool(toolName, args) to call available tools."
+          }
+        },
+        required: ["code"]
+      }
+    };
+
+    // Format based on provider
+    if (provider === 'anthropic') {
+      return [executeToolDef];
+    } else {
+      // OpenAI and other providers format
+      return [{
+        type: "function",
+        function: {
+          name: executeToolDef.name,
+          description: executeToolDef.description,
+          parameters: executeToolDef.input_schema
+        }
+      }];
+    }
   }
 
   convertLLMToolCallToMCP(llmToolCall: any): IMCPToolCall {
@@ -727,7 +749,134 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
    * Execute a tool call from the LLM
    */
   async executeToolForLLM(toolCall: IMCPToolCall): Promise<IMCPToolResult> {
-    // Find which server has this tool
+    // Handle code execution mode
+    if (toolCall.name === 'execute_tool') {
+      const code = toolCall.arguments?.code;
+      if (!code || typeof code !== 'string') {
+        throw new Error('execute_tool requires a code argument');
+      }
+
+      // Create code executor with callback to execute actual MCP tools
+      const codeExecutor = new CodeExecutor(
+        async (innerToolCall: IMCPToolCall) => {
+          // Find which server has this tool
+          const toolsFromServers = await this.getAllTools();
+          let targetServer: string | undefined;
+
+          for (const [serverName, tools] of Object.entries(toolsFromServers)) {
+            if (tools.some(tool => tool.name === innerToolCall.name)) {
+              targetServer = serverName;
+              break;
+            }
+          }
+
+          if (!targetServer) {
+            throw new Error(`Tool '${innerToolCall.name}' not found in any connected MCP server`);
+          }
+
+          const result = await this.executeTool(targetServer, innerToolCall);
+          return result
+        },
+        30000 // 30 second timeout
+      );
+
+      // Execute the code
+      const result = await codeExecutor.execute(code);
+      console.log(`[MCP Code Mode] inner tool executed with result`, result);
+
+      // Convert code execution result to MCP tool result format
+      if (result.success) {
+        const content = [];
+
+        // Add all tool call results with their full payloads
+        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
+          content.push({
+            type: 'text' as const,
+            text: `Tool Calls (${result.toolCallRecords.length}):`
+          });
+
+          for (const record of result.toolCallRecords) {
+            const toolResult = record.result.content
+              .map((c: any) => c.text || JSON.stringify(c))
+              .join('\n');
+
+            content.push({
+              type: 'text' as const,
+              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
+            });
+          }
+        }
+
+        if (result.output) {
+          content.push({
+            type: 'text' as const,
+            text: `\nConsole Output:\n${result.output}`
+          });
+        }
+
+        if (result.returnValue !== undefined) {
+          content.push({
+            type: 'text' as const,
+            text: `\nReturn Value:\n${JSON.stringify(result.returnValue, null, 2)}`
+          });
+        }
+
+        content.push({
+          type: 'text' as const,
+          text: `\nExecution Stats:\n- Time: ${result.executionTime}ms\n- Tools Called: ${result.toolsCalled.join(', ') || 'none'}`
+        });
+
+        return {
+          content: content.length > 0 ? content : [{ type: 'text', text: 'Code executed successfully with no output' }],
+          isError: false
+        };
+      } else {
+        const content = [];
+
+        content.push({
+          type: 'text' as const,
+          text: `Code Execution Error:\n${result.error}`
+        });
+
+        // Include tool call results even on error
+        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
+          content.push({
+            type: 'text' as const,
+            text: `\nTool Calls Before Error (${result.toolCallRecords.length}):`
+          });
+
+          for (const record of result.toolCallRecords) {
+            const toolResult = record.result.content
+              .map((c: any) => c.text || JSON.stringify(c))
+              .join('\n');
+
+            content.push({
+              type: 'text' as const,
+              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
+            });
+          }
+        }
+
+        if (result.output) {
+          content.push({
+            type: 'text' as const,
+            text: `\nConsole Output:\n${result.output}`
+          });
+        }
+
+        content.push({
+          type: 'text' as const,
+          text: `\nExecution Time: ${result.executionTime}ms`
+        });
+
+        return {
+          content,
+          isError: true
+        };
+      }
+    }
+
+    // Fallback: Legacy direct tool execution (should not be reached with code mode)
     const toolsFromServers = await this.getAllTools();
     let targetServer: string | undefined;
 
@@ -741,7 +890,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-    console.log(`[MCPInferencer] Executing tool ${toolCall.name} from server ${targetServer}`)
+    console.log(`[MCP Legacy Mode] Executing tool ${toolCall.name} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 

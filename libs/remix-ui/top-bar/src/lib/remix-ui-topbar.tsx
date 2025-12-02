@@ -5,7 +5,7 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
-import { appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
+import { AppContext, appPlatformTypes, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { TopbarContext } from '../context/topbarContext'
 import { WorkspacesDropdown } from '../components/WorkspaceDropdown'
@@ -17,12 +17,14 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
+import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
   const [showDropdown, setShowDropdown] = useState(false)
   const platform = useContext(platformContext)
   const global = useContext(TopbarContext)
+  const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = TopbarEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -46,8 +48,9 @@ export function RemixUiTopbar() {
   useOnClickOutside([themeIconRef], () => setShowTheme(false))
   const workspaceRenameInput = useRef()
   const cloneUrlRef = useRef<HTMLInputElement>()
-  const [closedPlugin, setClosedPlugin] = useState<any>(null)
-  const [maximized, setMaximized] = useState<boolean>(false)
+  const [leftPanelHidden, setLeftPanelHidden] = useState<boolean>(false)
+  const [bottomPanelHidden, setBottomPanelHidden] = useState<boolean>(false)
+  const [rightPanelHidden, setRightPanelHidden] = useState<boolean>(false)
 
   const [user, setUser] = useState<GitHubUser | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +68,14 @@ export function RemixUiTopbar() {
   const handleLoginError = (error: string) => {
     setError(error);
   };
+
+  async function openTemplateExplorer(): Promise<void> {
+    await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', false)
+    appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
+    })
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('github_token');
@@ -93,16 +104,60 @@ export function RemixUiTopbar() {
   }, [])
 
   useEffect(() => {
-    plugin.event.on('pluginIsClosed', (profile) => {
-      setClosedPlugin(profile)
-      if (maximized) {
-        setMaximized(false)
+    // Listen to left side panel events
+    plugin.on('sidePanel', 'leftSidePanelHidden', () => {
+      setLeftPanelHidden(true)
+    })
+    plugin.on('sidePanel', 'leftSidePanelShown', () => {
+      setLeftPanelHidden(false)
+    })
+
+    // Listen to terminal panel events
+    plugin.on('terminal', 'terminalPanelHidden', () => {
+      setBottomPanelHidden(true)
+    })
+    plugin.on('terminal', 'terminalPanelShown', () => {
+      setBottomPanelHidden(false)
+    })
+
+    // Listen to right side panel events
+    plugin.on('rightSidePanel', 'rightSidePanelHidden', () => {
+      setRightPanelHidden(true)
+    })
+    plugin.on('rightSidePanel', 'rightSidePanelShown', () => {
+      setRightPanelHidden(false)
+    })
+
+    // Initialize panel states from localStorage
+    const initializePanelStates = async () => {
+      try {
+        const panelStatesStr = window.localStorage.getItem('panelStates')
+        if (panelStatesStr) {
+          const panelStates = JSON.parse(panelStatesStr)
+          if (panelStates.leftSidePanel) {
+            setLeftPanelHidden(panelStates.leftSidePanel.isHidden || false)
+          }
+          if (panelStates.bottomPanel) {
+            setBottomPanelHidden(panelStates.bottomPanel.isHidden || false)
+          }
+          if (panelStates.rightSidePanel) {
+            setRightPanelHidden(panelStates.rightSidePanel.isHidden || false)
+          }
+        }
+      } catch (e) {
+        console.error('Error reading panel states:', e)
       }
-    })
-    plugin.event.on('pluginIsMaximized', () => {
-      setClosedPlugin(null)
-      setMaximized(true)
-    })
+    }
+    initializePanelStates()
+
+    return () => {
+      plugin.off('sidePanel', 'leftSidePanelHidden')
+      plugin.off('sidePanel', 'leftSidePanelShown')
+      plugin.off('terminal', 'terminalPanelHidden')
+      plugin.off('terminal', 'terminalPanelShown')
+      plugin.off('rightSidePanel', 'rightSidePanelHidden')
+      plugin.off('rightSidePanel', 'rightSidePanelShown')
+    }
   }, [])
 
   useEffect(() => {
@@ -529,21 +584,36 @@ export function RemixUiTopbar() {
             setCurrentMenuItemName={setCurrentMenuItemName}
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
+            openTemplateExplorer={openTemplateExplorer}
           />
+          <div className="d-flex ms-4 gap-2 align-items-center" >
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Left Side Panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleLeftSidePanelIcon"
+                onClick={() => plugin.call('sidePanel', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Bottom Panel`}>
+              <div
+                className={`codicon codicon-layout-panel${bottomPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleBottomPanelIcon"
+                onClick={() => plugin.call('terminal', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Right Side Panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-right${rightPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleRightSidePanelIcon"
+                onClick={() => plugin.call('rightSidePanel', 'togglePanel')}
+              ></div>
+            </CustomTooltip>
+          </div>
         </div>
         <div
           className="d-flex flex-row align-items-center justify-content-end flex-nowrap"
           style={{ minWidth: '33%' }}
         >
-          {/* {closedPlugin && <div className="d-flex my-auto me-4" style={{ height: '1rem', width: '1rem' }}>
-            <CustomTooltip placement="left-start" tooltipText={`Open ${closedPlugin.displayName} plugin`}>
-              <i
-                className="fa-solid fa-expand-wide fs-4 text-info"
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
-              ></i>
-            </CustomTooltip>
-          </div>} */}
           <>
             <GitHubLogin
               cloneGitRepository={cloneGitRepository}
@@ -560,7 +630,7 @@ export function RemixUiTopbar() {
               data-id="topbar-themeIcon-toggle"
               style={{
                 padding: '0.35rem 0.5rem',
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
               }}
               onClick={async () => {
                 setShowTheme(!showTheme)
@@ -617,16 +687,6 @@ export function RemixUiTopbar() {
           >
             <i className="fa fa-cog"></i>
           </span>
-
-          {closedPlugin && <div className="d-flex ms-4" >
-            <CustomTooltip placement="bottom-start" tooltipText={`Show ${closedPlugin.displayName} plugin`}>
-              <i
-                className="fa-solid fa-expand-wide fs-4 text-info"
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
-              ></i>
-            </CustomTooltip>
-          </div>}
         </div>
       </div>
     </section>

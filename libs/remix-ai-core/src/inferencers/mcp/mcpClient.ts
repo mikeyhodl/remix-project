@@ -1,16 +1,15 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import EventEmitter from "events";
 import {
-  IMCPServer,
   IMCPResource,
-  IMCPResourceContent,
+  IMCPServer,
   IMCPTool,
-  IMCPToolCall,
-  IMCPToolResult,
   IMCPInitializeResult,
-} from "../../types/mcp";
-import { RemixMCPServer } from '@remix/remix-ai-core';
-import { endpointUrls } from "@remix-endpoints-helper";
+  IMCPResourceContent,
+  IMCPToolResult,
+  IMCPToolCall,
+} from '../../types/mcp';
+import { endpointUrls } from "@remix-endpoints-helper"
+import RemixMCPServer from "../../remix-mcp-server";
 
 // Helper function to track events using MatomoManager instance
 function trackMatomoEvent(category: string, action: string, name?: string) {
@@ -22,15 +21,10 @@ function trackMatomoEvent(category: string, action: string, name?: string) {
       }
     }
   } catch (error) {
-    // Silent fail for tracking
     console.debug('Matomo tracking failed:', error);
   }
 }
 
-/**
- * MCPClient - Client for connecting to and interacting with MCP servers
- * Supports multiple transport types: internal, http, sse, websocket
- */
 export class MCPClient {
   private server: IMCPServer;
   private connected: boolean = false;
