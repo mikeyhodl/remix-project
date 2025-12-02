@@ -31,7 +31,7 @@ export const ToastTrigger = (props: ToasterProps) => {
 
       // Show toast using Sonner - Sonner handles deduplication via ID automatically
       const duration = props.timeout || 2000
-      const showCloseButton = duration > 5000
+      const showCloseButton = duration > 2000
       const showLoadingIcon = duration > 2000
 
       if (typeof props.message === 'string') {
@@ -39,8 +39,12 @@ export const ToastTrigger = (props: ToasterProps) => {
           () => (
             <div>
               {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2" role="status">
+                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
                   <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {showCloseButton && (
+                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)} role="status">
                 </span>
               )}
               {props.message}
@@ -59,14 +63,22 @@ export const ToastTrigger = (props: ToasterProps) => {
             }
           }
         )
+        // Call the callback with the toast ID so caller can dismiss it later
+        if (props.onToastCreated) {
+          props.onToastCreated(toastId)
+        }
       } else {
         // For JSX elements, use toast.custom
         const toastId = toast.custom(
           () => (
             <div>
               {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2" role="status">
+                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
                   <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {showCloseButton && (
+                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)}  role="status">
                 </span>
               )}
               {props.message}
@@ -84,6 +96,10 @@ export const ToastTrigger = (props: ToasterProps) => {
             }
           }
         )
+        // Call the callback with the toast ID so caller can dismiss it later
+      if (props.onToastCreated) {
+        props.onToastCreated(toastId)
+      }
       }
     }
   }, [])
@@ -130,8 +146,12 @@ export const Toaster = (props: ToasterProps) => {
           () => (
             <div className="remixui_sonner_toast alert alert-info bg-light">
               {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2" role="status">
+                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
                   <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {showCloseButton && (
+                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)} role="status">
                 </span>
               )}
               {props.message}
@@ -156,8 +176,12 @@ export const Toaster = (props: ToasterProps) => {
           () => (
             <div className="remixui_sonner_toast alert alert-info bg-light">
               {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2" role="status">
+                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
                   <span className="visually-hidden">Loading...</span>
+                </span>
+              )}
+              {showCloseButton && (
+                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)}  role="status">
                 </span>
               )}
               {props.message}

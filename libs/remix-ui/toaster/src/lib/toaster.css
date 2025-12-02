@@ -1,7 +1,7 @@
 /* Sonner toast styling */
 .remixui_sonner_toast {
   border-radius: 8px;
-  padding: 20px 28px;
+  padding: 20px 48px 20px 28px;
   font-weight: 700 !important;
   font-size: 19px !important;
   min-width: 350px;
@@ -45,7 +45,6 @@
 
 [data-sonner-toast]:hover {
   transform: none !important;
-  scale: 1 !important;
 }
 
 [data-sonner-toast][data-styled="true"] {
@@ -87,7 +86,6 @@
 [data-sonner-toast] [data-close-button]:hover {
   opacity: 1;
   background: rgba(0, 0, 0, 0.05) !important;
-  transform: scale(1.1);
 }
 
 [data-sonner-toast] [data-close-button] svg {
@@ -103,5 +101,42 @@
 
 [data-sonner-toast][data-theme="dark"] [data-close-button]:hover,
 .dark [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Custom codicon close button styling */
+[data-sonner-toast] .codicon-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent !important;
+  border: none;
+  color: var(--bs-dark, #212529) !important;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+  z-index: 1;
+}
+
+[data-sonner-toast] .codicon-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark theme codicon close button */
+[data-sonner-toast][data-theme="dark"] .codicon-close,
+.dark [data-sonner-toast] .codicon-close {
+  color: var(--bs-light, #f8f9fa) !important;
+}
+
+[data-sonner-toast][data-theme="dark"] .codicon-close:hover,
+.dark [data-sonner-toast] .codicon-close:hover {
   background: rgba(255, 255, 255, 0.1) !important;
 }
