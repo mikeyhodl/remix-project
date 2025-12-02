@@ -101,6 +101,7 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
 
     private async emitContract(file: string) {
       const contractFilePath = join(this.buildPath, file)
+      if (!fs.existsSync(contractFilePath)) return     
       const stat = await fs.promises.stat(contractFilePath)
       if (!stat.isDirectory()) return
       const files = await fs.promises.readdir(contractFilePath)

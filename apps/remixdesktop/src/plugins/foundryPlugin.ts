@@ -119,6 +119,8 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
                 compilationTarget: null
             }
             compilationResult.inputSources.target = file
+            console.log('Foundry compilation detected, emitting contract', file, path)
+            if (!fs.existsSync(path)) return            
             await this.readContract(path, compilationResult, cache)
             this.emit('compilationFinished', compilationResult.compilationTarget, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)
         } catch (e) {
@@ -126,7 +128,7 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
         }
     }
 
-    async readContract(contractFolder, compilationResultPart, cache) {
+    async readContract(contractFolder, compilationResultPart, cache) {        
         const files = await fs.promises.readdir(contractFolder)
         for (const file of files) {
             const path = join(contractFolder, file)
