@@ -25,7 +25,7 @@ const clientProfile: Profile = {
     name: 'foundry',
     displayName: 'electron foundry',
     description: 'electron foundry',
-    methods: ['sync', 'compile']
+    methods: ['sync', 'compile', 'runCommand']
 }
 
 
@@ -207,6 +207,51 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
         const currentFile = await this.call('fileManager', 'getCurrentFile')
         const cache = JSON.parse(await fs.promises.readFile(join(this.cachePath, 'solidity-files-cache.json'), { encoding: 'utf-8' }))
         this.emitContract(basename(currentFile), cache)
+    }
+
+    runCommand(commandArgs: string) {
+        return new Promise((resolve, reject) => {
+            // Validate that the command starts with allowed Foundry commands
+            const allowedCommands = ['forge', 'cast', 'anvil']
+            const commandParts = commandArgs.trim().split(' ')
+            const baseCommand = commandParts[0]
+
+            if (!allowedCommands.includes(baseCommand)) {
+                reject(new Error(`Command must start with one of: ${allowedCommands.join(', ')}`))
+                return
+            }
+
+            const cmd = commandArgs
+            this.call('terminal', 'log', { type: 'log', value: `running ${cmd}` })
+            const options = { cwd: this.currentSharedFolder, shell: true }
+            const child = spawn(cmd, options)
+            let stdout = ''
+            let stderr = ''
+
+            child.stdout.on('data', (data) => {
+                const output = data.toString()
+                stdout += output
+                this.call('terminal', 'log', { type: 'log', value: output })
+            })
+
+            child.stderr.on('data', (err) => {
+                const output = err.toString()
+                stderr += output
+                this.call('terminal', 'log', { type: 'error', value: output })
+            })
+
+            child.on('close', (code) => {
+                if (code === 0) {
+                    resolve({ stdout, stderr, exitCode: code })
+                } else {
+                    reject(new Error(`Command failed with exit code ${code}: ${stderr}`))
+                }
+            })
+
+            child.on('error', (err) => {
+                reject(err)
+            })
+        })
     }
 }
 

@@ -25,7 +25,7 @@ const clientProfile: Profile = {
     name: 'hardhat',
     displayName: 'electron hardhat',
     description: 'electron hardhat',
-    methods: ['sync', 'compile']
+    methods: ['sync', 'compile', 'runCommand']
 }
 
 
@@ -143,6 +143,53 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
       console.log('syncing Hardhet with Remix...')
       const currentFile = await this.call('fileManager', 'getCurrentFile')
       this.emitContract(basename(currentFile))
+    }
+
+    runCommand(commandArgs: string) {
+      return new Promise((resolve, reject) => {
+        // Validate that the command is a Hardhat command
+        const commandParts = commandArgs.trim().split(' ')
+
+        // Allow 'npx hardhat' or 'hardhat' commands
+        if (commandParts[0] === 'npx' && commandParts[1] !== 'hardhat') {
+          reject(new Error('Command must be an npx hardhat command'))
+          return
+        } else if (commandParts[0] !== 'npx' && commandParts[0] !== 'hardhat') {
+          reject(new Error('Command must be a hardhat command (use "npx hardhat" or "hardhat")'))
+          return
+        }
+
+        const cmd = commandArgs
+        this.call('terminal', 'log', { type: 'log', value: `running ${cmd}` })
+        const options = { cwd: this.currentSharedFolder, shell: true }
+        const child = spawn(cmd, options)
+        let stdout = ''
+        let stderr = ''
+
+        child.stdout.on('data', (data) => {
+          const output = data.toString()
+          stdout += output
+          this.call('terminal', 'log', { type: 'log', value: output })
+        })
+
+        child.stderr.on('data', (err) => {
+          const output = err.toString()
+          stderr += output
+          this.call('terminal', 'log', { type: 'error', value: output })
+        })
+
+        child.on('close', (code) => {
+          if (code === 0) {
+            resolve({ stdout, stderr, exitCode: code })
+          } else {
+            reject(new Error(`Command failed with exit code ${code}: ${stderr}`))
+          }
+        })
+
+        child.on('error', (err) => {
+          reject(err)
+        })
+      })
     }
 
     async feedContractArtifactFile(artifactContent, compilationResultPart) {
