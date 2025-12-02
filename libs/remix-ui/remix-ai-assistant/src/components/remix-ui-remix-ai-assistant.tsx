@@ -78,20 +78,33 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const userHasScrolledRef = useRef(false)
   const lastMessageCountRef = useRef(0)
 
-  // Ref to hold the sendPrompt function for audio transcription callback
-  const sendPromptRef = useRef<((prompt: string) => Promise<void>) | null>(null)
-
   // Audio transcription hook
   const {
     isRecording,
     isTranscribing,
-    error: transcriptionError,
+    error: _transcriptionError, // Handled in onError callback
     toggleRecording
   } = useAudioTranscription({
     model: 'whisper-v3',
     onTranscriptionComplete: async (text) => {
-      if (sendPromptRef.current) {
-        await sendPromptRef.current(text)
+      // Check if transcription ends with "run" (case-insensitive)
+      const trimmedText = text.trim()
+      const endsWithRun = /\brun\b\s*$/i.test(trimmedText)
+
+      if (endsWithRun) {
+        // Remove "run" from the end and execute the prompt
+        const promptText = trimmedText.replace(/\brun\b\s*$/i, '').trim()
+        if (promptText) {
+          await sendPrompt(promptText)
+          trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
+        }
+      } else {
+        // Append transcription to the input box for user review
+        setInput(prev => prev ? `${prev} ${text}`.trim() : text)
+        // Focus the textarea so user can review/edit
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+        }
         trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
       }
     },
@@ -523,11 +536,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     },
     [isStreaming, props.plugin]
   )
-
-  // Update ref for audio transcription callback
-  useEffect(() => {
-    sendPromptRef.current = sendPrompt
-  }, [sendPrompt])
 
   const handleGenerateWorkspaceWithPrompt = useCallback(async (prompt: string) => {
     dispatchActivity('button', 'generateWorkspace')
