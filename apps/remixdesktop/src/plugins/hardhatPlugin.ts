@@ -75,6 +75,7 @@ class HardhatPluginClient extends ElectronBasePluginRemixdClient {
     compile() {
       return new Promise((resolve, reject) => {
         const cmd = `npx hardhat compile`
+        this.call('terminal', 'log', { type: 'log', value: `running ${cmd}` })
         const options = { cwd: this.currentSharedFolder, shell: true }
         const child = spawn(cmd, options)
         let error = ''

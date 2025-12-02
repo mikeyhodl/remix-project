@@ -456,6 +456,8 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
       props.setCompileErrors({ [currentFile]: { error: error.message } })
       // @ts-ignore
       props.setBadgeStatus({ [currentFile]: { key: 1, title: error.message, type: 'error' } })
+    }).then(() => {
+      compileIcon.current.classList.remove('remixui_bouncingIcon')
     })
   }
 
@@ -480,6 +482,8 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
       props.setCompileErrors({ [currentFile]: { error: error.message } })
       // @ts-ignore
       props.setBadgeStatus({ [currentFile]: { key: 1, title: error.message, type: 'error' } })
+    }).then(() => {
+      compileIcon.current.classList.remove('remixui_bouncingIcon')
     })
   }
 

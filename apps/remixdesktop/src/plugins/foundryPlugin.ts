@@ -78,8 +78,9 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
     }
     
     compile() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {            
             const cmd = `forge build`
+            this.call('terminal', 'log', { type: 'log', value: `running ${cmd}` })
             const options = { cwd: this.currentSharedFolder, shell: true }
             const child = spawn(cmd, options)
             let error = ''
@@ -119,7 +120,6 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
                 compilationTarget: null
             }
             compilationResult.inputSources.target = file
-            console.log('Foundry compilation detected, emitting contract', file, path)
             if (!fs.existsSync(path)) return            
             await this.readContract(path, compilationResult, cache)
             this.emit('compilationFinished', compilationResult.compilationTarget, { sources: compilationResult.input }, 'soljson', compilationResult.output, compilationResult.solcVersion)

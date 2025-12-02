@@ -179,7 +179,7 @@ export class CompileTabLogic {
     } else return false
   }
 
-  runCompiler (externalCompType) {
+  async runCompiler (externalCompType) {
     try {
       this.api.saveCurrentFile()
       if (this.api.getFileManagerMode() === 'localhost' || this.api.isDesktop()) {
