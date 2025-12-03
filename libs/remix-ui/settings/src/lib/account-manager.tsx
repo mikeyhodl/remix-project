@@ -152,7 +152,7 @@ export const AccountManager: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json()
-        setTransactions(data)
+        setTransactions(data.transactions || [])
       }
     } catch (err) {
       console.error('Error loading transactions:', err)
