@@ -85,6 +85,17 @@ const settingsSections: SettingsSection[] = [
       }
     ]
   },
+  { key: 'account', label: 'settings.account', description: 'settings.accountDescription', subSections: [
+    {
+      options: [{
+        name: 'account-manager',
+        label: 'settings.linkedAccounts',
+        description: 'settings.linkedAccountsDescription',
+        type: 'custom' as const,
+        customComponent: 'accountManager'
+      }]
+    }
+  ]},
   { key: 'analytics', label: 'settings.analytics', description: 'settings.analyticsDescription', subSections: [
     { options: [{
       name: 'matomo-analytics',
