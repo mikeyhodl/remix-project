@@ -119,6 +119,12 @@ export const AccountManager: React.FC = () => {
         }
       })
 
+      if (response.status === 401) {
+        // User is not authenticated, clear data
+        setCredits(null)
+        return
+      }
+
       if (response.ok) {
         const data = await response.json()
         setCredits(data)
@@ -137,6 +143,12 @@ export const AccountManager: React.FC = () => {
           'Content-Type': 'application/json'
         }
       })
+
+      if (response.status === 401) {
+        // User is not authenticated, clear data
+        setTransactions([])
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()
