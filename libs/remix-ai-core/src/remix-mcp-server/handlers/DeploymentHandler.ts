@@ -20,8 +20,8 @@ import {
 import { Plugin } from '@remixproject/engine';
 import { getContractData } from '@remix-project/core-plugin'
 import type { TxResult } from '@remix-project/remix-lib';
-import { BrowserProvider } from "ethers"
-import { toNumber, ethers } from 'ethers'
+import { BrowserProvider, formatEther } from "ethers"
+import { toNumber } from 'ethers'
 import { execution } from '@remix-project/remix-lib';
 const { txFormat, txHelper: { makeFullTypeDefinition } } = execution;
 
@@ -98,14 +98,17 @@ export class DeployContractHandler extends BaseToolHandler {
 
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-
-      await plugin.call('sidePanel', 'showContent', 'udapp' )
-
       // Get compilation result to find contract
       const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
       const data = getContractData(args.contractName, compilerAbstract)
       if (!data) {
         return this.createErrorResult(`Could not retrieve contract data for '${args.contractName}'`);
+      }
+      await plugin.call('sidePanel', 'showContent', 'udapp' )
+      plugin.emit('setValueRequest', args.value || '0', 'wei')
+      if (args.value && args.value !== '0') {
+        plugin.call('notification', 'toast', `Value of ${formatEther(args.value)} ETH will be sent with the deployment`)
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a moment for the toast to be seen
       }
 
       let txReturn
@@ -144,8 +147,7 @@ export class DeployContractHandler extends BaseToolHandler {
         logs: receipt.logs,
         contractAddress: receipt.contractAddress,
         success: receipt.status === 1 ? true : false
-      };
-
+      }
       plugin.call('udapp', 'addInstance', result.contractAddress, data.abi, args.contractName, data)
 
       return this.createSuccessResult(result);
@@ -259,6 +261,13 @@ export class CallContractHandler extends BaseToolHandler {
       const isView = funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure';
       let txReturn
       try {
+        await plugin.call('sidePanel', 'showContent', 'udapp' )
+        plugin.emit('setValueRequest', args.value || '0', 'wei')
+        if (args.value && args.value !== '0') {
+          plugin.call('notification', 'toast', `Value of ${formatEther(args.value)} ETH will be sent with the deployment`)
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a moment for the toast to be seen
+        }
+
         txReturn = await new Promise((resolve, reject) => {
           const params = funcABI.type !== 'fallback' ? (args.args? args.args.join(',') : ''): ''
           plugin.call('blockchain', 'runOrCallContractMethod',

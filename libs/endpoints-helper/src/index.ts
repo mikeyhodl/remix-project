@@ -18,6 +18,7 @@ type EndpointUrls = {
     ssoPlugin: string;
     billing: string;
     credits: string;
+    audio;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -40,6 +41,7 @@ const defaultUrls: EndpointUrls = {
   ssoPlugin: 'https://sso-plugin.api.remix.live',
   billing: 'https://billing.api.remix.live',
   credits: 'https://credits.api.remix.live',
+  audio: 'https://audio.api.remix.live',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -62,6 +64,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   ssoPlugin: 'sso-plugin',
   billing: 'billing',
   credits: 'credits',
+  audio: 'audio',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -87,6 +90,7 @@ const ngrokUrls: EndpointUrls = {
   ssoPlugin: 'https://api-remix-dev.ngrok.dev/sso-plugin',
   billing: 'https://api-remix-dev.ngrok.dev/billing',
   credits: 'https://api-remix-dev.ngrok.dev/credits',
+  audio: ''
 };
 
 // Microservices development URLs (individual service ports)
@@ -121,6 +125,7 @@ const localhostUrls: EndpointUrls = {
   // BILLING service (port 3002)
   billing: 'http://localhost:3002/billing',
   credits: 'http://localhost:3002/credits',
+  audio: 'http://localhost:3004/audio',
 };
 
 const resolvedUrls: EndpointUrls = prefix

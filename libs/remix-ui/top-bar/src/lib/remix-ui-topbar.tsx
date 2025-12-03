@@ -49,8 +49,9 @@ export function RemixUiTopbar() {
   useOnClickOutside([themeIconRef], () => setShowTheme(false))
   const workspaceRenameInput = useRef()
   const cloneUrlRef = useRef<HTMLInputElement>()
-  const [closedPlugin, setClosedPlugin] = useState<any>(null)
-  const [maximized, setMaximized] = useState<boolean>(false)
+  const [leftPanelHidden, setLeftPanelHidden] = useState<boolean>(false)
+  const [bottomPanelHidden, setBottomPanelHidden] = useState<boolean>(false)
+  const [rightPanelHidden, setRightPanelHidden] = useState<boolean>(false)
 
   const [user, setUser] = useState<GitHubUser | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export function RemixUiTopbar() {
   };
 
   async function openTemplateExplorer(): Promise<void> {
+    await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', false)
     appContext.appStateDispatch({
       type: appActionTypes.showGenericModal,
       payload: true
@@ -103,16 +105,66 @@ export function RemixUiTopbar() {
   }, [])
 
   useEffect(() => {
-    plugin.event.on('pluginIsClosed', (profile) => {
-      setClosedPlugin(profile)
-      if (maximized) {
-        setMaximized(false)
+    // Listen to left side panel events
+    plugin.on('sidePanel', 'leftSidePanelHidden', () => {
+      setLeftPanelHidden(true)
+      trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'panelHidden', isClick: false })
+    })
+    plugin.on('sidePanel', 'leftSidePanelShown', () => {
+      setLeftPanelHidden(false)
+      trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'panelShown', isClick: false })
+    })
+
+    // Listen to terminal panel events
+    plugin.on('terminal', 'terminalPanelHidden', () => {
+      setBottomPanelHidden(true)
+      trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'panelHidden', isClick: false })
+    })
+    plugin.on('terminal', 'terminalPanelShown', () => {
+      setBottomPanelHidden(false)
+      trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'panelShown', isClick: false })
+    })
+
+    // Listen to right side panel events
+    plugin.on('rightSidePanel', 'rightSidePanelHidden', () => {
+      setRightPanelHidden(true)
+      trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'panelHidden', isClick: false })
+    })
+    plugin.on('rightSidePanel', 'rightSidePanelShown', () => {
+      setRightPanelHidden(false)
+      trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'panelShown', isClick: false })
+    })
+
+    // Initialize panel states from localStorage
+    const initializePanelStates = async () => {
+      try {
+        const panelStatesStr = window.localStorage.getItem('panelStates')
+        if (panelStatesStr) {
+          const panelStates = JSON.parse(panelStatesStr)
+          if (panelStates.leftSidePanel) {
+            setLeftPanelHidden(panelStates.leftSidePanel.isHidden || false)
+          }
+          if (panelStates.bottomPanel) {
+            setBottomPanelHidden(panelStates.bottomPanel.isHidden || false)
+          }
+          if (panelStates.rightSidePanel) {
+            setRightPanelHidden(panelStates.rightSidePanel.isHidden || false)
+          }
+        }
+      } catch (e) {
+        console.error('Error reading panel states:', e)
       }
-    })
-    plugin.event.on('pluginIsMaximized', () => {
-      setClosedPlugin(null)
-      setMaximized(true)
-    })
+    }
+    initializePanelStates()
+
+    return () => {
+      plugin.off('sidePanel', 'leftSidePanelHidden')
+      plugin.off('sidePanel', 'leftSidePanelShown')
+      plugin.off('terminal', 'terminalPanelHidden')
+      plugin.off('terminal', 'terminalPanelShown')
+      plugin.off('rightSidePanel', 'rightSidePanelHidden')
+      plugin.off('rightSidePanel', 'rightSidePanelShown')
+    }
   }, [])
 
   useEffect(() => {
@@ -542,20 +594,49 @@ export function RemixUiTopbar() {
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
             openTemplateExplorer={openTemplateExplorer}
           />
+          <div className="d-flex ms-4 gap-2 align-items-center" >
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Left Side Panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleLeftSidePanelIcon"
+                onClick={() => {
+                  if (leftPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'showLeftSidePanelClicked', isClick: true })
+                  else trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'hideLeftSidePanelClicked', isClick: true })
+                  plugin.call('sidePanel', 'togglePanel')
+                }
+                }
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Bottom Panel`}>
+              <div
+                className={`codicon codicon-layout-panel${bottomPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleBottomPanelIcon"
+                onClick={() => {
+                  if (bottomPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'showTerminalPanelClicked', isClick: true })
+                  else trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'hideTerminalPanelClicked', isClick: true })
+                  plugin.call('terminal', 'togglePanel')
+                }
+                }
+              ></div>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom-start" tooltipText={`Toggle Right Side Panel`}>
+              <div
+                className={`codicon codicon-layout-sidebar-right${rightPanelHidden ? '-off' : ''} fs-5`}
+                data-id="toggleRightSidePanelIcon"
+                onClick={() => {
+                  if (rightPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'showRightSidePanelClicked', isClick: true })
+                  else trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'hideRightSidePanelClicked', isClick: true })
+                  plugin.call('rightSidePanel', 'togglePanel')
+                }
+                }
+              ></div>
+            </CustomTooltip>
+          </div>
         </div>
         <div
           className="d-flex flex-row align-items-center justify-content-end flex-nowrap"
           style={{ minWidth: '33%' }}
         >
-          {/* {closedPlugin && <div className="d-flex my-auto me-4" style={{ height: '1rem', width: '1rem' }}>
-            <CustomTooltip placement="left-start" tooltipText={`Open ${closedPlugin.displayName} plugin`}>
-              <i
-                className="fa-solid fa-expand-wide fs-4 text-info"
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
-              ></i>
-            </CustomTooltip>
-          </div>} */}
           <>
             <GitHubLogin
               cloneGitRepository={cloneGitRepository}
@@ -577,7 +658,7 @@ export function RemixUiTopbar() {
               data-id="topbar-themeIcon-toggle"
               style={{
                 padding: '0.35rem 0.5rem',
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
               }}
               onClick={async () => {
                 setShowTheme(!showTheme)
@@ -634,16 +715,6 @@ export function RemixUiTopbar() {
           >
             <i className="fa fa-cog"></i>
           </span>
-
-          {closedPlugin && <div className="d-flex ms-4" >
-            <CustomTooltip placement="bottom-start" tooltipText={`Show ${closedPlugin.displayName} plugin`}>
-              <i
-                className="fa-solid fa-expand-wide fs-4 text-info"
-                data-id="restoreClosedPlugin"
-                onClick={() => plugin.call('pinnedPanel', 'maximizePlugin')}
-              ></i>
-            </CustomTooltip>
-          </div>}
         </div>
       </div>
     </section>

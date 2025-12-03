@@ -1,8 +1,7 @@
 import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
-import { IModel, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
-//@ts-ignore
+import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
@@ -38,9 +37,7 @@ const profile = {
 
 // add Plugin<any, CustomRemixApi>
 export class RemixAIPlugin extends Plugin {
-  isOnDesktop:boolean = false
   aiIsActivated:boolean = false
-  readonly remixDesktopPluginName = 'remixAID'
   remoteInferencer:RemoteInferencer = null
   isInferencing: boolean = false
   chatRequestBuffer: chatRequestBufferT<any> = null
@@ -50,29 +47,19 @@ export class RemixAIPlugin extends Plugin {
   workspaceAgent: workspaceAgent
   assistantProvider: string = 'mistralai' // default provider
   assistantThreadId: string = ''
-  useRemoteInferencer:boolean = false
+  useRemoteInferencer:boolean = true
   completionAgent: CodeCompletionAgent
   mcpServers: IMCPServer[] = []
   mcpInferencer: MCPInferencer | null = null
-  mcpEnabled: boolean = true
+  mcpEnabled: boolean = false
   remixMCPServer: RemixMCPServer | null = null
 
-  constructor(inDesktop:boolean) {
+  constructor() {
     super(profile)
-    this.isOnDesktop = inDesktop
-    // user machine dont use ressource for remote inferencing
   }
 
   onActivation(): void {
-
-    if (this.isOnDesktop) {
-      this.useRemoteInferencer = true
-      this.initialize(null, null, null, this.useRemoteInferencer);
-      // })
-    } else {
-      this.useRemoteInferencer = true
-      this.initialize()
-    }
+    this.initialize()
     this.completionAgent = new CodeCompletionAgent(this)
     this.securityAgent = new SecurityAgent(this)
     this.codeExpAgent = new CodeExplainAgent(this)
@@ -83,33 +70,15 @@ export class RemixAIPlugin extends Plugin {
     this.loadMCPServersFromSettings();
   }
 
-  async initialize(model1?:IModel, model2?:IModel, remoteModel?:IRemoteModel, useRemote?:boolean){
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      // on desktop use remote inferencer -> false
-      const res = await this.call(this.remixDesktopPluginName, 'initializeModelBackend', useRemote, model1, model2)
-      if (res) {
-        this.on(this.remixDesktopPluginName, 'onStreamResult', (value) => {
-          this.call('terminal', 'log', { type: 'log', value: value })
-        })
+  async initialize(remoteModel?:IRemoteModel){
+    this.remoteInferencer = new RemoteInferencer(remoteModel?.apiUrl, remoteModel?.completionUrl)
+    this.remoteInferencer.event.on('onInference', () => {
+      this.isInferencing = true
+    })
+    this.remoteInferencer.event.on('onInferenceDone', () => {
+      this.isInferencing = false
+    })
 
-        this.on(this.remixDesktopPluginName, 'onInference', () => {
-          this.isInferencing = true
-        })
-
-        this.on(this.remixDesktopPluginName, 'onInferenceDone', () => {
-          this.isInferencing = false
-        })
-      }
-
-    } else {
-      this.remoteInferencer = new RemoteInferencer(remoteModel?.apiUrl, remoteModel?.completionUrl)
-      this.remoteInferencer.event.on('onInference', () => {
-        this.isInferencing = true
-      })
-      this.remoteInferencer.event.on('onInferenceDone', () => {
-        this.isInferencing = false
-      })
-    }
     this.setAssistantProvider(this.assistantProvider) // propagate the provider to the remote inferencer
     this.aiIsActivated = true
 
@@ -128,10 +97,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
-
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      return await this.call(this.remixDesktopPluginName, 'code_generation', prompt, params)
-    } else if (this.mcpEnabled && this.mcpInferencer){
+    if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.code_generation(prompt, params)
     } else {
       return await this.remoteInferencer.code_generation(prompt, params)
@@ -143,11 +109,7 @@ export class RemixAIPlugin extends Plugin {
     params.provider = 'mistralai' // default provider for code completion
     const currentFileName = await this.call('fileManager', 'getCurrentFile')
     const contextfiles = await this.completionAgent.getContextFiles(prompt)
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      return await this.call(this.remixDesktopPluginName, 'code_completion', prompt, promptAfter, contextfiles, currentFileName, params)
-    } else {
-      return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
-    }
+    return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
@@ -157,9 +119,7 @@ export class RemixAIPlugin extends Plugin {
     newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
 
     let result
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'answer', newPrompt)
-    } else if (this.mcpEnabled && this.mcpInferencer){
+    if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.answer(prompt, params)
     } else {
       result = await this.remoteInferencer.answer(newPrompt)
@@ -170,9 +130,7 @@ export class RemixAIPlugin extends Plugin {
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     let result
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'code_explaining', prompt, context, params)
-    } else if (this.mcpEnabled && this.mcpInferencer){
+    if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.code_explaining(prompt, context, params)
     } else {
       result = await this.remoteInferencer.code_explaining(prompt, context, params)
@@ -182,7 +140,6 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
-    let result
     let localFilesImports = ""
 
     // Get local imports from the workspace restrict to 5 most relevant files
@@ -193,23 +150,13 @@ export class RemixAIPlugin extends Plugin {
     }
     localFilesImports = localFilesImports + "\n End of local files imports.\n\n"
     prompt = localFilesImports ? `Using the following local imports: ${localFilesImports}\n\n` + prompt : prompt
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'error_explaining', prompt)
-    } else {
-      result = await this.remoteInferencer.error_explaining(prompt, params)
-    }
+    const result = await this.remoteInferencer.error_explaining(prompt, params)
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
-    let result
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      result = await this.call(this.remixDesktopPluginName, 'vulnerability_check', prompt)
-
-    } else {
-      result = await this.remoteInferencer.vulnerability_check(prompt, params)
-    }
+    const result = await this.remoteInferencer.vulnerability_check(prompt, params)
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
@@ -315,11 +262,7 @@ export class RemixAIPlugin extends Plugin {
     params.provider = 'mistralai' // default provider for code completion
     const currentFileName = await this.call('fileManager', 'getCurrentFile')
     const contextfiles = await this.completionAgent.getContextFiles(msg_pfx)
-    if (this.isOnDesktop && !this.useRemoteInferencer) {
-      return await this.call(this.remixDesktopPluginName, 'code_insertion', msg_pfx, msg_sfx, contextfiles, currentFileName, params)
-    } else {
-      return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
-    }
+    return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
   }
 
   chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
@@ -401,37 +344,6 @@ export class RemixAIPlugin extends Plugin {
           this.isInferencing = false
         })
       }
-    } else if (provider === 'mcp') {
-      // Switch to MCP inferencer
-      if (!this.mcpInferencer || !(this.mcpInferencer instanceof MCPInferencer)) {
-        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
-        this.mcpInferencer.event.on('onInference', () => {
-          this.isInferencing = true
-        })
-        this.mcpInferencer.event.on('onInferenceDone', () => {
-          this.isInferencing = false
-        })
-        this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-          console.log(`MCP server connected: ${serverName}`)
-        })
-        this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-          console.error(`MCP server error (${serverName}):`, error)
-        })
-
-        // Connect to all configured servers
-        await this.mcpInferencer.connectAllServers();
-      }
-
-      this.remoteInferencer = this.mcpInferencer;
-
-      if (this.assistantProvider !== provider){
-        // clear the threadIds
-        this.assistantThreadId = ''
-        GenerationParams.threadId = ''
-        CompletionParams.threadId = ''
-        AssistantParams.threadId = ''
-      }
-      this.assistantProvider = provider
     } else if (provider === 'ollama') {
       const isAvailable = await isOllamaAvailable();
       if (!isAvailable) {
@@ -462,6 +374,22 @@ export class RemixAIPlugin extends Plugin {
       this.assistantProvider = provider
     } else {
       console.error(`Unknown assistant provider: ${provider}`)
+    }
+
+    // If MCP is enabled, update it to use the new Ollama inferencer
+    if (this.mcpEnabled) {
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+      })
+      this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+      })
+      this.mcpInferencer.event.on('onInference', () => {
+        this.isInferencing = true
+      })
+      this.mcpInferencer.event.on('onInferenceDone', () => {
+        this.isInferencing = false
+      })
+      await this.mcpInferencer.connectAllServers();
     }
   }
 
@@ -553,7 +481,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async getMCPResources(): Promise<Record<string, any[]>> {
-    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+    if (this.mcpInferencer) {
       const resources = await this.mcpInferencer.getAllResources();
       return resources;
     }
@@ -561,7 +489,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async getMCPTools(): Promise<Record<string, any[]>> {
-    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+    if (this.mcpInferencer) {
       const tools = await this.mcpInferencer.getAllTools();
       return tools;
     }
@@ -569,7 +497,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async executeMCPTool(serverName: string, toolName: string, arguments_: Record<string, any>): Promise<any> {
-    if (this.assistantProvider === 'mcp' && this.mcpInferencer) {
+    if (this.mcpInferencer) {
       const result = await this.mcpInferencer.executeTool(serverName, { name: toolName, arguments: arguments_ });
       return result;
     }
@@ -616,8 +544,8 @@ export class RemixAIPlugin extends Plugin {
       }
 
       // Initialize MCP inferencer if we have servers and it's not already initialized
-      if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer) {
-        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
+      if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer && this.mcpEnabled) {
+        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
         this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
         });
         this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
@@ -642,11 +570,17 @@ export class RemixAIPlugin extends Plugin {
     }
 
     if (!this.mcpInferencer) {
-      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-      });
+      })
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-      });
+      })
+      this.mcpInferencer.event.on('onInference', () => {
+        this.isInferencing = true
+      })
+      this.mcpInferencer.event.on('onInferenceDone', () => {
+        this.isInferencing = false
+      })
 
       await this.mcpInferencer.connectAllServers();
     }

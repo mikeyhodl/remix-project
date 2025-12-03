@@ -87,6 +87,15 @@ const RemixApp = (props: IRemixAppUi) => {
 
   function setListeners() {
     if (!props.app.desktopClientMode) {
+      // Listen to explicit panel state events instead of toggle
+      props.app.sidePanel.events.on('leftSidePanelHidden', () => {
+        setHideSidePanel(true)
+      })
+      props.app.sidePanel.events.on('leftSidePanelShown', () => {
+        setHideSidePanel(false)
+      })
+
+      // Keep legacy event listeners for backward compatibility
       props.app.sidePanel.events.on('toggle', () => {
         setHideSidePanel((prev) => {
           return !prev
@@ -122,19 +131,19 @@ const RemixApp = (props: IRemixAppUi) => {
       })
     })
 
-    props.app.layout.event.on('maximisepinnedpanel', () => {
+    props.app.layout.event.on('maximiseRightSidePanel', () => {
       setMaximiseRightTrigger((prev) => {
         return prev + 1
       })
     })
 
-    props.app.layout.event.on('enhancepinnedpanel', () => {
+    props.app.layout.event.on('enhanceRightSidePanel', () => {
       setEnhanceRightTrigger((prev) => {
         return prev + 1
       })
     })
 
-    props.app.layout.event.on('resetpinnedpanel', () => {
+    props.app.layout.event.on('resetRightSidePanel', () => {
       setResetRightTrigger((prev) => {
         return prev + 1
       })
@@ -146,12 +155,20 @@ const RemixApp = (props: IRemixAppUi) => {
 
     if (!props.app.desktopClientMode) {
 
-      props.app.pinnedPanel.events.on('unPinnedPlugin', () => {
+      props.app.rightSidePanel.events.on('unPinnedPlugin', () => {
         setHidePinnedPanel(true)
       })
 
-      props.app.pinnedPanel.events.on('pinnedPlugin', (profile, isClosed) => {
-        if (!isClosed) setHidePinnedPanel(false)
+      props.app.rightSidePanel.events.on('pinnedPlugin', (profile, isHidden) => {
+        if (!isHidden) setHidePinnedPanel(false)
+      })
+
+      props.app.rightSidePanel.events.on('rightSidePanelShown', () => {
+        setHidePinnedPanel(false)
+      })
+
+      props.app.rightSidePanel.events.on('rightSidePanelHidden', () => {
+        setHidePinnedPanel(true)
       })
     }
 
@@ -177,8 +194,8 @@ const RemixApp = (props: IRemixAppUi) => {
     <IntlProvider locale={locale.code} messages={locale.messages}>
       <platformContext.Provider value={props.app.platform}>
         <onLineContext.Provider value={online}>
-          <AppProvider value={value}>
-            <AuthProvider plugin={props.app.authPlugin}>
+          <AuthProvider plugin={props.app.authPlugin}>
+            <AppProvider value={value}>
               <OriginWarning></OriginWarning>
               <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
               {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
@@ -213,8 +230,8 @@ const RemixApp = (props: IRemixAppUi) => {
                   <div id="main-panel" data-id="remixIdeMainPanel" className="mainpanel d-flex">
                     <RemixUIMainPanel layout={props.app.layout}></RemixUIMainPanel>
                   </div>
-                  <div id="pinned-panel" ref={pinnedPanelRef} data-id="remixIdePinnedPanel" className={`flex-row-reverse pinnedpanel border-end border-start ${hidePinnedPanel ? 'd-none' : 'd-flex'}`}>
-                    {props.app.pinnedPanel.render()}
+                  <div id="right-side-panel" ref={pinnedPanelRef} data-id="remixIdePinnedPanel" className={`flex-row-reverse pinnedpanel border-end border-start ${hidePinnedPanel ? 'd-none' : 'd-flex'}`}>
+                    {props.app.rightSidePanel.render()}
                   </div>
                   {
                     !hidePinnedPanel &&
@@ -240,8 +257,8 @@ const RemixApp = (props: IRemixAppUi) => {
               <DialogViewPlugin></DialogViewPlugin>
               {appState.genericModalState.showModal && props.app.templateExplorerModal.render()
               }
-            </AuthProvider>
-          </AppProvider>
+            </AppProvider>
+          </AuthProvider>
         </onLineContext.Provider>
       </platformContext.Provider>
     </IntlProvider>
