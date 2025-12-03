@@ -19,6 +19,21 @@ interface AccountsResponse {
   accounts: LinkedAccount[]
 }
 
+interface Credits {
+  balance: number
+  free_credits: number
+  paid_credits: number
+}
+
+interface Transaction {
+  id: number
+  amount: number
+  type: 'free_grant' | 'purchase' | 'usage' | 'refund'
+  reason?: string
+  metadata?: any
+  created_at: string
+}
+
 const getProviderIcon = (provider: string) => {
   switch (provider) {
     case 'github':
@@ -52,8 +67,11 @@ const getProviderColor = (provider: string) => {
 export const AccountManager: React.FC = () => {
   const [accounts, setAccounts] = useState<LinkedAccount[]>([])
   const [primary, setPrimary] = useState<LinkedAccount | null>(null)
+  const [credits, setCredits] = useState<Credits | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAllTransactions, setShowAllTransactions] = useState(false)
 
   const loadAccounts = async () => {
     try {
@@ -78,11 +96,55 @@ export const AccountManager: React.FC = () => {
       const data: AccountsResponse = await response.json()
       setPrimary(data.primary)
       setAccounts(data.accounts)
+      
+      // Load credits
+      await loadCredits()
+      
+      // Load transactions
+      await loadTransactions()
     } catch (err: any) {
       console.error('Error loading accounts:', err)
       setError(err.message || 'Failed to load accounts')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCredits = async () => {
+    try {
+      const response = await fetch(`${endpointUrls.credits}/balance`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCredits(data)
+      }
+    } catch (err) {
+      console.error('Error loading credits:', err)
+      // Don't set error state, just log - credits are optional
+    }
+  }
+
+  const loadTransactions = async () => {
+    try {
+      const response = await fetch(`${endpointUrls.credits}/transactions`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setTransactions(data)
+      }
+    } catch (err) {
+      console.error('Error loading transactions:', err)
+      // Don't set error state, just log - transactions are optional
     }
   }
 
@@ -130,6 +192,91 @@ export const AccountManager: React.FC = () => {
 
   return (
     <div className="account-manager p-3">
+      {/* Credits Overview */}
+      {credits && (
+        <div className="card mb-4">
+          <div className="card-body">
+            <h6 className="font-weight-bold mb-3">
+              <i className="fas fa-coins mr-2"></i>
+              Credits Balance
+            </h6>
+            <div className="row">
+              <div className="col-md-4 mb-3">
+                <div className="text-center p-3 bg-light rounded">
+                  <div className="h2 mb-0 font-weight-bold text-primary">{credits.balance.toLocaleString()}</div>
+                  <small className="text-muted">Total Credits</small>
+                </div>
+              </div>
+              <div className="col-md-4 mb-3">
+                <div className="text-center p-3 bg-light rounded">
+                  <div className="h4 mb-0 text-success">{credits.free_credits.toLocaleString()}</div>
+                  <small className="text-muted">Free Credits</small>
+                </div>
+              </div>
+              <div className="col-md-4 mb-3">
+                <div className="text-center p-3 bg-light rounded">
+                  <div className="h4 mb-0 text-info">{credits.paid_credits.toLocaleString()}</div>
+                  <small className="text-muted">Paid Credits</small>
+                </div>
+              </div>
+            </div>
+            <p className="small text-muted mb-0">
+              <i className="fas fa-info-circle mr-1"></i>
+              Credits are shared across all your linked accounts
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction History */}
+      {transactions && transactions.length > 0 && (
+        <div className="card mb-4">
+          <div className="card-body">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="font-weight-bold mb-0">
+                <i className="fas fa-history mr-2"></i>
+                Recent Transactions
+              </h6>
+              {transactions.length > 5 && (
+                <button
+                  className="btn btn-sm btn-link"
+                  onClick={() => setShowAllTransactions(!showAllTransactions)}
+                >
+                  {showAllTransactions ? 'Show Less' : `Show All (${transactions.length})`}
+                </button>
+              )}
+            </div>
+            <div className="list-group list-group-flush" style={{ maxHeight: showAllTransactions ? 'none' : '300px', overflowY: 'auto' }}>
+              {(showAllTransactions ? transactions : transactions.slice(0, 5)).map((tx) => (
+                <div key={tx.id} className="list-group-item px-0">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="flex-grow-1">
+                      <div className="d-flex align-items-center mb-1">
+                        <span className={`badge ${tx.amount > 0 ? 'badge-success' : 'badge-danger'} mr-2`}>
+                          {tx.amount > 0 ? '+' : ''}{tx.amount}
+                        </span>
+                        <span className="font-weight-bold">{tx.reason || tx.type}</span>
+                      </div>
+                      <div className="small text-muted">
+                        {new Date(tx.created_at).toLocaleString()}
+                      </div>
+                      {tx.metadata && (
+                        <div className="small text-muted mt-1">
+                          {typeof tx.metadata === 'string' ? tx.metadata : JSON.stringify(tx.metadata)}
+                        </div>
+                      )}
+                    </div>
+                    <span className={`badge badge-${tx.type === 'free_grant' ? 'success' : tx.type === 'usage' ? 'warning' : 'info'}`}>
+                      {tx.type.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4">
         <h6 className="font-weight-bold mb-3">
           <i className="fas fa-link mr-2"></i>
