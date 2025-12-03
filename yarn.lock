@@ -3270,10 +3270,9 @@
     ethereum-cryptography "^3.2.0"
     lru-cache "11.0.2"
 
-"@ethereumjs/tx@^10.1.0", "@ethereumjs/tx@^4.2.0":
+"@ethereumjs/tx@^10.1.0", "@ethereumjs/tx@^4.2.0", "@ethereumjs/tx@github:yann300/ethereumjs-vm#tx_release_10.1.0":
   version "10.1.0"
-  resolved "https://registry.yarnpkg.com/@ethereumjs/tx/-/tx-10.1.0.tgz#90b568f7a1a8c02a20b2531dbc0375be38dff573"
-  integrity sha512-svG6pyzUZDpunafszf2BaolA6Izuvo8ZTIETIegpKxAXYudV1hmzPQDdSI+d8nHCFyQfEFbQ6tfUq95lNArmmg==
+  resolved "https://codeload.github.com/yann300/ethereumjs-vm/tar.gz/f131c522f5869c061a5323db8a21dc695d271e2f"
   dependencies:
     "@ethereumjs/common" "^10.1.0"
     "@ethereumjs/rlp" "^10.1.0"
