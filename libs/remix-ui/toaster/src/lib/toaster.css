@@ -1,12 +1,11 @@
 /* Sonner toast styling */
 .remixui_sonner_toast {
   border-radius: 8px;
-  padding: 20px 48px 20px 28px;
+  padding: 5px 5px 5px 5px;
   font-weight: 700 !important;
   font-size: 19px !important;
   min-width: 350px;
   max-width: 600px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
@@ -24,10 +23,30 @@
   z-index: 1001 !important;
   display: flex;
   flex-direction: column;
+  transform: none !important;
+  --normal-bg: transparent !important;
+  --normal-border: transparent !important;
+}
+
+[data-sonner-toaster]:hover {
+  transform: none !important;
+}
+
+[data-sonner-toaster]:hover [data-sonner-toast] {
+  transform: none !important;
+  scale: 1 !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toaster][data-y-position="top"] {
+  top: 0;
+}
+
+[data-sonner-toaster][data-x-position="right"] {
+  right: 0;
 }
 
 [data-sonner-toast] {
-  background: var(--bs-light, #f8f9fa) !important;
   color: var(--bs-dark, #212529) !important;
   border: 0px solid var(--bs-dark, #6c757d) !important;
   font-weight: 700 !important;
@@ -37,20 +56,56 @@
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
-  position: relative;
+  position: relative !important;
   width: 100%;
-  margin-bottom: 12px;
   transform: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 [data-sonner-toast]:hover {
   transform: none !important;
+  scale: 1 !important;
+  transition: none !important;
+}
+
+[data-sonner-toast][data-expanded="true"] {
+  transform: none !important;
+  scale: 1 !important;
+  transition: none !important;
+}
+
+[data-sonner-toast][data-expanded="false"] {
+  transform: none !important;
+  scale: 1 !important;
+  transition: none !important;
+}
+
+[data-sonner-toast][data-front="true"] {
+  transform: none !important;
+  scale: 1 !important;
+  transition: none !important;
+}
+
+[data-sonner-toast][data-front="false"] {
+  transform: none !important;
+  scale: 1 !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+[data-sonner-toast][data-index]:not([data-index="0"]) {
+  transform: none !important;
+  scale: 1 !important;
+  opacity: 1 !important;
+  transition: none !important;
 }
 
 [data-sonner-toast][data-styled="true"] {
   padding: 20px 28px !important;
   gap: 12px !important;
   font-weight: 700 !important;
+  transform: none !important;
 }
 
 /* Dark theme support */
@@ -60,6 +115,7 @@
   color: var(--bs-light, #f8f9fa) !important;
   border: 0px solid var(--bs-secondary, #6c757d) !important;
   font-weight: 700 !important;
+  transform: none !important;
 }
 
 /* Close button styling */
@@ -139,4 +195,12 @@
 [data-sonner-toast][data-theme="dark"] .codicon-close:hover,
 .dark [data-sonner-toast] .codicon-close:hover {
   background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-sonner-toast][data-expanded=false][data-front=false] {
+  height: auto !important;
+}
+
+[data-sonner-toast][data-mounted=true][data-expanded=true] {
+  height: auto !important;
 }

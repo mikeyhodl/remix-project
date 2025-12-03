@@ -31,30 +31,34 @@ export const ToastTrigger = (props: ToasterProps) => {
 
       // Show toast using Sonner - Sonner handles deduplication via ID automatically
       const duration = props.timeout || 2000
-      const showCloseButton = duration > 2000
+      const showCloseButton = true
       const showLoadingIcon = duration > 2000
 
       if (typeof props.message === 'string') {
         const toastId = toast.custom(
           () => (
-            <div>
-              {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </span>
-              )}
-              {showCloseButton && (
-                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)} role="status">
-                </span>
-              )}
-              {props.message}
+            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+              <div className="toast-header">
+                {showLoadingIcon && (
+                  <span className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </span>
+                )}
+                <strong className="me-auto">Remix</strong>
+                {showCloseButton && (
+                  <button type="button" className="btn-close" onClick={() => toast.dismiss(toastId)} aria-label="Close"></button>
+                )}
+              </div>
+              <div className="toast-body">
+                {props.message}
+              </div>
             </div>
           ),
           {
             id: props.id,
             unstyled: true,
             duration,
-            closeButton: showCloseButton,
+            closeButton: false,
             onDismiss: () => {
               props.handleHide && props.handleHide()
             },
@@ -71,23 +75,27 @@ export const ToastTrigger = (props: ToasterProps) => {
         // For JSX elements, use toast.custom
         const toastId = toast.custom(
           () => (
-            <div>
-              {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </span>
-              )}
-              {showCloseButton && (
-                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)}  role="status">
-                </span>
-              )}
-              {props.message}
+            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+              <div className="toast-header">
+                {showLoadingIcon && (
+                  <span className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </span>
+                )}
+                <strong className="me-auto">Remix</strong>
+                {showCloseButton && (
+                  <button type="button" className="btn-close" onClick={() => toast.dismiss(toastId)} aria-label="Close"></button>
+                )}
+              </div>
+              <div className="toast-body">
+                {props.message}
+              </div>
             </div>
           ),
           {
             id: props.id,
             duration,
-            closeButton: showCloseButton,
+            closeButton: false,
             onDismiss: () => {
               props.handleHide && props.handleHide()
             },
@@ -113,10 +121,16 @@ export const ToasterContainer = (props: ToasterContainerProps) => {
     <>
       <SonnerToaster
         position="top-right"
-        gap={12}
+        gap={0}
+        expand={false}
+        visibleToasts={9}
         toastOptions={{
-          className: 'remixui_sonner_toast alert alert-info bg-light',
-          unstyled: true
+          className: 'remixui_sonner_toast',
+          unstyled: true,
+          style: {
+            transform: 'none',
+            transition: 'none'
+          }
         }}
       />
       {props.toasts.map((toastProps) => (
@@ -135,7 +149,7 @@ export const Toaster = (props: ToasterProps) => {
     if (props.message) {
       // Show toast using Sonner
       const duration = props.timeout || 2000
-      const showCloseButton = duration > 5000
+      const showCloseButton = true
       const showLoadingIcon = duration > 2000
 
       let toastId: string | number
@@ -144,24 +158,28 @@ export const Toaster = (props: ToasterProps) => {
 
         toastId = toast.custom(
           () => (
-            <div className="remixui_sonner_toast alert alert-info bg-light">
-              {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </span>
-              )}
-              {showCloseButton && (
-                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)} role="status">
-                </span>
-              )}
-              {props.message}
+            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+              <div className="toast-header">
+                {showLoadingIcon && (
+                  <span className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </span>
+                )}
+                <strong className="me-auto">Remix</strong>
+                {showCloseButton && (
+                  <button type="button" className="btn-close" onClick={() => toast.dismiss(toastId)} aria-label="Close"></button>
+                )}
+              </div>
+              <div className="toast-body">
+                {props.message}
+              </div>
             </div>
           ),
           {
             id: props.id,
             unstyled: true,
             duration,
-            closeButton: showCloseButton,
+            closeButton: false,
             onDismiss: () => {
               props.handleHide && props.handleHide()
             },
@@ -174,23 +192,27 @@ export const Toaster = (props: ToasterProps) => {
         // For JSX elements, use toast.custom
         toastId = toast.custom(
           () => (
-            <div className="remixui_sonner_toast alert alert-info bg-light">
-              {showLoadingIcon && (
-                <span className="spinner-border spinner-border-sm me-2 alert-info" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </span>
-              )}
-              {showCloseButton && (
-                <span className="codicon codicon-close" onClick={() => toast.dismiss(toastId)}  role="status">
-                </span>
-              )}
-              {props.message}
+            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+              <div className="toast-header">
+                {showLoadingIcon && (
+                  <span className="spinner-border spinner-border-sm me-2" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </span>
+                )}
+                <strong className="me-auto">Remix</strong>
+                {showCloseButton && (
+                  <button type="button" className="btn-close" onClick={() => toast.dismiss(toastId)} aria-label="Close"></button>
+                )}
+              </div>
+              <div className="toast-body">
+                {props.message}
+              </div>
             </div>
           ),
           {
             id: props.id,
             duration,
-            closeButton: showCloseButton,
+            closeButton: false,
             onDismiss: () => {
               props.handleHide && props.handleHide()
             },
