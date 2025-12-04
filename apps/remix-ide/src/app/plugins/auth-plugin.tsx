@@ -1,6 +1,7 @@
 import { Plugin } from '@remixproject/engine'
 import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
+import { getAddress } from 'ethers'
 
 export interface Credits {
   balance: number
@@ -27,8 +28,8 @@ export class AuthPlugin extends Plugin {
       
       // SIWE requires special handling (client-side wallet signature)
       if (provider === 'siwe') {
-        // TODO: Implement SIWE flow with wallet connection
-        throw new Error('SIWE login not yet implemented. Please use another provider.')
+        await this.loginWithSIWE()
+        return
       }
       
       // Open popup directly (must be in user click event)
@@ -212,6 +213,127 @@ export class AuthPlugin extends Plugin {
           console.error('[AuthPlugin] Failed to restore user session:', e)
         }
       }
+    }
+  }
+
+  // Convert address to EIP-55 checksum format using ethers
+  private toChecksumAddress(address: string): string {
+    try {
+      return getAddress(address)
+    } catch (error) {
+      throw new Error(`Invalid Ethereum address: ${address}`)
+    }
+  }
+
+  private async loginWithSIWE(): Promise<void> {
+    try {
+      // Check if wallet is available
+      if (!(window as any).ethereum) {
+        throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const ethereum = (window as any).ethereum
+
+      // Request account access
+      console.log('[SIWE] Requesting wallet accounts...')
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No wallet accounts available')
+      }
+
+      // Convert address to EIP-55 checksum format
+      const rawAddress = accounts[0].toLowerCase()
+      const address = this.toChecksumAddress(rawAddress)
+      console.log('[SIWE] Using checksummed address:', address)
+
+      // Get chain ID
+      const chainId = await ethereum.request({ method: 'eth_chainId' })
+      const chainIdNumber = parseInt(chainId, 16)
+      console.log('[SIWE] Chain ID:', chainIdNumber)
+
+      // Get nonce from backend
+      console.log('[SIWE] Fetching nonce from backend...')
+      const nonceResponse = await fetch(`${endpointUrls.sso}/siwe/nonce`, {
+        credentials: 'include'
+      })
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server')
+      }
+
+      const nonce = await nonceResponse.text()
+      console.log('[SIWE] Got nonce:', nonce.substring(0, 10) + '...')
+
+      // Create SIWE message
+      const domain = window.location.host
+      const origin = window.location.origin
+      const statement = 'Sign in to Remix IDE with your Ethereum account'
+
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+${statement}
+
+URI: ${origin}
+Version: 1
+Chain ID: ${chainIdNumber}
+Nonce: ${nonce}
+Issued At: ${new Date().toISOString()}`
+
+      console.log('[SIWE] Message to sign:', message)
+
+      // Request signature from wallet
+      console.log('[SIWE] Requesting signature from wallet...')
+      const signature = await ethereum.request({
+        method: 'personal_sign',
+        params: [message, address]
+      })
+
+      console.log('[SIWE] Got signature:', signature.substring(0, 20) + '...')
+
+      // Send to backend for verification
+      console.log('[SIWE] Verifying signature with backend...')
+      const verifyResponse = await fetch(`${endpointUrls.sso}/siwe/verify`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          signature
+        })
+      })
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
+        throw new Error(error.error || error.message || 'SIWE verification failed')
+      }
+
+      const result = await verifyResponse.json()
+      console.log('[SIWE] Verification successful!')
+
+      // Store tokens and user info
+      localStorage.setItem('remix_access_token', result.token)
+      if (result.user) {
+        localStorage.setItem('remix_user', JSON.stringify(result.user))
+      }
+
+      console.log('[SIWE] Login successful!')
+
+      // Emit auth state changed
+      this.emit('authStateChanged', {
+        isAuthenticated: true,
+        user: result.user,
+        token: result.token
+      })
+
+      // Auto-refresh credits
+      this.refreshCredits().catch(console.error)
+
+    } catch (error: any) {
+      console.error('[SIWE] Login failed:', error)
+      throw error
     }
   }
 }

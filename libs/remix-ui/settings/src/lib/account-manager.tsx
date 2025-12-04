@@ -78,11 +78,19 @@ export const AccountManager: React.FC = () => {
       setLoading(true)
       setError(null)
       
+      // Get token from localStorage (stored by auth plugin)
+      const token = localStorage.getItem('remix_access_token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch(`${endpointUrls.sso}/accounts`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       })
 
       if (!response.ok) {
@@ -112,11 +120,19 @@ export const AccountManager: React.FC = () => {
 
   const loadCredits = async () => {
     try {
+      // Get token from localStorage (stored by auth plugin)
+      const token = localStorage.getItem('remix_access_token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch(`${endpointUrls.credits}/balance`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       })
 
       if (response.status === 401) {
@@ -137,11 +153,19 @@ export const AccountManager: React.FC = () => {
 
   const loadTransactions = async () => {
     try {
+      // Get token from localStorage (stored by auth plugin)
+      const token = localStorage.getItem('remix_access_token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch(`${endpointUrls.credits}/transactions`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       })
 
       if (response.status === 401) {
