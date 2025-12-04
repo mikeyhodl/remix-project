@@ -16,9 +16,10 @@ class VerifyContracts extends EventEmitter {
 function verifyContracts (browser: NightwatchBrowser, compiledContractNames: string[], opts: { wait: number, version?: string, runs?: string }, callback: VoidFunction) {
   browser
     .clickLaunchIcon('solidity')
+    .saveScreenshot('./reports/screenshot/verify_contracts_1.png')
     .pause(opts.wait)
     .pause(5000)
-    .saveScreenshot('./reports/screenshot/verifyContracts.png')
+    .saveScreenshot('./reports/screenshot/verify_contracts_2.png')
     .waitForElementPresent('*[data-id="compiledContracts"] option', 60000)
     .perform(async (done) => {
       if (opts.version) {
