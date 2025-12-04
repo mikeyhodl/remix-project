@@ -164,6 +164,111 @@ export class AmpQueryHandler extends BaseToolHandler {
 }
 
 /**
+ * Amp Dataset Manifest argument types
+ */
+export interface AmpDatasetManifestArgs {
+  datasetName: string;
+  version: string;
+}
+
+/**
+ * Amp Dataset Manifest result types
+ */
+export interface AmpDatasetManifestResult {
+  success: boolean;
+  manifest?: any;
+  datasetName: string;
+  version: string;
+  error?: string;
+}
+
+/**
+ * Amp Dataset Manifest Tool Handler
+ */
+export class AmpDatasetManifestHandler extends BaseToolHandler {
+  name = 'amp_dataset_manifest';
+  description = 'Fetch manifest information for a specific Amp dataset version';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      datasetName: {
+        type: 'string',
+        description: 'Dataset name in format owner/name (e.g., "shiyasmohd/counter")'
+      },
+      version: {
+        type: 'string',
+        description: 'Dataset version (e.g., "0.0.2")'
+      }
+    },
+    required: ['datasetName', 'version']
+  };
+
+  getPermissions(): string[] {
+    return ['amp:dataset:manifest'];
+  }
+
+  validate(args: AmpDatasetManifestArgs): boolean | string {
+    const required = this.validateRequired(args, ['datasetName', 'version']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      datasetName: 'string',
+      version: 'string'
+    });
+    if (types !== true) return types;
+
+    if (args.datasetName.trim().length === 0) {
+      return 'Dataset name cannot be empty';
+    }
+
+    if (args.version.trim().length === 0) {
+      return 'Version cannot be empty';
+    }
+
+    return true;
+  }
+
+  async execute(args: AmpDatasetManifestArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Show a notification that the manifest is being fetched
+      plugin.call('notification', 'toast', `Fetching manifest for ${args.datasetName}@${args.version}...`);
+
+      const url = `https://api.registry.amp.staging.thegraph.com/api/v1/datasets/${args.datasetName}/versions/${args.version}/manifest`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const manifest = await response.json();
+
+      const result: AmpDatasetManifestResult = {
+        success: true,
+        manifest: manifest,
+        datasetName: args.datasetName,
+        version: args.version
+      };
+
+      // Show success notification
+      plugin.call('notification', 'toast', `Manifest fetched successfully for ${args.datasetName}@${args.version}`);
+
+      return this.createSuccessResult(result);
+
+    } catch (error) {
+      console.error('Amp dataset manifest fetch error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Show error notification
+      plugin.call('notification', 'toast', `Failed to fetch manifest: ${errorMessage}`);
+
+      return this.createErrorResult(`Failed to fetch manifest: ${errorMessage}`);
+    }
+  }
+}
+
+/**
  * Create Amp tool definitions
  */
 export function createAmpTools(): RemixToolDefinition[] {
@@ -175,6 +280,14 @@ export function createAmpTools(): RemixToolDefinition[] {
       category: ToolCategory.ANALYSIS,
       permissions: ['amp:query'],
       handler: new AmpQueryHandler()
+    },
+    {
+      name: 'amp_dataset_manifest',
+      description: 'Fetch manifest information for a specific Amp dataset version',
+      inputSchema: new AmpDatasetManifestHandler().inputSchema,
+      category: ToolCategory.ANALYSIS,
+      permissions: ['amp:dataset:manifest'],
+      handler: new AmpDatasetManifestHandler()
     }
   ];
 }

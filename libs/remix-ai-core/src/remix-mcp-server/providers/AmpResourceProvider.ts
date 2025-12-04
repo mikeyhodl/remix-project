@@ -285,6 +285,7 @@ LIMIT 100;
 4. **Cast string values** to numeric types when doing math operations
 5. **Use fully qualified names** for tables to avoid ambiguity
 6. **Consider time ranges** when querying historical data
+7. **You can use the tool amp_dataset_manifest** to fetch dataset manifests programmatically. That will help you understand the schema and available tables.
 
 ## Common Gotchas
 
@@ -302,7 +303,6 @@ AMP_QUERY_URL=https://gateway.amp.example.com
 AMP_QUERY_TOKEN=your-auth-token
 \`\`\`
 
-If not specified, defaults to \`/amp\` for the base URL.
 `;
 
     return this.createTextContent('amp://documentation', documentation);
