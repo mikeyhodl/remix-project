@@ -37,15 +37,15 @@ interface Transaction {
 const getProviderIcon = (provider: string) => {
   switch (provider) {
     case 'github':
-      return '🐙'
+      return <i className="fab fa-github"></i>
     case 'google':
-      return '🔵'
+      return <i className="fab fa-google"></i>
     case 'discord':
-      return '💬'
+      return <i className="fab fa-discord"></i>
     case 'siwe':
-      return '⚡'
+      return <i className="fab fa-ethereum"></i>
     default:
-      return '🔐'
+      return <i className="fas fa-sign-in-alt"></i>
   }
 }
 
@@ -162,16 +162,41 @@ export const AccountManager: React.FC = () => {
 
   useEffect(() => {
     loadAccounts()
+    
+    // Listen for account link events
+    const handleAccountLinked = () => {
+      loadAccounts() // Reload accounts after linking
+    }
+    
+    window.addEventListener('account-linked', handleAccountLinked)
+    
+    return () => {
+      window.removeEventListener('account-linked', handleAccountLinked)
+    }
   }, [])
 
+  const handleLinkProvider = (provider: string) => {
+    // Dispatch event that will be picked up by the login system
+    const event = new CustomEvent('link-provider', { 
+      detail: { provider } 
+    })
+    window.dispatchEvent(event)
+  }
+
   const handleLinkGitHub = () => {
-    // Trigger GitHub OAuth flow - this will be handled by the existing GitHub auth system
-    alert('GitHub linking: Please use the GitHub authentication button in the IDE. The system will automatically link accounts with matching emails.')
+    handleLinkProvider('github')
   }
 
   const handleLinkGoogle = () => {
-    // Trigger Google OAuth flow
-    window.location.href = `${endpointUrls.sso}/login/google?origin=${encodeURIComponent(window.location.origin)}`
+    handleLinkProvider('google')
+  }
+  
+  const handleLinkDiscord = () => {
+    handleLinkProvider('discord')
+  }
+  
+  const handleLinkSIWE = () => {
+    handleLinkProvider('siwe')
   }
 
   if (loading) {
@@ -360,7 +385,6 @@ export const AccountManager: React.FC = () => {
               <button
                 className="btn btn-outline-secondary"
                 onClick={handleLinkGitHub}
-                title="Use the GitHub login button in the IDE"
               >
                 <i className="fab fa-github mr-1"></i>
                 GitHub
@@ -378,11 +402,19 @@ export const AccountManager: React.FC = () => {
             {!accounts.some(a => a.provider === 'discord') && (
               <button
                 className="btn btn-outline-info"
-                onClick={() => alert('Discord linking coming soon!')}
-                disabled
+                onClick={handleLinkDiscord}
               >
                 <i className="fab fa-discord mr-1"></i>
-                Discord (Coming Soon)
+                Discord
+              </button>
+            )}
+            {!accounts.some(a => a.provider === 'siwe') && (
+              <button
+                className="btn btn-outline-warning"
+                onClick={handleLinkSIWE}
+              >
+                <i className="fas fa-wallet mr-1"></i>
+                Ethereum (SIWE)
               </button>
             )}
           </div>

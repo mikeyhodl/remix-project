@@ -1,6 +1,19 @@
-import React, { useState } from 'react'
-import { AuthUser } from '@remix-api'
+import React, { useState, useEffect } from 'react'
+import { AuthUser, AuthProvider } from '@remix-api'
 import type { Credits } from '../../../app/src/lib/remix-app/context/auth-context'
+import { endpointUrls } from '@remix-endpoints-helper'
+
+interface LinkedAccount {
+  id: number
+  user_id: string
+  provider: string
+  name: string | null
+  picture: string | null
+  isPrimary: boolean
+  isLinked: boolean
+  created_at: string
+  last_login_at: string | null
+}
 
 interface UserMenuCompactProps {
   user: AuthUser
@@ -8,8 +21,20 @@ interface UserMenuCompactProps {
   showCredits: boolean
   className?: string
   onLogout: () => void
+  onLinkProvider?: (provider: AuthProvider) => void
+  onManageAccounts?: () => void
   getProviderDisplayName: (provider: string) => string
   getUserDisplayName: () => string
+}
+
+const getProviderIcon = (provider: AuthProvider | string) => {
+  switch (provider) {
+    case 'google': return 'fab fa-google'
+    case 'github': return 'fab fa-github'
+    case 'discord': return 'fab fa-discord'
+    case 'siwe': return 'fab fa-ethereum'
+    default: return 'fas fa-sign-in-alt'
+  }
 }
 
 export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
@@ -18,10 +43,51 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   showCredits,
   className,
   onLogout,
+  onLinkProvider,
+  onManageAccounts,
   getProviderDisplayName,
   getUserDisplayName
 }) => {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(false)
+  
+  // Fetch linked accounts when dropdown opens
+  useEffect(() => {
+    if (showDropdown && linkedAccounts.length === 0) {
+      loadLinkedAccounts()
+    }
+  }, [showDropdown])
+  
+  const loadLinkedAccounts = async () => {
+    setLoadingAccounts(true)
+    try {
+      const response = await fetch(`${endpointUrls.sso}/accounts`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setLinkedAccounts(data.accounts || [])
+      }
+    } catch (err) {
+      console.error('Error loading linked accounts:', err)
+    } finally {
+      setLoadingAccounts(false)
+    }
+  }
+  
+  // All available providers including GitHub
+  const allProviders: AuthProvider[] = ['google', 'github', 'discord', 'siwe']
+  
+  // Providers that are already linked
+  const linkedProviders = linkedAccounts.map(acc => acc.provider)
+  
+  // Providers available for linking (not already linked)
+  const linkableProviders = allProviders.filter(p => !linkedProviders.includes(p))
 
   return (
     <div className={`position-relative ${className}`}>
@@ -74,24 +140,89 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 </div>
               )}
               <div><strong>{getUserDisplayName()}</strong></div>
-              <div className="text-muted small">{getProviderDisplayName(user.provider)}</div>
             </div>
+            
+            {/* Connected Accounts */}
+            {loadingAccounts ? (
+              <div className="dropdown-item-text small text-center">
+                <div className="spinner-border spinner-border-sm" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : linkedAccounts.length > 0 ? (
+              <>
+                <div className="dropdown-divider"></div>
+                <div className="dropdown-header small text-muted">Connected Accounts</div>
+                {linkedAccounts.map(account => (
+                  <div key={account.id} className="dropdown-item-text small d-flex align-items-center">
+                    <i className={`${getProviderIcon(account.provider)} mr-2`}></i>
+                    <span className="flex-grow-1">{getProviderDisplayName(account.provider)}</span>
+                    {account.isPrimary && (
+                      <span className="badge badge-primary badge-sm">Primary</span>
+                    )}
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="dropdown-item-text small text-muted">
+                <i className={`${getProviderIcon(user.provider)} mr-2`}></i>
+                {getProviderDisplayName(user.provider)}
+              </div>
+            )}
+            
             {credits && showCredits && (
               <>
                 <div className="dropdown-divider"></div>
                 <div className="dropdown-item-text small">
                   <div className="d-flex justify-content-between mb-1">
-                    <span>Credits:</span>
-                    <strong>{credits.balance}</strong>
+                    <span><i className="fas fa-coins mr-1"></i>Credits:</span>
+                    <strong>{credits.balance.toLocaleString()}</strong>
                   </div>
                 </div>
               </>
             )}
             <div className="dropdown-divider"></div>
+            
+            {/* Manage Accounts */}
+            {onManageAccounts && (
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  onManageAccounts()
+                  setShowDropdown(false)
+                }}
+              >
+                <i className="fas fa-link mr-2"></i>
+                Manage Accounts
+              </button>
+            )}
+            
+            {/* Link Provider Options */}
+            {onLinkProvider && linkableProviders.length > 0 && (
+              <>
+                <div className="dropdown-header small text-muted">Link Additional Provider</div>
+                {linkableProviders.map(provider => (
+                  <button
+                    key={provider}
+                    className="dropdown-item"
+                    onClick={() => {
+                      onLinkProvider(provider)
+                      setShowDropdown(false)
+                    }}
+                  >
+                    <i className={`${getProviderIcon(provider)} mr-2`}></i>
+                    {getProviderDisplayName(provider)}
+                  </button>
+                ))}
+              </>
+            )}
+            
+            <div className="dropdown-divider"></div>
             <button
               className="dropdown-item text-danger"
               onClick={onLogout}
             >
+              <i className="fas fa-sign-out-alt mr-2"></i>
               Sign Out
             </button>
           </div>

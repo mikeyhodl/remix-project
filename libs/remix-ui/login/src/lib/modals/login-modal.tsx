@@ -51,6 +51,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             enabled: data.providers?.includes('google') ?? false
           },
           {
+            id: 'github',
+            label: 'GitHub',
+            icon: <i className="fab fa-github"></i>,
+            description: 'Sign in with your GitHub account',
+            enabled: true
+          },
+          {
             id: 'discord',
             label: 'Discord',
             icon: <i className="fab fa-discord"></i>,
@@ -92,6 +99,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             label: 'Google',
             icon: <i className="fab fa-google"></i>,
             description: 'Sign in with your Google account',
+            enabled: true
+          },
+          {
+            id: 'github',
+            label: 'GitHub',
+            icon: <i className="fab fa-github"></i>,
+            description: 'Sign in with your GitHub account',
             enabled: true
           },
           {

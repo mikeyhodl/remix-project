@@ -282,6 +282,19 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
     props.plugin.on('settings', 'matomoPerfAnalyticsChoiceUpdated', (isChecked) => {
       dispatch({ type: 'SET_VALUE', payload: { name: 'matomo-perf-analytics', value: isChecked } })
     })
+    
+    // Listen for requests to open specific settings tab
+    const handleOpenSettings = (e: CustomEvent) => {
+      if (e.detail?.tab === 'account-authentication') {
+        setSelected('account-authentication')
+      }
+    }
+    
+    window.addEventListener('open-settings', handleOpenSettings as EventListener)
+    
+    return () => {
+      window.removeEventListener('open-settings', handleOpenSettings as EventListener)
+    }
 
   }, [])
 
