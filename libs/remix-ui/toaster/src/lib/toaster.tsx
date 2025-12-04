@@ -1,10 +1,10 @@
 import React, {useEffect} from 'react' // eslint-disable-line
-import {Toaster as SonnerToaster, toast} from 'sonner'
+import { Toaster as SonnerToaster, toast } from 'sonner'
 
 import './toaster.css'
 
 // Export toast so callers can use toast.dismiss(id)
-export {toast}
+export { toast }
 
 /* eslint-disable-next-line */
 export interface ToasterProps {
@@ -105,9 +105,9 @@ export const ToastTrigger = (props: ToasterProps) => {
           }
         )
         // Call the callback with the toast ID so caller can dismiss it later
-      if (props.onToastCreated) {
-        props.onToastCreated(toastId)
-      }
+        if (props.onToastCreated) {
+          props.onToastCreated(toastId)
+        }
       }
     }
   }, [])
@@ -230,8 +230,7 @@ export const Toaster = (props: ToasterProps) => {
     }
   }, [props.message, props.timestamp])
 
-  return <div></div>     
+  return <div></div>
 }
-
 
 export default Toaster
