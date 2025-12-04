@@ -43,7 +43,7 @@ export class NotificationPlugin extends Plugin implements MethodApi<INotificatio
     return this.dispatcher.alert(args)
   }
 
-  async toast(message: string | JSX.Element, timeout?: number, timestamp?: number): Promise<number>  {
+  async toast(message: string | JSX.Element, timeout?: number, timestamp?: number): Promise<number> {
     timestamp = timestamp || Date.now()
     timestamp = timestamp + ++this.toastId
     this.dispatcher.toast(message, timeout, timestamp)
