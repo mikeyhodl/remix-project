@@ -23,7 +23,76 @@ export class AuthPlugin extends Plugin {
 
   async login(provider: AuthProviderType): Promise<void> {
     try {
-      await this.call('sso', 'login', provider)
+      console.log('[AuthPlugin] Starting popup-based login for:', provider)
+      
+      // SIWE requires special handling (client-side wallet signature)
+      if (provider === 'siwe') {
+        // TODO: Implement SIWE flow with wallet connection
+        throw new Error('SIWE login not yet implemented. Please use another provider.')
+      }
+      
+      // Open popup directly (must be in user click event)
+      const popup = window.open(
+        `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`,
+        'RemixLogin',
+        'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+      )
+      
+      if (!popup) {
+        throw new Error('Popup was blocked. Please allow popups for this site.')
+      }
+      
+      // Wait for message from popup
+      const result = await new Promise<{user: AuthUser; accessToken: string; refreshToken: string}>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          cleanup()
+          reject(new Error('Login timeout'))
+        }, 5 * 60 * 1000) // 5 minute timeout
+        
+        const handleMessage = (event: MessageEvent) => {
+          // Verify origin
+          if (event.origin !== new URL(endpointUrls.sso).origin) {
+            return
+          }
+          
+          if (event.data.type === 'sso-auth-success') {
+            console.log('[AuthPlugin] Received auth success from popup')
+            cleanup()
+            resolve({
+              user: event.data.user,
+              accessToken: event.data.accessToken,
+              refreshToken: event.data.refreshToken
+            })
+          } else if (event.data.type === 'sso-auth-error') {
+            cleanup()
+            reject(new Error(event.data.error || 'Login failed'))
+          }
+        }
+        
+        const cleanup = () => {
+          clearTimeout(timeout)
+          window.removeEventListener('message', handleMessage)
+          if (popup && !popup.closed) {
+            popup.close()
+          }
+        }
+        
+        window.addEventListener('message', handleMessage)
+      })
+      
+      // Store tokens in localStorage
+      localStorage.setItem('remix_access_token', result.accessToken)
+      localStorage.setItem('remix_refresh_token', result.refreshToken)
+      localStorage.setItem('remix_user', JSON.stringify(result.user))
+      
+      // Emit auth state change
+      this.emit('authStateChanged', {
+        isAuthenticated: true,
+        user: result.user,
+        token: result.accessToken
+      })
+      
+      console.log('[AuthPlugin] Login successful')
     } catch (error) {
       console.error('[AuthPlugin] Login failed:', error)
       throw error
@@ -32,7 +101,25 @@ export class AuthPlugin extends Plugin {
 
   async logout(): Promise<void> {
     try {
-      await this.call('sso', 'logout')
+      // Call backend logout endpoint
+      await fetch(`${endpointUrls.sso}/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      // Clear localStorage
+      localStorage.removeItem('remix_access_token')
+      localStorage.removeItem('remix_refresh_token')
+      localStorage.removeItem('remix_user')
+      
+      // Emit auth state change
+      this.emit('authStateChanged', {
+        isAuthenticated: false,
+        user: null,
+        token: null
+      })
+      
+      console.log('[AuthPlugin] Logout successful')
     } catch (error) {
       console.error('[AuthPlugin] Logout failed:', error)
     }
@@ -40,7 +127,8 @@ export class AuthPlugin extends Plugin {
 
   async getUser(): Promise<AuthUser | null> {
     try {
-      return await this.call('sso', 'getUser')
+      const userStr = localStorage.getItem('remix_user')
+      return userStr ? JSON.parse(userStr) : null
     } catch (error) {
       console.error('[AuthPlugin] Get user failed:', error)
       return null
@@ -48,19 +136,11 @@ export class AuthPlugin extends Plugin {
   }
 
   async isAuthenticated(): Promise<boolean> {
-    try {
-      return await this.call('sso', 'isAuthenticated')
-    } catch (error) {
-      return false
-    }
+    return !!localStorage.getItem('remix_access_token')
   }
 
   async getToken(): Promise<string | null> {
-    try {
-      return await this.call('sso', 'getToken')
-    } catch (error) {
-      return null
-    }
+    return localStorage.getItem('remix_access_token')
   }
 
   async getCredits(): Promise<Credits | null> {
@@ -112,134 +192,26 @@ export class AuthPlugin extends Plugin {
   }
 
   onActivation(): void {
-    console.log('[AuthPlugin] Activated')
+    console.log('[AuthPlugin] Activated - using popup + localStorage mode')
     
-    // Debug: Log queue status
-    setInterval(() => {
-      if ((this as any).queue && (this as any).queue.length > 0) {
-        console.log('[AuthPlugin] Queue:', (this as any).queue)
-      }
-    }, 2000)
-    
-    // Listen to SSO plugin events and forward them
-    this.on('sso', 'authStateChanged', (authState: any) => {
-      console.log('[AuthPlugin] authStateChanged received:', authState)
-      this.emit('authStateChanged', authState)
-      // Auto-refresh credits on auth change
-      if (authState.isAuthenticated) {
-        this.refreshCredits().catch(console.error)
-      }
-    })
-
-    this.on('sso', 'loginSuccess', (data: any) => {
-      console.log('[AuthPlugin] loginSuccess received:', data)
-      this.emit('authStateChanged', { 
-        isAuthenticated: true, 
-        user: data.user,
-        token: null 
-      })
-      this.refreshCredits().catch(console.error)
-    })
-
-    this.on('sso', 'loginError', (data: any) => {
-      console.log('[AuthPlugin] loginError received:', data)
-      this.emit('authStateChanged', { 
-        isAuthenticated: false, 
-        user: null,
-        token: null,
-        error: data.error 
-      })
-    })
-
-    this.on('sso', 'logout', () => {
-      console.log('[AuthPlugin] logout received')
-      this.emit('authStateChanged', { 
-        isAuthenticated: false, 
-        user: null,
-        token: null 
-      })
-    })
-
-    // Handle popup opening from SSO plugin
-    this.on('sso', 'openWindow', ({ url, id }: { url: string; id: string }) => {
-      console.log('[AuthPlugin] openWindow received:', url, id)
-      const width = 600
-      const height = 700
-      const left = window.screen.width / 2 - width / 2
-      const top = window.screen.height / 2 - height / 2
-      
-      const popup = window.open(
-        url,
-        'sso-auth',
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
-      )
-      
-      if (!popup) {
-        console.error('[AuthPlugin] Popup blocked by browser')
-        this.call('sso', 'handlePopupResult', { 
-          id, 
-          success: false, 
-          error: 'Popup blocked by browser' 
-        }).catch(console.error)
-        return
-      }
-
-      // Listen for auth result from popup
-      const messageHandler = (event: MessageEvent) => {
-        console.log('[AuthPlugin] Message received:', event.data, 'from origin:', event.origin)
-        const { type, requestId, user, accessToken, error } = event.data
-
-        if (type === 'sso-auth-result' && requestId === id) {
-          console.log('[AuthPlugin] Auth result matched, closing popup')
-          cleanup()
-          
-          try {
-            if (popup && !popup.closed) popup.close()
-          } catch (e) {}
-
-          console.log('[AuthPlugin] Calling handlePopupResult with:', {id, success: !error, user, accessToken, error})
-          this.call('sso', 'handlePopupResult', {
-            id,
-            success: !error,
-            user,
-            accessToken,
-            error
-          }).then(() => {
-            console.log('[AuthPlugin] handlePopupResult call succeeded')
-          }).catch((err) => {
-            console.error('[AuthPlugin] handlePopupResult call failed:', err)
-          })
-        }
-      }
-
-      // Poll for popup closure
-      let pollAttempts = 0
-      const maxPollAttempts = 600
-      const pollInterval = setInterval(() => {
-        pollAttempts++
-        
+    // Check if user is already logged in
+    const token = localStorage.getItem('remix_access_token')
+    if (token) {
+      const userStr = localStorage.getItem('remix_user')
+      if (userStr) {
         try {
-          if (popup.closed) {
-            cleanup()
-            this.call('sso', 'handlePopupResult', {
-              id,
-              success: false,
-              error: 'Login cancelled - popup closed'
-            }).catch(console.error)
-          }
-        } catch (e) {}
-        
-        if (pollAttempts >= maxPollAttempts) {
-          cleanup()
+          const user = JSON.parse(userStr)
+          this.emit('authStateChanged', {
+            isAuthenticated: true,
+            user,
+            token
+          })
+          // Auto-refresh credits
+          this.refreshCredits().catch(console.error)
+        } catch (e) {
+          console.error('[AuthPlugin] Failed to restore user session:', e)
         }
-      }, 1000)
-
-      const cleanup = () => {
-        clearInterval(pollInterval)
-        window.removeEventListener('message', messageHandler)
       }
-
-      window.addEventListener('message', messageHandler)
-    })
+    }
   }
 }
