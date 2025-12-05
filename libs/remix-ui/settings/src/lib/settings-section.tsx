@@ -118,7 +118,7 @@ export const SettingsSectionUI: React.FC<SettingsSectionUIProps> = ({ plugin, se
                       )}
                       {option.type === 'custom' && option.customComponent === 'accountManager' && (
                         <div className="mt-3">
-                          <AccountManager />
+                          <AccountManager plugin={plugin} />
                         </div>
                       )}
                       {

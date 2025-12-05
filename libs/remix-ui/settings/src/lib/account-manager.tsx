@@ -64,7 +64,11 @@ const getProviderColor = (provider: string) => {
   }
 }
 
-export const AccountManager: React.FC = () => {
+interface AccountManagerProps {
+  plugin: any
+}
+
+export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
   const [accounts, setAccounts] = useState<LinkedAccount[]>([])
   const [primary, setPrimary] = useState<LinkedAccount | null>(null)
   const [credits, setCredits] = useState<Credits | null>(null)
@@ -199,12 +203,17 @@ export const AccountManager: React.FC = () => {
     }
   }, [])
 
-  const handleLinkProvider = (provider: string) => {
-    // Dispatch event that will be picked up by the login system
-    const event = new CustomEvent('link-provider', { 
-      detail: { provider } 
-    })
-    window.dispatchEvent(event)
+  const handleLinkProvider = async (provider: string) => {
+    try {
+      // Call the auth plugin to link the account
+      await plugin.call('auth', 'linkAccount', provider)
+      
+      // Reload accounts after linking
+      await loadAccounts()
+    } catch (error: any) {
+      console.error('Failed to link account:', error)
+      alert(`Failed to link ${provider}: ${error.message}`)
+    }
   }
 
   const handleLinkGitHub = () => {

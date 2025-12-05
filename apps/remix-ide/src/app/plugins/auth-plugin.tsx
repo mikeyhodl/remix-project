@@ -13,8 +13,8 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits'],
-  events: ['authStateChanged', 'creditsUpdated']
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount'],
+  events: ['authStateChanged', 'creditsUpdated', 'accountLinked']
 }
 
 export class AuthPlugin extends Plugin {
@@ -126,6 +126,105 @@ export class AuthPlugin extends Plugin {
     }
   }
 
+  async linkAccount(provider: AuthProviderType): Promise<void> {
+    try {
+      console.log('[AuthPlugin] Starting account linking for:', provider)
+      
+      // Check if already logged in and save current session
+      const currentToken = await this.getToken()
+      const currentUserStr = localStorage.getItem('remix_user')
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null
+      
+      if (!currentToken || !currentUser) {
+        throw new Error('You must be logged in to link additional accounts')
+      }
+
+      console.log('[AuthPlugin] Current user:', currentUser.sub)
+
+      // SIWE linking
+      if (provider === 'siwe') {
+        await this.linkSIWEAccount()
+        return
+      }
+
+      // OAuth providers - open popup for linking
+      const popup = window.open(
+        `${endpointUrls.sso}/login/${provider}?mode=popup&link=true&origin=${encodeURIComponent(window.location.origin)}`,
+        'RemixLinkAccount',
+        'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+      )
+
+      if (!popup) {
+        throw new Error('Popup was blocked. Please allow popups for this site.')
+      }
+
+      // Wait for message from popup
+      const result = await new Promise<{user: AuthUser; accessToken: string}>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          cleanup()
+          reject(new Error('Account linking timeout'))
+        }, 5 * 60 * 1000)
+
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== new URL(endpointUrls.sso).origin) {
+            return
+          }
+
+          const data = event.data
+          if (data.type === 'sso-auth-success') {
+            cleanup()
+            resolve(data)
+          } else if (data.type === 'sso-auth-error') {
+            cleanup()
+            reject(new Error(data.error || 'Account linking failed'))
+          }
+        }
+
+        const cleanup = () => {
+          clearTimeout(timeout)
+          window.removeEventListener('message', handleMessage)
+        }
+
+        window.addEventListener('message', handleMessage)
+      })
+
+      console.log('[AuthPlugin] Got new account info:', result.user.sub)
+      
+      // DON'T update localStorage - keep the original session!
+      // We're linking, not switching accounts
+
+      // Call backend to link the accounts using CURRENT user's token
+      const linkResponse = await fetch(`${endpointUrls.sso}/accounts/link/${provider}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}` // Use original token, not new one
+        },
+        body: JSON.stringify({
+          access_token: result.accessToken,
+          user_id: result.user.sub
+        })
+      })
+
+      if (!linkResponse.ok) {
+        const error = await linkResponse.json().catch(() => ({ error: 'Failed to link account' }))
+        throw new Error(error.error || 'Account linking failed')
+      }
+
+      console.log('[AuthPlugin] Account linked successfully! Keeping original session.')
+      this.emit('accountLinked', { provider })
+
+      // Restore original session in case popup response tried to change it
+      localStorage.setItem('remix_access_token', currentToken)
+      localStorage.setItem('remix_user', JSON.stringify(currentUser))
+
+    } catch (error: any) {
+      console.error('[AuthPlugin] Account linking failed:', error)
+      throw error
+    }
+  }
+
   async getUser(): Promise<AuthUser | null> {
     try {
       const userStr = localStorage.getItem('remix_user')
@@ -222,6 +321,113 @@ export class AuthPlugin extends Plugin {
       return getAddress(address)
     } catch (error) {
       throw new Error(`Invalid Ethereum address: ${address}`)
+    }
+  }
+
+  private async linkSIWEAccount(): Promise<void> {
+    try {
+      // Check if wallet is available
+      if (!(window as any).ethereum) {
+        throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const ethereum = (window as any).ethereum
+      const token = await this.getToken()
+
+      // Request account access
+      console.log('[SIWE Link] Requesting wallet accounts...')
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No wallet accounts available')
+      }
+
+      const rawAddress = accounts[0].toLowerCase()
+      const address = this.toChecksumAddress(rawAddress)
+      console.log('[SIWE Link] Using checksummed address:', address)
+
+      // Get chain ID
+      const chainId = await ethereum.request({ method: 'eth_chainId' })
+      const chainIdNumber = parseInt(chainId, 16)
+
+      // Get nonce
+      const nonceResponse = await fetch(`${endpointUrls.sso}/siwe/nonce`, {
+        credentials: 'include'
+      })
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server')
+      }
+
+      const nonce = await nonceResponse.text()
+
+      // Create SIWE message
+      const domain = window.location.host
+      const origin = window.location.origin
+      const statement = 'Link this Ethereum account to your Remix account'
+
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+${statement}
+
+URI: ${origin}
+Version: 1
+Chain ID: ${chainIdNumber}
+Nonce: ${nonce}
+Issued At: ${new Date().toISOString()}`
+
+      // Request signature
+      console.log('[SIWE Link] Requesting signature...')
+      const signature = await ethereum.request({
+        method: 'personal_sign',
+        params: [message, address]
+      })
+
+      // Verify and get user_id
+      console.log('[SIWE Link] Verifying signature...')
+      const verifyResponse = await fetch(`${endpointUrls.sso}/siwe/verify`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          signature
+        })
+      })
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
+        throw new Error(error.error || error.message || 'SIWE verification failed')
+      }
+
+      const result = await verifyResponse.json()
+
+      // Link the accounts
+      const linkResponse = await fetch(`${endpointUrls.sso}/accounts/link/siwe`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_id: result.user.sub
+        })
+      })
+
+      if (!linkResponse.ok) {
+        const error = await linkResponse.json().catch(() => ({ error: 'Failed to link account' }))
+        throw new Error(error.error || 'Account linking failed')
+      }
+
+      console.log('[SIWE Link] Account linked successfully!')
+      this.emit('accountLinked', { provider: 'siwe' })
+
+    } catch (error: any) {
+      console.error('[SIWE Link] Failed:', error)
+      throw error
     }
   }
 
