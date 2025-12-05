@@ -37,7 +37,7 @@ export const ToastTrigger = (props: ToasterProps) => {
       if (typeof props.message === 'string') {
         const toastId = toast.custom(
           () => (
-            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div data-shared="tooltipPopup" className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
               <div className="toast-header">
                 {showLoadingIcon && (
                   <span className="spinner-border spinner-border-sm me-2" role="status">
@@ -75,7 +75,7 @@ export const ToastTrigger = (props: ToasterProps) => {
         // For JSX elements, use toast.custom
         const toastId = toast.custom(
           () => (
-            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div data-shared="tooltipPopup" className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
               <div className="toast-header">
                 {showLoadingIcon && (
                   <span className="spinner-border spinner-border-sm me-2" role="status">
@@ -158,7 +158,7 @@ export const Toaster = (props: ToasterProps) => {
 
         toastId = toast.custom(
           () => (
-            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div data-shared="tooltipPopup" className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
               <div className="toast-header">
                 {showLoadingIcon && (
                   <span className="spinner-border spinner-border-sm me-2" role="status">
@@ -192,7 +192,7 @@ export const Toaster = (props: ToasterProps) => {
         // For JSX elements, use toast.custom
         toastId = toast.custom(
           () => (
-            <div className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div data-shared="tooltipPopup" className="toast show" role="alert" aria-live="assertive" aria-atomic="true">
               <div className="toast-header">
                 {showLoadingIcon && (
                   <span className="spinner-border spinner-border-sm me-2" role="status">
