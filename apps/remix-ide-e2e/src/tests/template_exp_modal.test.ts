@@ -135,6 +135,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
       .click('*[data-id="treeViewLitreeViewItemcontracts/TestToken.sol"]')
+      .pause(2000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract TestToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {`) !== -1,
           'Incorrect content')
@@ -419,6 +420,7 @@ module.exports = {
       .pause(1000)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemipfs/QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH"]')
       .click('*[data-id="treeViewLitreeViewItemipfs/QmQQfBMkpDgmxKzYaoAtqfaybzfgGm9b2LWYyT56Chv6xH"]')
+      .pause(2000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract Storage {`) !== -1,
           'Correct content')
@@ -447,6 +449,7 @@ module.exports = {
       .click('*[data-id="treeViewDivtreeViewItemgithub/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC6909"]')
       .waitForElementVisible('*[data-id="treeViewDivtreeViewItemgithub/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC6909/ERC6909.sol"]')
       .click('*[data-id="treeViewDivtreeViewItemgithub/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC6909/ERC6909.sol"]')
+      .pause(2000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`contract ERC6909 is Context, ERC165, IERC6909 {`) !== -1,
           'Correct content')
