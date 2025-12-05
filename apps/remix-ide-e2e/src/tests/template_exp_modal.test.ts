@@ -143,7 +143,7 @@ module.exports = {
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .pause(2000)
   },
-  'Create OpenZeppelin ERC721 template with Contract Wizard': function (browser: NightwatchBrowser) {
+  'Create OpenZeppelin ERC721 template with Contract Wizard #pr': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
       .click('*[data-id="workspacesSelect"]')
@@ -184,8 +184,10 @@ module.exports = {
       })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts"]')
       .click('*[data-id="compile-action"]')
-      .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
+      .pause(1000)
+      .getBrowserLogs()
       .clickLaunchIcon('solidity')
+      .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .isVisible('*[data-id="compilation-details"]')
   },
   'Use default workspace and add github actions template #group1': function (browser: NightwatchBrowser) {
