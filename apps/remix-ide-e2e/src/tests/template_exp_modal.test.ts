@@ -184,10 +184,10 @@ module.exports = {
       })
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts"]')
       .click('*[data-id="compile-action"]')
-      .pause(1000)
-      .getBrowserLogs()
+      // Shows 3 warnings to inform about the deprecation of the use of 'assembly ("memory-safe")' in OZ files
+      // See: https://docs.soliditylang.org/en/latest/assembly.html#memory-safety
+      .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.badge.rounded-pill.bg-warning')
       .clickLaunchIcon('solidity')
-      .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .isVisible('*[data-id="compilation-details"]')
   },
   'Use default workspace and add github actions template #group1': function (browser: NightwatchBrowser) {
