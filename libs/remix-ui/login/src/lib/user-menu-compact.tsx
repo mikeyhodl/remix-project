@@ -197,25 +197,6 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
               </button>
             )}
             
-            {/* Link Provider Options */}
-            {onLinkProvider && linkableProviders.length > 0 && (
-              <>
-                <div className="dropdown-header small text-muted">Link Additional Provider</div>
-                {linkableProviders.map(provider => (
-                  <button
-                    key={provider}
-                    className="dropdown-item"
-                    onClick={() => {
-                      onLinkProvider(provider)
-                      setShowDropdown(false)
-                    }}
-                  >
-                    <i className={`${getProviderIcon(provider)} mr-2`}></i>
-                    {getProviderDisplayName(provider)}
-                  </button>
-                ))}
-              </>
-            )}
             
             <div className="dropdown-divider"></div>
             <button

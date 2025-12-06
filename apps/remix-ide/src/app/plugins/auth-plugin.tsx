@@ -202,8 +202,7 @@ export class AuthPlugin extends Plugin {
           'Authorization': `Bearer ${currentToken}` // Use original token, not new one
         },
         body: JSON.stringify({
-          access_token: result.accessToken,
-          user_id: result.user.sub
+          user_id: result.user.sub  // This is already a numeric ID from JWT
         })
       })
 
