@@ -308,6 +308,7 @@ class AppComponent {
     const scriptRunnerUI = new ScriptRunnerBridgePlugin(this.engine)
 
     //---------------- SSO Plugin (Hidden Iframe) -------------------------
+    /*
     const ssoPlugin = new IframePlugin({
       name: 'sso',
       displayName: 'SSO Authentication',
@@ -317,6 +318,7 @@ class AppComponent {
       methods: ['login', 'logout', 'getUser', 'getToken', 'isAuthenticated', 'handlePopupResult'],
       events: ['authStateChanged', 'tokenRefreshed', 'loginSuccess', 'logoutSuccess', 'openWindow', 'loginError']
     })
+    */
 
     //---- templates
     const templates = new TemplatesPlugin()
@@ -592,7 +594,7 @@ class AppComponent {
       openZeppelinProxy,
       run.recorder,
       this.authPlugin,
-      ssoPlugin
+      //ssoPlugin
     ])
     this.engine.register([templateExplorerModal, this.topBar])
 
@@ -659,7 +661,7 @@ class AppComponent {
       'remixaiassistant'
     ])
     // Activate SSO plugin first, then Auth plugin (Auth depends on SSO)
-    await this.appManager.activatePlugin(['sso'])
+    //await this.appManager.activatePlugin(['sso'])
     await this.appManager.activatePlugin(['auth'])
     await this.appManager.activatePlugin(['settings'])
 

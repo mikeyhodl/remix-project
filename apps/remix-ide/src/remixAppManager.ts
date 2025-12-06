@@ -96,7 +96,7 @@ let requiredModules = [
   'templateexplorermodal',
   'githubAuthHandler',
   'desktopClient',
-  'sso',
+  //'sso',
   'auth'
 ]
 
