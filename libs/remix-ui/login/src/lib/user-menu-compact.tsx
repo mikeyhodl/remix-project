@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { AuthUser, AuthProvider } from '@remix-api'
+import { AuthUser, AuthProvider, LinkedAccount, AccountsResponse } from '@remix-api'
 import type { Credits } from '../../../app/src/lib/remix-app/context/auth-context'
-import { endpointUrls } from '@remix-endpoints-helper'
-
-interface LinkedAccount {
-  id: number
-  user_id: string
-  provider: string
-  name: string | null
-  picture: string | null
-  isPrimary: boolean
-  isLinked: boolean
-  created_at: string
-  last_login_at: string | null
-}
 
 interface UserMenuCompactProps {
   user: AuthUser
@@ -25,6 +12,7 @@ interface UserMenuCompactProps {
   onManageAccounts?: () => void
   getProviderDisplayName: (provider: string) => string
   getUserDisplayName: () => string
+  getLinkedAccounts?: () => Promise<AccountsResponse | null>
 }
 
 const getProviderIcon = (provider: AuthProvider | string) => {
@@ -46,7 +34,8 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   onLinkProvider,
   onManageAccounts,
   getProviderDisplayName,
-  getUserDisplayName
+  getUserDisplayName,
+  getLinkedAccounts
 }) => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
@@ -60,18 +49,14 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   }, [showDropdown])
   
   const loadLinkedAccounts = async () => {
+    if (!getLinkedAccounts) return
+    
     setLoadingAccounts(true)
     try {
-      const response = await fetch(`${endpointUrls.sso}/accounts`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const data = await getLinkedAccounts()
       
-      if (response.ok) {
-        const data = await response.json()
-        setLinkedAccounts(data.accounts || [])
+      if (data && data.accounts) {
+        setLinkedAccounts(data.accounts)
       }
     } catch (err) {
       console.error('Error loading linked accounts:', err)

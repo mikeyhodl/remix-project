@@ -1,25 +1,52 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, Credits } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
-
-export interface Credits {
-  balance: number
-  free_credits: number
-  paid_credits: number
-}
 
 const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked']
 }
 
 export class AuthPlugin extends Plugin {
+  private apiClient: ApiClient
+  private ssoApi: SSOApiService
+  private creditsApi: CreditsApiService
+  
   constructor() {
     super(profile)
+    
+    // Initialize API clients
+    this.apiClient = new ApiClient(endpointUrls.sso)
+    this.ssoApi = new SSOApiService(this.apiClient)
+    
+    // Credits API uses different base URL
+    const creditsClient = new ApiClient(endpointUrls.credits)
+    this.creditsApi = new CreditsApiService(creditsClient)
+  }
+  
+  /**
+   * Get the generic API client (for SSO endpoints)
+   */
+  async getApiClient(): Promise<ApiClient> {
+    return this.apiClient
+  }
+  
+  /**
+   * Get the typed SSO API service
+   */
+  async getSSOApi(): Promise<SSOApiService> {
+    return this.ssoApi
+  }
+  
+  /**
+   * Get the typed Credits API service
+   */
+  async getCreditsApi(): Promise<CreditsApiService> {
+    return this.creditsApi
   }
 
   async login(provider: AuthProviderType): Promise<void> {
@@ -239,40 +266,37 @@ export class AuthPlugin extends Plugin {
   }
 
   async getToken(): Promise<string | null> {
-    return localStorage.getItem('remix_access_token')
+    const token = localStorage.getItem('remix_access_token')
+    
+    // Update API clients with current token
+    if (token) {
+      this.apiClient.setToken(token)
+      // Update credits client too
+      const creditsClient = await this.getCreditsApi()
+      const creditsApiClient = (creditsClient as any).apiClient as ApiClient
+      creditsApiClient.setToken(token)
+    }
+    
+    return token
   }
 
   async getCredits(): Promise<Credits | null> {
     try {
-      // Get the JWT token from SSO plugin
-      const token = await this.getToken()
+      // Ensure token is set
+      await this.getToken()
       
-      console.log('[AuthPlugin] Fetching credits from:', endpointUrls.credits)
-      console.log('[AuthPlugin] Token available:', !!token)
-
-      const headers: any = { 
-        'Accept': 'application/json'
-      }
+      console.log('[AuthPlugin] Fetching credits using typed API')
       
-      // Add Authorization header if we have a token
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch(`${endpointUrls.credits}/balance`, {
-        method: 'GET',
-        credentials: 'include',  // Also send cookies as fallback
-        headers
-      })
-
-      console.log('[AuthPlugin] Credits response status:', response.status)
-
-      if (response.ok) {
-        return await response.json()
+      const response = await this.creditsApi.getBalance()
+      
+      if (response.ok && response.data) {
+        return response.data
       }
       
       if (response.status === 401) {
         console.warn('[AuthPlugin] Not authenticated for credits')
+      } else if (response.error) {
+        console.error('[AuthPlugin] Credits API error:', response.error)
       }
       
       return null
@@ -288,6 +312,48 @@ export class AuthPlugin extends Plugin {
       this.emit('creditsUpdated', credits)
     }
     return credits
+  }
+  
+  /**
+   * Get all linked accounts using typed API
+   */
+  async getLinkedAccounts() {
+    try {
+      await this.getToken() // Ensure token is set
+      const response = await this.ssoApi.getAccounts()
+      
+      if (response.ok && response.data) {
+        return response.data
+      }
+      
+      if (response.error) {
+        console.error('[AuthPlugin] Failed to get linked accounts:', response.error)
+      }
+      
+      return null
+    } catch (error) {
+      console.error('[AuthPlugin] Failed to get linked accounts:', error)
+      return null
+    }
+  }
+  
+  /**
+   * Unlink an account using typed API
+   */
+  async unlinkAccount(userId: number) {
+    try {
+      await this.getToken() // Ensure token is set
+      const response = await this.ssoApi.unlinkAccount(userId)
+      
+      if (response.ok) {
+        return response.data
+      }
+      
+      throw new Error(response.error || 'Failed to unlink account')
+    } catch (error) {
+      console.error('[AuthPlugin] Failed to unlink account:', error)
+      throw error
+    }
   }
 
   onActivation(): void {
