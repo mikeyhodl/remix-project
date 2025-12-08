@@ -44,15 +44,22 @@ export class RightSidePanel extends AbstractPanel {
       }
     })
 
-    // Listen for left panel being shown - auto-restore right panel if maximized
-    this.on('sidePanel', 'leftSidePanelShown', () => {
+    // Listen for terminal panel being shown - auto-restore right panel if maximized
+    this.on('terminal', 'terminalPanelShown', () => {
       if (this.isMaximized) {
         this.maximizePanel() // This will toggle and restore the panel
       }
     })
 
-    // Listen for terminal panel being shown - auto-restore right panel if maximized
-    this.on('terminal', 'terminalPanelShown', () => {
+    // Listen for file changes - auto-restore right panel if maximized when main panel is used
+    this.on('fileManager', 'currentFileChanged', () => {
+      if (this.isMaximized) {
+        this.maximizePanel() // This will toggle and restore the panel
+      }
+    })
+
+    // Listen for tab/app switches - auto-restore right panel if maximized (includes home tab, file tabs, etc.)
+    this.on('tabs', 'switchApp', () => {
       if (this.isMaximized) {
         this.maximizePanel() // This will toggle and restore the panel
       }
