@@ -44,6 +44,20 @@ export class RightSidePanel extends AbstractPanel {
       }
     })
 
+    // Listen for left panel being shown - auto-restore right panel if maximized
+    this.on('sidePanel', 'leftSidePanelShown', () => {
+      if (this.isMaximized) {
+        this.maximizePanel() // This will toggle and restore the panel
+      }
+    })
+
+    // Listen for terminal panel being shown - auto-restore right panel if maximized
+    this.on('terminal', 'terminalPanelShown', () => {
+      if (this.isMaximized) {
+        this.maximizePanel() // This will toggle and restore the panel
+      }
+    })
+
     // Initialize isHidden state from panelStates in localStorage
     const panelStatesStr = window.localStorage.getItem('panelStates')
     const panelStates = panelStatesStr ? JSON.parse(panelStatesStr) : {}
