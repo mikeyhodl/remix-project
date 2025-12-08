@@ -351,7 +351,7 @@ module.exports = {
         locateStrategy: 'xpath'
       })
   },
-/*
+
   'Should load using compiler from link passed in remix URL #group3': function (browser: NightwatchBrowser) {
     browser
       .url('http://127.0.0.1:8080/#version=https://solidity-blog.s3.eu-central-1.amazonaws.com/data/08preview/soljson.js&optimize=false')
@@ -383,7 +383,7 @@ module.exports = {
       .openFile('contracts/governance')
       .openFile('contracts/governance/UnionGovernor.sol')
   },
-*/
+
   'Should execute function call from URL parameters #group3': function (browser: NightwatchBrowser) {
     browser
       .switchWorkspace('default_workspace')
