@@ -93,14 +93,10 @@ export class MCPConfigManager {
   }
 
   isToolAllowed(toolName: string): boolean {
-    const { excludeTools, allowTools } = this.config.security;
+    const { excludeTools } = this.config.security;
 
     if (excludeTools && excludeTools.includes(toolName)) {
       return false;
-    }
-
-    if (allowTools && allowTools.length > 0) {
-      return allowTools.includes(toolName);
     }
 
     return true;
@@ -173,7 +169,6 @@ export class MCPConfigManager {
       version: config.version,
       security: {
         excludeTools: config.security.excludeTools?.length || 0,
-        allowTools: config.security.allowTools?.length || 0,
         rateLimitEnabled: config.security.rateLimit?.enabled || false,
         maxRequestsPerMinute: config.security.rateLimit?.requestsPerMinute || config.security.maxRequestsPerMinute
       },

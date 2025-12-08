@@ -3,10 +3,11 @@
  */
 
 import { Plugin } from '@remixproject/engine';
-import { IMCPToolCall, IMCPToolResult } from '../../types/mcp';
+import { IMCPToolCall } from '../../types/mcp';
 import { ToolExecutionContext } from '../types/mcpTools';
 import { MCPValidationConfig } from '../types/mcpConfig';
 import { MCPConfigManager } from '../config/MCPConfigManager';
+import { BaseMiddleware } from './BaseMiddleware';
 
 export interface ValidationResult {
   valid: boolean;
@@ -33,14 +34,13 @@ export interface ValidationWarning {
 /**
  * Validation middleware for MCP tool calls
  */
-export class ValidationMiddleware {
+export class ValidationMiddleware extends BaseMiddleware {
   private _plugin: Plugin;
-  private configManager?: MCPConfigManager;
   private config: MCPValidationConfig;
 
   constructor(plugin: Plugin, configManager?: MCPConfigManager) {
+    super(configManager);
     this._plugin = plugin;
-    this.configManager = configManager;
     this.config = configManager.getValidationConfig() as MCPValidationConfig;
   }
 
@@ -507,18 +507,6 @@ export class ValidationMiddleware {
         }
       }
 
-      // URL validation
-      if (field.includes('url') || field.includes('Url') || field.includes('URL')) {
-        if (!this.isValidUrl(value)) {
-          result.errors.push({
-            field,
-            code: 'INVALID_URL',
-            message: `Field '${field}' is not a valid URL`,
-            value
-          });
-        }
-      }
-
       // File path validation
       if (field.includes('path') || field.includes('Path') || field === 'file') {
         if (!this.isValidFilePath(value)) {
@@ -663,14 +651,17 @@ export class ValidationMiddleware {
 
       // Check file extension against allowed list
       if (fileOpsConfig?.allowedExtensions && args.path) {
-        fileOpsConfig.allowedExtensions.includes('*')
-        const extension = args.path.split('.').pop()?.toLowerCase();
-        if (extension && !fileOpsConfig.allowedExtensions.includes(extension)) {
-          result.errors.push({
-            field: 'path',
-            code: 'INVALID_EXTENSION',
-            message: `File extension '.${extension}' is not allowed by configuration`
-          });
+        // If wildcard '*' is in the list, allow all extensions
+        const allowAllExtensions = fileOpsConfig.allowedExtensions.includes('*');
+        if (!allowAllExtensions) {
+          const extension = args.path.split('.').pop()?.toLowerCase();
+          if (extension && !fileOpsConfig.allowedExtensions.includes(extension)) {
+            result.errors.push({
+              field: 'path',
+              code: 'INVALID_EXTENSION',
+              message: `File extension '.${extension}' is not allowed by configuration`
+            });
+          }
         }
       }
 
@@ -705,21 +696,6 @@ export class ValidationMiddleware {
         suggestion: 'Ensure path is accessible'
       });
     }
-  }
-
-  /**
-   * Match a string against a pattern (supports wildcards)
-   */
-  private matchPattern(str: string, pattern: string): boolean {
-    const regexPattern = pattern
-      .replace(/\./g, '\\.')
-      .replace(/\*\*/g, '___DOUBLESTAR___')
-      .replace(/\*/g, '[^/]*')
-      .replace(/___DOUBLESTAR___/g, '.*')
-      .replace(/\?/g, '.');
-
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(str);
   }
 
   /**

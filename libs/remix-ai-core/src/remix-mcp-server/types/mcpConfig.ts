@@ -8,7 +8,6 @@ export interface MCPSecurityConfig {
   enableAuditLog?: boolean;
   maxExecutionTime?: number;
   excludeTools?: string[];
-  allowTools?: string[];
   permissions?: {
     defaultPermissions: string[];
     roles?: {
@@ -90,7 +89,6 @@ export const defaultMCPConfig: MCPConfig = {
     allowedPaths: [],
     maxExecutionTime: 30000,
     excludeTools: [],
-    allowTools: [],
     permissions: {
       defaultPermissions: ['*']
     },
@@ -113,7 +111,7 @@ export const defaultMCPConfig: MCPConfig = {
       blockedPatterns: ['**/node_modules/**', '**/.git/**']
     },
     networkOperations: {
-      allowedNetworks: ['sepolia', 'goerli', 'localhost', 'vm'],
+      allowedNetworks: ['sepolia', 'goerli', 'localhost', 'vm', 'mainnet'],
       warnOnMainnet: true,
       maxGasLimit: 15000000
     }
@@ -158,7 +156,7 @@ export const minimalMCPConfig: MCPConfig = {
       blockedPatterns: ['**/node_modules/**', '**/.git/**']
     },
     networkOperations: {
-      allowedNetworks: ['sepolia', 'goerli', 'localhost', 'vm'],
+      allowedNetworks: ['sepolia', 'goerli', 'localhost', 'vm', 'mainnet'],
       warnOnMainnet: true,
       maxGasLimit: 15000000
     }

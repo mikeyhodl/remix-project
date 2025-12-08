@@ -142,7 +142,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
         const securityConfig = this._configManager.getSecurityConfig();
         const validationConfig = this._configManager.getValidationConfig();
         console.log('[RemixMCPServer] Middlewares connected:');
-        console.log(`  - SecurityMiddleware: using ${securityConfig.excludeTools?.length || 0} excluded tools, ${securityConfig.allowTools?.length || 0} allowed tools`);
+        console.log(`  - SecurityMiddleware: using ${securityConfig.excludeTools?.length || 0} excluded tools`);
         console.log(`  - ValidationMiddleware: strictMode=${validationConfig.strictMode}, ${Object.keys(validationConfig.toolValidation || {}).length} tool-specific rules`);
 
         // Start polling for config file changes (every 5 seconds)
