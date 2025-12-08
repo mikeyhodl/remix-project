@@ -49,6 +49,10 @@ pre {
   transition         : width 0.25s;
   padding-bottom     : 1.4rem;
 }
+.right-panel-maximized {
+  width              : 100% !important;
+  flex               : 1;
+}
 .highlightcode       {
   position           : absolute;
   z-index            : 20;
