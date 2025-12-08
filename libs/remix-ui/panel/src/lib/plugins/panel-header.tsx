@@ -105,12 +105,14 @@ const RemixUIPanelHeader = (props: RemixPanelProps) => {
                           <div className="codicon codicon-layout-sidebar-left-dock ms-2 fs-6 fw-bold lh-1" style={{ marginTop: '2px' }}></div>
                         </CustomTooltip>
                       </div>
-                      <CustomTooltip placement="bottom-end" tooltipText={props.isMaximized ? "Restore Panels" : "Maximize Panel"}>
+                      <CustomTooltip placement="bottom-end" tooltipText={props.isMaximized ? "Minimize Panel" : "Maximize Panel"}>
                         <div
-                          className={`codicon ${props.isMaximized ? 'codicon-screen-normal' : 'codicon-screen-full'} ms-2 fs-5 fw-bold`}
+                          className="codicon-screen-icon ms-2"
                           onClick={maximizePanelHandler}
                           data-id="maximizeRightSidePanel"
-                        ></div>
+                        >
+                          {props.isMaximized ? '\ueb4d' : '\ueb4c' /* Actual icons were not being rendered, so used unicode for codicon-screen-full & codicon-screen-normal icons*/ }
+                        </div>
                       </CustomTooltip>
                       <CustomTooltip placement="bottom-end" tooltipText="Hide Panel">
                         <div

@@ -6,6 +6,24 @@
     flex: auto;
 }
 
+@font-face {
+    font-family: 'codicon-vscode';
+    font-display: block;
+    src: url('~@vscode/codicons/dist/codicon.ttf') format('truetype');
+}
+
+.codicon-screen-icon {
+    font: normal normal normal 20px/1 'codicon-vscode';
+    display: inline-block;
+    text-decoration: none;
+    text-rendering: auto;
+    text-align: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    cursor: pointer;
+}
+
 .swapitTitle {
     margin: 0;
     text-transform: uppercase;
