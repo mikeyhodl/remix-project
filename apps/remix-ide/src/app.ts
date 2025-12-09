@@ -333,10 +333,10 @@ class AppComponent {
     const remixAI = new RemixAIPlugin()
     const remixAiAssistant = new RemixAIAssistant()
 
-  // ----------------- import content service ------------------------
-  const contentImport = new CompilerImports()
-  // ----------------- resolution index service ----------------------
-  const resolutionIndex = new ResolutionIndexPlugin()
+    // ----------------- import content service ------------------------
+    const contentImport = new CompilerImports()
+    // ----------------- resolution index service ----------------------
+    const resolutionIndex = new ResolutionIndexPlugin()
 
     const blockchain = new Blockchain(Registry.getInstance().get('config').api)
 
@@ -419,9 +419,9 @@ class AppComponent {
       this.notification,
       this.gistHandler,
       configPlugin,
-  blockchain,
+      blockchain,
       contentImport,
-  resolutionIndex,
+      resolutionIndex,
       this.themeModule,
       this.localeModule,
       editor,

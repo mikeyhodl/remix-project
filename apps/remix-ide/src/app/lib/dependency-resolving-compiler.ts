@@ -45,7 +45,7 @@ export class DependencyResolvingCompiler extends Compiler {
     // 1) Build deps
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
-  depResolver.setCacheEnabled(false)
+    depResolver.setCacheEnabled(false)
     const sourceBundle = await depResolver.buildDependencyTree(target)
     if (this.debug) {
       console.log(`[DependencyResolvingCompiler] ✅ Dependency tree built successfully`)

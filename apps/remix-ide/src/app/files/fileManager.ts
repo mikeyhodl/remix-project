@@ -717,7 +717,7 @@ export default class FileManager extends Plugin {
 
     if (!change.readonly){
       let file = this.normalize(change.path)
-  const resolved = this.getPathFromUrl(file)
+      const resolved = this.getPathFromUrl(file)
       file = resolved.file
       this._deps.config.set('currentFile', file)
       this.openedFiles[file] = file
@@ -745,7 +745,7 @@ export default class FileManager extends Plugin {
       this.emit('noFileSelected')
     } else {
       file = this.normalize(file)
-  const resolved = this.getPathFromUrl(file)
+      const resolved = this.getPathFromUrl(file)
       file = resolved.file
       await this.saveCurrentFile()
       // we always open the file in the editor, even if it's the same as the current one if the editor is in diff mode
