@@ -61,6 +61,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private _securityMiddleware: SecurityMiddleware;
   private _validationMiddleware: ValidationMiddleware;
   private _configManager: MCPConfigManager;
+  private _isInitialized: boolean = false;
 
   constructor(plugin, config: RemixMCPServerConfig) {
     super();
@@ -68,6 +69,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this._plugin = plugin
     this._tools = new RemixToolRegistry();
     this._resources = new RemixResourceProviderRegistry(plugin);
+    this._isInitialized = false;
 
     this._stats = {
       uptime: 0,
@@ -129,23 +131,30 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    * Initialize the MCP server
    */
   async initialize(): Promise<IMCPInitializeResult> {
-    try {
-      this.setState(ServerState.STARTING);
+    const initResult: IMCPInitializeResult = {
+      protocolVersion: '2024-11-05',
+      capabilities: this.getCapabilities(),
+      serverInfo: {
+        name: this._config.name,
+        version: this._config.version
+      },
+      instructions: `Remix IDE MCP Server initialized. Available tools: ${this._tools.list().length}, Resource providers: ${this._resources.list().length}. Configuration loaded from workspace.`
+    };
 
-      // Load configuration from workspace .mcp.config.json
+    try {
+      if (this._isInitialized) return initResult;
+
       try {
         await this._configManager.loadConfig();
         console.log('[RemixMCPServer] MCP configuration loaded and connected to middlewares');
         console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
 
-        // Verify middleware connection
         const securityConfig = this._configManager.getSecurityConfig();
         const validationConfig = this._configManager.getValidationConfig();
         console.log('[RemixMCPServer] Middlewares connected:');
         console.log(`  - SecurityMiddleware: using ${securityConfig.excludeTools?.length || 0} excluded tools`);
         console.log(`  - ValidationMiddleware: strictMode=${validationConfig.strictMode}, ${Object.keys(validationConfig.toolValidation || {}).length} tool-specific rules`);
 
-        // Start polling for config file changes (every 5 seconds)
         this._configManager.startPolling(5000);
       } catch (error) {
         console.log(`[RemixMCPServer] Failed to load MCP config: ${error.message}, using defaults`);
@@ -155,20 +164,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       await this.initializeDefaultResourceProviders();
 
       this.setupCleanupIntervals();
-
-      const result: IMCPInitializeResult = {
-        protocolVersion: '2024-11-05',
-        capabilities: this.getCapabilities(),
-        serverInfo: {
-          name: this._config.name,
-          version: this._config.version
-        },
-        instructions: `Remix IDE MCP Server initialized. Available tools: ${this._tools.list().length}, Resource providers: ${this._resources.list().length}. Configuration loaded from workspace.`
-      };
-
       this.setState(ServerState.RUNNING);
 
-      return result;
+      this._isInitialized = true;
+      return initResult;
     } catch (error) {
       this.setState(ServerState.ERROR);
       throw error;
@@ -302,8 +301,13 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
    * Execute a tool with security and validation middleware
    */
   private async executeTool(call: IMCPToolCall): Promise<IMCPToolResult> {
-    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const startTime = new Date();
+
+    // Get current user (default to 'default' role)
+    const currentUser = 'default'; // Can be extended to get from plugin context
+
+    const permissionCheckResult = await this.checkPermissions(call.name, currentUser);
 
     const execution: ToolExecutionStatus = {
       id: executionId,
@@ -312,8 +316,8 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       status: 'running',
       context: {
         workspace: await this.getCurrentWorkspace(),
-        user: 'remixIDE', // TODO: Get actual user
-        permissions: ["*"] // TODO: Get actual permissions
+        user: currentUser,
+        permissions: permissionCheckResult.userPermissions
       }
     };
 
@@ -324,7 +328,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const context = {
         workspace: execution.context.workspace,
         currentFile: await this.getCurrentFile(),
-        permissions: execution.context.permissions,
+        permissions: permissionCheckResult.userPermissions,
         timestamp: Date.now(),
         requestId: executionId
       };
@@ -365,11 +369,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
         console.log(`[RemixMCPServer] Input validation PASSED for tool '${call.name}'`);
       }
 
-      // STEP 3: Tool Execution
-      console.log(`[RemixMCPServer] Step 3: Executing tool '${call.name}'`);
-
-      // Set timeout
-      const timeout = this._config.toolTimeout || 30000;
+      const timeout = this._config.toolTimeout || 60000;
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Tool execution timeout')), timeout);
       });
@@ -404,9 +404,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }
   }
 
-  /**
-   * Get resource content with caching
-   */
   private async getResourceContent(uri: string): Promise<IMCPResourceContent> {
     // Check cache first
     if (this._config.enableResourceCache !== false) {
@@ -442,13 +439,250 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   }
 
   async checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult> {
-    // TODO: Implement actual permission checking
-    // For now, allow all operations
-    return {
-      allowed: true,
-      requiredPermissions: [],
-      userPermissions: ['*']
+    try {
+      const securityConfig = this._configManager.getSecurityConfig();
+
+      if (!securityConfig.requirePermissions) {
+        return {
+          allowed: true,
+          requiredPermissions: [],
+          userPermissions: ['*'],
+          reason: 'Permissions not required by configuration'
+        };
+      }
+
+      const userPermissions = this.getUserPermissions(user, securityConfig);
+      const requiredPermissions = this.getOperationPermissions(operation);
+
+      if (userPermissions.includes('*')) {
+        return {
+          allowed: true,
+          requiredPermissions,
+          userPermissions,
+          reason: 'User has wildcard permission (*)'
+        };
+      }
+
+      // check if user has all required permissions
+      const missingPermissions: string[] = [];
+      for (const requiredPermission of requiredPermissions) {
+        if (!userPermissions.includes(requiredPermission)) {
+          missingPermissions.push(requiredPermission);
+        }
+      }
+
+      // If there are missing permissions, deny the operation
+      if (missingPermissions.length > 0) {
+        const reason = `Missing required permissions: ${missingPermissions.join(', ')}`;
+
+        // Log denied permission check
+        this.logAuditEntry({
+          id: `perm_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+          timestamp: new Date(),
+          type: 'permission_check',
+          user,
+          details: {
+            permission: operation,
+            resourceUri: resource,
+            result: 'denied',
+            args: { missingPermissions, requiredPermissions, userPermissions }
+          },
+          severity: 'warning'
+        });
+
+        return {
+          allowed: false,
+          requiredPermissions,
+          userPermissions,
+          reason
+        };
+      }
+
+      // Additional resource-specific checks
+      if (resource) {
+        const resourceCheck = this.checkResourcePermissions(resource, userPermissions, securityConfig);
+        console.log("Resource check:", resourceCheck)
+        if (!resourceCheck.allowed) {
+          // Log denied resource access
+          this.logAuditEntry({
+            id: `perm_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            timestamp: new Date(),
+            type: 'permission_check',
+            user,
+            details: {
+              permission: operation,
+              resourceUri: resource,
+              result: 'denied',
+              args: { reason: resourceCheck.reason }
+            },
+            severity: 'warning'
+          });
+
+          return {
+            allowed: false,
+            requiredPermissions,
+            userPermissions,
+            reason: resourceCheck.reason
+          };
+        }
+      }
+
+      const result = {
+        allowed: true,
+        requiredPermissions,
+        userPermissions,
+        reason: 'All required permissions granted'
+      };
+
+      this.logAuditEntry({
+        id: `perm_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        timestamp: new Date(),
+        type: 'permission_check',
+        user,
+        details: {
+          permission: operation,
+          resourceUri: resource,
+          result: 'allowed'
+        },
+        severity: 'info'
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error('[RemixMCPServer] Error checking permissions:', error);
+
+      this.logAuditEntry({
+        id: `perm_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        timestamp: new Date(),
+        type: 'permission_check',
+        user,
+        details: {
+          permission: operation,
+          resourceUri: resource,
+          error: error.message,
+          result: 'error'
+        },
+        severity: 'error'
+      });
+
+      return {
+        allowed: false,
+        requiredPermissions: [],
+        userPermissions: [],
+        reason: `Permission check failed: ${error.message}`
+      };
+    }
+  }
+
+  private logAuditEntry(entry: AuditLogEntry): void {
+    const securityConfig = this._configManager.getSecurityConfig();
+
+    if (!securityConfig.enableAuditLog) {
+      return;
+    }
+
+    this._auditLog.push(entry);
+    if (this._auditLog.length > 1000) {
+      this._auditLog = this._auditLog.slice(-500);
+    }
+
+    if (entry.severity === 'error') {
+      console.error('[RemixMCPServer] Audit:', entry);
+    }
+  }
+
+  private getUserPermissions(user: string, securityConfig: any): string[] {
+    console.log('security config', securityConfig)
+    const permissions: string[] = [];
+
+    if (securityConfig.permissions?.defaultPermissions) {
+      permissions.push(...securityConfig.permissions.defaultPermissions);
+    }
+
+    if (securityConfig.permissions?.roles && securityConfig.permissions.roles[user]) {
+      permissions.push(...securityConfig.permissions.roles[user]);
+    }
+    return Array.from(new Set(permissions));
+  }
+
+  private getOperationPermissions(operation: string): string[] {
+    const toolDefinition = this._tools.get(operation);
+    if (toolDefinition && toolDefinition.permissions) {
+      return toolDefinition.permissions;
+    }
+
+    const defaultPermissionMap: Record<string, string[]> = {
+      // File operations
+      'file_read': ['file:read'],
+      'file_write': ['file:write'],
+      'file_create': ['file:write', 'file:create'],
+      'file_delete': ['file:delete'],
+      'file_move': ['file:write', 'file:move'],
+      'file_copy': ['file:read', 'file:write'],
+      'list_directory': ['file:read'],
+
+      // Compilation
+      'compile_solidity': ['compile:solidity'],
+      'get_compiler_config': ['compile:read'],
+      'set_compiler_config': ['compile:config'],
+
+      // Deployment
+      'deploy_contract': ['deploy:contract'],
+      'call_contract': ['contract:interact'],
+      'send_transaction': ['transaction:send'],
+      'get_deployed_contracts': ['deploy:read'],
+      'set_execution_environment': ['environment:config'],
+      'get_account_balance': ['account:read'],
+      'get_user_accounts': ['accounts:read'],
+      'set_selected_account': ['accounts:write'],
+      'get_current_environment': ['environment:read'],
+
+      // Debugging
+      'start_debugger': ['debug:start'],
+      'set_breakpoint': ['debug:breakpoint'],
+      'step_debugger': ['debug:control'],
+      'inspect_variable': ['debug:inspect'],
+
+      // Analysis
+      'analyze_code': ['analysis:static'],
+      'security_scan': ['analysis:security'],
+      'estimate_gas': ['analysis:gas']
     };
+
+    return defaultPermissionMap[operation] || ['*'];
+  }
+
+  private checkResourcePermissions(resource: string, userPermissions: string[], securityConfig: any): { allowed: boolean; reason?: string } {
+    if (securityConfig.blockedPaths) {
+      for (const blockedPath of securityConfig.blockedPaths) {
+        if (resource.includes(blockedPath)) {
+          return {
+            allowed: false,
+            reason: `Access to blocked path: ${blockedPath}`
+          };
+        }
+      }
+    }
+
+    if (securityConfig.allowedPaths && securityConfig.allowedPaths.length > 0) {
+      let pathAllowed = false;
+      for (const allowedPath of securityConfig.allowedPaths) {
+        if (resource.includes(allowedPath) || resource.startsWith(allowedPath)) {
+          pathAllowed = true;
+          break;
+        }
+      }
+
+      if (!pathAllowed) {
+        return {
+          allowed: false,
+          reason: 'Resource path not in allowed paths list'
+        };
+      }
+    }
+
+    return { allowed: true };
   }
 
   getActiveExecutions(): ToolExecutionStatus[] {

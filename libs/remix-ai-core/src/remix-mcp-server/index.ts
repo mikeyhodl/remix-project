@@ -80,7 +80,6 @@ export async function createRemixMCPServer(
     customProviders = []
   } = options;
 
-  // Create server with configuration
   const serverConfig = {
     name: 'Remix MCP Server',
     version: '1.0.0',
@@ -109,29 +108,22 @@ export async function createRemixMCPServer(
 
   const server = new RemixMCPServer(plugin, serverConfig);
 
-  // Register custom tools if provided
   if (customTools.length > 0) {
-    // TODO: Add batch registration method to server
     // for (const tool of customTools) {
     //   server.registerTool(tool);
     // }
   }
 
-  // Register custom providers if provided
   if (customProviders.length > 0) {
-    // TODO: Add provider registration method to server
     // for (const provider of customProviders) {
     //   server.registerResourceProvider(provider);
     // }
   }
 
-  // Initialize the server
+  console.log("Initializing server")
   await server.initialize();
 
   return server;
 }
 
-/**
- * Default export
- */
 export default RemixMCPServer;
