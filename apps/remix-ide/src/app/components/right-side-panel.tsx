@@ -220,7 +220,7 @@ export class RightSidePanel extends AbstractPanel {
     return this.hiddenPlugin
   }
 
-  togglePanel () {
+  async togglePanel () {
     const pinnedPanel = document.querySelector('#right-side-panel')
     // Persist the hidden state to panelStates, preserving pluginProfile
     const panelStates = JSON.parse(window.localStorage.getItem('panelStates') || '{}')
@@ -254,6 +254,11 @@ export class RightSidePanel extends AbstractPanel {
       this.emit('rightSidePanelShown')
       this.events.emit('rightSidePanelShown')
     } else {
+      // If the panel is maximized, restore all panels before hiding
+      if (this.isMaximized) {
+        await this.maximizePanel() // This will toggle and restore the panels
+      }
+
       this.isHidden = true
       this.hiddenPlugin = pluginProfile
       pinnedPanel?.classList.add('d-none')
