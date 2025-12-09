@@ -1364,12 +1364,12 @@ contract CommentedImports is ERC20 {
                         const mappings = idx[stakingEntry]
                         const mappingKeys = Object.keys(mappings)
 
-                        // Verify that local imports are NOT in the mappings (they should be direct)
                         const hasLocalImport = mappingKeys.some(key =>
                             key.includes('../base/BaseContract.sol') ||
                             key.includes('../TokenVault.sol')
                         )
-                        browser.assert.ok(!hasLocalImport, 'Local relative imports should not be in resolution index')
+
+                        browser.assert.ok(hasLocalImport, 'Local relative imports should be in resolution index')
 
                         // Verify that external imports ARE in the mappings
                         const hasExternalImport = mappingKeys.some(key =>
