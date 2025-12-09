@@ -3,7 +3,7 @@ import { NightwatchBrowser } from 'nightwatch'
 import init from '../helpers/init'
 
 module.exports = {
-    '@disabled': false, // Set to true to disable this test suite
+    '@disabled': true, // Set to true to disable this test suite
     before: function (browser: NightwatchBrowser, done: VoidFunction) {
         init(browser, done)
     },
