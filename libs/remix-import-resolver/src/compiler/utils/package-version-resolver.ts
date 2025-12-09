@@ -24,9 +24,23 @@ export class PackageVersionResolver {
   public getWorkspaceResolution(name: string): string | undefined { return this.workspaceResolutions.get(name) }
   public hasLockFileVersion(name: string): boolean { return this.lockFileVersions.has(name) }
   public getLockFileVersion(name: string): string | undefined { return this.lockFileVersions.get(name) }
+  
+  /** Clear cached workspace resolutions to force reload on next access. */
+  public clearWorkspaceResolutions(): void {
+    this.workspaceResolutions.clear()
+    this.log(`[PkgVer] 🗑️  Cleared workspace resolutions cache`)
+  }
+  
+  /** Clear cached lockfile versions to force reload on next access. */
+  public clearLockFileVersions(): void {
+    this.lockFileVersions.clear()
+    this.log(`[PkgVer] 🗑️  Cleared lockfile versions cache`)
+  }
 
   /** Load workspace resolutions (resolutions/overrides, deps incl. npm: aliases). */
   public async loadWorkspaceResolutions(): Promise<void> {
+    // Clear existing resolutions first to ensure fresh data
+    this.workspaceResolutions.clear()
     try {
       const exists = await this.io.exists('package.json')
       if (!exists) return

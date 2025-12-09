@@ -235,6 +235,18 @@ export class ImportResolver implements IImportResolver {
         const packageJsonUrl = `${versionedPackageName}/package.json`
         const content = await this.contentFetcher.resolve(packageJsonUrl)
         packageJson = JSON.parse((content as any).content || (content as any))
+        
+        // Extract expected version from versionedPackageName (e.g., "@openzeppelin/contracts@5.4.0" -> "5.4.0")
+        const match = versionedPackageName.match(/@([^@]+)$/)
+        const expectedVersion = match ? match[1] : null
+        const fetchedVersion = packageJson.version
+        
+        // Validate version match to prevent overwriting wrong package.json files
+        if (expectedVersion && fetchedVersion && fetchedVersion !== expectedVersion) {
+          this.log(`[ImportResolver] ⚠️  Version mismatch: expected ${expectedVersion}, got ${fetchedVersion}`)
+          throw new Error(`Version mismatch: fetched ${fetchedVersion} but expected ${expectedVersion} for ${versionedPackageName}`)
+        }
+        
         await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
         this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
       }

@@ -155,7 +155,6 @@ module.exports = {
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
             .openFile('package.json')
             .setEditorValue(packageJsonV5_4_0Source['package.json'].content) // Change to OpenZeppelin 5.4.0
-            .pause(1000)
             .openFile('TokenWithDeps.sol')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
     },
@@ -163,12 +162,18 @@ module.exports = {
     'Verify canonical version is used consistently #group2': function (browser: NightwatchBrowser) {
         browser
             // Click on the versioned folder
+            .expandAllFolders()
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]')
             .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
-            .pause(1000)
             .getEditorValue((content) => {
                 const packageJson = JSON.parse(content)
                 browser.assert.ok(packageJson.version === '4.8.3', 'Should use version 4.8.3 from workspace package.json')
+            })
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.4.0/package.json"]')
+            .openFile('.deps/npm/@openzeppelin/contracts@5.4.0/package.json')
+            .getEditorValue((content) => {
+                const packageJson = JSON.parse(content)
+                browser.assert.ok(packageJson.version === '5.4.0', 'Should use version 5.4.0 from workspace package.json')
             })
     },
 
