@@ -554,6 +554,36 @@ module.exports = {
             })
     },
 
+    'Test Chainlink BurnMintTokenPool with correct folders #group26': function (browser: NightwatchBrowser) {
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('ChainlinkBurnMint.sol', chainlinkBurnMintSource['ChainlinkBurnMint.sol'])
+            .openFile('ChainlinkBurnMint.sol')
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .clickLaunchIcon('filePanel')
+            .expandAllFolders()
+            // Verify .deps/npm/@chainlink/contracts-ccip@1.6.1 folder structure exists
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@chainlink/contracts-ccip@1.6.1/contracts/pools/BurnMintTokenPool.sol"]', 30000)
+            .perform(function () {
+                browser.assert.ok(true, 'BurnMintTokenPool.sol found in correct folder structure')
+            })
+            // Verify package.json exists at root of package
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@chainlink/contracts-ccip@1.6.1/package.json"]', 10000)
+            .openFile('.deps/npm/@chainlink/contracts-ccip@1.6.1/package.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const pkg = JSON.parse(content)
+                    ;(browser as any).assert.strictEqual(pkg.version, '1.6.1', 'Package version should be 1.6.1')
+                    ;(browser as any).assert.strictEqual(pkg.name, '@chainlink/contracts-ccip', 'Package name should be @chainlink/contracts-ccip')
+                } catch (e) {
+                    ;(browser as any).assert.fail('package.json should be valid JSON with correct version')
+                }
+            })
+    },
+
     'Test debug logging with localStorage flag #group10': function (browser: NightwatchBrowser) {
         browser
             // Enable debug logging
@@ -2668,6 +2698,24 @@ contract MultiVersionTest {
     }
 }
 
+const chainlinkBurnMintSource = {
+    'ChainlinkBurnMint.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import { BurnMintTokenPool } from "@chainlink/contracts-ccip@1.6.1/contracts/pools/BurnMintTokenPool.sol";
+
+contract ChainlinkBurnMint {
+    BurnMintTokenPool public tokenPool;
+    
+    constructor(address _tokenPool) {
+        tokenPool = BurnMintTokenPool(_tokenPool);
+    }
+}
+`
+    }
+}
+
 
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
@@ -2702,5 +2750,6 @@ const sources = [
     npmPrefixRemappingSource,
     hardhatStyleRemappingSource,
     multiVersionRemappingSource,
+    chainlinkBurnMintSource,
 ]
 
