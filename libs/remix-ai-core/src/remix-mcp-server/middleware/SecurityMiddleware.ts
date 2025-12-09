@@ -1,6 +1,3 @@
-/**
- * Security Middleware for Remix MCP Server
- */
 
 import { Plugin } from '@remixproject/engine';
 import { IMCPToolCall } from '../../types/mcp';
@@ -27,9 +24,6 @@ export interface AuditLogEntry {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
-/**
- * Security middleware for validating and securing MCP tool calls
- */
 export class SecurityMiddleware extends BaseMiddleware {
   private rateLimitTracker = new Map<string, { count: number; resetTime: number }>();
   private auditLog: AuditLogEntry[] = [];
@@ -84,6 +78,13 @@ export class SecurityMiddleware extends BaseMiddleware {
       if (!permissionResult.allowed) {
         this.logAudit(call, context, 'blocked', permissionResult.reason, startTime, 'high');
         return permissionResult;
+      }
+
+      // Mainnet transaction validation (must be before other validations to block early)
+      const mainnetResult = await this.validateMainnetOperation(call, plugin);
+      if (!mainnetResult.allowed) {
+        this.logAudit(call, context, 'blocked', mainnetResult.reason, startTime, 'high');
+        return mainnetResult;
       }
 
       // Argument validation
@@ -414,6 +415,111 @@ export class SecurityMiddleware extends BaseMiddleware {
     }
 
     return { allowed: true, risk: 'low' };
+  }
+
+  private async validateMainnetOperation(call: IMCPToolCall, plugin: Plugin): Promise<SecurityValidationResult> {
+    const criticalTools = ['deploy_contract', 'send_transaction', 'call_contract'];
+    if (!criticalTools.includes(call.name)) {
+      return { allowed: true, risk: 'low' };
+    }
+
+    try {
+      const isMainnet = await this.isMainnetNetwork(plugin);
+      if (!isMainnet) {
+        return { allowed: true, risk: 'low' };
+      }
+
+      const args = call.arguments || {};
+      const hasValue = args.value && args.value !== '0';
+
+      // Build confirmation message based on operation type
+      let operationType = '';
+      let warningMessage = '';
+
+      if (call.name === 'deploy_contract') {
+        operationType = 'Contract Deployment';
+        warningMessage = `You are about to deploy the contract "${args.contractName}" on Ethereum Mainnet.`;
+        if (hasValue) {
+          warningMessage += `\n\nThis deployment will send ${this.formatEther(args.value)} ETH to the contract.`;
+        }
+      } else if (call.name === 'send_transaction') {
+        operationType = 'Transaction';
+        if (hasValue) {
+          operationType = 'Value Transaction';
+          warningMessage = `You are about to send ${this.formatEther(args.value)} ETH to ${args.to} on Ethereum Mainnet.`;
+        } else {
+          warningMessage = `You are about to send a transaction to ${args.to} on Ethereum Mainnet.`;
+        }
+      } else if (call.name === 'call_contract') {
+        operationType = 'Contract Interaction';
+        warningMessage = `You are about to call the method "${args.methodName}" on contract ${args.address} on Ethereum Mainnet.`;
+        if (hasValue) {
+          warningMessage += `\n\nThis call will send ${this.formatEther(args.value)} ETH to the contract.`;
+        }
+      }
+
+      warningMessage += '\n\n⚠️ This operation will cost real ETH. Are you sure you want to proceed?';
+
+      // Show confirmation modal
+      const confirmed = await this.showConfirmationModal(plugin, operationType, warningMessage);
+
+      if (!confirmed) {
+        return {
+          allowed: false,
+          reason: 'Mainnet operation cancelled by user',
+          risk: 'high'
+        };
+      }
+
+      return { allowed: true, risk: 'high' };
+    } catch (error) {
+      console.error('[SecurityMiddleware] Error validating mainnet operation:', error);
+      // If we can't determine network, allow the operation but log it
+      return { allowed: true, risk: 'medium' };
+    }
+  }
+
+  private async isMainnetNetwork(plugin: Plugin): Promise<boolean> {
+    try {
+      const network = await plugin.call('network', 'detectNetwork');
+
+      if (network && (network.id === '1' || network.id === 1 || network.name === 'main' || network.name === 'mainnet')) {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[SecurityMiddleware] Error detecting network:', error);
+      return false;
+    }
+  }
+
+  private async showConfirmationModal(plugin: Plugin, title: string, message: string): Promise<boolean> {
+    try {
+      const result = await plugin.call('notification', 'modal', {
+        id: 'security_mainnet_confirmation',
+        title: `⚠️ Mainnet ${title}`,
+        message: message,
+        okLabel: 'Proceed',
+        cancelLabel: 'Cancel'
+      });
+
+      return result;
+    } catch (error) {
+      console.log('[SecurityMiddleware] Error showing confirmation modal:', error);
+      return false;
+    }
+  }
+
+  private formatEther(weiValue: string): string {
+    try {
+      // Simple conversion from wei to ETH (divide by 10^18)
+      const wei = BigInt(weiValue);
+      const eth = Number(wei) / 1e18;
+      return `${eth.toFixed(6)} ETH`;
+    } catch (error) {
+      return `${weiValue} wei`;
+    }
   }
 
   private getRequiredPermissions(toolName: string): string[] {
