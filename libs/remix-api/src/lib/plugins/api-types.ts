@@ -111,3 +111,10 @@ export interface GenericSuccessResponse {
   ok: boolean
   message: string
 }
+
+// ==================== Token Refresh ====================
+
+export interface RefreshTokenResponse {
+  access_token: string
+  refresh_token?: string
+}

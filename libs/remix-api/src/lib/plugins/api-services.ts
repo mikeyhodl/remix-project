@@ -17,7 +17,8 @@ import {
   VerifyResponse,
   ProvidersResponse,
   GenericSuccessResponse,
-  CreditTransaction
+  CreditTransaction,
+  RefreshTokenResponse
 } from './api-types'
 
 /**
@@ -40,6 +41,13 @@ export class SSOApiService {
    */
   async logout(): Promise<ApiResponse<GenericSuccessResponse>> {
     return this.apiClient.post<GenericSuccessResponse>('/logout')
+  }
+  
+  /**
+   * Refresh access token using refresh token
+   */
+  async refreshToken(refreshToken: string): Promise<ApiResponse<RefreshTokenResponse>> {
+    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken })
   }
   
   /**

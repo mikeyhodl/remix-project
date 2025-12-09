@@ -8,6 +8,7 @@ export interface ApiRequestOptions {
   body?: unknown
   headers?: Record<string, string>
   credentials?: RequestCredentials
+  skipTokenRefresh?: boolean  // Skip auto-refresh for this request
 }
 
 export interface ApiResponse<T> {
@@ -15,6 +16,7 @@ export interface ApiResponse<T> {
   status: number
   data?: T
   error?: string
+  tokenExpired?: boolean  // Indicates if 401 was due to expired token
 }
 
 export interface IApiClient {
@@ -55,6 +57,11 @@ export interface IApiClient {
    * Get current token
    */
   getToken(): string | null
+  
+  /**
+   * Set token refresh callback
+   */
+  setTokenRefreshCallback(callback: () => Promise<string | null>): void
 }
 
 /**
@@ -62,6 +69,9 @@ export interface IApiClient {
  */
 export class ApiClient implements IApiClient {
   private token: string | null = null
+  private tokenRefreshCallback: (() => Promise<string | null>) | null = null
+  private isRefreshing = false
+  private refreshPromise: Promise<string | null> | null = null
   
   constructor(private baseUrl: string) {}
   
@@ -71,6 +81,37 @@ export class ApiClient implements IApiClient {
   
   getToken(): string | null {
     return this.token
+  }
+  
+  setTokenRefreshCallback(callback: () => Promise<string | null>): void {
+    this.tokenRefreshCallback = callback
+  }
+  
+  /**
+   * Attempt to refresh the access token
+   * Only one refresh operation runs at a time (deduplication)
+   */
+  private async refreshToken(): Promise<string | null> {
+    if (this.isRefreshing) {
+      // Wait for existing refresh to complete
+      return this.refreshPromise
+    }
+
+    if (!this.tokenRefreshCallback) {
+      return null
+    }
+
+    this.isRefreshing = true
+    this.refreshPromise = this.tokenRefreshCallback()
+    
+    try {
+      const newToken = await this.refreshPromise
+      this.token = newToken
+      return newToken
+    } finally {
+      this.isRefreshing = false
+      this.refreshPromise = null
+    }
   }
   
   async request<TResponse>(endpoint: string, options: ApiRequestOptions = {}): Promise<ApiResponse<TResponse>> {
@@ -115,10 +156,21 @@ export class ApiClient implements IApiClient {
       
       if (!response.ok) {
         const errorData = data as any
+        
+        // Handle 401 Unauthorized - attempt token refresh and retry
+        if (response.status === 401 && !options.skipTokenRefresh) {
+          const newToken = await this.refreshToken()
+          if (newToken) {
+            // Retry the request with new token
+            return this.request<TResponse>(endpoint, { ...options, skipTokenRefresh: true })
+          }
+        }
+        
         return {
           ok: false,
           status: response.status,
-          error: errorData?.error || errorData?.message || `HTTP ${response.status}: ${response.statusText}`
+          error: errorData?.error || errorData?.message || `HTTP ${response.status}: ${response.statusText}`,
+          tokenExpired: response.status === 401
         }
       }
       

@@ -26,6 +26,10 @@ export class AuthPlugin extends Plugin {
     // Credits API uses different base URL
     const creditsClient = new ApiClient(endpointUrls.credits)
     this.creditsApi = new CreditsApiService(creditsClient)
+    
+    // Set up token refresh callback for auto-renewal
+    this.apiClient.setTokenRefreshCallback(() => this.refreshAccessToken())
+    creditsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
   }
   
   /**
@@ -278,6 +282,57 @@ export class AuthPlugin extends Plugin {
     }
     
     return token
+  }
+
+  /**
+   * Refresh access token using refresh token
+   * Called automatically by API client on 401 errors
+   */
+  private async refreshAccessToken(): Promise<string | null> {
+    try {
+      const refreshToken = localStorage.getItem('remix_refresh_token')
+      if (!refreshToken) {
+        console.warn('[AuthPlugin] No refresh token available')
+        return null
+      }
+      
+      console.log('[AuthPlugin] Refreshing access token...')
+      
+      const response = await this.ssoApi.refreshToken(refreshToken)
+      
+      if (response.ok && response.data) {
+        const newAccessToken = response.data.access_token
+        
+        // Update localStorage
+        localStorage.setItem('remix_access_token', newAccessToken)
+        
+        // If new refresh token provided, update it too
+        if (response.data.refresh_token) {
+          localStorage.setItem('remix_refresh_token', response.data.refresh_token)
+        }
+        
+        // Update all API clients
+        this.apiClient.setToken(newAccessToken)
+        const creditsClient = await this.getCreditsApi()
+        const creditsApiClient = (creditsClient as any).apiClient as ApiClient
+        creditsApiClient.setToken(newAccessToken)
+        
+        console.log('[AuthPlugin] Access token refreshed successfully')
+        return newAccessToken
+      }
+      
+      console.warn('[AuthPlugin] Token refresh failed:', response.error)
+      
+      // If refresh failed, clear tokens and emit logout
+      if (response.status === 401) {
+        await this.logout()
+      }
+      
+      return null
+    } catch (error) {
+      console.error('[AuthPlugin] Token refresh error:', error)
+      return null
+    }
   }
 
   async getCredits(): Promise<Credits | null> {
