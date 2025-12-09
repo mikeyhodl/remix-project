@@ -118,7 +118,7 @@ export class DependencyResolver {
     if (!importPath.endsWith('.sol')) {
       this.log(`[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
       try { await this.warnings.emitInvalidSolidityImport(importPath) } catch { }
-      return
+      throw new Error(`Invalid import: "${importPath}" does not end with .sol extension`)
     }
     if (this.processedFiles.has(importPath)) {
       this.log(`[DependencyResolver]   ⏭️  Already processed: ${importPath}`)

@@ -825,10 +825,7 @@ contract CommentedImports is ERC20 {
             .addFile('InvalidImportTest.sol', invalidImportSource['InvalidImportTest.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(3000)
-            .clickLaunchIcon('filePanel')
-            .expandAllFolders()
-            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
+            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Invalid import', 10000)
     },
 
     'Test invalid package.json import rejection #group15': function (browser: NightwatchBrowser) {
@@ -836,10 +833,7 @@ contract CommentedImports is ERC20 {
             .addFile('InvalidPackageJsonImport.sol', invalidImportSource['InvalidPackageJsonImport.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(3000)
-            .clickLaunchIcon('filePanel')
-            .expandAllFolders()
-            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
+            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Invalid import', 10000)
     },
 
     'Test invalid README import rejection #group15': function (browser: NightwatchBrowser) {
@@ -847,10 +841,7 @@ contract CommentedImports is ERC20 {
             .addFile('InvalidReadmeImport.sol', invalidImportSource['InvalidReadmeImport.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(3000)
-            .clickLaunchIcon('filePanel')
-            .expandAllFolders()
-            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
+            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Invalid import', 10000)
     },
 
     // ============================================================================
