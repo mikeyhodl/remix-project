@@ -266,8 +266,8 @@ export class ImportResolver implements IImportResolver {
       if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, mappedUrl)
       return this.resolveAndSave(mappedUrl, targetPath, true)
     } else {
-      this.log(`[ImportResolver] ⚠️  No mapping available for __PKG__${packageName}`)
-      return null
+      this.log(`[ImportResolver] ❌ Failed to resolve package version for ${packageName}`)
+      throw new Error(`File not found: ${originalUrl}\nCould not resolve package version for "${packageName}". Package may not exist or version could not be determined.`)
     }
   }
 

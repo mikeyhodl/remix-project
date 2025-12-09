@@ -65,7 +65,7 @@ export class DependencyResolver {
   /** Enable or disable caching for this resolver session. */
   public setCacheEnabled(enabled: boolean): void {
     if ((this.resolver as any).setCacheEnabled) {
-      ;(this.resolver as any).setCacheEnabled(enabled)
+      ; (this.resolver as any).setCacheEnabled(enabled)
     }
   }
 
@@ -93,9 +93,14 @@ export class DependencyResolver {
       await this.resolutionIndex.load()
       this.resolutionIndexInitialized = true
     }
-    await this.processFile(entryFile, null)
-    this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
-    return this.sourceFiles
+    try {
+      await this.processFile(entryFile, null)
+      this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
+      return this.sourceFiles
+    } catch (err) {
+      this.log(`[DependencyResolver] ❌ Failed to build dependency tree from ${entryFile}:`, err)
+      throw err
+    }
   }
 
   private isLocalFile(path: string): boolean {
@@ -112,7 +117,7 @@ export class DependencyResolver {
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
     if (!importPath.endsWith('.sol')) {
       this.log(`[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
-      try { await this.warnings.emitInvalidSolidityImport(importPath) } catch {}
+      try { await this.warnings.emitInvalidSolidityImport(importPath) } catch { }
       return
     }
     if (this.processedFiles.has(importPath)) {
@@ -160,7 +165,7 @@ export class DependencyResolver {
           } catch (e) {
             // Emit warning and stop processing this path; don't route to external fetchers.
             this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
-            try { await this.warnings.emitFailedToResolve(importPath) } catch {}
+            try { await this.warnings.emitFailedToResolve(importPath) } catch { }
             return
           }
         }
@@ -169,9 +174,9 @@ export class DependencyResolver {
       }
 
       if (!content) {
-        if(content === '') return
+        if (content === '') return
         this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath} ${content}`)
-        try { await this.warnings.emitFailedToResolve(importPath) } catch {}
+        try { await this.warnings.emitFailedToResolve(importPath) } catch { }
         return
       }
 
@@ -202,7 +207,7 @@ export class DependencyResolver {
 
       // Before scanning imports, clear any prior index entries for this file so we write fresh mappings
       if (this.resolutionIndex) {
-        try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch {}
+        try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch { }
       }
 
       const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
@@ -233,14 +238,16 @@ export class DependencyResolver {
           // Record per-file resolution for Go-to-Definition: original spec as written → resolved path
           // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
           if (this.resolutionIndex) {
-            try { this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey) } catch {}
+            try { this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey) } catch { }
           }
         }
         this.importGraph.set(resolvedPath, resolvedImports)
       }
     } catch (err) {
       this.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
-      try { await this.warnings.emitProcessingError(importPath, err) } catch {}
+      try { await this.warnings.emitProcessingError(importPath, err) } catch { }
+      console.error(err)
+      throw err
     }
   }
 
@@ -281,7 +288,7 @@ export class DependencyResolver {
   public async saveResolutionIndex(): Promise<void> {
     this.log(`[DependencyResolver] 💾 Saving resolution index...`)
     if (this.resolutionIndex) {
-      try { await this.resolutionIndex.save() } catch {}
+      try { await this.resolutionIndex.save() } catch { }
     }
   }
 }

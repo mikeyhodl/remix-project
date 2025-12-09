@@ -91,8 +91,12 @@ export class PackageMapper {
       }
       this.dependencyStore.storePackageDependencies(`${packageName}@${resolvedVersion}`, packageJson)
       await this.conflictChecker.checkPackageDependencies(packageName, resolvedVersion, packageJson)
-    } catch {
-      this.log(`[ImportResolver] ℹ️  Could not check dependencies for ${packageName}`)
+    } catch (err) {
+      this.log(`[ImportResolver] ℹ️  Could not check dependencies for ${packageName}:`, err)
+      // Re-throw if this is a critical fetch error (404, network issue)
+      if (err instanceof Error && err.message.includes('Fetch failed')) {
+        throw err
+      }
     }
   }
 }

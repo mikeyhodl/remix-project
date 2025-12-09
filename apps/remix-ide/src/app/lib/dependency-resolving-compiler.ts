@@ -23,7 +23,7 @@ export class DependencyResolvingCompiler extends Compiler {
   ) {
     super(importCallback)
     this.pluginApi = pluginApi
-    this.debug = debug
+    this.debug = true // debug
 
     if (this.debug) {
       console.log(`[DependencyResolvingCompiler] 🧠 Created smart compiler wrapper`)
@@ -33,11 +33,21 @@ export class DependencyResolvingCompiler extends Compiler {
   public compile(sources: Source, target: string): void {
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`)
     this.performSmartCompilation(sources, target).catch(error => {
+      
       if (this.debug) {
         console.log(`[DependencyResolvingCompiler] ❌ Smart compilation failed:`, error)
-        console.log(`[DependencyResolvingCompiler] 🔄 Falling back to direct compilation...`)
       }
-      super.compile(sources, target)
+      // Don't fall back to normal compilation - emit the error through the proper channel
+      // This ensures errors are displayed in the compiler output just like normal import errors
+      this.state.lastCompilationResult = null
+      this.event.trigger('compilationFinished', [
+        false,
+        { error: { formattedMessage: error.message || String(error), severity: 'error' } },
+        { sources, target },
+        null,
+        this.state.currentVersion
+      ])
+        
     })
   }
 
@@ -46,7 +56,13 @@ export class DependencyResolvingCompiler extends Compiler {
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
     depResolver.setCacheEnabled(false)
-    const sourceBundle = await depResolver.buildDependencyTree(target)
+    let sourceBundle
+    try {
+      sourceBundle = await depResolver.buildDependencyTree(target)
+    } catch (err) {
+      console.log(`[DependencyResolvingCompiler] ❌ Dependency resolution failed:`, err)
+      throw new Error(`Dependency resolution failed: ${(err as Error).message}`)
+    }
     if (this.debug) {
       console.log(`[DependencyResolvingCompiler] ✅ Dependency tree built successfully`)
       console.log(`[DependencyResolvingCompiler] 📦 Source bundle contains ${sourceBundle.size} files`)
@@ -80,10 +96,10 @@ export class DependencyResolvingCompiler extends Compiler {
       Object.keys(resolvedSources).forEach((filePath, index) => {
         console.log(`[DependencyResolvingCompiler]   ${index + 1}. ${filePath}`)
       })
-      console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`)
+      console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
     }
 
     // 6) Delegate to base compiler
-    super.compile(resolvedSources, target)
+  super.compile(resolvedSources, target)
   }
 }
