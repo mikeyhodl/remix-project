@@ -171,6 +171,30 @@ export class RightSidePanel extends AbstractPanel {
     const activePlugin = this.currentFocus()
 
     if (activePlugin !== profile.name) throw new Error(`Plugin ${profile.name} is not pinned`)
+
+    // If the panel is maximized, restore left and main panels but not terminal
+    if (this.isMaximized) {
+      const leftPanelHidden = await this.call('sidePanel', 'isPanelHidden')
+
+      // Restore left panel if it was visible before maximizing
+      if (!this.maximizedState.leftPanelHidden && leftPanelHidden) {
+        await this.call('sidePanel', 'togglePanel')
+      }
+
+      // Show main panel
+      const mainPanel = document.querySelector('#main-panel')
+      mainPanel?.classList.remove('d-none')
+
+      // Remove full width from right panel
+      const rightPanel = document.querySelector('#right-side-panel')
+      rightPanel?.classList.remove('right-panel-maximized')
+
+      this.isMaximized = false
+      trackMatomoEvent(this, { category: 'topbar', action: 'rightSidePanel', name: 'restoredOnUnpin', isClick: false })
+      this.emit('rightSidePanelRestored')
+      this.events.emit('rightSidePanelRestored')
+    }
+
     await this.call('sidePanel', 'unPinView', profile, this.plugins[profile.name].view)
     super.remove(profile.name)
     // Clear hiddenPlugin and set panel to hidden state when no plugin is pinned
