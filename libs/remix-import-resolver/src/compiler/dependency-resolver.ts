@@ -163,10 +163,10 @@ export class DependencyResolver {
               throw new Error(`Local file not found and handler registry unavailable: ${importPath}`)
             }
           } catch (e) {
-            // Emit warning and stop processing this path; don't route to external fetchers.
+            // Emit warning and throw error to propagate to compiler
             this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
             try { await this.warnings.emitFailedToResolve(importPath) } catch { }
-            return
+            throw new Error(`File not found: ${importPath}`)
           }
         }
       } else {
@@ -175,9 +175,9 @@ export class DependencyResolver {
 
       if (!content) {
         if (content === '') return
-        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath} ${content}`)
+        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
         try { await this.warnings.emitFailedToResolve(importPath) } catch { }
-        return
+        throw new Error(`File not found: ${importPath}`)
       }
 
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
