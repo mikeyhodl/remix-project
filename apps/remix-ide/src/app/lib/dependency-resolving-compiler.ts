@@ -56,6 +56,29 @@ export class DependencyResolvingCompiler extends Compiler {
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
     depResolver.setCacheEnabled(false)
+    
+    // Load remappings from remappings.txt if it exists
+    try {
+      const fileManager = this.pluginApi as any
+      const remappingsTxtExists = await fileManager.call('fileManager', 'exists', 'remappings.txt')
+      if (remappingsTxtExists) {
+        const remappingsContent = await fileManager.call('fileManager', 'readFile', 'remappings.txt')
+        const remappingLines = remappingsContent.split('\n').filter(Boolean)
+        const remappings = remappingLines.map(line => {
+          const [from, to] = line.split('=')
+          return { from: from?.trim(), to: to?.trim() }
+        }).filter(r => r.from && r.to)
+        
+        console.log(`[DependencyResolvingCompiler] 📋 Loaded ${remappings.length} remappings from remappings.txt:`)
+        remappings.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
+        depResolver.setRemappings(remappings)
+      } else {
+        if (this.debug) console.log(`[DependencyResolvingCompiler] ℹ️  No remappings.txt found`)
+      }
+    } catch (err) {
+      console.log(`[DependencyResolvingCompiler] ⚠️  Failed to load remappings:`, err)
+    }
+    
     let sourceBundle
     try {
       sourceBundle = await depResolver.buildDependencyTree(target)

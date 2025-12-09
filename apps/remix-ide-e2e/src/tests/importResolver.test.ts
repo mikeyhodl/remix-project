@@ -851,6 +851,124 @@ contract CommentedImports is ERC20 {
             .clickLaunchIcon('filePanel')
             .expandAllFolders()
             .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps"]', 5000)
+    },
+
+    // ============================================================================
+    // REMAPPING TESTS (group27)
+    // Based on Foundry and Hardhat conventions
+    // ============================================================================
+
+    'Test Foundry-style prefix remapping #group27': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('remappings.txt', foundryStyleRemappingSource['remappings.txt'])
+            .addFile('FoundryStyleTest.sol', foundryStyleRemappingSource['FoundryStyleTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            // Should resolve oz/ to @openzeppelin/contracts@5.0.2/
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'Foundry-style remapping oz/ -> @openzeppelin/contracts@5.0.2/ should work')
+            })
+            // Verify compilation succeeded
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .clickLaunchIcon('solidity')
+            .assert.containsText('*[data-id="compiledContracts"]', 'FoundryStyleTest')
+    },
+
+    'Test npm: prefix remapping (prevents infinite loops) #group28': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('remappings.txt', npmPrefixRemappingSource['remappings.txt'])
+            .addFile('NpmPrefixTest.sol', npmPrefixRemappingSource['NpmPrefixTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            // Should have both versions
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'npm: prefix remapping should not cause infinite loops')
+            })
+            // Verify SafeMath from v4.9.6
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol"]', 10000)
+            // Verify Strings from v5.0.2
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/utils"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/utils/Strings.sol"]', 10000)
+            // Verify compilation succeeded
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .clickLaunchIcon('solidity')
+            .assert.containsText('*[data-id="compiledContracts"]', 'NpmPrefixTest')
+    },
+
+    'Test Hardhat-style remapping #group29': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('remappings.txt', hardhatStyleRemappingSource['remappings.txt'])
+            .addFile('HardhatStyleTest.sol', hardhatStyleRemappingSource['HardhatStyleTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            // Should resolve to @openzeppelin/contracts@4.8.0/
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.0"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/token"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/access"]', 10000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.0/access/Ownable.sol"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'Hardhat-style remapping @openzeppelin/contracts/ -> @openzeppelin/contracts@4.8.0/ should work')
+            })
+            // Verify compilation succeeded
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .clickLaunchIcon('solidity')
+            .assert.containsText('*[data-id="compiledContracts"]', 'HardhatStyleTest')
+    },
+
+    'Test multi-version aliasing with remappings #group30': function (browser: NightwatchBrowser) {
+        browser
+            .addFile('remappings.txt', multiVersionRemappingSource['remappings.txt'])
+            .addFile('MultiVersionTest.sol', multiVersionRemappingSource['MultiVersionTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
+            // Should have both versions
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+            .perform(function () {
+                browser.assert.ok(true, 'Multi-version aliasing (@openzeppelin/contracts-v4/ and -v5/) should coexist')
+            })
+            // Verify v4 SafeMath
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol"]', 10000)
+            // Verify v5 Strings
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.0.2/utils/Strings.sol"]', 10000)
+            // Verify compilation succeeded
+            .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
+            .clickLaunchIcon('solidity')
+            .assert.containsText('*[data-id="compiledContracts"]', 'MultiVersionTest')
             .end()
     },
 
@@ -2510,6 +2628,74 @@ contract TestImportHandler {
     }
 }
 
+// Remapping test sources
+const foundryStyleRemappingSource = {
+    'remappings.txt': {
+        content: `oz/=@openzeppelin/contracts@5.0.2/`
+    },
+    'FoundryStyleTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "oz/token/ERC20/ERC20.sol";
+contract FoundryStyleTest is ERC20 {
+    constructor() ERC20("Test", "TST") {}
+}
+`
+    }
+}
+
+const npmPrefixRemappingSource = {
+    'remappings.txt': {
+        content: `@openzeppelin/contracts@4.9.6/=npm:@openzeppelin/contracts@4.9.6/
+@openzeppelin/contracts@5.0.2/=npm:@openzeppelin/contracts@5.0.2/`
+    },
+    'NpmPrefixTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts@5.0.2/utils/Strings.sol";
+contract NpmPrefixTest {
+    using SafeMath for uint256;
+    using Strings for uint256;
+}
+`
+    }
+}
+
+const hardhatStyleRemappingSource = {
+    'remappings.txt': {
+        content: `@openzeppelin/contracts/=@openzeppelin/contracts@4.8.0/`
+    },
+    'HardhatStyleTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+contract HardhatStyleTest is ERC20, Ownable {
+    constructor() ERC20("Hardhat", "HHT") Ownable() {}
+}
+`
+    }
+}
+
+const multiVersionRemappingSource = {
+    'remappings.txt': {
+        content: `@openzeppelin/contracts-v4/=@openzeppelin/contracts@4.9.6/
+@openzeppelin/contracts-v5/=@openzeppelin/contracts@5.0.2/`
+    },
+    'MultiVersionTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts-v4/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-v5/utils/Strings.sol";
+contract MultiVersionTest {
+    using SafeMath for uint256;
+    using Strings for uint256;
+}
+`
+    }
+}
+
 
 // Keep sources array for backwards compatibility with @sources function
 const sources = [
@@ -2540,5 +2726,9 @@ const sources = [
     ozTransitiveIndexSource,
     deepImportsSource,
     remixTestsHandlerSource,
+    foundryStyleRemappingSource,
+    npmPrefixRemappingSource,
+    hardhatStyleRemappingSource,
+    multiVersionRemappingSource,
 ]
 

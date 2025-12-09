@@ -20,6 +20,14 @@ export function resolveRelativeImport(currentFile: string, importPath: string, l
 
 export function applyRemappings(importPath: string, remappings: Array<{ from: string; to: string }>, log: LogFn = noop): string {
   if (importPath.startsWith('./') || importPath.startsWith('../')) return importPath
+  
+  // Skip remapping if the path already looks like it was remapped (has npm: prefix or is already in target form)
+  // This prevents infinite loops from remappings like: @pkg@1.0.0/=npm:@pkg@1.0.0/
+  if (importPath.startsWith('npm:')) {
+    log(`[DependencyResolver]   ⏭️  Skipping remapping for already-prefixed path: ${importPath}`)
+    return importPath
+  }
+  
   for (const { from, to } of remappings || []) {
     if (!from) continue
     if (importPath === from || importPath.startsWith(from)) {

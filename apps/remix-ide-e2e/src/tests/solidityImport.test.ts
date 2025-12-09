@@ -71,7 +71,6 @@ module.exports = {
 
   'Test switch to a GitHub import from a solidity warning #group3': function (browser: NightwatchBrowser) {
     browser
-      .setSolidityCompilerVersion('soljson-v0.7.4+commit.3f05b770.js')
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('Untitled8.sol', sources[7]['Untitled8.sol'])
@@ -87,12 +86,6 @@ module.exports = {
 
   'Test NPM Import (with unpkg.com) #group3': function (browser: NightwatchBrowser) {
     browser
-      .setSolidityCompilerVersion('soljson-v0.8.7+commit.e28d00a7.js')
-      .waitForElementPresent({
-        selector: `//*[@data-id='compilerloaded' and @data-version='soljson-v0.8.7+commit.e28d00a7.js']`,
-        locateStrategy: 'xpath',
-        timeout: 120000
-      })
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('Untitled9.sol', sources[8]['Untitled9.sol'])
@@ -114,12 +107,6 @@ module.exports = {
 
   'Test NPM Import (with unpkg.com) and the package.json contains a module remapping #group13': function (browser: NightwatchBrowser) {
     browser
-      .setSolidityCompilerVersion('soljson-v0.8.7+commit.e28d00a7.js')
-      .waitForElementPresent({
-        selector: `//*[@data-id='compilerloaded' and @data-version='soljson-v0.8.7+commit.e28d00a7.js']`,
-        locateStrategy: 'xpath',
-        timeout: 120000
-      })
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('package.json', sources[9]['package.json'])
@@ -136,12 +123,6 @@ module.exports = {
 
   'Test NPM Import (prefixed by `npm:` and remappings.txt), it should import from two different solidity version #group3': function (browser: NightwatchBrowser) {
     browser
-      .setSolidityCompilerVersion('soljson-v0.8.30+commit.73712a01.js')
-      .waitForElementPresent({
-        selector: `//*[@data-id='compilerloaded' and @data-version='soljson-v0.8.30+commit.73712a01.js']`,
-        locateStrategy: 'xpath',
-        timeout: 120000
-      })
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('remappings.txt', sources[10]['remappings.txt'])
