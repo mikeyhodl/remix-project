@@ -28,13 +28,9 @@ export class CompileTabLogic {
     if (createCompiler) {
       this.compiler = createCompiler(this.api, this.debug)
     } else {
-      this.compiler = new Compiler((url, cb) => {
-        const error = new Error(`not found ${url}`)
-        cb(error.message as any)
-      })
+      this.compiler = new Compiler((url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)))
     }
-
-    this.evmVersions = ['default', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
+    this.evmVersions = ['default', 'osaka', 'prague', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }
 
   init () {
