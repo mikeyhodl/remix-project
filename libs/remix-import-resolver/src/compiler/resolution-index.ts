@@ -61,14 +61,29 @@ export class ResolutionIndex {
 
   /** Record a mapping for a source file if it changed since last write. */
   recordResolution(sourceFile: string, originalImport: string, resolvedPath: string): void {
-    this.log(`[ResolutionIndex] ➡️  Recording resolution: ${sourceFile} | ${originalImport} → ${resolvedPath}`)
-    if (!this.index[sourceFile]) this.index[sourceFile] = {}
+    // Normalize sourceFile to strip .deps prefixes for consistent keys
+    const normalizedSource = this.normalizeSourceFile(sourceFile)
+    this.log(`[ResolutionIndex] ➡️  Recording resolution: ${normalizedSource} | ${originalImport} → ${resolvedPath}`)
+    if (!this.index[normalizedSource]) this.index[normalizedSource] = {}
     const local = this.toLocalPath(resolvedPath)
-    if (this.index[sourceFile][originalImport] !== local) {
-      this.index[sourceFile][originalImport] = local
+    if (this.index[normalizedSource][originalImport] !== local) {
+      this.index[normalizedSource][originalImport] = local
       this.isDirty = true
-      this.log(`[ResolutionIndex] 📝 Recorded: ${sourceFile} | ${originalImport} → ${local}`)
+      this.log(`[ResolutionIndex] 📝 Recorded: ${normalizedSource} | ${originalImport} → ${local}`)
     }
+  }
+
+  /** Normalize a path by stripping .deps prefixes for consistent index keys */
+  private normalizeSourceFile(path: string): string {
+    if (!path) return path
+    // Strip .deps/npm/, .deps/github/, .deps/http/ prefixes to get canonical package path
+    if (path.startsWith('.deps/npm/')) return path.substring('.deps/npm/'.length)
+    if (path.startsWith('.deps/github/')) return path.substring('.deps/github/'.length)
+    if (path.startsWith('.deps/http/')) {
+      // For HTTP paths, keep them as http URLs would be stored
+      return path
+    }
+    return path
   }
 
   /** Translate a resolved path into a deterministic local path under .deps. */
@@ -88,6 +103,12 @@ export class ResolutionIndex {
     }
     if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
       return `.deps/${resolved}`
+    }
+    // For npm packages (must contain @ to be a package), add .deps/npm/ prefix
+    // This catches both scoped packages (@org/pkg) and versioned packages (pkg@1.0.0)
+    // but excludes local workspace files (security/Pausable.sol)
+    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@\/]/) && !resolved.startsWith('.deps/npm/')) {
+      return `.deps/npm/${resolved}`
     }
     return `${resolved}`
   }

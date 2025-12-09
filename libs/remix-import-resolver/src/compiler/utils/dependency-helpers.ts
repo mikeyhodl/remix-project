@@ -7,11 +7,11 @@ const noop: LogFn = () => {}
 export function resolveRelativeImport(currentFile: string, importPath: string, log: LogFn = noop): string {
   if (!importPath.startsWith('./') && !importPath.startsWith('../')) return importPath
   const currentDir = currentFile.substring(0, currentFile.lastIndexOf('/'))
-  const currentParts = currentDir.split('/')
+  const currentParts = currentDir.split('/').filter(p => p) // Filter out empty strings
   const importParts = importPath.split('/')
   for (const part of importParts) {
     if (part === '..') currentParts.pop()
-    else if (part !== '.') currentParts.push(part)
+    else if (part !== '.' && part !== '') currentParts.push(part) // Also filter empty strings
   }
   const resolvedPath = currentParts.join('/')
   log(`[DependencyResolver]   🔗 Resolved relative import: ${importPath} → ${resolvedPath}`)

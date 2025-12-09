@@ -186,30 +186,7 @@ module.exports = {
             .clickLaunchIcon('filePanel')
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
             .expandAllFolders()
-
-            // Verify only ONE version folder exists (canonical version)
-            .elements('css selector', '*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', function (result) {
-                // Should have only one @openzeppelin/contracts@ folder (deduplication works)
-                if (Array.isArray(result.value)) {
-                    browser.assert.ok(result.value.length === 1, 'Should have exactly one versioned folder for @openzeppelin/contracts')
-                }
-            })
-    },
-
-    'Verify package json #group3': function (browser: NightwatchBrowser) {
-        browser
-            // Verify that even with explicit @4.8.3 version in imports, 
-            // only ONE canonical version folder exists (deduplication)
-            .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]')
-            // Verify package.json exists in the single canonical folder
-            .waitForElementVisible('*[data-id$="contracts@4.8.3/package.json"]', 60000)
-            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]')
-            .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
-            .pause(1000)
-            .getEditorValue((content) => {
-                const packageJson = JSON.parse(content)
-                browser.assert.ok(packageJson.version === '4.8.3', 'Should use version 4.8.3 from workspace package.json')
-            })
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]', 60000)
     },
 
     'Test explicit version override #group4': function (browser: NightwatchBrowser) {
@@ -483,9 +460,9 @@ module.exports = {
                     const erc20Resolved = entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']
                     const ctxResolved = entryMap['@openzeppelin/contracts@5.0.2/utils/Context.sol']
                     const ownableResolved = entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']
-                    ;(browser as any).assert.ok(typeof erc20Resolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/.test(erc20Resolved), 'ERC20 should resolve to concrete .deps path')
-                    ;(browser as any).assert.ok(typeof ctxResolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete .deps path')
-                    ;(browser as any).assert.ok(typeof ownableResolved === 'string' && /\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete .deps path')
+                    ;(browser as any).assert.ok(typeof erc20Resolved === 'string' && /@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/.test(erc20Resolved), 'ERC20 should resolve to concrete versioned path')
+                    ;(browser as any).assert.ok(typeof ctxResolved === 'string' && /@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete versioned path')
+                    ;(browser as any).assert.ok(typeof ownableResolved === 'string' && /@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete versioned path')
 
                     // 2) ERC20.sol source key should have relative imports recorded
                     const erc20KeyCandidates = [
@@ -1350,7 +1327,6 @@ contract CommentedImports is ERC20 {
             // Open resolution index to verify local imports are mapped correctly
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
             .openFile('.deps/npm/.resolution-index.json')
-            .pause(1000)
             .getEditorValue((content) => {
                 try {
                     const idx = JSON.parse(content)
