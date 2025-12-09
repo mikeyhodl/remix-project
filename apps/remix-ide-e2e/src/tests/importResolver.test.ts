@@ -1055,7 +1055,6 @@ contract CommentedImports is ERC20 {
             .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(3000)
             .clickLaunchIcon('filePanel')
 
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
