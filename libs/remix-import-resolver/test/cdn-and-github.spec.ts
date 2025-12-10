@@ -53,7 +53,7 @@ describe('import-resolver: cdn + github flows', () => {
     expect(idx[entry]).to.be.ok
     const mappings = idx[entry]
     const key = 'https://cdn.jsdelivr.net/npm/@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol'
-    expect(mappings[key]).to.equal('@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol')
+    expect(mappings[key]).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@4\.8\.0\/token\/ERC20\/ERC20\.sol$/)
   })
 
   // Scenario: a Solidity file imports a GitHub "blob" URL. We expect it to be rewritten to

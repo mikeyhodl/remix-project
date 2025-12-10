@@ -242,9 +242,25 @@ export class ImportResolver implements IImportResolver {
         const fetchedVersion = packageJson.version
         
         // Validate version match to prevent overwriting wrong package.json files
+        // Allow semver ranges: @5 resolves to 5.x.x, @5.0 resolves to 5.0.x, @5.0.0 must match exactly
         if (expectedVersion && fetchedVersion && fetchedVersion !== expectedVersion) {
-          this.log(`[ImportResolver] ⚠️  Version mismatch: expected ${expectedVersion}, got ${fetchedVersion}`)
-          throw new Error(`Version mismatch: fetched ${fetchedVersion} but expected ${expectedVersion} for ${versionedPackageName}`)
+          // Check if expectedVersion is a semver range (e.g., "5" or "5.0")
+          const expectedParts = expectedVersion.split('.')
+          const fetchedParts = fetchedVersion.split('.')
+          
+          // Validate that fetched version matches the specified range
+          let isValidRange = true
+          for (let i = 0; i < expectedParts.length && i < fetchedParts.length; i++) {
+            if (expectedParts[i] !== fetchedParts[i]) {
+              isValidRange = false
+              break
+            }
+          }
+          
+          if (!isValidRange) {
+            this.log(`[ImportResolver] ⚠️  Version mismatch: expected ${expectedVersion}, got ${fetchedVersion}`)
+            throw new Error(`Version mismatch: fetched ${fetchedVersion} but expected ${expectedVersion} for ${versionedPackageName}`)
+          }
         }
         
         await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))

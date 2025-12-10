@@ -119,6 +119,7 @@ describe('ImportResolver e2e parity (groups 1–6) - Node + local FS', () => {
       const original = '@openzeppelin/contracts@5/token/ERC20/IERC20.sol'
       await resolver.resolveAndSave(original)
       const mapped = resolver.getResolution(original)
+      expect(mapped).to.be.ok
       expect(mapped?.includes('@openzeppelin/contracts@5')).to.equal(true)
       expect(
         await exists('.deps/npm/@openzeppelin/contracts@5/package.json')

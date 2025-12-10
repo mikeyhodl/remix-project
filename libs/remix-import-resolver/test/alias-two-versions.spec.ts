@@ -65,13 +65,14 @@ describe('Alias imports of two explicit versions (ContextV4/ContextV5)', functio
     expect(children.some(c => c.includes('@openzeppelin/contracts@4.9.0/utils/Context.sol'))).to.equal(true)
     expect(children.some(c => c.includes('@openzeppelin/contracts@5.0.0/utils/Context.sol'))).to.equal(true)
 
-    // Save index and verify it contains both mappings (identity mappings should be recorded)
+    // Save index and verify it contains both mappings with concrete .deps/npm/ paths for IDE navigation
     await dr.saveResolutionIndex()
     const idxRaw = await (await import('fs/promises')).readFile('.deps/npm/.resolution-index.json', 'utf8')
     const idx = JSON.parse(idxRaw)
+    console.log('Resolution Index:', idx)
     const entryMap = idx[entry] || {}
-    expect(entryMap['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.equal('@openzeppelin/contracts@4.9.0/utils/Context.sol')
-    expect(entryMap['@openzeppelin/contracts@5.0.0/utils/Context.sol']).to.equal('@openzeppelin/contracts@5.0.0/utils/Context.sol')
+    expect(entryMap['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@4\.9\.0\/utils\/Context\.sol$/)
+    expect(entryMap['@openzeppelin/contracts@5.0.0/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@5\.0\.0\/utils\/Context\.sol$/)
 
     // Bundle sanity: entry + two dependencies at minimum
     expect(bundle.size).to.be.greaterThan(2)
@@ -98,8 +99,8 @@ describe('Alias imports of two explicit versions (ContextV4/ContextV5)', functio
     const idxRaw1 = await (await import('fs/promises')).readFile('.deps/npm/.resolution-index.json', 'utf8')
     const idx1 = JSON.parse(idxRaw1)
     const entryMap1 = idx1[entry] || {}
-    expect(entryMap1['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.equal('@openzeppelin/contracts@4.9.0/utils/Context.sol')
-    expect(entryMap1['@openzeppelin/contracts@5.0.0/utils/Context.sol']).to.equal('@openzeppelin/contracts@5.0.0/utils/Context.sol')
+    expect(entryMap1['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@4\.9\.0\/utils\/Context\.sol$/)
+    expect(entryMap1['@openzeppelin/contracts@5.0.0/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@5\.0\.0\/utils\/Context\.sol$/)
 
     // Phase 2: update V5 import to a different version (5.0.2) and verify index updates
     writeFileSync(entry, [
@@ -124,8 +125,8 @@ describe('Alias imports of two explicit versions (ContextV4/ContextV5)', functio
     const idx2 = JSON.parse(idxRaw2)
     const entryMap2 = idx2[entry] || {}
     // Old 5.0.0 mapping should be gone after clear + rewrite, replaced by 5.0.2
-    expect(entryMap2['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.equal('@openzeppelin/contracts@4.9.0/utils/Context.sol')
-    expect(entryMap2['@openzeppelin/contracts@5.0.2/utils/Context.sol']).to.equal('@openzeppelin/contracts@5.0.2/utils/Context.sol')
+    expect(entryMap2['@openzeppelin/contracts@4.9.0/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@4\.9\.0\/utils\/Context\.sol$/)
+    expect(entryMap2['@openzeppelin/contracts@5.0.2/utils/Context.sol']).to.match(/^\.deps\/npm\/@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/)
     expect(entryMap2['@openzeppelin/contracts@5.0.0/utils/Context.sol']).to.equal(undefined)
   })
 })
