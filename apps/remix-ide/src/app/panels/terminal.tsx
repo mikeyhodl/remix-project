@@ -204,6 +204,23 @@ export default class Terminal extends Plugin {
       this.emit('terminalPanelShown')
     } else {
       this.isHidden = true
+
+      // If terminal was hidden when maximized, restore the main panel
+      if (this.isMaximized) {
+        const mainView = document.querySelector('.mainview')
+        if (mainView) {
+          const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+          wraps.forEach((wrap: HTMLElement) => {
+            if (!wrap.classList.contains('terminal-wrap')) {
+              wrap.classList.remove('d-none')
+            }
+          })
+        }
+        terminalPanel?.classList.remove('maximized')
+        this.isMaximized = false
+        this.renderComponent()
+      }
+
       terminalPanel?.classList.add('d-none')
       trackMatomoEvent(this, { category: 'topbar', action: 'terminalPanel', name: 'hiddenOnToggleIconClick', isClick: false })
       this.emit('terminalPanelHidden')
