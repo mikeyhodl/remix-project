@@ -226,13 +226,13 @@ export class RemixURLResolver {
       },
       {
         type: 'http',
-        match: (url) => { return /^(http:\/\/[^\s]+)$/.exec(url) },
-        handle: (match) => this.handleHttp(match[1], match[2])
+        match: (url) => { return /^http:\/\/([^\s]+)$/.exec(url) },
+        handle: (match) => this.handleHttp(match[0], match[1])
       },
       {
         type: 'https',
-        match: (url) => { return /^(https:\/\/[^\s]+)$/.exec(url) },
-        handle: (match) => this.handleHttps(match[1], match[2])
+        match: (url) => { return /^https:\/\/([^\s]+)$/.exec(url) },
+        handle: (match) => this.handleHttps(match[0], match[1])
       },
       {
         type: 'swarm',
