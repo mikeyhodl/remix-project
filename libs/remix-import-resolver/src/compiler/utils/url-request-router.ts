@@ -64,7 +64,7 @@ export async function routeUrl(originalUrl: string, url: string, targetPath: str
       await fetchGitHubPackageJson(ghRaw.owner, ghRaw.repo, ghRaw.ref)
       const content = await contentFetcher.resolveAndSave(url, ghRaw.targetPath, false)
       logger.log(`[ImportResolver]   ✅ Received content: ${content ? content.length : 0} chars`)
-      if (!resolutions.has(originalUrl)) resolutions.set(originalUrl, ghRaw.normalizedPath)
+      if (!resolutions.has(originalUrl)) resolutions.set(originalUrl, ghRaw.targetPath)
       return { action: 'content', content }
     }
     // Fallback direct fetch of arbitrary URL
