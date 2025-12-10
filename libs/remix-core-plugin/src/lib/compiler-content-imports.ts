@@ -17,7 +17,6 @@ export type ResolvedImport = {
 
 export class CompilerImports extends Plugin {
   urlResolver: any
-
   constructor () {
     super(profile)
     this.urlResolver = new RemixURLResolver(async () => {
@@ -50,9 +49,7 @@ export class CompilerImports extends Plugin {
 
   onActivation(): void {
     const packageFiles = ['package.json', 'package-lock.json', 'yarn.lock']
-    this.on('filePanel', 'setWorkspace', () => {
-      this.urlResolver.clearCache()
-    })
+    this.on('filePanel', 'setWorkspace', () => this.urlResolver.clearCache())
     this.on('fileManager', 'fileRemoved', (file: string) => {
       if (packageFiles.includes(file)) {
         this.urlResolver.clearCache()
@@ -64,8 +61,6 @@ export class CompilerImports extends Plugin {
       }
     })
   }
-
-  
 
   async setToken () {
     try {
@@ -89,11 +84,11 @@ export class CompilerImports extends Plugin {
   }
 
   /**
-   * resolve the content of @arg url. This only resolves external URLs.
-   *
-   * @param {String} url  - external URL of the content. can be basically anything like raw HTTP, ipfs URL, github address etc...
-   * @returns {Promise} - { content, cleanUrl, type, url }
-   */
+    * resolve the content of @arg url. This only resolves external URLs.
+    *
+    * @param {String} url  - external URL of the content. can be basically anything like raw HTTP, ipfs URL, github address etc...
+    * @returns {Promise} - { content, cleanUrl, type, url }
+    */
   resolve (url) {
     return new Promise((resolve, reject) => {
       this.import(url, null, (error, content, cleanUrl, type, url) => {
@@ -134,6 +129,8 @@ export class CompilerImports extends Plugin {
     if (!loadingCb) loadingCb = () => {}
     if (!cb) cb = () => {}
 
+    const self = this
+
     let resolved
     try {
       await this.setToken()
@@ -168,27 +165,6 @@ export class CompilerImports extends Plugin {
   }
 
   /**
-    * import the content of @arg url.  /**
-   * resolve the content of @arg url. This only resolves external URLs.
-    return new Promise((resolve, reject) => {
-      this.import(url,
-        // TODO: handle this event
-        (loadingMsg) => { this.emit('message', loadingMsg) },
-        async (error, content, cleanUrl, type, url) => {
-          if (error) return reject(error)
-          try {
-            const provider = await this.call('fileManager', 'getProviderOf', null)
-            const path = targetPath || type + '/' + cleanUrl
-            if (provider) await provider.addExternal('.deps/' + path, content, url)
-          } catch (err) {
-            console.error(err)
-          }
-          resolve(content)
-        }, null)
-    })
-  }
-
-  /**
     * import the content of @arg url.
     * first look in the browser localstorage (browser explorer) or localhost explorer. if the url start with `browser/*` or  `localhost/*`
     * then check if the @arg url is located in the localhost, in the node_modules or installed_contracts folder
@@ -196,10 +172,9 @@ export class CompilerImports extends Plugin {
     *
     * @param {String} url - URL of the content. can be basically anything like file located in the browser explorer, in the localhost explorer, raw HTTP, github address etc...
     * @param {String} targetPath - (optional) internal path where the content should be saved to
-    * @param {Boolean} skipMappings - (optional) unused parameter, kept for backward compatibility
     * @returns {Promise} - string content
     */
-  async resolveAndSave (url, targetPath, skipMappings = false) {
+  async resolveAndSave (url, targetPath) {
     try {
       if (targetPath && this.currentRequest) {
         const canCall = await this.askUserPermission('resolveAndSave', 'This action will update the path ' + targetPath)

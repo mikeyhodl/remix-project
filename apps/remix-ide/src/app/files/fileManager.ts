@@ -659,8 +659,7 @@ export default class FileManager extends Plugin {
    * @param {string} file url we are trying to resolve
    * @returns {{ string, provider }} file path resolved and its provider.
    */
-  getPathFromUrl(file) {
-    console.log('getPathFromUrl', file)
+  getPathFromUrl(file: string) {
     const provider = this.fileProviderOf(file)
     if (!provider) throw new Error(`no provider for ${file}`)
     return {
