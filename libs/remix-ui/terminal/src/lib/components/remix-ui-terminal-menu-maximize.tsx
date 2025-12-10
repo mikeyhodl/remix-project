@@ -1,6 +1,5 @@
 import { CustomTooltip } from '@remix-ui/helper'
 import React from 'react' // eslint-disable-line
-import { FormattedMessage } from 'react-intl'
 import { RemixUiTerminalProps } from '../types/terminalTypes'
 
 export const RemixUITerminalMenuMaximize = (props: RemixUiTerminalProps) => {

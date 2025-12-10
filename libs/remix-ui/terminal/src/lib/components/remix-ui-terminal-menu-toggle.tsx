@@ -5,6 +5,10 @@ import { RemixUiTerminalProps } from '../types/terminalTypes'
 export const RemixUITerminalMenuToggle = (props: RemixUiTerminalProps) => {
 
   async function handleToggleTerminal(): Promise<void> {
+    // If panel is maximized, un-maximize it first to show main panel
+    if (props.isMaximized && props.maximizePanel) {
+      await props.maximizePanel()
+    }
     // Toggle the bottom terminal panel using terminal-wrap component
     await props.plugin.call('terminal', 'togglePanel')
   }
