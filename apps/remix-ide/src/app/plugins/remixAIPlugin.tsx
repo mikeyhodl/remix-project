@@ -91,9 +91,31 @@ export class RemixAIPlugin extends Plugin {
 
     (window as any).getRemixAIPlugin = this
 
+    // Load Alchemy configuration from settings
+    const alchemyConfig = await this.loadAlchemyConfig()
+
     // initialize the remix MCP server
-    this.remixMCPServer = await createRemixMCPServer(this)
+    this.remixMCPServer = await createRemixMCPServer(this, {
+      alchemy: alchemyConfig
+    })
     return true
+  }
+
+  async loadAlchemyConfig() {
+    try {
+      const savedConfig = await this.call('settings', 'get', 'settings/mcp/alchemy')
+      if (savedConfig) {
+        return JSON.parse(savedConfig)
+      }
+    } catch (error) {
+      console.log('[RemixAI] Failed to load Alchemy config:', error)
+    }
+    // Return default config
+    return {
+      enabled: false,
+      apiKey: undefined,
+      defaultNetwork: 'ethereum'
+    }
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {

@@ -32,6 +32,7 @@ import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 import { createTutorialsTools } from './handlers/TutorialsHandler';
+import { createAlchemyTools } from './handlers/AlchemyHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
@@ -185,7 +186,8 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
           debugging: this._config.features?.debugging !== false,
           analysis: this._config.features?.analysis !== false,
           testing: this._config.features?.testing !== false,
-          git: this._config.features?.git !== false
+          git: this._config.features?.git !== false,
+          alchemy: this.isAlchemyEnabled()
         }
       }
     };
@@ -454,9 +456,19 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const codeAnalysisTools = createCodeAnalysisTools();
       this._tools.registerBatch(codeAnalysisTools);
 
-      // Register debugging tools
+      // Register tutorial tools
       const tutorialTools = createTutorialsTools();
       this._tools.registerBatch(tutorialTools);
+
+      // Register Alchemy tools (only if enabled in config)
+      if (this.isAlchemyEnabled()) {
+        console.log('[RemixMCPServer] Alchemy integration enabled, registering Alchemy tools...');
+        const alchemyTools = createAlchemyTools();
+        this._tools.registerBatch(alchemyTools);
+        console.log(`[RemixMCPServer] Registered ${alchemyTools.length} Alchemy tools`);
+      } else {
+        console.log('[RemixMCPServer] Alchemy integration disabled, skipping Alchemy tools');
+      }
 
       const totalTools = this._tools.list().length;
 
@@ -536,6 +548,40 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     } catch (error) {
       return 'None';
     }
+  }
+
+  private isAlchemyEnabled(): boolean {
+    const featureEnabled = this._config.features?.alchemy !== false;
+    const alchemyEnabled = this._config.alchemy?.enabled !== false;
+    console.log(`Alchemy feature is ${featureEnabled ? 'enabled' : 'disabled'} in configuration`);
+    console.log(this._config)
+
+    // If alchemy config exists, use its enabled flag, otherwise use features flag
+    if (this._config.alchemy) {
+      return alchemyEnabled;
+    }
+
+    return featureEnabled;
+  }
+
+  /**
+   * Get Alchemy API key from configuration or environment
+   */
+  getAlchemyApiKey(): string | undefined {
+    // First check config
+    if (this._config.alchemy?.apiKey) {
+      return this._config.alchemy.apiKey;
+    }
+
+    // Fall back to environment variable
+    return process.env.ALCHEMY_API_KEY;
+  }
+
+  /**
+   * Get Alchemy default network from configuration
+   */
+  getAlchemyDefaultNetwork(): string {
+    return this._config.alchemy?.defaultNetwork || 'ethereum';
   }
 
 }

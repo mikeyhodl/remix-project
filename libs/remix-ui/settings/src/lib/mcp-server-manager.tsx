@@ -19,6 +19,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingServer, setEditingServer] = useState<IMCPServer | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [alchemyEnabled, setAlchemyEnabled] = useState(false)
   const [formData, setFormData] = useState<Partial<IMCPServer>>({
     name: '',
     description: '',
@@ -34,6 +35,7 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
   useEffect(() => {
     loadServers()
     loadConnectionStatuses()
+    loadAlchemyConfig()
 
     // Set up periodic status refresh every 5 seconds
     const intervalId = setInterval(() => {
@@ -79,6 +81,35 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
       setConnectionStatuses(statusMap)
     } catch (error) {
       console.log('[MCP Settings] Failed to load MCP connection statuses:', error)
+    }
+  }
+
+  const loadAlchemyConfig = async () => {
+    try {
+      const savedConfig = await plugin.call('settings', 'get', 'settings/mcp/alchemy')
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig)
+        setAlchemyEnabled(parsed.enabled !== false)
+      }
+    } catch (error) {
+      console.log('[MCP Settings] Failed to load Alchemy config:', error)
+    }
+  }
+
+  const toggleAlchemy = async () => {
+    try {
+      const newEnabled = !alchemyEnabled
+      setAlchemyEnabled(newEnabled)
+
+      const config = {
+        enabled: newEnabled,
+        apiKey: undefined,
+        defaultNetwork: 'ethereum'
+      }
+
+      await plugin.call('settings', 'set', 'settings/mcp/alchemy', JSON.stringify(config))
+    } catch (error) {
+      console.error('[MCP Settings] Failed to toggle Alchemy:', error)
     }
   }
 
@@ -489,6 +520,31 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
           <span className="text-warning ms-1">●</span> Connecting
           <span className="text-danger ms-1">●</span> Error
           <span className="text-muted ms-1">○</span> Disconnected
+        </p>
+      </div>
+
+      <hr className="my-4" />
+
+      <div className="mt-3">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h6 className="mb-0">Alchemy Integration</h6>
+          <div className="form-check form-switch">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              role="switch"
+              checked={alchemyEnabled}
+              onChange={toggleAlchemy}
+              id="alchemyEnabledToggle"
+            />
+            <label className="form-check-label" htmlFor="alchemyEnabledToggle">
+              {alchemyEnabled ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+        </div>
+        <p className="small text-muted">
+          Enable Alchemy integration to access blockchain querying tools for token prices, balances, NFTs, and transaction history.
+          {alchemyEnabled && ' Please reload Remix IDE for changes to take effect.'}
         </p>
       </div>
     </div>

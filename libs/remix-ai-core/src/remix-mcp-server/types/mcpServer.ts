@@ -34,6 +34,12 @@ export interface RemixMCPServerConfig {
     analysis?: boolean;
     testing?: boolean;
     git?: boolean;
+    alchemy?: boolean;
+  };
+  alchemy?: {
+    enabled?: boolean;
+    apiKey?: string;
+    defaultNetwork?: 'ethereum' | 'polygon' | 'arbitrum' | 'optimism' | 'base';
   };
 }
 
