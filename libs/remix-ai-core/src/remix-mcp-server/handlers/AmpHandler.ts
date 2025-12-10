@@ -71,18 +71,14 @@ async function performAmpQuery<T = any>(
   baseUrl?: string,
   authToken?: string
 ): Promise<Array<T>> {
-  try {
-    const ampClient = await createAmpClient(baseUrl, authToken)
-    const data: Array<T> = []
+  const ampClient = await createAmpClient(baseUrl, authToken)
+  const data: Array<T> = []
 
-    for await (const batch of ampClient.query(query)) {
-      data.push(...batch)
-    }
-
-    return data
-  } catch (error) {
-    throw error
+  for await (const batch of ampClient.query(query)) {
+    data.push(...batch)
   }
+
+  return data
 }
 
 /**
