@@ -78,7 +78,7 @@ class FoundryPluginClient extends ElectronBasePluginRemixdClient {
     }
     
     compile() {
-        return new Promise((resolve, reject) => {            
+        return new Promise((resolve, reject) => {
             const cmd = `forge build`
             this.call('terminal', 'log', { type: 'log', value: `running ${cmd}` })
             const options = { cwd: this.currentSharedFolder, shell: true }

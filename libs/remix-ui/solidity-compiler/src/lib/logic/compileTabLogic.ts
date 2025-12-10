@@ -184,23 +184,6 @@ export class CompileTabLogic {
       this.api.saveCurrentFile()
       if (this.api.getFileManagerMode() === 'localhost' || this.api.isDesktop()) {
         if (externalCompType === 'hardhat') {
-          /*
-          => let the framework to use it's default config file
-          const { currentVersion, optimize, runs } = this.compiler.state
-          if (currentVersion) {
-            const fileContent = `module.exports = {
-              solidity: '${currentVersion.substring(0, currentVersion.indexOf('+commit'))}',
-              settings: {
-                optimizer: {
-                  enabled: ${optimize},
-                  runs: ${runs}
-                }
-              }
-            }
-            `
-            const configFilePath = 'remix-compiler.config.js'
-            this.api.writeFile(configFilePath, fileContent)
-            */
           if (window._matomoManagerInstance) {
             window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithHardhat')
           }
@@ -208,29 +191,7 @@ export class CompileTabLogic {
           }).catch((error) => {
             this.api.logToTerminal({ type: 'error', value: error })
           })
-          // }
         } else if (externalCompType === 'truffle') {
-          /*
-          => let the framework to use it's default config file
-          const { currentVersion, optimize, runs, evmVersion } = this.compiler.state
-          if (currentVersion) {
-            const fileContent = `module.exports = {
-              compilers: {
-                solc: {
-                  version: '${currentVersion.substring(0, currentVersion.indexOf('+commit'))}',
-                  settings: {
-                    optimizer: {
-                      enabled: ${optimize},
-                      runs: ${runs},
-                    },
-                    evmVersion: ${evmVersion}
-                  }
-                }
-              }
-            }`
-            const configFilePath = 'remix-compiler.config.js'
-            this.api.writeFile(configFilePath, fileContent)
-            */
           if (window._matomoManagerInstance) {
             window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithTruffle')
           }
@@ -238,25 +199,7 @@ export class CompileTabLogic {
           }).catch((error) => {
             this.api.logToTerminal({ type: 'error', value: error })
           })
-          // }
         } else if (externalCompType === 'foundry') {
-          /*
-          => let the framework to use it's default config file
-          const { currentVersion, optimize, runs } = this.compiler.state
-          if (currentVersion) {
-            const fileContent = `module.exports = {
-              solidity: '${currentVersion.substring(0, currentVersion.indexOf('+commit'))}',
-              settings: {
-                optimizer: {
-                  enabled: ${optimize},
-                  runs: ${runs}
-                }
-              }
-            }
-            `
-            const configFilePath = 'remix-compiler.config.js'
-            this.api.writeFile(configFilePath, fileContent)
-            */
           if (window._matomoManagerInstance) {
             window._matomoManagerInstance.trackEvent('compiler', 'runCompile', 'compileWithFoundry')
           }
@@ -264,7 +207,6 @@ export class CompileTabLogic {
           }).catch((error) => {
             this.api.logToTerminal({ type: 'error', value: error })
           })
-          // }
         }
       }
       if (externalCompType === 'remix' || !externalCompType) {

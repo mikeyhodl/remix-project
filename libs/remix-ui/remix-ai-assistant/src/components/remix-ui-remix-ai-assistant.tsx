@@ -82,7 +82,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const {
     isRecording,
     isTranscribing,
-    error: _transcriptionError, // Handled in onError callback
+    error,
     toggleRecording
   } = useAudioTranscription({
     model: 'whisper-v3',
