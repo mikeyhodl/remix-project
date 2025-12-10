@@ -4,8 +4,7 @@
     "sourceRoot": "libs/remix-solidity/src",
     "projectType": "library",
     "implicitDependencies": [
-      "remix-lib",
-      "remix-import-resolver"
+      "remix-lib"
     ],
     "targets": {
       "build": {
@@ -15,18 +14,10 @@
           "outputPath": "dist/libs/remix-solidity",
           "main": "libs/remix-solidity/src/index.ts",
           "tsConfig": "libs/remix-solidity/tsconfig.lib.json",
-          "buildLibsFromSource": false,
           "updateBuildableProjectDepsInPackageJson": false,
           "assets": [
             "libs/remix-solidity/*.md"
           ]
-        }
-      },
-      "test": {
-        "executor": "@nrwl/workspace:run-commands",
-        "options": {
-          "command": "TS_NODE_PROJECT=libs/remix-solidity/tsconfig.spec.json mocha -r ts-node/register -r tsconfig-paths/register \"libs/remix-solidity/test/**/*.spec.ts\"",
-          "cwd": "."
         }
       },
       "lint": {
