@@ -260,8 +260,9 @@ export class DependencyResolver {
         this.sourceFiles.set(actualPath, content)
       }
 
-      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^/]+@\d+\.\d+\.\d+\//)) {
-        const unversionedPath = resolvedPath.replace(/@([^@/]+(?:\/[^@/]+)?)@\d+\.\d+\.\d+\//, '@$1/')
+      // Create unversioned alias for npm packages with versions (supports scoped packages like @org/pkg@1.2.3)
+      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
+        const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
         this.sourceFiles.set(unversionedPath, content)
         this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
       }
