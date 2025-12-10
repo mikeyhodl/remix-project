@@ -24,13 +24,13 @@ export class PackageVersionResolver {
   public getWorkspaceResolution(name: string): string | undefined { return this.workspaceResolutions.get(name) }
   public hasLockFileVersion(name: string): boolean { return this.lockFileVersions.has(name) }
   public getLockFileVersion(name: string): string | undefined { return this.lockFileVersions.get(name) }
-  
+
   /** Clear cached workspace resolutions to force reload on next access. */
   public clearWorkspaceResolutions(): void {
     this.workspaceResolutions.clear()
     this.log(`[PkgVer] 🗑️  Cleared workspace resolutions cache`)
   }
-  
+
   /** Clear cached lockfile versions to force reload on next access. */
   public clearLockFileVersions(): void {
     this.lockFileVersions.clear()

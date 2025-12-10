@@ -109,7 +109,7 @@ contract Staking is BaseContract, Ownable, Pausable {
     // Local relative imports SHOULD appear as keys in the index (they need to be mapped!)
     const mappingKeys = Object.keys(mappings || {})
     const hasLocal = mappingKeys.some(k => k.includes('../base/BaseContract.sol') || k.includes('../libraries/Math.sol') || k.includes('../interfaces/IStorage.sol'))
-    expect(hasLocal).to.equal(true)  // Changed: local imports should be tracked
+    expect(hasLocal).to.equal(true) // Changed: local imports should be tracked
 
     // External OZ imports should be mapped to versioned namespace
     const hasOZ = mappingKeys.some(k => k.includes('@openzeppelin/contracts'))

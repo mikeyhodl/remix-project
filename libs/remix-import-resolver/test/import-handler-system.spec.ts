@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 /**
  * Import Handler System Tests
- * 
+ *
  * Demonstrates the pattern-based import handler system
  */
 
@@ -12,7 +12,7 @@ import { RemixTestLibsHandler } from '../src/compiler/handlers/remix-test-libs-h
 import { CustomTemplateHandler } from '../src/compiler/handlers/custom-template-handler'
 
 describe('Import Handler System', () => {
-  
+
   describe('ImportHandlerRegistry', () => {
     let registry: ImportHandlerRegistry
 

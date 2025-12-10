@@ -1,6 +1,6 @@
 /**
  * Example: Custom Import Handler
- * 
+ *
  * This demonstrates how to create a custom handler for specific import patterns.
  * For example, a handler that generates boilerplate test files on-the-fly.
  */
@@ -29,15 +29,15 @@ export class CustomTemplateHandler extends ImportHandler {
   async handle(context: ImportHandlerContext): Promise<ImportHandlerResult> {
     try {
       const content = await this.config.templateGenerator(context.importPath, context)
-      
+
       // Determine where to save
       const targetPath = context.targetPath || `.deps/custom/${context.importPath}`
-      
+
       // Save the generated content
       await this.config.io.writeFile(targetPath, content)
-      
+
       this.log(`✅ Generated and saved: ${targetPath}`)
-      
+
       return {
         handled: true,
         content,

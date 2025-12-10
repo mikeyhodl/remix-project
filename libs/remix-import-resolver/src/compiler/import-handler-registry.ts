@@ -1,6 +1,6 @@
 /**
  * ImportHandlerRegistry
- * 
+ *
  * Manages a collection of import handlers and executes them in priority order.
  */
 
@@ -57,10 +57,10 @@ export class ImportHandlerRegistry {
     for (const handler of this.handlers) {
       if (handler.canHandle(importPath)) {
         this.log(`🎯 Handler matched for "${importPath}": ${handler.getPattern()}`)
-        
+
         try {
           const result = await handler.handle(context)
-          
+
           if (result.handled) {
             this.log(`✅ Handler successfully processed "${importPath}"`)
             return result

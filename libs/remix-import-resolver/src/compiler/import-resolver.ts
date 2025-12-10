@@ -102,7 +102,7 @@ export class ImportResolver implements IImportResolver {
     this.fetchedGitHubPackages = new Set()
     this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
     this.handlerRegistry = new ImportHandlerRegistry(debug)
-    
+
     // Auto-register default handlers (enabled by default)
     if (options.registerDefaultHandlers !== false) {
       this.registerDefaultHandlers()
@@ -120,7 +120,7 @@ export class ImportResolver implements IImportResolver {
       debug: this.debug
     })
     this.handlerRegistry.register(testLibHandler)
-    
+
     if (this.debug) {
       console.log('[ImportResolver] Registered default handlers')
     }
@@ -235,19 +235,19 @@ export class ImportResolver implements IImportResolver {
         const packageJsonUrl = `${versionedPackageName}/package.json`
         const content = await this.contentFetcher.resolve(packageJsonUrl)
         packageJson = JSON.parse((content as any).content || (content as any))
-        
+
         // Extract expected version from versionedPackageName (e.g., "@openzeppelin/contracts@5.4.0" -> "5.4.0")
         const match = versionedPackageName.match(/@([^@]+)$/)
         const expectedVersion = match ? match[1] : null
         const fetchedVersion = packageJson.version
-        
+
         // Validate version match to prevent overwriting wrong package.json files
         // Allow semver ranges: @5 resolves to 5.x.x, @5.0 resolves to 5.0.x, @5.0.0 must match exactly
         if (expectedVersion && fetchedVersion && fetchedVersion !== expectedVersion) {
           // Check if expectedVersion is a semver range (e.g., "5" or "5.0")
           const expectedParts = expectedVersion.split('.')
           const fetchedParts = fetchedVersion.split('.')
-          
+
           // Validate that fetched version matches the specified range
           let isValidRange = true
           for (let i = 0; i < expectedParts.length && i < fetchedParts.length; i++) {
@@ -256,13 +256,13 @@ export class ImportResolver implements IImportResolver {
               break
             }
           }
-          
+
           if (!isValidRange) {
             this.log(`[ImportResolver] ⚠️  Version mismatch: expected ${expectedVersion}, got ${fetchedVersion}`)
             throw new Error(`Version mismatch: fetched ${fetchedVersion} but expected ${expectedVersion} for ${versionedPackageName}`)
           }
         }
-        
+
         await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
         this.log(`[ImportResolver] 💾 Saved package.json to: ${pkgJsonPath}`)
       }

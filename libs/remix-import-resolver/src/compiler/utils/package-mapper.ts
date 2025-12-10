@@ -87,13 +87,13 @@ export class PackageMapper {
           const realPackageName = (packageJson as any).name || packageName
           const fetchedVersion = (packageJson as any).version
           const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
-          
+
           // Validate that fetched version matches expected version to prevent corruption
           if (fetchedVersion && fetchedVersion !== resolvedVersion) {
             this.log(`[ImportResolver] ⚠️  Version mismatch: expected ${resolvedVersion}, got ${fetchedVersion} for ${packageName}`)
             throw new Error(`Version mismatch: fetched ${fetchedVersion} but expected ${resolvedVersion} for package ${packageName}`)
           }
-          
+
           await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
           this.log(`[ImportResolver] 💾 Saved package.json to: ${targetPath}`)
         } catch (saveErr) { this.log(`[ImportResolver] ⚠️  Failed to save package.json:`, saveErr) }

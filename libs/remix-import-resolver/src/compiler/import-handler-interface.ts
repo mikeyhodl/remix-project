@@ -1,6 +1,6 @@
 /**
  * ImportHandler Interface
- * 
+ *
  * Defines the contract for handling special import patterns.
  * Handlers can intercept imports matching specific patterns and generate/resolve content.
  */

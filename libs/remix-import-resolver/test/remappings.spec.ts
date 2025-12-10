@@ -8,11 +8,11 @@ import { join } from 'path'
 
 /**
  * Remapping Test Suite
- * 
+ *
  * Based on Foundry and Hardhat remapping conventions:
  * - https://getfoundry.sh/guides/project-setup/dependencies/
  * - https://hardhat.org/docs/guides/writing-contracts/remappings
- * 
+ *
  * Test scenarios:
  * 1. Basic prefix remapping (Foundry style: @openzeppelin/=lib/openzeppelin/)
  * 2. NPM alias remapping (@openzeppelin/contracts@5.0.2/=npm:@openzeppelin/contracts@5.0.2/)
@@ -41,7 +41,7 @@ describe('Import Remappings (Unit Tests)', () => {
     it('should remap simple prefix without trailing slash', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       // Foundry style: oz/=@openzeppelin/contracts/
       resolver.setRemappings([
         { from: 'oz/', to: '@openzeppelin/contracts/' }
@@ -57,25 +57,25 @@ contract Test {}
       `.trim())
 
       const bundle = await resolver.buildDependencyTree('contracts/Test.sol')
-      
+
       // Should have resolved the remapped import
       expect(bundle.size).to.be.greaterThan(1)
-      
+
       // Check that remapped path was resolved
       const sources = resolver.toCompilerInput()
       const keys = Object.keys(sources)
-      
+
       // Should have the original import path AND the remapped path
       const hasOriginal = keys.some(k => k.includes('oz/token/ERC20/ERC20.sol'))
       const hasRemapped = keys.some(k => k.includes('@openzeppelin/contracts') && k.includes('ERC20.sol'))
-      
+
       expect(hasOriginal || hasRemapped, 'Should have oz/ or remapped @openzeppelin path').to.be.true
     }).timeout(30000)
 
     it('should remap with trailing slash', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       resolver.setRemappings([
         { from: '@oz/', to: '@openzeppelin/contracts@5.0.2/' }
       ])
@@ -90,10 +90,10 @@ contract Test {}
 
       const bundle = await resolver.buildDependencyTree('contracts/Test.sol')
       expect(bundle.size).to.be.greaterThan(1)
-      
+
       const sources = resolver.toCompilerInput()
       const keys = Object.keys(sources)
-      
+
       // Should have resolved to versioned OpenZeppelin
       const hasVersioned = keys.some(k => k.includes('@openzeppelin/contracts@5.0.2'))
       expect(hasVersioned, 'Should resolve to @openzeppelin/contracts@5.0.2').to.be.true
@@ -104,7 +104,7 @@ contract Test {}
     it('should handle npm: prefix remapping (prevents infinite loops)', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       // This pattern could cause infinite loops if not handled correctly
       resolver.setRemappings([
         { from: '@openzeppelin/contracts@5.0.2/', to: 'npm:@openzeppelin/contracts@5.0.2/' }
@@ -120,21 +120,21 @@ contract Test {}
 
       const bundle = await resolver.buildDependencyTree('contracts/Test.sol')
       expect(bundle.size).to.be.greaterThan(1)
-      
+
       const sources = resolver.toCompilerInput()
       const keys = Object.keys(sources)
-      
+
       // Should have the file under BOTH keys (original and npm: prefixed)
       const hasOriginal = keys.some(k => k.includes('@openzeppelin/contracts@5.0.2/utils/Strings.sol'))
       const hasNpmPrefixed = keys.some(k => k.includes('npm:@openzeppelin/contracts@5.0.2/utils/Strings.sol'))
-      
+
       expect(hasOriginal || hasNpmPrefixed, 'Should have file under at least one key').to.be.true
     }).timeout(30000)
 
     it('should handle multiple versioned remappings from same package', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       resolver.setRemappings([
         { from: '@openzeppelin/contracts@4.9.6/', to: 'npm:@openzeppelin/contracts@4.9.6/' },
         { from: '@openzeppelin/contracts@5.0.2/', to: 'npm:@openzeppelin/contracts@5.0.2/' }
@@ -151,14 +151,14 @@ contract Test {}
 
       const bundle = await resolver.buildDependencyTree('contracts/Test.sol')
       expect(bundle.size).to.be.greaterThan(2)
-      
+
       const sources = resolver.toCompilerInput()
       const keys = Object.keys(sources)
-      
+
       // Should have both versions
       const hasV4 = keys.some(k => k.includes('@openzeppelin/contracts@4.9.6'))
       const hasV5 = keys.some(k => k.includes('@openzeppelin/contracts@5.0.2'))
-      
+
       expect(hasV4, 'Should have v4.9.6').to.be.true
       expect(hasV5, 'Should have v5.0.2').to.be.true
     }).timeout(30000)
@@ -177,7 +177,7 @@ contract Test {}
     it('should not apply remapping to paths that already have npm: prefix', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       // This should NOT cause infinite loop
       resolver.setRemappings([
         { from: '@openzeppelin/contracts@5.0.2/', to: 'npm:@openzeppelin/contracts@5.0.2/' }
@@ -199,7 +199,7 @@ contract Test {}
     it('should handle remapping without trailing slash concatenation correctly', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       // Without trailing slash, concatenation should work: @oz + token/... = @oztoken/...
       resolver.setRemappings([
         { from: '@oz', to: '@openzeppelin/contracts' }
@@ -222,7 +222,7 @@ contract Test {}
     it('should store files under both original and remapped keys for compiler lookup', async () => {
       const io = new NodeIOAdapter()
       const resolver = new DependencyResolver(io as any, 'contracts/Test.sol', true)
-      
+
       resolver.setRemappings([
         { from: 'oz/', to: '@openzeppelin/contracts@5.0.2/' }
       ])
@@ -237,22 +237,22 @@ contract Test {}
 
       const bundle = await resolver.buildDependencyTree('contracts/Test.sol')
       const sources = resolver.toCompilerInput()
-      
+
       // CRITICAL: The Solidity compiler will apply remappings and look for files
       // under the REMAPPED key. We must store content under both keys.
       const keys = Object.keys(sources)
-      
+
       // After remapping, compiler looks for: oz/token/ERC20/ERC20.sol
       // But our resolver saved it as: @openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol
       // We need BOTH keys to exist!
-      
+
       const hasOriginalImportPath = keys.some(k => k === 'oz/token/ERC20/ERC20.sol')
       const hasResolvedPath = keys.some(k => k.includes('@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol'))
-      
+
       // At least one should exist (ideally both)
-      expect(hasOriginalImportPath || hasResolvedPath, 
+      expect(hasOriginalImportPath || hasResolvedPath,
         'Should have file under original import path or resolved path').to.be.true
-      
+
       console.log('Available keys:', keys.filter(k => k.includes('ERC20')))
     }).timeout(30000)
   })

@@ -33,7 +33,7 @@ export class DependencyResolvingCompiler extends Compiler {
   public compile(sources: Source, target: string): void {
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`)
     this.performSmartCompilation(sources, target).catch(error => {
-      
+
       if (this.debug) {
         console.log(`[DependencyResolvingCompiler] ❌ Smart compilation failed:`, error)
       }
@@ -47,7 +47,7 @@ export class DependencyResolvingCompiler extends Compiler {
         null,
         this.state.currentVersion
       ])
-        
+
     })
   }
 
@@ -56,7 +56,7 @@ export class DependencyResolvingCompiler extends Compiler {
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
     depResolver.setCacheEnabled(true)
-    
+
     // Load remappings from remappings.txt if it exists
     try {
       const fileManager = this.pluginApi as any
@@ -68,7 +68,7 @@ export class DependencyResolvingCompiler extends Compiler {
           const [from, to] = line.split('=')
           return { from: from?.trim(), to: to?.trim() }
         }).filter(r => r.from && r.to)
-        
+
         console.log(`[DependencyResolvingCompiler] 📋 Loaded ${remappings.length} remappings from remappings.txt:`)
         remappings.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
         depResolver.setRemappings(remappings)
@@ -78,7 +78,7 @@ export class DependencyResolvingCompiler extends Compiler {
     } catch (err) {
       console.log(`[DependencyResolvingCompiler] ⚠️  Failed to load remappings:`, err)
     }
-    
+
     let sourceBundle
     try {
       sourceBundle = await depResolver.buildDependencyTree(target)
@@ -122,6 +122,6 @@ export class DependencyResolvingCompiler extends Compiler {
       console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
     }
     // 6) Delegate to base compiler
-  super.compile(resolvedSources, target)
+    super.compile(resolvedSources, target)
   }
 }

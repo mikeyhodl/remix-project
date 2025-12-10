@@ -1,10 +1,10 @@
 /**
  * RemixTestLibsHandler
- * 
+ *
  * Handles special imports for Remix testing libraries:
  * - remix_tests.sol
  * - remix_accounts.sol
- * 
+ *
  * These files are generated dynamically by calling the solidityUnitTesting plugin
  * or can be provided directly if running in a non-plugin context.
  */
@@ -64,7 +64,7 @@ export class RemixTestLibsHandler extends ImportHandler {
       try {
         await (this.config.pluginApi as any).call('solidityUnitTesting', 'createTestLibs')
         this.log(`✅ Called solidityUnitTesting.createTestLibs() for ${fileName}`)
-        
+
         // Now read the generated file
         if (await this.config.io.exists(expectedPath)) {
           const content = await this.config.io.readFile(expectedPath)

@@ -15,10 +15,10 @@ export { FileResolutionIndex } from './compiler/file-resolution-index'
 export { ResolutionIndex } from './compiler/resolution-index'
 
 // Import Handler System
-export type { 
-  IImportHandler, 
-  ImportHandlerContext, 
-  ImportHandlerResult 
+export type {
+  IImportHandler,
+  ImportHandlerContext,
+  ImportHandlerResult
 } from './compiler/import-handler-interface'
 export { ImportHandler } from './compiler/import-handler-interface'
 export { ImportHandlerRegistry } from './compiler/import-handler-registry'

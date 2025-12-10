@@ -75,7 +75,7 @@ describe('Resolution index includes transitive mappings for external package fil
 
     // 2) ERC20.sol source key should have relative imports recorded
     // The canonical source key is the versioned path without .deps/npm/ prefix
-    const erc20SourceKey = erc20Local.replace(/^\.deps\/npm\//, '') 
+    const erc20SourceKey = erc20Local.replace(/^\.deps\/npm\//, '')
     // Our index writing stores keys differently between Node and Plugin; try both
     const erc20KeyCandidates = [erc20SourceKey, erc20FilePath]
     const erc20Map = erc20KeyCandidates.map(k => idx[k]).find(Boolean)

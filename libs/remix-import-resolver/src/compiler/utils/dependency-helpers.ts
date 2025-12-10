@@ -6,22 +6,22 @@ const noop: LogFn = () => {}
 
 export function resolveRelativeImport(currentFile: string, importPath: string, log: LogFn = noop): string {
   if (!importPath.startsWith('./') && !importPath.startsWith('../')) return importPath
-  
+
   // Check if currentFile is a URL (has protocol like https://)
   const protocolMatch = currentFile.match(/^([a-zA-Z]+:\/\/)/)
   const protocol = protocolMatch ? protocolMatch[1] : ''
-  
+
   // Remove protocol temporarily for path manipulation
   const currentFileWithoutProtocol = protocol ? currentFile.substring(protocol.length) : currentFile
   const currentDir = currentFileWithoutProtocol.substring(0, currentFileWithoutProtocol.lastIndexOf('/'))
   const currentParts = currentDir.split('/').filter(p => p) // Filter out empty strings
   const importParts = importPath.split('/')
-  
+
   for (const part of importParts) {
     if (part === '..') currentParts.pop()
     else if (part !== '.' && part !== '') currentParts.push(part) // Also filter empty strings
   }
-  
+
   // Join parts and restore protocol if it existed
   const resolvedPath = protocol + currentParts.join('/')
   log(`[DependencyResolver]   🔗 Resolved relative import: ${importPath} → ${resolvedPath}`)
@@ -30,14 +30,14 @@ export function resolveRelativeImport(currentFile: string, importPath: string, l
 
 export function applyRemappings(importPath: string, remappings: Array<{ from: string; to: string }>, log: LogFn = noop): string {
   if (importPath.startsWith('./') || importPath.startsWith('../')) return importPath
-  
+
   // Skip remapping if the path already looks like it was remapped (has npm: prefix or is already in target form)
   // This prevents infinite loops from remappings like: @pkg@1.0.0/=npm:@pkg@1.0.0/
   if (importPath.startsWith('npm:')) {
     log(`[DependencyResolver]   ⏭️  Skipping remapping for already-prefixed path: ${importPath}`)
     return importPath
   }
-  
+
   for (const { from, to } of remappings || []) {
     if (!from) continue
     if (importPath === from || importPath.startsWith(from)) {
