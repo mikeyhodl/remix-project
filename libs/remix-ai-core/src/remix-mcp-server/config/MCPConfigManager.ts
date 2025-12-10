@@ -25,14 +25,12 @@ export class MCPConfigManager {
       if (exists) {
         const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
         const userConfig = JSON.parse(configContent);
-        // Merge with defaults
         this.config = this.mergeConfig(defaultMCPConfig, userConfig);
       } else {
         this.config = minimalMCPConfig;
-        // Create default config file
-        await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
       }
 
+      await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
       return this.config;
     } catch (error) {
       this.config = defaultMCPConfig;
@@ -85,6 +83,10 @@ export class MCPConfigManager {
 
   getResourceConfig() {
     return this.config.resources;
+  }
+
+  getAlchemyConfig() {
+    return this.config.alchemy;
   }
 
   updateConfig(partialConfig: Partial<MCPConfig>): void {

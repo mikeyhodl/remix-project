@@ -6,7 +6,7 @@ const profile = {
   name: 'config',
   displayName: 'Config',
   description: 'Config',
-  methods: ['getAppParameter', 'setAppParameter'],
+  methods: ['getAppParameter', 'setAppParameter', 'getEnv'],
   events: ['configChanged']
 }
 

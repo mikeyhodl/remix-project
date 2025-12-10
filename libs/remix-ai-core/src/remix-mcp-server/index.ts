@@ -14,6 +14,7 @@ export type {
   MCPSecurityConfig,
   MCPValidationConfig,
   MCPResourceConfig,
+  MCPAlchemyConfig,
 } from './types/mcpConfig';
 export { defaultMCPConfig } from './types/mcpConfig';
 

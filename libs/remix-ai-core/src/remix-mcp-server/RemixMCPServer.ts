@@ -161,6 +161,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
         console.log(`[RemixMCPServer] Failed to load MCP config: ${error.message}, using defaults`);
       }
 
+      await this.loadAlchemyConfig();
       await this.initializeDefaultTools();
       await this.initializeDefaultResourceProviders();
 
@@ -815,7 +816,8 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register Alchemy tools (only if enabled in config)
       if (this.isAlchemyEnabled()) {
         console.log('[RemixMCPServer] Alchemy integration enabled, registering Alchemy tools...');
-        const alchemyTools = createAlchemyTools();
+        const apiKey = await this.getAlchemyApiKey();
+        const alchemyTools = createAlchemyTools(apiKey);
         this._tools.registerBatch(alchemyTools);
         console.log(`[RemixMCPServer] Registered ${alchemyTools.length} Alchemy tools`);
       } else {
@@ -893,38 +895,42 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }
   }
 
+  private async loadAlchemyConfig(): Promise<void> {
+    try {
+      const savedConfig = await this._plugin.call('settings', 'get', 'settings/mcp/alchemy');
+      if (savedConfig !== undefined) {
+        const alchemyConfig = JSON.parse(savedConfig);
+        console.log('[RemixMCPServer] Loaded Alchemy config from settings:', alchemyConfig);
+
+        // Update the config manager
+        this._configManager.updateConfig({
+          alchemy: savedConfig ?  { enabled: true } : { enabled: false }
+        });
+
+        // Persist the updated config to the JSON file
+        const currentConfig = this._configManager.getConfig();
+        await this._configManager.saveConfig(currentConfig);
+        console.log('[RemixMCPServer] Synced Alchemy config to .mcp.config.json');
+      } else {
+        console.log('[RemixMCPServer] No Alchemy config found in settings, using defaults');
+      }
+    } catch (error) {
+      console.log('[RemixMCPServer] Failed to load Alchemy config:', error);
+    }
+  }
+
   private isAlchemyEnabled(): boolean {
-    const featureEnabled = this._config.features?.alchemy !== false;
-    const alchemyEnabled = this._config.alchemy?.enabled !== false;
-    console.log(`Alchemy feature is ${featureEnabled ? 'enabled' : 'disabled'} in configuration`);
-    console.log(this._config)
-
-    // If alchemy config exists, use its enabled flag, otherwise use features flag
-    if (this._config.alchemy) {
-      return alchemyEnabled;
-    }
-
-    return featureEnabled;
+    const alchemyConfig = this._configManager.getAlchemyConfig();
+    return alchemyConfig?.enabled !== false;
   }
 
-  /**
-   * Get Alchemy API key from configuration or environment
-   */
-  getAlchemyApiKey(): string | undefined {
-    // First check config
-    if (this._config.alchemy?.apiKey) {
-      return this._config.alchemy.apiKey;
+  async getAlchemyApiKey(): Promise<string | undefined> {
+    const alchemyConfig = this._configManager.getAlchemyConfig();
+    if (alchemyConfig?.apiKey) {
+      return alchemyConfig.apiKey;
     }
-
-    // Fall back to environment variable
-    return process.env.ALCHEMY_API_KEY;
-  }
-
-  /**
-   * Get Alchemy default network from configuration
-   */
-  getAlchemyDefaultNetwork(): string {
-    return this._config.alchemy?.defaultNetwork || 'ethereum';
+    const authToken: string | undefined = await this.plugin.call('config', 'getEnv', 'ALCHEMY_API_KEY');
+    return authToken
   }
 
 }

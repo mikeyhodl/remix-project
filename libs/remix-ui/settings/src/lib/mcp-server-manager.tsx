@@ -102,13 +102,16 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
       const newEnabled = !alchemyEnabled
       setAlchemyEnabled(newEnabled)
 
-      const config = {
-        enabled: newEnabled,
-        apiKey: undefined,
-        defaultNetwork: 'ethereum'
-      }
 
-      await plugin.call('settings', 'set', 'settings/mcp/alchemy', JSON.stringify(config))
+      await plugin.call('settings', 'set', 'settings/mcp/alchemy', JSON.stringify(newEnabled))
+
+      // Notify RemixAI to reload Alchemy config and sync with JSON config
+      // try {
+      //   await plugin.call('remixAI', 'reloadAlchemyConfig')
+      //   console.log('[MCP Settings] Alchemy config reloaded and synced')
+      // } catch (error) {
+      //   console.log('[MCP Settings] Could not reload Alchemy config:', error)
+      // }
     } catch (error) {
       console.error('[MCP Settings] Failed to toggle Alchemy:', error)
     }

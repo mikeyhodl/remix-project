@@ -15,7 +15,15 @@ import { Plugin } from '@remixproject/engine';
  * Base class for Alchemy API handlers
  */
 abstract class AlchemyBaseHandler extends BaseToolHandler {
-  protected async callAlchemyApi(endpoint: string, method: string, params: any, apiKey?: string): Promise<any> {
+  protected apiKey: string | undefined;
+
+  constructor(apiKey?: string) {
+    super();
+    this.apiKey = apiKey;
+  }
+
+  protected async callAlchemyApi(endpoint: string, method: string, params: any): Promise<any> {
+    const apiKey = this.apiKey;
     if (!apiKey) {
       throw new Error('Alchemy API key not configured. Please set ALCHEMY_API_KEY in your configuration.');
     }
@@ -50,11 +58,6 @@ abstract class AlchemyBaseHandler extends BaseToolHandler {
     } catch (error) {
       throw new Error(`Failed to call Alchemy API: ${error.message}`);
     }
-  }
-
-  protected async getAlchemyApiKey(_plugin: Plugin) {
-    const authToken: string | undefined = await _plugin.call('config', 'getEnv', 'ALCHEMY_API_KEY');
-    return authToken
   }
 }
 
@@ -100,15 +103,13 @@ export class FetchTokenPriceBySymbolHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchTokenPriceBySymbol',
         'alchemy_fetchTokenPriceBySymbol',
         {
           symbol: args.symbol,
           network: args.network || 'ethereum'
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -166,15 +167,13 @@ export class FetchTokenPriceByAddressHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchTokenPriceByAddress',
         'alchemy_fetchTokenPriceByAddress',
         {
           address: args.address,
           network: args.network || 'ethereum'
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -236,7 +235,6 @@ export class FetchTokenPriceHistoryBySymbolHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchTokenPriceHistoryBySymbol',
         'alchemy_fetchTokenPriceHistoryBySymbol',
@@ -245,8 +243,7 @@ export class FetchTokenPriceHistoryBySymbolHandler extends AlchemyBaseHandler {
           startDate: args.startDate,
           endDate: args.endDate,
           network: args.network || 'ethereum'
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -317,15 +314,13 @@ export class FetchTokensOwnedHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchTokensOwnedByMultichainAddresses',
         'alchemy_fetchTokensOwnedByMultichainAddresses',
         {
           addresses: args.addresses,
           networks: args.networks || ['ethereum']
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -393,7 +388,6 @@ export class FetchNftsOwnedHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchNftsOwnedByMultichainAddresses',
         'alchemy_fetchNftsOwnedByMultichainAddresses',
@@ -401,8 +395,7 @@ export class FetchNftsOwnedHandler extends AlchemyBaseHandler {
           addresses: args.addresses,
           networks: args.networks || ['ethereum'],
           includeMetadata: args.includeMetadata || false
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -473,7 +466,6 @@ export class FetchTransactionHistoryHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchAddressTransactionHistory',
         'alchemy_fetchAddressTransactionHistory',
@@ -483,8 +475,7 @@ export class FetchTransactionHistoryHandler extends AlchemyBaseHandler {
           fromBlock: args.fromBlock,
           toBlock: args.toBlock,
           limit: args.limit || 100
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -556,7 +547,6 @@ export class FetchTransfersHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchTransfers',
         'alchemy_fetchTransfers',
@@ -566,8 +556,7 @@ export class FetchTransfersHandler extends AlchemyBaseHandler {
           fromBlock: args.fromBlock,
           toBlock: args.toBlock,
           category: args.category
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -624,15 +613,13 @@ export class FetchNftContractDataHandler extends AlchemyBaseHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const apiKey = await this.getAlchemyApiKey(plugin);
       const result = await this.callAlchemyApi(
         'fetchNftContractDataByMultichainAddress',
         'alchemy_fetchNftContractDataByMultichainAddress',
         {
           contractAddress: args.contractAddress,
           network: args.network || 'ethereum'
-        },
-        apiKey
+        }
       );
 
       return this.createSuccessResult({
@@ -654,71 +641,71 @@ export class FetchNftContractDataHandler extends AlchemyBaseHandler {
 /**
  * Create and export Alchemy tool definitions
  */
-export function createAlchemyTools(): RemixToolDefinition[] {
+export function createAlchemyTools(apiKey?: string): RemixToolDefinition[] {
   return [
     {
       name: 'alchemy_fetch_token_price_by_symbol',
       description: 'Get current token price by ticker symbol',
-      inputSchema: new FetchTokenPriceBySymbolHandler().inputSchema,
+      inputSchema: new FetchTokenPriceBySymbolHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:price:read'],
-      handler: new FetchTokenPriceBySymbolHandler()
+      handler: new FetchTokenPriceBySymbolHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_token_price_by_address',
       description: 'Get current token price by contract address',
-      inputSchema: new FetchTokenPriceByAddressHandler().inputSchema,
+      inputSchema: new FetchTokenPriceByAddressHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:price:read'],
-      handler: new FetchTokenPriceByAddressHandler()
+      handler: new FetchTokenPriceByAddressHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_token_price_history_by_symbol',
       description: 'Get historical token price data by symbol',
-      inputSchema: new FetchTokenPriceHistoryBySymbolHandler().inputSchema,
+      inputSchema: new FetchTokenPriceHistoryBySymbolHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:price:read'],
-      handler: new FetchTokenPriceHistoryBySymbolHandler()
+      handler: new FetchTokenPriceHistoryBySymbolHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_tokens_owned',
       description: 'Get token balances across multiple chains for given addresses',
-      inputSchema: new FetchTokensOwnedHandler().inputSchema,
+      inputSchema: new FetchTokensOwnedHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:balance:read'],
-      handler: new FetchTokensOwnedHandler()
+      handler: new FetchTokensOwnedHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_nfts_owned',
       description: 'Get NFTs owned across multiple chains for given addresses',
-      inputSchema: new FetchNftsOwnedHandler().inputSchema,
+      inputSchema: new FetchNftsOwnedHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:nft:read'],
-      handler: new FetchNftsOwnedHandler()
+      handler: new FetchNftsOwnedHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_transaction_history',
       description: 'Get transaction history for an address',
-      inputSchema: new FetchTransactionHistoryHandler().inputSchema,
+      inputSchema: new FetchTransactionHistoryHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:transaction:read'],
-      handler: new FetchTransactionHistoryHandler()
+      handler: new FetchTransactionHistoryHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_transfers',
       description: 'Get asset transfer details with filtering',
-      inputSchema: new FetchTransfersHandler().inputSchema,
+      inputSchema: new FetchTransfersHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:transfer:read'],
-      handler: new FetchTransfersHandler()
+      handler: new FetchTransfersHandler(apiKey)
     },
     {
       name: 'alchemy_fetch_nft_contract_data',
       description: 'Get NFT collection information by contract address',
-      inputSchema: new FetchNftContractDataHandler().inputSchema,
+      inputSchema: new FetchNftContractDataHandler(apiKey).inputSchema,
       category: ToolCategory.DEPLOYMENT,
       permissions: ['alchemy:nft:read'],
-      handler: new FetchNftContractDataHandler()
+      handler: new FetchNftContractDataHandler(apiKey)
     }
   ];
 }
