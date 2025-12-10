@@ -55,7 +55,7 @@ export class DependencyResolvingCompiler extends Compiler {
     // 1) Build deps
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, true)
-    depResolver.setCacheEnabled(false)
+    depResolver.setCacheEnabled(true)
     
     // Load remappings from remappings.txt if it exists
     try {

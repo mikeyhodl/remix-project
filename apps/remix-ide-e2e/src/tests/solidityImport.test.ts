@@ -71,6 +71,7 @@ module.exports = {
 
   'Test switch to a GitHub import from a solidity warning #group3': function (browser: NightwatchBrowser) {
     browser
+      .setSolidityCompilerVersion('soljson-v0.7.4+commit.3f05b770.js')
       .clickLaunchIcon('filePanel')
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('Untitled8.sol', sources[7]['Untitled8.sol'])

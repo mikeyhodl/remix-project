@@ -1411,6 +1411,87 @@ contract CommentedImports is ERC20 {
             ])
     },
 
+    'Test cache invalidation when package.json version changes #group31': function (browser: NightwatchBrowser) {
+        // This test validates that when a user changes package.json versions,
+        // the cached package.json files don't cause incorrect version resolution.
+        // 
+        // Bug scenario:
+        // 1. User has package.json with @openzeppelin/contracts@4.8.3
+        // 2. System fetches and caches .deps/npm/@openzeppelin/contracts@4.8.3/package.json
+        // 3. User changes package.json to @openzeppelin/contracts@5.4.0
+        // 4. System should fetch fresh 5.4.0 package.json, NOT use cached 4.8.3 data
+        
+        browser
+            .clickLaunchIcon('filePanel')
+            // Start with version 4.8.3
+            .addFile('package.json', {
+                content: `{
+  "name": "cache-test",
+  "dependencies": {
+    "@openzeppelin/contracts": "4.8.3"
+  }
+}`
+            })
+            .addFile('CacheTest.sol', {
+                content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+contract CacheTest is ERC20 {
+    constructor() ERC20("Test", "TST") {}
+}`
+            })
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+            .expandAllFolders()
+            
+            // Verify 4.8.3 was used
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]', 10000)
+            .openFile('.deps/npm/@openzeppelin/contracts@4.8.3/package.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                const pkg = JSON.parse(content)
+                ;(browser as any).assert.strictEqual(pkg.version, '4.8.3', 'Initial package.json should be version 4.8.3')
+            })
+            
+            // Now change to 5.4.0 - this is where cache can cause problems
+            .openFile('package.json')
+            .setEditorValue(`{
+  "name": "cache-test",
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  }
+}`)
+            .pause(1000)
+            
+            // Trigger re-compilation which should use NEW version
+            .openFile('CacheTest.sol')
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+            .expandAllFolders()
+            
+            // Verify 5.4.0 is now present
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
+            .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.4.0/package.json"]', 10000)
+            .openFile('.deps/npm/@openzeppelin/contracts@5.4.0/package.json')
+            .pause(1000)
+            .getEditorValue((content) => {
+                try {
+                    const pkg = JSON.parse(content)
+                    // This is the critical assertion: the 5.4.0 package.json must have version 5.4.0
+                    // NOT 4.8.3 due to cache corruption
+                    ;(browser as any).assert.strictEqual(pkg.version, '5.4.0', 'Updated package.json should be version 5.4.0, not cached 4.8.3')
+                    ;(browser as any).assert.strictEqual(pkg.name, '@openzeppelin/contracts', 'Package name should be correct')
+                } catch (e) {
+                    ;(browser as any).assert.fail('Package.json should be valid JSON with correct version: ' + (e as Error).message)
+                }
+            })
+    },
+
 }
 
 // Named source objects for each test group
