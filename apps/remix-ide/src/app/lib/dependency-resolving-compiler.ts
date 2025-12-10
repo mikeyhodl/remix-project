@@ -17,7 +17,7 @@ export class DependencyResolvingCompiler extends Compiler {
 
   constructor(
     pluginApi: Plugin,
-    importCallback?: (url: string, cb: (err: Error | null, result?: any) => void) => void,
+    importCallback?: (url: string, cb: (err: any, result?: any) => void) => void,
     _importResolverFactory?: (target: string) => any,
     debug: boolean = false
   ) {
@@ -121,7 +121,6 @@ export class DependencyResolvingCompiler extends Compiler {
       })
       console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
     }
-
     // 6) Delegate to base compiler
   super.compile(resolvedSources, target)
   }

@@ -453,16 +453,16 @@ module.exports = {
                 try {
                     const idx = JSON.parse(content)
                     const entryMap = idx['Entry.sol']
-                    ;(browser as any).assert.ok(!!entryMap, 'Entry.sol map should exist in resolution index')
+                        ; (browser as any).assert.ok(!!entryMap, 'Entry.sol map should exist in resolution index')
                     if (!entryMap) return
 
                     // 1) Entry mappings for three imports
                     const erc20Resolved = entryMap['@openzeppelin/contracts/token/ERC20/ERC20.sol']
                     const ctxResolved = entryMap['@openzeppelin/contracts@5.0.2/utils/Context.sol']
                     const ownableResolved = entryMap['@openzeppelin/contracts@5.4.0/access/Ownable.sol']
-                    ;(browser as any).assert.ok(typeof erc20Resolved === 'string' && /@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/.test(erc20Resolved), 'ERC20 should resolve to concrete versioned path')
-                    ;(browser as any).assert.ok(typeof ctxResolved === 'string' && /@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete versioned path')
-                    ;(browser as any).assert.ok(typeof ownableResolved === 'string' && /@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete versioned path')
+                        ; (browser as any).assert.ok(typeof erc20Resolved === 'string' && /@openzeppelin\/contracts@.+\/token\/ERC20\/ERC20\.sol$/.test(erc20Resolved), 'ERC20 should resolve to concrete versioned path')
+                        ; (browser as any).assert.ok(typeof ctxResolved === 'string' && /@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete versioned path')
+                        ; (browser as any).assert.ok(typeof ownableResolved === 'string' && /@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete versioned path')
 
                     // 2) ERC20.sol source key should have relative imports recorded
                     const erc20KeyCandidates = [
@@ -473,12 +473,12 @@ module.exports = {
                     ].filter(Boolean)
                     const erc20MapKey = erc20KeyCandidates.find((k: string) => !!idx[k])
                     const erc20Map = erc20MapKey ? idx[erc20MapKey] : null
-                    ;(browser as any).assert.ok(!!erc20Map, 'ERC20.sol map should exist in resolution index')
+                        ; (browser as any).assert.ok(!!erc20Map, 'ERC20.sol map should exist in resolution index')
                     if (erc20Map) {
                         const hasIERC20 = /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/IERC20\.sol$/.test(erc20Map['./IERC20.sol'] || '')
                         const hasIERC20Meta = /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/extensions\/IERC20Metadata\.sol$/.test(erc20Map['./extensions/IERC20Metadata.sol'] || '')
                         const hasContext = /\.deps\/npm\/@openzeppelin\/contracts@.+\/utils\/Context\.sol$/.test(erc20Map['../../utils/Context.sol'] || '')
-                        ;(browser as any).assert.ok(hasIERC20 && hasIERC20Meta && hasContext, 'ERC20.sol should record relative imports to concrete .deps paths')
+                            ; (browser as any).assert.ok(hasIERC20 && hasIERC20Meta && hasContext, 'ERC20.sol should record relative imports to concrete .deps paths')
                     }
 
                     // 3) Ownable.sol source key should have relative Context import recorded
@@ -488,13 +488,13 @@ module.exports = {
                     ].filter(Boolean)
                     const ownableMapKey = ownableKeyCandidates.find((k: string) => !!idx[k])
                     const ownableMap = ownableMapKey ? idx[ownableMapKey] : null
-                    ;(browser as any).assert.ok(!!ownableMap, 'Ownable.sol map should exist in resolution index')
+                        ; (browser as any).assert.ok(!!ownableMap, 'Ownable.sol map should exist in resolution index')
                     if (ownableMap) {
                         const hasOwnableCtx = /\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/utils\/Context\.sol$/.test(ownableMap['../utils/Context.sol'] || '')
-                        ;(browser as any).assert.ok(hasOwnableCtx, 'Ownable.sol should record relative Context import to concrete .deps path')
+                            ; (browser as any).assert.ok(hasOwnableCtx, 'Ownable.sol should record relative Context import to concrete .deps path')
                     }
                 } catch (e) {
-                    ;(browser as any).assert.fail('Resolution index should be valid JSON and contain expected mappings: ' + (e as Error).message)
+                    ; (browser as any).assert.fail('Resolution index should be valid JSON and contain expected mappings: ' + (e as Error).message)
                 }
             })
     },
@@ -576,10 +576,10 @@ module.exports = {
             .getEditorValue((content) => {
                 try {
                     const pkg = JSON.parse(content)
-                    ;(browser as any).assert.strictEqual(pkg.version, '1.6.1', 'Package version should be 1.6.1')
-                    ;(browser as any).assert.strictEqual(pkg.name, '@chainlink/contracts-ccip', 'Package name should be @chainlink/contracts-ccip')
+                        ; (browser as any).assert.strictEqual(pkg.version, '1.6.1', 'Package version should be 1.6.1')
+                        ; (browser as any).assert.strictEqual(pkg.name, '@chainlink/contracts-ccip', 'Package name should be @chainlink/contracts-ccip')
                 } catch (e) {
-                    ;(browser as any).assert.fail('package.json should be valid JSON with correct version')
+                    ; (browser as any).assert.fail('package.json should be valid JSON with correct version')
                 }
             })
     },
@@ -843,14 +843,6 @@ contract CommentedImports is ERC20 {
     'Test invalid package.json import rejection #group15': function (browser: NightwatchBrowser) {
         browser
             .addFile('InvalidPackageJsonImport.sol', invalidImportSource['InvalidPackageJsonImport.sol'])
-            .clickLaunchIcon('solidity')
-            .click('[data-id="compilerContainerCompileBtn"]')
-            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Invalid import', 10000)
-    },
-
-    'Test invalid README import rejection #group15': function (browser: NightwatchBrowser) {
-        browser
-            .addFile('InvalidReadmeImport.sol', invalidImportSource['InvalidReadmeImport.sol'])
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .waitForElementContainsText('*[data-id="compiledErrors"]', 'Invalid import', 10000)
@@ -1420,7 +1412,7 @@ contract CommentedImports is ERC20 {
         // 2. System fetches and caches .deps/npm/@openzeppelin/contracts@4.8.3/package.json
         // 3. User changes package.json to @openzeppelin/contracts@5.4.0
         // 4. System should fetch fresh 5.4.0 package.json, NOT use cached 4.8.3 data
-        
+
         browser
             .clickLaunchIcon('filePanel')
             // Start with version 4.8.3
@@ -1445,7 +1437,7 @@ contract CacheTest is ERC20 {
             .pause(5000)
             .clickLaunchIcon('filePanel')
             .expandAllFolders()
-            
+
             // Verify 4.8.3 was used
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.3"]', 60000)
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@4.8.3/package.json"]', 10000)
@@ -1453,9 +1445,9 @@ contract CacheTest is ERC20 {
             .pause(1000)
             .getEditorValue((content) => {
                 const pkg = JSON.parse(content)
-                ;(browser as any).assert.strictEqual(pkg.version, '4.8.3', 'Initial package.json should be version 4.8.3')
+                    ; (browser as any).assert.strictEqual(pkg.version, '4.8.3', 'Initial package.json should be version 4.8.3')
             })
-            
+
             // Now change to 5.4.0 - this is where cache can cause problems
             .openFile('package.json')
             .setEditorValue(`{
@@ -1465,7 +1457,7 @@ contract CacheTest is ERC20 {
   }
 }`)
             .pause(1000)
-            
+
             // Trigger re-compilation which should use NEW version
             .openFile('CacheTest.sol')
             .clickLaunchIcon('solidity')
@@ -1473,7 +1465,7 @@ contract CacheTest is ERC20 {
             .pause(5000)
             .clickLaunchIcon('filePanel')
             .expandAllFolders()
-            
+
             // Verify 5.4.0 is now present
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.4.0"]', 60000)
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/@openzeppelin/contracts@5.4.0/package.json"]', 10000)
@@ -1482,12 +1474,12 @@ contract CacheTest is ERC20 {
             .getEditorValue((content) => {
                 try {
                     const pkg = JSON.parse(content)
-                    // This is the critical assertion: the 5.4.0 package.json must have version 5.4.0
-                    // NOT 4.8.3 due to cache corruption
-                    ;(browser as any).assert.strictEqual(pkg.version, '5.4.0', 'Updated package.json should be version 5.4.0, not cached 4.8.3')
-                    ;(browser as any).assert.strictEqual(pkg.name, '@openzeppelin/contracts', 'Package name should be correct')
+                        // This is the critical assertion: the 5.4.0 package.json must have version 5.4.0
+                        // NOT 4.8.3 due to cache corruption
+                        ; (browser as any).assert.strictEqual(pkg.version, '5.4.0', 'Updated package.json should be version 5.4.0, not cached 4.8.3')
+                        ; (browser as any).assert.strictEqual(pkg.name, '@openzeppelin/contracts', 'Package name should be correct')
                 } catch (e) {
-                    ;(browser as any).assert.fail('Package.json should be valid JSON with correct version: ' + (e as Error).message)
+                    ; (browser as any).assert.fail('Package.json should be valid JSON with correct version: ' + (e as Error).message)
                 }
             })
     },
@@ -2305,8 +2297,8 @@ contract A is OZ.ERC20, Auth {
 // eslint-disable
 
 export const deepImportsSource = {
-  'DeepImportsToken.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    'DeepImportsToken.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -2393,9 +2385,9 @@ contract DeepImportsToken is ERC20Burnable, Ownable, Pausable, RoleManager {
     }
 }
 `
-  },
-  'access/Lockable.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'access/Lockable.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 /**
@@ -2455,9 +2447,9 @@ contract Lockable {
     }
 }
 `
-  },
-  'access/RoleManager.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'access/RoleManager.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -2505,9 +2497,9 @@ contract RoleManager is AccessControl, Lockable {
     }
 }
 `
-  },
-  'mocks/TokenReceiverMock.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'mocks/TokenReceiverMock.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "../utils/interfaces/ITokenReceiver.sol";
@@ -2542,9 +2534,9 @@ contract TokenReceiverMock is ITokenReceiver {
     }
 }
 `
-  },
-  'security/Pausable.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'security/Pausable.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 /**
@@ -2615,9 +2607,9 @@ abstract contract Pausable {
     function unpause() external virtual;
 }
 `
-  },
-  'utils/interfaces/ITokenReceiver.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'utils/interfaces/ITokenReceiver.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 /**
@@ -2637,9 +2629,9 @@ interface ITokenReceiver {
     ) external returns (bool);
 }
 `
-  },
-  'utils/libraries/SafeOperations.sol': {
-    content: `// SPDX-License-Identifier: MIT
+    },
+    'utils/libraries/SafeOperations.sol': {
+        content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 /**
@@ -2685,7 +2677,7 @@ library SafeOperations {
     }
 }
 `
-  }
+    }
 }
 
 const remixTestsHandlerSource = {

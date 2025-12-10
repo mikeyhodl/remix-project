@@ -41,7 +41,9 @@ export default class CompileTab extends CompilerApiMixin(ViewPlugin) { // implem
     this.compileTabLogic = new CompileTabLogic(
       this,
       undefined,
-      (api, debug) => new DependencyResolvingCompiler(api, undefined, undefined, debug)
+      (api, debug) => new DependencyResolvingCompiler(api, (url, cb) => {
+        cb(`${url} not found.`)
+      }, undefined, debug)
     )
     this.compiler = this.compileTabLogic.compiler
     this.compileTabLogic.init()
@@ -143,12 +145,12 @@ export default class CompileTab extends CompilerApiMixin(ViewPlugin) { // implem
         group: 6
       })
       this.on('fileManager', 'fileSaved', async (file) => {
-        if(file === remixConfigPath) {
+        if (file === remixConfigPath) {
           this.emit('configFileChanged', file)
         }
       })
       this.on('fileManager', 'fileAdded', async (file) => {
-        if(file === remixConfigPath) {
+        if (file === remixConfigPath) {
           this.emit('configFileChanged', file)
         }
       })

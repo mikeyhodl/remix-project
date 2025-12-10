@@ -122,6 +122,7 @@ export default class CodeParserCompiler {
     this.compiler = new DependencyResolvingCompiler(
       this.plugin,
       (url, cb) => {
+        cb(`${url} not found.`)
       },
       null, // importResolverFactory - not used by DependencyResolvingCompiler
       false // debug - set to false for code-parser to reduce noise
