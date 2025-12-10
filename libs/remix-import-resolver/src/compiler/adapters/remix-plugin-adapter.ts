@@ -9,6 +9,26 @@ export class RemixPluginAdapter implements IOAdapter {
 
   setCacheEnabled(enabled: boolean): void { this.cacheEnabled = !!enabled }
 
+  async isLocalhostConnected(): Promise<boolean> {
+    try {
+      const localhostProvider = await this.plugin.call('fileManager', 'getProviderByName', 'localhost')
+      return localhostProvider && localhostProvider.isConnected && localhostProvider.isConnected()
+    } catch {
+      return false
+    }
+  }
+
+  async addNormalizedName(normalizedPath: string, originalImport: string): Promise<void> {
+    try {
+      const localhostProvider = await this.plugin.call('fileManager', 'getProviderByName', 'localhost')
+      if (localhostProvider && localhostProvider.addNormalizedName) {
+        localhostProvider.addNormalizedName(normalizedPath, originalImport)
+      }
+    } catch (e) {
+      // Non-critical, just for IDE features
+    }
+  }
+
   async readFile(path: string): Promise<string> {
     return await this.plugin.call('fileManager', 'readFile', path)
   }

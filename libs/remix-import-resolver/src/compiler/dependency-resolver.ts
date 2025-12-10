@@ -114,6 +114,61 @@ export class DependencyResolver {
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules')
   }
 
+  /**
+   * Try to find a file in localhost (remixd) paths when it's not in the workspace.
+   * Checks in order: installed_contracts/, node_modules/, .deps/remix-tests/
+   */
+  private async tryLocalhostPaths(importPath: string): Promise<{ path: string; content: string } | null> {
+    // Check if localhost is connected using the IOAdapter interface
+    let isConnected = false
+    try {
+      if (typeof (this.io as any).isLocalhostConnected === 'function') {
+        isConnected = await (this.io as any).isLocalhostConnected()
+      }
+    } catch (err) {
+      this.log(`[DependencyResolver]   ⚠️  Error checking localhost connection:`, err)
+      isConnected = false
+    }
+
+    if (!isConnected) {
+      this.log(`[DependencyResolver]   ℹ️  Localhost not connected, skipping remixd paths`)
+      return null
+    }
+
+    this.log(`[DependencyResolver]   🔌 Localhost connected, trying remixd paths...`)
+
+    // Build candidate paths in order of importance
+    const candidatePaths = [
+      `localhost/installed_contracts/${importPath}`,
+      `localhost/node_modules/${importPath}`,
+      `localhost/.deps/remix-tests/${importPath}`
+    ]
+
+    // Try each path in order
+    for (const candidatePath of candidatePaths) {
+      try {
+        this.log(`[DependencyResolver]   🔍 Trying: ${candidatePath}`)
+        const content = await this.io.readFile(candidatePath)
+        if (content) {
+          this.log(`[DependencyResolver]   ✅ Found at: ${candidatePath}`)
+          // Record normalized name for IDE features
+          try {
+            if (typeof (this.io as any).addNormalizedName === 'function') {
+              await (this.io as any).addNormalizedName(candidatePath, importPath)
+            }
+          } catch { }
+          return { path: candidatePath, content }
+        }
+      } catch {
+        // File not found at this path, try next
+        continue
+      }
+    }
+
+    this.log(`[DependencyResolver]   ❌ Not found in any localhost paths`)
+    return null
+  }
+
   // moved to utils/dependency-helpers
 
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
@@ -144,34 +199,49 @@ export class DependencyResolver {
 
     try {
       let content: string
-      if (this.isLocalFile(importPath)) {
+      let actualPath = importPath // Track where we actually read from (might be localhost/...)
+      const isLocal = this.isLocalFile(importPath)
+      this.log(`[DependencyResolver]   🔍 isLocalFile("${importPath}") = ${isLocal}`)
+      if (isLocal) {
         this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
         try {
           content = await this.io.readFile(importPath)
         } catch (err) {
-          // Local absolute/relative file missing. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
-          this.log(`[DependencyResolver]   🔄 Local file not found, trying handler system...`)
-          try {
-            const handler = (this.resolver as any).getHandlerRegistry?.()
-            if (handler?.tryHandle) {
-              const ctx = { importPath, targetFile: (this.resolver as any).getTargetFile?.(), targetPath: undefined }
-              const res = await handler.tryHandle(ctx)
-              if (res?.handled && typeof res.content === 'string') {
-                content = res.content
+          // Local file not found. If remixd is connected, try node_modules/installed_contracts paths
+          this.log(`[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
+          
+          const localhostResult = await this.tryLocalhostPaths(importPath)
+          if (localhostResult) {
+            content = localhostResult.content
+            // Track the actual localhost path for internal use, but keep importPath as the key
+            actualPath = localhostResult.path
+            this.log(`[DependencyResolver]   ✅ Found at: ${actualPath}`)
+          } else {
+            // Still not found. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
+            this.log(`[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
+            try {
+              const handler = (this.resolver as any).getHandlerRegistry?.()
+              if (handler?.tryHandle) {
+                const ctx = { importPath, targetFile: (this.resolver as any).getTargetFile?.(), targetPath: undefined }
+                const res = await handler.tryHandle(ctx)
+                if (res?.handled && typeof res.content === 'string') {
+                  content = res.content
+                } else {
+                  throw new Error(`Local file not found and no handler matched: ${importPath}`)
+                }
               } else {
-                throw new Error(`Local file not found and no handler matched: ${importPath}`)
+                throw new Error(`Local file not found and handler registry unavailable: ${importPath}`)
               }
-            } else {
-              throw new Error(`Local file not found and handler registry unavailable: ${importPath}`)
+            } catch (e) {
+              // Emit warning and throw error to propagate to compiler
+              this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
+              try { await this.warnings.emitFailedToResolve(importPath) } catch { }
+              throw new Error(`File not found: ${importPath}`)
             }
-          } catch (e) {
-            // Emit warning and throw error to propagate to compiler
-            this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
-            try { await this.warnings.emitFailedToResolve(importPath) } catch { }
-            throw new Error(`File not found: ${importPath}`)
           }
         }
       } else {
+        this.log(`[DependencyResolver]   🌐 External import detected, delegating to ImportResolver`)
         content = await this.resolver.resolveAndSave(importPath, undefined, false)
       }
 
@@ -185,8 +255,10 @@ export class DependencyResolver {
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
       // Store content under the resolvedPath so bundle lookups during flatten match graph keys
       this.sourceFiles.set(resolvedPath, content)
-      // Also store under the original importPath as a convenience alias
-      if (resolvedPath !== importPath) this.sourceFiles.set(importPath, content)
+      // If we read from a different actual path (e.g., localhost/...), also store under that for internal lookups
+      if (actualPath !== importPath && actualPath !== resolvedPath) {
+        this.sourceFiles.set(actualPath, content)
+      }
 
       if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^/]+@\d+\.\d+\.\d+\//)) {
         const unversionedPath = resolvedPath.replace(/@([^@/]+(?:\/[^@/]+)?)@\d+\.\d+\.\d+\//, '@$1/')

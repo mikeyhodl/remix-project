@@ -446,6 +446,7 @@ export class ImportResolver implements IImportResolver {
     const packageName = parsePkgName(url, this.packageVersionResolver.getWorkspaceResolutions())
     if (!skipResolverMappings && packageName) {
       const hasVersion = url.includes(`${packageName}@`)
+      
       if (!hasVersion) {
         const res = await this.mapUnversionedImport(url, packageName, originalUrl, targetPath)
         if (typeof res === 'string') return res
