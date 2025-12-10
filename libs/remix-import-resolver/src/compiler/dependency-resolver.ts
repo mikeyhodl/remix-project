@@ -11,6 +11,25 @@ import { Logger } from './utils/logger'
 import { WarningSystem } from './utils/warning-system'
 
 /**
+ * Special npm imports that don't follow standard scoped package patterns.
+ * Maps import path patterns to their source key formats.
+ */
+const SPECIAL_NPM_IMPORTS: Array<{
+  pattern: RegExp
+  isNpmImport: (path: string) => boolean
+  getSourceKey: (path: string) => string
+  getUnversionedKey: (path: string) => string
+}> = [
+  {
+    // hardhat/console.sol → hardhat@X.Y.Z/console.sol (versioned) + hardhat/console.sol (unversioned)
+    pattern: /^hardhat\//,
+    isNpmImport: (path: string) => path.startsWith('hardhat/'),
+    getSourceKey: (path: string) => path, // Store under unversioned key (hardhat/console.sol)
+    getUnversionedKey: (path: string) => path // Already unversioned
+  }
+]
+
+/**
  * Pre-compilation dependency tree builder (Node-focused)
  *
  * Walks the Solidity import graph BEFORE compilation, tracking which file requests which import.
@@ -108,8 +127,8 @@ export class DependencyResolver {
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
     // Treat on-disk cached deps as local (they are already materialized in workspace)
     if (path.startsWith('.deps/')) return path.endsWith('.sol')
-    // Special case: hardhat/console.sol is an npm import, not a local file
-    if (path === 'hardhat/console.sol') return false
+    // Check special npm imports (e.g., hardhat/console.sol)
+    if (SPECIAL_NPM_IMPORTS.some(spec => spec.isNpmImport(path))) return false
     // Everything else that is a .sol path in the workspace (including relative paths) is local
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules')
   }
@@ -253,18 +272,34 @@ export class DependencyResolver {
       }
 
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
-      // Store content under the resolvedPath so bundle lookups during flatten match graph keys
-      this.sourceFiles.set(resolvedPath, content)
-      // If we read from a different actual path (e.g., localhost/...), also store under that for internal lookups
-      if (actualPath !== importPath && actualPath !== resolvedPath) {
-        this.sourceFiles.set(actualPath, content)
-      }
+      this.log(`[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
+      this.log(`[DependencyResolver]   📝 Actual path: ${actualPath}`)
+      this.log(`[DependencyResolver]   📄 Import path: ${importPath}`)
+      
+      // Check if this is a special npm import (e.g., hardhat/console.sol)
+      const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
+      
+      if (specialImport) {
+        // For special imports, store under BOTH the resolved versioned path AND the unversioned key
+        this.sourceFiles.set(resolvedPath, content) // e.g., hardhat@3.1.0/console.sol
+        const unversionedKey = specialImport.getUnversionedKey(importPath)
+        this.sourceFiles.set(unversionedKey, content) // e.g., hardhat/console.sol
+        this.log(`[DependencyResolver]   🔄 Special import stored under versioned (${resolvedPath}) and unversioned (${unversionedKey})`)
+      } else {
+        // Standard handling: store under resolvedPath
+        this.sourceFiles.set(resolvedPath, content)
+        
+        // If we read from a different actual path (e.g., localhost/...), also store under that
+        if (actualPath !== importPath && actualPath !== resolvedPath) {
+          this.sourceFiles.set(actualPath, content)
+        }
 
-      // Create unversioned alias for npm packages with versions (supports scoped packages like @org/pkg@1.2.3)
-      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
-        const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
-        this.sourceFiles.set(unversionedPath, content)
-        this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
+        // Create unversioned alias for npm packages with versions (supports scoped packages like @org/pkg@1.2.3)
+        if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
+          const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
+          this.sourceFiles.set(unversionedPath, content)
+          this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
+        }
       }
 
       // Derive package context from path, regardless of local vs external.
