@@ -52,8 +52,7 @@ export const AlchemySettings: React.FC<IAlchemySettingsProps> = ({ plugin }) => 
         defaultNetwork: config.defaultNetwork
       }
 
-      await plugin.call('settings', 'set', 'settings/mcp/alchemy', JSON.stringify(configToSave))
-
+      await plugin.call('settings', 'set', 'settings/mcp/alchemy', configToSave)
       setSavedMessage('Alchemy settings saved successfully! Please reload Remix IDE for changes to take effect.')
 
       setTimeout(() => {

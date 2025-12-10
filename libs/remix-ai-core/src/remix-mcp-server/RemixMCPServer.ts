@@ -899,18 +899,8 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     try {
       const savedConfig = await this._plugin.call('settings', 'get', 'settings/mcp/alchemy');
       if (savedConfig !== undefined) {
-        const alchemyConfig = JSON.parse(savedConfig);
-        console.log('[RemixMCPServer] Loaded Alchemy config from settings:', alchemyConfig);
-
-        // Update the config manager
-        this._configManager.updateConfig({
-          alchemy: savedConfig ?  { enabled: true } : { enabled: false }
-        });
-
-        // Persist the updated config to the JSON file
-        const currentConfig = this._configManager.getConfig();
-        await this._configManager.saveConfig(currentConfig);
-        console.log('[RemixMCPServer] Synced Alchemy config to .mcp.config.json');
+        this._configManager.getConfig().alchemy.enabled = savedConfig
+        await this._configManager.saveConfig(this._configManager.getConfig());
       } else {
         console.log('[RemixMCPServer] No Alchemy config found in settings, using defaults');
       }
