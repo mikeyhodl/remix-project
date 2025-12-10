@@ -92,15 +92,12 @@ module.exports = {
       .addFile('Untitled9.sol', sources[8]['Untitled9.sol'])
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
-      .pause(5000) // Wait for compilation and import resolution
       .clickLaunchIcon('filePanel')
+      .expandAllFolders()
       // Manually expand .deps folder structure
       .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
-      .click('*[data-id="treeViewDivDraggableItem.deps"]')
       .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
-      .click('*[data-id="treeViewDivDraggableItem.deps/npm"]')
       .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]', 60000)
-      .click('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin"]')
       // Check if versioned OpenZeppelin folder exists
       .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
       .verifyContracts(['test13', 'ERC20'], { wait: 30000 })
@@ -114,9 +111,7 @@ module.exports = {
       .addFile('Untitled10.sol', sources[9]['Untitled10.sol'])
       .clickLaunchIcon('solidity')
       .click('[data-id="compilerContainerCompileBtn"]')
-           .pause(5000)
       .expandAllFolders()
-           .pause()
       // Check if versioned OpenZeppelin folder exists (remapped via package.json)
       .waitForElementPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@"]', 60000)
       .verifyContracts(['test15', 'ERC20'], { wait: 30000 })

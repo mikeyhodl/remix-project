@@ -108,6 +108,8 @@ export class DependencyResolver {
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
     // Treat on-disk cached deps as local (they are already materialized in workspace)
     if (path.startsWith('.deps/')) return path.endsWith('.sol')
+    // Special case: hardhat/console.sol is an npm import, not a local file
+    if (path === 'hardhat/console.sol') return false
     // Everything else that is a .sol path in the workspace (including relative paths) is local
     return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules')
   }
