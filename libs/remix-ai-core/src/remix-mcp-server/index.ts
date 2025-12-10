@@ -6,10 +6,16 @@
 // Core Server
 export { RemixMCPServer } from './RemixMCPServer';
 import { RemixMCPServer } from './RemixMCPServer';
-import { defaultSecurityConfig } from './middleware/SecurityMiddleware';
-import { defaultValidationConfig } from './middleware/ValidationMiddleware';
-import type { SecurityConfig } from './middleware/SecurityMiddleware';
-import type { ValidationConfig } from './middleware/ValidationMiddleware';
+
+// Configuration
+export { MCPConfigManager } from './config/MCPConfigManager';
+export type {
+  MCPConfig,
+  MCPSecurityConfig,
+  MCPValidationConfig,
+  MCPResourceConfig,
+} from './types/mcpConfig';
+export { defaultMCPConfig } from './types/mcpConfig';
 
 // Tool Handlers
 export { createFileManagementTools } from './handlers/FileManagementHandler';
@@ -25,22 +31,14 @@ export { DeploymentResourceProvider } from './providers/DeploymentResourceProvid
 export { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 
 // Middleware
-export {
-  SecurityMiddleware,
-  defaultSecurityConfig
-} from './middleware/SecurityMiddleware';
 export type {
-  SecurityConfig,
   SecurityValidationResult,
+  SecurityMiddleware,
   AuditLogEntry
 } from './middleware/SecurityMiddleware';
 
-export {
-  ValidationMiddleware,
-  defaultValidationConfig
-} from './middleware/ValidationMiddleware';
 export type {
-  ValidationConfig,
+  ValidationMiddleware,
   ValidationResult,
   ValidationError,
   ValidationWarning
@@ -69,8 +67,8 @@ export async function createRemixMCPServer(
   options: {
     enableSecurity?: boolean;
     enableValidation?: boolean;
-    securityConfig?: SecurityConfig;
-    validationConfig?: ValidationConfig;
+    securityConfig?: any;
+    validationConfig?: any;
     customTools?: any[];
     customProviders?: any[];
     alchemy?: {
@@ -83,14 +81,11 @@ export async function createRemixMCPServer(
   const {
     enableSecurity = true,
     enableValidation = true,
-    securityConfig = defaultSecurityConfig,
-    validationConfig = defaultValidationConfig,
     customTools = [],
     customProviders = [],
     alchemy
   } = options;
 
-  // Create server with configuration
   const serverConfig = {
     name: 'Remix MCP Server',
     version: '1.0.0',
@@ -101,8 +96,8 @@ export async function createRemixMCPServer(
     resourceCacheTTL: 5000,
     enableResourceCache: false,
     security: enableSecurity ? {
-      enablePermissions: securityConfig.requirePermissions,
-      enableAuditLog: securityConfig.enableAuditLog,
+      enablePermissions: true,
+      enableAuditLog: true,
       allowedFilePatterns: [],
       blockedFilePatterns: []
     } : undefined,
@@ -125,29 +120,22 @@ export async function createRemixMCPServer(
 
   const server = new RemixMCPServer(plugin, serverConfig);
 
-  // Register custom tools if provided
   if (customTools.length > 0) {
-    // TODO: Add batch registration method to server
     // for (const tool of customTools) {
     //   server.registerTool(tool);
     // }
   }
 
-  // Register custom providers if provided
   if (customProviders.length > 0) {
-    // TODO: Add provider registration method to server
     // for (const provider of customProviders) {
     //   server.registerResourceProvider(provider);
     // }
   }
 
-  // Initialize the server
+  console.log("Initializing server")
   await server.initialize();
 
   return server;
 }
 
-/**
- * Default export
- */
 export default RemixMCPServer;

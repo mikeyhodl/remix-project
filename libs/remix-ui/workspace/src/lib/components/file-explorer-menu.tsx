@@ -3,7 +3,7 @@ import { FileExplorerMenuProps } from '../types'
 import { FileSystemContext } from '../contexts'
 import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
-import { MatomoEvent, FileExplorerEvent } from '@remix-api'
+import { MatomoEvent, FileExplorerEvent, MatomoCategories } from '@remix-api'
 import { Button, Dropdown } from 'react-bootstrap'
 import { createNewFile } from '../actions'
 
@@ -123,7 +123,14 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                 variant="secondary"
                 className="w-100 mb-1 d-flex flex-row align-items-center justify-content-center border"
                 data-id="fileExplorerCreateButton"
-                onClick={() => setIsCreateMenuOpen((prev) => !prev)}
+                onClick={() => {
+                  setIsCreateMenuOpen((prev) => !prev)
+                  trackMatomoEvent({
+                    category: MatomoCategories.FILE_EXPLORER,
+                    action: 'createMenuButtonOpen',
+                    isClick: true
+                  })
+                }}
                 style={{
                   color: '#fff'
                 }}
@@ -133,7 +140,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                   className="d-flex flex-row align-items-center justify-items-start me-5 w-50"
                 >
                   <i className="far fa-plus text-white me-2"></i>
-                  <span className="text-white fw-semibold">Create</span>
+                  <span className="text-white fw-semibold" style={{ fontSize: '1.05rem' }}>Create</span>
                 </div>
               </Dropdown.Toggle>
               <Dropdown.Menu className="w-100 custom-dropdown-items bg-light">
@@ -145,6 +152,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       onClick={async () => {
                         props.createNewFile()
                         await global.plugin.call('notification', 'toast', 'File created successfully')
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'createBlankFile',
+                          isClick: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -165,6 +177,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                           type: appActionTypes.showGenericModal,
                           payload: true
                         })
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'createNewFile',
+                          isClick: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -181,6 +198,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                       key={index}
                       onClick={async () => {
                         props.createNewFolder()
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'createNewFolder',
+                          isClick: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -201,6 +223,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                           type: appActionTypes.showGenericModal,
                           payload: true
                         })
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'importFromIpfs',
+                          isClick: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -219,6 +246,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                         e.preventDefault()
                         e.stopPropagation()
                         itemAction(action)
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'importFromLocalFileSystem',
+                          isClick: true
+                        })
                       }}
                     >
                       <span className="text-decoration-none">
@@ -238,6 +270,11 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                         appContext.appStateDispatch({
                           type: appActionTypes.showGenericModal,
                           payload: true
+                        })
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'importFromHttps',
+                          isClick: true
                         })
                       }}
                     >
