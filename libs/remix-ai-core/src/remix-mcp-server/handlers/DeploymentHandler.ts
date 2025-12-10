@@ -11,6 +11,7 @@ import {
   DeployContractArgs,
   CallContractArgs,
   SendTransactionArgs,
+  SimulateTransactionArgs,
   DeploymentResult,
   AccountInfo,
   ContractInteractionResult,
@@ -807,6 +808,120 @@ export class GetCurrentEnvironmentHandler extends BaseToolHandler {
 }
 
 /**
+ * Simulate Transaction Tool Handler
+ */
+export class SimulateTransactionHandler extends BaseToolHandler {
+  name = 'simulate_transaction';
+  description = 'Simulate a transaction using eth_simulateV1 RPC endpoint';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      from: {
+        type: 'string',
+        description: 'From address',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
+      to: {
+        type: 'string',
+        description: 'To address (optional for contract creation)',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
+      value: {
+        type: 'string',
+        description: 'Value in wei (optional)',
+        default: '0'
+      },
+      data: {
+        type: 'string',
+        description: 'Transaction data (hex)',
+        pattern: '^0x[a-fA-F0-9]*$'
+      },
+      validation: {
+        type: 'boolean',
+        description: 'Enable validation',
+        default: true
+      },
+      traceTransfers: {
+        type: 'boolean',
+        description: 'Enable trace transfers',
+        default: true
+      },
+      shouldDecodeLogs: {
+        type: 'boolean',
+        description: 'Whether to decode logs',
+        default: true
+      }
+    },
+    required: ['from']
+  };
+
+  getPermissions(): string[] {
+    return ['transaction:simulate'];
+  }
+
+  validate(args: SimulateTransactionArgs): boolean | string {
+    const required = this.validateRequired(args, ['from']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      from: 'string',
+      to: 'string',
+      value: 'string',
+      data: 'string',
+      validation: 'boolean',
+      traceTransfers: 'boolean',
+      shouldDecodeLogs: 'boolean'
+    });
+    if (types !== true) return types;
+
+    if (!args.from.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Invalid from address format';
+    }
+
+    if (args.to && !args.to.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Invalid to address format';
+    }
+
+    if (args.data && !args.data.match(/^0x[a-fA-F0-9]*$/)) {
+      return 'Invalid data format (must be hex)';
+    }
+
+    return true;
+  }
+
+  async execute(args: SimulateTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Call the transactionSimulator plugin's simulateTransaction method
+      const simulationResult = await plugin.call(
+        'transactionSimulator',
+        'simulateTransaction',
+        args.from,
+        args.to,
+        args.value,
+        args.data,
+        args.validation !== false,
+        args.traceTransfers !== false,
+        args.shouldDecodeLogs !== false
+      );
+
+      if (!simulationResult.success) {
+        return this.createErrorResult(
+          `Simulation failed: ${simulationResult.error || 'Unknown error'}`
+        );
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        ...simulationResult
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Transaction simulation failed: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create deployment and interaction tool definitions
  */
 export function createDeploymentTools(): RemixToolDefinition[] {
@@ -890,6 +1005,14 @@ export function createDeploymentTools(): RemixToolDefinition[] {
       category: ToolCategory.DEPLOYMENT,
       permissions: ['transaction:send'],
       handler: new RunScriptHandler()
+    },
+    {
+      name: 'simulate_transaction',
+      description: 'Simulate a transaction using eth_simulateV1 RPC endpoint',
+      inputSchema: new SimulateTransactionHandler().inputSchema,
+      category: ToolCategory.DEPLOYMENT,
+      permissions: ['transaction:simulate'],
+      handler: new SimulateTransactionHandler()
     }
   ];
 }
