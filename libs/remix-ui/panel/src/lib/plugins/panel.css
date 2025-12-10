@@ -118,6 +118,11 @@ iframe {
     height: 20%;
 }
 
+.terminal-wrap.maximized {
+    height: 100% !important;
+    flex: 1;
+}
+
 .terminal-wrap.minimized {
     height: 2rem !important;
 }

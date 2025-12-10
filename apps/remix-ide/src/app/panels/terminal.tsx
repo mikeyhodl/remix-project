@@ -231,6 +231,9 @@ export default class Terminal extends Plugin {
         wraps.forEach((wrap: HTMLElement) => {
           if (!wrap.classList.contains('terminal-wrap')) {
             wrap.classList.add('d-none')
+          } else {
+            // Add maximized class to terminal-wrap
+            wrap.classList.add('maximized')
           }
         })
       }
@@ -246,6 +249,10 @@ export default class Terminal extends Plugin {
         const wraps = mainView.querySelectorAll('[class*="-wrap"]')
         wraps.forEach((wrap: HTMLElement) => {
           wrap.classList.remove('d-none')
+          // Remove maximized class from terminal-wrap
+          if (wrap.classList.contains('terminal-wrap')) {
+            wrap.classList.remove('maximized')
+          }
         })
       }
 
