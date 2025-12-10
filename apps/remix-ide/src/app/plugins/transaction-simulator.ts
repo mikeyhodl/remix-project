@@ -236,7 +236,7 @@ export class TransactionSimulator extends Plugin {
       }
 
       let network = await this.call('network', 'detectNetwork')
-      const webDebugNode = init.web3DebugNode(network.name)
+      const webDebugNode = init.web3DebugNode(network.id)
       if (!webDebugNode) {
         throw new Error('No debug node available for the current network')
       }
