@@ -133,6 +133,16 @@ export interface SendTransactionArgs {
   account?: string;
 }
 
+export interface SimulateTransactionArgs {
+  from: string;
+  to?: string;
+  value?: string;
+  data?: string;
+  validation?: boolean;
+  traceTransfers?: boolean;
+  shouldDecodeLogs?: boolean;
+}
+
 export interface RunScriptArgs {
   file: string
 }
