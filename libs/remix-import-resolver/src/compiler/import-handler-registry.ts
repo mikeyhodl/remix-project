@@ -5,13 +5,14 @@
  */
 
 import { IImportHandler, ImportHandlerContext, ImportHandlerResult } from './import-handler-interface'
+import { Logger } from './utils/logger'
 
 export class ImportHandlerRegistry {
   private handlers: IImportHandler[] = []
-  private debug: boolean
+  private logger: Logger
 
   constructor(debug: boolean = false) {
-    this.debug = debug
+    this.logger = new Logger(undefined, debug)
   }
 
   /**
@@ -85,8 +86,6 @@ export class ImportHandlerRegistry {
   }
 
   private log(message: string, ...args: any[]): void {
-    if (this.debug) {
-      console.log(`[ImportHandlerRegistry] ${message}`, ...args)
-    }
+    this.logger.logIf('importHandlerRegistry', `[ImportHandlerRegistry] ${message}`, ...args)
   }
 }

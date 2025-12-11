@@ -1,4 +1,5 @@
 import type { IOAdapter } from './adapters/io-adapter'
+import { Logger } from './utils/logger'
 
 /**
  * FileResolutionIndex (Node)
@@ -12,10 +13,15 @@ export class FileResolutionIndex {
   private isDirty = false
   private loadPromise: Promise<void> | null = null
   private isLoaded = false
+  private logger: Logger
 
-  constructor(private io: IOAdapter, private debug = false) {}
+  constructor(private io: IOAdapter, private debug = false) {
+    this.logger = new Logger(undefined, debug)
+  }
 
-  private log(message: string, ...args: any[]) { if (this.debug) console.log(message, ...args) }
+  private log(message: string, ...args: any[]) { 
+    this.logger.logIf('fileResolutionIndex', message, ...args)
+  }
 
   /** Load the index from disk once per process (idempotent). */
   async load(): Promise<void> {

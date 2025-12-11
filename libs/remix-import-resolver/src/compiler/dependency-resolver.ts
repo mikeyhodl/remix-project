@@ -30,6 +30,20 @@ const SPECIAL_NPM_IMPORTS: Array<{
 ]
 
 /**
+ * Debug configuration options for DependencyResolver
+ */
+export interface DependencyResolverDebugConfig {
+  enabled?: boolean          // Master switch - if false, all logging disabled
+  tree?: boolean            // Dependency tree building logs
+  fileProcessing?: boolean  // Individual file processing logs
+  imports?: boolean         // Import extraction and resolution logs
+  storage?: boolean         // Source file storage logs (keys, aliases)
+  localhost?: boolean       // Localhost/remixd resolution logs
+  packageContext?: boolean  // Package context tracking logs
+  resolutionIndex?: boolean // Resolution index operations logs
+}
+
+/**
  * Pre-compilation dependency tree builder (Node-focused)
  *
  * Walks the Solidity import graph BEFORE compilation, tracking which file requests which import.
@@ -43,7 +57,7 @@ export class DependencyResolver {
   private processedFiles: Set<string> = new Set()
   private importGraph: Map<string, Set<string>> = new Map()
   private fileToPackageContext: Map<string, string> = new Map()
-  private debug: boolean = false
+  private debugConfig: DependencyResolverDebugConfig
   private remappings: Array<{ from: string; to: string }> = []
   private resolutionIndex: ResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
@@ -56,21 +70,48 @@ export class DependencyResolver {
    * Inputs:
    * - pluginApi or io: Remix plugin API or IOAdapter implementation
    * - targetFile: path used for resolution index scoping
-   * - debug: enable verbose logs
+   * - debug: enable verbose logs (boolean for backwards compat, or object for granular control)
    */
-  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean)
-  constructor(io: IOAdapter, targetFile: string, debug?: boolean)
-  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false) {
+  constructor(pluginApi: Plugin, targetFile: string, debug?: boolean | DependencyResolverDebugConfig)
+  constructor(io: IOAdapter, targetFile: string, debug?: boolean | DependencyResolverDebugConfig)
+  constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean | DependencyResolverDebugConfig = false) {
     const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
     this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as any) : (pluginOrIo as IOAdapter)
-    this.debug = debug
-    this.logger = new Logger(this.pluginApi || undefined, debug)
-    this.warnings = new WarningSystem(this.logger, { verbose: !!debug })
-    if (isPlugin) {
-      this.resolver = new ImportResolver(this.pluginApi as any, targetFile, debug)
+    
+    // Handle both boolean (backwards compat) and object debug config
+    if (typeof debug === 'boolean') {
+      this.debugConfig = {
+        enabled: debug,
+        tree: debug,
+        fileProcessing: debug,
+        imports: debug,
+        storage: debug,
+        localhost: debug,
+        packageContext: debug,
+        resolutionIndex: debug
+      }
     } else {
-      this.resolver = new ImportResolver(this.io, targetFile, debug)
+      this.debugConfig = {
+        enabled: debug.enabled ?? false,
+        tree: debug.tree ?? debug.enabled ?? false,
+        fileProcessing: debug.fileProcessing ?? debug.enabled ?? false,
+        imports: debug.imports ?? debug.enabled ?? false,
+        storage: debug.storage ?? debug.enabled ?? false,
+        localhost: debug.localhost ?? debug.enabled ?? false,
+        packageContext: debug.packageContext ?? debug.enabled ?? false,
+        resolutionIndex: debug.resolutionIndex ?? debug.enabled ?? false
+      }
+    }
+    
+    const legacyDebug = this.debugConfig.enabled || false
+    console.log(`[DependencyResolver] 🧠 Created with debug=`, this.debugConfig)
+    this.logger = new Logger(this.pluginApi || undefined, legacyDebug)
+    this.warnings = new WarningSystem(this.logger, { verbose: !!legacyDebug })
+    if (isPlugin) {
+      this.resolver = new ImportResolver(this.pluginApi as any, targetFile, legacyDebug)
+    } else {
+      this.resolver = new ImportResolver(this.io, targetFile, legacyDebug)
     }
   }
 
@@ -89,7 +130,13 @@ export class DependencyResolver {
   }
 
   private log(message: string, ...args: any[]): void {
-    if (this.debug) console.log(message, ...args)
+    if (!this.debugConfig.enabled) return
+    console.log(message, ...args)
+  }
+
+  private logIf(category: keyof DependencyResolverDebugConfig, message: string, ...args: any[]): void {
+    if (!this.debugConfig.enabled) return
+    if (this.debugConfig[category]) console.log(message, ...args)
   }
 
   /**
@@ -97,7 +144,7 @@ export class DependencyResolver {
    * Output: Map<originalImportPath, content>
    */
   public async buildDependencyTree(entryFile: string): Promise<Map<string, string>> {
-    this.log(`[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
+    this.logIf('tree', `[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
     this.sourceFiles.clear()
     this.processedFiles.clear()
     this.importGraph.clear()
@@ -105,8 +152,8 @@ export class DependencyResolver {
     // Ensure resolution index is loaded so we can record per-file mappings
     if (!this.resolutionIndex) {
       this.resolutionIndex = this.pluginApi
-        ? new ResolutionIndex(this.pluginApi as any, this.debug)
-        : (new FileResolutionIndex(this.io, this.debug) as unknown as ResolutionIndex)
+        ? new ResolutionIndex(this.pluginApi as any, this.debugConfig.enabled || false)
+        : (new FileResolutionIndex(this.io, this.debugConfig.enabled || false) as unknown as ResolutionIndex)
     }
     if (!this.resolutionIndexInitialized) {
       await this.resolutionIndex.load()
@@ -114,10 +161,10 @@ export class DependencyResolver {
     }
     try {
       await this.processFile(entryFile, null)
-      this.log(`[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
+      this.logIf('tree', `[DependencyResolver] ✅ Built source bundle with ${this.sourceFiles.size} files`)
       return this.sourceFiles
     } catch (err) {
-      this.log(`[DependencyResolver] ❌ Failed to build dependency tree from ${entryFile}:`, err)
+      this.logIf('tree', `[DependencyResolver] ❌ Failed to build dependency tree from ${entryFile}:`, err)
       throw err
     }
   }
@@ -145,16 +192,16 @@ export class DependencyResolver {
         isConnected = await (this.io as any).isLocalhostConnected()
       }
     } catch (err) {
-      this.log(`[DependencyResolver]   ⚠️  Error checking localhost connection:`, err)
+      this.logIf('localhost', `[DependencyResolver]   ⚠️  Error checking localhost connection:`, err)
       isConnected = false
     }
 
     if (!isConnected) {
-      this.log(`[DependencyResolver]   ℹ️  Localhost not connected, skipping remixd paths`)
+      this.logIf('localhost', `[DependencyResolver]   ℹ️  Localhost not connected, skipping remixd paths`)
       return null
     }
 
-    this.log(`[DependencyResolver]   🔌 Localhost connected, trying remixd paths...`)
+    this.logIf('localhost', `[DependencyResolver]   🔌 Localhost connected, trying remixd paths...`)
 
     // Build candidate paths in order of importance
     const candidatePaths = [
@@ -166,10 +213,10 @@ export class DependencyResolver {
     // Try each path in order
     for (const candidatePath of candidatePaths) {
       try {
-        this.log(`[DependencyResolver]   🔍 Trying: ${candidatePath}`)
+        this.logIf('localhost', `[DependencyResolver]   🔍 Trying: ${candidatePath}`)
         const content = await this.io.readFile(candidatePath)
         if (content) {
-          this.log(`[DependencyResolver]   ✅ Found at: ${candidatePath}`)
+          this.logIf('localhost', `[DependencyResolver]   ✅ Found at: ${candidatePath}`)
           // Record normalized name for IDE features
           try {
             if (typeof (this.io as any).addNormalizedName === 'function') {
@@ -184,7 +231,7 @@ export class DependencyResolver {
       }
     }
 
-    this.log(`[DependencyResolver]   ❌ Not found in any localhost paths`)
+    this.logIf('localhost', `[DependencyResolver]   ❌ Not found in any localhost paths`)
     return null
   }
 
@@ -192,20 +239,20 @@ export class DependencyResolver {
 
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
     if (!importPath.endsWith('.sol')) {
-      this.log(`[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
+      this.logIf('fileProcessing', `[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
       try { await this.warnings.emitInvalidSolidityImport(importPath) } catch { }
       throw new Error(`Invalid import: "${importPath}" does not end with .sol extension`)
     }
     if (this.processedFiles.has(importPath)) {
-      this.log(`[DependencyResolver]   ⏭️  Already processed: ${importPath}`)
+      this.logIf('fileProcessing', `[DependencyResolver]   ⏭️  Already processed: ${importPath}`)
       return
     }
 
-    this.log(`[DependencyResolver] 📄 Processing: ${importPath}`)
-    this.log(`[DependencyResolver]   📍 Requested by: ${requestingFile || 'entry point'}`)
+    this.logIf('fileProcessing', `[DependencyResolver] 📄 Processing: ${importPath}`)
+    this.logIf('fileProcessing', `[DependencyResolver]   📍 Requested by: ${requestingFile || 'entry point'}`)
 
     if (packageContext) {
-      this.log(`[DependencyResolver]   📦 Package context: ${packageContext}`)
+      this.logIf('packageContext', `[DependencyResolver]   📦 Package context: ${packageContext}`)
       this.fileToPackageContext.set(importPath, packageContext)
       this.resolver.setPackageContext(packageContext)
       // Ensure the parent's package.json is loaded so its declared deps influence child resolution
@@ -220,24 +267,24 @@ export class DependencyResolver {
       let content: string
       let actualPath = importPath // Track where we actually read from (might be localhost/...)
       const isLocal = this.isLocalFile(importPath)
-      this.log(`[DependencyResolver]   🔍 isLocalFile("${importPath}") = ${isLocal}`)
+      this.logIf('fileProcessing', `[DependencyResolver]   🔍 isLocalFile("${importPath}") = ${isLocal}`)
       if (isLocal) {
-        this.log(`[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
+        this.logIf('fileProcessing', `[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
         try {
           content = await this.io.readFile(importPath)
         } catch (err) {
           // Local file not found. If remixd is connected, try node_modules/installed_contracts paths
-          this.log(`[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
+          this.logIf('fileProcessing', `[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
           
           const localhostResult = await this.tryLocalhostPaths(importPath)
           if (localhostResult) {
             content = localhostResult.content
             // Track the actual localhost path for internal use, but keep importPath as the key
             actualPath = localhostResult.path
-            this.log(`[DependencyResolver]   ✅ Found at: ${actualPath}`)
+            this.logIf('fileProcessing', `[DependencyResolver]   ✅ Found at: ${actualPath}`)
           } else {
             // Still not found. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
-            this.log(`[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
+            this.logIf('fileProcessing', `[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
             try {
               const handler = (this.resolver as any).getHandlerRegistry?.()
               if (handler?.tryHandle) {
@@ -253,28 +300,28 @@ export class DependencyResolver {
               }
             } catch (e) {
               // Emit warning and throw error to propagate to compiler
-              this.log(`[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
+              this.logIf('fileProcessing', `[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
               try { await this.warnings.emitFailedToResolve(importPath) } catch { }
               throw new Error(`File not found: ${importPath}`)
             }
           }
         }
       } else {
-        this.log(`[DependencyResolver]   🌐 External import detected, delegating to ImportResolver`)
+        this.logIf('fileProcessing', `[DependencyResolver]   🌐 External import detected, delegating to ImportResolver`)
         content = await this.resolver.resolveAndSave(importPath, undefined, false)
       }
 
       if (!content) {
         if (content === '') return
-        this.log(`[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
+        this.logIf('fileProcessing', `[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
         try { await this.warnings.emitFailedToResolve(importPath) } catch { }
         throw new Error(`File not found: ${importPath}`)
       }
 
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
-      this.log(`[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
-      this.log(`[DependencyResolver]   📝 Actual path: ${actualPath}`)
-      this.log(`[DependencyResolver]   📄 Import path: ${importPath}`)
+      this.logIf('storage', `[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
+      this.logIf('storage', `[DependencyResolver]   📝 Actual path: ${actualPath}`)
+      this.logIf('storage', `[DependencyResolver]   📄 Import path: ${importPath}`)
       
       // Check if this is a special npm import (e.g., hardhat/console.sol)
       const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
@@ -284,7 +331,7 @@ export class DependencyResolver {
         this.sourceFiles.set(resolvedPath, content) // e.g., hardhat@3.1.0/console.sol
         const unversionedKey = specialImport.getUnversionedKey(importPath)
         this.sourceFiles.set(unversionedKey, content) // e.g., hardhat/console.sol
-        this.log(`[DependencyResolver]   🔄 Special import stored under versioned (${resolvedPath}) and unversioned (${unversionedKey})`)
+        this.logIf('storage', `[DependencyResolver]   🔄 Special import stored under versioned (${resolvedPath}) and unversioned (${unversionedKey})`)
       } else {
         // Standard handling: store under resolvedPath
         this.sourceFiles.set(resolvedPath, content)
@@ -298,20 +345,21 @@ export class DependencyResolver {
         if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
           const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
           this.sourceFiles.set(unversionedPath, content)
-          this.log(`[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
+          this.logIf('storage', `[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
         }
       }
 
       // Derive package context from path, regardless of local vs external.
       {
-        const filePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)) : null)
+        const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
+        const filePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
         if (filePackageContext) {
           this.fileToPackageContext.set(resolvedPath, filePackageContext)
           this.resolver.setPackageContext(filePackageContext)
           if ((this.resolver as any).ensurePackageContextLoaded) {
             await (this.resolver as any).ensurePackageContextLoaded(filePackageContext)
           }
-          this.log(`[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
+          this.logIf('packageContext', `[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
         }
       }
 
@@ -320,23 +368,27 @@ export class DependencyResolver {
         try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch { }
       }
 
-      const imports = extractImports(content, (msg, ...args) => this.log(msg, ...args))
+      const logFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+      const imports = extractImports(content, logFn)
       if (imports.length > 0) {
-        this.log(`[DependencyResolver]   🔗 Found ${imports.length} imports`)
+        this.logIf('imports', `[DependencyResolver]   🔗 Found ${imports.length} imports`)
         const resolvedImports = new Set<string>()
-        const currentFilePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, (msg, ...args) => this.log(msg, ...args)) : null)
+        const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
+        const currentFilePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
 
         for (const importedPath of imports) {
-          this.log(`[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
+          this.logIf('imports', `[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
           // Start with the raw path as written in the file
           let nextPath = importedPath
           // Resolve relative paths using the CURRENT FILE PATH as base (original importPath)
           if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
-            nextPath = resolveRelativeImport(importPath, importedPath, (msg, ...args) => this.log(msg, ...args))
-            this.log(`[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)
+            const relLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+            nextPath = resolveRelativeImport(importPath, importedPath, relLogFn)
+            this.logIf('imports', `[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)
           }
           // Apply any remappings (e.g., oz/ → @openzeppelin/contracts@X/)
-          nextPath = applyRemappings(nextPath, this.remappings, (msg, ...args) => this.log(msg, ...args))
+          const remapLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+          nextPath = applyRemappings(nextPath, this.remappings, remapLogFn)
 
           // Recursively process the child first so that resolver mappings are populated
           await this.processFile(nextPath, resolvedPath, currentFilePackageContext || undefined)
@@ -348,13 +400,16 @@ export class DependencyResolver {
           // Record per-file resolution for Go-to-Definition: original spec as written → resolved path
           // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
           if (this.resolutionIndex) {
-            try { this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey) } catch { }
+            try { 
+              this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey)
+              this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${resolvedPath} | ${importedPath} → ${childGraphKey}`)
+            } catch { }
           }
         }
         this.importGraph.set(resolvedPath, resolvedImports)
       }
     } catch (err) {
-      this.log(`[DependencyResolver] ❌ Error processing ${importPath}:`, err)
+      this.logIf('fileProcessing', `[DependencyResolver] ❌ Error processing ${importPath}:`, err)
       try { await this.warnings.emitProcessingError(importPath, err) } catch { }
       console.error(err)
       throw err
@@ -396,7 +451,7 @@ export class DependencyResolver {
 
   /** Persist the resolution index for this session. */
   public async saveResolutionIndex(): Promise<void> {
-    this.log(`[DependencyResolver] 💾 Saving resolution index...`)
+    this.logIf('resolutionIndex', `[DependencyResolver] 💾 Saving resolution index...`)
     if (this.resolutionIndex) {
       try { await this.resolutionIndex.save() } catch { }
     }

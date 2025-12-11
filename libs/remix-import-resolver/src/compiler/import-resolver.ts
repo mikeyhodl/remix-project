@@ -122,11 +122,13 @@ export class ImportResolver implements IImportResolver {
     this.handlerRegistry.register(testLibHandler)
 
     if (this.debug) {
-      console.log('[ImportResolver] Registered default handlers')
+      this.log('[ImportResolver] Registered default handlers')
     }
   }
 
-  private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
+  private log(message: string, ...args: any[]): void { 
+    this.logger.logIf('importResolver', message, ...args)
+  }
 
   /**
    * Set the current package context for dependency-aware resolution.

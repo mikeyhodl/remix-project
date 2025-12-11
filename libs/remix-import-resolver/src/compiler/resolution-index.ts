@@ -1,6 +1,7 @@
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
+import { Logger } from './utils/logger'
 
 /**
  * ResolutionIndex (Remix Plugin)
@@ -14,12 +15,16 @@ export class ResolutionIndex {
   private isDirty: boolean = false
   private loadPromise: Promise<void> | null = null
   private isLoaded: boolean = false
+  private logger: Logger
 
   constructor(private pluginApi: Plugin, private debug: boolean = false) {
     this.debug = true
+    this.logger = new Logger(pluginApi, debug)
   }
 
-  private log(message: string, ...args: any[]): void { if (this.debug) console.log(message, ...args) }
+  private log(message: string, ...args: any[]): void { 
+    this.logger.logIf('resolutionIndex', message, ...args)
+  }
 
   /** Load index from the workspace once per session (idempotent). */
   async load(): Promise<void> {

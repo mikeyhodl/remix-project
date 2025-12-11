@@ -1,11 +1,16 @@
 import type { IOAdapter } from '../adapters/io-adapter'
+import { Logger } from './logger'
 
 export class ContentFetcher {
   private cacheEnabled = true
-  constructor(private io: IOAdapter, private debug = false) {}
+  private logger: Logger
+
+  constructor(private io: IOAdapter, private debug = false) {
+    this.logger = new Logger(undefined, debug)
+  }
 
   private log(...args: any[]) {
-    if (this.debug) console.log('[ContentFetcher]', ...args)
+    this.logger.logIf('contentFetcher', '[ContentFetcher]', ...args)
   }
 
   setCacheEnabled(enabled: boolean): void {

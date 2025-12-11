@@ -7,6 +7,7 @@
 
 import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../import-handler-interface'
 import type { IOAdapter } from '../adapters/io-adapter'
+import { Logger } from '../utils/logger'
 
 export interface CustomTemplateHandlerConfig {
   io: IOAdapter
@@ -20,10 +21,12 @@ export interface CustomTemplateHandlerConfig {
  */
 export class CustomTemplateHandler extends ImportHandler {
   private config: CustomTemplateHandlerConfig
+  private logger: Logger
 
   constructor(pattern: string | RegExp, config: CustomTemplateHandlerConfig) {
     super(pattern)
     this.config = config
+    this.logger = new Logger(undefined, config.debug || false)
   }
 
   async handle(context: ImportHandlerContext): Promise<ImportHandlerResult> {
@@ -50,8 +53,6 @@ export class CustomTemplateHandler extends ImportHandler {
   }
 
   private log(message: string, ...args: any[]): void {
-    if (this.config.debug) {
-      console.log(`[CustomTemplateHandler] ${message}`, ...args)
-    }
+    this.logger.logIf('handlers', `[CustomTemplateHandler] ${message}`, ...args)
   }
 }

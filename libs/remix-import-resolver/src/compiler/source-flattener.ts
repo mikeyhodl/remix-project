@@ -1,6 +1,7 @@
 import type { IOAdapter } from './adapters/io-adapter'
 import { DependencyResolver } from './dependency-resolver'
 import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
+import { Logger } from './utils/logger'
 
 export interface FlattenResult {
   entry: string
@@ -16,9 +17,15 @@ export interface FlattenOptions {
 }
 
 export class SourceFlattener {
-  constructor(private io: IOAdapter, private debug = false) {}
+  private logger: Logger
 
-  private log(...args: any[]) { if (this.debug) console.log('[SourceFlattener]', ...args) }
+  constructor(private io: IOAdapter, private debug = false) {
+    this.logger = new Logger(undefined, debug)
+  }
+
+  private log(...args: any[]) { 
+    this.logger.logIf('sourceFlattener', '[SourceFlattener]', ...args)
+  }
 
   public async flatten(entryFile: string, opts?: FlattenOptions): Promise<FlattenResult> {
     const dep = new DependencyResolver(this.io as any, entryFile, this.debug)

@@ -12,6 +12,7 @@
 import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../import-handler-interface'
 import type { Plugin } from '@remixproject/engine'
 import type { IOAdapter } from '../adapters/io-adapter'
+import { Logger } from '../utils/logger'
 
 export interface RemixTestLibsHandlerConfig {
   /** Remix plugin API for calling solidityUnitTesting.createTestLibs() */
@@ -27,11 +28,13 @@ export interface RemixTestLibsHandlerConfig {
 
 export class RemixTestLibsHandler extends ImportHandler {
   private config: RemixTestLibsHandlerConfig
+  private logger: Logger
 
   constructor(config: RemixTestLibsHandlerConfig) {
     // Match both 'remix_tests.sol' and 'remix_accounts.sol'
     super(/^remix_(tests|accounts)\.sol$/)
     this.config = config
+    this.logger = new Logger(config.pluginApi, config.debug || false)
   }
 
   getPriority(): number {
@@ -104,8 +107,6 @@ export class RemixTestLibsHandler extends ImportHandler {
   }
 
   private log(message: string, ...args: any[]): void {
-    if (this.config.debug) {
-      console.log(`[RemixTestLibsHandler] ${message}`, ...args)
-    }
+    this.logger.logIf('handlers', `[RemixTestLibsHandler] ${message}`, ...args)
   }
 }

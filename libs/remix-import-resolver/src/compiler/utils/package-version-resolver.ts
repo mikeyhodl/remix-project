@@ -1,4 +1,5 @@
 import type { IOAdapter } from '../adapters/io-adapter'
+import { Logger } from './logger'
 
 export type ResolvedVersion = { version: string | null; source: string }
 
@@ -14,10 +15,15 @@ export type ResolvedVersion = { version: string | null; source: string }
 export class PackageVersionResolver {
   private workspaceResolutions: Map<string, string> = new Map()
   private lockFileVersions: Map<string, string> = new Map()
+  private logger: Logger
 
-  constructor(private io: IOAdapter, private debug = false) {}
+  constructor(private io: IOAdapter, private debug = false) {
+    this.logger = new Logger(undefined, debug)
+  }
 
-  private log(msg: string, ...args: any[]) { if (this.debug) console.log(msg, ...args) }
+  private log(msg: string, ...args: any[]) { 
+    this.logger.logIf('packageVersionResolver', msg, ...args)
+  }
 
   public getWorkspaceResolutions(): ReadonlyMap<string, string> { return this.workspaceResolutions }
   public hasWorkspaceResolution(name: string): boolean { return this.workspaceResolutions.has(name) }
