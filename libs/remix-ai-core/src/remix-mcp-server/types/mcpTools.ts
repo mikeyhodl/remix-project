@@ -136,8 +136,8 @@ export interface SendTransactionArgs {
 export interface SimulateTransactionArgs {
   from: string;
   to?: string;
-  value?: BigInt;
-  maxFeePerGas?: BigInt;
+  value?: string;
+  maxFeePerGas?: string;
   data?: string;
   validation?: boolean;
   traceTransfers?: boolean;

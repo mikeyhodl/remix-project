@@ -827,14 +827,14 @@ export class SimulateTransactionHandler extends BaseToolHandler {
         pattern: '^0x[a-fA-F0-9]{40}$'
       },
       value: {
-        type: 'BigInt',
-        description: 'Value in wei (optional)',
-        default: BigInt(0)
+        type: 'string',
+        description: 'Value in wei in decimal value (optional)',
+        default: '0'
       },
       maxFeePerGas: {
-        type: 'BigInt',
-        description: 'maxFeePerGas in wei (optional)',
-        default: BigInt(0)
+        type: 'string',
+        description: 'maxFeePerGas in wei in decimal value (optional)',
+        default: '0'
       },
       data: {
         type: 'string',
@@ -871,7 +871,8 @@ export class SimulateTransactionHandler extends BaseToolHandler {
     const types = this.validateTypes(args, {
       from: 'string',
       to: 'string',
-      value: 'number',
+      value: 'string',
+      maxFeePerGas: 'string',
       data: 'string',
       validation: 'boolean',
       traceTransfers: 'boolean',
@@ -897,8 +898,8 @@ export class SimulateTransactionHandler extends BaseToolHandler {
   async execute(args: SimulateTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Call the transactionSimulator plugin's simulateTransaction method
-      const value = args.value ? '0x' + args.value.toString(16) : null
-      const maxFeePerGas = args.maxFeePerGas ? '0x' + args.maxFeePerGas.toString(16) : null
+      const value = args.value ? '0x' + BigInt(args.value).toString(16) : null
+      const maxFeePerGas = args.maxFeePerGas ? '0x' + BigInt(args.maxFeePerGas).toString(16) : null
       const simulationResult = await plugin.call(
         'transactionSimulator',
         'simulateTransaction',
