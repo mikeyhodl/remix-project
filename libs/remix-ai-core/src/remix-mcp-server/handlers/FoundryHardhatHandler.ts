@@ -437,7 +437,7 @@ export class GetFoundryHardhatInfoHandler extends BaseToolHandler {
       ]
     };
 
-    let result: any = {};
+    const result: any = {};
 
     if (framework === 'foundry' || framework === 'both') {
       result.foundry = foundryInfo;
