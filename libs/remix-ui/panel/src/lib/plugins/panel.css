@@ -24,6 +24,20 @@
     cursor: pointer;
 }
 
+/* Right panel header icon alignment adjustments */
+.swapitHeader .codicon-layout-sidebar-left-dock,
+.swapitHeader .codicon-layout-sidebar-right-dock {
+    margin-left: 0.75rem !important;
+}
+
+.swapitHeader .codicon-screen-icon {
+    margin-left: 0.75rem !important;
+}
+
+.swapitHeader .codicon-close {
+    margin-left: 0.5rem !important;
+}
+
 .swapitTitle {
     margin: 0;
     text-transform: uppercase;
@@ -125,9 +139,6 @@ iframe {
 
 .terminal-wrap.minimized {
     height: 2rem !important;
-}
-
-.terminal-wrap.minimized.desktop {
 }
 
 .highlight {
