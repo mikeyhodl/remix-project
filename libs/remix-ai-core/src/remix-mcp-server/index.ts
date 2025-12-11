@@ -24,12 +24,14 @@ export { createCompilationTools } from './handlers/CompilationHandler';
 export { createDeploymentTools } from './handlers/DeploymentHandler';
 export { createDebuggingTools } from './handlers/DebuggingHandler';
 export { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
+export { createAmpTools } from './handlers/AmpHandler';
 
 // Resource Providers
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 export { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 export { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
 export { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
+export { AmpResourceProvider } from './providers/AmpResourceProvider';
 
 // Middleware
 export type {

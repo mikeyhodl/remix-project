@@ -203,6 +203,7 @@ export interface SolidityUMLGenEvent extends MatomoEventBase {
 
 
 /**
+ * 
  * Circuit Compiler Events - Type-safe builders
  */
 export interface CircuitCompilerEvent extends MatomoEventBase {
@@ -224,9 +225,10 @@ export interface CircuitCompilerEvent extends MatomoEventBase {
 export interface NoirCompilerEvent extends MatomoEventBase {
   category: 'noir-compiler';
   action:
-    | 'compile'
     | 'template'
-    | 'error';
+    | 'compile'
+    | 'generate_proof'
+    | 'view_file';
 }
 
 
@@ -285,3 +287,16 @@ export interface ScriptRunnerPluginEvent extends MatomoEventBase {
     | 'configChanged';
 }
 
+
+/**
+ * Quick DApp V2 Events - Type-safe builders
+ */
+export interface QuickDappV2Event extends MatomoEventBase {
+  category: 'quick-dapp-v2';
+  action:
+    | 'generate'
+    | 'update'
+    | 'deploy_ipfs'
+    | 'register_ens'
+    | 'error';
+}
