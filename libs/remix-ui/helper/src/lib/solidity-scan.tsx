@@ -11,11 +11,11 @@ export const handleSolidityScan = async (api: any, compiledFileName: string) => 
 
   let filePath
   if (await api.call('fileManager', 'exists', compiledFileName)) {
-   filePath = compiledFileName
+    filePath = compiledFileName
   } else {
     const workspace = await api.call('filePanel', 'getCurrentWorkspace')
     const fileName = `${workspace.name}/${compiledFileName}`
-    filePath = `.workspaces/${fileName}`    
+    filePath = `.workspaces/${fileName}`
   }
   const file = await api.call('fileManager', 'readFile', filePath)
 
