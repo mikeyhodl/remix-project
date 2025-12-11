@@ -133,9 +133,7 @@ export async function createRemixMCPServer(
     // }
   }
 
-  console.log("Initializing server")
-  await server.initialize();
-
+  // await server.initialize(); // dont init here, race conditions
   return server;
 }
 

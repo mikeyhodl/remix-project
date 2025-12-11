@@ -72,7 +72,6 @@ export interface MCPConfig {
   security: MCPSecurityConfig;
   validation: MCPValidationConfig;
   resources?: MCPResourceConfig;
-  alchemy?: MCPAlchemyConfig;
   features?: {
     compilation?: boolean;
     deployment?: boolean;
@@ -133,11 +132,6 @@ export const defaultMCPConfig: MCPConfig = {
       blockedPatterns: []
     }
   },
-  alchemy: {
-    enabled: false,
-    apiKey: 'PROVIDE_YOUR_ALCHEMY_API_KEY',
-    defaultNetwork: 'ethereum'
-  },
   features: {
     compilation: true,
     deployment: true,
@@ -172,11 +166,6 @@ export const minimalMCPConfig: MCPConfig = {
       warnOnMainnet: true,
       maxGasLimit: 15000000
     }
-  },
-  alchemy: {
-    enabled: false,
-    apiKey: 'PROVIDE_YOUR_ALCHEMY_API_KEY',
-    defaultNetwork: 'ethereum'
   },
   features: {
     compilation: true,

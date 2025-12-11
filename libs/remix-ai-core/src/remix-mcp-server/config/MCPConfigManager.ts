@@ -19,7 +19,6 @@ export class MCPConfigManager {
 
   async loadConfig(): Promise<MCPConfig> {
     try {
-
       const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
 
       if (exists) {
@@ -28,9 +27,9 @@ export class MCPConfigManager {
         this.config = this.mergeConfig(defaultMCPConfig, userConfig);
       } else {
         this.config = minimalMCPConfig;
+        await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
       }
 
-      await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
       return this.config;
     } catch (error) {
       this.config = defaultMCPConfig;
@@ -41,11 +40,9 @@ export class MCPConfigManager {
   async saveConfig(config: MCPConfig): Promise<void> {
     try {
       const configContent = JSON.stringify(config, null, 2);
-
+      console.log('savin gconfig independently', config)
       await this.plugin.call('fileManager', 'writeFile', this.configPath, configContent);
       this.config = config;
-
-      console.log(`[MCPConfigManager] Config saved to: ${this.configPath}`);
     } catch (error) {
       console.error(`[MCPConfigManager] Error saving config: ${error.message}`);
       throw error;
@@ -83,10 +80,6 @@ export class MCPConfigManager {
 
   getResourceConfig() {
     return this.config.resources;
-  }
-
-  getAlchemyConfig() {
-    return this.config.alchemy;
   }
 
   updateConfig(partialConfig: Partial<MCPConfig>): void {

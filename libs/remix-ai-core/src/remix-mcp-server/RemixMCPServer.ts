@@ -63,6 +63,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private _validationMiddleware: ValidationMiddleware;
   private _configManager: MCPConfigManager;
   private _isInitialized: boolean = false;
+  private _alchemyConfig: { enabled: boolean; apiKey: string; defaultNetwork: string } = { enabled: false, apiKey: '', defaultNetwork: 'ethereum' };
 
   constructor(plugin, config: RemixMCPServerConfig) {
     super();
@@ -147,9 +148,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
       try {
         await this._configManager.loadConfig();
-        console.log('[RemixMCPServer] MCP configuration loaded and connected to middlewares');
-        console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
-
         const securityConfig = this._configManager.getSecurityConfig();
         const validationConfig = this._configManager.getValidationConfig();
         console.log('[RemixMCPServer] Middlewares connected:');
@@ -723,22 +721,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     }
   }
 
-  /**
-   * Reload MCP configuration from workspace
-   */
-  async reloadConfig(): Promise<void> {
-    try {
-      console.log('[RemixMCPServer] Reloading MCP configuration...');
-      const mcpConfig = await this._configManager.reloadConfig();
-      console.log('[RemixMCPServer] Configuration reloaded successfully');
-      console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
-      this.emit('config-reloaded', mcpConfig);
-    } catch (error) {
-      console.log(`[RemixMCPServer] Failed to reload config: ${error.message}`);
-      throw error;
-    }
-  }
-
   getMCPConfig() {
     return this._configManager.getConfig();
   }
@@ -749,25 +731,16 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.emit('config-updated', this._configManager.getConfig());
   }
 
-  /**
-   * Check if config polling is active
-   */
   isConfigPollingActive(): boolean {
     return this._configManager.isPolling();
   }
 
-  /**
-   * Set server state
-   */
   private setState(newState: ServerState): void {
     const oldState = this._state;
     this._state = newState;
     this.emit('state-changed', newState, oldState);
   }
 
-  /**
-   * Setup event handlers
-   */
   private setupEventHandlers(): void {
     // Tool registry events
     this._tools.on('tool-registered', (toolName: string) => {
@@ -815,7 +788,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
       // Register Alchemy tools (only if enabled in config)
       if (this.isAlchemyEnabled()) {
-        console.log('[RemixMCPServer] Alchemy integration enabled, registering Alchemy tools...');
         const apiKey = await this.getAlchemyApiKey();
         const alchemyTools = createAlchemyTools(apiKey);
         this._tools.registerBatch(alchemyTools);
@@ -898,9 +870,34 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private async loadAlchemyConfig(): Promise<void> {
     try {
       const savedConfig = await this._plugin.call('settings', 'get', 'settings/mcp/alchemy');
+
       if (savedConfig !== undefined) {
-        this._configManager.getConfig().alchemy.enabled = savedConfig
-        await this._configManager.saveConfig(this._configManager.getConfig());
+        if (typeof savedConfig === 'boolean') {
+          // Only enabled flag provided, preserve existing apiKey and network
+          this._alchemyConfig = {
+            enabled: savedConfig,
+            apiKey: this._alchemyConfig.apiKey || await this.getAlchemyApiKey(),
+            defaultNetwork: this._alchemyConfig.defaultNetwork || 'ethereum'
+          };
+        } else if (typeof savedConfig === 'string') {
+          try {
+            const parsed = JSON.parse(savedConfig);
+            this._alchemyConfig = {
+              enabled: parsed.enabled !== undefined ? parsed.enabled : this._alchemyConfig.enabled,
+              apiKey: parsed.apiKey || this._alchemyConfig.apiKey ||  await this.getAlchemyApiKey(),
+              defaultNetwork: parsed.defaultNetwork || this._alchemyConfig.defaultNetwork || 'ethereum'
+            };
+          } catch (e) {
+            console.warn('[RemixMCPServer] Failed to parse Alchemy config, using as boolean');
+            this._alchemyConfig = {
+              enabled: !!savedConfig,
+              apiKey: this._alchemyConfig.apiKey ||  await this.getAlchemyApiKey(),
+              defaultNetwork: this._alchemyConfig.defaultNetwork || 'ethereum'
+            };
+          }
+        }
+
+        console.log('[RemixMCPServer] Loaded Alchemy config from settings:', this._alchemyConfig);
       } else {
         console.log('[RemixMCPServer] No Alchemy config found in settings, using defaults');
       }
@@ -910,17 +907,16 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   }
 
   private isAlchemyEnabled(): boolean {
-    const alchemyConfig = this._configManager.getAlchemyConfig();
-    return alchemyConfig?.enabled !== false;
+    return this._alchemyConfig.enabled !== false;
   }
 
   async getAlchemyApiKey(): Promise<string | undefined> {
-    const alchemyConfig = this._configManager.getAlchemyConfig();
-    if (alchemyConfig?.apiKey) {
-      return alchemyConfig.apiKey;
+    console.log('[RemixMCPServer] Getting Alchemy API key:', this._alchemyConfig.apiKey ? '****' : 'not set');
+    if (this._alchemyConfig.apiKey) {
+      return this._alchemyConfig.apiKey;
     }
     const authToken: string | undefined = await this.plugin.call('config', 'getEnv', 'ALCHEMY_API_KEY');
-    return authToken
+    return authToken;
   }
 
 }
