@@ -11,6 +11,15 @@ import { Logger } from './utils/logger'
 import { WarningSystem } from './utils/warning-system'
 
 /**
+ * Solidity compiler input format
+ */
+export type CompilerInput = {
+  [fileName: string]: {
+    content: string
+  }
+}
+
+/**
  * Special npm imports that don't follow standard scoped package patterns.
  * Maps import path patterns to their source key formats.
  */
@@ -443,8 +452,8 @@ export class DependencyResolver {
   }
 
   /** Convert the bundle to Solidity compiler input shape. */
-  public toCompilerInput(): { [fileName: string]: { content: string } } {
-    const sources: { [fileName: string]: { content: string } } = {}
+  public toCompilerInput(): CompilerInput {
+    const sources: CompilerInput = {}
     for (const [path, content] of this.sourceFiles.entries()) sources[path] = { content }
     return sources
   }

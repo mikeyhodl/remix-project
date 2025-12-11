@@ -3,7 +3,24 @@
 import { Plugin } from '@remixproject/engine'
 import { Compiler, Source } from '@remix-project/remix-solidity'
 import { DependencyResolver } from '@remix-project/import-resolver'
+import { CompilerInput } from 'libs/remix-import-resolver/src/compiler/dependency-resolver'
 
+
+let resolvedSources: CompilerInput
+
+const customImportCallback = (url: string, cb: (err: any, result?: any) => void): void => {
+  console.log(`[DependencyResolvingCompiler] 🔍 Import callback invoked for URL: ${url}`)
+  // look up the source from resolvedSources
+  if (resolvedSources && url in resolvedSources) {
+    console.log(`[DependencyResolvingCompiler] ✅ Found resolved source for URL: ${url}`)
+    return cb(null, resolvedSources[url].content)
+  }else{
+    console.log(`[DependencyResolvingCompiler] ❌ No resolved source found for URL: ${url}`)
+    cb(new Error(`Import callback not implemented for URL: ${url}`))
+  }
+  return
+
+}
 /**
  * DependencyResolvingCompiler - A wrapper around the standard Compiler that automatically
  * handles dependency resolution before compilation.
@@ -21,7 +38,7 @@ export class DependencyResolvingCompiler extends Compiler {
     _importResolverFactory?: (target: string) => any,
     debug: boolean = false
   ) {
-    super(importCallback)
+    super(customImportCallback)
     this.pluginApi = pluginApi
     this.debug = true // debug
 
@@ -31,7 +48,7 @@ export class DependencyResolvingCompiler extends Compiler {
   }
 
   public compile(sources: Source, target: string): void {
-    if (this.debug) console.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`)
+    if (this.debug) console.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`, sources)
     this.performSmartCompilation(sources, target).catch(error => {
 
       if (this.debug) {
@@ -48,6 +65,11 @@ export class DependencyResolvingCompiler extends Compiler {
         this.state.currentVersion
       ])
 
+    }).then(() => {
+      if (this.debug) {
+        console.log(`[DependencyResolvingCompiler] ✅ Smart compilation finished`)
+        console.log(resolvedSources)
+      }
     })
   }
 
@@ -109,7 +131,7 @@ export class DependencyResolvingCompiler extends Compiler {
     }
 
     // 4) Convert bundle to compiler input
-    const resolvedSources = depResolver.toCompilerInput()
+    resolvedSources = depResolver.toCompilerInput()
 
     // 5) Ensure entry file present
     if (!resolvedSources[target] && sources[target]) {
@@ -123,7 +145,10 @@ export class DependencyResolvingCompiler extends Compiler {
       })
       console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
     }
+
+    console.log(resolvedSources)
     // 6) Delegate to base compiler
-    super.compile(resolvedSources, target)
+    //super.compile(resolvedSources, target)
+    //super.compile(sources, target)
   }
 }
