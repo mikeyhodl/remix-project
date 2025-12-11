@@ -148,6 +148,25 @@ export interface RunScriptArgs {
   file: string
 }
 
+/**
+ * Math utilities argument types
+ */
+export interface WeiToEtherArgs {
+  wei: string;
+}
+
+export interface EtherToWeiArgs {
+  ether: string;
+}
+
+export interface DecimalToHexArgs {
+  decimal: string | number;
+}
+
+export interface HexToDecimalArgs {
+  hex: string;
+}
+
 export interface DebugSessionArgs {
   transactionHash?: string;
 }
