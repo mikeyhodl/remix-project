@@ -218,6 +218,15 @@ export interface GasEstimationArgs {
 }
 
 /**
+ * Amp query argument types
+ */
+export interface AmpQueryArgs {
+  query: string;
+  baseUrl?: string;
+  authToken?: string;
+}
+
+/**
  * Workspace tool argument types
  */
 export interface CreateWorkspaceArgs {
@@ -362,6 +371,14 @@ export interface TestResult {
     functions: number;
     lines: number;
   };
+}
+
+export interface AmpQueryResult<T = any> {
+  success: boolean;
+  data: Array<T>;
+  rowCount: number;
+  query: string;
+  error?: string;
 }
 
 export interface RemixToolDefinition extends IMCPTool {
