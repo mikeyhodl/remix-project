@@ -187,10 +187,9 @@ export class TransactionSimulator extends Plugin {
             try {
               const abiCoder = AbiCoder.defaultAbiCoder()
               const eventFragment = EventFragment.from(eventInfo.name)
-              const raw =  log.topics.concat(log.data)
+              const raw = log.topics.concat(log.data)
               raw.shift() // remove the event signature
-              const decoded = abiCoder.decode(eventFragment.inputs.map((input) => input.type), '0x' + raw.join('').replace(/0x/g, '')) // just to ensure it's valid      
-              
+              const decoded = abiCoder.decode(eventFragment.inputs.map((input) => input.type), '0x' + raw.join('').replace(/0x/g, '')) // just to ensure it's valid
               if (decoded) {
                 decodedLog.decodedData = decoded.map((value, index) => {
                   const input = eventFragment.inputs[index]
@@ -235,12 +234,11 @@ export class TransactionSimulator extends Plugin {
         params: [options, blockTag]
       }
 
-      let network = await this.call('network', 'detectNetwork')
+      const network = await this.call('network', 'detectNetwork')
       const webDebugNode = init.web3DebugNode(network.id)
       if (!webDebugNode) {
         throw new Error('No debug node available for the current network')
       }
-
 
       // Send the request using web3Provider plugin
       const response = await webDebugNode.send('eth_simulateV1', [options, blockTag])
@@ -258,7 +256,6 @@ export class TransactionSimulator extends Plugin {
         success: true,
         result: response
       }
-
       // Extract and decode logs if requested
       if (shouldDecodeLogs) {
         const logs = this.extractLogs(response)
@@ -301,7 +298,7 @@ export class TransactionSimulator extends Plugin {
     traceTransfers: boolean = true,
     shouldDecodeLogs: boolean = true
   ): Promise<SimulationResult> {
-    const ethers =  await this.call('blockchain', 'web3')
+    const ethers = await this.call('blockchain', 'web3')
     const txFee = await ethers.getFeeData()
     const futureFee = txFee.maxFeePerGas + txFee.maxPriorityFeePerGas
     const call: SimulationCall = {
@@ -312,7 +309,7 @@ export class TransactionSimulator extends Plugin {
     if (to) call.to = to
     if (value) call.value = value
     if (data) call.data = data
-  
+
     const options: SimulationOptions = {
       blockStateCalls: [
         {
