@@ -58,7 +58,7 @@ export class CompilerMetadata extends Plugin {
       const allBuildFiles = await this.call('fileManager', 'fileList', buildDir)
       const currentInputFileNames = Object.keys(currentInput.sources)
       for (const fileName of allBuildFiles) {
-        if (!await this.call('fileManager', 'exists', fileName)) continue 
+        if (!await this.call('fileManager', 'exists', fileName)) continue
         let fileContent = await this.call('fileManager', 'readFile', fileName)
         fileContent = JSON.parse(fileContent)
         const inputFiles = Object.keys(fileContent.input.sources)
