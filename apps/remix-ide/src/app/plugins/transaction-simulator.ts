@@ -3,7 +3,6 @@
 import { Plugin } from '@remixproject/engine'
 import { AbiCoder, EventFragment, Interface } from 'ethers'
 import { init } from '@remix-project/remix-debug'
-import { parseUnits } from 'ethers'
 import { toHex } from "viem"
 
 const profile = {
@@ -282,7 +281,8 @@ export class TransactionSimulator extends Plugin {
    * Simulates a simple transaction with common parameters
    * @param from From address
    * @param to To address (optional)
-   * @param value Value in wei (optional)
+   * @param value Value in wei hex (optional)
+   * @param maxFeePerGas Value in wei hex (optional)
    * @param data Transaction data (optional)
    * @param validation Enable validation (default: true)
    * @param traceTransfers Enable trace transfers (default: true)
@@ -293,19 +293,23 @@ export class TransactionSimulator extends Plugin {
     from: string,
     to?: string,
     value?: string,
+    maxFeePerGas?: string,
     data?: string,
     validation: boolean = true,
     traceTransfers: boolean = true,
     shouldDecodeLogs: boolean = true
   ): Promise<SimulationResult> {
-    const ethers = await this.call('blockchain', 'web3')
+    const ethers = await this.call('blockchain', 'web3')    
     const txFee = await ethers.getFeeData()
-    const futureFee = txFee.maxFeePerGas + txFee.maxPriorityFeePerGas
-    const call: SimulationCall = {
-      from,
-      maxFeePerGas: toHex(futureFee),
+     const call: SimulationCall = {
+      from
     }
-
+    if (maxFeePerGas) {
+      call.maxFeePerGas = maxFeePerGas
+    } else {
+      const network = await this.call('network', 'detectNetwork')
+      call.maxFeePerGas = toHex(network.lastBlock.baseFeePerGas ? network.lastBlock.baseFeePerGas + txFee.maxPriorityFeePerGas : txFee.gasPrice)
+    }
     if (to) call.to = to
     if (value) call.value = value
     if (data) call.data = data

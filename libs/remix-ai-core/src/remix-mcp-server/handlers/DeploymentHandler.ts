@@ -406,7 +406,7 @@ export class SendTransactionHandler extends BaseToolHandler {
         type: 'string',
         description: 'Gas price in wei'
       },
-      account: {
+      from: {
         type: 'string',
         description: 'Account to send from'
       }
@@ -428,7 +428,7 @@ export class SendTransactionHandler extends BaseToolHandler {
       data: 'string',
       gasLimit: 'number',
       gasPrice: 'string',
-      account: 'string'
+      from: 'string'
     });
     if (types !== true) return types;
 
@@ -446,7 +446,7 @@ export class SendTransactionHandler extends BaseToolHandler {
   async execute(args: SendTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get accounts
-      const sendAccount = args.account
+      const sendAccount = args.from
 
       if (!sendAccount) {
         return this.createErrorResult('No account available for sending transaction');
@@ -454,7 +454,7 @@ export class SendTransactionHandler extends BaseToolHandler {
       const ethersProvider: BrowserProvider = await plugin.call('blockchain', 'web3')
       const signer = await ethersProvider.getSigner();
       const tx = await signer.sendTransaction({
-        from: args.account,
+        from: args.from,
         to: args.to,
         value: args.value || '0',
         data: args.data,
@@ -467,7 +467,7 @@ export class SendTransactionHandler extends BaseToolHandler {
       const result = {
         success: true,
         transactionHash: receipt.hash,
-        from: args.account,
+        from: args.from,
         to: args.to,
         value: args.value || '0',
         gasUsed: toNumber(receipt.gasUsed),
@@ -607,11 +607,11 @@ export class GetAccountBalanceHandler extends BaseToolHandler {
   async execute(args: { account: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const web3 = await plugin.call('blockchain', 'web3')
-      const balance = await web3.eth.getBalance(args.account)
+      const balance = await web3.getBalance(args.account)
       return this.createSuccessResult({
         success: true,
         account: args.account,
-        balance: web3.utils.fromWei(balance, 'ether'),
+        balance: formatEther(balance),
         unit: 'ETH'
       })
     } catch (error) {
@@ -827,9 +827,14 @@ export class SimulateTransactionHandler extends BaseToolHandler {
         pattern: '^0x[a-fA-F0-9]{40}$'
       },
       value: {
-        type: 'string',
+        type: 'BigInt',
         description: 'Value in wei (optional)',
-        default: '0'
+        default: BigInt(0)
+      },
+      maxFeePerGas: {
+        type: 'BigInt',
+        description: 'maxFeePerGas in wei (optional)',
+        default: BigInt(0)
       },
       data: {
         type: 'string',
@@ -866,7 +871,7 @@ export class SimulateTransactionHandler extends BaseToolHandler {
     const types = this.validateTypes(args, {
       from: 'string',
       to: 'string',
-      value: 'string',
+      value: 'number',
       data: 'string',
       validation: 'boolean',
       traceTransfers: 'boolean',
@@ -892,12 +897,15 @@ export class SimulateTransactionHandler extends BaseToolHandler {
   async execute(args: SimulateTransactionArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Call the transactionSimulator plugin's simulateTransaction method
+      const value = args.value ? '0x' + args.value.toString(16) : null
+      const maxFeePerGas = args.maxFeePerGas ? '0x' + args.maxFeePerGas.toString(16) : null
       const simulationResult = await plugin.call(
         'transactionSimulator',
         'simulateTransaction',
         args.from,
         args.to,
-        args.value,
+        value,
+        maxFeePerGas,
         args.data,
         args.validation !== false,
         args.traceTransfers !== false,

@@ -130,13 +130,14 @@ export interface SendTransactionArgs {
   data?: string;
   gasLimit?: number;
   gasPrice?: string;
-  account?: string;
+  from?: string;
 }
 
 export interface SimulateTransactionArgs {
   from: string;
   to?: string;
-  value?: string;
+  value?: BigInt;
+  maxFeePerGas?: BigInt;
   data?: string;
   validation?: boolean;
   traceTransfers?: boolean;
