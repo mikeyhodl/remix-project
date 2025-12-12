@@ -654,6 +654,9 @@ import {
 
 // Additional valid import (no star import in Solidity)
 import { Context } from "@openzeppelin/contracts@4.8.0/utils/Context.sol";
+
+// Minimal contract to ensure a definition exists
+contract ImportParsingEdgeCaseDummy { }
 `
             }
         }
@@ -2045,6 +2048,9 @@ pragma solidity ^0.8.20;
 // Same library, two versions, imported under different npm package names
 import {ERC20 as ERC20v4} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20 as ERC20v5} from "@openzeppelin/contracts-5/token/ERC20/ERC20.sol";
+
+// Minimal contract to ensure a definition exists
+contract EEE { }
 `
     }
 }

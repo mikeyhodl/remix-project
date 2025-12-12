@@ -149,6 +149,6 @@ export class DependencyResolvingCompiler extends Compiler {
     console.log(resolvedSources)
     // 6) Delegate to base compiler
     //super.compile(resolvedSources, target)
-    //super.compile(sources, target)
+    super.compile(sources, target)
   }
 }

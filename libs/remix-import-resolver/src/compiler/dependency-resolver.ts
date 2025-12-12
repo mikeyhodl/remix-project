@@ -63,6 +63,8 @@ export class DependencyResolver {
   private io: IOAdapter
   private resolver: ImportResolver
   private sourceFiles: Map<string, string> = new Map()
+  // Map aliases (resolved/versioned/actual FS paths) → original import spec keys
+  private aliasToSpec: Map<string, string> = new Map()
   private processedFiles: Set<string> = new Set()
   private importGraph: Map<string, Set<string>> = new Map()
   private fileToPackageContext: Map<string, string> = new Map()
@@ -330,32 +332,28 @@ export class DependencyResolver {
       const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
       this.logIf('storage', `[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
       this.logIf('storage', `[DependencyResolver]   📝 Actual path: ${actualPath}`)
-      this.logIf('storage', `[DependencyResolver]   📄 Import path: ${importPath}`)
-      
-      // Check if this is a special npm import (e.g., hardhat/console.sol)
-      const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
-      
-      if (specialImport) {
-        // For special imports, store under BOTH the resolved versioned path AND the unversioned key
-        this.sourceFiles.set(resolvedPath, content) // e.g., hardhat@3.1.0/console.sol
-        const unversionedKey = specialImport.getUnversionedKey(importPath)
-        this.sourceFiles.set(unversionedKey, content) // e.g., hardhat/console.sol
-        this.logIf('storage', `[DependencyResolver]   🔄 Special import stored under versioned (${resolvedPath}) and unversioned (${unversionedKey})`)
-      } else {
-        // Standard handling: store under resolvedPath
-        this.sourceFiles.set(resolvedPath, content)
-        
-        // If we read from a different actual path (e.g., localhost/...), also store under that
-        if (actualPath !== importPath && actualPath !== resolvedPath) {
-          this.sourceFiles.set(actualPath, content)
-        }
+      this.logIf('storage', `[DependencyResolver]   📄 Import spec key: ${importPath}`)
 
-        // Create unversioned alias for npm packages with versions (supports scoped packages like @org/pkg@1.2.3)
-        if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
-          const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
-          this.sourceFiles.set(unversionedPath, content)
-          this.logIf('storage', `[DependencyResolver]   🔄 Also stored under unversioned path: ${unversionedPath}`)
-        }
+      // Always store under the ORIGINAL IMPORT SPEC (compiler will request this)
+      this.sourceFiles.set(importPath, content)
+      this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
+
+      // Maintain alias mapping for navigation/internal lookups
+      if (resolvedPath !== importPath) this.aliasToSpec.set(resolvedPath, importPath)
+      if (actualPath !== importPath && actualPath !== resolvedPath) this.aliasToSpec.set(actualPath, importPath)
+
+      // Special-case npm imports like hardhat/console.sol: map versioned alias too
+      const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
+      if (specialImport && resolvedPath !== importPath) {
+        this.aliasToSpec.set(resolvedPath, importPath)
+        this.logIf('storage', `[DependencyResolver]   🔄 Special alias: ${resolvedPath} → ${importPath}`)
+      }
+
+      // For scoped packages with versions, create unversioned alias in alias map only
+      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
+        const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
+        if (unversionedPath !== importPath) this.aliasToSpec.set(unversionedPath, importPath)
+        this.logIf('storage', `[DependencyResolver]   🔄 Alias (unversioned): ${unversionedPath} → ${importPath}`)
       }
 
       // Derive package context from path, regardless of local vs external.
@@ -402,20 +400,21 @@ export class DependencyResolver {
           // Recursively process the child first so that resolver mappings are populated
           await this.processFile(nextPath, resolvedPath, currentFilePackageContext || undefined)
 
-          // Normalize the graph edge to the canonical resolved path used as keys in graph/bundle
-          const childGraphKey = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
+          // Graph should use the SPEC of the child (what compiler will request)
+          const childGraphKey = nextPath
           resolvedImports.add(childGraphKey)
 
-          // Record per-file resolution for Go-to-Definition: original spec as written → resolved path
+          // Record per-file resolution for Go-to-Definition: parent spec → child resolved path
           // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
           if (this.resolutionIndex) {
             try { 
-              this.resolutionIndex.recordResolution(resolvedPath, importedPath, childGraphKey)
-              this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${resolvedPath} | ${importedPath} → ${childGraphKey}`)
+              const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
+              this.resolutionIndex.recordResolution(importPath, importedPath, childResolved)
+              this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${importPath} | ${importedPath} → ${childResolved}`)
             } catch { }
           }
         }
-        this.importGraph.set(resolvedPath, resolvedImports)
+        this.importGraph.set(importPath, resolvedImports)
       }
     } catch (err) {
       this.logIf('fileProcessing', `[DependencyResolver] ❌ Error processing ${importPath}:`, err)
