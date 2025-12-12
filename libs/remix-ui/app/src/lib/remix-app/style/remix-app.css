@@ -54,6 +54,8 @@ pre {
   max-width          : 50%;
   margin             : 0 auto;
   flex               : none;
+  border-left        : none !important;
+  border-right       : none !important;
 }
 .highlightcode       {
   position           : absolute;
