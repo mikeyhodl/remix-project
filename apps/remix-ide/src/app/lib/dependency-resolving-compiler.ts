@@ -84,6 +84,7 @@ export class DependencyResolvingCompiler extends Compiler {
     // Load remappings from remappings.txt if it exists
     try {
       const fileManager = this.pluginApi as any
+      const remappingsAggregate: Array<{ from: string, to: string }> = []
       const remappingsTxtExists = await fileManager.call('fileManager', 'exists', 'remappings.txt')
       if (remappingsTxtExists) {
         const remappingsContent = await fileManager.call('fileManager', 'readFile', 'remappings.txt')
@@ -95,9 +96,34 @@ export class DependencyResolvingCompiler extends Compiler {
 
         console.log(`[DependencyResolvingCompiler] 📋 Loaded ${remappings.length} remappings from remappings.txt:`)
         remappings.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
-        depResolver.setRemappings(remappings)
+        remappingsAggregate.push(...remappings)
       } else {
         if (this.debug) console.log(`[DependencyResolvingCompiler] ℹ️  No remappings.txt found`)
+      }
+
+      // Load remappings from remix.config.json if present
+      const remixConfigExists = await fileManager.call('fileManager', 'exists', 'remix.config.json')
+      if (remixConfigExists) {
+        try {
+          const remixConfigContent = await fileManager.call('fileManager', 'readFile', 'remix.config.json')
+          const cfg = JSON.parse(remixConfigContent)
+          const arr: string[] = cfg?.['solidity-compiler']?.settings?.remappings || []
+          if (Array.isArray(arr) && arr.length > 0) {
+            const configRemaps = arr.map((line: string) => {
+              const [from, to] = String(line).split('=')
+              return { from: from?.trim(), to: to?.trim() }
+            }).filter(r => r.from && r.to)
+            console.log(`[DependencyResolvingCompiler] 📋 Loaded ${configRemaps.length} remappings from remix.config.json:`)
+            configRemaps.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
+            // Merge: config remaps should augment existing remappings
+            remappingsAggregate.push(...configRemaps)
+          }
+        } catch (e) {
+          console.log(`[DependencyResolvingCompiler] ⚠️  Failed to parse remix.config.json remappings:`, e)
+        }
+      }
+      if (remappingsAggregate.length > 0) {
+        depResolver.setRemappings(remappingsAggregate)
       }
     } catch (err) {
       console.log(`[DependencyResolvingCompiler] ⚠️  Failed to load remappings:`, err)
