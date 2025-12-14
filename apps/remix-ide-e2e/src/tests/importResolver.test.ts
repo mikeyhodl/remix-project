@@ -860,6 +860,13 @@ contract CommentedImports is ERC20 {
         browser
             .addFile('remappings.txt', foundryStyleRemappingSource['remappings.txt'])
             .addFile('FoundryStyleTest.sol', foundryStyleRemappingSource['FoundryStyleTest.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
@@ -880,12 +887,28 @@ contract CommentedImports is ERC20 {
             .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .clickLaunchIcon('solidity')
             .assert.containsText('*[data-id="compiledContracts"]', 'FoundryStyleTest')
+            .clickLaunchIcon('filePanel')
+            // Verify build-info reflects remapping resolution
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol',
+                    versionComment: '5.0.0',
+                    description: 'Foundry remap oz/ -> OZ v5 resolves ERC20'
+                }
+            ])
     },
 
     'Test npm: prefix remapping (prevents infinite loops) #group28': function (browser: NightwatchBrowser) {
         browser
             .addFile('remappings.txt', npmPrefixRemappingSource['remappings.txt'])
             .addFile('NpmPrefixTest.sol', npmPrefixRemappingSource['NpmPrefixTest.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
@@ -911,12 +934,33 @@ contract CommentedImports is ERC20 {
             .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .clickLaunchIcon('solidity')
             .assert.containsText('*[data-id="compiledContracts"]', 'NpmPrefixTest')
+            .clickLaunchIcon('filePanel')
+            // Verify build-info reflects both remapped versions
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol',
+                    versionComment: '4.9.0',
+                    description: 'npm: remap → OZ v4 SafeMath in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/utils/Strings.sol',
+                    versionComment: '5.0.0',
+                    description: 'npm: remap → OZ v5 Strings in build-info'
+                }
+            ])
     },
 
     'Test Hardhat-style remapping #group29': function (browser: NightwatchBrowser) {
         browser
             .addFile('remappings.txt', hardhatStyleRemappingSource['remappings.txt'])
             .addFile('HardhatStyleTest.sol', hardhatStyleRemappingSource['HardhatStyleTest.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
@@ -939,12 +983,33 @@ contract CommentedImports is ERC20 {
             .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .clickLaunchIcon('solidity')
             .assert.containsText('*[data-id="compiledContracts"]', 'HardhatStyleTest')
+            .clickLaunchIcon('filePanel')
+            // Verify build-info reflects hardhat remapping
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.8.0/token/ERC20/ERC20.sol',
+                    versionComment: '4.8.0',
+                    description: 'Hardhat remap → OZ v4.8 ERC20 in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@4.8.0/access/Ownable.sol',
+                    versionComment: '4.8.0',
+                    description: 'Hardhat remap → OZ v4.8 Ownable in build-info'
+                }
+            ])
     },
 
     'Test multi-version aliasing with remappings #group30': function (browser: NightwatchBrowser) {
         browser
             .addFile('remappings.txt', multiVersionRemappingSource['remappings.txt'])
             .addFile('MultiVersionTest.sol', multiVersionRemappingSource['MultiVersionTest.sol'])
+            // Enable generate-contract-metadata to create build-info files
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
             .pause(5000)
@@ -967,6 +1032,21 @@ contract CommentedImports is ERC20 {
             .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .clickLaunchIcon('solidity')
             .assert.containsText('*[data-id="compiledContracts"]', 'MultiVersionTest')
+            .clickLaunchIcon('filePanel')
+            // Verify build-info reflects both alias remappings
+     
+            .verifyArtifactsBuildInfo([
+                {
+                    packagePath: '@openzeppelin/contracts@4.9.6/utils/math/SafeMath.sol',
+                    versionComment: '4.9.0',
+                    description: 'Alias remap v4 SafeMath in build-info'
+                },
+                {
+                    packagePath: '@openzeppelin/contracts@5.0.2/utils/Strings.sol',
+                    versionComment: '5.0.0',
+                    description: 'Alias remap v5 Strings in build-info'
+                }
+            ])
             .end()
     },
 
