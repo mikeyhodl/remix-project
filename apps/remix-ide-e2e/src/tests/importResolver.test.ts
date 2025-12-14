@@ -896,6 +896,11 @@ contract CommentedImports is ERC20 {
                     description: 'Foundry remap oz/ -> OZ v5 resolves ERC20'
                 }
             ])
+            .getEditorValue((content) => {
+                const txt = (content || '').toString()
+                ;(browser as any).assert.ok(txt.includes('"remappings"'), 'Build-info should contain remappings array')
+                ;(browser as any).assert.ok(txt.includes('oz/=@openzeppelin/contracts@5.0.2/'), 'Build-info should include Foundry remapping oz/')
+            })
     },
 
     'Test npm: prefix remapping (prevents infinite loops) #group28': function (browser: NightwatchBrowser) {
@@ -948,6 +953,12 @@ contract CommentedImports is ERC20 {
                     description: 'npm: remap → OZ v5 Strings in build-info'
                 }
             ])
+            .getEditorValue((content) => {
+                const txt = (content || '').toString()
+                ;(browser as any).assert.ok(txt.includes('"remappings"'), 'Build-info should contain remappings array')
+                ;(browser as any).assert.ok(txt.includes('@openzeppelin/contracts@4.9.6/=npm:@openzeppelin/contracts@4.9.6/'), 'Build-info should include npm remapping v4.9.6')
+                ;(browser as any).assert.ok(txt.includes('@openzeppelin/contracts@5.0.2/=npm:@openzeppelin/contracts@5.0.2/'), 'Build-info should include npm remapping v5.0.2')
+            })
     },
 
     'Test Hardhat-style remapping #group29': function (browser: NightwatchBrowser) {
@@ -997,6 +1008,11 @@ contract CommentedImports is ERC20 {
                     description: 'Hardhat remap → OZ v4.8 Ownable in build-info'
                 }
             ])
+            .getEditorValue((content) => {
+                const txt = (content || '').toString()
+                ;(browser as any).assert.ok(txt.includes('"remappings"'), 'Build-info should contain remappings array')
+                ;(browser as any).assert.ok(txt.includes('@openzeppelin/contracts/=@openzeppelin/contracts@4.8.0/'), 'Build-info should include Hardhat remapping @openzeppelin/contracts/')
+            })
     },
 
     'Test multi-version aliasing with remappings #group30': function (browser: NightwatchBrowser) {
@@ -1047,6 +1063,12 @@ contract CommentedImports is ERC20 {
                     description: 'Alias remap v5 Strings in build-info'
                 }
             ])
+            .getEditorValue((content) => {
+                const txt = (content || '').toString()
+                ;(browser as any).assert.ok(txt.includes('"remappings"'), 'Build-info should contain remappings array')
+                ;(browser as any).assert.ok(txt.includes('@openzeppelin/contracts-v4/=@openzeppelin/contracts@4.9.6/'), 'Build-info should include alias remapping v4')
+                ;(browser as any).assert.ok(txt.includes('@openzeppelin/contracts-v5/=@openzeppelin/contracts@5.0.2/'), 'Build-info should include alias remapping v5')
+            })
             .end()
     },
 
