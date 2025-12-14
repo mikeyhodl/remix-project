@@ -1300,6 +1300,99 @@ contract CommentedImports is ERC20 {
             ])
     },
 
+        'Test remix.config.json remappings in metadata #group32': function (browser: NightwatchBrowser) {
+                const remixConfig = {
+                        content: `{
+    "solidity-compiler": {
+        "language": "Solidity",
+        "settings": {
+            "optimizer": {
+                "enabled": true,
+                "runs": 200
+            },
+            "remappings": [
+                "open4.7.3/=npm:@openzeppelin/contracts@4.7.3/",
+                "open5.0.2/=npm:@openzeppelin/contracts@5.0.2/"
+            ],
+            "outputSelection": {
+                "*": {
+                    "": [
+                        "ast"
+                    ],
+                    "*": [
+                        "abi",
+                        "metadata",
+                        "devdoc",
+                        "userdoc",
+                        "storageLayout",
+                        "evm.legacyAssembly",
+                        "evm.bytecode",
+                        "evm.deployedBytecode",
+                        "evm.methodIdentifiers",
+                        "evm.gasEstimates",
+                        "evm.assembly"
+                    ]
+                }
+            }
+        }
+    }
+}`
+                }
+                const dddSource = {
+                        content: `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport "open5.0.2/utils/Strings.sol";\nimport "open4.7.3/utils/Address.sol";\n\ncontract DD { }\n`
+                }
+
+                browser
+                        // Enable generate-contract-metadata to create build-info files
+                        .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+                        .click('*[data-id="topbar-settingsIcon"]')
+                        .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+                        .click('*[data-id="settings-sidebar-general"]')
+                        .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+                        .click('[data-id="generate-contract-metadataSwitch"]')
+                        .waitForElementVisible('*[data-id="scConfigExpander"]')
+                        .click('*[data-id="scConfigExpander"]')
+                        .waitForElementVisible('*[data-id="scFileConfiguration"]', 10000)
+                        .click('*[data-id="scFileConfiguration"]')
+                        .clickLaunchIcon('filePanel')
+                        .openFile('remix.config.json')
+                        .setEditorValue(remixConfig.content)
+
+                        .addFile('ddd.sol', dddSource)
+                        .openFile('ddd.sol')
+
+                        .clickLaunchIcon('solidity')
+                        .click('[data-id="compilerContainerCompileBtn"]')
+
+                        .clickLaunchIcon('filePanel')
+                        .expandAllFolders()
+                        // Ensure both OZ versions were resolved into .deps/npm
+                        .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+                        .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.7.3"]', 60000)
+                        .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 60000)
+                        // Verify build-info contains expected sources and remappings entries
+                        .verifyArtifactsBuildInfo([
+                                {
+                                        packagePath: 'npm:@openzeppelin/contracts@4.7.3/utils/Address.sol',
+                                        versionComment: '4.7.0',
+                                        description: 'Build-info should include OZ 4.7.3 Address.sol'
+                                },
+                                {
+                                        packagePath: 'npm:@openzeppelin/contracts@5.0.2/utils/Strings.sol',
+                                        versionComment: '5.0.0',
+                                        description: 'Build-info should include OZ 5.0.2 Strings.sol'
+                                }
+                        ])
+                        // After verifyArtifactsBuildInfo opens build info JSON, assert remappings array strings are present
+                        .getEditorValue((content) => {
+                                const txt = (content || '').toString()
+                                ;(browser as any).assert.ok(txt.includes('"remappings"'), 'Metadata should contain remappings array')
+                                ;(browser as any).assert.ok(txt.includes('open4.7.3/=npm:@openzeppelin/contracts@4.7.3/'), 'Metadata remappings should include open4.7.3 mapping')
+                                ;(browser as any).assert.ok(txt.includes('open5.0.2/=npm:@openzeppelin/contracts@5.0.2/'), 'Metadata remappings should include open5.0.2 mapping')
+                                ;(browser as any).assert.ok(txt.includes('npm:@openzeppelin/contracts@4.7.3/utils/Address.sol'), 'Metadata sources should include OZ 4.7.3 Address.sol')
+                                ;(browser as any).assert.ok(txt.includes('npm:@openzeppelin/contracts@5.0.2/utils/Strings.sol'), 'Metadata sources should include OZ 5.0.2 Strings.sol')
+                        })
+        },
     'Test complex local imports with external dependencies #group22': function (browser: NightwatchBrowser) {
         browser
             // Create a realistic project structure with multiple folders and contracts

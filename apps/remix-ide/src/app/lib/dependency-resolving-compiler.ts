@@ -16,7 +16,7 @@ const customImportCallback = (url: string, cb: (err: any, result?: any) => void)
     return cb(null, resolvedSources[url].content)
   }else{
     console.log(`[DependencyResolvingCompiler] ❌ No resolved source found for URL: ${url}`)
-    cb(new Error(`Import callback not implemented for URL: ${url}`))
+    cb(`❌ No resolved source found for URL: ${url}`)
   }
   return
 
