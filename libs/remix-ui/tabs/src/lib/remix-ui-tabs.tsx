@@ -430,7 +430,6 @@ export const TabsUI = (props: TabsUIProps) => {
 
   const handleCompileClick = async () => {
     setCompileState('compiling')
-    console.log('Compiling from editor')
     trackMatomoEvent?.({
       category: 'editor',
       action: 'clickRunFromEditor',

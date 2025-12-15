@@ -136,9 +136,13 @@ export const CompilerApiMixin = (Base) => class extends Base {
    * This function is used by remix-plugin compiler API.
    * @param {string} fileName to compile
    */
-  compile (fileName) {
+  async compile (fileName) {
     this.currentFile = fileName
-    return this.compileTabLogic.compileFile(fileName)
+    let type = 'remix'
+    if (await this.getAppParameter('hardhat-compilation')) type = 'hardhat'
+    else if (await this.getAppParameter('truffle-compilation')) type = 'truffle'
+    else if (await this.getAppParameter('foundry-compilation')) type = 'foundry'
+    return this.compileTabLogic.runCompiler(type, fileName)
   }
 
   compileFile (event) {

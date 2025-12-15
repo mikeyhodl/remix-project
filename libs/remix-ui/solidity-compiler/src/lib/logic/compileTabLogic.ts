@@ -179,7 +179,8 @@ export class CompileTabLogic {
     } else return false
   }
 
-  async runCompiler (externalCompType) {
+  async runCompiler (externalCompType: string, path?: string) {
+    // externalCompType: 'remix' | 'hardhat' | 'truffle' | 'foundry'
     try {
       this.api.saveCurrentFile()
       if (this.api.getFileManagerMode() === 'localhost' || this.api.isDesktop()) {
@@ -210,8 +211,7 @@ export class CompileTabLogic {
         }
       }
       if (externalCompType === 'remix' || !externalCompType) {
-        const currentFile = this.api.currentFile
-        return this.compileFile(currentFile)
+        return this.compileFile(path || this.api.currentFile)
       }
     } catch (err) {
       console.error(err)
