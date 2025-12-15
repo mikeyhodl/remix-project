@@ -104,12 +104,12 @@ export class DependencyResolver {
       }
     } else {
       this.debugConfig = {
-        enabled: debug.enabled ?? false,
+        enabled: debug.enabled ?? true,
         tree: debug.tree ?? debug.enabled ?? false,
-        fileProcessing: debug.fileProcessing ?? debug.enabled ?? false,
-        imports: debug.imports ?? debug.enabled ?? false,
+        fileProcessing: debug.fileProcessing ?? debug.enabled ?? true,
+        imports: debug.imports ?? debug.enabled ?? true,
         storage: debug.storage ?? debug.enabled ?? false,
-        localhost: debug.localhost ?? debug.enabled ?? false,
+        localhost: debug.localhost ?? debug.enabled ?? true,
         packageContext: debug.packageContext ?? debug.enabled ?? false,
         resolutionIndex: debug.resolutionIndex ?? debug.enabled ?? false
       }
@@ -188,7 +188,7 @@ export class DependencyResolver {
     // Check special npm imports (e.g., hardhat/console.sol)
     if (SPECIAL_NPM_IMPORTS.some(spec => spec.isNpmImport(path))) return false
     // Everything else that is a .sol path in the workspace (including relative paths) is local
-    return path.endsWith('.sol') && !path.includes('@') && !path.includes('node_modules')
+    return path.endsWith('.sol') && !path.includes('@') // && !path.includes('node_modules')
   }
 
   /**

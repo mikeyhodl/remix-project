@@ -5,6 +5,7 @@ import { join } from 'path'
 import { ChildProcess, exec, spawn } from 'child_process'
 import { homedir } from 'os'
 import treeKill from 'tree-kill'
+import { execSync } from 'child_process'
 
 let remixd: ChildProcess
 const assetsTestContract = `import "./contract.sol";
@@ -81,6 +82,8 @@ module.exports = {
   'run Remixd tests #group1': function (browser: NightwatchBrowser) {
     browser.perform(async (done) => {
       try {
+        // Proactively kill any hanging remixd processes before spawning a new one
+        killRemixdProcesses()
         remixd = await spawnRemixd(join(process.cwd(), '/apps/remix-ide', '/contracts'))
       } catch (err) {
         console.error(err)
@@ -101,6 +104,8 @@ module.exports = {
     */
     browser.perform(async (done) => {
       try {
+        // Proactively kill any hanging remixd processes before spawning a new one
+        killRemixdProcesses()
         remixd = await spawnRemixd(join(process.cwd(), '/apps/remix-ide', '/contracts'))
       } catch (err) {
         console.error(err)
@@ -117,6 +122,8 @@ module.exports = {
   'Import from node_modules and reference a github import #group3': function (browser) {
     browser.perform(async (done) => {
       try {
+        // Proactively kill any hanging remixd processes before spawning a new one
+        killRemixdProcesses()
         remixd = await spawnRemixd(join(process.cwd(), '/apps/remix-ide', '/contracts'))
       } catch (err) {
         console.error(err)
@@ -142,6 +149,8 @@ module.exports = {
 
     browser.perform(async (done) => {
       try {
+        // Proactively kill any hanging remixd processes before spawning a new one
+        killRemixdProcesses()
         remixd = await spawnRemixd(join(process.cwd(), '/apps/remix-ide/hardhat-boilerplate'))
       } catch (err) {
         console.error(err)
@@ -218,6 +227,8 @@ module.exports = {
     browser.perform(async (done) => {
       console.log('working directory', homedir() + '/foundry_tmp/hello_foundry')
       try {
+        // Proactively kill any hanging remixd processes before spawning a new one
+        killRemixdProcesses()
         remixd = await spawnRemixd(join(homedir(), '/foundry_tmp/hello_foundry'))
       } catch (err) {
         console.error(err)
@@ -436,6 +447,17 @@ async function spawnRemixd(path: string): Promise<ChildProcess> {
       reject(data.toString())
     })
   })
+}
+
+function killRemixdProcesses(): void {
+  try {
+    // Try to kill by script path or process name; ignore errors if not found
+    execSync('pkill -f "dist/libs/remixd/src/bin/remixd.js" || true', { stdio: 'ignore' })
+    execSync('pkill -f "remixd.js" || true', { stdio: 'ignore' })
+    execSync('pkill -f "remixd --remix-ide" || true', { stdio: 'ignore' })
+  } catch (_) {
+    // noop
+  }
 }
 
 function connectRemixd(browser: NightwatchBrowser, done: any) {
