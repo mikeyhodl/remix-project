@@ -299,9 +299,9 @@ export class TransactionSimulator extends Plugin {
     traceTransfers: boolean = true,
     shouldDecodeLogs: boolean = true
   ): Promise<SimulationResult> {
-    const ethers = await this.call('blockchain', 'web3')    
+    const ethers = await this.call('blockchain', 'web3')
     const txFee = await ethers.getFeeData()
-     const call: SimulationCall = {
+    const call: SimulationCall = {
       from
     }
     if (maxFeePerGas) {
