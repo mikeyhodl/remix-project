@@ -385,9 +385,7 @@ function verifyFileTree(browser: NightwatchBrowser): NightwatchBrowser {
 
 function openVerifyEditContract1(browser: NightwatchBrowser): NightwatchBrowser {
   return browser
-    .click('[data-path="folder1/contract2.sol"]')
-    .scrollAndClick('[data-path="folder1/contract1.sol"]')
-    .currentSelectedFileIs('contract1.sol')
+    .openFile('folder1/contract1.sol')
     .pause(500)
     .testEditorValue('contract test1 { function get () returns (uint) { return 10; }}')
     .setEditorValue('contract test1Changed { function get () returns (uint) { return 10; }}')
@@ -399,12 +397,12 @@ function handleRenameRoundtrip(browser: NightwatchBrowser): NightwatchBrowser {
   return browser
     .waitForElementVisible('[data-path="folder1"]')
     .waitForElementVisible('[data-path="folder1/contract1.sol"]')
-    .click('[data-path="folder1/contract1.sol"]')
+    .openFile('folder1/contract1.sol')
     .pause(500)
     .renamePath('folder1/contract1.sol', 'contract1_renamed', 'folder1/contract1_renamed.sol')
     .pause(500)
     .waitForElementVisible('[data-path="folder1/contract1_renamed.sol"]')
-    .click('[data-path="folder1/contract1_renamed.sol"]')
+    .openFile('folder1/contract1_renamed.sol')
     .pause(300)
     .renamePath('folder1/contract1_renamed.sol', 'contract1', 'folder1/contract1.sol')
 }
