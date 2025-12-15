@@ -1,0 +1,287 @@
+/* eslint-disable no-async-promise-executor */
+/**
+ * Amp Query Tool Handlers for Remix MCP Server
+ *
+ * Provides functionality to query data using the Amp hosted server
+ */
+
+import { IMCPToolResult } from '../../types/mcp';
+import { BaseToolHandler } from '../registry/RemixToolRegistry';
+import {
+  ToolCategory,
+  RemixToolDefinition
+} from '../types/mcpTools';
+import { Plugin } from '@remixproject/engine';
+
+/**
+ * Amp Query argument types
+ */
+export interface AmpQueryArgs {
+  query: string
+}
+
+/**
+ * Amp Query result types
+ */
+export interface AmpQueryResult<T = any> {
+  success: boolean;
+  data: Array<T>;
+  rowCount: number;
+  query: string;
+  error?: string;
+}
+
+/**
+ * Create an Amp client with the given configuration
+ */
+async function createAmpClient(baseUrl?: string, authToken?: string) {
+  // Dynamic import for ES module packages
+  // @ts-ignore - ES module dynamic import
+  const { createConnectTransport } = await import("@connectrpc/connect-web");
+  // @ts-ignore - ES module dynamic import
+  const { createAuthInterceptor, createClient } = await import("@edgeandnode/amp");
+
+  const ampBaseUrl = baseUrl || "/amp";
+
+  const transport = createConnectTransport({
+    baseUrl: ampBaseUrl,
+    /**
+     * If present, adds the auth token to the interceptor path.
+     * This adds it to the connect-rpc transport layer and is passed to requests.
+     * This is REQUIRED for querying published datasets through the gateway
+     */
+    interceptors: authToken
+      ? [createAuthInterceptor(authToken)]
+      : undefined,
+  });
+
+  return createClient(transport);
+}
+
+/**
+ * Performs the given query with the AmpClient instance.
+ * Waits for all batches to complete/resolve before returning.
+ * @param query the query to run
+ * @param baseUrl optional base URL for the Amp server
+ * @param authToken optional authentication token
+ * @returns an array of the results from all resolved batches
+ */
+async function performAmpQuery<T = any>(
+  query: string,
+  baseUrl?: string,
+  authToken?: string
+): Promise<Array<T>> {
+  const ampClient = await createAmpClient(baseUrl, authToken)
+  const data: Array<T> = []
+
+  for await (const batch of ampClient.query(query)) {
+    data.push(...batch)
+  }
+
+  return data
+}
+
+/**
+ * Amp Query Tool Handler
+ */
+export class AmpQueryHandler extends BaseToolHandler {
+  name = 'amp_query';
+  description = 'Execute SQL queries against the Amp hosted server to retrieve blockchain data';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'SQL query to execute against the Amp server'
+      }
+    },
+    required: ['query']
+  };
+
+  getPermissions(): string[] {
+    return ['amp:query'];
+  }
+
+  validate(args: AmpQueryArgs): boolean | string {
+    const required = this.validateRequired(args, ['query']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      query: 'string'
+    });
+    if (types !== true) return types;
+
+    if (args.query.trim().length === 0) {
+      return 'Query cannot be empty';
+    }
+
+    return true;
+  }
+
+  async execute(args: AmpQueryArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Show a notification that the query is being executed
+      plugin.call('notification', 'toast', `Executing Amp query...`);
+
+      const authToken: string | undefined = await plugin.call('config', 'getEnv', 'AMP_QUERY_TOKEN');
+      const baseUrl: string | undefined = await plugin.call('config', 'getEnv', 'AMP_QUERY_URL');
+      // Perform the Amp query
+      const data = await performAmpQuery(
+        args.query,
+        baseUrl,
+        authToken
+      );
+
+      const result: AmpQueryResult = {
+        success: true,
+        data: data,
+        rowCount: data.length,
+        query: args.query
+      };
+
+      // Show success notification
+      plugin.call('notification', 'toast', `Query completed successfully. Retrieved ${data.length} rows.`);
+
+      return this.createSuccessResult(result);
+
+    } catch (error) {
+      console.error('Amp query error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Show error notification
+      plugin.call('notification', 'toast', `Amp query failed: ${errorMessage}`);
+
+      return this.createErrorResult(`Amp query failed: ${errorMessage}`);
+    }
+  }
+}
+
+/**
+ * Amp Dataset Manifest argument types
+ */
+export interface AmpDatasetManifestArgs {
+  datasetName: string;
+  version: string;
+}
+
+/**
+ * Amp Dataset Manifest result types
+ */
+export interface AmpDatasetManifestResult {
+  success: boolean;
+  manifest?: any;
+  datasetName: string;
+  version: string;
+  error?: string;
+}
+
+/**
+ * Amp Dataset Manifest Tool Handler
+ */
+export class AmpDatasetManifestHandler extends BaseToolHandler {
+  name = 'amp_dataset_manifest';
+  description = 'Fetch manifest information for a specific Amp dataset version';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      datasetName: {
+        type: 'string',
+        description: 'Dataset name in format owner/name (e.g., "shiyasmohd/counter")'
+      },
+      version: {
+        type: 'string',
+        description: 'Dataset version (e.g., "0.0.2")'
+      }
+    },
+    required: ['datasetName', 'version']
+  };
+
+  getPermissions(): string[] {
+    return ['amp:dataset:manifest'];
+  }
+
+  validate(args: AmpDatasetManifestArgs): boolean | string {
+    const required = this.validateRequired(args, ['datasetName', 'version']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      datasetName: 'string',
+      version: 'string'
+    });
+    if (types !== true) return types;
+
+    if (args.datasetName.trim().length === 0) {
+      return 'Dataset name cannot be empty';
+    }
+
+    if (args.version.trim().length === 0) {
+      return 'Version cannot be empty';
+    }
+
+    return true;
+  }
+
+  async execute(args: AmpDatasetManifestArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      // Show a notification that the manifest is being fetched
+      plugin.call('notification', 'toast', `Fetching manifest for ${args.datasetName}@${args.version}...`);
+
+      const url = `https://api.registry.amp.staging.thegraph.com/api/v1/datasets/${args.datasetName}/versions/${args.version}/manifest`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const manifest = await response.json();
+
+      const result: AmpDatasetManifestResult = {
+        success: true,
+        manifest: manifest,
+        datasetName: args.datasetName,
+        version: args.version
+      };
+
+      // Show success notification
+      plugin.call('notification', 'toast', `Manifest fetched successfully for ${args.datasetName}@${args.version}`);
+
+      return this.createSuccessResult(result);
+
+    } catch (error) {
+      console.error('Amp dataset manifest fetch error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Show error notification
+      plugin.call('notification', 'toast', `Failed to fetch manifest: ${errorMessage}`);
+
+      return this.createErrorResult(`Failed to fetch manifest: ${errorMessage}`);
+    }
+  }
+}
+
+/**
+ * Create Amp tool definitions
+ */
+export function createAmpTools(): RemixToolDefinition[] {
+  return [
+    {
+      name: 'amp_query',
+      description: 'Execute SQL queries against the Amp hosted server to retrieve blockchain data',
+      inputSchema: new AmpQueryHandler().inputSchema,
+      category: ToolCategory.ANALYSIS,
+      permissions: ['amp:query'],
+      handler: new AmpQueryHandler()
+    },
+    {
+      name: 'amp_dataset_manifest',
+      description: 'Fetch manifest information for a specific Amp dataset version',
+      inputSchema: new AmpDatasetManifestHandler().inputSchema,
+      category: ToolCategory.ANALYSIS,
+      permissions: ['amp:dataset:manifest'],
+      handler: new AmpDatasetManifestHandler()
+    }
+  ];
+}
