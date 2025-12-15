@@ -7,7 +7,7 @@ module.exports = {
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
   },
-  'Pin Solidity Compiler plugin to right side panel #group1': function (browser: NightwatchBrowser) {
+  'Setup: Pin Solidity Compiler plugin to right side panel #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="movePluginToRight"]')
       .click('*[data-id="movePluginToRight"]')
@@ -171,6 +171,181 @@ module.exports = {
       .waitForElementVisible('#side-panel')
       .waitForElementVisible('.mainpanel')
       .assert.not.hasClass('.mainpanel', 'd-none')
+  },
+  'Maximize bottom panel #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="maximizeBottomPanel"]')
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .pause(1000)
+  },
+  'Verify main panel content is hidden when bottom panel is maximized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .execute(function () {
+        const mainView = document.querySelector('.mainview')
+        const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+        let allOtherWrapsHidden = true
+        wraps.forEach((wrap: HTMLElement) => {
+          if (!wrap.classList.contains('terminal-wrap')) {
+            if (!wrap.classList.contains('d-none')) {
+              allOtherWrapsHidden = false
+            }
+          }
+        })
+        return allOtherWrapsHidden
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'All main panel wraps except terminal should be hidden')
+      })
+  },
+  'Verify left panel is still visible when bottom panel is maximized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .waitForElementVisible('#side-panel')
+  },
+  'Verify right panel is still visible when bottom panel is maximized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .waitForElementVisible('#right-side-panel')
+  },
+  'Minimize bottom panel #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="maximizeBottomPanel"]')
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementNotPresent('.terminal-wrap.maximized')
+      .pause(1000)
+  },
+  'Verify main panel content is visible again when bottom panel is minimized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .assert.not.hasClass('.terminal-wrap', 'maximized')
+      .execute(function () {
+        const mainView = document.querySelector('.mainview')
+        const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+        let allWrapsVisible = true
+        wraps.forEach((wrap: HTMLElement) => {
+          if (wrap.classList.contains('d-none')) {
+            allWrapsVisible = false
+          }
+        })
+        return allWrapsVisible
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'All main panel wraps should be visible again')
+      })
+  },
+  'Test auto-restore on file change when bottom panel is maximized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="maximizeBottomPanel"]')
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .pause(1000)
+      .openFile('contracts/1_Storage.sol')
+      .pause(2000)
+      .waitForElementVisible('.terminal-wrap')
+      .execute(function () {
+        return !document.querySelector('.terminal-wrap').classList.contains('maximized')
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'Bottom panel should auto-restore after file change')
+      })
+      .execute(function () {
+        const mainView = document.querySelector('.mainview')
+        const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+        let allWrapsVisible = true
+        wraps.forEach((wrap: HTMLElement) => {
+          if (wrap.classList.contains('d-none')) {
+            allWrapsVisible = false
+          }
+        })
+        return allWrapsVisible
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'All main panel wraps should be visible after auto-restore')
+      })
+  },
+  'Test maximize and minimize bottom panel multiple times #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="maximizeBottomPanel"]')
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .pause(500)
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementNotPresent('.terminal-wrap.maximized')
+      .pause(500)
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .pause(500)
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementNotPresent('.terminal-wrap.maximized')
+  },
+  'Test maximize bottom panel persists during terminal activity #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="maximizeBottomPanel"]')
+      .click('*[data-id="maximizeBottomPanel"]')
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .pause(1000)
+      .click('*[data-id="terminalClearConsole"]')
+      .pause(500)
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .assert.hasClass('.terminal-wrap', 'maximized')
+  },
+  'Hide maximized bottom panel and verify main panel is restored #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.terminal-wrap.maximized')
+      .execute(function () {
+        const mainView = document.querySelector('.mainview')
+        const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+        let allNonTerminalWrapsHidden = true
+        wraps.forEach((wrap: HTMLElement) => {
+          if (!wrap.classList.contains('terminal-wrap')) {
+            if (!wrap.classList.contains('d-none')) {
+              allNonTerminalWrapsHidden = false
+            }
+          }
+        })
+        return allNonTerminalWrapsHidden
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'All main panel wraps except terminal should be hidden when maximized')
+      })
+      .waitForElementVisible('*[data-id="hideBottomPanel"]')
+      .click('*[data-id="hideBottomPanel"]')
+      .pause(500)
+      .waitForElementNotVisible('.terminal-wrap')
+      .assert.hasClass('.terminal-wrap', 'd-none')
+      .execute(function () {
+        const mainView = document.querySelector('.mainview')
+        const wraps = mainView.querySelectorAll('[class*="-wrap"]')
+        let allNonTerminalWrapsVisible = true
+        wraps.forEach((wrap: HTMLElement) => {
+          if (!wrap.classList.contains('terminal-wrap')) {
+            if (wrap.classList.contains('d-none')) {
+              allNonTerminalWrapsVisible = false
+            }
+          }
+        })
+        return allNonTerminalWrapsVisible
+      }, [], function (result: any) {
+        browser.assert.ok(result.value, 'All main panel wraps should be restored when maximized panel is hidden')
+      })
+  },
+  'Verify bottom panel state after page reload when not maximized #group2': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementNotVisible('.terminal-wrap')
+      .waitForElementVisible('*[data-id="toggleBottomPanelIcon"]')
+      .click('*[data-id="toggleBottomPanelIcon"]')
+      .pause(500)
+      .waitForElementVisible('.terminal-wrap')
+      .assert.not.hasClass('.terminal-wrap', 'maximized')
+      .waitForElementVisible('#side-panel')
+      .waitForElementVisible('.mainpanel')
+      .refreshPage()
+      .waitForElementVisible('.terminal-wrap')
+      .pause(1000)
+      .assert.not.hasClass('.terminal-wrap', 'maximized')
+      .waitForElementVisible('#side-panel')
+      .waitForElementVisible('.mainpanel')
       .end()
   }
 }
