@@ -361,11 +361,13 @@ function runTests(browser: NightwatchBrowser, done: any) {
     .waitForElementVisible('[data-path="folder1"]')
     .click('[data-path="folder1"]')
     .waitForElementVisible('[data-path="contract1.sol"]')
-    .assert.containsText('[data-path="contract1.sol"]', 'contract1.sol')
-    .assert.containsText('[data-path="contract2.sol"]', 'contract2.sol')
+    .waitForElementContainsText('[data-path="contract1.sol"]', 'contract1.sol', 60000)
+    .waitForElementVisible('[data-path="contract2.sol"]')
+    .waitForElementContainsText('[data-path="contract2.sol"]', 'contract2.sol', 60000)
     .waitForElementVisible('[data-path="folder1/contract1.sol"]')
-    .assert.containsText('[data-path="folder1/contract1.sol"]', 'contract1.sol')
-    .assert.containsText('[data-path="folder1/contract2.sol"]', 'contract2.sol') // load and test sub folder
+    .waitForElementContainsText('[data-path="folder1/contract1.sol"]', 'contract1.sol', 60000)
+    .waitForElementVisible('[data-path="folder1/contract2.sol"]')
+    .waitForElementContainsText('[data-path="folder1/contract2.sol"]', 'contract2.sol', 60000) // load and test sub folder
     .click('[data-path="folder1/contract2.sol"]')
     .click('[data-path="folder1/contract1.sol"]') // open localhost/folder1/contract1.sol
     .pause(1000)
