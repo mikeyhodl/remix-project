@@ -24,9 +24,9 @@ export class RemoteInferencer implements ICompletions, IGeneration {
   protected sanitizePromptByteSize(prompt: string, provider?: string): string {
     // Provider-specific max byte limits
     const providerLimits: Record<string, number> = {
-      'mistralai': 70000,
-      'anthropic': 70000,
-      'openai': 70000
+      'mistralai': 50000,
+      'anthropic': 50000,
+      'openai': 50000
     };
 
     // Get max bytes based on provider, default to 70KB
