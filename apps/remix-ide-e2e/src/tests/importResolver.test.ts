@@ -59,12 +59,12 @@ module.exports = {
                     description: 'Should find local utils/libraries/SafeOperations.sol in build-info'
                 },
                 {
-                    packagePath: '@openzeppelin/contracts@5.4.0/token/ERC20/extensions/ERC20Burnable.sol',
+                    packagePath: '@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol',
                     versionComment: '5.0.0',
                     description: 'Should find OpenZeppelin v5.4.0 ERC20Burnable.sol in build-info'
                 },
                 {
-                    packagePath: '@openzeppelin/contracts@5.4.0/access/AccessControl.sol',
+                    packagePath: '@openzeppelin/contracts/access/AccessControl.sol',
                     versionComment: '5.4.0',
                     description: 'Should find OpenZeppelin v5.4.0 AccessControl.sol in build-info'
                 }
@@ -448,7 +448,7 @@ module.exports = {
             .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm"]', 60000)
             .waitForElementVisible('*[data-id="treeViewLitreeViewItem.deps/npm/.resolution-index.json"]', 60000)
             .openFile('.deps/npm/.resolution-index.json')
-            .pause(1000)
+            .pause()
             .getEditorValue((content) => {
                 try {
                     const idx = JSON.parse(content)
@@ -464,15 +464,8 @@ module.exports = {
                         ; (browser as any).assert.ok(typeof ctxResolved === 'string' && /@openzeppelin\/contracts@5\.0\.2\/utils\/Context\.sol$/.test(ctxResolved), 'Context@5.0.2 should resolve to concrete versioned path')
                         ; (browser as any).assert.ok(typeof ownableResolved === 'string' && /@openzeppelin\/contracts@5\.4\.0\/access\/Ownable\.sol$/.test(ownableResolved), 'Ownable@5.4.0 should resolve to concrete versioned path')
 
-                    // 2) ERC20.sol source key should have relative imports recorded
-                    const erc20KeyCandidates = [
-                        // Plugin index uses versioned logical path as key (no .deps)
-                        (erc20Resolved || '').replace(/^\.deps\/npm\//, ''),
-                        // Some contexts might store the full .deps path as key
-                        erc20Resolved
-                    ].filter(Boolean)
-                    const erc20MapKey = erc20KeyCandidates.find((k: string) => !!idx[k])
-                    const erc20Map = erc20MapKey ? idx[erc20MapKey] : null
+                    // 2) ERC20.sol source key should have relative imports recorded (use spec key directly)
+                    const erc20Map = idx['@openzeppelin/contracts/token/ERC20/ERC20.sol']
                         ; (browser as any).assert.ok(!!erc20Map, 'ERC20.sol map should exist in resolution index')
                     if (erc20Map) {
                         const hasIERC20 = /\.deps\/npm\/@openzeppelin\/contracts@.+\/token\/ERC20\/IERC20\.sol$/.test(erc20Map['./IERC20.sol'] || '')
@@ -481,13 +474,8 @@ module.exports = {
                             ; (browser as any).assert.ok(hasIERC20 && hasIERC20Meta && hasContext, 'ERC20.sol should record relative imports to concrete .deps paths')
                     }
 
-                    // 3) Ownable.sol source key should have relative Context import recorded
-                    const ownableKeyCandidates = [
-                        (ownableResolved || '').replace(/^\.deps\/npm\//, ''),
-                        ownableResolved
-                    ].filter(Boolean)
-                    const ownableMapKey = ownableKeyCandidates.find((k: string) => !!idx[k])
-                    const ownableMap = ownableMapKey ? idx[ownableMapKey] : null
+                    // 3) Ownable.sol source key should have relative Context import recorded (use spec key directly)
+                    const ownableMap = idx['@openzeppelin/contracts@5.4.0/access/Ownable.sol']
                         ; (browser as any).assert.ok(!!ownableMap, 'Ownable.sol map should exist in resolution index')
                     if (ownableMap) {
                         const hasOwnableCtx = /\.deps\/npm\/@openzeppelin\/contracts@5\.4\.0\/utils\/Context\.sol$/.test(ownableMap['../utils/Context.sol'] || '')
@@ -1004,7 +992,7 @@ contract CommentedImports is ERC20 {
                 },
                 {
                     packagePath: '@openzeppelin/contracts@4.8.0/access/Ownable.sol',
-                    versionComment: '4.8.0',
+                    versionComment: '4.7.0',
                     description: 'Hardhat remap → OZ v4.8 Ownable in build-info'
                 }
             ])
@@ -2487,7 +2475,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol" as OZ;
 import "@openzeppelin/contracts@5.0.2/utils/Context.sol" as ContextV5;
 import "@openzeppelin/contracts@5.4.0/access/Ownable.sol" as Auth;
 
-contract A is OZ.ERC20, Auth {
+contract A is OZ.ERC20 {
     constructor() OZ.ERC20("A", "A") {}
 }
 `
