@@ -555,7 +555,6 @@ export class MCPClient {
       };
 
       return this.tools;
-
     } else if (this.server.transport === 'websocket' && this.wsConnection) {
       return new Promise((resolve, reject) => {
         const requestId = this.getNextRequestId();

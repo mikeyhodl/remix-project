@@ -32,7 +32,6 @@ import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 import { createTutorialsTools } from './handlers/TutorialsHandler';
-import { createAlchemyTools } from './handlers/AlchemyHandler';
 import { createAmpTools } from './handlers/AmpHandler';
 
 // Import resource providers
@@ -65,7 +64,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   private _validationMiddleware: ValidationMiddleware;
   private _configManager: MCPConfigManager;
   private _isInitialized: boolean = false;
-  private _alchemyConfig: { enabled: boolean; apiKey: string; defaultNetwork: string } = { enabled: false, apiKey: '', defaultNetwork: 'ethereum' };
 
   constructor(plugin, config: RemixMCPServerConfig) {
     super();
@@ -161,7 +159,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
         console.log(`[RemixMCPServer] Failed to load MCP config: ${error.message}, using defaults`);
       }
 
-      await this.loadAlchemyConfig();
       await this.initializeDefaultTools();
       await this.initializeDefaultResourceProviders();
 
@@ -232,8 +229,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
           debugging: this._config.features?.debugging !== false,
           analysis: this._config.features?.analysis !== false,
           testing: this._config.features?.testing !== false,
-          git: this._config.features?.git !== false,
-          alchemy: this.isAlchemyEnabled()
+          git: this._config.features?.git !== false
         }
       }
     };
@@ -311,7 +307,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     const currentUser = 'default'; // Can be extended to get from plugin context
 
     const permissionCheckResult = await this.checkPermissions(call.name, currentUser);
-
     const execution: ToolExecutionStatus = {
       id: executionId,
       toolName: call.name,
@@ -386,7 +381,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       execution.endTime = new Date();
       this._stats.totalToolCalls++;
 
-      console.log(`[RemixMCPServer] Tool '${call.name}' executed successfully`);
+      console.log(`[RemixMCPServer] Tool '${call.name}' executed successfully with result`, result);
       this.emit('tool-executed', execution);
       return result;
 
@@ -788,16 +783,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const tutorialTools = createTutorialsTools();
       this._tools.registerBatch(tutorialTools);
 
-      // Register Alchemy tools (only if enabled in config)
-      if (this.isAlchemyEnabled()) {
-        const apiKey = await this.getAlchemyApiKey();
-        const alchemyTools = createAlchemyTools(apiKey);
-        this._tools.registerBatch(alchemyTools);
-        console.log(`[RemixMCPServer] Registered ${alchemyTools.length} Alchemy tools`);
-      } else {
-        console.log('[RemixMCPServer] Alchemy integration disabled, skipping Alchemy tools');
-      }
-      
       // Register Amp tools
       const ampTools = createAmpTools();
       this._tools.registerBatch(ampTools);
@@ -875,58 +860,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     } catch (error) {
       return 'None';
     }
-  }
-
-  private async loadAlchemyConfig(): Promise<void> {
-    try {
-      const savedConfig = await this._plugin.call('settings', 'get', 'settings/mcp/alchemy');
-
-      if (savedConfig !== undefined) {
-        if (typeof savedConfig === 'boolean') {
-          // Only enabled flag provided, preserve existing apiKey and network
-          this._alchemyConfig = {
-            enabled: savedConfig,
-            apiKey: this._alchemyConfig.apiKey || await this.getAlchemyApiKey(),
-            defaultNetwork: this._alchemyConfig.defaultNetwork || 'ethereum'
-          };
-        } else if (typeof savedConfig === 'string') {
-          try {
-            const parsed = JSON.parse(savedConfig);
-            this._alchemyConfig = {
-              enabled: parsed.enabled !== undefined ? parsed.enabled : this._alchemyConfig.enabled,
-              apiKey: parsed.apiKey || this._alchemyConfig.apiKey ||  await this.getAlchemyApiKey(),
-              defaultNetwork: parsed.defaultNetwork || this._alchemyConfig.defaultNetwork || 'ethereum'
-            };
-          } catch (e) {
-            console.warn('[RemixMCPServer] Failed to parse Alchemy config, using as boolean');
-            this._alchemyConfig = {
-              enabled: !!savedConfig,
-              apiKey: this._alchemyConfig.apiKey ||  await this.getAlchemyApiKey(),
-              defaultNetwork: this._alchemyConfig.defaultNetwork || 'ethereum'
-            };
-          }
-        }
-
-        console.log('[RemixMCPServer] Loaded Alchemy config from settings:', this._alchemyConfig);
-      } else {
-        console.log('[RemixMCPServer] No Alchemy config found in settings, using defaults');
-      }
-    } catch (error) {
-      console.log('[RemixMCPServer] Failed to load Alchemy config:', error);
-    }
-  }
-
-  private isAlchemyEnabled(): boolean {
-    return this._alchemyConfig.enabled !== false;
-  }
-
-  async getAlchemyApiKey(): Promise<string | undefined> {
-    console.log('[RemixMCPServer] Getting Alchemy API key:', this._alchemyConfig.apiKey ? '****' : 'not set');
-    if (this._alchemyConfig.apiKey) {
-      return this._alchemyConfig.apiKey;
-    }
-    const authToken: string | undefined = await this.plugin.call('config', 'getEnv', 'ALCHEMY_API_KEY');
-    return authToken;
   }
 
 }

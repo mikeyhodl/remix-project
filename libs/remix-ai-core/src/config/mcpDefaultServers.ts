@@ -1,4 +1,5 @@
 import { IMCPServer } from '../types/mcp';
+import { endpointUrls } from "@remix-endpoints-helper"
 
 export interface MCPDefaultServersConfig {
   version: string;
@@ -49,6 +50,15 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       description: 'OpenZeppelin smart contract library and security tools',
       transport: 'http',
       url: 'https://mcp.openzeppelin.com/contracts/stylus/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Alchemy',
+      description: 'OpenZeppelin smart contract library and security tools',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/alchemy',
       autoStart: true,
       enabled: true,
       timeout: 30000

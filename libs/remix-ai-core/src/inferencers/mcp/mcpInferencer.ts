@@ -405,6 +405,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             try {
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
+              console.log('executing tool for llm', mcpToolCall)
               const result = await this.executeToolForLLM(mcpToolCall);
               console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
               console.log("[MCP] Tool result", result);
@@ -681,6 +682,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (mcpTools.length === 0) {
       return [];
     }
+    console.log('all tools', mcpTools)
 
     // Generate compact tool descriptions
     const apiGenerator = new ToolApiGenerator();
