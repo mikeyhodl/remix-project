@@ -727,13 +727,21 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (checked) sethhCompilation(false) // wayaround to reset the variable
     sethhCompilation(checked)
     api.setAppParameter('hardhat-compilation', checked)
+    if (checked){
+      // @ts-ignore
+      api.call('notification', 'toast', 'Use Hardhat configuration to set solidity compiler version and settings.')
+    }
   }
 
   const updateFoundryCompilation = (event) => {
     const checked = event.target.checked
     if (checked) setFoundryCompilation(false) // wayaround to reset the variable
     setFoundryCompilation(checked)
-    api.setAppParameter('foundry-compilation', checked)
+    api.setAppParameter('foundry-compilation', checked)    
+    if (checked){
+      // @ts-ignore
+      api.call('notification', 'toast', 'Use Foundry configuration to set solidity compiler version and settings.')
+    }
   }
 
   const updateTruffleCompilation = (event) => {
@@ -741,6 +749,10 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     if (checked) setTruffleCompilation(false) // wayaround to reset the variable
     setTruffleCompilation(checked)
     api.setAppParameter('truffle-compilation', checked)
+    if (checked){
+      // @ts-ignore
+      api.call('notification', 'toast', 'Use Truffle configuration to set solidity compiler version and settings.')
+    }
   }
 
   /*
@@ -803,7 +815,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
                 }}
               ></span>
             </CustomTooltip>
-            { solJsonBinData && solJsonBinData.selectorList && solJsonBinData.selectorList.length > 0 ? (
+            { !hhCompilation && !foundryCompilation && solJsonBinData && solJsonBinData.selectorList && solJsonBinData.selectorList.length > 0 ? (
               <div style={{
                 pointerEvents: (hhCompilation || foundryCompilation) ? 'none' : 'auto'
               }}>
@@ -820,7 +832,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
               </div>
             ):null}
           </div>
-          <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
+          {!hhCompilation && !foundryCompilation && <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
             <label htmlFor="nightlies" data-id="compilerNightliesBuild" className="pt-0 form-check-label">
               <FormattedMessage id="solidity.includeNightlyBuilds" />
             </label>
@@ -836,8 +848,8 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
                 opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
               }}
             />
-          </div>
-          {platform === appPlatformTypes.desktop ?
+          </div>}          
+          {platform === appPlatformTypes.desktop && !foundryCompilation && !hhCompilation && !truffleCompilation ?
             <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
               <label htmlFor="downloadedcompilers" data-id="compilerNightliesBuild" className="form-check-label">
                 <FormattedMessage id="solidity.downloadedCompilers" />
