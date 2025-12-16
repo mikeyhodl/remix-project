@@ -40,9 +40,9 @@ export interface AlertModal {
 
 export interface ModalState {
     modals: AppModal[],
-    toasters: {message: (string | JSX.Element), timestamp: number }[],
+    toasters: {message: (string | JSX.Element), timestamp: number, timeout?: number, toastId?: number }[],
     focusModal: AppModal,
-    focusToaster: {message: (string | JSX.Element), timestamp: number },
+    focusToaster: {message: (string | JSX.Element), timestamp: number, timeout?: number, toastId?: number }
     focusTemplateExplorer: GenericModal
 }
 

@@ -26,7 +26,7 @@ export const platformContext = React.createContext<appPlatformTypes>(null)
 
 export interface dispatchModalInterface {
   modal: (data: AppModal) => void
-  toast: (message: string | JSX.Element) => void
+  toast: (message: string | JSX.Element, timeout?: number, toastId?: number) => void
   alert: (data: AlertModal) => void
   handleHideModal: () => void
   handleToaster: () => void
@@ -34,7 +34,7 @@ export interface dispatchModalInterface {
 
 export const dispatchModalContext = React.createContext<dispatchModalInterface>({
   modal: (data: AppModal) => {},
-  toast: (message: string | JSX.Element) => {},
+  toast: (message: string | JSX.Element, timeout?: number, toastId?: number) => {},
   alert: (data: AlertModal) => {},
   handleHideModal: () => {},
   handleToaster: () => {}
