@@ -44,7 +44,7 @@ export class NoirPluginClient extends PluginClient {
 
   setupWebSocketEvents(): void {
     // @ts-ignore
-    this.ws = new WebSocket(`wss://noir.zkdev.net/ws/`)
+    this.ws = new WebSocket(`${WS_URL}`)
     this.ws.onopen = () => {
     }
     this.ws.onmessage = (event) => {
@@ -165,7 +165,7 @@ export class NoirPluginClient extends PluginClient {
 
         formData.append('file', zippedProject, `${extractNameFromKey(path)}.zip`)
         // @ts-ignore
-        const response = await axios.post(`https://noir.zkdev.net/compile?requestId=${requestID}`, formData)
+        const response = await axios.post(`${BASE_URL}/compile?requestId=${requestID}`, formData)
 
         if (!response.data || !response.data.success) {
           this.internalEvents.emit('noir_compiling_errored', new Error('Compilation failed'))
@@ -222,7 +222,7 @@ export class NoirPluginClient extends PluginClient {
 
       this.ws.send(JSON.stringify({ requestId: requestID }))
       // @ts-ignore
-      const response = await axios.post(`https://noir.zkdev.net/generate-proof-with-verifier?requestId=${requestID}`, formData, {
+      const response = await axios.post(`${BASE_URL}/generate-proof-with-verifier?requestId=${requestID}`, formData, {
         responseType: 'blob'
       })
 
