@@ -13,7 +13,7 @@ function App() {
   const [appState, dispatch] = useReducer(appReducer, appInitialState)
   const [locale, setLocale] = useState<{code: string; messages: any}>({
     code: 'en',
-    messages: null
+    messages: {}
   })
   const [isContentChanged, setIsContentChanged] = useState<boolean>(false)
   const [isPluginActivated, setIsPluginActivated] = useState<boolean>(false)
@@ -88,10 +88,23 @@ function App() {
   }
 
   const setCurrentLocale = async () => {
-    // @ts-ignore
-    const currentLocale = await plugin.call('locale', 'currentLocale')
+    try {
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Locale timeout')), 1000)
+    )
+    
+    const currentLocale = await Promise.race([
+      // @ts-ignore
+      plugin.call('locale', 'currentLocale'),
+      timeoutPromise
+    ])
 
-    setLocale(currentLocale)
+    // @ts-ignore
+    if (currentLocale) setLocale(currentLocale)
+  } catch (e) {
+    console.warn("Failed to load locale, using default.", e)
+    setLocale({ code: 'en', messages: {} }); 
+  }
   }
 
   const value = {
@@ -102,13 +115,11 @@ function App() {
 
   return (
     <div className="noir_compiler_app">
-      <RenderIf condition={locale.messages}>
-        <IntlProvider locale={locale.code} messages={locale.messages}>
-          <NoirAppContext.Provider value={value}>
-            <Container />
-          </NoirAppContext.Provider>
-        </IntlProvider>
-      </RenderIf>
+      <IntlProvider locale={locale.code} messages={locale.messages || {}}>
+        <NoirAppContext.Provider value={value}>
+          <Container />
+        </NoirAppContext.Provider>
+      </IntlProvider>
     </div>
   )
 }
