@@ -15,6 +15,7 @@ export class AuthPlugin extends Plugin {
   private apiClient: ApiClient
   private ssoApi: SSOApiService
   private creditsApi: CreditsApiService
+  private refreshTimer: number | null = null
   
   constructor() {
     super(profile)
@@ -30,6 +31,43 @@ export class AuthPlugin extends Plugin {
     // Set up token refresh callback for auto-renewal
     this.apiClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     creditsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
+  }
+
+  private clearRefreshTimer() {
+    if (this.refreshTimer) {
+      window.clearTimeout(this.refreshTimer)
+      this.refreshTimer = null
+    }
+  }
+
+  private getTokenExpiryMs(token: string): number | null {
+    try {
+      const parts = token.split('.')
+      if (parts.length !== 3) return null
+      const payload = JSON.parse(atob(parts[1]))
+      if (!payload.exp) return null
+      return payload.exp * 1000
+    } catch {
+      return null
+    }
+  }
+
+  private scheduleRefresh(accessToken: string) {
+    const expMs = this.getTokenExpiryMs(accessToken)
+    if (!expMs) return
+
+    // Don’t schedule if we don’t have a refresh token available
+    const hasRefresh = !!localStorage.getItem('remix_refresh_token')
+    if (!hasRefresh) return
+
+    const now = Date.now()
+    // Refresh 90s before expiry (min 5s)
+    let delay = Math.max(expMs - now - 90_000, 5_000)
+
+    this.clearRefreshTimer()
+    this.refreshTimer = window.setTimeout(() => {
+      this.refreshAccessToken().catch(() => {/* handled in method */})
+    }, delay)
   }
   
   /**
@@ -121,6 +159,9 @@ export class AuthPlugin extends Plugin {
       localStorage.setItem('remix_refresh_token', result.refreshToken)
       localStorage.setItem('remix_user', JSON.stringify(result.user))
       console.log('[AuthPlugin] Stored user JSON:', localStorage.getItem('remix_user'))
+
+      // Schedule proactive refresh based on access token expiry
+      this.scheduleRefresh(result.accessToken)
       
       // Emit auth state change
       this.emit('authStateChanged', {
@@ -148,6 +189,7 @@ export class AuthPlugin extends Plugin {
       })
       
       // Clear localStorage
+      this.clearRefreshTimer()
       localStorage.removeItem('remix_access_token')
       localStorage.removeItem('remix_refresh_token')
       localStorage.removeItem('remix_user')
@@ -326,6 +368,9 @@ export class AuthPlugin extends Plugin {
         creditsApiClient.setToken(newAccessToken)
         
         console.log('[AuthPlugin] Access token refreshed successfully')
+
+        // Reschedule next proactive refresh
+        this.scheduleRefresh(newAccessToken)
         return newAccessToken
       }
       
@@ -436,6 +481,8 @@ export class AuthPlugin extends Plugin {
           })
           // Auto-refresh credits
           this.refreshCredits().catch(console.error)
+          // Schedule proactive refresh if possible
+          this.scheduleRefresh(token)
         } catch (e) {
           console.error('[AuthPlugin] Failed to restore user session:', e)
         }

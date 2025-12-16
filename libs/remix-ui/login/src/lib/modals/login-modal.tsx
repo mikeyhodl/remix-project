@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { AuthProvider } from '@remix-api'
 import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
+import { endpointUrls } from '@remix-endpoints-helper'
 
 interface LoginModalProps {
   onClose: () => void
@@ -23,13 +24,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     const fetchSupportedProviders = async () => {
       try {
         // Detect environment
-        const baseUrl = window.location.hostname.includes('localhost')
-          ? 'http://localhost:3000'
-          : window.location.hostname.includes('ngrok')
-          ? 'https://api-remix-dev.ngrok.dev'
-          : 'https://sso.api.remix.live'
+        const baseUrl = endpointUrls.sso
 
-        const response = await fetch(`${baseUrl}/sso/providers`, {
+        const response = await fetch(`${baseUrl}/providers`, {
           method: 'GET',
           headers: { 'Accept': 'application/json' }
         })

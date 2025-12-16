@@ -15,7 +15,6 @@ type EndpointUrls = {
     solidityScanWebSocket: string;
     gitHubLoginProxy: string;
     sso: string;
-    ssoPlugin: string;
     billing: string;
     credits: string;
     audio;
@@ -37,10 +36,9 @@ const defaultUrls: EndpointUrls = {
   completion: 'https://completion.api.remix.live',
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
-  sso: 'https://sso.api.remix.live',
-  ssoPlugin: 'https://sso-plugin.api.remix.live',
-  billing: 'https://billing.api.remix.live',
-  credits: 'https://credits.api.remix.live',
+  sso: 'https://auth.api.remix.live:8443/sso',
+  billing: 'https://auth.api.remix.live:8443//billing',
+  credits: 'https://auth.api.remix.live:8443/credits',
   audio: 'https://audio.api.remix.live',
 };
 
@@ -61,37 +59,12 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   solidityScanWebSocket: '',
   gitHubLoginProxy: 'github-login-proxy',
   sso: 'sso',
-  ssoPlugin: 'sso-plugin',
   billing: 'billing',
   credits: 'credits',
   audio: 'audio',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
-
-// Ngrok development URLs - Single domain with path routing (same as production)
-const ngrokUrls: EndpointUrls = {
-  corsProxy: 'https://api-remix-dev.ngrok.dev/corsproxy',
-  mcpCorsProxy: 'https://api-remix-dev.ngrok.dev/mcp',
-  solidityScan: 'https://api-remix-dev.ngrok.dev/solidityscan',
-  ipfsGateway: 'https://api-remix-dev.ngrok.dev/jqgt',
-  commonCorsProxy: 'https://api-remix-dev.ngrok.dev/common-corsproxy',
-  github: 'https://api-remix-dev.ngrok.dev/github',
-  solcoder: 'https://api-remix-dev.ngrok.dev/solcoder',
-  ghfolderpull: 'https://api-remix-dev.ngrok.dev/ghfolderpull',
-  embedly: 'https://api-remix-dev.ngrok.dev/embedly',
-  gptChat: 'https://api-remix-dev.ngrok.dev/gpt-chat',
-  rag: 'https://api-remix-dev.ngrok.dev/rag',
-  vyper2: 'https://api-remix-dev.ngrok.dev/vyper2',
-  completion: 'https://api-remix-dev.ngrok.dev/completion',
-  solidityScanWebSocket: 'wss://api-remix-dev.ngrok.dev/solidityscan',
-  gitHubLoginProxy: 'https://api-remix-dev.ngrok.dev/github-login-proxy',
-  sso: 'https://api-remix-dev.ngrok.dev/sso',
-  ssoPlugin: 'https://api-remix-dev.ngrok.dev/sso-plugin',
-  billing: 'https://api-remix-dev.ngrok.dev/billing',
-  credits: 'https://api-remix-dev.ngrok.dev/credits',
-  audio: ''
-};
 
 // Microservices development URLs (individual service ports)
 const localhostUrls: EndpointUrls = {
@@ -120,7 +93,6 @@ const localhostUrls: EndpointUrls = {
   
   // AUTH service (port 3001)
   sso: 'http://localhost:3001/sso',
-  ssoPlugin: 'http://localhost:3001/sso-plugin',
   
   // BILLING service (port 3002)
   billing: 'http://localhost:3002/billing',
