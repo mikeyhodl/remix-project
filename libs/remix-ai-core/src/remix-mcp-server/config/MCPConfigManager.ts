@@ -21,7 +21,7 @@ export class MCPConfigManager {
         if (exists) {
           const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
           const userConfig = JSON.parse(configContent);
-          if(userConfig.mcp) {this.config = userConfig.mcp}
+          if (userConfig.mcp) {this.config = userConfig.mcp}
           else {
             this.config = minimalMCPConfig
             this.saveConfig(this.config)
