@@ -31,6 +31,8 @@ import { noirLanguageConfig, noirTokensProvider } from './syntaxes/noir'
 import type { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
+import { RemixTSCompletionProvider } from './providers/tsCompletionProvider'
+const _paq = (window._paq = window._paq || []) // eslint-disable-line
 
 // Key for localStorage
 const HIDE_PASTE_WARNING_KEY = 'remixide.hide_paste_warning';
@@ -156,6 +158,7 @@ export interface EditorUIProps {
   }
   plugin: PluginType
   editorAPI: EditorAPIType
+  setMonaco: (monaco: Monaco) => void
 }
 const contextMenuEvent = new EventManager()
 export const EditorUI = (props: EditorUIProps) => {
@@ -1161,6 +1164,9 @@ export const EditorUI = (props: EditorUIProps) => {
     const editorService = editor._codeEditorService
     const openEditorBase = editorService.openCodeEditor.bind(editorService)
     editorService.openCodeEditor = async (input, source) => {
+      if (input && input.resource && input.resource.path.includes('__shims__')) {
+        return openEditorBase(input, source)
+      }
       const result = await openEditorBase(input, source)
       if (input && input.resource && input.resource.path) {
         try {
@@ -1187,9 +1193,7 @@ export const EditorUI = (props: EditorUIProps) => {
   function handleEditorWillMount(monaco) {
 
     monacoRef.current = monaco
-
-    inlineCompletionProviderRef.current = new RemixInLineCompletionProvider(props, monacoRef.current, trackMatomoEvent)
-
+    props.setMonaco(monaco)
     // Register a new language
     monacoRef.current.languages.register({ id: 'remix-solidity' })
     monacoRef.current.languages.register({ id: 'remix-cairo' })
@@ -1202,44 +1206,11 @@ export const EditorUI = (props: EditorUIProps) => {
     // Allow JSON schema requests
     monacoRef.current.languages.json.jsonDefaults.setDiagnosticsOptions({ enableSchemaRequest: true })
 
+    monacoRef.current.languages.registerCompletionItemProvider('typescript', new RemixTSCompletionProvider(monaco))
+    monacoRef.current.languages.registerCompletionItemProvider('javascript', new RemixTSCompletionProvider(monaco))
+
     // hide the module resolution error. We have to remove this when we know how to properly resolve imports.
     monacoRef.current.languages.typescript.typescriptDefaults.setDiagnosticsOptions({ diagnosticCodesToIgnore: [2792]})
-
-    // Configure TypeScript compiler options for JSX/TSX support
-    monacoRef.current.languages.typescript.typescriptDefaults.setCompilerOptions({
-      jsx: monacoRef.current.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowNonTsExtensions: true,
-      allowJs: true,
-      target: monacoRef.current.languages.typescript.ScriptTarget.Latest,
-      moduleResolution: monacoRef.current.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monacoRef.current.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-      skipLibCheck: true,
-      resolveJsonModule: true,
-      isolatedModules: true,
-    })
-
-    // Configure JavaScript compiler options for JSX support
-    monacoRef.current.languages.typescript.javascriptDefaults.setCompilerOptions({
-      jsx: monacoRef.current.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowNonTsExtensions: true,
-      target: monacoRef.current.languages.typescript.ScriptTarget.Latest,
-      moduleResolution: monacoRef.current.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monacoRef.current.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-      skipLibCheck: true,
-      resolveJsonModule: true,
-      isolatedModules: true,
-      checkJs: false,
-    })
 
     // Enable JSX diagnostics for JavaScript
     monacoRef.current.languages.typescript.javascriptDefaults.setDiagnosticsOptions({

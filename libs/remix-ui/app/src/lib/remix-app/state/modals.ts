@@ -17,7 +17,7 @@ export const ModalInitialState: ModalState = {
     cancelFn: () => { },
     showCancelIcon: false
   },
-  focusToaster: { message: '', timestamp: 0 },
+  focusToaster: { message: '', timestamp: 0, timeout: 2000 },
   focusTemplateExplorer: {
     id: '',
     hide: true,

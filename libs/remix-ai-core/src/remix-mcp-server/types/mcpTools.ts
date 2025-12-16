@@ -130,11 +130,41 @@ export interface SendTransactionArgs {
   data?: string;
   gasLimit?: number;
   gasPrice?: string;
-  account?: string;
+  from?: string;
+}
+
+export interface SimulateTransactionArgs {
+  from: string;
+  to?: string;
+  value?: string;
+  maxFeePerGas?: string;
+  data?: string;
+  validation?: boolean;
+  traceTransfers?: boolean;
+  shouldDecodeLogs?: boolean;
 }
 
 export interface RunScriptArgs {
   file: string
+}
+
+/**
+ * Math utilities argument types
+ */
+export interface WeiToEtherArgs {
+  wei: string;
+}
+
+export interface EtherToWeiArgs {
+  ether: string;
+}
+
+export interface DecimalToHexArgs {
+  decimal: string | number;
+}
+
+export interface HexToDecimalArgs {
+  hex: string;
 }
 
 export interface DebugSessionArgs {
@@ -205,6 +235,15 @@ export interface GasEstimationArgs {
   contractName: string;
   methodName?: string;
   args?: any[];
+}
+
+/**
+ * Amp query argument types
+ */
+export interface AmpQueryArgs {
+  query: string;
+  baseUrl?: string;
+  authToken?: string;
 }
 
 /**
@@ -352,6 +391,14 @@ export interface TestResult {
     functions: number;
     lines: number;
   };
+}
+
+export interface AmpQueryResult<T = any> {
+  success: boolean;
+  data: Array<T>;
+  rowCount: number;
+  query: string;
+  error?: string;
 }
 
 export interface RemixToolDefinition extends IMCPTool {

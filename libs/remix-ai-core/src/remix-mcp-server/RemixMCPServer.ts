@@ -32,12 +32,15 @@ import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 import { createTutorialsTools } from './handlers/TutorialsHandler';
+import { createAmpTools } from './handlers/AmpHandler';
+import { createMathUtilsTools } from './handlers/MathUtilsHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 import { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
 import { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
+import { AmpResourceProvider } from './providers/AmpResourceProvider';
 
 /**
  * Main Remix MCP Server implementation
@@ -454,9 +457,17 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const codeAnalysisTools = createCodeAnalysisTools();
       this._tools.registerBatch(codeAnalysisTools);
 
-      // Register debugging tools
+      // Register tutorial tools
       const tutorialTools = createTutorialsTools();
       this._tools.registerBatch(tutorialTools);
+
+      // Register Amp tools
+      const ampTools = createAmpTools();
+      this._tools.registerBatch(ampTools);
+
+      // Register Math Utils tools
+      const mathUtilsTools = createMathUtilsTools();
+      this._tools.registerBatch(mathUtilsTools);
 
       const totalTools = this._tools.list().length;
 
@@ -484,9 +495,13 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       const deploymentProvider = new DeploymentResourceProvider();
       this._resources.register(deploymentProvider);
 
-      // Register turorial resource provider
+      // Register tutorial resource provider
       const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
       this._resources.register(tutorialsProvider);
+
+      // Register Amp resource provider
+      const ampProvider = new AmpResourceProvider(this._plugin);
+      this._resources.register(ampProvider);
 
       const totalProviders = this._resources.list().length;
 
