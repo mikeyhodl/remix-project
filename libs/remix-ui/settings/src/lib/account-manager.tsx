@@ -190,16 +190,31 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
 
   useEffect(() => {
     loadAccounts()
-    
-    // Listen for account link events
+
+    // Listen for account link events (legacy window event)
     const handleAccountLinked = () => {
       loadAccounts() // Reload accounts after linking
     }
-    
     window.addEventListener('account-linked', handleAccountLinked)
-    
+
+    // Listen for auth state changes via plugin events (login/logout)
+    const onAuthStateChanged = async (_payload: any) => {
+      // Reload everything when auth state changes
+      await loadAccounts()
+    }
+    try {
+      plugin.on('auth', 'authStateChanged', onAuthStateChanged)
+    } catch (e) {
+      // noop: plugin may not be available in some contexts
+    }
+
     return () => {
       window.removeEventListener('account-linked', handleAccountLinked)
+      try {
+        plugin.off('auth', 'authStateChanged')
+      } catch (e) {
+        // ignore
+      }
     }
   }, [])
 
