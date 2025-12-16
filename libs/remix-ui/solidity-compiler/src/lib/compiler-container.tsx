@@ -73,7 +73,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const [hhCompilation, sethhCompilation] = useState(false)
   const [truffleCompilation, setTruffleCompilation] = useState(false)
   const [compilerContainer, dispatch] = useReducer(compilerReducer, compilerInitialState)
-  
+
   useEffect(() => {
     api.getAppParameter('hardhat-compilation').then((result) => {
       if (result) {
@@ -743,7 +743,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     const checked = event.target.checked
     if (checked) setFoundryCompilation(false) // wayaround to reset the variable
     setFoundryCompilation(checked)
-    api.setAppParameter('foundry-compilation', checked)    
+    api.setAppParameter('foundry-compilation', checked)
     if (checked){
       // @ts-ignore
       api.call('notification', 'toast', 'Use Foundry configuration to set solidity compiler version and settings.', 4000)
@@ -854,7 +854,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
                 opacity: (hhCompilation || foundryCompilation) ? 0.5 : 1
               }}
             />
-          </div>}          
+          </div>}
           {platform === appPlatformTypes.desktop && !foundryCompilation && !hhCompilation && !truffleCompilation ?
             <div className={`mb-2 flex-row-reverse d-flex flex-row form-check ${(hhCompilation || foundryCompilation) ? 'text-muted' : ''}`}>
               <label htmlFor="downloadedcompilers" data-id="compilerNightliesBuild" className="form-check-label">
