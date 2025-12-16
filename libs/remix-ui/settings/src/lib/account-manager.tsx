@@ -76,6 +76,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAllTransactions, setShowAllTransactions] = useState(false)
+  const [enableLogin, setEnableLogin] = useState<boolean>(false)
 
   const loadAccounts = async () => {
     try {
@@ -189,6 +190,13 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
   }
 
   useEffect(() => {
+    // Check enableLogin flag
+    const checkLoginEnabled = () => {
+      const enabled = localStorage.getItem('enableLogin') === 'true';
+      setEnableLogin(enabled);
+    };
+    checkLoginEnabled();
+    
     loadAccounts()
 
     // Listen for account link events (legacy window event)
@@ -196,6 +204,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       loadAccounts() // Reload accounts after linking
     }
     window.addEventListener('account-linked', handleAccountLinked)
+    window.addEventListener('storage', checkLoginEnabled)
 
     // Listen for auth state changes via plugin events (login/logout)
     const onAuthStateChanged = async (_payload: any) => {
@@ -210,6 +219,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
 
     return () => {
       window.removeEventListener('account-linked', handleAccountLinked)
+      window.removeEventListener('storage', checkLoginEnabled)
       try {
         plugin.off('auth', 'authStateChanged')
       } catch (e) {
@@ -245,6 +255,10 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
   
   const handleLinkSIWE = () => {
     handleLinkProvider('siwe')
+  }
+
+  if (!enableLogin) {
+    return null;
   }
 
   if (loading) {

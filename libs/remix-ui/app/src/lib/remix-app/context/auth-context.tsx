@@ -96,12 +96,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
   useEffect(() => {
     if (!plugin) return
 
-    // Small delay to ensure plugin is activated
-    const timer = setTimeout(() => {
-      setIsReady(true)
-    }, 5000)
+    // Poll for auth plugin activation
+    const checkInterval = setInterval(async () => {
+      try {
+        const isActive = await plugin.call('manager', 'isActive', 'auth')
+        if (isActive) {
+          setIsReady(true)
+          clearInterval(checkInterval)
+        }
+      } catch (error) {
+        // Plugin manager not ready yet, keep polling
+      }
+    }, 500)
 
-    return () => clearTimeout(timer)
+    return () => clearInterval(checkInterval)
   }, [plugin])
 
   // Initialize auth state on mount
