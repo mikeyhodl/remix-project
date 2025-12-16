@@ -199,18 +199,14 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
     
     loadAccounts()
 
-    // Listen for account link events (legacy window event)
-    const handleAccountLinked = () => {
-      loadAccounts() // Reload accounts after linking
-    }
-    window.addEventListener('account-linked', handleAccountLinked)
-    window.addEventListener('storage', checkLoginEnabled)
-
     // Listen for auth state changes via plugin events (login/logout)
     const onAuthStateChanged = async (_payload: any) => {
       // Reload everything when auth state changes
       await loadAccounts()
+      // Also recheck enableLogin flag when auth state changes
+      checkLoginEnabled()
     }
+    
     try {
       plugin.on('auth', 'authStateChanged', onAuthStateChanged)
     } catch (e) {
@@ -218,8 +214,6 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
     }
 
     return () => {
-      window.removeEventListener('account-linked', handleAccountLinked)
-      window.removeEventListener('storage', checkLoginEnabled)
       try {
         plugin.off('auth', 'authStateChanged')
       } catch (e) {

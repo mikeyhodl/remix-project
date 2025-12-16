@@ -22,36 +22,8 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
   const { isAuthenticated, user, credits, logout, login } = useAuth()
   const [showModal, setShowModal] = useState(false)
 
-  useEffect(() => {
-    // Listen for account linking requests from settings
-    const handleLinkProvider = (e: CustomEvent) => {
-      const provider = e.detail?.provider as AuthProviderType
-      if (provider) {
-        handleLinkProviderAction(provider)
-      }
-    }
-    
-    window.addEventListener('link-provider', handleLinkProvider as EventListener)
-    
-    return () => {
-      window.removeEventListener('link-provider', handleLinkProvider as EventListener)
-    }
-  }, [])
-
   const handleLogout = async () => {
     await logout()
-  }
-  
-  const handleLinkProviderAction = async (provider: AuthProviderType) => {
-    // Login with the provider - auto-linking will happen on backend if emails match
-    await login(provider)
-    
-    // Notify that account was linked
-    window.dispatchEvent(new Event('account-linked'))
-  }
-  
-  const handleLinkProvider = async (provider: AuthProviderType) => {
-    await handleLinkProviderAction(provider)
   }
   
   const handleManageAccounts = () => {
@@ -136,7 +108,6 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
         showCredits={showCredits}
         className={className}
         onLogout={handleLogout}
-        onLinkProvider={handleLinkProvider}
         onManageAccounts={handleManageAccounts}
         getProviderDisplayName={getProviderDisplayName}
         getUserDisplayName={getUserDisplayName}
