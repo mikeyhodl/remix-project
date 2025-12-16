@@ -117,6 +117,17 @@ export class NoirPluginClient extends PluginClient {
     }
   }
 
+  private async ensureWebSocketReady(timeoutMs: number = 5000): Promise<boolean> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return true
+
+    const startTime = Date.now()
+    while (Date.now() - startTime < timeoutMs) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) return true
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    return false
+  }
+
   async compile(path: string): Promise<void> {
     try {
       const requestID = this.generateRequestID()
@@ -127,7 +138,9 @@ export class NoirPluginClient extends PluginClient {
         id: requestID
       }
 
-      if (this.ws.readyState === WebSocket.OPEN) {
+      const isConnected = await this.ensureWebSocketReady()
+
+      if (isConnected) {
         const projectRoot = await this.findProjectRoot(path)
 
         if (projectRoot === null) {
@@ -191,8 +204,10 @@ export class NoirPluginClient extends PluginClient {
     let projectRoot: string | null = null
 
     try {
-      if (this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error('WebSocket connection not open. Cannot generate proof.')
+      const isConnected = await this.ensureWebSocketReady()
+
+      if (!isConnected) {
+        throw new Error('WebSocket connection not open (Timeout). Cannot generate proof.')
       }
 
       projectRoot = await this.findProjectRoot(path)
