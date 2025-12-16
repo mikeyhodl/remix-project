@@ -69,18 +69,11 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   const [disableCompileButton, setDisableCompileButton] = useState<boolean>(false)
   const compileIcon = useRef(null)
   const promptMessageInput = useRef(null)
-  const [foundryCompilation, setFoundryCompilation] = useState(isFoundryProject)
-  const [hhCompilation, sethhCompilation] = useState(isHardhatProject)
+  const [foundryCompilation, setFoundryCompilation] = useState(false)
+  const [hhCompilation, sethhCompilation] = useState(false)
   const [truffleCompilation, setTruffleCompilation] = useState(false)
   const [compilerContainer, dispatch] = useReducer(compilerReducer, compilerInitialState)
-  useEffect(() => {
-    setFoundryCompilation(isFoundryProject)
-  }, [isFoundryProject])
-
-  useEffect(() => {
-    sethhCompilation(isHardhatProject)
-  }, [isHardhatProject])
-
+  
   const intl = useIntl()
 
   useEffect(() => {
