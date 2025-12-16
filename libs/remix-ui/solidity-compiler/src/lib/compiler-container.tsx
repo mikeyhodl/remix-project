@@ -722,7 +722,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     api.setAppParameter('hardhat-compilation', checked)
     if (checked){
       // @ts-ignore
-      api.call('notification', 'toast', 'Use Hardhat configuration to set solidity compiler version and settings.')
+      api.call('notification', 'toast', 'Use Hardhat configuration to set solidity compiler version and settings.', 4000)
     }
   }
 
@@ -733,7 +733,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     api.setAppParameter('foundry-compilation', checked)    
     if (checked){
       // @ts-ignore
-      api.call('notification', 'toast', 'Use Foundry configuration to set solidity compiler version and settings.')
+      api.call('notification', 'toast', 'Use Foundry configuration to set solidity compiler version and settings.', 4000)
     }
   }
 
@@ -744,7 +744,7 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     api.setAppParameter('truffle-compilation', checked)
     if (checked){
       // @ts-ignore
-      api.call('notification', 'toast', 'Use Truffle configuration to set solidity compiler version and settings.')
+      api.call('notification', 'toast', 'Use Truffle configuration to set solidity compiler version and settings.', 4000)
     }
   }
 
