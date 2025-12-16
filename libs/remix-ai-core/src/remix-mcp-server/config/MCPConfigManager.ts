@@ -9,7 +9,7 @@ import { MCPConfig, defaultMCPConfig, minimalMCPConfig } from '../types/mcpConfi
 export class MCPConfigManager {
   private config: MCPConfig;
   private plugin: Plugin;
-  private configPath: string = 'artifacts/.mcp.config.json';
+  private configPath: string = 'remix.config.json';
   private pollingInterval?: NodeJS.Timeout;
 
   constructor(plugin: Plugin) {
@@ -24,13 +24,15 @@ export class MCPConfigManager {
 
       if (exists) {
         const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
-        const userConfig = JSON.parse(configContent);
+        const userConfig = JSON.parse(configContent).mcp;
         // Merge with defaults
-        this.config = this.mergeConfig(defaultMCPConfig, userConfig);
+        if (userConfig?.mcp) { this.config = this.mergeConfig(defaultMCPConfig, userConfig)}
+        else {
+          this.saveConfig(this.config)
+        }
       } else {
         this.config = minimalMCPConfig;
-        // Create default config file
-        await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
+        this.saveConfig(this.config)
       }
 
       return this.config;
@@ -42,9 +44,17 @@ export class MCPConfigManager {
 
   async saveConfig(config: MCPConfig): Promise<void> {
     try {
-      const configContent = JSON.stringify(config, null, 2);
+      const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+      let userConfig = {}
+      if (exists) {
+        const remixConfig = await this.plugin.call('fileManager', 'readFile', this.configPath);
+        userConfig = JSON.parse(remixConfig)
+      }
 
-      await this.plugin.call('fileManager', 'writeFile', this.configPath, configContent);
+      userConfig['mcp'] = config
+      const newConfigContent = JSON.stringify(userConfig, null, 2);
+
+      await this.plugin.call('fileManager', 'writeFile', this.configPath, newConfigContent);
       this.config = config;
 
       console.log(`[MCPConfigManager] Config saved to: ${this.configPath}`);
