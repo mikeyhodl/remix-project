@@ -146,16 +146,12 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
       try {
         await this._configManager.loadConfig();
-        console.log('[RemixMCPServer] MCP configuration loaded and connected to middlewares');
-        console.log('[RemixMCPServer] Configuration summary:', this._configManager.getConfigSummary());
-
         const securityConfig = this._configManager.getSecurityConfig();
         const validationConfig = this._configManager.getValidationConfig();
         console.log('[RemixMCPServer] Middlewares connected:');
         console.log(`  - SecurityMiddleware: using ${securityConfig.excludeTools?.length || 0} excluded tools`);
         console.log(`  - ValidationMiddleware: strictMode=${validationConfig.strictMode}, ${Object.keys(validationConfig.toolValidation || {}).length} tool-specific rules`);
 
-        this._configManager.startPolling(5000);
       } catch (error) {
         console.log(`[RemixMCPServer] Failed to load MCP config: ${error.message}, using defaults`);
       }
@@ -188,9 +184,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   async stop(): Promise<void> {
     this.setState(ServerState.STOPPING);
 
-    // Stop config polling
-    this._configManager.stopPolling();
-
     // Cancel active tool executions
     for (const [id, execution] of this._activeExecutions) {
       execution.status = 'failed';
@@ -207,9 +200,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.setState(ServerState.STOPPED);
   }
 
-  /**
-   * Get server capabilities
-   */
   getCapabilities(): IMCPServerCapabilities {
     return {
       resources: {
@@ -306,8 +296,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
     // Get current user (default to 'default' role)
     const currentUser = 'default'; // Can be extended to get from plugin context
-
+    console.log("checking permissions")
     const permissionCheckResult = await this.checkPermissions(call.name, currentUser);
+    console.log("permissions checked", permissionCheckResult)
 
     const execution: ToolExecutionStatus = {
       id: executionId,
@@ -441,8 +432,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   async checkPermissions(operation: string, user: string, resource?: string): Promise<PermissionCheckResult> {
     try {
       const securityConfig = this._configManager.getSecurityConfig();
+      console.log("securityConfig", securityConfig)
+      // If permissions
 
-      if (!securityConfig.requirePermissions) {
+      if (!securityConfig.permissions.requirePermissions) {
         return {
           allowed: true,
           requiredPermissions: [],
@@ -452,7 +445,9 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       }
 
       const userPermissions = this.getUserPermissions(user, securityConfig);
+      console.log("userPermissions", userPermissions)
       const requiredPermissions = this.getOperationPermissions(operation);
+      console.log("requiredPermissions", requiredPermissions)
 
       if (userPermissions.includes('*')) {
         return {
@@ -746,25 +741,12 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
     this.emit('config-updated', this._configManager.getConfig());
   }
 
-  /**
-   * Check if config polling is active
-   */
-  isConfigPollingActive(): boolean {
-    return this._configManager.isPolling();
-  }
-
-  /**
-   * Set server state
-   */
   private setState(newState: ServerState): void {
     const oldState = this._state;
     this._state = newState;
     this.emit('state-changed', newState, oldState);
   }
 
-  /**
-   * Setup event handlers
-   */
   private setupEventHandlers(): void {
     // Tool registry events
     this._tools.on('tool-registered', (toolName: string) => {

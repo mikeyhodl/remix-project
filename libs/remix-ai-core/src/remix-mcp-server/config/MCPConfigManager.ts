@@ -10,21 +10,34 @@ export class MCPConfigManager {
   private config: MCPConfig;
   private plugin: Plugin;
   private configPath: string = 'remix.config.json';
-  private pollingInterval?: NodeJS.Timeout;
 
   constructor(plugin: Plugin) {
     this.plugin = plugin;
     this.config = defaultMCPConfig;
+    this.plugin.on('fileManager', 'fileSaved', async (filePath: string) => {
+      if (filePath === this.configPath){
+        const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+
+        if (exists) {
+          const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
+          const userConfig = JSON.parse(configContent);
+          if(userConfig.mcp) {this.config = userConfig.mcp}
+          else {
+            this.config = minimalMCPConfig
+            this.saveConfig(this.config)
+          }
+        }
+      }
+    });
   }
 
   async loadConfig(): Promise<MCPConfig> {
     try {
-
       const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
 
       if (exists) {
         const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
-        const userConfig = JSON.parse(configContent).mcp;
+        const userConfig = JSON.parse(configContent);
         // Merge with defaults
         if (userConfig?.mcp) { this.config = this.mergeConfig(defaultMCPConfig, userConfig)}
         else {
@@ -53,11 +66,9 @@ export class MCPConfigManager {
 
       userConfig['mcp'] = config
       const newConfigContent = JSON.stringify(userConfig, null, 2);
-
       await this.plugin.call('fileManager', 'writeFile', this.configPath, newConfigContent);
       this.config = config;
 
-      console.log(`[MCPConfigManager] Config saved to: ${this.configPath}`);
     } catch (error) {
       console.error(`[MCPConfigManager] Error saving config: ${error.message}`);
       throw error;
@@ -194,27 +205,4 @@ export class MCPConfigManager {
     }, null, 2);
   }
 
-  startPolling(intervalMs: number = 10000): void {
-    if (this.pollingInterval) {
-      return;
-    }
-
-    this.pollingInterval = setInterval(async () => {
-      try {
-        await this.reloadConfig();
-      } catch (error) {
-      }
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = undefined;
-    }
-  }
-
-  isPolling(): boolean {
-    return !!this.pollingInterval;
-  }
 }

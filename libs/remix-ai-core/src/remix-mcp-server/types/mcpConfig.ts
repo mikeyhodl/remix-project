@@ -9,6 +9,7 @@ export interface MCPSecurityConfig {
   maxExecutionTime?: number;
   excludeTools?: string[];
   permissions?: {
+    requirePermissions: boolean
     defaultPermissions: string[];
     roles?: {
       [roleName: string]: string[];
@@ -90,6 +91,7 @@ export const defaultMCPConfig: MCPConfig = {
     maxExecutionTime: 30000,
     excludeTools: [],
     permissions: {
+      requirePermissions: true,
       defaultPermissions: ['*']
     },
     rateLimit: {
@@ -140,34 +142,5 @@ export const defaultMCPConfig: MCPConfig = {
   }
 }
 
-export const minimalMCPConfig: MCPConfig = {
-  version: '1.0.0',
-  security: {
-    allowedFileTypes: ['*'],
-    blockedPaths: ['.env', '.git', 'node_modules', '.ssh', 'private', 'secret'],
-    requirePermissions: true,
-    enableAuditLog: true,
-  },
-  validation: {
-    strictMode: false,
-    fileOperations: {
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-      allowedExtensions: ['*'],
-      blockedPatterns: ['**/node_modules/**', '**/.git/**']
-    },
-    networkOperations: {
-      allowedNetworks: ['sepolia', 'goerli', 'localhost', 'vm', 'mainnet'],
-      warnOnMainnet: true,
-      maxGasLimit: 15000000
-    }
-  },
-  features: {
-    compilation: true,
-    deployment: true,
-    debugging: true,
-    analysis: true,
-    testing: true,
-    git: true
-  },
-};
+export const minimalMCPConfig: MCPConfig = defaultMCPConfig
 
