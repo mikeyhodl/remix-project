@@ -13,17 +13,13 @@ function App() {
   const [appState, dispatch] = useReducer(appReducer, appInitialState)
   const [locale, setLocale] = useState<{code: string; messages: any}>({
     code: 'en',
-    messages: {}
+    messages: null
   })
   const [isContentChanged, setIsContentChanged] = useState<boolean>(false)
   const [isPluginActivated, setIsPluginActivated] = useState<boolean>(false)
 
   useEffect(() => {
-
-    setIsPluginActivated(true);
-
-    plugin.internalEvents.on('noir_activated', () => {
-      setIsPluginActivated(true);
+    const runInitialization = () => {
       // @ts-ignore
       plugin.on('locale', 'localeChanged', (locale: any) => {
         setLocale(locale)
@@ -60,10 +56,15 @@ function App() {
         dispatch({ type: 'SET_PROOFING_STATUS', payload: 'errored' })
         dispatch({ type: 'SET_COMPILER_FEEDBACK', payload: error.message }) 
       })
-
+      
       setIsPluginActivated(true)
-    })
-    setCurrentLocale();
+    }
+    plugin.internalEvents.on('noir_activated', runInitialization)
+
+    if (plugin.isActivated) {
+      runInitialization()
+    }
+    
   }, [])
 
   useEffect(() => {
@@ -93,18 +94,10 @@ function App() {
   }
 
   const setCurrentLocale = async () => {
-    try {
-      // @ts-ignore
-      const currentLocale = await plugin.call('locale', 'currentLocale')
-        // @ts-ignore
-        if (currentLocale && currentLocale.messages) {
-          setLocale(currentLocale)
-        }
-      if (currentLocale) setLocale(currentLocale)
-  } catch (e) {
-    console.warn("Failed to load locale, using default.", e)
-    setLocale({ code: 'en', messages: {} }); 
-  }
+    // @ts-ignore
+    const currentLocale = await plugin.call('locale', 'currentLocale')
+
+    setLocale(currentLocale)
   }
 
   const value = {
@@ -115,11 +108,13 @@ function App() {
 
   return (
     <div className="noir_compiler_app">
-      <IntlProvider locale={locale.code} messages={locale.messages}>
-        <NoirAppContext.Provider value={value}>
-          <Container />
-        </NoirAppContext.Provider>
-      </IntlProvider>
+      <RenderIf condition={locale.messages}>
+        <IntlProvider locale={locale.code} messages={locale.messages}>
+          <NoirAppContext.Provider value={value}>
+            <Container />
+          </NoirAppContext.Provider>
+        </IntlProvider>
+      </RenderIf>
     </div>
   )
 }

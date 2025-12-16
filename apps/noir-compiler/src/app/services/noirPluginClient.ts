@@ -22,6 +22,7 @@ export class NoirPluginClient extends PluginClient {
     path: string
     id: string
   }
+  public isActivated: boolean = false
 
   constructor() {
     super()
@@ -36,6 +37,7 @@ export class NoirPluginClient extends PluginClient {
   }
 
   onActivation(): void {
+    this.isActivated = true
     this.internalEvents.emit('noir_activated')
     this.setupWebSocketEvents()
   }
