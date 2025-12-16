@@ -814,8 +814,20 @@ export default class Editor extends Plugin {
     await this.addDecoration(annotation, filePath, 'sourceAnnotationsPerFile')
   }
 
-  async highlight (position, filePath, highlightColor, opt = { focus: true }) {
-    filePath = filePath || this.currentFile
+  async highlight (position, filePath, highlightColor, opt = { focus: true, origin: undefined }) {
+    // Allow callers (e.g. debugger) to specify the import origin file so we can
+    // resolve the correct dependency version/path via resolutionIndex.
+    // Falls back to the current file when origin is not provided for backward compatibility.
+    try {
+      const currentFile = await this.call('fileManager', 'file')
+      const originPath = opt && opt.origin ? opt.origin : currentFile
+      const resolved = await this.call('resolutionIndex', 'resolvePath', originPath, filePath)
+      filePath = resolved || filePath || this.currentFile
+    } catch (e) {
+      // best-effort: fall back to provided path or current file
+      filePath = filePath || this.currentFile
+    }
+
     if (opt.focus) {
       await this.call('fileManager', 'open', filePath)
       this.scrollToLine(position.start.line)
