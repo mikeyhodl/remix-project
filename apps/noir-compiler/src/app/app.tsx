@@ -115,11 +115,13 @@ function App() {
 
   return (
     <div className="noir_compiler_app">
-      <IntlProvider locale={locale.code} messages={locale.messages || {}}>
-        <NoirAppContext.Provider value={value}>
-          <Container />
-        </NoirAppContext.Provider>
-      </IntlProvider>
+      <RenderIf condition={locale.messages}>
+        <IntlProvider locale={locale.code} messages={locale.messages || {}}>
+          <NoirAppContext.Provider value={value}>
+            <Container />
+          </NoirAppContext.Provider>
+        </IntlProvider>
+      </RenderIf>
     </div>
   )
 }
