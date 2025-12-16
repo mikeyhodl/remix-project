@@ -645,6 +645,7 @@ export function RemixUiTopbar() {
               loginWithGitHub={loginWithGitHub}
             />
             <LoginButton 
+              plugin={plugin}
               variant="compact" 
               showCredits={true}
               className="ms-2"

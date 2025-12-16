@@ -283,17 +283,20 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
       dispatch({ type: 'SET_VALUE', payload: { name: 'matomo-perf-analytics', value: isChecked } })
     })
     
-    // Listen for requests to open specific settings tab
-    const handleOpenSettings = (e: CustomEvent) => {
-      if (e.detail?.tab === 'account-authentication') {
-        setSelected('account-authentication')
-      }
+    // Listen for plugin event to open a specific settings section
+    const onOpenSection = ({ sectionKey }: { sectionKey: string }) => {
+      // Validate section key exists; fallback to 'general'
+      const keys = settingsSections.map(s => s.key)
+      const target = keys.includes(sectionKey) ? sectionKey : 'general'
+      setSelected(target)
+      const section = settingsSections.find(s => s.key === target)
+      if (section) setFilteredSection(section)
     }
-    
-    window.addEventListener('open-settings', handleOpenSettings as EventListener)
+
+    props.plugin.on('settings', 'openSection', onOpenSection)
     
     return () => {
-      window.removeEventListener('open-settings', handleOpenSettings as EventListener)
+      props.plugin.off('settings', 'openSection')
     }
 
   }, [])

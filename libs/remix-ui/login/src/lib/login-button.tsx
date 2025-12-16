@@ -10,12 +10,14 @@ interface LoginButtonProps {
   className?: string
   showCredits?: boolean
   variant?: 'button' | 'badge' | 'compact'
+  plugin?: any
 }
 
 export const LoginButton: React.FC<LoginButtonProps> = ({
   className = '',
   showCredits = true,
-  variant = 'button'
+  variant = 'button',
+  plugin
 }) => {
   const { isAuthenticated, user, credits, logout, login } = useAuth()
   const [showModal, setShowModal] = useState(false)
@@ -53,11 +55,22 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
   }
   
   const handleManageAccounts = () => {
-    // Open Settings panel - Account & Authentication tab
-    const event = new CustomEvent('open-settings', { 
-      detail: { tab: 'account-authentication' } 
-    })
-    window.dispatchEvent(event)
+    // Open Settings plugin via plugin manager (no window events)
+    if (plugin && typeof plugin.call === 'function') {
+      (async () => {
+        try {
+          const isActive = await plugin.call('manager', 'isActive', 'settings')
+          if (!isActive) await plugin.call('manager', 'activatePlugin', 'settings')
+          await plugin.call('tabs', 'focus', 'settings')
+          // Focus the Account section of settings via plugin API
+          await plugin.call('settings', 'showSection', 'account')
+          // TODO: If settings plugin exposes API to select a specific section,
+          // call it here to navigate to 'account-authentication'.
+        } catch (err) {
+          console.error('[LoginButton] Failed to open Settings via plugin:', err)
+        }
+      })()
+    }
   }
 
   const formatAddress = (address: string) => {
@@ -68,6 +81,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
   const getProviderDisplayName = (provider: string) => {
     const providerNames: Record<string, string> = {
       'google': 'Google',
+      'github': 'GitHub',
       'apple': 'Apple',
       'discord': 'Discord',
       'coinbase': 'Coinbase Wallet',

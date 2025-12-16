@@ -16,6 +16,7 @@ interface UserMenuCompactProps {
 }
 
 const getProviderIcon = (provider: AuthProvider | string) => {
+  console.log('getProviderIcon', provider)
   switch (provider) {
     case 'google': return 'fab fa-google'
     case 'github': return 'fab fa-github'
@@ -38,42 +39,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   getLinkedAccounts
 }) => {
   const [showDropdown, setShowDropdown] = useState(false)
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
-  const [loadingAccounts, setLoadingAccounts] = useState(false)
-  
-  // Fetch linked accounts when dropdown opens
-  useEffect(() => {
-    if (showDropdown && linkedAccounts.length === 0) {
-      loadLinkedAccounts()
-    }
-  }, [showDropdown])
-  
-  const loadLinkedAccounts = async () => {
-    if (!getLinkedAccounts) return
-    
-    setLoadingAccounts(true)
-    try {
-      const data = await getLinkedAccounts()
-      
-      if (data && data.accounts) {
-        setLinkedAccounts(data.accounts)
-      }
-    } catch (err) {
-      console.error('Error loading linked accounts:', err)
-    } finally {
-      setLoadingAccounts(false)
-    }
-  }
-  
+ 
   // All available providers including GitHub
   const allProviders: AuthProvider[] = ['google', 'github', 'discord', 'siwe']
   
-  // Providers that are already linked
-  const linkedProviders = linkedAccounts.map(acc => acc.provider)
-  
-  // Providers available for linking (not already linked)
-  const linkableProviders = allProviders.filter(p => !linkedProviders.includes(p))
-
   return (
     <div className={`position-relative ${className}`}>
       <button
@@ -127,30 +96,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
               <div><strong>{getUserDisplayName()}</strong></div>
             </div>
             
-            {/* Connected Accounts */}
-            {loadingAccounts ? (
-              <div className="dropdown-item-text small text-center">
-                <div className="spinner-border spinner-border-sm" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              </div>
-            ) : linkedAccounts.length > 0 ? (
-              <>
-                <div className="dropdown-divider"></div>
-                <div className="dropdown-header small text-muted">Connected Accounts</div>
-                {linkedAccounts.map(account => (
-                  <div key={account.id} className="dropdown-item-text small d-flex align-items-center">
-                    <i className={`${getProviderIcon(account.provider)} mr-2`}></i>
-                    <span className="flex-grow-1">{getProviderDisplayName(account.provider)}</span>
-                    {account.isPrimary && (
-                      <span className="badge badge-primary badge-sm">Primary</span>
-                    )}
-                  </div>
-                ))}
-              </>
-            ) : (
+            {/* Connected Account */}
+            {user.provider && (
               <div className="dropdown-item-text small text-muted">
-                <i className={`${getProviderIcon(user.provider)} mr-2`}></i>
+                <i className={`${getProviderIcon(user.provider)} me-2`}></i>
                 {getProviderDisplayName(user.provider)}
               </div>
             )}

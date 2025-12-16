@@ -89,6 +89,8 @@ export class AuthPlugin extends Plugin {
           
           if (event.data.type === 'sso-auth-success') {
             console.log('[AuthPlugin] Received auth success from popup')
+            console.log('[AuthPlugin] User data from popup:', event.data.user)
+            console.log('[AuthPlugin] User provider field:', event.data.user?.provider)
             cleanup()
             resolve({
               user: event.data.user,
@@ -113,9 +115,12 @@ export class AuthPlugin extends Plugin {
       })
       
       // Store tokens in localStorage
+      console.log('[AuthPlugin] Storing user in localStorage:', result.user)
+      console.log('[AuthPlugin] User has provider field:', result.user.provider)
       localStorage.setItem('remix_access_token', result.accessToken)
       localStorage.setItem('remix_refresh_token', result.refreshToken)
       localStorage.setItem('remix_user', JSON.stringify(result.user))
+      console.log('[AuthPlugin] Stored user JSON:', localStorage.getItem('remix_user'))
       
       // Emit auth state change
       this.emit('authStateChanged', {
@@ -123,6 +128,9 @@ export class AuthPlugin extends Plugin {
         user: result.user,
         token: result.accessToken
       })
+      
+      // Fetch credits after successful login
+      this.refreshCredits().catch(console.error)
       
       console.log('[AuthPlugin] Login successful')
     } catch (error) {
