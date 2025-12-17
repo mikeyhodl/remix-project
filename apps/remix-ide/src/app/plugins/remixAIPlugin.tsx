@@ -8,6 +8,8 @@ import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
+import { QueryParams } from '@remix-project/remix-lib'
+
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
 }
@@ -92,7 +94,12 @@ export class RemixAIPlugin extends Plugin {
     (window as any).getRemixAIPlugin = this
 
     // initialize the remix MCP server
-    this.remixMCPServer = await createRemixMCPServer(this)
+    const qp = new QueryParams()
+    const hasFlag = qp.exists('experimental')
+    if (hasFlag) {
+      this.remixMCPServer = await createRemixMCPServer(this)
+    }
+
     return true
   }
 
