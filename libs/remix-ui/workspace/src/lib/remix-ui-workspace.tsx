@@ -1030,7 +1030,7 @@ export function Workspace() {
   }
 
   return (
-    <div className="d-flex flex-column justify-content-between" style={{ height: `${workspaceHeight}dvh` }}>
+    <div className="d-flex flex-column h-100">
       <div className="w-100 px-2 mt-3">
         <div>
           <FileExplorerMenu
@@ -1049,9 +1049,11 @@ export function Workspace() {
         </div>
       </div>
       <div
-        className="remixui_container overflow-auto"
+        className="remixui_container overflow-auto h-100"
         style={{
-          maxHeight: selectedWorkspace && selectedWorkspace.isGitRepo ? '95dvh' : '100dvh'
+          display: 'flex',
+          flex: '1 1 auto',
+          minHeight: 0
         }}
         onContextMenu={(e) => {
           e.preventDefault()
@@ -1224,7 +1226,9 @@ export function Workspace() {
       </div>
       { (selectedWorkspace && selectedWorkspace.isGitRepo) && (
         <div className={`bg-light border-top d-flex justify-content-between align-items-center`} data-id="workspaceGitPanel" style={{
-          minHeight: '5dvh'
+          minHeight: '4rem',
+          marginBottom: '0 !important',
+          flexShrink: 0
         }}>
           <div className="d-flex justify-content-between p-1 w-100">
             <div className="text-uppercase text-dark pt-1 px-1">GIT</div>

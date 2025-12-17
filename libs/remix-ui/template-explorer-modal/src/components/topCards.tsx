@@ -64,7 +64,7 @@ export function TopCards() {
           }}
           data-id="importOptionsMenuLocalFileSystem"
         >
-          <i className="me-2 far fa-upload"></i>
+          <i className="me-2 fa-solid fa-upload"></i>
           <input
             ref={importFileInputRef}
             type="file"
@@ -121,7 +121,8 @@ export function TopCards() {
           }}
           data-id="importOptionsMenuIPFS"
         >
-          <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
+          <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span>
+        </li>
         <li
           className="d-flex flex-row align-items-center import-option-item"
           onClick={() => {
@@ -134,7 +135,7 @@ export function TopCards() {
           }}
           data-id="importOptionsMenuHTTPS"
         >
-          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from HTTPS</span></li>
+          <i className="me-2 fa-solid fa-link"></i><span className="fw-light">Import from HTTPS</span></li>
       </ul>
     )
   }

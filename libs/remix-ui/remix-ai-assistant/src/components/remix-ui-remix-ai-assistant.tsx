@@ -835,9 +835,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   return (
     <div
-      className="d-flex flex-column w-100 overflow-x-hidden"
+      className="d-flex flex-column w-100 overflow-x-hidden h-100"
       ref={aiChatRef}
-      style={{ height: `${aiAssistantHeight}dvh` }}
     >
       <section id="remix-ai-chat-history" className="h-83 d-flex flex-column p-2 overflow-x-hidden" style={{ flex: 7, overflowY: 'scroll' }} ref={chatHistoryRef}>
         <div data-id="remix-ai-assistant-ready"></div>
