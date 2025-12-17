@@ -654,8 +654,7 @@ class AppComponent {
       'remixAI',
       'remixaiassistant'
     ])
-    // Activate SSO plugin first, then Auth plugin (Auth depends on SSO)
-    //await this.appManager.activatePlugin(['sso'])
+
     await this.appManager.activatePlugin(['auth'])
     await this.appManager.activatePlugin(['settings'])
 

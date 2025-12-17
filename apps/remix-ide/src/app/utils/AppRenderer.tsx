@@ -9,7 +9,6 @@ import { createRoot, Root } from 'react-dom/client';
 import { TrackingProvider } from '../contexts/TrackingContext';
 import { Preload } from '../components/preload';
 import { GitHubPopupCallback } from '../pages/GitHubPopupCallback';
-// Popup/standalone subscription pages removed; overlay/inline handled in main UI
 import { TrackingFunction } from './TrackingFunction';
 
 export interface RenderAppOptions {
