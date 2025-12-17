@@ -5,7 +5,7 @@ const profile = {
   name: 'resolutionIndex',
   displayName: 'resolution index',
   version: '0.0.1',
-  methods: ['resolveImportFromIndex', 'resolvePath', 'refresh']
+  methods: ['resolveImportFromIndex', 'resolvePath', 'refresh', 'resolveActualPath']
 }
 
 type Index = Record<string, Record<string, string>>
@@ -91,6 +91,122 @@ export class ResolutionIndexPlugin extends Plugin {
 
     // Return the original path as a last resort (renderer will guard with exists)
     return inputPath
+  }
+
+  /**
+   * Resolve the actual filesystem path for a requested file within a compiled contract's context.
+   * This uses the __sources__ bundle and .raw_paths.json to find the exact file that was used.
+   * 
+   * @param originContract - The main contract that was compiled (entry point)
+   * @param requestedPath - The path being requested (e.g., from debugger sources)
+   * @returns The actual filesystem path where the file is located, or null if not found
+   */
+  async resolveActualPath(originContract: string, requestedPath: string): Promise<string | null> {
+    console.log('[ResolutionIndexPlugin] 🔍 resolveActualPath CALLED')
+    console.log('[ResolutionIndexPlugin]   ➡️  originContract:', originContract)
+    console.log('[ResolutionIndexPlugin]   ➡️  requestedPath:', requestedPath)
+    
+    try {
+      // Normalize origin contract path (strip .deps/npm/ prefix if present)
+      const normalizedOrigin = this.normalizeSourceFile(originContract)
+      console.log('[ResolutionIndexPlugin]   📝 Normalized origin:', normalizedOrigin)
+      
+      // Check if index has this origin
+      console.log('[ResolutionIndexPlugin]   📊 Index keys:', Object.keys(this.index))
+      console.log('[ResolutionIndexPlugin]   🔎 Has normalized origin?', normalizedOrigin in this.index)
+      
+      if (!this.index[normalizedOrigin]) {
+        console.log('[ResolutionIndexPlugin]   ❌ Origin not found in index')
+        return null
+      }
+      
+      console.log('[ResolutionIndexPlugin]   📋 Origin entry keys:', Object.keys(this.index[normalizedOrigin]))
+      console.log('[ResolutionIndexPlugin]   🔎 Has __sources__?', '__sources__' in this.index[normalizedOrigin])
+      
+      if (!this.index[normalizedOrigin]['__sources__']) {
+        console.log('[ResolutionIndexPlugin]   ❌ No __sources__ found for:', normalizedOrigin)
+        return null
+      }
+      
+      const sources = this.index[normalizedOrigin]['__sources__'] as any
+      console.log('[ResolutionIndexPlugin]   📦 __sources__ keys:', Object.keys(sources))
+      console.log('[ResolutionIndexPlugin]   🔎 Looking for requestedPath in sources:', requestedPath)
+      
+      // Find matching source in __sources__
+      let resolvedPath: string | null = null
+      if (sources[requestedPath]) {
+        console.log('[ResolutionIndexPlugin]   ✅ Found requestedPath in sources')
+        console.log('[ResolutionIndexPlugin]   📄 Source entry:', JSON.stringify(sources[requestedPath], null, 2))
+        if (sources[requestedPath].file) {
+          resolvedPath = sources[requestedPath].file
+          console.log('[ResolutionIndexPlugin]   📍 Extracted resolved path:', resolvedPath)
+        } else {
+          console.log('[ResolutionIndexPlugin]   ⚠️  Source entry has no .file property')
+        }
+      } else {
+        console.log('[ResolutionIndexPlugin]   ⚠️  requestedPath NOT found in sources')
+      }
+      
+      if (!resolvedPath) {
+        console.log('[ResolutionIndexPlugin]   ❌ No match in __sources__ for:', requestedPath)
+        return null
+      }
+      
+      console.log('[ResolutionIndexPlugin]   � Resolved path from __sources__:', resolvedPath)
+      
+      // Check if it's a local workspace file (no @ version, not a URL)
+      const isLocalFile = !resolvedPath.includes('@') && !resolvedPath.startsWith('http')
+      console.log('[ResolutionIndexPlugin]   📁 Is local file?', isLocalFile)
+      
+      if (isLocalFile) {
+        console.log('[ResolutionIndexPlugin]   ✅ Local file, returning as-is:', resolvedPath)
+        return resolvedPath
+      }
+      
+      // For external dependencies, look up in .raw_paths.json to find actual FS location
+      console.log('[ResolutionIndexPlugin]   🌐 External dependency, looking up in .raw_paths.json')
+      try {
+        const rawPathsContent = await this.call('fileManager', 'readFile', '.deps/.raw_paths.json')
+        console.log('[ResolutionIndexPlugin]   ✅ Successfully read .raw_paths.json')
+        const rawPaths = JSON.parse(rawPathsContent)
+        console.log('[ResolutionIndexPlugin]   📋 .raw_paths.json has', Object.keys(rawPaths).length, 'entries')
+        
+        // Look through all entries to find where this file was saved
+        for (const [url, fsPath] of Object.entries(rawPaths)) {
+          console.log('[ResolutionIndexPlugin]   🔎 Checking:', { url, fsPath, resolvedPath })
+          // The fsPath should contain our resolved path
+          if (typeof fsPath === 'string' && fsPath.includes(resolvedPath)) {
+            console.log('[ResolutionIndexPlugin]   ✅ MATCH FOUND!')
+            console.log('[ResolutionIndexPlugin]   🔗 Original URL:', url)
+            console.log('[ResolutionIndexPlugin]   📁 Actual FS Path:', fsPath)
+            return fsPath
+          }
+        }
+        
+        console.log('[ResolutionIndexPlugin]   ⚠️  No match found in .raw_paths.json')
+        console.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
+        return resolvedPath
+      } catch (e) {
+        console.log('[ResolutionIndexPlugin]   ⚠️  .raw_paths.json error:', e)
+        console.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
+        return resolvedPath
+      }
+    } catch (e) {
+      console.log('[ResolutionIndexPlugin]   ❌ ERROR in resolveActualPath:', e)
+      return null
+    }
+  }
+
+  private normalizeSourceFile(path: string): string {
+    if (!path) return path
+    // Strip .deps/npm/, .deps/github/, .deps/http/ prefixes to get canonical package path
+    if (path.startsWith('.deps/npm/')) return path.substring('.deps/npm/'.length)
+    if (path.startsWith('.deps/github/')) return path.substring('.deps/github/'.length)
+    if (path.startsWith('.deps/http/')) {
+      // For HTTP paths, keep them as http URLs would be stored
+      return path
+    }
+    return path
   }
 
   // Helpers

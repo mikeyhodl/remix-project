@@ -821,8 +821,25 @@ export default class Editor extends Plugin {
     try {
       const currentFile = await this.call('fileManager', 'file')
       const originPath = opt && opt.origin ? opt.origin : currentFile
-      const resolved = await this.call('resolutionIndex', 'resolvePath', originPath, filePath)
-      filePath = resolved || filePath || this.currentFile
+      
+      // Try resolution index with __sources__ + .raw_paths.json approach first
+      if (originPath) {
+        try {
+          const resolved = await this.call('resolutionIndex', 'resolveActualPath', originPath, filePath)
+          if (resolved) {
+            filePath = resolved
+          } else {
+            // Fall back to regular resolution
+            const fallback = await this.call('resolutionIndex', 'resolvePath', originPath, filePath)
+            filePath = fallback || filePath || this.currentFile
+          }
+        } catch (e) {
+          console.log('Resolution failed, using provided path:', e)
+          filePath = filePath || this.currentFile
+        }
+      } else {
+        filePath = filePath || this.currentFile
+      }
     } catch (e) {
       // best-effort: fall back to provided path or current file
       filePath = filePath || this.currentFile
