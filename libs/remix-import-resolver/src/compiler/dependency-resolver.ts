@@ -16,6 +16,7 @@ import { WarningSystem } from './utils/warning-system'
 export type CompilerInput = {
   [fileName: string]: {
     content: string
+    file?: string // The resolved file path where content was retrieved from
   }
 }
 
@@ -65,6 +66,8 @@ export class DependencyResolver {
   private sourceFiles: Map<string, string> = new Map()
   // Map aliases (resolved/versioned/actual FS paths) → original import spec keys
   private aliasToSpec: Map<string, string> = new Map()
+  // Map import spec → actual resolved file path where content was retrieved from
+  private specToResolvedPath: Map<string, string> = new Map()
   private processedFiles: Set<string> = new Set()
   private importGraph: Map<string, Set<string>> = new Map()
   private fileToPackageContext: Map<string, string> = new Map()
@@ -157,6 +160,8 @@ export class DependencyResolver {
   public async buildDependencyTree(entryFile: string): Promise<Map<string, string>> {
     this.logIf('tree', `[DependencyResolver] 🌳 Building dependency tree from: ${entryFile}`)
     this.sourceFiles.clear()
+    this.aliasToSpec.clear()
+    this.specToResolvedPath.clear()
     this.processedFiles.clear()
     this.importGraph.clear()
     this.fileToPackageContext.clear()
@@ -336,7 +341,9 @@ export class DependencyResolver {
 
       // Always store under the ORIGINAL IMPORT SPEC (compiler will request this)
       this.sourceFiles.set(importPath, content)
+      this.specToResolvedPath.set(importPath, resolvedPath)
       this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
+      this.logIf('storage', `[DependencyResolver]   📍 Resolved file path: ${resolvedPath}`)
 
       // Maintain alias mapping for navigation/internal lookups
       if (resolvedPath !== importPath) this.aliasToSpec.set(resolvedPath, importPath)
@@ -463,7 +470,11 @@ export class DependencyResolver {
   /** Convert the bundle to Solidity compiler input shape. */
   public toCompilerInput(): CompilerInput {
     const sources: CompilerInput = {}
-    for (const [path, content] of this.sourceFiles.entries()) sources[path] = { content }
+    for (const [path, content] of this.sourceFiles.entries()) {
+      const resolvedPath = this.specToResolvedPath.get(path)
+      //sources[path] = { content, file: resolvedPath }
+      sources[path] = { content }
+    }
     return sources
   }
 

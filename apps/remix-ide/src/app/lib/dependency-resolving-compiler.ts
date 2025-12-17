@@ -14,7 +14,7 @@ const customImportCallback = (url: string, cb: (err: any, result?: any) => void)
   if (resolvedSources && url in resolvedSources) {
     console.log(`[DependencyResolvingCompiler] ✅ Found resolved source for URL: ${url}`)
     return cb(null, resolvedSources[url].content)
-  }else{
+  } else {
     console.log(`[DependencyResolvingCompiler] ❌ No resolved source found for URL: ${url}`)
     cb(`❌ No resolved source found for URL: ${url}`)
   }
@@ -77,7 +77,9 @@ export class DependencyResolvingCompiler extends Compiler {
     // 1) Build deps
     if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, {
-      imports: true
+      enabled: true,
+      storage: true,
+      imports: true,
     })
     depResolver.setCacheEnabled(true)
 
@@ -175,6 +177,6 @@ export class DependencyResolvingCompiler extends Compiler {
     console.log(resolvedSources)
     // 6) Delegate to base compiler
     //super.compile(resolvedSources, target)
-    super.compile(sources, target)
+    super.compile(resolvedSources, target)
   }
 }

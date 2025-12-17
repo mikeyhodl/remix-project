@@ -474,7 +474,7 @@ export class ImportResolver implements IImportResolver {
       }
     }
 
-    this.log(`[ImportResolver] 📥 Fetching: ${url}`)
+    this.log(`[ImportResolver] 📥 Fetching: ${url} and save in ${targetPath}`)
     const content = await this.contentFetcher.resolveAndSave(url, targetPath, true)
     if (!skipResolverMappings || originalUrl === url) {
       if (!this.resolutions.has(originalUrl)) this.resolutions.set(originalUrl, url)

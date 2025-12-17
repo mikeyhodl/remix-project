@@ -101,8 +101,36 @@ export class RemixPluginAdapter implements IOAdapter {
 
     // Fetch content directly using our simple translator
     const content: string = await this.fetch(url)
+    console.log(`Fetched content from ${url}, saving to ${dest}`)
     await this.plugin.call('fileManager', 'setFile', dest, content)
+    
+    // Update .raw_paths.json mapping
+    await this.updateRawPathsMapping(url, dest)
+    
     // Return content to the resolver (it expects the fetched file contents, not a path)
     return content
+  }
+
+  private async updateRawPathsMapping(url: string, dest: string): Promise<void> {
+    const mappingPath = '.deps/.raw_paths.json'
+    let mapping: Record<string, string> = {}
+    
+    try {
+      const exists = await this.exists(mappingPath)
+      if (exists) {
+        const existing = await this.readFile(mappingPath)
+        mapping = JSON.parse(existing)
+      }
+    } catch {
+      // File doesn't exist or parse error, start fresh
+    }
+    
+    mapping[url] = dest
+    
+    try {
+      await this.setFile(mappingPath, JSON.stringify(mapping, null, 2))
+    } catch (e) {
+      console.warn('Failed to update .raw_paths.json:', e)
+    }
   }
 }
