@@ -9,12 +9,26 @@ import { MCPConfig, defaultMCPConfig, minimalMCPConfig } from '../types/mcpConfi
 export class MCPConfigManager {
   private config: MCPConfig;
   private plugin: Plugin;
-  private configPath: string = 'artifacts/.mcp.config.json';
-  private pollingInterval?: NodeJS.Timeout;
+  private configPath: string = 'remix.config.json';
 
   constructor(plugin: Plugin) {
     this.plugin = plugin;
     this.config = defaultMCPConfig;
+    this.plugin.on('fileManager', 'fileSaved', async (filePath: string) => {
+      if (filePath === this.configPath){
+        const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+
+        if (exists) {
+          const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
+          const userConfig = JSON.parse(configContent);
+          if (userConfig.mcp) {this.config = userConfig.mcp}
+          else {
+            this.config = minimalMCPConfig
+            this.saveConfig(this.config)
+          }
+        }
+      }
+    });
   }
 
   async loadConfig(): Promise<MCPConfig> {
@@ -24,10 +38,14 @@ export class MCPConfigManager {
       if (exists) {
         const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
         const userConfig = JSON.parse(configContent);
-        this.config = this.mergeConfig(defaultMCPConfig, userConfig);
+        // Merge with defaults
+        if (userConfig?.mcp) { this.config = this.mergeConfig(defaultMCPConfig, userConfig)}
+        else {
+          this.saveConfig(this.config)
+        }
       } else {
         this.config = minimalMCPConfig;
-        await this.plugin.call('fileManager', 'writeFile', this.configPath, JSON.stringify(this.config, null, 2));
+        this.saveConfig(this.config)
       }
 
       return this.config;
@@ -39,10 +57,18 @@ export class MCPConfigManager {
 
   async saveConfig(config: MCPConfig): Promise<void> {
     try {
-      const configContent = JSON.stringify(config, null, 2);
-      console.log('savin gconfig independently', config)
-      await this.plugin.call('fileManager', 'writeFile', this.configPath, configContent);
+      const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
+      let userConfig = {}
+      if (exists) {
+        const remixConfig = await this.plugin.call('fileManager', 'readFile', this.configPath);
+        userConfig = JSON.parse(remixConfig)
+      }
+
+      userConfig['mcp'] = config
+      const newConfigContent = JSON.stringify(userConfig, null, 2);
+      await this.plugin.call('fileManager', 'writeFile', this.configPath, newConfigContent);
       this.config = config;
+
     } catch (error) {
       console.error(`[MCPConfigManager] Error saving config: ${error.message}`);
       throw error;
@@ -179,27 +205,4 @@ export class MCPConfigManager {
     }, null, 2);
   }
 
-  startPolling(intervalMs: number = 10000): void {
-    if (this.pollingInterval) {
-      return;
-    }
-
-    this.pollingInterval = setInterval(async () => {
-      try {
-        await this.reloadConfig();
-      } catch (error) {
-      }
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = undefined;
-    }
-  }
-
-  isPolling(): boolean {
-    return !!this.pollingInterval;
-  }
 }

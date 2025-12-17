@@ -471,7 +471,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                       <button
                         className={`btn btn-sm ${server.enabled ? 'btn-warning' : 'btn-success'}`}
                         onClick={() => toggleServer(server)}
-                        title={server.enabled ? 'Disconnect from server' : 'Connect to server'}
                       >
                         {server.enabled ? 'Disconnect' : 'Connect'}
                       </button>
@@ -480,7 +479,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                       <button
                         className="btn btn-sm btn-primary"
                         onClick={() => editServer(server)}
-                        title="Edit server configuration"
                       >
                         Edit
                       </button>
@@ -512,7 +510,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
         <button
           className="btn btn-sm btn-outline-primary"
           onClick={loadConnectionStatuses}
-          title="Refresh connection status display"
         >
           Refresh Status
         </button>

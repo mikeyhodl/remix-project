@@ -14,7 +14,6 @@ export type {
   MCPSecurityConfig,
   MCPValidationConfig,
   MCPResourceConfig,
-  MCPAlchemyConfig,
 } from './types/mcpConfig';
 export { defaultMCPConfig } from './types/mcpConfig';
 
@@ -25,6 +24,8 @@ export { createDeploymentTools } from './handlers/DeploymentHandler';
 export { createDebuggingTools } from './handlers/DebuggingHandler';
 export { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 export { createAmpTools } from './handlers/AmpHandler';
+export { createMathUtilsTools } from './handlers/MathUtilsHandler';
+export { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 
 // Resource Providers
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
@@ -135,7 +136,9 @@ export async function createRemixMCPServer(
     // }
   }
 
-  // await server.initialize(); // dont init here, race conditions
+  console.log("Initializing server")
+  await server.initialize();
+
   return server;
 }
 
