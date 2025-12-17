@@ -395,7 +395,9 @@ export class DependencyResolver {
           }
           // Apply any remappings (e.g., oz/ → @openzeppelin/contracts@X/)
           const remapLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+          const beforeRemap = nextPath
           nextPath = applyRemappings(nextPath, this.remappings, remapLogFn)
+          const wasRemapped = beforeRemap !== nextPath
 
           // Recursively process the child first so that resolver mappings are populated
           await this.processFile(nextPath, resolvedPath, currentFilePackageContext || undefined)
@@ -409,8 +411,16 @@ export class DependencyResolver {
           if (this.resolutionIndex) {
             try { 
               const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
+              // Record the original import path
               this.resolutionIndex.recordResolution(importPath, importedPath, childResolved)
               this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${importPath} | ${importedPath} → ${childResolved}`)
+              // If a remapping was applied, also record the remapped path so the resolution index
+              // contains both the original (e.g., "oz/ERC20/ERC20.sol") and the remapped path
+              // (e.g., "@openzeppelin/contracts@5.4.0/token/ERC20/ERC20.sol") pointing to the same file
+              if (wasRemapped) {
+                this.resolutionIndex.recordResolution(importPath, nextPath, childResolved)
+                this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped: ${importPath} | ${nextPath} → ${childResolved}`)
+              }
             } catch { }
           }
         }
