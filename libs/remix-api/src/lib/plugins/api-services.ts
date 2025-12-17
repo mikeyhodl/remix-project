@@ -102,6 +102,13 @@ export class SSOApiService {
   async linkGitHub(request: GitHubLinkRequest): Promise<ApiResponse<GitHubLinkResponse>> {
     return this.apiClient.post<GitHubLinkResponse>('/github/link', request)
   }
+  
+  /**
+   * Link SIWE account (special endpoint)
+   */
+  async linkSiwe(request: SiweVerifyRequest): Promise<ApiResponse<SiweVerifyResponse>> {
+    return this.apiClient.post<SiweVerifyResponse>('/siwe/link', request)
+  }
 }
 
 /**
