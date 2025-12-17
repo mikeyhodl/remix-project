@@ -74,8 +74,15 @@ export class DependencyResolvingCompiler extends Compiler {
   }
 
   private async performSmartCompilation(sources: Source, target: string): Promise<void> {
+    // For Yul files, skip dependency resolution and pass sources as-is
+    if (target.endsWith('.yul')) {
+      if (this.debug) console.log(`[DependencyResolvingCompiler] 🔧 Yul file detected, skipping dependency resolution`)
+      super.compile(sources, target)
+      return
+    }
+
     // 1) Build deps
-    if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`)
+    if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`, sources, target)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, {
       enabled: true,
       storage: true,
