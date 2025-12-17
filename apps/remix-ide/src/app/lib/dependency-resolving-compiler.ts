@@ -144,6 +144,7 @@ export class DependencyResolvingCompiler extends Compiler {
     }
 
     // 2) Save resolution index
+    await depResolver.saveSourcesBundle(target)
     await depResolver.saveResolutionIndex()
 
     // 3) Optional debug: import graph
@@ -160,6 +161,8 @@ export class DependencyResolvingCompiler extends Compiler {
 
     // 4) Convert bundle to compiler input
     resolvedSources = depResolver.toCompilerInput()
+
+    console.log('toResolutionFileInput', depResolver.toResolutionFileInput())
 
     // 5) Ensure entry file present
     if (!resolvedSources[target] && sources[target]) {

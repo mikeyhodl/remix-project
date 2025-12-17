@@ -144,6 +144,16 @@ export class ResolutionIndex {
     }
   }
 
+  /** Record the complete source bundle for a compiled file. */
+  recordSources(sourceFile: string, sources: Record<string, { content: string; file?: string }>): void {
+    const normalizedSource = this.normalizeSourceFile(sourceFile)
+    this.log(`[ResolutionIndex] 📦 Recording sources for: ${normalizedSource}`)
+    if (!this.index[normalizedSource]) this.index[normalizedSource] = {}
+    this.index[normalizedSource]['__sources__'] = sources as any
+    this.isDirty = true
+    this.log(`[ResolutionIndex] 📝 Recorded ${Object.keys(sources).length} source files for: ${normalizedSource}`)
+  }
+
   /** Persist index to workspace storage if it changed. */
   async save(): Promise<void> {
     //if (!this.isDirty) { this.log(`[ResolutionIndex] ⏭️  Index unchanged, skipping save`); return }

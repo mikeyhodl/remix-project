@@ -471,9 +471,17 @@ export class DependencyResolver {
   public toCompilerInput(): CompilerInput {
     const sources: CompilerInput = {}
     for (const [path, content] of this.sourceFiles.entries()) {
-      const resolvedPath = this.specToResolvedPath.get(path)
-      //sources[path] = { content, file: resolvedPath }
       sources[path] = { content }
+    }
+    return sources
+  }
+
+    /** Convert the bundle to Solidity compiler input shape. */
+  public toResolutionFileInput(): CompilerInput {
+    const sources: CompilerInput = {}
+    for (const [path, content] of this.sourceFiles.entries()) {
+      const resolvedPath = this.specToResolvedPath.get(path)
+      sources[path] = { content, file: resolvedPath }
     }
     return sources
   }
@@ -483,6 +491,21 @@ export class DependencyResolver {
     this.logIf('resolutionIndex', `[DependencyResolver] 💾 Saving resolution index...`)
     if (this.resolutionIndex) {
       try { await this.resolutionIndex.save() } catch { }
+    }
+  }
+
+  /** Save the complete source bundle to the resolution index for a given entry file. */
+  public async saveSourcesBundle(entryFile: string): Promise<void> {
+    this.logIf('resolutionIndex', `[DependencyResolver] 📦 Saving sources bundle for: ${entryFile}`)
+    if (this.resolutionIndex) {
+      try {
+        const sources = this.toResolutionFileInput()
+        if ((this.resolutionIndex as any).recordSources) {
+          (this.resolutionIndex as any).recordSources(entryFile, sources)
+        }
+      } catch (err) {
+        this.logIf('resolutionIndex', `[DependencyResolver] ⚠️  Failed to save sources bundle:`, err)
+      }
     }
   }
 }

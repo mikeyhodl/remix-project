@@ -87,6 +87,9 @@ export class RemixPluginAdapter implements IOAdapter {
       dest = `.deps/${dest}`
     }
 
+    // Update .raw_paths.json mapping regardless of cache hit/miss
+    await this.updateRawPathsMapping(url, dest)
+
     // If cache is enabled and file already exists, return cached content
     if (this.cacheEnabled) {
       try {
@@ -103,9 +106,6 @@ export class RemixPluginAdapter implements IOAdapter {
     const content: string = await this.fetch(url)
     console.log(`Fetched content from ${url}, saving to ${dest}`)
     await this.plugin.call('fileManager', 'setFile', dest, content)
-    
-    // Update .raw_paths.json mapping
-    await this.updateRawPathsMapping(url, dest)
     
     // Return content to the resolver (it expects the fetched file contents, not a path)
     return content
