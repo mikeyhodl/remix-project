@@ -17,7 +17,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   }
   const inputRef = useRef<HTMLInputElement>(null)
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false)
-
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const menuItems = [
     {
       action: 'newBlankFile',
@@ -48,13 +48,6 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
       platforms:[appPlatformTypes.web]
     },
     {
-      action: 'uploadFolder',
-      title: 'Upload folder into current Workspace',
-      icon: 'far fa-folder-upload',
-      placement: 'top',
-      platforms:[appPlatformTypes.web]
-    },
-    {
       action: 'importFromIpfs',
       title: 'Import files from ipfs',
       icon: 'fa-regular fa-cube',
@@ -67,6 +60,13 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
       icon: 'fa-solid fa-upload',
       placement: 'top',
       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
+    },
+    {
+      action: 'uploadFolder',
+      title: 'Import folders into current Workspace',
+      icon: 'fa-solid fa-folder-upload',
+      placement: 'top',
+      platforms:[appPlatformTypes.web]
     },
     {
       action: 'importFromHttps',
@@ -95,6 +95,9 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
     if (action === 'localFileSystem') {
       inputRef.current?.click()
     }
+    if (action === 'uploadFolder') {
+      folderInputRef.current?.click()
+    }
   }
 
   const enableDirUpload = { directory: '', webkitdirectory: '' }
@@ -109,6 +112,20 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
         onChange={(e) => {
           e.stopPropagation()
           props.uploadFile(e.target)
+          e.target.value = null
+          setIsCreateMenuOpen(false)
+        }}
+      />
+      <input
+        ref={folderInputRef}
+        id="uploadFolderInput"
+        data-id="fileExplorerUploadFolder"
+        type="file"
+        multiple
+        {...enableDirUpload}
+        onChange={(e) => {
+          e.stopPropagation()
+          props.uploadFolder(e.target)
           e.target.value = null
           setIsCreateMenuOpen(false)
         }}
@@ -249,6 +266,29 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                         trackMatomoEvent({
                           category: MatomoCategories.FILE_EXPLORER,
                           action: 'importFromLocalFileSystem',
+                          isClick: true
+                        })
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'uploadFolder').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      data-id="fileExplorerCreateButton-uploadFolder"
+                      key={index}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        itemAction(action)
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'uploadFolder',
                           isClick: true
                         })
                       }}
