@@ -179,7 +179,7 @@ export default class CodeParserCompiler {
         }
         const content = await this.plugin.call('fileManager', 'readFile', this.plugin.currentFile)
         const sources = { [this.plugin.currentFile]: { content } }
-        //this.compiler.compile(sources, this.plugin.currentFile)
+        this.compiler.compile(sources, this.plugin.currentFile)
       }
     } catch (e) {
       // do nothing
