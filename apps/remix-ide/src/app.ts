@@ -48,6 +48,7 @@ import { FoundryProvider } from './app/providers/foundry-provider'
 import { ExternalHttpProvider } from './app/providers/external-http-provider'
 import { EnvironmentExplorer } from './app/providers/environment-explorer'
 import { FileDecorator } from './app/plugins/file-decorator'
+import { TransactionSimulator } from './app/plugins/transaction-simulator'
 import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
@@ -295,6 +296,9 @@ class AppComponent {
     // ------- FILE DECORATOR PLUGIN ------------------
     const fileDecorator = new FileDecorator()
 
+    // ------- TRANSACTION SIMULATOR PLUGIN ------------------
+    const transactionSimulator = new TransactionSimulator()
+
     // ------- CODE FORMAT PLUGIN ------------------
     const codeFormat = new CodeFormat()
 
@@ -432,6 +436,7 @@ class AppComponent {
       offsetToLineColumnConverter,
       codeParser,
       fileDecorator,
+      transactionSimulator,
       codeFormat,
       terminal,
       web3Provider,
@@ -636,6 +641,7 @@ class AppComponent {
       'codeParser',
       'codeFormatter',
       'fileDecorator',
+      'transactionSimulator',
       'terminal',
       'blockchain',
       'fetchAndCompile',
