@@ -21,21 +21,21 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
   const menuItems = [
     {
       action: 'newBlankFile',
-      title: 'New blank file',
+      title: 'New file',
       icon: 'far fa-plus',
       placement: 'top',
       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
     },
     {
       action: 'createNewFile',
-      title: 'Create new file',
+      title: 'New file using Template',
       icon: 'far fa-file',
       placement: 'top',
       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
     },
     {
       action: 'createNewFolder',
-      title: 'Create new folder',
+      title: 'New folder',
       icon: 'far fa-folder',
       placement: 'top',
       platforms:[appPlatformTypes.web, appPlatformTypes.desktop]
@@ -49,31 +49,31 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
     },
     {
       action: 'importFromIpfs',
-      title: 'Import files from ipfs',
+      title: 'Import files from IPFS',
       icon: 'fa-regular fa-cube',
       placement: 'top',
       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
     },
     {
+      action: 'importFromHttps',
+      title: 'Import files from HTTPS',
+      icon: 'fa-solid fa-link',
+      placement: 'top',
+      platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
+    },
+    {
       action: 'localFileSystem',
-      title: 'Import files from local file system',
+      title: 'Upload files',
       icon: 'fa-solid fa-upload',
       placement: 'top',
       platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
     },
     {
       action: 'uploadFolder',
-      title: 'Import folders into current Workspace',
+      title: 'Upload folders',
       icon: 'fa-solid fa-folder-upload',
       placement: 'top',
       platforms:[appPlatformTypes.web]
-    },
-    {
-      action: 'importFromHttps',
-      title: 'Import files with https',
-      icon: 'fa-solid fa-link',
-      placement: 'top',
-      platforms: [appPlatformTypes.web, appPlatformTypes.desktop]
     },
     {
       action: 'initializeWorkspaceAsGitRepo',
@@ -183,31 +183,6 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     </Dropdown.Item>
                   )
                 })}
-                {menuItems.filter((item) => item.action === 'createNewFile').map(({ action, title, icon, placement, platforms }, index) => {
-                  return (
-                    <Dropdown.Item
-                      data-id="fileExplorerCreateButton-createNewFile"
-                      key={index}
-                      onClick={async () => {
-                        await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
-                        appContext.appStateDispatch({
-                          type: appActionTypes.showGenericModal,
-                          payload: true
-                        })
-                        trackMatomoEvent({
-                          category: MatomoCategories.FILE_EXPLORER,
-                          action: 'createNewFile',
-                          isClick: true
-                        })
-                      }}
-                    >
-                      <span className="text-decoration-none">
-                        <i className={icon}></i>
-                        <span className="ps-2">{title}</span>
-                      </span>
-                    </Dropdown.Item>
-                  )
-                })}
                 {menuItems.filter((item) => item.action === 'createNewFolder').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
@@ -229,20 +204,20 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                     </Dropdown.Item>
                   )
                 })}
-                {menuItems.filter((item) => item.action === 'importFromIpfs').map(({ action, title, icon, placement, platforms }, index) => {
+                {menuItems.filter((item) => item.action === 'createNewFile').map(({ action, title, icon, placement, platforms }, index) => {
                   return (
                     <Dropdown.Item
-                      data-id="fileExplorerCreateButton-importFromIpfs"
+                      data-id="fileExplorerCreateButton-createNewFile"
                       key={index}
                       onClick={async () => {
-                        await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+                        await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', true)
                         appContext.appStateDispatch({
                           type: appActionTypes.showGenericModal,
                           payload: true
                         })
                         trackMatomoEvent({
                           category: MatomoCategories.FILE_EXPLORER,
-                          action: 'importFromIpfs',
+                          action: 'createNewFile',
                           isClick: true
                         })
                       }}
@@ -289,6 +264,31 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                         trackMatomoEvent({
                           category: MatomoCategories.FILE_EXPLORER,
                           action: 'uploadFolder',
+                          isClick: true
+                        })
+                      }}
+                    >
+                      <span className="text-decoration-none">
+                        <i className={icon}></i>
+                        <span className="ps-2">{title}</span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })}
+                {menuItems.filter((item) => item.action === 'importFromIpfs').map(({ action, title, icon, placement, platforms }, index) => {
+                  return (
+                    <Dropdown.Item
+                      data-id="fileExplorerCreateButton-importFromIpfs"
+                      key={index}
+                      onClick={async () => {
+                        await global.plugin.call('templateexplorermodal', 'importFromExternal', true)
+                        appContext.appStateDispatch({
+                          type: appActionTypes.showGenericModal,
+                          payload: true
+                        })
+                        trackMatomoEvent({
+                          category: MatomoCategories.FILE_EXPLORER,
+                          action: 'importFromIpfs',
                           isClick: true
                         })
                       }}

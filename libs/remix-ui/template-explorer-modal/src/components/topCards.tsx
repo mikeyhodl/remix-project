@@ -58,19 +58,6 @@ export function TopCards() {
         data-id="importOptionsMenu"
       >
         <li
-          className="d-flex flex-row align-items-center import-option-item "
-          onClick={() => {
-            if (state.manageCategory === 'Template') {
-              dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
-            }
-            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
-            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
-            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', isClick: true })
-          }}
-          data-id="importOptionsMenuIPFS"
-        >
-          <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
-        <li
           className="d-flex flex-row align-items-center import-option-item"
           onClick={() => {
             importFileInputRef.current?.click()
@@ -93,7 +80,7 @@ export function TopCards() {
               await plugin.call('notification', 'toast', 'Files imported successfully')
             }}
           />
-          <span className="fw-light">Import from local file system</span>
+          <span className="fw-light">Upload files</span>
         </li>
         <li
           className="d-flex flex-row align-items-center import-option-item"
@@ -120,8 +107,21 @@ export function TopCards() {
               await plugin.call('notification', 'toast', 'Folders imported successfully')
             }}
           />
-          <span className="fw-light">Import folders from local filesystem</span>
+          <span className="fw-light">Upload folders</span>
         </li>
+        <li
+          className="d-flex flex-row align-items-center import-option-item "
+          onClick={() => {
+            if (state.manageCategory === 'Template') {
+              dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })
+            }
+            dispatch({ type: TemplateExplorerWizardAction.IMPORT_FILES, payload: 'importFiles' })
+            dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'importFiles' })
+            trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'importFiles', isClick: true })
+          }}
+          data-id="importOptionsMenuIPFS"
+        >
+          <i className="me-2 far fa-cube"></i><span className="fw-light">Import from IPFS</span></li>
         <li
           className="d-flex flex-row align-items-center import-option-item"
           onClick={() => {
@@ -134,7 +134,7 @@ export function TopCards() {
           }}
           data-id="importOptionsMenuHTTPS"
         >
-          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from https</span></li>
+          <i className="me-2 far fa-upload"></i><span className="fw-light">Import from HTTPS</span></li>
       </ul>
     )
   }
