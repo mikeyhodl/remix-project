@@ -16,18 +16,18 @@ export class AuthPlugin extends Plugin {
   private ssoApi: SSOApiService
   private creditsApi: CreditsApiService
   private refreshTimer: number | null = null
-  
+
   constructor() {
     super(profile)
-    
+
     // Initialize API clients
     this.apiClient = new ApiClient(endpointUrls.sso)
     this.ssoApi = new SSOApiService(this.apiClient)
-    
+
     // Credits API uses different base URL
     const creditsClient = new ApiClient(endpointUrls.credits)
     this.creditsApi = new CreditsApiService(creditsClient)
-    
+
     // Set up token refresh callback for auto-renewal
     this.apiClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     creditsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
@@ -62,28 +62,28 @@ export class AuthPlugin extends Plugin {
 
     const now = Date.now()
     // Refresh 90s before expiry (min 5s)
-    let delay = Math.max(expMs - now - 90_000, 5_000)
+    const delay = Math.max(expMs - now - 90_000, 5_000)
 
     this.clearRefreshTimer()
     this.refreshTimer = window.setTimeout(() => {
       this.refreshAccessToken().catch(() => {/* handled in method */})
     }, delay)
   }
-  
+
   /**
    * Get the generic API client (for SSO endpoints)
    */
   async getApiClient(): Promise<ApiClient> {
     return this.apiClient
   }
-  
+
   /**
    * Get the typed SSO API service
    */
   async getSSOApi(): Promise<SSOApiService> {
     return this.ssoApi
   }
-  
+
   /**
    * Get the typed Credits API service
    */
@@ -94,37 +94,37 @@ export class AuthPlugin extends Plugin {
   async login(provider: AuthProviderType): Promise<void> {
     try {
       console.log('[AuthPlugin] Starting popup-based login for:', provider)
-      
+
       // SIWE requires special handling (client-side wallet signature)
       if (provider === 'siwe') {
         await this.loginWithSIWE()
         return
       }
-      
+
       // Open popup directly (must be in user click event)
       const popup = window.open(
         `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`,
         'RemixLogin',
         'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
       )
-      
+
       if (!popup) {
         throw new Error('Popup was blocked. Please allow popups for this site.')
       }
-      
+
       // Wait for message from popup
       const result = await new Promise<{user: AuthUser; accessToken: string; refreshToken: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           cleanup()
           reject(new Error('Login timeout'))
         }, 5 * 60 * 1000) // 5 minute timeout
-        
+
         const handleMessage = (event: MessageEvent) => {
           // Verify origin
           if (event.origin !== new URL(endpointUrls.sso).origin) {
             return
           }
-          
+
           if (event.data.type === 'sso-auth-success') {
             console.log('[AuthPlugin] Received auth success from popup')
             console.log('[AuthPlugin] User data from popup:', event.data.user)
@@ -140,7 +140,7 @@ export class AuthPlugin extends Plugin {
             reject(new Error(event.data.error || 'Login failed'))
           }
         }
-        
+
         const cleanup = () => {
           clearTimeout(timeout)
           window.removeEventListener('message', handleMessage)
@@ -148,10 +148,10 @@ export class AuthPlugin extends Plugin {
             popup.close()
           }
         }
-        
+
         window.addEventListener('message', handleMessage)
       })
-      
+
       // Store tokens in localStorage
       console.log('[AuthPlugin] Storing user in localStorage:', result.user)
       console.log('[AuthPlugin] User has provider field:', result.user.provider)
@@ -162,17 +162,17 @@ export class AuthPlugin extends Plugin {
 
       // Schedule proactive refresh based on access token expiry
       this.scheduleRefresh(result.accessToken)
-      
+
       // Emit auth state change
       this.emit('authStateChanged', {
         isAuthenticated: true,
         user: result.user,
         token: result.accessToken
       })
-      
+
       // Fetch credits after successful login
       this.refreshCredits().catch(console.error)
-      
+
       console.log('[AuthPlugin] Login successful')
     } catch (error) {
       console.error('[AuthPlugin] Login failed:', error)
@@ -187,20 +187,20 @@ export class AuthPlugin extends Plugin {
         method: 'POST',
         credentials: 'include'
       })
-      
+
       // Clear localStorage
       this.clearRefreshTimer()
       localStorage.removeItem('remix_access_token')
       localStorage.removeItem('remix_refresh_token')
       localStorage.removeItem('remix_user')
-      
+
       // Emit auth state change
       this.emit('authStateChanged', {
         isAuthenticated: false,
         user: null,
         token: null
       })
-      
+
       console.log('[AuthPlugin] Logout successful')
     } catch (error) {
       console.error('[AuthPlugin] Logout failed:', error)
@@ -210,12 +210,12 @@ export class AuthPlugin extends Plugin {
   async linkAccount(provider: AuthProviderType): Promise<void> {
     try {
       console.log('[AuthPlugin] Starting account linking for:', provider)
-      
+
       // Check if already logged in and save current session
       const currentToken = await this.getToken()
       const currentUserStr = localStorage.getItem('remix_user')
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null
-      
+
       if (!currentToken || !currentUser) {
         throw new Error('You must be logged in to link additional accounts')
       }
@@ -270,7 +270,7 @@ export class AuthPlugin extends Plugin {
       })
 
       console.log('[AuthPlugin] Got new account info:', result.user.sub)
-      
+
       // DON'T update localStorage - keep the original session!
       // We're linking, not switching accounts
 
@@ -283,7 +283,7 @@ export class AuthPlugin extends Plugin {
           'Authorization': `Bearer ${currentToken}` // Use original token, not new one
         },
         body: JSON.stringify({
-          user_id: result.user.sub  // This is already a numeric ID from JWT
+          user_id: result.user.sub // This is already a numeric ID from JWT
         })
       })
 
@@ -321,7 +321,7 @@ export class AuthPlugin extends Plugin {
 
   async getToken(): Promise<string | null> {
     const token = localStorage.getItem('remix_access_token')
-    
+
     // Update API clients with current token
     if (token) {
       this.apiClient.setToken(token)
@@ -330,7 +330,7 @@ export class AuthPlugin extends Plugin {
       const creditsApiClient = (creditsClient as any).apiClient as ApiClient
       creditsApiClient.setToken(token)
     }
-    
+
     return token
   }
 
@@ -345,42 +345,42 @@ export class AuthPlugin extends Plugin {
         console.warn('[AuthPlugin] No refresh token available')
         return null
       }
-      
+
       console.log('[AuthPlugin] Refreshing access token...')
-      
+
       const response = await this.ssoApi.refreshToken(refreshToken)
-      
+
       if (response.ok && response.data) {
         const newAccessToken = response.data.access_token
-        
+
         // Update localStorage
         localStorage.setItem('remix_access_token', newAccessToken)
-        
+
         // If new refresh token provided, update it too
         if (response.data.refresh_token) {
           localStorage.setItem('remix_refresh_token', response.data.refresh_token)
         }
-        
+
         // Update all API clients
         this.apiClient.setToken(newAccessToken)
         const creditsClient = await this.getCreditsApi()
         const creditsApiClient = (creditsClient as any).apiClient as ApiClient
         creditsApiClient.setToken(newAccessToken)
-        
+
         console.log('[AuthPlugin] Access token refreshed successfully')
 
         // Reschedule next proactive refresh
         this.scheduleRefresh(newAccessToken)
         return newAccessToken
       }
-      
+
       console.warn('[AuthPlugin] Token refresh failed:', response.error)
-      
+
       // If refresh failed, clear tokens and emit logout
       if (response.status === 401) {
         await this.logout()
       }
-      
+
       return null
     } catch (error) {
       console.error('[AuthPlugin] Token refresh error:', error)
@@ -392,21 +392,21 @@ export class AuthPlugin extends Plugin {
     try {
       // Ensure token is set
       await this.getToken()
-      
+
       console.log('[AuthPlugin] Fetching credits using typed API')
-      
+
       const response = await this.creditsApi.getBalance()
-      
+
       if (response.ok && response.data) {
         return response.data
       }
-      
+
       if (response.status === 401) {
         console.warn('[AuthPlugin] Not authenticated for credits')
       } else if (response.error) {
         console.error('[AuthPlugin] Credits API error:', response.error)
       }
-      
+
       return null
     } catch (error) {
       console.error('[AuthPlugin] Failed to fetch credits:', error)
@@ -421,7 +421,7 @@ export class AuthPlugin extends Plugin {
     }
     return credits
   }
-  
+
   /**
    * Get all linked accounts using typed API
    */
@@ -429,22 +429,22 @@ export class AuthPlugin extends Plugin {
     try {
       await this.getToken() // Ensure token is set
       const response = await this.ssoApi.getAccounts()
-      
+
       if (response.ok && response.data) {
         return response.data
       }
-      
+
       if (response.error) {
         console.error('[AuthPlugin] Failed to get linked accounts:', response.error)
       }
-      
+
       return null
     } catch (error) {
       console.error('[AuthPlugin] Failed to get linked accounts:', error)
       return null
     }
   }
-  
+
   /**
    * Unlink an account using typed API
    */
@@ -452,11 +452,11 @@ export class AuthPlugin extends Plugin {
     try {
       await this.getToken() // Ensure token is set
       const response = await this.ssoApi.unlinkAccount(userId)
-      
+
       if (response.ok) {
         return response.data
       }
-      
+
       throw new Error(response.error || 'Failed to unlink account')
     } catch (error) {
       console.error('[AuthPlugin] Failed to unlink account:', error)
@@ -466,7 +466,7 @@ export class AuthPlugin extends Plugin {
 
   onActivation(): void {
     console.log('[AuthPlugin] Activated - using popup + localStorage mode')
-    
+
     // Check if user is already logged in
     const token = localStorage.getItem('remix_access_token')
     if (token) {

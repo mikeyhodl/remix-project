@@ -34,10 +34,10 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
           data-id="user-badge"
         >
           {user.picture ? (
-            <img 
-              src={user.picture} 
-              alt="Avatar" 
-              className="me-1" 
+            <img
+              src={user.picture}
+              alt="Avatar"
+              className="me-1"
               style={{
                 width: '20px',
                 height: '20px',
@@ -63,9 +63,9 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
             <div className="dropdown-header">
               {user.picture && (
                 <div className="d-flex justify-content-center mb-2">
-                  <img 
-                    src={user.picture} 
-                    alt="Avatar" 
+                  <img
+                    src={user.picture}
+                    alt="Avatar"
                     style={{
                       width: '48px',
                       height: '48px',

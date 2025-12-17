@@ -25,7 +25,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
   const handleLogout = async () => {
     await logout()
   }
-  
+
   const handleManageAccounts = () => {
     // Open Settings plugin via plugin manager (no window events)
     if (plugin && typeof plugin.call === 'function') {

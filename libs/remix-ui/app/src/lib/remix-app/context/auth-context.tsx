@@ -36,41 +36,41 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
-    case 'AUTH_START':
-      return { ...state, loading: true, error: null }
-    case 'AUTH_SUCCESS':
-      return {
-        ...state,
-        loading: false,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        error: null
-      }
-    case 'AUTH_FAILURE':
-      return {
-        ...state,
-        loading: false,
-        error: action.payload
-      }
-    case 'UPDATE_CREDITS':
-      return {
-        ...state,
-        credits: action.payload
-      }
-    case 'LOGOUT':
-      return {
-        isAuthenticated: false,
-        user: null,
-        token: null,
-        credits: null,
-        loading: false,
-        error: null
-      }
-    case 'CLEAR_ERROR':
-      return { ...state, error: null }
-    default:
-      return state
+  case 'AUTH_START':
+    return { ...state, loading: true, error: null }
+  case 'AUTH_SUCCESS':
+    return {
+      ...state,
+      loading: false,
+      isAuthenticated: true,
+      user: action.payload.user,
+      token: action.payload.token,
+      error: null
+    }
+  case 'AUTH_FAILURE':
+    return {
+      ...state,
+      loading: false,
+      error: action.payload
+    }
+  case 'UPDATE_CREDITS':
+    return {
+      ...state,
+      credits: action.payload
+    }
+  case 'LOGOUT':
+    return {
+      isAuthenticated: false,
+      user: null,
+      token: null,
+      credits: null,
+      loading: false,
+      error: null
+    }
+  case 'CLEAR_ERROR':
+    return { ...state, error: null }
+  default:
+    return state
   }
 }
 
@@ -165,10 +165,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
       } else {
         plugin.on('manager', 'activate', (profile: Profile) => {
           switch (profile.name) {
-            case 'auth':
-              plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
-              plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
-              break
+          case 'auth':
+            plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
+            plugin.on('auth', 'creditsUpdated', handleCreditsUpdated)
+            break
           }
         })
       }

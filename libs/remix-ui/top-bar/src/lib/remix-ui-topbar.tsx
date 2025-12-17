@@ -224,7 +224,6 @@ export function RemixUiTopbar() {
     loadCurrentTheme()
   }, []);
 
-
   const subItems = useMemo(() => {
     return [
       { label: 'Rename', onClick: renameCurrentWorkspace, icon: 'far fa-edit' },
@@ -657,9 +656,9 @@ export function RemixUiTopbar() {
               loginWithGitHub={loginWithGitHub}
             />
             {enableLogin && (
-              <LoginButton 
+              <LoginButton
                 plugin={plugin}
-                variant="compact" 
+                variant="compact"
                 showCredits={true}
                 className="ms-2"
               />

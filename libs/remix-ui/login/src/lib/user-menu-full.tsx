@@ -40,10 +40,10 @@ export const UserMenuFull: React.FC<UserMenuFullProps> = ({
           data-id="user-menu-button"
         >
           {user.picture ? (
-            <img 
-              src={user.picture} 
-              alt="Avatar" 
-              className="me-1" 
+            <img
+              src={user.picture}
+              alt="Avatar"
+              className="me-1"
               style={{
                 width: '25px',
                 height: '25px',
@@ -65,9 +65,9 @@ export const UserMenuFull: React.FC<UserMenuFullProps> = ({
               <div className="dropdown-header">
                 {user.picture && (
                   <div className="d-flex justify-content-center mb-2">
-                    <img 
-                      src={user.picture} 
-                      alt="Avatar" 
+                    <img
+                      src={user.picture}
+                      alt="Avatar"
                       style={{
                         width: '48px',
                         height: '48px',

@@ -251,7 +251,7 @@ export const setCallBacks = (viewPlugin: Plugin, gitDispatcher: React.Dispatch<g
   plugin.on('githubAuthHandler', 'onLogin', async (data: { token: string }) => {
     await saveToken(data.token)
     await loadGitHubUserFromToken()
-    
+
     // Register with SSO API for user creation and cookie setting
     try {
       await registerGitHubWithSSO(data.token)
@@ -259,7 +259,7 @@ export const setCallBacks = (viewPlugin: Plugin, gitDispatcher: React.Dispatch<g
       console.error('[Git] Failed to register GitHub with SSO:', error)
       // Don't fail the flow - GitHub still works for git operations
     }
-    
+
     trackMatomoEvent(plugin, {
       category: 'git',
       action: 'CONNECT_TO_GITHUB_SUCCESS',

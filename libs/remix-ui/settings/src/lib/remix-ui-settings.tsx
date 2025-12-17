@@ -282,7 +282,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
     props.plugin.on('settings', 'matomoPerfAnalyticsChoiceUpdated', (isChecked) => {
       dispatch({ type: 'SET_VALUE', payload: { name: 'matomo-perf-analytics', value: isChecked } })
     })
-    
+
     // Listen for plugin event to open a specific settings section
     const onOpenSection = ({ sectionKey }: { sectionKey: string }) => {
       // Validate section key exists; fallback to 'general'
@@ -294,7 +294,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
     }
 
     props.plugin.on('settings', 'openSection', onOpenSection)
-    
+
     return () => {
       props.plugin.off('settings', 'openSection')
     }

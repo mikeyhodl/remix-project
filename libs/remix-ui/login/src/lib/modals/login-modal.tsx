@@ -37,7 +37,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
 
         const data = await response.json()
         console.log('[LoginModal] Supported providers from backend:', data)
-        
+
         // Map backend response to UI config
         const allProviders: ProviderConfig[] = [
           {

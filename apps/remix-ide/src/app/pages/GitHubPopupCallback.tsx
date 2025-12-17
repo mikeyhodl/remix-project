@@ -62,7 +62,7 @@ export const GitHubPopupCallback = () => {
           console.warn('[GitHubPopupCallback] SSO registration failed:', ssoError)
           // Continue anyway - GitHub still works for git operations
         }
-        
+
         window.opener?.postMessage({ type: 'GITHUB_AUTH_SUCCESS', token: data.access_token }, window.location.origin)
       } else {
         console.log('[GitHubPopupCallback] Posting failure message')

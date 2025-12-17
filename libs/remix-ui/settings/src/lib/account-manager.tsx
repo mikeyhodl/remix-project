@@ -36,31 +36,31 @@ interface Transaction {
 
 const getProviderIcon = (provider: string) => {
   switch (provider) {
-    case 'github':
-      return <i className="fab fa-github"></i>
-    case 'google':
-      return <i className="fab fa-google"></i>
-    case 'discord':
-      return <i className="fab fa-discord"></i>
-    case 'siwe':
-      return <i className="fab fa-ethereum"></i>
-    default:
-      return <i className="fas fa-sign-in-alt"></i>
+  case 'github':
+    return <i className="fab fa-github"></i>
+  case 'google':
+    return <i className="fab fa-google"></i>
+  case 'discord':
+    return <i className="fab fa-discord"></i>
+  case 'siwe':
+    return <i className="fab fa-ethereum"></i>
+  default:
+    return <i className="fas fa-sign-in-alt"></i>
   }
 }
 
 const getProviderColor = (provider: string) => {
   switch (provider) {
-    case 'github':
-      return 'bg-secondary text-white'
-    case 'google':
-      return 'bg-primary text-white'
-    case 'discord':
-      return 'bg-info text-white'
-    case 'siwe':
-      return 'bg-warning text-dark'
-    default:
-      return 'bg-dark text-white'
+  case 'github':
+    return 'bg-secondary text-white'
+  case 'google':
+    return 'bg-primary text-white'
+  case 'discord':
+    return 'bg-info text-white'
+  case 'siwe':
+    return 'bg-warning text-dark'
+  default:
+    return 'bg-dark text-white'
   }
 }
 
@@ -82,17 +82,17 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Get token from localStorage (stored by auth plugin)
       const token = localStorage.getItem('remix_access_token')
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       }
-      
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      
+
       const response = await fetch(`${endpointUrls.sso}/accounts`, {
         credentials: 'include',
         headers
@@ -109,10 +109,10 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       const data: AccountsResponse = await response.json()
       setPrimary(data.primary)
       setAccounts(data.accounts)
-      
+
       // Load credits
       await loadCredits()
-      
+
       // Load transactions
       await loadTransactions()
     } catch (err: any) {
@@ -130,11 +130,11 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       }
-      
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      
+
       const response = await fetch(`${endpointUrls.credits}/balance`, {
         credentials: 'include',
         headers
@@ -163,11 +163,11 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       }
-      
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      
+
       const response = await fetch(`${endpointUrls.credits}/transactions`, {
         credentials: 'include',
         headers
@@ -196,7 +196,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       setEnableLogin(enabled);
     };
     checkLoginEnabled();
-    
+
     loadAccounts()
 
     // Listen for auth state changes via plugin events (login/logout)
@@ -206,7 +206,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
       // Also recheck enableLogin flag when auth state changes
       checkLoginEnabled()
     }
-    
+
     try {
       plugin.on('auth', 'authStateChanged', onAuthStateChanged)
     } catch (e) {
@@ -226,7 +226,7 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
     try {
       // Call the auth plugin to link the account
       await plugin.call('auth', 'linkAccount', provider)
-      
+
       // Reload accounts after linking
       await loadAccounts()
     } catch (error: any) {
@@ -242,11 +242,11 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ plugin }) => {
   const handleLinkGoogle = () => {
     handleLinkProvider('google')
   }
-  
+
   const handleLinkDiscord = () => {
     handleLinkProvider('discord')
   }
-  
+
   const handleLinkSIWE = () => {
     handleLinkProvider('siwe')
   }

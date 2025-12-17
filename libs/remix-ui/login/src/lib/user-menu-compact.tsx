@@ -18,11 +18,11 @@ interface UserMenuCompactProps {
 const getProviderIcon = (provider: AuthProvider | string) => {
   console.log('getProviderIcon', provider)
   switch (provider) {
-    case 'google': return 'fab fa-google'
-    case 'github': return 'fab fa-github'
-    case 'discord': return 'fab fa-discord'
-    case 'siwe': return 'fab fa-ethereum'
-    default: return 'fas fa-sign-in-alt'
+  case 'google': return 'fab fa-google'
+  case 'github': return 'fab fa-github'
+  case 'discord': return 'fab fa-discord'
+  case 'siwe': return 'fab fa-ethereum'
+  default: return 'fas fa-sign-in-alt'
   }
 }
 
@@ -39,10 +39,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   getLinkedAccounts
 }) => {
   const [showDropdown, setShowDropdown] = useState(false)
- 
+
   // All available providers including GitHub
   const allProviders: AuthProvider[] = ['google', 'github', 'discord', 'siwe']
-  
+
   return (
     <div className={`position-relative ${className}`}>
       <button
@@ -53,10 +53,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
       >
         <span>{getUserDisplayName()}</span>
         {user.picture && (
-          <img 
-            src={user.picture} 
-            alt="Avatar" 
-            className="ms-1" 
+          <img
+            src={user.picture}
+            alt="Avatar"
+            className="ms-1"
             style={{
               width: '25px',
               height: '25px',
@@ -81,9 +81,9 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
             <div className="dropdown-header">
               {user.picture && (
                 <div className="d-flex justify-content-center mb-2">
-                  <img 
-                    src={user.picture} 
-                    alt="Avatar" 
+                  <img
+                    src={user.picture}
+                    alt="Avatar"
                     style={{
                       width: '48px',
                       height: '48px',
@@ -95,7 +95,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
               )}
               <div><strong>{getUserDisplayName()}</strong></div>
             </div>
-            
+
             {/* Connected Account */}
             {user.provider && (
               <div className="dropdown-item-text small text-muted">
@@ -103,7 +103,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 {getProviderDisplayName(user.provider)}
               </div>
             )}
-            
+
             {credits && showCredits && (
               <>
                 <div className="dropdown-divider"></div>
@@ -116,7 +116,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
               </>
             )}
             <div className="dropdown-divider"></div>
-            
+
             {/* Manage Accounts */}
             {onManageAccounts && (
               <button
@@ -130,8 +130,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 Manage Accounts
               </button>
             )}
-            
-            
+
             <div className="dropdown-divider"></div>
             <button
               className="dropdown-item text-danger"
