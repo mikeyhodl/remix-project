@@ -244,21 +244,6 @@ module.exports = composePlugins(withNx(), withReact(), (config) => {
     ignored: /node_modules/
   }
 
-  console.log('config', process.env.NX_DESKTOP_FROM_DIST)
-
-  // Dev-server settings: allow ngrok hostnames (avoids "Invalid Host header")
-  // This only affects `yarn serve` (webpack dev server), not production builds.
-  config.devServer = {
-    ...(config.devServer || {}),
-    host: '0.0.0.0',
-    allowedHosts: 'all',
-    headers: {
-      ...(config.devServer && config.devServer.headers ? config.devServer.headers : {}),
-      'ngrok-skip-browser-warning': '1',
-    },
-    historyApiFallback: true,
-  }
-
   return config;
 });
 
