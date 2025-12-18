@@ -1,55 +1,11 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 // eslint-disable-next-line no-use-before-define
-import React, { useReducer, useState, useEffect, SyntheticEvent, useContext } from 'react'
-import {ModalDialog} from '@remix-ui/modal-dialog' // eslint-disable-line
+import React, { useReducer, useState, useEffect, useContext } from 'react'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { browserReducer, browserInitialState } from 'libs/remix-ui/workspace/src/lib/reducers/workspace'
-import { branch } from '@remix-ui/git'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import {
-  initWorkspace,
-  fetchDirectory,
-  removeInputField,
-  deleteWorkspace,
-  deleteAllWorkspaces,
-  clearPopUp,
-  publishToGist,
-  publishFilesToGist,
-  createNewFile,
-  setFocusElement,
-  createNewFolder,
-  deletePath,
-  renamePath,
-  downloadPath,
-  copyFile,
-  copyShareURL,
-  copyFolder,
-  runScript,
-  signTypedData,
-  emitContextMenuEvent,
-  handleClickFile,
-  handleExpandPath,
-  addInputField,
-  createWorkspace,
-  fetchWorkspaceDirectory,
-  renameWorkspace,
-  switchToWorkspace,
-  uploadFile,
-  uploadFolder,
-  handleDownloadWorkspace,
-  handleDownloadFiles,
-  restoreBackupZip,
-  cloneRepository,
-  moveFile,
-  moveFolder,
-  showAllBranches,
-  switchBranch,
-  createNewBranch,
-  checkoutRemoteBranch,
-  openElectronFolder,
-  getElectronRecentFolders,
-  removeRecentElectronFolder,
-  updateGitSubmodules
+  clearPopUp 
 } from 'libs/remix-ui/workspace/src/lib/actions'
 import { Modal } from 'libs/remix-ui/workspace/src/lib/types'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -65,7 +21,7 @@ export const TopbarProvider = (props: TopbarProviderProps) => {
   const { plugin } = props
   const platform = useContext(platformContext)
   const [fs, fsDispatch] = useReducer(browserReducer, browserInitialState)
-  const [focusModal, setFocusModal] = useState<Modal>({
+  const [, setFocusModal] = useState<Modal>({
     hide: true,
     title: '',
     message: '',
@@ -222,7 +178,6 @@ export const TopbarProvider = (props: TopbarProviderProps) => {
   return (
     <TopbarContext.Provider value={value}>
       <RemixUiTopbar />
-      <ModalDialog id="topbarModal" {...focusModal} handleHide={handleHideModal} />
       <Toaster message={focusToaster} handleHide={handleToaster} />
     </TopbarContext.Provider>
   )

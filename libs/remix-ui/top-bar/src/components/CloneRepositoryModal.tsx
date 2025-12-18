@@ -15,7 +15,7 @@ export const useCloneRepositoryModal = ({ intl, platform, plugin }: CloneReposit
   const cloneUrlRef = useRef<HTMLInputElement>(null)
   const modal = (title: string, message: any, okLabel: string, okFn: () => void, cancelLabel: string) => {
     const upgradeModal = {
-        id: Date.now().toString(),
+        id: 'topbarModal',
         title,
         message,
         modalType: 'modal',
