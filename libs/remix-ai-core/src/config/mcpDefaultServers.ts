@@ -56,9 +56,18 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
     },
     {
       name: 'Alchemy',
-      description: 'OpenZeppelin smart contract library and security tools',
+      description: 'Alchemy blockchain data query',
       transport: 'http',
       url: endpointUrls.mcpCorsProxy + '/alchemy',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Etherscan',
+      description: 'Etherscan block explorer',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/etherscan',
       autoStart: true,
       enabled: true,
       timeout: 30000
