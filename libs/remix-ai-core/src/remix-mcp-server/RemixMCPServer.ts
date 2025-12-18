@@ -188,9 +188,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
   async stop(): Promise<void> {
     this.setState(ServerState.STOPPING);
 
-    // Stop config polling
-    this._configManager.stopPolling();
-
     // Cancel active tool executions
     for (const [id, execution] of this._activeExecutions) {
       execution.status = 'failed';
