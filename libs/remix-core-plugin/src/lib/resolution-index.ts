@@ -27,6 +27,10 @@ export class ResolutionIndexPlugin extends Plugin {
     this.on('fileManager', 'fileRemoved', (file: string) => { if (file === this.indexPath) this.index = {} })
   }
 
+  /**
+   * Reload the resolution index from disk.
+   * Call this when you know the .resolution-index.json file has been updated externally.
+   */
   async refresh() {
     await this.loadIndex()
   }
@@ -51,7 +55,30 @@ export class ResolutionIndexPlugin extends Plugin {
   }
 
   /**
-   * Resolve an import path using the in-memory resolution index
+   * Resolve an import path using the in-memory resolution index.
+   * 
+   * PURPOSE: Navigate dependencies during development/editing.
+   * This method looks up where an import statement should resolve to based on the
+   * resolution index created during compilation. It handles various import formats
+   * (npm packages, GitHub URLs, local paths) and normalizes them.
+   * 
+   * USE CASE: When a user clicks on an import statement to "Go to Definition"
+   * or when the IDE needs to resolve where `import "@openzeppelin/..."` points to.
+   * 
+   * DOES NOT: Consider which specific version was used in a particular compilation.
+   * It finds *a* valid resolution, but not necessarily the one from a specific build.
+   * 
+   * @param sourceFile - The file containing the import statement
+   * @param importPath - The import path to resolve (e.g., "@openzeppelin/contracts/token/ERC20/ERC20.sol")
+   * @returns The resolved local filesystem path, or null if not found
+   * 
+   * @example
+   * // Resolving an OpenZeppelin import from MyToken.sol
+   * await resolveImportFromIndex(
+   *   'contracts/MyToken.sol',
+   *   '@openzeppelin/contracts/token/ERC20/ERC20.sol'
+   * )
+   * // Returns: '.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol'
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
     console.log('[ResolutionIndexPlugin] resolveImportFromIndex', { sourceFile, importPath })
@@ -81,8 +108,21 @@ export class ResolutionIndexPlugin extends Plugin {
   }
 
   /**
-   * Resolve a path (import or external path) to an internal file path for navigation use
-   * Does not touch providers or the file system; uses only the in-memory index.
+   * Resolve a path (import or external path) to an internal file path for navigation.
+   * 
+   * PURPOSE: High-level navigation helper that wraps resolveImportFromIndex.
+   * This is a convenience method that always returns a path (falling back to the input
+   * path if no resolution is found).
+   * 
+   * USE CASE: When you need to normalize a path for file opening but don't want to
+   * handle null returns. The editor can then check if the returned path exists.
+   * 
+   * DIFFERENCE FROM resolveImportFromIndex: Always returns a string (never null).
+   * If resolution fails, returns the original inputPath as-is.
+   * 
+   * @param sourceFile - The file containing the reference
+   * @param inputPath - The path to resolve
+   * @returns The resolved path, or inputPath if resolution fails
    */
   async resolvePath(sourceFile: string, inputPath: string): Promise<string> {
     // Try exact mapping from the index (using normalization and fallback logic)
@@ -94,12 +134,45 @@ export class ResolutionIndexPlugin extends Plugin {
   }
 
   /**
-   * Resolve the actual filesystem path for a requested file within a compiled contract's context.
-   * This uses the __sources__ bundle and .raw_paths.json to find the exact file that was used.
+   * Resolve the actual filesystem path for a file within a SPECIFIC compilation's context.
+   * 
+   * PURPOSE: Find the EXACT version/location of a file that was used when a specific
+   * contract was compiled. This is critical for debugging because you need to see the
+   * exact source code that produced the bytecode being debugged.
+   * 
+   * USE CASE: When debugging a contract and stepping through dependencies, you need
+   * to see the exact version of ERC20.sol that was compiled into this contract.
+   * If you have both @openzeppelin/contracts@4.8.0 and @5.0.2 installed, this method
+   * ensures you see the right one.
+   * 
+   * HOW IT WORKS:
+   * 1. Looks up the __sources__ bundle saved when originContract was compiled
+   * 2. Finds the requestedPath in that bundle to get the resolved path
+   * 3. Uses .raw_paths.json to map URL imports to their actual filesystem location
+   * 4. Returns the exact file that was included in the compilation
+   * 
+   * DIFFERENCE FROM resolveImportFromIndex:
+   * - resolveImportFromIndex: Finds *any* valid resolution (version-agnostic)
+   * - resolveActualPath: Finds the *specific* file used in a particular compilation
+   * 
+   * DIFFERENCE FROM resolvePath:
+   * - resolvePath: General navigation, no compilation context
+   * - resolveActualPath: Context-aware, uses compilation metadata (__sources__)
    * 
    * @param originContract - The main contract that was compiled (entry point)
+   *                         This identifies WHICH compilation context to use
    * @param requestedPath - The path being requested (e.g., from debugger sources)
+   *                        This is the key to look up in the __sources__ bundle
    * @returns The actual filesystem path where the file is located, or null if not found
+   * 
+   * @example
+   * // During debugging of MyToken.sol, find the actual ERC20.sol that was compiled
+   * await resolveActualPath(
+   *   'contracts/MyToken.sol',
+   *   '@openzeppelin/contracts/token/ERC20/ERC20.sol'
+   * )
+   * // Returns: '.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol'
+   * // (the exact version MyToken.sol was compiled with)
    */
   async resolveActualPath(originContract: string, requestedPath: string): Promise<string | null> {
     console.log('[ResolutionIndexPlugin] 🔍 resolveActualPath CALLED')

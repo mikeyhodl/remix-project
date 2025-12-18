@@ -1186,12 +1186,21 @@ export const EditorUI = (props: EditorUIProps) => {
       if (input && input.resource && input.resource.path) {
         try {
           await props.plugin.call('fileManager', 'open', input.resource.path)
+          
           if (input.options && input.options.selection) {
-            editor.revealRange(input.options.selection)
-            editor.setPosition({
-              column: input.options.selection.startColumn,
-              lineNumber: input.options.selection.startLineNumber,
-            })
+            // Wait for the model to switch before revealing the range
+            setTimeout(() => {
+              const model = editorRef.current.getModel()
+              const editor = editorRef.current
+              
+              if (model && model.uri.path === input.resource.path) {
+                editor.revealRangeInCenter(input.options.selection)
+                editor.setPosition({
+                  column: input.options.selection.startColumn,
+                  lineNumber: input.options.selection.startLineNumber,
+                })
+              }
+            }, 100)
           }
         } catch (e) {
           console.log(e)

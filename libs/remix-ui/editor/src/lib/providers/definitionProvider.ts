@@ -56,13 +56,13 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
     */
   async jumpToPosition(position: any) {
     const jumpToLine = async (fileName: string, lineColumn: any) => {
-      const fileTarget = await this.props.plugin.call('fileManager', 'getPathFromUrl', fileName)
+     
+      const currentFile = await this.props.plugin.call('fileManager', 'file')
+      const fileTarget = await this.props.plugin.call('resolutionIndex', 'resolvePath', currentFile, fileName)
       if (fileName !== await this.props.plugin.call('fileManager', 'file')) {
-        await this.props.plugin.call('contentImport', 'resolveAndSave', fileName, null)
-        const fileContent = await this.props.plugin.call('fileManager', 'readFile', fileName)
+        const fileContent = await this.props.plugin.call('fileManager', 'readFile', fileTarget)
         try {
-          console.log('adding model for', fileTarget.file)
-          await this.props.plugin.call('editor', 'addModel', fileTarget.file, fileContent)
+          await this.props.plugin.call('editor', 'addModel', fileTarget, fileContent)
         } catch (e) {
 
         }
@@ -73,7 +73,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
           startColumn: lineColumn.start.column + 1,
           endColumn: lineColumn.end.column + 1,
           endLineNumber: lineColumn.end.line + 1,
-          fileName: (fileTarget && fileTarget.file) || fileName
+          fileName: fileTarget || fileName
         }
         return pos
       }
@@ -83,7 +83,6 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
 
       const lineColumn = await this.props.plugin.call('codeParser', 'getLineColumnOfPosition', position)
       const filename = lastCompilationResult.getSourceName(position.file)
-      console.log('jumpToDefinition', { filename, lineColumn })
       return await jumpToLine(filename, lineColumn)
     }
   }
