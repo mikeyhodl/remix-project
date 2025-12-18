@@ -20,32 +20,12 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
       if (lastpart.startsWith('import')) {
         const importPath = line.substring(lastpart.indexOf('"') + 1)
         const importPath2 = importPath.substring(0, importPath.indexOf('"'))
-
-        // Try to resolve using the resolution index
-        // model.uri.path gives us the current file we're in
-        const currentFile = model.uri.path
-        console.log('[DefinitionProvider] 📍 Import navigation from:', currentFile, '→', importPath2)
-
-        let resolvedPath = importPath2
-        try {
-          // Check if we have a resolution index entry for this import
-          const resolved = await this.props.plugin.call('resolutionIndex', 'resolveImportFromIndex', currentFile, importPath2)
-          if (resolved) {
-            console.log('[DefinitionProvider] ✅ Found in resolution index:', resolved)
-            resolvedPath = resolved
-          } else {
-            console.log('[DefinitionProvider] ℹ️ Not in resolution index, using original path')
-          }
-        } catch (e) {
-          console.log('[DefinitionProvider] ⚠️ Failed to lookup resolution index:', e)
-        }
-
         jumpLocation = {
           startLineNumber: 1,
           startColumn: 1,
           endColumn: 1,
           endLineNumber: 1,
-          fileName: resolvedPath
+          fileName: importPath2
         }
       }
     }
@@ -76,25 +56,10 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
     */
   async jumpToPosition(position: any) {
     const jumpToLine = async (fileName: string, lineColumn: any) => {
-      // Try to resolve the fileName using the resolution index
-      // This is crucial for navigating to library files with correct versions
-      let resolvedFileName = fileName
-      const currentFile = await this.props.plugin.call('fileManager', 'file')
-      try {
-        const resolved = await this.props.plugin.call('resolutionIndex', 'resolveImportFromIndex', currentFile, fileName)
-        if (resolved) {
-          console.log('[DefinitionProvider] 🔀 Resolved via index:', fileName, '→', resolved)
-          resolvedFileName = resolved
-        }
-      } catch (e) {
-        console.log('[DefinitionProvider] ⚠️ Resolution index lookup failed, using original path:', e)
-      }
-      const fileTargetPath = await this.props.plugin.call('resolutionIndex', 'resolvePath', currentFile, resolvedFileName)
-      const fileTarget = { file: fileTargetPath }
-      console.log('jumpToLine', fileName, '→', resolvedFileName, '→', fileTargetPath)
-      if (resolvedFileName !== await this.props.plugin.call('fileManager', 'file')) {
-        await this.props.plugin.call('contentImport', 'resolveAndSave', resolvedFileName, null)
-        const fileContent = await this.props.plugin.call('fileManager', 'readFile', resolvedFileName)
+      const fileTarget = await this.props.plugin.call('fileManager', 'getPathFromUrl', fileName)
+      if (fileName !== await this.props.plugin.call('fileManager', 'file')) {
+        await this.props.plugin.call('contentImport', 'resolveAndSave', fileName, null)
+        const fileContent = await this.props.plugin.call('fileManager', 'readFile', fileName)
         try {
           await this.props.plugin.call('editor', 'addModel', fileTarget.file, fileContent)
         } catch (e) {
@@ -107,7 +72,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
           startColumn: lineColumn.start.column + 1,
           endColumn: lineColumn.end.column + 1,
           endLineNumber: lineColumn.end.line + 1,
-          fileName: (fileTarget && fileTarget.file) || resolvedFileName
+          fileName: (fileTarget && fileTarget.file) || fileName
         }
         return pos
       }
