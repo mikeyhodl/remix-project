@@ -75,11 +75,6 @@ export async function createRemixMCPServer(
     validationConfig?: any;
     customTools?: any[];
     customProviders?: any[];
-    alchemy?: {
-      enabled?: boolean;
-      apiKey?: string;
-      defaultNetwork?: 'ethereum' | 'polygon' | 'arbitrum' | 'optimism' | 'base';
-    };
   } = {},
 ): Promise<RemixMCPServer> {
   const {
@@ -87,7 +82,6 @@ export async function createRemixMCPServer(
     enableValidation = true,
     customTools = [],
     customProviders = [],
-    alchemy
   } = options;
 
   const serverConfig = {
@@ -113,13 +107,7 @@ export async function createRemixMCPServer(
       analysis: true,
       workspace: true,
       testing: true,
-      alchemy: alchemy?.enabled !== false
     },
-    alchemy: alchemy ? {
-      enabled: alchemy.enabled !== false,
-      apiKey: alchemy.apiKey,
-      defaultNetwork: alchemy.defaultNetwork || 'ethereum'
-    } : undefined
   };
 
   const server = new RemixMCPServer(plugin, serverConfig);
