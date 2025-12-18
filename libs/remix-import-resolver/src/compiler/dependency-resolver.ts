@@ -343,6 +343,14 @@ export class DependencyResolver {
       this.sourceFiles.set(importPath, content)
       this.specToResolvedPath.set(importPath, resolvedPath)
       this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
+      
+      // Also store under the versioned resolvedPath for navigation and debugging
+      if (resolvedPath !== importPath) {
+        this.sourceFiles.set(resolvedPath, content)
+        this.specToResolvedPath.set(resolvedPath, resolvedPath)
+        this.logIf('storage', `[DependencyResolver]   ✅ Also stored under versioned path: ${resolvedPath}`)
+      }
+      
       this.logIf('storage', `[DependencyResolver]   📍 Resolved file path: ${resolvedPath}`)
 
       // Maintain alias mapping for navigation/internal lookups
@@ -418,15 +426,27 @@ export class DependencyResolver {
           if (this.resolutionIndex) {
             try { 
               const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
-              // Record the original import path
+              // Record under the original unversioned import path
               this.resolutionIndex.recordResolution(importPath, importedPath, childResolved)
               this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${importPath} | ${importedPath} → ${childResolved}`)
+              
+              // Also record under the versioned resolved path for external files
+              // This ensures both @openzeppelin/contracts/... and @openzeppelin/contracts@5.4.0/... have mappings
+              if (resolvedPath !== importPath) {
+                this.resolutionIndex.recordResolution(resolvedPath, importedPath, childResolved)
+                this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded (versioned): ${resolvedPath} | ${importedPath} → ${childResolved}`)
+              }
+              
               // If a remapping was applied, also record the remapped path so the resolution index
               // contains both the original (e.g., "oz/ERC20/ERC20.sol") and the remapped path
               // (e.g., "@openzeppelin/contracts@5.4.0/token/ERC20/ERC20.sol") pointing to the same file
               if (wasRemapped) {
                 this.resolutionIndex.recordResolution(importPath, nextPath, childResolved)
                 this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped: ${importPath} | ${nextPath} → ${childResolved}`)
+                if (resolvedPath !== importPath) {
+                  this.resolutionIndex.recordResolution(resolvedPath, nextPath, childResolved)
+                  this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped (versioned): ${resolvedPath} | ${nextPath} → ${childResolved}`)
+                }
               }
             } catch { }
           }

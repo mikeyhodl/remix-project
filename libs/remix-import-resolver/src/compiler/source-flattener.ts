@@ -89,8 +89,26 @@ export class SourceFlattener {
       }
 
       const withoutImports = stripImports(kept.join('\n')).trim()
-      this.log('Adding file to flat:', file)
-      parts.push(`\n\n// File: ${file}\n\n${withoutImports}`)
+      
+      // Prefer versioned path for comment if it exists in the bundle
+      // e.g., @openzeppelin/contracts@5.4.0/... instead of @openzeppelin/contracts/...
+      let displayPath = file
+      if (file.startsWith('@') && !file.match(/@\d+\.\d+\.\d+\//)) {
+        // File is an unversioned external import, check if versioned version exists
+        const versionedKeys = Array.from(bundle.keys()).filter(k => {
+          // Match the pattern: @scope/package@version/path matches @scope/package/path
+          const versionedPattern = k.match(/^(@[^@/]+\/[^@/]+)@(\d+\.\d+\.\d+)\/(.+)$/)
+          if (!versionedPattern) return false
+          const [, pkgBase, , pkgPath] = versionedPattern
+          return file === `${pkgBase}/${pkgPath}`
+        })
+        if (versionedKeys.length > 0) {
+          displayPath = versionedKeys[0] // Use the first (and typically only) versioned match
+        }
+      }
+      
+      this.log('Adding file to flat:', displayPath)
+      parts.push(`\n\n// File: ${displayPath}\n\n${withoutImports}`)
     }
 
     const header: string[] = []
