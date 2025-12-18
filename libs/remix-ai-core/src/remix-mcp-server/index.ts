@@ -81,7 +81,7 @@ export async function createRemixMCPServer(
     enableSecurity = true,
     enableValidation = true,
     customTools = [],
-    customProviders = [],
+    customProviders = []
   } = options;
 
   const serverConfig = {
@@ -106,8 +106,8 @@ export async function createRemixMCPServer(
       fileManagement: true,
       analysis: true,
       workspace: true,
-      testing: true,
-    },
+      testing: true
+    }
   };
 
   const server = new RemixMCPServer(plugin, serverConfig);
