@@ -1,9 +1,7 @@
 import React from 'react'
 import DropdownMenu, { MenuItem } from './DropdownMenu'
 
-interface EmptyDropdownProps {}
-
-const EmptyDropdown: React.FC<EmptyDropdownProps> = () => {
+const EmptyDropdown: React.FC<any> = () => {
   const items: MenuItem[] = []
 
   return (
