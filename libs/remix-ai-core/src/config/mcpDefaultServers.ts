@@ -22,7 +22,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'OpenZeppelin Contracts',
       description: 'OpenZeppelin smart contract library and security tools',
       transport: 'http',
-      url: 'https://mcp.openzeppelin.com/contracts/solidity/mcp',
+      url: endpointUrls.mcpCorsProxy + '/solidity',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -31,7 +31,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'OpenZeppelin Contracts Cairo',
       description: 'OpenZeppelin smart contract library and security tools',
       transport: 'http',
-      url: 'https://mcp.openzeppelin.com/contracts/cairo/mcp',
+      url: endpointUrls.mcpCorsProxy + '/cairo',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -40,7 +40,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'OpenZeppelin Contracts Stellar',
       description: 'OpenZeppelin smart contract library and security tools',
       transport: 'http',
-      url: 'https://mcp.openzeppelin.com/contracts/stellar/mcp',
+      url: endpointUrls.mcpCorsProxy + '/stellar',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -49,7 +49,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'OpenZeppelin Contracts Stylus',
       description: 'OpenZeppelin smart contract library and security tools',
       transport: 'http',
-      url: 'https://mcp.openzeppelin.com/contracts/stylus/mcp',
+      url: endpointUrls.mcpCorsProxy + '/stylus',
       autoStart: true,
       enabled: true,
       timeout: 30000
