@@ -119,6 +119,14 @@ export class AuthPlugin extends Plugin {
           reject(new Error('Login timeout'))
         }, 5 * 60 * 1000) // 5 minute timeout
 
+        // Poll to detect if popup is closed
+        const pollInterval = setInterval(() => {
+          if (popup && popup.closed) {
+            cleanup()
+            reject(new Error('Login cancelled - popup was closed'))
+          }
+        }, 500) // Check every 500ms
+
         const handleMessage = (event: MessageEvent) => {
           // Verify origin
           if (event.origin !== new URL(endpointUrls.sso).origin) {
@@ -143,6 +151,7 @@ export class AuthPlugin extends Plugin {
 
         const cleanup = () => {
           clearTimeout(timeout)
+          clearInterval(pollInterval)
           window.removeEventListener('message', handleMessage)
           if (popup && !popup.closed) {
             popup.close()
@@ -246,6 +255,14 @@ export class AuthPlugin extends Plugin {
           reject(new Error('Account linking timeout'))
         }, 5 * 60 * 1000)
 
+        // Poll to detect if popup is closed
+        const pollInterval = setInterval(() => {
+          if (popup && popup.closed) {
+            cleanup()
+            reject(new Error('Account linking cancelled - popup was closed'))
+          }
+        }, 500) // Check every 500ms
+
         const handleMessage = (event: MessageEvent) => {
           if (event.origin !== new URL(endpointUrls.sso).origin) {
             return
@@ -263,6 +280,7 @@ export class AuthPlugin extends Plugin {
 
         const cleanup = () => {
           clearTimeout(timeout)
+          clearInterval(pollInterval)
           window.removeEventListener('message', handleMessage)
         }
 
