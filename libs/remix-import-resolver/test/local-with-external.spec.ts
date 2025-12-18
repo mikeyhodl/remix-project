@@ -147,12 +147,10 @@ contract Staking is Ownable {}
     // Check the concrete saved file under .deps/npm for version 4.9.6
     expect(await exists('.deps/npm/@openzeppelin/contracts@4.9.6/access/Ownable.sol')).to.equal(true)
 
-    // Bundle should include both versioned and unversioned OZ paths
+    // Bundle should includes unversioned OZ paths
     const bundleKeys = Array.from(bundle.keys())
-    const hasVersioned = bundleKeys.some(k => k.includes('@openzeppelin/contracts@4.9.6/access/Ownable.sol'))
-    const hasUnversioned = bundleKeys.some(k => k.endsWith('@openzeppelin/contracts/access/Ownable.sol'))
+    const hasVersioned = bundleKeys.some(k => k.includes('@openzeppelin/contracts/access/Ownable.sol'))   
     expect(hasVersioned).to.equal(true)
-    expect(hasUnversioned).to.equal(true)
 
     // Resolution index value should be versioned for the original import path
     const idxRaw = await fs.readFile('.deps/npm/.resolution-index.json', 'utf8')

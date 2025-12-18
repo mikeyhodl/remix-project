@@ -346,7 +346,6 @@ export class DependencyResolver {
       
       // Also store under the versioned resolvedPath for navigation and debugging
       if (resolvedPath !== importPath) {
-        this.sourceFiles.set(resolvedPath, content)
         this.specToResolvedPath.set(resolvedPath, resolvedPath)
         this.logIf('storage', `[DependencyResolver]   ✅ Also stored under versioned path: ${resolvedPath}`)
       }
@@ -460,12 +459,6 @@ export class DependencyResolver {
       throw err
     }
   }
-
-  // moved to utils/dependency-helpers
-
-  // moved to utils/dependency-helpers
-
-  // moved to utils/dependency-helpers
 
   private getResolvedPath(importPath: string): string {
     const resolved = this.resolver.getResolution(importPath)
