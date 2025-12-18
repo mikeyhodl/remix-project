@@ -61,6 +61,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
         await this.props.plugin.call('contentImport', 'resolveAndSave', fileName, null)
         const fileContent = await this.props.plugin.call('fileManager', 'readFile', fileName)
         try {
+          console.log('adding model for', fileTarget.file)
           await this.props.plugin.call('editor', 'addModel', fileTarget.file, fileContent)
         } catch (e) {
 
@@ -82,6 +83,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
 
       const lineColumn = await this.props.plugin.call('codeParser', 'getLineColumnOfPosition', position)
       const filename = lastCompilationResult.getSourceName(position.file)
+      console.log('jumpToDefinition', { filename, lineColumn })
       return await jumpToLine(filename, lineColumn)
     }
   }
