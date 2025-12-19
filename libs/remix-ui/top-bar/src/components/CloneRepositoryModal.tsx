@@ -15,21 +15,21 @@ export const useCloneRepositoryModal = ({ intl, platform, plugin }: CloneReposit
   const cloneUrlRef = useRef<HTMLInputElement>(null)
   const modal = (title: string, message: any, okLabel: string, okFn: () => void, cancelLabel: string) => {
     const upgradeModal = {
-        id: 'topbarModal',
-        title,
-        message,
-        modalType: 'modal',
-        okLabel,
-        cancelLabel,
-        okFn: () => {
-          okFn()
-        },
-        cancelFn: () => {
+      id: 'topbarModal',
+      title,
+      message,
+      modalType: 'modal',
+      okLabel,
+      cancelLabel,
+      okFn: () => {
+        okFn()
+      },
+      cancelFn: () => {
 
-        },
-        hideFn: () => null
-      }
-      plugin.call('notification', 'modal', upgradeModal)
+      },
+      hideFn: () => null
+    }
+    plugin.call('notification', 'modal', upgradeModal)
   }
   const cloneModalMessage = () => {
     return (

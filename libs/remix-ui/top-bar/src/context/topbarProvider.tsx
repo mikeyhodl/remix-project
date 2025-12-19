@@ -6,7 +6,7 @@ import {ModalDialog} from '@remix-ui/modal-dialog' // eslint-disable-line
 import { browserReducer, browserInitialState } from 'libs/remix-ui/workspace/src/lib/reducers/workspace'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import {
-  clearPopUp 
+  clearPopUp
 } from 'libs/remix-ui/workspace/src/lib/actions'
 import { Modal } from 'libs/remix-ui/workspace/src/lib/types'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
