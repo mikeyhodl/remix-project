@@ -30,7 +30,6 @@ module.exports = {
             .openFile('DeepImportsToken.sol')
             .clickLaunchIcon('solidity')
             .click('[data-id="compilerContainerCompileBtn"]')
-            .pause(5000)
             .waitForElementPresent('*[data-id="compiledContracts"]', 10000)
             .perform(function () {
                 browser.assert.ok(true, 'Deep imports workspace compiled successfully')
