@@ -23,7 +23,7 @@ export class SourceFlattener {
     this.logger = new Logger(undefined, debug)
   }
 
-  private log(...args: any[]) { 
+  private log(...args: any[]) {
     this.logger.logIf('sourceFlattener', '[SourceFlattener]', ...args)
   }
 
@@ -89,7 +89,7 @@ export class SourceFlattener {
       }
 
       const withoutImports = stripImports(kept.join('\n')).trim()
-      
+
       // Prefer versioned path for comment if it exists in the bundle
       // e.g., @openzeppelin/contracts@5.4.0/... instead of @openzeppelin/contracts/...
       let displayPath = file
@@ -106,7 +106,7 @@ export class SourceFlattener {
           displayPath = versionedKeys[0] // Use the first (and typically only) versioned match
         }
       }
-      
+
       this.log('Adding file to flat:', displayPath)
       parts.push(`\n\n// File: ${displayPath}\n\n${withoutImports}`)
     }

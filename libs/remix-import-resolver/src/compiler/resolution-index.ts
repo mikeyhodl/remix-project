@@ -22,7 +22,7 @@ export class ResolutionIndex {
     this.logger = new Logger(pluginApi, debug)
   }
 
-  private log(message: string, ...args: any[]): void { 
+  private log(message: string, ...args: any[]): void {
     this.logger.logIf('resolutionIndex', message, ...args)
   }
 
@@ -112,7 +112,7 @@ export class ResolutionIndex {
     // For npm packages (must contain @ to be a package), add .deps/npm/ prefix
     // This catches both scoped packages (@org/pkg) and versioned packages (pkg@1.0.0)
     // but excludes local workspace files (security/Pausable.sol)
-    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@\/]/) && !resolved.startsWith('.deps/npm/')) {
+    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@/]/) && !resolved.startsWith('.deps/npm/')) {
       return `.deps/npm/${resolved}`
     }
     return `${resolved}`
@@ -138,7 +138,7 @@ export class ResolutionIndex {
   /**
    * Resolve the actual filesystem path for a requested file within a compiled contract's context.
    * This uses the __sources__ bundle and .raw_paths.json to find the exact file that was used.
-   * 
+   *
    * @param originContract - The main contract that was compiled (entry point)
    * @param requestedPath - The path being requested (e.g., from debugger sources)
    * @returns The actual filesystem path where the file is located, or null if not found
@@ -147,31 +147,31 @@ export class ResolutionIndex {
     try {
       // Normalize origin contract path (strip .deps/npm/ prefix if present)
       const normalizedOrigin = this.normalizeSourceFile(originContract)
-      
+
       if (!this.index[normalizedOrigin] || !this.index[normalizedOrigin]['__sources__']) {
         this.log(`[ResolutionIndex] No __sources__ found for: ${normalizedOrigin}`)
         return null
       }
-      
+
       const sources = this.index[normalizedOrigin]['__sources__'] as any
-      
+
       // Find matching source in __sources__
       let resolvedPath: string | null = null
       if (sources[requestedPath] && sources[requestedPath].file) {
         resolvedPath = sources[requestedPath].file
       }
-      
+
       if (!resolvedPath) {
         this.log(`[ResolutionIndex] No match in __sources__ for: ${requestedPath}`)
         return null
       }
-      
+
       // If it's an external dependency, look up actual FS path in .raw_paths.json
       if (resolvedPath.startsWith('.deps/')) {
         try {
           const rawPathsContent = await this.pluginApi.call('fileManager', 'readFile', '.deps/.raw_paths.json')
           const rawPaths = JSON.parse(rawPathsContent)
-          
+
           // Find matching entry in raw paths
           for (const [url, fsPath] of Object.entries(rawPaths)) {
             if (fsPath === resolvedPath) {
@@ -186,7 +186,7 @@ export class ResolutionIndex {
           this.log(`[ResolutionIndex] .raw_paths.json not available, using: ${resolvedPath}`)
         }
       }
-      
+
       return resolvedPath
     } catch (e) {
       this.log(`[ResolutionIndex] resolveActualPath error:`, e)

@@ -7,17 +7,17 @@ export type TerminalLogType = 'info' | 'warn' | 'error'
  * Set specific categories to true to enable logging for that component.
  */
 export interface ResolverDebugConfig {
-  enabled?: boolean              // Master switch - if false, all logging disabled
-  dependencyResolver?: boolean   // DependencyResolver logs
-  importResolver?: boolean       // ImportResolver logs
-  contentFetcher?: boolean       // ContentFetcher logs
+  enabled?: boolean // Master switch - if false, all logging disabled
+  dependencyResolver?: boolean // DependencyResolver logs
+  importResolver?: boolean // ImportResolver logs
+  contentFetcher?: boolean // ContentFetcher logs
   packageVersionResolver?: boolean // PackageVersionResolver logs
-  resolutionIndex?: boolean      // ResolutionIndex logs
-  fileResolutionIndex?: boolean  // FileResolutionIndex logs
+  resolutionIndex?: boolean // ResolutionIndex logs
+  fileResolutionIndex?: boolean // FileResolutionIndex logs
   importHandlerRegistry?: boolean // ImportHandlerRegistry logs
-  handlers?: boolean             // Import handler logs (remix-test-libs, custom-template)
-  sourceFlattener?: boolean      // SourceFlattener logs
-  warningSystem?: boolean        // WarningSystem logs
+  handlers?: boolean // Import handler logs (remix-test-libs, custom-template)
+  sourceFlattener?: boolean // SourceFlattener logs
+  warningSystem?: boolean // WarningSystem logs
 }
 
 export class Logger {
@@ -56,16 +56,16 @@ export class Logger {
     }
   }
 
-  log(message: string, ...args: any[]) { 
-    if (this.debugConfig.enabled) console.log(message, ...args) 
+  log(message: string, ...args: any[]) {
+    if (this.debugConfig.enabled) console.log(message, ...args)
   }
-  
-  warn(message: string, ...args: any[]) { 
-    if (this.debugConfig.enabled) console.warn(message, ...args) 
+
+  warn(message: string, ...args: any[]) {
+    if (this.debugConfig.enabled) console.warn(message, ...args)
   }
-  
-  error(message: string, ...args: any[]) { 
-    console.error(message, ...args) 
+
+  error(message: string, ...args: any[]) {
+    console.error(message, ...args)
   }
 
   logIf(category: keyof ResolverDebugConfig, message: string, ...args: any[]) {

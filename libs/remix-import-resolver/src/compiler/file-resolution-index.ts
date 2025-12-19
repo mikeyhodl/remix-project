@@ -19,7 +19,7 @@ export class FileResolutionIndex {
     this.logger = new Logger(undefined, debug)
   }
 
-  private log(message: string, ...args: any[]) { 
+  private log(message: string, ...args: any[]) {
     this.logger.logIf('fileResolutionIndex', message, ...args)
   }
 
@@ -117,7 +117,7 @@ export class FileResolutionIndex {
     // For npm packages (must contain @ to be a package), add .deps/npm/ prefix
     // This catches both scoped packages (@org/pkg) and versioned packages (pkg@1.0.0)
     // but excludes local workspace files (security/Pausable.sol)
-    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@\/]/) && !resolved.startsWith('.deps/npm/')) {
+    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@/]/) && !resolved.startsWith('.deps/npm/')) {
       return `.deps/npm/${resolved}`
     }
     return resolved

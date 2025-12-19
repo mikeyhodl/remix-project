@@ -21,7 +21,7 @@ export class PackageVersionResolver {
     this.logger = new Logger(undefined, debug)
   }
 
-  private log(msg: string, ...args: any[]) { 
+  private log(msg: string, ...args: any[]) {
     this.logger.logIf('packageVersionResolver', msg, ...args)
   }
 

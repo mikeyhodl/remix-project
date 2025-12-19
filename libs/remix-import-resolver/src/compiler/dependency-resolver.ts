@@ -43,13 +43,13 @@ const SPECIAL_NPM_IMPORTS: Array<{
  * Debug configuration options for DependencyResolver
  */
 export interface DependencyResolverDebugConfig {
-  enabled?: boolean          // Master switch - if false, all logging disabled
-  tree?: boolean            // Dependency tree building logs
-  fileProcessing?: boolean  // Individual file processing logs
-  imports?: boolean         // Import extraction and resolution logs
-  storage?: boolean         // Source file storage logs (keys, aliases)
-  localhost?: boolean       // Localhost/remixd resolution logs
-  packageContext?: boolean  // Package context tracking logs
+  enabled?: boolean // Master switch - if false, all logging disabled
+  tree?: boolean // Dependency tree building logs
+  fileProcessing?: boolean // Individual file processing logs
+  imports?: boolean // Import extraction and resolution logs
+  storage?: boolean // Source file storage logs (keys, aliases)
+  localhost?: boolean // Localhost/remixd resolution logs
+  packageContext?: boolean // Package context tracking logs
   resolutionIndex?: boolean // Resolution index operations logs
 }
 
@@ -92,7 +92,7 @@ export class DependencyResolver {
     const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
     this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
     this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as any) : (pluginOrIo as IOAdapter)
-    
+
     // Handle both boolean (backwards compat) and object debug config
     if (typeof debug === 'boolean') {
       this.debugConfig = {
@@ -117,7 +117,7 @@ export class DependencyResolver {
         resolutionIndex: debug.resolutionIndex ?? debug.enabled ?? false
       }
     }
-    
+
     const legacyDebug = this.debugConfig.enabled || false
     console.log(`[DependencyResolver] 🧠 Created with debug=`, this.debugConfig)
     this.logger = new Logger(this.pluginApi || undefined, legacyDebug)
@@ -291,7 +291,7 @@ export class DependencyResolver {
         } catch (err) {
           // Local file not found. If remixd is connected, try node_modules/installed_contracts paths
           this.logIf('fileProcessing', `[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
-          
+
           const localhostResult = await this.tryLocalhostPaths(importPath)
           if (localhostResult) {
             content = localhostResult.content
@@ -343,13 +343,13 @@ export class DependencyResolver {
       this.sourceFiles.set(importPath, content)
       this.specToResolvedPath.set(importPath, resolvedPath)
       this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
-      
+
       // Also store under the versioned resolvedPath for navigation and debugging
       if (resolvedPath !== importPath) {
         this.specToResolvedPath.set(resolvedPath, resolvedPath)
         this.logIf('storage', `[DependencyResolver]   ✅ Also stored under versioned path: ${resolvedPath}`)
       }
-      
+
       this.logIf('storage', `[DependencyResolver]   📍 Resolved file path: ${resolvedPath}`)
 
       // Maintain alias mapping for navigation/internal lookups
@@ -423,19 +423,19 @@ export class DependencyResolver {
           // Record per-file resolution for Go-to-Definition: parent spec → child resolved path
           // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
           if (this.resolutionIndex) {
-            try { 
+            try {
               const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
               // Record under the original unversioned import path
               this.resolutionIndex.recordResolution(importPath, importedPath, childResolved)
               this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${importPath} | ${importedPath} → ${childResolved}`)
-              
+
               // Also record under the versioned resolved path for external files
               // This ensures both @openzeppelin/contracts/... and @openzeppelin/contracts@5.4.0/... have mappings
               if (resolvedPath !== importPath) {
                 this.resolutionIndex.recordResolution(resolvedPath, importedPath, childResolved)
                 this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded (versioned): ${resolvedPath} | ${importedPath} → ${childResolved}`)
               }
-              
+
               // If a remapping was applied, also record the remapped path so the resolution index
               // contains both the original (e.g., "oz/ERC20/ERC20.sol") and the remapped path
               // (e.g., "@openzeppelin/contracts@5.4.0/token/ERC20/ERC20.sol") pointing to the same file
@@ -489,7 +489,7 @@ export class DependencyResolver {
     return sources
   }
 
-    /** Convert the bundle to Solidity compiler input shape. */
+  /** Convert the bundle to Solidity compiler input shape. */
   public toResolutionFileInput(): CompilerInput {
     const sources: CompilerInput = {}
     for (const [path, content] of this.sourceFiles.entries()) {

@@ -106,7 +106,7 @@ export class RemixPluginAdapter implements IOAdapter {
     const content: string = await this.fetch(url)
     console.log(`Fetched content from ${url}, saving to ${dest}`)
     await this.plugin.call('fileManager', 'setFile', dest, content)
-    
+
     // Return content to the resolver (it expects the fetched file contents, not a path)
     return content
   }
@@ -114,7 +114,7 @@ export class RemixPluginAdapter implements IOAdapter {
   private async updateRawPathsMapping(url: string, dest: string): Promise<void> {
     const mappingPath = '.deps/.raw_paths.json'
     let mapping: Record<string, string> = {}
-    
+
     try {
       const exists = await this.exists(mappingPath)
       if (exists) {
@@ -124,9 +124,9 @@ export class RemixPluginAdapter implements IOAdapter {
     } catch {
       // File doesn't exist or parse error, start fresh
     }
-    
+
     mapping[url] = dest
-    
+
     try {
       await this.setFile(mappingPath, JSON.stringify(mapping, null, 2))
     } catch (e) {

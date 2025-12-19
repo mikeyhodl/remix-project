@@ -105,15 +105,17 @@ export class ImportResolver implements IImportResolver {
 
     // Auto-register default handlers (enabled by default)
     if (options.registerDefaultHandlers !== false) {
-      this.registerDefaultHandlers()
+      this.registerDefaultHandlers().catch(err => {
+        this.log('[ImportResolver] Failed to register default handlers:', err)
+      })
     }
   }
 
   /**
    * Register commonly used handlers like RemixTestLibsHandler
    */
-  private registerDefaultHandlers(): void {
-    const { RemixTestLibsHandler } = require('./handlers')
+  private async registerDefaultHandlers(): Promise<void> {
+    const { RemixTestLibsHandler } = await import('./handlers')
     const testLibHandler = new RemixTestLibsHandler({
       pluginApi: this.pluginApi as Plugin,
       io: this.io,
@@ -126,7 +128,7 @@ export class ImportResolver implements IImportResolver {
     }
   }
 
-  private log(message: string, ...args: any[]): void { 
+  private log(message: string, ...args: any[]): void {
     this.logger.logIf('importResolver', message, ...args)
   }
 
@@ -448,7 +450,7 @@ export class ImportResolver implements IImportResolver {
     const packageName = parsePkgName(url, this.packageVersionResolver.getWorkspaceResolutions())
     if (!skipResolverMappings && packageName) {
       const hasVersion = url.includes(`${packageName}@`)
-      
+
       if (!hasVersion) {
         const res = await this.mapUnversionedImport(url, packageName, originalUrl, targetPath)
         if (typeof res === 'string') return res

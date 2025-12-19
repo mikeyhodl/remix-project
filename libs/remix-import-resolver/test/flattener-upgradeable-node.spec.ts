@@ -85,7 +85,7 @@ describe('SourceFlattener - upgradeable package resolution (Node adapter)', func
 
     // Compile using native solc from stdin
     const compileProc = spawnSync('solc', ['--bin', '-'], { input: res.flattened, encoding: 'utf8' })
-    
+
     if (compileProc.error) {
       throw compileProc.error
     }

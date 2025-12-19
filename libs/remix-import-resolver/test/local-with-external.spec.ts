@@ -149,7 +149,7 @@ contract Staking is Ownable {}
 
     // Bundle should includes unversioned OZ paths
     const bundleKeys = Array.from(bundle.keys())
-    const hasVersioned = bundleKeys.some(k => k.includes('@openzeppelin/contracts/access/Ownable.sol'))   
+    const hasVersioned = bundleKeys.some(k => k.includes('@openzeppelin/contracts/access/Ownable.sol'))
     expect(hasVersioned).to.equal(true)
 
     // Resolution index value should be versioned for the original import path
