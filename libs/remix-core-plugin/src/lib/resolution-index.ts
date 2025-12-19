@@ -56,22 +56,22 @@ export class ResolutionIndexPlugin extends Plugin {
 
   /**
    * Resolve an import path using the in-memory resolution index.
-   * 
+   *
    * PURPOSE: Navigate dependencies during development/editing.
    * This method looks up where an import statement should resolve to based on the
    * resolution index created during compilation. It handles various import formats
    * (npm packages, GitHub URLs, local paths) and normalizes them.
-   * 
+   *
    * USE CASE: When a user clicks on an import statement to "Go to Definition"
    * or when the IDE needs to resolve where `import "@openzeppelin/..."` points to.
-   * 
+   *
    * DOES NOT: Consider which specific version was used in a particular compilation.
    * It finds *a* valid resolution, but not necessarily the one from a specific build.
-   * 
+   *
    * @param sourceFile - The file containing the import statement
    * @param importPath - The import path to resolve (e.g., "@openzeppelin/contracts/token/ERC20/ERC20.sol")
    * @returns The resolved local filesystem path, or null if not found
-   * 
+   *
    * @example
    * // Resolving an OpenZeppelin import from MyToken.sol
    * await resolveImportFromIndex(
@@ -109,17 +109,17 @@ export class ResolutionIndexPlugin extends Plugin {
 
   /**
    * Resolve a path (import or external path) to an internal file path for navigation.
-   * 
+   *
    * PURPOSE: High-level navigation helper that wraps resolveImportFromIndex.
    * This is a convenience method that always returns a path (falling back to the input
    * path if no resolution is found).
-   * 
+   *
    * USE CASE: When you need to normalize a path for file opening but don't want to
    * handle null returns. The editor can then check if the returned path exists.
-   * 
+   *
    * DIFFERENCE FROM resolveImportFromIndex: Always returns a string (never null).
    * If resolution fails, returns the original inputPath as-is.
-   * 
+   *
    * @param sourceFile - The file containing the reference
    * @param inputPath - The path to resolve
    * @returns The resolved path, or inputPath if resolution fails
@@ -135,36 +135,36 @@ export class ResolutionIndexPlugin extends Plugin {
 
   /**
    * Resolve the actual filesystem path for a file within a SPECIFIC compilation's context.
-   * 
+   *
    * PURPOSE: Find the EXACT version/location of a file that was used when a specific
    * contract was compiled. This is critical for debugging because you need to see the
    * exact source code that produced the bytecode being debugged.
-   * 
+   *
    * USE CASE: When debugging a contract and stepping through dependencies, you need
    * to see the exact version of ERC20.sol that was compiled into this contract.
    * If you have both @openzeppelin/contracts@4.8.0 and @5.0.2 installed, this method
    * ensures you see the right one.
-   * 
+   *
    * HOW IT WORKS:
    * 1. Looks up the __sources__ bundle saved when originContract was compiled
    * 2. Finds the requestedPath in that bundle to get the resolved path
    * 3. Uses .raw_paths.json to map URL imports to their actual filesystem location
    * 4. Returns the exact file that was included in the compilation
-   * 
+   *
    * DIFFERENCE FROM resolveImportFromIndex:
    * - resolveImportFromIndex: Finds *any* valid resolution (version-agnostic)
    * - resolveActualPath: Finds the *specific* file used in a particular compilation
-   * 
+   *
    * DIFFERENCE FROM resolvePath:
    * - resolvePath: General navigation, no compilation context
    * - resolveActualPath: Context-aware, uses compilation metadata (__sources__)
-   * 
+   *
    * @param originContract - The main contract that was compiled (entry point)
    *                         This identifies WHICH compilation context to use
    * @param requestedPath - The path being requested (e.g., from debugger sources)
    *                        This is the key to look up in the __sources__ bundle
    * @returns The actual filesystem path where the file is located, or null if not found
-   * 
+   *
    * @example
    * // During debugging of MyToken.sol, find the actual ERC20.sol that was compiled
    * await resolveActualPath(
@@ -178,33 +178,33 @@ export class ResolutionIndexPlugin extends Plugin {
     console.log('[ResolutionIndexPlugin] 🔍 resolveActualPath CALLED')
     console.log('[ResolutionIndexPlugin]   ➡️  originContract:', originContract)
     console.log('[ResolutionIndexPlugin]   ➡️  requestedPath:', requestedPath)
-    
+
     try {
       // Normalize origin contract path (strip .deps/npm/ prefix if present)
       const normalizedOrigin = this.normalizeSourceFile(originContract)
       console.log('[ResolutionIndexPlugin]   📝 Normalized origin:', normalizedOrigin)
-      
+
       // Check if index has this origin
       console.log('[ResolutionIndexPlugin]   📊 Index keys:', Object.keys(this.index))
       console.log('[ResolutionIndexPlugin]   🔎 Has normalized origin?', normalizedOrigin in this.index)
-      
+
       if (!this.index[normalizedOrigin]) {
         console.log('[ResolutionIndexPlugin]   ❌ Origin not found in index')
         return null
       }
-      
+
       console.log('[ResolutionIndexPlugin]   📋 Origin entry keys:', Object.keys(this.index[normalizedOrigin]))
       console.log('[ResolutionIndexPlugin]   🔎 Has __sources__?', '__sources__' in this.index[normalizedOrigin])
-      
+
       if (!this.index[normalizedOrigin]['__sources__']) {
         console.log('[ResolutionIndexPlugin]   ❌ No __sources__ found for:', normalizedOrigin)
         return null
       }
-      
+
       const sources = this.index[normalizedOrigin]['__sources__'] as any
       console.log('[ResolutionIndexPlugin]   📦 __sources__ keys:', Object.keys(sources))
       console.log('[ResolutionIndexPlugin]   🔎 Looking for requestedPath in sources:', requestedPath)
-      
+
       // Find matching source in __sources__
       let resolvedPath: string | null = null
       if (sources[requestedPath]) {
@@ -219,23 +219,23 @@ export class ResolutionIndexPlugin extends Plugin {
       } else {
         console.log('[ResolutionIndexPlugin]   ⚠️  requestedPath NOT found in sources')
       }
-      
+
       if (!resolvedPath) {
         console.log('[ResolutionIndexPlugin]   ❌ No match in __sources__ for:', requestedPath)
         return null
       }
-      
+
       console.log('[ResolutionIndexPlugin]   � Resolved path from __sources__:', resolvedPath)
-      
+
       // Check if it's a local workspace file (no @ version, not a URL)
       const isLocalFile = !resolvedPath.includes('@') && !resolvedPath.startsWith('http')
       console.log('[ResolutionIndexPlugin]   📁 Is local file?', isLocalFile)
-      
+
       if (isLocalFile) {
         console.log('[ResolutionIndexPlugin]   ✅ Local file, returning as-is:', resolvedPath)
         return resolvedPath
       }
-      
+
       // For external dependencies, look up in .raw_paths.json to find actual FS location
       console.log('[ResolutionIndexPlugin]   🌐 External dependency, looking up in .raw_paths.json')
       try {
@@ -243,7 +243,7 @@ export class ResolutionIndexPlugin extends Plugin {
         console.log('[ResolutionIndexPlugin]   ✅ Successfully read .raw_paths.json')
         const rawPaths = JSON.parse(rawPathsContent)
         console.log('[ResolutionIndexPlugin]   📋 .raw_paths.json has', Object.keys(rawPaths).length, 'entries')
-        
+
         // Look through all entries to find where this file was saved
         for (const [url, fsPath] of Object.entries(rawPaths)) {
           console.log('[ResolutionIndexPlugin]   🔎 Checking:', { url, fsPath, resolvedPath })
@@ -255,7 +255,7 @@ export class ResolutionIndexPlugin extends Plugin {
             return fsPath
           }
         }
-        
+
         console.log('[ResolutionIndexPlugin]   ⚠️  No match found in .raw_paths.json')
         console.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
         return resolvedPath
