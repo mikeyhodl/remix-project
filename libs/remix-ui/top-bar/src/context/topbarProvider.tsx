@@ -2,6 +2,7 @@
 // eslint-disable-next-line no-use-before-define
 import React, { useReducer, useState, useEffect, useContext } from 'react'
 import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
+import {ModalDialog} from '@remix-ui/modal-dialog' // eslint-disable-line
 import { browserReducer, browserInitialState } from 'libs/remix-ui/workspace/src/lib/reducers/workspace'
 import { appPlatformTypes, platformContext } from '@remix-ui/app'
 import {
@@ -21,7 +22,7 @@ export const TopbarProvider = (props: TopbarProviderProps) => {
   const { plugin } = props
   const platform = useContext(platformContext)
   const [fs, fsDispatch] = useReducer(browserReducer, browserInitialState)
-  const [, setFocusModal] = useState<Modal>({
+  const [focusModal, setFocusModal] = useState<Modal>({
     hide: true,
     title: '',
     message: '',
@@ -178,6 +179,7 @@ export const TopbarProvider = (props: TopbarProviderProps) => {
   return (
     <TopbarContext.Provider value={value}>
       <RemixUiTopbar />
+      <ModalDialog id="topbarModalStatic" {...focusModal} handleHide={handleHideModal} />
       <Toaster message={focusToaster} handleHide={handleToaster} />
     </TopbarContext.Provider>
   )
