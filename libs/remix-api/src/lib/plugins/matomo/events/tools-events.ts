@@ -132,6 +132,7 @@ export interface TemplateExplorerModalEvent extends MatomoEventBase {
     | 'importFiles'
     | 'importHttps'
     | 'uploadFolder'
+    | 'topCardGitClone'
 }
 
 export interface ScriptExecutorEvent extends MatomoEventBase {
