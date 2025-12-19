@@ -14,7 +14,7 @@ import { MenuItems, WorkSpaceState, WorkspaceMetadata } from './types'
 import { contextMenuActions } from './utils'
 import FileExplorerContextMenu from './components/file-explorer-context-menu'
 import { customAction } from '@remixproject/plugin-api'
-import { AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, HomeTabEvent, WorkspaceEvent } from '@remix-api'
 import { ElectronMenu } from './components/electron-menu'
@@ -32,6 +32,7 @@ export function Workspace() {
   const NO_WORKSPACE = ' - none - '
   const [currentWorkspace, setCurrentWorkspace] = useState<string>(NO_WORKSPACE)
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceMetadata>(null)
+  const [workspaceHeight, setWorkspaceHeight] = useState(window.innerHeight < 750 ? 87 : window.innerHeight < 1000 ? 89.6 : 92)
   const [showDropdown, setShowDropdown] = useState<boolean>(false)
   const [showIconsMenu, hideIconsMenu] = useState<boolean>(false)
   const [showBranches, setShowBranches] = useState<boolean>(false)
@@ -383,8 +384,11 @@ export function Workspace() {
     )
   }
   const createWorkspace = async () => {
-    await global.plugin.call('manager', 'activatePlugin', 'templateSelection')
-    await global.plugin.call('tabs', 'focus', 'templateSelection')
+    await global.plugin.call('templateexplorermodal', 'updateTemplateExplorerInFileMode', false)
+    appContext.appStateDispatch({
+      type: appActionTypes.showGenericModal,
+      payload: true
+    })
   }
 
   const deleteCurrentWorkspace = () => {
@@ -1029,8 +1033,8 @@ export function Workspace() {
   }
 
   return (
-    <div className="d-flex flex-column justify-content-between h-100">
-      <span className="w-100 px-2 mt-3">
+    <div className="d-flex flex-column h-100">
+      <div className="w-100 px-2 mt-3">
         <div>
           <FileExplorerMenu
             title={''}
@@ -1046,11 +1050,13 @@ export function Workspace() {
             revealInExplorer={() => global.dispatchRevealElectronFolderInExplorer(null)}
           />
         </div>
-      </span>
+      </div>
       <div
-        className="remixui_container overflow-auto"
+        className="remixui_container overflow-auto h-100"
         style={{
-          maxHeight: selectedWorkspace && selectedWorkspace.isGitRepo ? '95dvh' : '100dvh'
+          display: 'flex',
+          flex: '1 1 auto',
+          minHeight: 0
         }}
         onContextMenu={(e) => {
           e.preventDefault()
@@ -1223,7 +1229,9 @@ export function Workspace() {
       </div>
       { (selectedWorkspace && selectedWorkspace.isGitRepo) && (
         <div className={`bg-light border-top d-flex justify-content-between align-items-center`} data-id="workspaceGitPanel" style={{
-          minHeight: '5dvh'
+          minHeight: '4rem',
+          marginBottom: '0 !important',
+          flexShrink: 0
         }}>
           <div className="d-flex justify-content-between p-1 w-100">
             <div className="text-uppercase text-dark pt-1 px-1">GIT</div>

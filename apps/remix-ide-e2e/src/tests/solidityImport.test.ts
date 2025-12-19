@@ -91,6 +91,7 @@ module.exports = {
       .click('li[data-id="treeViewLitreeViewItemREADME.txt"')
       .addFile('Untitled9.sol', sources[8]['Untitled9.sol'])
       .clickLaunchIcon('solidity')
+      .setSolidityCompilerVersion('soljson-v0.8.20+commit.a1b79de6.js')
       .click('[data-id="compilerContainerCompileBtn"]')
       .clickLaunchIcon('filePanel')
       .expandAllFolders()

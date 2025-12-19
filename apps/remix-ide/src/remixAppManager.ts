@@ -98,6 +98,7 @@ let requiredModules = [
   'desktopClient',
   'transactionSimulator',
   'resolutionIndex'
+  'amp'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)
