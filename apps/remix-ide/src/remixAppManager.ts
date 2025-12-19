@@ -97,7 +97,7 @@ let requiredModules = [
   'githubAuthHandler',
   'desktopClient',
   'transactionSimulator',
-  'resolutionIndex'
+  'resolutionIndex',
   'amp'
 ]
 
