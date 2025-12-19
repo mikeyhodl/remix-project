@@ -5,7 +5,6 @@ import { Compiler, Source } from '@remix-project/remix-solidity'
 import { DependencyResolver } from '@remix-project/import-resolver'
 import { CompilerInput } from 'libs/remix-import-resolver/src/compiler/dependency-resolver'
 
-
 let resolvedSources: CompilerInput
 
 const customImportCallback = (url: string, cb: (err: any, result?: any) => void): void => {

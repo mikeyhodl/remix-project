@@ -56,7 +56,7 @@ export class RemixDefinitionProvider implements monaco.languages.DefinitionProvi
     */
   async jumpToPosition(position: any) {
     const jumpToLine = async (fileName: string, lineColumn: any) => {
-     
+
       const currentFile = await this.props.plugin.call('fileManager', 'file')
       const fileTarget = await this.props.plugin.call('resolutionIndex', 'resolvePath', currentFile, fileName)
       if (fileName !== await this.props.plugin.call('fileManager', 'file')) {
