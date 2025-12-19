@@ -349,7 +349,7 @@ export function TopCards() {
               <p className="mb-0 fw-light text-wrap">{state.manageCategory === 'Template' ? 'Import an existing project' : 'Import existing files'}</p>
             </span>
           </div>
-        </div>}        
+        </div>}
         {importFiles && <ImportOptions />}
         {state.manageCategory === 'Template' && <div className="col-6">
           <div
