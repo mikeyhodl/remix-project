@@ -13,9 +13,16 @@ type Index = Record<string, Record<string, string>>
 export class ResolutionIndexPlugin extends Plugin {
   private index: Index = {}
   private readonly indexPath = '.deps/npm/.resolution-index.json'
+  private debug: boolean = false
 
   constructor() {
     super(profile)
+  }
+
+  private log(...args: any[]): void {
+    if (this.debug) {
+      console.log(...args)
+    }
   }
 
   onActivation() {
@@ -81,13 +88,13 @@ export class ResolutionIndexPlugin extends Plugin {
    * // Returns: '.deps/npm/@openzeppelin/contracts@5.0.2/token/ERC20/ERC20.sol'
    */
   async resolveImportFromIndex(sourceFile: string, importPath: string): Promise<string | null> {
-    console.log('[ResolutionIndexPlugin] resolveImportFromIndex', { sourceFile, importPath })
+    this.log('[ResolutionIndexPlugin] resolveImportFromIndex', { sourceFile, importPath })
     const candidates = this.buildCandidates(importPath)
-    console.log('[ResolutionIndexPlugin] candidates:', candidates)
+    this.log('[ResolutionIndexPlugin] candidates:', candidates)
     const isLocalPath = (val?: string) => true// !!val && !/^https?:\/\//.test(val) && !val.startsWith('github/')
-    console.log('[ResolutionIndexPlugin] isLocalPath check:', candidates.map(c => ({ candidate: c, isLocal: isLocalPath(this.index[sourceFile]?.[c]) })))
-    console.log('[ResolutionIndexPlugin] full index snapshot for sourceFile:', this.index[sourceFile])
-    console.log('[ResolutionIndexPlugin] full index snapshot:', this.index)
+    this.log('[ResolutionIndexPlugin] isLocalPath check:', candidates.map(c => ({ candidate: c, isLocal: isLocalPath(this.index[sourceFile]?.[c]) })))
+    this.log('[ResolutionIndexPlugin] full index snapshot for sourceFile:', this.index[sourceFile])
+    this.log('[ResolutionIndexPlugin] full index snapshot:', this.index)
     // 1) Direct lookup by candidates for the given sourceFile
     for (const cand of candidates) {
       const val = this.index[sourceFile]?.[cand]
@@ -175,35 +182,35 @@ export class ResolutionIndexPlugin extends Plugin {
    * // (the exact version MyToken.sol was compiled with)
    */
   async resolveActualPath(originContract: string, requestedPath: string): Promise<string | null> {
-    console.log('[ResolutionIndexPlugin] 🔍 resolveActualPath CALLED')
-    console.log('[ResolutionIndexPlugin]   ➡️  originContract:', originContract)
-    console.log('[ResolutionIndexPlugin]   ➡️  requestedPath:', requestedPath)
+    this.log('[ResolutionIndexPlugin] 🔍 resolveActualPath CALLED')
+    this.log('[ResolutionIndexPlugin]   ➡️  originContract:', originContract)
+    this.log('[ResolutionIndexPlugin]   ➡️  requestedPath:', requestedPath)
 
     try {
       // Normalize origin contract path (strip .deps/npm/ prefix if present)
       const normalizedOrigin = this.normalizeSourceFile(originContract)
-      console.log('[ResolutionIndexPlugin]   📝 Normalized origin:', normalizedOrigin)
+      this.log('[ResolutionIndexPlugin]   📝 Normalized origin:', normalizedOrigin)
 
       // Check if index has this origin
-      console.log('[ResolutionIndexPlugin]   📊 Index keys:', Object.keys(this.index))
-      console.log('[ResolutionIndexPlugin]   🔎 Has normalized origin?', normalizedOrigin in this.index)
+      this.log('[ResolutionIndexPlugin]   📊 Index keys:', Object.keys(this.index))
+      this.log('[ResolutionIndexPlugin]   🔎 Has normalized origin?', normalizedOrigin in this.index)
 
       if (!this.index[normalizedOrigin]) {
-        console.log('[ResolutionIndexPlugin]   ❌ Origin not found in index')
+        this.log('[ResolutionIndexPlugin]   ❌ Origin not found in index')
         return null
       }
 
-      console.log('[ResolutionIndexPlugin]   📋 Origin entry keys:', Object.keys(this.index[normalizedOrigin]))
-      console.log('[ResolutionIndexPlugin]   🔎 Has __sources__?', '__sources__' in this.index[normalizedOrigin])
+      this.log('[ResolutionIndexPlugin]   📋 Origin entry keys:', Object.keys(this.index[normalizedOrigin]))
+      this.log('[ResolutionIndexPlugin]   🔎 Has __sources__?', '__sources__' in this.index[normalizedOrigin])
 
       if (!this.index[normalizedOrigin]['__sources__']) {
-        console.log('[ResolutionIndexPlugin]   ❌ No __sources__ found for:', normalizedOrigin)
+        this.log('[ResolutionIndexPlugin]   ❌ No __sources__ found for:', normalizedOrigin)
         return null
       }
 
       const sources = this.index[normalizedOrigin]['__sources__'] as any
-      console.log('[ResolutionIndexPlugin]   📦 __sources__ keys:', Object.keys(sources))
-      console.log('[ResolutionIndexPlugin]   🔎 Looking for requestedPath in sources:', requestedPath)
+      this.log('[ResolutionIndexPlugin]   📦 __sources__ keys:', Object.keys(sources))
+      this.log('[ResolutionIndexPlugin]   🔎 Looking for requestedPath in sources:', requestedPath)
 
       // Find matching source in __sources__
       let resolvedPath: string | null = null
@@ -225,47 +232,47 @@ export class ResolutionIndexPlugin extends Plugin {
         return null
       }
 
-      console.log('[ResolutionIndexPlugin]   � Resolved path from __sources__:', resolvedPath)
+      this.log('[ResolutionIndexPlugin]   📂 Resolved path from __sources__:', resolvedPath)
 
       // Check if it's a local workspace file (no @ version, not a URL)
       const isLocalFile = !resolvedPath.includes('@') && !resolvedPath.startsWith('http')
-      console.log('[ResolutionIndexPlugin]   📁 Is local file?', isLocalFile)
+      this.log('[ResolutionIndexPlugin]   📁 Is local file?', isLocalFile)
 
       if (isLocalFile) {
-        console.log('[ResolutionIndexPlugin]   ✅ Local file, returning as-is:', resolvedPath)
+        this.log('[ResolutionIndexPlugin]   ✅ Local file, returning as-is:', resolvedPath)
         return resolvedPath
       }
 
       // For external dependencies, look up in .raw_paths.json to find actual FS location
-      console.log('[ResolutionIndexPlugin]   🌐 External dependency, looking up in .raw_paths.json')
+      this.log('[ResolutionIndexPlugin]   🌐 External dependency, looking up in .raw_paths.json')
       try {
         const rawPathsContent = await this.call('fileManager', 'readFile', '.deps/.raw_paths.json')
-        console.log('[ResolutionIndexPlugin]   ✅ Successfully read .raw_paths.json')
+        this.log('[ResolutionIndexPlugin]   ✅ Successfully read .raw_paths.json')
         const rawPaths = JSON.parse(rawPathsContent)
-        console.log('[ResolutionIndexPlugin]   📋 .raw_paths.json has', Object.keys(rawPaths).length, 'entries')
+        this.log('[ResolutionIndexPlugin]   📋 .raw_paths.json has', Object.keys(rawPaths).length, 'entries')
 
         // Look through all entries to find where this file was saved
         for (const [url, fsPath] of Object.entries(rawPaths)) {
-          console.log('[ResolutionIndexPlugin]   🔎 Checking:', { url, fsPath, resolvedPath })
+          this.log('[ResolutionIndexPlugin]   🔎 Checking:', { url, fsPath, resolvedPath })
           // The fsPath should contain our resolved path
           if (typeof fsPath === 'string' && fsPath.includes(resolvedPath)) {
-            console.log('[ResolutionIndexPlugin]   ✅ MATCH FOUND!')
-            console.log('[ResolutionIndexPlugin]   🔗 Original URL:', url)
-            console.log('[ResolutionIndexPlugin]   📁 Actual FS Path:', fsPath)
+            this.log('[ResolutionIndexPlugin]   ✅ MATCH FOUND!')
+            this.log('[ResolutionIndexPlugin]   🔗 Original URL:', url)
+            this.log('[ResolutionIndexPlugin]   📁 Actual FS Path:', fsPath)
             return fsPath
           }
         }
 
-        console.log('[ResolutionIndexPlugin]   ⚠️  No match found in .raw_paths.json')
-        console.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
+        this.log('[ResolutionIndexPlugin]   ⚠️  No match found in .raw_paths.json')
+        this.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
         return resolvedPath
       } catch (e) {
-        console.log('[ResolutionIndexPlugin]   ⚠️  .raw_paths.json error:', e)
-        console.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
+        this.log('[ResolutionIndexPlugin]   ⚠️  .raw_paths.json error:', e)
+        this.log('[ResolutionIndexPlugin]   ✅ RETURNING resolved path as-is:', resolvedPath)
         return resolvedPath
       }
     } catch (e) {
-      console.log('[ResolutionIndexPlugin]   ❌ ERROR in resolveActualPath:', e)
+      this.log('[ResolutionIndexPlugin]   ❌ ERROR in resolveActualPath:', e)
       return null
     }
   }

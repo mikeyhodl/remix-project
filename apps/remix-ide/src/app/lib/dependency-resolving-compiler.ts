@@ -2,19 +2,19 @@
 
 import { Plugin } from '@remixproject/engine'
 import { Compiler, Source } from '@remix-project/remix-solidity'
-import { DependencyResolver } from '@remix-project/import-resolver'
-import { CompilerInput } from 'libs/remix-import-resolver/src/compiler/dependency-resolver'
+import { DependencyResolver, CompilerInputDepedencyResolver } from '@remix-project/import-resolver'
 
-let resolvedSources: CompilerInput
+let resolvedSources: CompilerInputDepedencyResolver
+let debugEnabled = false
 
 const customImportCallback = (url: string, cb: (err: any, result?: any) => void): void => {
-  console.log(`[DependencyResolvingCompiler] 🔍 Import callback invoked for URL: ${url}`)
+  if (debugEnabled) console.log(`[DependencyResolvingCompiler] 🔍 Import callback invoked for URL: ${url}`)
   // look up the source from resolvedSources
   if (resolvedSources && url in resolvedSources) {
-    console.log(`[DependencyResolvingCompiler] ✅ Found resolved source for URL: ${url}`)
+    if (debugEnabled) console.log(`[DependencyResolvingCompiler] ✅ Found resolved source for URL: ${url}`)
     return cb(null, resolvedSources[url].content)
   } else {
-    console.log(`[DependencyResolvingCompiler] ❌ No resolved source found for URL: ${url}`)
+    if (debugEnabled) console.log(`[DependencyResolvingCompiler] ❌ No resolved source found for URL: ${url}`)
     cb(`❌ No resolved source found for URL: ${url}`)
   }
   return
@@ -39,20 +39,23 @@ export class DependencyResolvingCompiler extends Compiler {
   ) {
     super(customImportCallback)
     this.pluginApi = pluginApi
-    this.debug = true // debug
+    this.debug = debug
+    debugEnabled = this.debug
 
+    this.log(`[DependencyResolvingCompiler] 🧠 Created smart compiler wrapper`)
+  }
+
+  private log(...args: any[]): void {
     if (this.debug) {
-      console.log(`[DependencyResolvingCompiler] 🧠 Created smart compiler wrapper`)
+      console.log(...args)
     }
   }
 
   public compile(sources: Source, target: string): void {
-    if (this.debug) console.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`, sources)
+    this.log(`[DependencyResolvingCompiler] 🚀 Starting smart compilation for: ${target}`, sources)
     this.performSmartCompilation(sources, target).catch(error => {
 
-      if (this.debug) {
-        console.log(`[DependencyResolvingCompiler] ❌ Smart compilation failed:`, error)
-      }
+      this.log(`[DependencyResolvingCompiler] ❌ Smart compilation failed:`, error)
       // Don't fall back to normal compilation - emit the error through the proper channel
       // This ensures errors are displayed in the compiler output just like normal import errors
       this.state.lastCompilationResult = null
@@ -65,55 +68,52 @@ export class DependencyResolvingCompiler extends Compiler {
       ])
 
     }).then(() => {
-      if (this.debug) {
-        console.log(`[DependencyResolvingCompiler] ✅ Smart compilation finished`)
-        console.log(resolvedSources)
-      }
+      this.log(`[DependencyResolvingCompiler] ✅ Smart compilation finished`)
+      this.log(resolvedSources)
     })
   }
 
   private async performSmartCompilation(sources: Source, target: string): Promise<void> {
     // For Yul files, skip dependency resolution and pass sources as-is
     if (target.endsWith('.yul')) {
-      if (this.debug) console.log(`[DependencyResolvingCompiler] 🔧 Yul file detected, skipping dependency resolution`)
+      this.log(`[DependencyResolvingCompiler] 🔧 Yul file detected, skipping dependency resolution`)
       super.compile(sources, target)
       return
     }
 
     // 1) Build deps
-    if (this.debug) console.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`, sources, target)
+    this.log(`[DependencyResolvingCompiler] 🌳 Building dependency tree...`, sources, target)
     const depResolver = new DependencyResolver(this.pluginApi as any, target, {
-      enabled: true,
-      storage: true,
-      imports: true,
+      enabled: false
     })
     depResolver.setCacheEnabled(true)
 
     // Load remappings from remappings.txt if it exists
     try {
-      const fileManager = this.pluginApi as any
+      const plugin = this.pluginApi as Plugin
       const remappingsAggregate: Array<{ from: string, to: string }> = []
-      const remappingsTxtExists = await fileManager.call('fileManager', 'exists', 'remappings.txt')
+      const remappingsTxtExists = await plugin.call('fileManager', 'exists', 'remappings.txt')
       if (remappingsTxtExists) {
-        const remappingsContent = await fileManager.call('fileManager', 'readFile', 'remappings.txt')
+        const remappingsContent = await plugin.call('fileManager', 'readFile', 'remappings.txt')
         const remappingLines = remappingsContent.split('\n').filter(Boolean)
         const remappings = remappingLines.map(line => {
           const [from, to] = line.split('=')
           return { from: from?.trim(), to: to?.trim() }
-        }).filter(r => r.from && r.to)
+        }).filter((r: { from: any; to: any }) => r.from && r.to)
 
-        console.log(`[DependencyResolvingCompiler] 📋 Loaded ${remappings.length} remappings from remappings.txt:`)
-        remappings.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
+        this.log(`[DependencyResolvingCompiler] 📋 Loaded ${remappings.length} remappings from remappings.txt:`)
+        remappings.forEach((r: { from: any; to: any }) => this.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
         remappingsAggregate.push(...remappings)
       } else {
-        if (this.debug) console.log(`[DependencyResolvingCompiler] ℹ️  No remappings.txt found`)
+        this.log(`[DependencyResolvingCompiler] ℹ️  No remappings.txt found`)
       }
 
       // Load remappings from remix.config.json if present
-      const remixConfigExists = await fileManager.call('fileManager', 'exists', 'remix.config.json')
-      if (remixConfigExists) {
+      const remixConfigExists = await plugin.call('fileManager', 'exists', 'remix.config.json')
+      const state = await plugin.call('solidity', 'getCompilerState')
+      if (remixConfigExists && state.useFileConfiguration) {
         try {
-          const remixConfigContent = await fileManager.call('fileManager', 'readFile', 'remix.config.json')
+          const remixConfigContent = await plugin.call('fileManager', 'readFile', 'remix.config.json')
           const cfg = JSON.parse(remixConfigContent)
           const arr: string[] = cfg?.['solidity-compiler']?.settings?.remappings || []
           if (Array.isArray(arr) && arr.length > 0) {
@@ -121,69 +121,63 @@ export class DependencyResolvingCompiler extends Compiler {
               const [from, to] = String(line).split('=')
               return { from: from?.trim(), to: to?.trim() }
             }).filter(r => r.from && r.to)
-            console.log(`[DependencyResolvingCompiler] 📋 Loaded ${configRemaps.length} remappings from remix.config.json:`)
-            configRemaps.forEach(r => console.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
+            this.log(`[DependencyResolvingCompiler] 📋 Loaded ${configRemaps.length} remappings from remix.config.json:`)
+            configRemaps.forEach(r => this.log(`[DependencyResolvingCompiler]    ${r.from} => ${r.to}`))
             // Merge: config remaps should augment existing remappings
             remappingsAggregate.push(...configRemaps)
           }
         } catch (e) {
-          console.log(`[DependencyResolvingCompiler] ⚠️  Failed to parse remix.config.json remappings:`, e)
+          this.log(`[DependencyResolvingCompiler] ⚠️  Failed to parse remix.config.json remappings:`, e)
         }
       }
       if (remappingsAggregate.length > 0) {
         depResolver.setRemappings(remappingsAggregate)
       }
     } catch (err) {
-      console.log(`[DependencyResolvingCompiler] ⚠️  Failed to load remappings:`, err)
+      this.log(`[DependencyResolvingCompiler] ⚠️  Failed to load remappings:`, err)
     }
 
-    let sourceBundle
+    let sourceBundle: Map<string, string>
     try {
       sourceBundle = await depResolver.buildDependencyTree(target)
     } catch (err) {
-      console.log(`[DependencyResolvingCompiler] ❌ Dependency resolution failed:`, err)
+      this.log(`[DependencyResolvingCompiler] ❌ Dependency resolution failed:`, err)
       throw new Error(`Dependency resolution failed: ${(err as Error).message}`)
     }
-    if (this.debug) {
-      console.log(`[DependencyResolvingCompiler] ✅ Dependency tree built successfully`)
-      console.log(`[DependencyResolvingCompiler] 📦 Source bundle contains ${sourceBundle.size} files`)
-    }
+    this.log(`[DependencyResolvingCompiler] ✅ Dependency tree built successfully`)
+    this.log(`[DependencyResolvingCompiler] 📦 Source bundle contains ${sourceBundle.size} files`)
 
     // 2) Save resolution index
     await depResolver.saveSourcesBundle(target)
     await depResolver.saveResolutionIndex()
 
     // 3) Optional debug: import graph
-    if (this.debug) {
-      const importGraph = depResolver.getImportGraph()
-      if (importGraph.size > 0) {
-        console.log(`[DependencyResolvingCompiler] 📊 Import graph:`)
-        importGraph.forEach((imports, file) => {
-          console.log(`[DependencyResolvingCompiler]   ${file}`)
-          imports.forEach(imp => console.log(`[DependencyResolvingCompiler]     → ${imp}`))
-        })
-      }
+    const importGraph = depResolver.getImportGraph()
+    if (importGraph.size > 0) {
+      this.log(`[DependencyResolvingCompiler] 📊 Import graph:`)
+      importGraph.forEach((imports, file) => {
+        this.log(`[DependencyResolvingCompiler]   ${file}`)
+        imports.forEach(imp => this.log(`[DependencyResolvingCompiler]     → ${imp}`))
+      })
     }
 
     // 4) Convert bundle to compiler input
     resolvedSources = depResolver.toCompilerInput()
 
-    console.log('toResolutionFileInput', depResolver.toResolutionFileInput())
+    this.log('toResolutionFileInput', depResolver.toResolutionFileInput())
 
     // 5) Ensure entry file present
     if (!resolvedSources[target] && sources[target]) {
       resolvedSources[target] = sources[target]
     }
 
-    if (this.debug) {
-      console.log(`[DependencyResolvingCompiler] 🔨 Passing ${Object.keys(resolvedSources).length} files to underlying compiler`)
-      Object.keys(resolvedSources).forEach((filePath, index) => {
-        console.log(`[DependencyResolvingCompiler]   ${index + 1}. ${filePath}`)
-      })
-      console.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
-    }
+    this.log(`[DependencyResolvingCompiler] 🔨 Passing ${Object.keys(resolvedSources).length} files to underlying compiler`)
+    Object.keys(resolvedSources).forEach((filePath, index) => {
+      this.log(`[DependencyResolvingCompiler]   ${index + 1}. ${filePath}`)
+    })
+    this.log(`[DependencyResolvingCompiler] ⚡ Starting compilation with resolved sources...`, resolvedSources)
 
-    console.log(resolvedSources)
+    this.log(resolvedSources)
     // 6) Delegate to base compiler
     //super.compile(resolvedSources, target)
     super.compile(resolvedSources, target)

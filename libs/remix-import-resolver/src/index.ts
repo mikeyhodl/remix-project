@@ -8,6 +8,7 @@ export type { IImportResolver } from './compiler/import-resolver-interface'
 
 export { ImportResolver } from './compiler/import-resolver'
 export { DependencyResolver } from './compiler/dependency-resolver'
+export type { CompilerInputDepedencyResolver } from './compiler/dependency-resolver'
 
 export { SourceFlattener } from './compiler/source-flattener'
 export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'

@@ -13,7 +13,7 @@ import { WarningSystem } from './utils/warning-system'
 /**
  * Solidity compiler input format
  */
-export type CompilerInput = {
+export type CompilerInputDepedencyResolver = {
   [fileName: string]: {
     content: string
     file?: string // The resolved file path where content was retrieved from
@@ -107,19 +107,18 @@ export class DependencyResolver {
       }
     } else {
       this.debugConfig = {
-        enabled: debug.enabled ?? true,
+        enabled: debug.enabled ?? false,
         tree: debug.tree ?? debug.enabled ?? false,
-        fileProcessing: debug.fileProcessing ?? debug.enabled ?? true,
-        imports: debug.imports ?? debug.enabled ?? true,
+        fileProcessing: debug.fileProcessing ?? debug.enabled ?? false,
+        imports: debug.imports ?? debug.enabled ?? false,
         storage: debug.storage ?? debug.enabled ?? false,
-        localhost: debug.localhost ?? debug.enabled ?? true,
+        localhost: debug.localhost ?? debug.enabled ?? false,
         packageContext: debug.packageContext ?? debug.enabled ?? false,
         resolutionIndex: debug.resolutionIndex ?? debug.enabled ?? false
       }
     }
 
     const legacyDebug = this.debugConfig.enabled || false
-    console.log(`[DependencyResolver] 🧠 Created with debug=`, this.debugConfig)
     this.logger = new Logger(this.pluginApi || undefined, legacyDebug)
     this.warnings = new WarningSystem(this.logger, { verbose: !!legacyDebug })
     if (isPlugin) {
@@ -302,7 +301,7 @@ export class DependencyResolver {
             // Still not found. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
             this.logIf('fileProcessing', `[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
             try {
-              const handler = (this.resolver as any).getHandlerRegistry?.()
+              const handler = this.resolver.getHandlerRegistry?.()
               if (handler?.tryHandle) {
                 const ctx = { importPath, targetFile: (this.resolver as any).getTargetFile?.(), targetPath: undefined }
                 const res = await handler.tryHandle(ctx)
@@ -481,8 +480,8 @@ export class DependencyResolver {
   }
 
   /** Convert the bundle to Solidity compiler input shape. */
-  public toCompilerInput(): CompilerInput {
-    const sources: CompilerInput = {}
+  public toCompilerInput(): CompilerInputDepedencyResolver {
+    const sources: CompilerInputDepedencyResolver = {}
     for (const [path, content] of this.sourceFiles.entries()) {
       sources[path] = { content }
     }
@@ -490,8 +489,8 @@ export class DependencyResolver {
   }
 
   /** Convert the bundle to Solidity compiler input shape. */
-  public toResolutionFileInput(): CompilerInput {
-    const sources: CompilerInput = {}
+  public toResolutionFileInput(): CompilerInputDepedencyResolver {
+    const sources: CompilerInputDepedencyResolver = {}
     for (const [path, content] of this.sourceFiles.entries()) {
       const resolvedPath = this.specToResolvedPath.get(path)
       sources[path] = { content, file: resolvedPath }

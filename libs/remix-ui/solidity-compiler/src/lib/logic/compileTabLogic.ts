@@ -157,8 +157,6 @@ export class CompileTabLogic {
     if (!target) throw new Error('No target provided for compilation')
 
     try {
-      console.log(`[CompileTabLogic] 🎯 Starting smart compilation for: ${target}`)
-
       // Read the entry file
       const content = await this.api.readFile(target)
 
@@ -167,15 +165,9 @@ export class CompileTabLogic {
       await this.setCompilerMappings()
       await this.setCompilerConfigContent()
 
-      // DependencyResolvingCompiler automatically handles dependency resolution and compilation
-      console.log(`[CompileTabLogic] 🧠 Using DependencyResolvingCompiler with automatic dependency resolution`)
-
       const sources = { [target]: { content } }
 
-      console.log(`[CompileTabLogic] � Starting smart compilation...`)
       this.compiler.compile(sources, target)
-
-      console.log(`[CompileTabLogic] ⏳ Smart compilation triggered for: ${target}`)
 
       return true
     } catch (error) {
