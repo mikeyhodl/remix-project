@@ -54,6 +54,15 @@ export interface DependencyResolverDebugConfig {
 }
 
 /**
+ * Result of resolving a file's content
+ */
+interface FileResolutionResult {
+  content: string
+  actualPath: string  // Where we actually read from (might be localhost/...)
+  resolvedPath: string  // The canonical versioned path
+}
+
+/**
  * Pre-compilation dependency tree builder (Node-focused)
  *
  * Walks the Solidity import graph BEFORE compilation, tracking which file requests which import.
@@ -252,12 +261,12 @@ export class DependencyResolver {
 
   // moved to utils/dependency-helpers
 
+  /**
+   * Main file processing orchestrator - delegates to focused helper methods
+   */
   private async processFile(importPath: string, requestingFile: string | null, packageContext?: string): Promise<void> {
-    if (!importPath.endsWith('.sol')) {
-      this.logIf('fileProcessing', `[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
-      try { await this.warnings.emitInvalidSolidityImport(importPath) } catch { }
-      throw new Error(`Invalid import: "${importPath}" does not end with .sol extension`)
-    }
+    // 1. Validate and check if already processed
+    if (!this.validateImportPath(importPath)) return
     if (this.processedFiles.has(importPath)) {
       this.logIf('fileProcessing', `[DependencyResolver]   ⏭️  Already processed: ${importPath}`)
       return
@@ -266,197 +275,351 @@ export class DependencyResolver {
     this.logIf('fileProcessing', `[DependencyResolver] 📄 Processing: ${importPath}`)
     this.logIf('fileProcessing', `[DependencyResolver]   📍 Requested by: ${requestingFile || 'entry point'}`)
 
-    if (packageContext) {
-      this.logIf('packageContext', `[DependencyResolver]   📦 Package context: ${packageContext}`)
-      this.fileToPackageContext.set(importPath, packageContext)
-      this.resolver.setPackageContext(packageContext)
-      // Ensure the parent's package.json is loaded so its declared deps influence child resolution
-      if ((this.resolver as any).ensurePackageContextLoaded) {
-        await (this.resolver as any).ensurePackageContextLoaded(packageContext)
-      }
-    }
-
+    // 2. Setup package context if provided
+    await this.setupPackageContext(importPath, packageContext)
     this.processedFiles.add(importPath)
 
     try {
-      let content: string
-      let actualPath = importPath // Track where we actually read from (might be localhost/...)
-      const isLocal = this.isLocalFile(importPath)
-      this.logIf('fileProcessing', `[DependencyResolver]   🔍 isLocalFile("${importPath}") = ${isLocal}`)
-      if (isLocal) {
-        this.logIf('fileProcessing', `[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
-        try {
-          content = await this.io.readFile(importPath)
-        } catch (err) {
-          // Local file not found. If remixd is connected, try node_modules/installed_contracts paths
-          this.logIf('fileProcessing', `[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
+      // 3. Resolve file content (local, localhost, handler, or external)
+      const resolution = await this.resolveFileContent(importPath)
+      if (!resolution) return
 
-          const localhostResult = await this.tryLocalhostPaths(importPath)
-          if (localhostResult) {
-            content = localhostResult.content
-            // Track the actual localhost path for internal use, but keep importPath as the key
-            actualPath = localhostResult.path
-            this.logIf('fileProcessing', `[DependencyResolver]   ✅ Found at: ${actualPath}`)
-          } else {
-            // Still not found. Try handler system ONLY (e.g., remix_tests.sol), do not externalize.
-            this.logIf('fileProcessing', `[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
-            try {
-              const handler = this.resolver.getHandlerRegistry?.()
-              if (handler?.tryHandle) {
-                const ctx = { importPath, targetFile: (this.resolver as any).getTargetFile?.(), targetPath: undefined }
-                const res = await handler.tryHandle(ctx)
-                if (res?.handled && typeof res.content === 'string') {
-                  content = res.content
-                } else {
-                  throw new Error(`Local file not found and no handler matched: ${importPath}`)
-                }
-              } else {
-                throw new Error(`Local file not found and handler registry unavailable: ${importPath}`)
-              }
-            } catch (e) {
-              // Emit warning and throw error to propagate to compiler
-              this.logIf('fileProcessing', `[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}:`, e)
-              try { await this.warnings.emitFailedToResolve(importPath) } catch { }
-              throw new Error(`File not found: ${importPath}`)
-            }
-          }
-        }
-      } else {
-        this.logIf('fileProcessing', `[DependencyResolver]   🌐 External import detected, delegating to ImportResolver`)
-        content = await this.resolver.resolveAndSave(importPath, undefined, false)
-      }
+      // 4. Store the resolved file under appropriate keys/aliases
+      this.storeResolvedFile(importPath, resolution)
 
-      if (!content) {
-        if (content === '') return
-        this.logIf('fileProcessing', `[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
-        try { await this.warnings.emitFailedToResolve(importPath) } catch { }
-        throw new Error(`File not found: ${importPath}`)
-      }
+      // 5. Update package context based on resolved path
+      await this.updateFilePackageContext(importPath, resolution.resolvedPath)
 
-      const resolvedPath = this.isLocalFile(importPath) ? importPath : this.getResolvedPath(importPath)
-      this.logIf('storage', `[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
-      this.logIf('storage', `[DependencyResolver]   📝 Actual path: ${actualPath}`)
-      this.logIf('storage', `[DependencyResolver]   📄 Import spec key: ${importPath}`)
+      // 6. Process child imports recursively
+      await this.processChildImports(importPath, resolution)
 
-      // Always store under the ORIGINAL IMPORT SPEC (compiler will request this)
-      this.sourceFiles.set(importPath, content)
-      this.specToResolvedPath.set(importPath, resolvedPath)
-      this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
-
-      // Also store under the versioned resolvedPath for navigation and debugging
-      if (resolvedPath !== importPath) {
-        this.specToResolvedPath.set(resolvedPath, resolvedPath)
-        this.logIf('storage', `[DependencyResolver]   ✅ Also stored under versioned path: ${resolvedPath}`)
-      }
-
-      this.logIf('storage', `[DependencyResolver]   📍 Resolved file path: ${resolvedPath}`)
-
-      // Maintain alias mapping for navigation/internal lookups
-      if (resolvedPath !== importPath) this.aliasToSpec.set(resolvedPath, importPath)
-      if (actualPath !== importPath && actualPath !== resolvedPath) this.aliasToSpec.set(actualPath, importPath)
-
-      // Special-case npm imports like hardhat/console.sol: map versioned alias too
-      const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
-      if (specialImport && resolvedPath !== importPath) {
-        this.aliasToSpec.set(resolvedPath, importPath)
-        this.logIf('storage', `[DependencyResolver]   🔄 Special alias: ${resolvedPath} → ${importPath}`)
-      }
-
-      // For scoped packages with versions, create unversioned alias in alias map only
-      if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
-        const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
-        if (unversionedPath !== importPath) this.aliasToSpec.set(unversionedPath, importPath)
-        this.logIf('storage', `[DependencyResolver]   🔄 Alias (unversioned): ${unversionedPath} → ${importPath}`)
-      }
-
-      // Derive package context from path, regardless of local vs external.
-      {
-        const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
-        const filePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
-        if (filePackageContext) {
-          this.fileToPackageContext.set(resolvedPath, filePackageContext)
-          this.resolver.setPackageContext(filePackageContext)
-          if ((this.resolver as any).ensurePackageContextLoaded) {
-            await (this.resolver as any).ensurePackageContextLoaded(filePackageContext)
-          }
-          this.logIf('packageContext', `[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
-        }
-      }
-
-      // Before scanning imports, clear any prior index entries for this file so we write fresh mappings
-      if (this.resolutionIndex) {
-        try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch { }
-      }
-
-      const logFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
-      const imports = extractImports(content, logFn)
-      if (imports.length > 0) {
-        this.logIf('imports', `[DependencyResolver]   🔗 Found ${imports.length} imports`)
-        const resolvedImports = new Set<string>()
-        const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
-        const currentFilePackageContext = extractPackageContext(importPath) || (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
-
-        for (const importedPath of imports) {
-          this.logIf('imports', `[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
-          // Start with the raw path as written in the file
-          let nextPath = importedPath
-          // Resolve relative paths using the CURRENT FILE PATH as base (original importPath)
-          if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
-            const relLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
-            nextPath = resolveRelativeImport(importPath, importedPath, relLogFn)
-            this.logIf('imports', `[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)
-          }
-          // Apply any remappings (e.g., oz/ → @openzeppelin/contracts@X/)
-          const remapLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
-          const beforeRemap = nextPath
-          nextPath = applyRemappings(nextPath, this.remappings, remapLogFn)
-          const wasRemapped = beforeRemap !== nextPath
-
-          // Recursively process the child first so that resolver mappings are populated
-          await this.processFile(nextPath, resolvedPath, currentFilePackageContext || undefined)
-
-          // Graph should use the SPEC of the child (what compiler will request)
-          const childGraphKey = nextPath
-          resolvedImports.add(childGraphKey)
-
-          // Record per-file resolution for Go-to-Definition: parent spec → child resolved path
-          // Always record, even for relative (local) imports inside external packages, so navigation works everywhere.
-          if (this.resolutionIndex) {
-            try {
-              const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
-              // Record under the original unversioned import path
-              this.resolutionIndex.recordResolution(importPath, importedPath, childResolved)
-              this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${importPath} | ${importedPath} → ${childResolved}`)
-
-              // Also record under the versioned resolved path for external files
-              // This ensures both @openzeppelin/contracts/... and @openzeppelin/contracts@5.4.0/... have mappings
-              if (resolvedPath !== importPath) {
-                this.resolutionIndex.recordResolution(resolvedPath, importedPath, childResolved)
-                this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded (versioned): ${resolvedPath} | ${importedPath} → ${childResolved}`)
-              }
-
-              // If a remapping was applied, also record the remapped path so the resolution index
-              // contains both the original (e.g., "oz/ERC20/ERC20.sol") and the remapped path
-              // (e.g., "@openzeppelin/contracts@5.4.0/token/ERC20/ERC20.sol") pointing to the same file
-              if (wasRemapped) {
-                this.resolutionIndex.recordResolution(importPath, nextPath, childResolved)
-                this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped: ${importPath} | ${nextPath} → ${childResolved}`)
-                if (resolvedPath !== importPath) {
-                  this.resolutionIndex.recordResolution(resolvedPath, nextPath, childResolved)
-                  this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped (versioned): ${resolvedPath} | ${nextPath} → ${childResolved}`)
-                }
-              }
-            } catch { }
-          }
-        }
-        this.importGraph.set(importPath, resolvedImports)
-      }
     } catch (err) {
       this.logIf('fileProcessing', `[DependencyResolver] ❌ Error processing ${importPath}:`, err)
       try { await this.warnings.emitProcessingError(importPath, err) } catch { }
       console.error(err)
       throw err
     }
+  }
+
+  /**
+   * Validate that the import path is a valid Solidity file
+   */
+  private validateImportPath(importPath: string): boolean {
+    if (!importPath.endsWith('.sol')) {
+      this.logIf('fileProcessing', `[DependencyResolver] ❌ Invalid import: "${importPath}" does not end with .sol extension`)
+      this.warnings.emitInvalidSolidityImport(importPath).catch(() => {})
+      throw new Error(`Invalid import: "${importPath}" does not end with .sol extension`)
+    }
+    return true
+  }
+
+  /**
+   * Setup package context for the import resolver
+   */
+  private async setupPackageContext(importPath: string, packageContext?: string): Promise<void> {
+    if (!packageContext) return
+
+    this.logIf('packageContext', `[DependencyResolver]   📦 Package context: ${packageContext}`)
+    this.fileToPackageContext.set(importPath, packageContext)
+    this.resolver.setPackageContext(packageContext)
+
+    // Ensure the parent's package.json is loaded so its declared deps influence child resolution
+    if ((this.resolver as any).ensurePackageContextLoaded) {
+      await (this.resolver as any).ensurePackageContextLoaded(packageContext)
+    }
+  }
+
+  /**
+   * Resolve file content using the appropriate strategy:
+   * 1. Local file (direct read)
+   * 2. Localhost/remixd paths
+   * 3. Handler system (e.g., remix_tests.sol)
+   * 4. External import (npm, GitHub, etc.)
+   */
+  private async resolveFileContent(importPath: string): Promise<{ content: string; actualPath: string; resolvedPath: string } | null> {
+    const isLocal = this.isLocalFile(importPath)
+    this.logIf('fileProcessing', `[DependencyResolver]   🔍 isLocalFile("${importPath}") = ${isLocal}`)
+
+    let content: string
+    let actualPath = importPath
+
+    if (isLocal) {
+      const localResult = await this.resolveLocalFile(importPath)
+      if (!localResult) return null
+      content = localResult.content
+      actualPath = localResult.actualPath
+    } else {
+      this.logIf('fileProcessing', `[DependencyResolver]   🌐 External import detected, delegating to ImportResolver`)
+      content = await this.resolver.resolveAndSave(importPath, undefined, false)
+    }
+
+    // Validate content was resolved
+    if (!content) {
+      if (content === '') return null // Empty file is valid
+      this.logIf('fileProcessing', `[DependencyResolver] ⚠️  Failed to resolve: ${importPath}`)
+      try { await this.warnings.emitFailedToResolve(importPath) } catch { }
+      throw new Error(`File not found: ${importPath}`)
+    }
+
+    const resolvedPath = isLocal ? importPath : this.getResolvedPath(importPath)
+    return { content, actualPath, resolvedPath }
+  }
+
+  /**
+   * Resolve a local file with fallback chain:
+   * 1. Direct workspace read
+   * 2. Localhost/remixd paths (node_modules, installed_contracts)
+   * 3. Handler system (remix_tests.sol, etc.)
+   */
+  private async resolveLocalFile(importPath: string): Promise<{ content: string; actualPath: string } | null> {
+    this.logIf('fileProcessing', `[DependencyResolver]   📁 Local file detected, reading directly`, importPath)
+
+    // Try direct read first
+    try {
+      const content = await this.io.readFile(importPath)
+      return { content, actualPath: importPath }
+    } catch {
+      // Continue to fallbacks
+    }
+
+    // Try localhost/remixd paths
+    this.logIf('fileProcessing', `[DependencyResolver]   🔄 Local file not found, checking localhost paths...`)
+    const localhostResult = await this.tryLocalhostPaths(importPath)
+    if (localhostResult) {
+      this.logIf('fileProcessing', `[DependencyResolver]   ✅ Found at: ${localhostResult.path}`)
+      return { content: localhostResult.content, actualPath: localhostResult.path }
+    }
+
+    // Try handler system (e.g., remix_tests.sol)
+    this.logIf('fileProcessing', `[DependencyResolver]   🔄 Not in localhost, trying handler system...`)
+    const handlerResult = await this.tryHandlerSystem(importPath)
+    if (handlerResult) {
+      return { content: handlerResult, actualPath: importPath }
+    }
+
+    // All fallbacks failed
+    this.logIf('fileProcessing', `[DependencyResolver]   ⚠️  Local resolution failed for ${importPath}`)
+    try { await this.warnings.emitFailedToResolve(importPath) } catch { }
+    throw new Error(`File not found: ${importPath}`)
+  }
+
+  /**
+   * Try to resolve using the handler system (e.g., remix_tests.sol)
+   */
+  private async tryHandlerSystem(importPath: string): Promise<string | null> {
+    try {
+      const handler = this.resolver.getHandlerRegistry?.()
+      if (!handler?.tryHandle) {
+        return null
+      }
+
+      const ctx = {
+        importPath,
+        targetFile: (this.resolver as any).getTargetFile?.(),
+        targetPath: undefined
+      }
+      const res = await handler.tryHandle(ctx)
+
+      if (res?.handled && typeof res.content === 'string') {
+        return res.content
+      }
+    } catch {
+      // Handler failed
+    }
+    return null
+  }
+
+  /**
+   * Store the resolved file under appropriate keys and aliases
+   */
+  private storeResolvedFile(
+    importPath: string,
+    resolution: { content: string; actualPath: string; resolvedPath: string }
+  ): void {
+    const { content, actualPath, resolvedPath } = resolution
+
+    this.logIf('storage', `[DependencyResolver]   📥 Resolved path: ${resolvedPath}`)
+    this.logIf('storage', `[DependencyResolver]   📝 Actual path: ${actualPath}`)
+    this.logIf('storage', `[DependencyResolver]   📄 Import spec key: ${importPath}`)
+
+    // Always store under the ORIGINAL IMPORT SPEC (compiler will request this)
+    this.sourceFiles.set(importPath, content)
+    this.specToResolvedPath.set(importPath, resolvedPath)
+    this.logIf('storage', `[DependencyResolver]   ✅ Stored under spec key: ${importPath}`)
+
+    // Also store under the versioned resolvedPath for navigation and debugging
+    if (resolvedPath !== importPath) {
+      this.specToResolvedPath.set(resolvedPath, resolvedPath)
+      this.logIf('storage', `[DependencyResolver]   ✅ Also stored under versioned path: ${resolvedPath}`)
+    }
+
+    // Maintain alias mappings for navigation/internal lookups
+    this.registerAliases(importPath, actualPath, resolvedPath)
+  }
+
+  /**
+   * Register alias mappings for navigation and internal lookups
+   */
+  private registerAliases(importPath: string, actualPath: string, resolvedPath: string): void {
+    // Map resolvedPath → original import spec
+    if (resolvedPath !== importPath) {
+      this.aliasToSpec.set(resolvedPath, importPath)
+    }
+
+    // Map actualPath (e.g., localhost/...) → original import spec
+    if (actualPath !== importPath && actualPath !== resolvedPath) {
+      this.aliasToSpec.set(actualPath, importPath)
+    }
+
+    // Special-case npm imports like hardhat/console.sol
+    const specialImport = SPECIAL_NPM_IMPORTS.find(spec => spec.isNpmImport(importPath))
+    if (specialImport && resolvedPath !== importPath) {
+      this.aliasToSpec.set(resolvedPath, importPath)
+      this.logIf('storage', `[DependencyResolver]   🔄 Special alias: ${resolvedPath} → ${importPath}`)
+    }
+
+    // For scoped packages with versions, create unversioned alias
+    if (!this.isLocalFile(resolvedPath) && resolvedPath.includes('@') && resolvedPath.match(/@[^@]+@\d+\.\d+\.\d+\//)) {
+      const unversionedPath = resolvedPath.replace(/(@[^@]+)@\d+\.\d+\.\d+\//, '$1/')
+      if (unversionedPath !== importPath) {
+        this.aliasToSpec.set(unversionedPath, importPath)
+        this.logIf('storage', `[DependencyResolver]   🔄 Alias (unversioned): ${unversionedPath} → ${importPath}`)
+      }
+    }
+  }
+
+  /**
+   * Update file package context based on the resolved path
+   */
+  private async updateFilePackageContext(importPath: string, resolvedPath: string): Promise<void> {
+    const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
+    const filePackageContext = extractPackageContext(importPath) ||
+      (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
+
+    if (filePackageContext) {
+      this.fileToPackageContext.set(resolvedPath, filePackageContext)
+      this.resolver.setPackageContext(filePackageContext)
+      if ((this.resolver as any).ensurePackageContextLoaded) {
+        await (this.resolver as any).ensurePackageContextLoaded(filePackageContext)
+      }
+      this.logIf('packageContext', `[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
+    }
+  }
+
+  /**
+   * Process child imports from the resolved file
+   */
+  private async processChildImports(
+    importPath: string,
+    resolution: { content: string; actualPath: string; resolvedPath: string }
+  ): Promise<void> {
+    const { content, resolvedPath } = resolution
+
+    // Clear any prior index entries for fresh mappings
+    if (this.resolutionIndex) {
+      try { this.resolutionIndex.clearFileResolutions(resolvedPath) } catch { }
+    }
+
+    // Extract imports from content
+    const logFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+    const imports = extractImports(content, logFn)
+
+    if (imports.length === 0) return
+
+    this.logIf('imports', `[DependencyResolver]   🔗 Found ${imports.length} imports`)
+    const resolvedImports = new Set<string>()
+
+    // Determine current file's package context for child resolution
+    const pkgLogFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
+    const currentFilePackageContext = extractPackageContext(importPath) ||
+      (!this.isLocalFile(importPath) ? extractUrlContext(importPath, pkgLogFn) : null)
+
+    for (const importedPath of imports) {
+      const childResult = await this.processChildImport(
+        importPath,
+        resolvedPath,
+        importedPath,
+        currentFilePackageContext
+      )
+      if (childResult) {
+        resolvedImports.add(childResult.childPath)
+      }
+    }
+
+    this.importGraph.set(importPath, resolvedImports)
+  }
+
+  /**
+   * Process a single child import
+   */
+  private async processChildImport(
+    parentImportPath: string,
+    parentResolvedPath: string,
+    importedPath: string,
+    packageContext: string | null
+  ): Promise<{ childPath: string; wasRemapped: boolean } | null> {
+    this.logIf('imports', `[DependencyResolver]   ➡️  Processing import: "${importedPath}"`)
+
+    let nextPath = importedPath
+
+    // Resolve relative paths
+    if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
+      const relLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+      nextPath = resolveRelativeImport(parentImportPath, importedPath, relLogFn)
+      this.logIf('imports', `[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)
+    }
+
+    // Apply remappings
+    const remapLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
+    const beforeRemap = nextPath
+    nextPath = applyRemappings(nextPath, this.remappings, remapLogFn)
+    const wasRemapped = beforeRemap !== nextPath
+
+    // Recursively process the child
+    await this.processFile(nextPath, parentResolvedPath, packageContext || undefined)
+
+    // Record in resolution index
+    this.recordChildResolution(parentImportPath, parentResolvedPath, importedPath, nextPath, wasRemapped)
+
+    return { childPath: nextPath, wasRemapped }
+  }
+
+  /**
+   * Record child import resolution in the resolution index
+   */
+  private recordChildResolution(
+    parentImportPath: string,
+    parentResolvedPath: string,
+    importedPath: string,
+    nextPath: string,
+    wasRemapped: boolean
+  ): void {
+    if (!this.resolutionIndex) return
+
+    try {
+      const childResolved = this.isLocalFile(nextPath) ? nextPath : this.getResolvedPath(nextPath)
+
+      // Record under the original unversioned import path
+      this.resolutionIndex.recordResolution(parentImportPath, importedPath, childResolved)
+      this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded: ${parentImportPath} | ${importedPath} → ${childResolved}`)
+
+      // Also record under the versioned resolved path for external files
+      if (parentResolvedPath !== parentImportPath) {
+        this.resolutionIndex.recordResolution(parentResolvedPath, importedPath, childResolved)
+        this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded (versioned): ${parentResolvedPath} | ${importedPath} → ${childResolved}`)
+      }
+
+      // If remapped, record the remapped path as well
+      if (wasRemapped) {
+        this.resolutionIndex.recordResolution(parentImportPath, nextPath, childResolved)
+        this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped: ${parentImportPath} | ${nextPath} → ${childResolved}`)
+
+        if (parentResolvedPath !== parentImportPath) {
+          this.resolutionIndex.recordResolution(parentResolvedPath, nextPath, childResolved)
+          this.logIf('resolutionIndex', `[DependencyResolver]   📝 Recorded remapped (versioned): ${parentResolvedPath} | ${nextPath} → ${childResolved}`)
+        }
+      }
+    } catch { }
   }
 
   private getResolvedPath(importPath: string): string {
