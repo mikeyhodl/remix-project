@@ -1,6 +1,6 @@
 'use strict'
 
-import { Logger } from './utils/logger'
+import { Logger } from '../utils/logger'
 import {
   DEPS_NPM_DIR,
   DEPS_GITHUB_DIR,
@@ -11,7 +11,7 @@ import {
   isNormalizedExternalPath,
   ImportPatterns,
   sanitizeUrlToPath
-} from './constants/import-patterns'
+} from '../constants/import-patterns'
 
 /**
  * Source entry in a sources bundle - may have content and optional resolved path

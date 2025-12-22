@@ -2,9 +2,9 @@ import { expect } from 'chai'
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { ImportResolver } from '../src/compiler/import-resolver'
-import { extractPackageName } from '../src/compiler/utils/parser-utils'
-import { NodeIOAdapter } from '../src/compiler/adapters/node-io-adapter'
+import { ImportResolver } from '../src/resolvers/import-resolver'
+import { extractPackageName } from '../src/utils/parser-utils'
+import { NodeIOAdapter } from '../src/adapters/node-io-adapter'
 
 // Parser util checks: ensure alias-aware package name extraction returns the
 // alias key when present (e.g., @module_remapping) and falls back to the

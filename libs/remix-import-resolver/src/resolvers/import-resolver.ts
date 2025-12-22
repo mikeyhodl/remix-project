@@ -1,26 +1,27 @@
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
-import type { IResolutionIndex } from './base-resolution-index'
-import { ResolutionIndex } from './resolution-index'
+import type { IResolutionIndex } from '../resolution-index/base-resolution-index'
+import { ResolutionIndex } from '../resolution-index/resolution-index'
 import { IImportResolver } from './import-resolver-interface'
-import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from './utils/url-normalizer'
-import { extractPackageName as parsePkgName, extractVersion as parseVersion, extractRelativePath as parseRelPath } from './utils/parser-utils'
-import { routeUrl } from './utils/url-request-router'
-import { isBreakingVersionConflict, isPotentialVersionConflict } from './utils/semver-utils'
-import { PackageVersionResolver } from './utils/package-version-resolver'
-import { Logger } from './utils/logger'
-import { WarningSystem } from './utils/warning-system'
-import { ContentFetcher, FetchResult } from './utils/content-fetcher'
-import { DependencyStore } from './utils/dependency-store'
-import { ConflictChecker } from './utils/conflict-checker'
-import { PackageMapper } from './utils/package-mapper'
-import type { IOAdapter } from './adapters/io-adapter'
-import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
-import { FileResolutionIndex } from './file-resolution-index'
-import { ImportHandlerRegistry } from './import-handler-registry'
-import type { ImportHandlerContext } from './import-handler-interface'
-import { isPlugin, PartialPackageJson } from './types'
+import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from '../utils/url-normalizer'
+import { extractPackageName as parsePkgName, extractVersion as parseVersion, extractRelativePath as parseRelPath } from '../utils/parser-utils'
+import { routeUrl } from '../utils/url-request-router'
+import { isBreakingVersionConflict, isPotentialVersionConflict } from '../utils/semver-utils'
+import { PackageVersionResolver } from '../utils/package-version-resolver'
+import { Logger } from '../utils/logger'
+import { WarningSystem } from '../utils/warning-system'
+import { ContentFetcher, FetchResult } from '../utils/content-fetcher'
+import { DependencyStore } from '../utils/dependency-store'
+import { ConflictChecker } from '../utils/conflict-checker'
+import { PackageMapper } from '../utils/package-mapper'
+import type { IOAdapter } from '../adapters/io-adapter'
+import { RemixPluginAdapter } from '../adapters/remix-plugin-adapter'
+import { FileResolutionIndex } from '../resolution-index/file-resolution-index'
+import { ImportHandlerRegistry } from '../handlers/import-handler-registry'
+import type { ImportHandlerContext } from '../handlers/import-handler-interface'
+import { RemixTestLibsHandler } from '../handlers/remix-test-libs-handler'
+import { isPlugin, PartialPackageJson } from '../types'
 import {
   DEPS_DIR,
   DEPS_NPM_DIR,
@@ -31,7 +32,7 @@ import {
   ImportPatterns,
   ensureNpmDepsPrefix,
   sanitizeUrlToPath
-} from './constants/import-patterns'
+} from '../constants/import-patterns'
 
 /**
  * ImportResolver
@@ -128,7 +129,6 @@ export class ImportResolver implements IImportResolver {
    * Register commonly used handlers like RemixTestLibsHandler
    */
   private async registerDefaultHandlers(): Promise<void> {
-    const { RemixTestLibsHandler } = await import('./handlers')
     const testLibHandler = new RemixTestLibsHandler({
       pluginApi: this.pluginApi as Plugin,
       io: this.io,

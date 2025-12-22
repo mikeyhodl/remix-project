@@ -5,7 +5,7 @@
  * Handlers can intercept imports matching specific patterns and generate/resolve content.
  */
 
-import type { ImportPath, LocalPath, ResolvedPath } from './types'
+import type { ImportPath, LocalPath, ResolvedPath } from '../types'
 
 export interface ImportHandlerContext {
   /** The original import string (readonly - handlers should not mutate) */

@@ -4,17 +4,17 @@ import type { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
 import type { IImportResolver } from './import-resolver-interface'
 import { hasCacheControl, hasPackageContextLoading } from './import-resolver-interface'
-import type { IOAdapter } from './adapters/io-adapter'
-import { hasLocalhostSupport, hasNormalizedNameSupport } from './adapters/io-adapter'
-import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
-import type { IResolutionIndex } from './base-resolution-index'
-import { hasRecordSources } from './base-resolution-index'
-import { ResolutionIndex } from './resolution-index'
-import { FileResolutionIndex } from './file-resolution-index'
-import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
-import { Logger } from './utils/logger'
-import { WarningSystem } from './utils/warning-system'
-import { isPlugin } from './types'
+import type { IOAdapter } from '../adapters/io-adapter'
+import { hasLocalhostSupport, hasNormalizedNameSupport } from '../adapters/io-adapter'
+import { RemixPluginAdapter } from '../adapters/remix-plugin-adapter'
+import type { IResolutionIndex } from '../resolution-index/base-resolution-index'
+import { hasRecordSources } from '../resolution-index/base-resolution-index'
+import { ResolutionIndex } from '../resolution-index/resolution-index'
+import { FileResolutionIndex } from '../resolution-index/file-resolution-index'
+import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from '../utils/dependency-helpers'
+import { Logger } from '../utils/logger'
+import { WarningSystem } from '../utils/warning-system'
+import { isPlugin } from '../types'
 import {
   ImportPatterns,
   isHttpUrl,
@@ -22,7 +22,7 @@ import {
   isDepsPath,
   isRelativeImport,
   DEPS_DIR
-} from './constants/import-patterns'
+} from '../constants/import-patterns'
 
 /**
  * Solidity compiler input format

@@ -1,6 +1,6 @@
 import { expect } from 'chai'
-import { DependencyResolver } from '../src/compiler/dependency-resolver'
-import { NodeIOAdapter } from '../src/compiler/adapters/node-io-adapter'
+import { DependencyResolver } from '../src/resolvers/dependency-resolver'
+import { NodeIOAdapter } from '../src/adapters/node-io-adapter'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import * as os from 'os'

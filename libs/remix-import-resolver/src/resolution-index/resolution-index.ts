@@ -1,9 +1,9 @@
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
-import { Logger } from './utils/logger'
+import { Logger } from '../utils/logger'
 import { BaseResolutionIndex, SourcesBundle } from './base-resolution-index'
-import { DEPS_DIR, DEPS_NPM_DIR, isDepsPath } from './constants/import-patterns'
+import { DEPS_DIR, DEPS_NPM_DIR, isDepsPath } from '../constants/import-patterns'
 
 /**
  * ResolutionIndex (Remix Plugin)

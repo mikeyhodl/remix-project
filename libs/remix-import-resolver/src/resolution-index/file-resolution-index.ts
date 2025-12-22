@@ -1,7 +1,7 @@
-import type { IOAdapter } from './adapters/io-adapter'
-import { Logger } from './utils/logger'
+import type { IOAdapter } from '../adapters/io-adapter'
+import { Logger } from '../utils/logger'
 import { BaseResolutionIndex } from './base-resolution-index'
-import { DEPS_NPM_DIR } from './constants/import-patterns'
+import { DEPS_NPM_DIR } from '../constants/import-patterns'
 
 /**
  * FileResolutionIndex (Node)

@@ -6,10 +6,10 @@
  */
 
 import { expect } from 'chai'
-import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../src/compiler/import-handler-interface'
-import { ImportHandlerRegistry } from '../src/compiler/import-handler-registry'
-import { RemixTestLibsHandler } from '../src/compiler/handlers/remix-test-libs-handler'
-import { CustomTemplateHandler } from '../src/compiler/handlers/custom-template-handler'
+import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../src/handlers/import-handler-interface'
+import { ImportHandlerRegistry } from '../src/handlers/import-handler-registry'
+import { RemixTestLibsHandler } from '../src/handlers/remix-test-libs-handler'
+import { CustomTemplateHandler } from '../src/handlers/custom-template-handler'
 
 describe('Import Handler System', () => {
 

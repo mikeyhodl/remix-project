@@ -1,5 +1,5 @@
 import type { IOAdapter } from './adapters/io-adapter'
-import { DependencyResolver } from './dependency-resolver'
+import { DependencyResolver } from './resolvers/dependency-resolver'
 import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
 import { Logger } from './utils/logger'
 import { ImportPatterns } from './constants/import-patterns'

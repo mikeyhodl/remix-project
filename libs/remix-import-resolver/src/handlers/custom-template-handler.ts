@@ -5,7 +5,7 @@
  * For example, a handler that generates boilerplate test files on-the-fly.
  */
 
-import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../import-handler-interface'
+import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from './import-handler-interface'
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from '../utils/logger'
 

@@ -9,7 +9,7 @@
  * or can be provided directly if running in a non-plugin context.
  */
 
-import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../import-handler-interface'
+import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from './import-handler-interface'
 import type { Plugin } from '@remixproject/engine'
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from '../utils/logger'

@@ -1,69 +1,69 @@
 // Thin, Node-focused entry for import resolving & flattening
 // Primary exports live in this package; ImportResolver is consumed from remix-solidity.
 
-export type { IOAdapter } from './compiler/adapters/io-adapter'
-export { NodeIOAdapter } from './compiler/adapters/node-io-adapter'
-export { RemixPluginAdapter } from './compiler/adapters/remix-plugin-adapter'
-export type { IImportResolver } from './compiler/import-resolver-interface'
+export type { IOAdapter } from './adapters/io-adapter'
+export { NodeIOAdapter } from './adapters/node-io-adapter'
+export { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+export type { IImportResolver } from './resolvers/import-resolver-interface'
 
-export { ImportResolver } from './compiler/import-resolver'
-export { DependencyResolver } from './compiler/dependency-resolver'
-export type { CompilerInputDepedencyResolver } from './compiler/dependency-resolver'
+export { ImportResolver } from './resolvers/import-resolver'
+export { DependencyResolver } from './resolvers/dependency-resolver'
+export type { CompilerInputDepedencyResolver } from './resolvers/dependency-resolver'
 
-export { SourceFlattener } from './compiler/source-flattener'
-export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'
+export { SourceFlattener } from './source-flattener'
+export type { FlattenOptions, FlattenResult } from './source-flattener'
 
 // Resolution Index System
-export type { IResolutionIndex } from './compiler/base-resolution-index'
-export { BaseResolutionIndex } from './compiler/base-resolution-index'
-export { FileResolutionIndex } from './compiler/file-resolution-index'
-export { ResolutionIndex } from './compiler/resolution-index'
+export type { IResolutionIndex } from './resolution-index/base-resolution-index'
+export { BaseResolutionIndex } from './resolution-index/base-resolution-index'
+export { FileResolutionIndex } from './resolution-index/file-resolution-index'
+export { ResolutionIndex } from './resolution-index/resolution-index'
 
 // Import Handler System
 export type {
   IImportHandler,
   ImportHandlerContext,
   ImportHandlerResult
-} from './compiler/import-handler-interface'
-export { ImportHandler } from './compiler/import-handler-interface'
-export { ImportHandlerRegistry } from './compiler/import-handler-registry'
-export { RemixTestLibsHandler } from './compiler/handlers/remix-test-libs-handler'
-export { CustomTemplateHandler } from './compiler/handlers/custom-template-handler'
+} from './handlers/import-handler-interface'
+export { ImportHandler } from './handlers/import-handler-interface'
+export { ImportHandlerRegistry } from './handlers/import-handler-registry'
+export { RemixTestLibsHandler } from './handlers/remix-test-libs-handler'
+export { CustomTemplateHandler } from './handlers/custom-template-handler'
 
-export { parseRemappingsFileContent, normalizeRemappings } from './compiler/utils/remappings'
+export { parseRemappingsFileContent, normalizeRemappings } from './utils/remappings'
 
 // Utils exposed for advanced usage/testing
-export { PackageVersionResolver } from './compiler/utils/package-version-resolver'
-export type { ResolvedVersion } from './compiler/utils/package-version-resolver'
+export { PackageVersionResolver } from './utils/package-version-resolver'
+export type { ResolvedVersion } from './utils/package-version-resolver'
 
 // Version Resolution Strategy System
 export type {
   IVersionResolutionStrategy,
   VersionResolutionContext
-} from './compiler/utils/version-resolution-strategies'
+} from './utils/version-resolution-strategies'
 export {
   BaseVersionStrategy,
   WorkspaceResolutionStrategy,
   ParentDependencyStrategy,
   LockFileStrategy,
   NpmFetchStrategy
-} from './compiler/utils/version-resolution-strategies'
+} from './utils/version-resolution-strategies'
 
-export { ConflictChecker } from './compiler/utils/conflict-checker'
-export type { ConflictCheckerDeps } from './compiler/utils/conflict-checker'
-export { PackageMapper } from './compiler/utils/package-mapper'
-export type { PackageMapperDeps } from './compiler/utils/package-mapper'
-export { Logger } from './compiler/utils/logger'
-export { WarningSystem } from './compiler/utils/warning-system'
-export { DependencyStore } from './compiler/utils/dependency-store'
+export { ConflictChecker } from './utils/conflict-checker'
+export type { ConflictCheckerDeps } from './utils/conflict-checker'
+export { PackageMapper } from './utils/package-mapper'
+export type { PackageMapperDeps } from './utils/package-mapper'
+export { Logger } from './utils/logger'
+export { WarningSystem } from './utils/warning-system'
+export { DependencyStore } from './utils/dependency-store'
 export {
   normalizeGithubBlobUrl,
   normalizeRawGithubUrl,
   rewriteNpmCdnUrl,
   normalizeIpfsUrl,
   normalizeSwarmUrl
-} from './compiler/utils/url-normalizer'
-export { toHttpUrl } from './compiler/utils/to-http-url'
+} from './utils/url-normalizer'
+export { toHttpUrl } from './utils/to-http-url'
 
 // Type-safe path types and common interfaces
 export type {
@@ -81,7 +81,7 @@ export type {
   LogFunction,
   DeepReadonly,
   StringRecord
-} from './compiler/types'
+} from './types'
 export {
   asImportPath,
   asLocalPath,
@@ -90,4 +90,4 @@ export {
   asPackageName,
   asSemVer,
   toRawPath
-} from './compiler/types'
+} from './types'

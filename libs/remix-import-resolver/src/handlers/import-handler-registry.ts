@@ -5,7 +5,7 @@
  */
 
 import { IImportHandler, ImportHandlerContext, ImportHandlerResult } from './import-handler-interface'
-import { Logger } from './utils/logger'
+import { Logger } from '../utils/logger'
 
 export class ImportHandlerRegistry {
   private handlers: IImportHandler[] = []
