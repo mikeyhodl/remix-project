@@ -34,6 +34,21 @@ export { parseRemappingsFileContent, normalizeRemappings } from './compiler/util
 
 // Utils exposed for advanced usage/testing
 export { PackageVersionResolver } from './compiler/utils/package-version-resolver'
+export type { ResolvedVersion } from './compiler/utils/package-version-resolver'
+
+// Version Resolution Strategy System
+export type {
+  IVersionResolutionStrategy,
+  VersionResolutionContext
+} from './compiler/utils/version-resolution-strategies'
+export {
+  BaseVersionStrategy,
+  WorkspaceResolutionStrategy,
+  ParentDependencyStrategy,
+  LockFileStrategy,
+  NpmFetchStrategy
+} from './compiler/utils/version-resolution-strategies'
+
 export { ConflictChecker } from './compiler/utils/conflict-checker'
 export { Logger } from './compiler/utils/logger'
 export { WarningSystem } from './compiler/utils/warning-system'

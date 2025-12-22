@@ -1,153 +1,139 @@
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from './logger'
+import type { IVersionResolutionStrategy, VersionResolutionContext, ResolvedVersion } from './version-resolution-strategies'
+import {
+  WorkspaceResolutionStrategy,
+  ParentDependencyStrategy,
+  LockFileStrategy,
+  NpmFetchStrategy
+} from './version-resolution-strategies'
 
-export type ResolvedVersion = { version: string | null; source: string }
+export type { ResolvedVersion } from './version-resolution-strategies'
 
 /**
  * PackageVersionResolver
  *
- * Resolves a concrete version for a package using precedence:
- * 1) Workspace resolutions/overrides and aliases
- * 2) Parent package.json dependencies (from current context)
- * 3) Lockfiles (yarn.lock, package-lock.json)
- * 4) Fetched package.json from npm
+ * Resolves a concrete version for a package using pluggable strategies with precedence:
+ * 1) Workspace resolutions/overrides and aliases (priority: 100)
+ * 2) Parent package.json dependencies (priority: 75)
+ * 3) Lockfiles - yarn.lock, package-lock.json (priority: 50)
+ * 4) Fetched package.json from npm (priority: 0)
+ * 
+ * Uses the Strategy Pattern to allow easy extension and testing of resolution logic.
  */
 export class PackageVersionResolver {
-  private workspaceResolutions: Map<string, string> = new Map()
-  private lockFileVersions: Map<string, string> = new Map()
+  private strategies: IVersionResolutionStrategy[]
   private logger: Logger
+  private initialized = false
+  
+  // Keep references to specific strategies for backwards compatibility
+  private workspaceStrategy: WorkspaceResolutionStrategy
+  private lockFileStrategy: LockFileStrategy
 
   constructor(private io: IOAdapter, private debug = false) {
     this.logger = new Logger(undefined, debug)
+    
+    // Initialize default strategies
+    this.workspaceStrategy = new WorkspaceResolutionStrategy(io, this.logger)
+    this.lockFileStrategy = new LockFileStrategy(io, this.logger)
+    
+    this.strategies = [
+      this.workspaceStrategy,
+      new ParentDependencyStrategy(io, this.logger),
+      this.lockFileStrategy,
+      new NpmFetchStrategy(io, this.logger)
+    ]
+    
+    // Sort by priority (highest first)
+    this.strategies.sort((a, b) => b.priority - a.priority)
   }
 
   private log(msg: string, ...args: any[]) {
     this.logger.logIf('packageVersionResolver', msg, ...args)
   }
 
-  public getWorkspaceResolutions(): ReadonlyMap<string, string> { return this.workspaceResolutions }
-  public hasWorkspaceResolution(name: string): boolean { return this.workspaceResolutions.has(name) }
-  public getWorkspaceResolution(name: string): string | undefined { return this.workspaceResolutions.get(name) }
-  public hasLockFileVersion(name: string): boolean { return this.lockFileVersions.has(name) }
-  public getLockFileVersion(name: string): string | undefined { return this.lockFileVersions.get(name) }
+  // --- Backwards compatibility accessors ---
+  
+  public getWorkspaceResolutions(): ReadonlyMap<string, string> { 
+    return this.workspaceStrategy.getAll() 
+  }
+  
+  public hasWorkspaceResolution(name: string): boolean { 
+    return this.workspaceStrategy.has(name) 
+  }
+  
+  public getWorkspaceResolution(name: string): string | undefined { 
+    return this.workspaceStrategy.get(name) 
+  }
+  
+  public hasLockFileVersion(name: string): boolean { 
+    return this.lockFileStrategy.has(name) 
+  }
+  
+  public getLockFileVersion(name: string): string | undefined { 
+    return this.lockFileStrategy.get(name) 
+  }
 
   /** Clear cached workspace resolutions to force reload on next access. */
   public clearWorkspaceResolutions(): void {
-    this.workspaceResolutions.clear()
-    this.log(`[PkgVer] 🗑️  Cleared workspace resolutions cache`)
+    this.workspaceStrategy.clear()
+    this.initialized = false
   }
 
   /** Clear cached lockfile versions to force reload on next access. */
   public clearLockFileVersions(): void {
-    this.lockFileVersions.clear()
-    this.log(`[PkgVer] 🗑️  Cleared lockfile versions cache`)
+    this.lockFileStrategy.clear()
+    this.initialized = false
   }
 
   /** Load workspace resolutions (resolutions/overrides, deps incl. npm: aliases). */
   public async loadWorkspaceResolutions(): Promise<void> {
-    // Clear existing resolutions first to ensure fresh data
-    this.workspaceResolutions.clear()
-    try {
-      const exists = await this.io.exists('package.json')
-      if (!exists) return
-      const content = await this.io.readFile('package.json')
-      const packageJson = JSON.parse(content)
-      const resolutions = packageJson.resolutions || packageJson.overrides || {}
-      for (const [pkg, version] of Object.entries(resolutions)) {
-        if (typeof version === 'string') {
-          this.workspaceResolutions.set(pkg, version)
-          this.log(`[PkgVer] 📌 Workspace resolution: ${pkg} → ${version}`)
-        }
-      }
-      const allDeps = {
-        ...(packageJson.dependencies || {}),
-        ...(packageJson.peerDependencies || {}),
-        ...(packageJson.devDependencies || {})
-      }
-      for (const [pkg, versionRange] of Object.entries(allDeps)) {
-        if (!this.workspaceResolutions.has(pkg) && typeof versionRange === 'string') {
-          if (versionRange.startsWith('npm:')) {
-            const npmAlias = versionRange.substring(4)
-            const match = npmAlias.match(/^(@?[^@]+)@(.+)$/)
-            if (match) {
-              const [, realPackage, version] = match
-              this.workspaceResolutions.set(pkg, `alias:${realPackage}@${version}`)
-              this.log(`[PkgVer] 🔗 NPM alias: ${pkg} → ${realPackage}@${version}`)
-            } else {
-              this.log(`[PkgVer] ⚠️ Invalid npm alias format: ${pkg} → ${versionRange}`)
-            }
-          } else if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
-            this.workspaceResolutions.set(pkg, versionRange)
-            this.log(`[PkgVer] 📦 Workspace dependency (exact): ${pkg} → ${versionRange}`)
-          } else {
-            this.log(`[PkgVer] 📦 Workspace dependency (range): ${pkg}@${versionRange}`)
-          }
-        }
-      }
-    } catch {
-      this.log(`[PkgVer] ℹ️ No workspace package.json or resolutions`)
-    }
+    await this.workspaceStrategy.initialize()
   }
 
   /** Parse lockfiles once to populate exact versions. */
   public async loadLockFileVersions(): Promise<void> {
-    if (this.lockFileVersions.size > 0) return
-    try {
-      const yarnLockExists = await this.io.exists('yarn.lock')
-      if (yarnLockExists) { await this.parseYarnLock(); return }
-    } catch {}
-    try {
-      const npmLockExists = await this.io.exists('package-lock.json')
-      if (npmLockExists) { await this.parsePackageLock(); return }
-    } catch {}
+    await this.lockFileStrategy.initialize()
   }
 
-  /** Best-effort yarn.lock parser to capture concrete versions. */
-  private async parseYarnLock(): Promise<void> {
-    try {
-      const content = await this.io.readFile('yarn.lock')
-      const lines = content.split('\n')
-      let currentPackage: string | null = null
-      for (const line of lines) {
-        const packageMatch = line.match(/^"?(@?[^"@]+(?:\/[^"@]+)?)@[^"]*"?:/)
-        if (packageMatch) currentPackage = packageMatch[1]
-        const versionMatch = line.match(/^\s+version\s+"([^"]+)"/)
-        if (versionMatch && currentPackage) {
-          this.lockFileVersions.set(currentPackage, versionMatch[1])
-          currentPackage = null
-        }
-      }
-      this.log(`[PkgVer] 🔒 Loaded ${this.lockFileVersions.size} versions from yarn.lock`)
-    } catch (err) {
-      this.log(`[PkgVer] ⚠️ Failed to parse yarn.lock:`, err)
-    }
+  /**
+   * Initialize all strategies.
+   * Called automatically on first resolution, but can be called explicitly.
+   */
+  public async initializeStrategies(): Promise<void> {
+    if (this.initialized) return
+    
+    this.log(`[PkgVer] Initializing ${this.strategies.length} resolution strategies...`)
+    
+    await Promise.all(
+      this.strategies.map(strategy => strategy.initialize())
+    )
+    
+    this.initialized = true
+    this.log(`[PkgVer] All strategies initialized`)
   }
 
-  /** Best-effort package-lock.json parser to capture concrete versions. */
-  private async parsePackageLock(): Promise<void> {
-    try {
-      const content = await this.io.readFile('package-lock.json')
-      const lockData = JSON.parse(content)
-      if (lockData.dependencies) {
-        for (const [pkg, data] of Object.entries(lockData.dependencies)) {
-          if (data && typeof data === 'object' && 'version' in data) {
-            this.lockFileVersions.set(pkg, (data as any).version)
-          }
-        }
-      }
-      if (lockData.packages) {
-        for (const [path, data] of Object.entries(lockData.packages)) {
-          if (data && typeof data === 'object' && 'version' in data) {
-            if (path === '') continue
-            const pkg = (path as string).replace(/^node_modules\//, '')
-            if (pkg) this.lockFileVersions.set(pkg, (data as any).version)
-          }
-        }
-      }
-      this.log(`[PkgVer] 🔒 Loaded ${this.lockFileVersions.size} versions from package-lock.json`)
-    } catch (err) {
-      this.log(`[PkgVer] ⚠️ Failed to parse package-lock.json:`, err)
+  /**
+   * Add a custom resolution strategy.
+   * Strategies are sorted by priority after adding.
+   */
+  public addStrategy(strategy: IVersionResolutionStrategy): void {
+    this.strategies.push(strategy)
+    this.strategies.sort((a, b) => b.priority - a.priority)
+    this.log(`[PkgVer] Added strategy: ${strategy.name} (priority: ${strategy.priority})`)
+  }
+
+  /**
+   * Remove a strategy by name.
+   */
+  public removeStrategy(name: string): boolean {
+    const index = this.strategies.findIndex(s => s.name === name)
+    if (index !== -1) {
+      this.strategies.splice(index, 1)
+      this.log(`[PkgVer] Removed strategy: ${name}`)
+      return true
     }
+    return false
   }
 
   /** Resolve a version for a package given optional parent dependency context. */
@@ -157,48 +143,34 @@ export class PackageVersionResolver {
     parentPackage?: string
   ): Promise<ResolvedVersion> {
     this.log(`[PkgVer] 🔍 Resolving version for: ${packageName}`)
-    await this.loadWorkspaceResolutions()
-    if (this.workspaceResolutions.has(packageName)) {
-      const resolution = this.workspaceResolutions.get(packageName)!
-      if (resolution.startsWith('alias:')) {
-        const aliasTarget = resolution.substring(6)
-        const match = aliasTarget.match(/^(@?[^@]+)@(.+)$/)
-        if (match) {
-          const [, realPackage, version] = match
-          this.log(`[PkgVer] ✅ PRIORITY 1 - Alias: ${packageName} → ${realPackage}@${version}`)
-          return { version, source: `alias:${packageName}→${realPackage}` }
-        }
+    
+    // Ensure all strategies are initialized
+    await this.initializeStrategies()
+    
+    const context: VersionResolutionContext = {
+      packageName,
+      parentDeps,
+      parentPackage
+    }
+    
+    // Try each strategy in priority order
+    for (const strategy of this.strategies) {
+      // Quick check if strategy can potentially resolve
+      if (!strategy.canResolve(context)) {
+        this.log(`[PkgVer] ⏭️ ${strategy.name}: skipped (canResolve=false)`)
+        continue
       }
-      this.log(`[PkgVer] ✅ PRIORITY 1 - Workspace resolution: ${packageName} → ${resolution}`)
-      return { version: resolution, source: 'workspace-resolution' }
+      
+      const result = await strategy.resolve(context)
+      if (result && result.version !== null) {
+        return result
+      }
+      
+      this.log(`[PkgVer] ⏭️ ${strategy.name}: not found`)
     }
-    this.log(`[PkgVer] ⏭️ Priority 1: Not found`)
-
-    if (parentDeps && parentDeps.has(packageName)) {
-      const version = parentDeps.get(packageName)!
-      this.log(`[PkgVer] ✅ PRIORITY 2 - Parent dependency: ${packageName} → ${version}${parentPackage ? ` (from ${parentPackage})` : ''}`)
-      return { version, source: parentPackage ? `parent-${parentPackage}` : 'parent' }
-    }
-    this.log(`[PkgVer] ⏭️ Priority 2: Not found`)
-
-    await this.loadLockFileVersions()
-    if (this.lockFileVersions.has(packageName)) {
-      const version = this.lockFileVersions.get(packageName)!
-      this.log(`[PkgVer] ✅ PRIORITY 3 - Lock file: ${packageName} → ${version}`)
-      return { version, source: 'lock-file' }
-    }
-    this.log(`[PkgVer] ⏭️ Priority 3: Not found`)
-
-    this.log(`[PkgVer] 🌐 Priority 4 - Fetch package.json: ${packageName}`)
-    try {
-      const packageJsonUrl = `${packageName}/package.json`
-      const content = await this.io.fetch(packageJsonUrl)
-      const packageJson = JSON.parse(content)
-      const version = packageJson.version || null
-      return { version, source: 'package-json' }
-    } catch (err) {
-      this.log(`[PkgVer] ⚠️ Failed to fetch package.json for ${packageName}:`, err)
-      return { version: null, source: 'fetched' }
-    }
+    
+    // No strategy could resolve
+    this.log(`[PkgVer] ⚠️ No strategy could resolve: ${packageName}`)
+    return { version: null, source: 'unresolved' }
   }
 }

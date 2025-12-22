@@ -1669,6 +1669,115 @@ contract CacheTest is ERC20 {
             })
     },
 
+    /**
+     * VERSION RESOLUTION PRIORITY TESTS
+     * 
+     * These tests verify the version resolution priority chain works correctly:
+     * 1. WorkspaceResolutionStrategy (priority 100) - package.json resolutions/overrides
+     * 2. ParentDependencyStrategy (priority 75) - parent package dependencies
+     * 3. LockFileStrategy (priority 50) - yarn.lock or package-lock.json
+     * 4. NpmFetchStrategy (priority 0) - fetch from npm as last resort
+     */
+
+    'Test package.json dependency beats yarn.lock #group33': function (browser: NightwatchBrowser) {
+        // This test verifies that WorkspaceResolutionStrategy (priority 100) beats LockFileStrategy (priority 50)
+        // When both package.json and yarn.lock specify different versions, package.json should win
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('package.json', packageJsonBeatsLockfileSource['package.json'])
+            .addFile('yarn.lock', packageJsonBeatsLockfileSource['yarn.lock'])
+            .addFile('PriorityTest.sol', packageJsonBeatsLockfileSource['PriorityTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            // Should use version from package.json (5.0.2) NOT yarn.lock (4.9.6)
+            // This proves WorkspaceResolutionStrategy (100) beats LockFileStrategy (50)
+            .waitForElementPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 10000)
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.9.6"]', 5000)
+            .perform(function () {
+                browser.assert.ok(true, 'package.json version (5.0.2) should override yarn.lock version (4.9.6)')
+            })
+    },
+
+    'Test package.json resolutions override dependencies #group34': function (browser: NightwatchBrowser) {
+        // This test verifies that package.json "resolutions" field takes precedence over regular dependencies
+        // This is the highest priority in WorkspaceResolutionStrategy
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('package.json', resolutionsOverrideSource['package.json'])
+            .addFile('ResolutionsTest.sol', resolutionsOverrideSource['ResolutionsTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            // Should use version from resolutions (4.7.3) NOT dependencies (5.0.2)
+            // The "resolutions" field should take precedence
+            .waitForElementPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.7.3"]', 10000)
+            .waitForElementNotPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@5.0.2"]', 5000)
+            .perform(function () {
+                browser.assert.ok(true, 'resolutions field (4.7.3) should override dependencies field (5.0.2)')
+            })
+    },
+
+    'Test parent dependency resolution for transitive deps #group35': function (browser: NightwatchBrowser) {
+        // This test verifies that ParentDependencyStrategy correctly uses the parent package's
+        // dependencies to resolve transitive imports.
+        // When importing @chainlink/contracts-ccip, the transitive @chainlink/contracts dependency
+        // should use the version specified in @chainlink/contracts-ccip's package.json
+        browser
+            .clickLaunchIcon('filePanel')
+            .addFile('ParentDepTest.sol', parentDependencyPrioritySource['ParentDepTest.sol'])
+            // Enable generate-contract-metadata to verify build artifacts
+            .waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+            .click('*[data-id="topbar-settingsIcon"]')
+            .waitForElementVisible('*[data-id="settings-sidebar-general"]')
+            .click('*[data-id="settings-sidebar-general"]')
+            .waitForElementPresent('[data-id="generate-contract-metadataSwitch"]')
+            .click('[data-id="generate-contract-metadataSwitch"]')
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(5000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 120000)
+            .expandAllFolders()
+            // The @chainlink/contracts-ccip@1.6.1 package.json specifies @chainlink/contracts@1.4.0
+            // So the transitive import should resolve to 1.4.0, NOT the latest 1.5.x
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink"]', 60000)
+            .waitForElementPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts-ccip@1.6.1"]', 10000)
+            .waitForElementPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.4.0"]', 10000)
+            // Should NOT have contracts@1.5.x since parent specifies 1.4.0
+            .waitForElementNotPresent('*[data-id^="treeViewDivDraggableItem.deps/npm/@chainlink/contracts@1.5"]', 5000)
+            .perform(function () {
+                browser.assert.ok(true, 'Transitive @chainlink/contracts should be 1.4.0 (from parent package.json), not latest')
+            })
+    },
+
+    'Test lockfile wins over npm fetch when no package.json #group36': function (browser: NightwatchBrowser) {
+        // This test verifies that LockFileStrategy (priority 50) beats NpmFetchStrategy (priority 0)
+        // When only yarn.lock exists (no package.json), it should use the lockfile version
+        browser
+            .clickLaunchIcon('filePanel')
+            // Only add yarn.lock, no package.json
+            .addFile('yarn.lock', lockfileOnlySource['yarn.lock'])
+            .addFile('LockfileOnlyTest.sol', lockfileOnlySource['LockfileOnlyTest.sol'])
+            .clickLaunchIcon('solidity')
+            .click('[data-id="compilerContainerCompileBtn"]')
+            .pause(3000)
+            .clickLaunchIcon('filePanel')
+            .waitForElementVisible('*[data-id="treeViewDivDraggableItem.deps"]', 60000)
+            .expandAllFolders()
+            // Should use exact version from yarn.lock (4.8.2) NOT latest from npm
+            .waitForElementPresent('*[data-id="treeViewDivDraggableItem.deps/npm/@openzeppelin/contracts@4.8.2"]', 10000)
+            .perform(function () {
+                browser.assert.ok(true, 'Without package.json, yarn.lock version (4.8.2) should be used instead of npm latest')
+            })
+    },
+
 }
 
 // Named source objects for each test group
@@ -2459,6 +2568,120 @@ contract Staking is BaseContract, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
+}
+`
+    }
+}
+
+// ============================================================================
+// VERSION RESOLUTION PRIORITY TEST SOURCES
+// These source objects are used to test the priority chain:
+// WorkspaceResolution (100) > ParentDependency (75) > LockFile (50) > NpmFetch (0)
+// ============================================================================
+
+// Test that package.json dependencies beat yarn.lock
+const packageJsonBeatsLockfileSource = {
+    'package.json': {
+        content: `{
+  "name": "priority-test",
+  "version": "1.0.0",
+  "dependencies": {
+    "@openzeppelin/contracts": "5.0.2"
+  }
+}`
+    },
+    'yarn.lock': {
+        content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
+# yarn lockfile v1
+
+"@openzeppelin/contracts@^4.9.0":
+  version "4.9.6"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.6.tgz"
+  integrity sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dy96XIBCrAtOzko4xtrkR9Nj/Ox+oF+Y5C+RqXoRWA==
+`
+    },
+    'PriorityTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract PriorityTest is ERC20 {
+    constructor() ERC20("Priority", "PRI") {}
+}
+`
+    }
+}
+
+// Test that package.json resolutions field overrides dependencies
+const resolutionsOverrideSource = {
+    'package.json': {
+        content: `{
+  "name": "resolutions-test",
+  "version": "1.0.0",
+  "dependencies": {
+    "@openzeppelin/contracts": "5.0.2"
+  },
+  "resolutions": {
+    "@openzeppelin/contracts": "4.7.3"
+  }
+}`
+    },
+    'ResolutionsTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract ResolutionsTest is ERC20 {
+    constructor() ERC20("Resolutions", "RES") {}
+}
+`
+    }
+}
+
+// Test that parent package dependencies are used for transitive imports
+const parentDependencyPrioritySource = {
+    'ParentDepTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Import from @chainlink/contracts-ccip which has @chainlink/contracts as a dependency
+// The contracts-ccip@1.6.1 package.json specifies @chainlink/contracts@1.4.0
+// so the transitive import should resolve to 1.4.0 (ParentDependencyStrategy)
+// NOT the latest version (NpmFetchStrategy)
+import "@chainlink/contracts-ccip@1.6.1/contracts/applications/CCIPReceiver.sol";
+import "@chainlink/contracts-ccip@1.6.1/contracts/libraries/Client.sol";
+
+contract ParentDepTest is CCIPReceiver {
+    constructor(address router) CCIPReceiver(router) {}
+    
+    function _ccipReceive(Client.Any2EVMMessage memory _message) internal override {}
+}
+`
+    }
+}
+
+// Test that lockfile wins over npm fetch when no package.json exists
+const lockfileOnlySource = {
+    'yarn.lock': {
+        content: `# THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.
+# yarn lockfile v1
+
+"@openzeppelin/contracts@^4.8.0":
+  version "4.8.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.8.2.tgz"
+  integrity sha512-T/zDSgHr3wpJ0CxpN0CHjINPH0haJ4G3wF7yKVDG+Ev4TiZ7GjWGDzZ1hDkGvQmiJvSnoJNK8ZQYNLj7TnhBpw==
+`
+    },
+    'LockfileOnlyTest.sol': {
+        content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract LockfileOnlyTest is ERC20 {
+    constructor() ERC20("LockfileOnly", "LFO") {}
 }
 `
     }
