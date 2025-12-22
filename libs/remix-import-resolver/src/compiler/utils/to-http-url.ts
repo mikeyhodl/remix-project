@@ -6,12 +6,33 @@
 
 type RuntimeConfig = { npmURL?: string; ipfsGateway?: string; swarmGateway?: string }
 
+/**
+ * Window type extension for Remix compiler configuration
+ */
+interface RemixCompilerWindow {
+  __REMIX_COMPILER_URLS__?: RuntimeConfig
+  REMIX_COMPILER_URLS?: RuntimeConfig
+}
+
+/**
+ * Get global window object in a cross-environment compatible way
+ */
+function getGlobalWindow(): RemixCompilerWindow | undefined {
+  if (typeof window !== 'undefined') {
+    return window as unknown as RemixCompilerWindow
+  }
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+    return (globalThis as { window?: RemixCompilerWindow }).window
+  }
+  return undefined
+}
+
 function getRuntimeConfig(): RuntimeConfig | undefined {
   try {
     // Prefer browser window; fallback to globalThis.window if present in tests
-    const w: any = (typeof window !== 'undefined' ? (window as any) : (globalThis as any)?.window)
+    const w = getGlobalWindow()
     const cfg = w?.__REMIX_COMPILER_URLS__ || w?.REMIX_COMPILER_URLS
-    if (cfg && typeof cfg === 'object') return cfg as RuntimeConfig
+    if (cfg && typeof cfg === 'object') return cfg
   } catch {}
   return undefined
 }

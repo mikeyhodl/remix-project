@@ -1,4 +1,4 @@
-import { Logger } from './logger'
+import { Logger, TerminalLogType } from './logger'
 import { isPotentialVersionConflict, isBreakingVersionConflict } from './semver-utils'
 import { PackageVersionResolver } from './package-version-resolver'
 import { DependencyStore } from './dependency-store'
@@ -87,7 +87,7 @@ export class ConflictChecker {
     }
 
     const breaking = isBreakingVersionConflict(requestedRange, resolvedDepVersion)
-    const severity = breaking ? 'error' : 'warn'
+    const severity: TerminalLogType = breaking ? 'error' : 'warn'
     const emoji = breaking ? '🚨' : '⚠️'
     const depType = isPeerDep ? 'peerDependencies' : 'dependencies'
     const isAlreadyImported = Boolean(this.getImportMapping(depMappingKey))
@@ -111,6 +111,6 @@ export class ConflictChecker {
       ``
     ].filter(Boolean).join('\n')
 
-    await this.logger.terminal(severity as any, warningMsg)
+    await this.logger.terminal(severity, warningMsg)
   }
 }

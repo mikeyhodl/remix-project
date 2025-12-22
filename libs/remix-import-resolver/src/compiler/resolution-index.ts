@@ -2,7 +2,7 @@
 
 import { Plugin } from '@remixproject/engine'
 import { Logger } from './utils/logger'
-import { BaseResolutionIndex } from './base-resolution-index'
+import { BaseResolutionIndex, SourcesBundle } from './base-resolution-index'
 
 /**
  * ResolutionIndex (Remix Plugin)
@@ -20,7 +20,7 @@ export class ResolutionIndex extends BaseResolutionIndex {
     this.debug = true
   }
 
-  protected log(message: string, ...args: any[]): void {
+  protected log(message: string, ...args: unknown[]): void {
     this.logger.logIf('resolutionIndex', `[ResolutionIndex] ${message}`, ...args)
   }
 
@@ -77,19 +77,16 @@ export class ResolutionIndex extends BaseResolutionIndex {
     try {
       // Normalize origin contract path (strip .deps/npm/ prefix if present)
       const normalizedOrigin = this.normalizeSourceFile(originContract)
+      const sources: SourcesBundle | undefined = this.index[normalizedOrigin]?.['__sources__']
 
-      if (!this.index[normalizedOrigin] || !this.index[normalizedOrigin]['__sources__']) {
+      if (!sources) {
         this.log(`No __sources__ found for: ${normalizedOrigin}`)
         return null
       }
 
-      const sources = this.index[normalizedOrigin]['__sources__'] as any
-
       // Find matching source in __sources__
-      let resolvedPath: string | null = null
-      if (sources[requestedPath] && sources[requestedPath].file) {
-        resolvedPath = sources[requestedPath].file
-      }
+      const sourceEntry = sources[requestedPath]
+      const resolvedPath = sourceEntry?.file ?? null
 
       if (!resolvedPath) {
         this.log(`No match in __sources__ for: ${requestedPath}`)
@@ -125,11 +122,11 @@ export class ResolutionIndex extends BaseResolutionIndex {
   }
 
   /** Record the complete source bundle for a compiled file. */
-  recordSources(sourceFile: string, sources: Record<string, { content: string; file?: string }>): void {
+  recordSources(sourceFile: string, sources: SourcesBundle): void {
     const normalizedSource = this.normalizeSourceFile(sourceFile)
     this.log(`📦 Recording sources for: ${normalizedSource}`)
     if (!this.index[normalizedSource]) this.index[normalizedSource] = {}
-    this.index[normalizedSource]['__sources__'] = sources as any
+    this.index[normalizedSource]['__sources__'] = sources
     this.isDirty = true
     this.log(`📝 Recorded ${Object.keys(sources).length} source files for: ${normalizedSource}`)
   }

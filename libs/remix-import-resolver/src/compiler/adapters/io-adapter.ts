@@ -19,4 +19,31 @@ export interface IOAdapter {
   // Optional cache toggle. Adapters that implement internal caching behavior
   // (e.g., skip fetch if destination exists) should honor this flag.
   setCacheEnabled?(enabled: boolean): void
+
+  // Optional: Check if localhost/remixd is connected (browser-only)
+  isLocalhostConnected?(): Promise<boolean>
+
+  // Optional: Record normalized name mappings for IDE features
+  addNormalizedName?(actualPath: string, displayPath: string): Promise<void>
+}
+
+/**
+ * Type guard to check if an IOAdapter has the isLocalhostConnected method.
+ */
+export function hasLocalhostSupport(io: IOAdapter): io is IOAdapter & { isLocalhostConnected(): Promise<boolean> } {
+  return typeof (io as IOAdapter & { isLocalhostConnected?: unknown }).isLocalhostConnected === 'function'
+}
+
+/**
+ * Type guard to check if an IOAdapter has the addNormalizedName method.
+ */
+export function hasNormalizedNameSupport(io: IOAdapter): io is IOAdapter & { addNormalizedName(actualPath: string, displayPath: string): Promise<void> } {
+  return typeof (io as IOAdapter & { addNormalizedName?: unknown }).addNormalizedName === 'function'
+}
+
+/**
+ * Type guard to check if an IOAdapter has the setCacheEnabled method.
+ */
+export function hasCacheSupport(io: IOAdapter): io is IOAdapter & { setCacheEnabled(enabled: boolean): void } {
+  return typeof (io as IOAdapter & { setCacheEnabled?: unknown }).setCacheEnabled === 'function'
 }

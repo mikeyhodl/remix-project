@@ -23,12 +23,12 @@ export class SourceFlattener {
     this.logger = new Logger(undefined, debug)
   }
 
-  private log(...args: any[]) {
+  private log(...args: unknown[]) {
     this.logger.logIf('sourceFlattener', '[SourceFlattener]', ...args)
   }
 
   public async flatten(entryFile: string, opts?: FlattenOptions): Promise<FlattenResult> {
-    const dep = new DependencyResolver(this.io as any, entryFile, this.debug)
+    const dep = new DependencyResolver(this.io, entryFile, this.debug)
     if (opts?.remappingsFile) {
       try {
         const content = await this.io.readFile(opts.remappingsFile)

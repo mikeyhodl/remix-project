@@ -11,7 +11,7 @@ import { isBreakingVersionConflict, isPotentialVersionConflict } from './utils/s
 import { PackageVersionResolver } from './utils/package-version-resolver'
 import { Logger } from './utils/logger'
 import { WarningSystem } from './utils/warning-system'
-import { ContentFetcher } from './utils/content-fetcher'
+import { ContentFetcher, FetchResult } from './utils/content-fetcher'
 import { DependencyStore } from './utils/dependency-store'
 import { ConflictChecker } from './utils/conflict-checker'
 import { PackageMapper } from './utils/package-mapper'
@@ -20,6 +20,7 @@ import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import { FileResolutionIndex } from './file-resolution-index'
 import { ImportHandlerRegistry } from './import-handler-registry'
 import type { ImportHandlerContext } from './import-handler-interface'
+import { isPlugin, PartialPackageJson } from './types'
 
 /**
  * ImportResolver
@@ -68,15 +69,15 @@ export class ImportResolver implements IImportResolver {
   constructor(pluginApi: Plugin, targetFile: string, debug?: boolean, options?: { registerDefaultHandlers?: boolean })
   constructor(io: IOAdapter, targetFile: string, debug?: boolean, options?: { registerDefaultHandlers?: boolean })
   constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean = false, options: { registerDefaultHandlers?: boolean } = { registerDefaultHandlers: true }) {
-    const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
-    this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
+    const pluginDetected = isPlugin(pluginOrIo)
+    this.pluginApi = pluginDetected ? (pluginOrIo as Plugin) : null
     this.targetFile = targetFile
     this.debug = debug
     this.importMappings = new Map()
     this.resolutions = new Map()
     this.importedFiles = new Map()
     this.packageSources = new Map()
-    this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as Plugin) : (pluginOrIo as IOAdapter)
+    this.io = pluginDetected ? new RemixPluginAdapter(this.pluginApi!) : (pluginOrIo as IOAdapter)
     this.packageVersionResolver = new PackageVersionResolver(this.io, debug)
     this.logger = new Logger(this.pluginApi || undefined, debug)
     this.contentFetcher = new ContentFetcher(this.io, debug)
@@ -171,15 +172,15 @@ export class ImportResolver implements IImportResolver {
       const version = m[2]
       const pkgJsonPath = `.deps/npm/${packageName}@${version}/package.json`
       // If already present on disk, read and use it; otherwise fetch and persist
-      let packageJson: any
+      let packageJson: PartialPackageJson
       if (await this.contentFetcher.exists(pkgJsonPath)) {
         const existing = await this.contentFetcher.readFile(pkgJsonPath)
-        packageJson = JSON.parse(existing)
+        packageJson = JSON.parse(existing) as PartialPackageJson
         this.log(`[ImportResolver] 📦 Using cached context package.json → ${pkgJsonPath}`)
       } else {
         const packageJsonUrl = `${packageName}@${version}/package.json`
-        const content = await this.contentFetcher.resolve(packageJsonUrl)
-        packageJson = JSON.parse(content.content || content)
+        const content: FetchResult = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse(content.content) as PartialPackageJson
         await this.contentFetcher.setFile(pkgJsonPath, JSON.stringify(packageJson, null, 2))
         this.log(`[ImportResolver] 💾 Loaded context package.json → ${pkgJsonPath}`)
       }
@@ -231,15 +232,15 @@ export class ImportResolver implements IImportResolver {
     if (this.dependencyStore.hasParent(versionedPackageName) && this.cacheEnabled) return
     try {
       const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
-      let packageJson: any
+      let packageJson: PartialPackageJson
       if (this.cacheEnabled && await this.contentFetcher.exists(pkgJsonPath)) {
         const existing = await this.contentFetcher.readFile(pkgJsonPath)
-        packageJson = JSON.parse(existing)
+        packageJson = JSON.parse(existing) as PartialPackageJson
         this.log(`[ImportResolver] 📦 Using cached package.json: ${pkgJsonPath}`)
       } else {
         const packageJsonUrl = `${versionedPackageName}/package.json`
-        const content = await this.contentFetcher.resolve(packageJsonUrl)
-        packageJson = JSON.parse((content as any).content || (content as any))
+        const content: FetchResult = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse(content.content) as PartialPackageJson
 
         // Extract expected version from versionedPackageName (e.g., "@openzeppelin/contracts@5.4.0" -> "5.4.0")
         const match = versionedPackageName.match(/@([^@]+)$/)
@@ -385,8 +386,8 @@ export class ImportResolver implements IImportResolver {
 
       const packageJsonUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/package.json`
       this.log(`[ImportResolver] 📦 Attempting to fetch GitHub package.json: ${packageJsonUrl}`)
-      const content = await this.contentFetcher.resolve(packageJsonUrl)
-      const packageJson = JSON.parse(content.content || content)
+      const content: FetchResult = await this.contentFetcher.resolve(packageJsonUrl)
+      const packageJson = JSON.parse(content.content) as PartialPackageJson
       if (packageJson && packageJson.name) {
         await this.contentFetcher.setFile(targetPath, JSON.stringify(packageJson, null, 2))
         if (this.cacheEnabled) this.fetchedGitHubPackages.add(key)

@@ -189,6 +189,29 @@ export interface ResolutionMapping {
 export type LogFunction = (message: string, ...args: unknown[]) => void
 
 // =============================================================================
+// PLUGIN TYPE GUARD
+// =============================================================================
+
+/**
+ * Minimal interface for Remix Plugin detection.
+ * Used for duck-typing to distinguish Plugin from IOAdapter.
+ */
+export interface PluginLike {
+  call: (plugin: string, method: string, ...args: unknown[]) => Promise<unknown>
+}
+
+/**
+ * Type guard to check if an object is a Plugin (has the `call` method).
+ * This is used to distinguish between Plugin and IOAdapter in overloaded constructors.
+ */
+export function isPlugin(obj: unknown): obj is PluginLike {
+  return obj !== null && 
+         typeof obj === 'object' && 
+         'call' in obj && 
+         typeof (obj as PluginLike).call === 'function'
+}
+
+// =============================================================================
 // UTILITY TYPES
 // =============================================================================
 

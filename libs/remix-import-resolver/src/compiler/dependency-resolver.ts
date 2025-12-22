@@ -2,14 +2,19 @@
 
 import type { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
+import type { IImportResolver } from './import-resolver-interface'
+import { hasCacheControl, hasPackageContextLoading } from './import-resolver-interface'
 import type { IOAdapter } from './adapters/io-adapter'
+import { hasLocalhostSupport, hasNormalizedNameSupport } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
 import type { IResolutionIndex } from './base-resolution-index'
+import { hasRecordSources } from './base-resolution-index'
 import { ResolutionIndex } from './resolution-index'
 import { FileResolutionIndex } from './file-resolution-index'
 import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
 import { Logger } from './utils/logger'
 import { WarningSystem } from './utils/warning-system'
+import { isPlugin } from './types'
 
 /**
  * Solidity compiler input format
@@ -99,9 +104,9 @@ export class DependencyResolver {
   constructor(pluginApi: Plugin, targetFile: string, debug?: boolean | DependencyResolverDebugConfig)
   constructor(io: IOAdapter, targetFile: string, debug?: boolean | DependencyResolverDebugConfig)
   constructor(pluginOrIo: Plugin | IOAdapter, targetFile: string, debug: boolean | DependencyResolverDebugConfig = false) {
-    const isPlugin = typeof (pluginOrIo as any)?.call === 'function'
-    this.pluginApi = isPlugin ? (pluginOrIo as Plugin) : null
-    this.io = isPlugin ? new RemixPluginAdapter(this.pluginApi as any) : (pluginOrIo as IOAdapter)
+    const pluginDetected = isPlugin(pluginOrIo)
+    this.pluginApi = pluginDetected ? (pluginOrIo as Plugin) : null
+    this.io = pluginDetected ? new RemixPluginAdapter(this.pluginApi!) : (pluginOrIo as IOAdapter)
 
     // Handle both boolean (backwards compat) and object debug config
     if (typeof debug === 'boolean') {
@@ -131,8 +136,8 @@ export class DependencyResolver {
     const legacyDebug = this.debugConfig.enabled || false
     this.logger = new Logger(this.pluginApi || undefined, legacyDebug)
     this.warnings = new WarningSystem(this.logger, { verbose: !!legacyDebug })
-    if (isPlugin) {
-      this.resolver = new ImportResolver(this.pluginApi as any, targetFile, legacyDebug)
+    if (pluginDetected) {
+      this.resolver = new ImportResolver(this.pluginApi!, targetFile, legacyDebug)
     } else {
       this.resolver = new ImportResolver(this.io, targetFile, legacyDebug)
     }
@@ -147,8 +152,8 @@ export class DependencyResolver {
 
   /** Enable or disable caching for this resolver session. */
   public setCacheEnabled(enabled: boolean): void {
-    if ((this.resolver as any).setCacheEnabled) {
-      ; (this.resolver as any).setCacheEnabled(enabled)
+    if (hasCacheControl(this.resolver)) {
+      this.resolver.setCacheEnabled(enabled)
     }
   }
 
@@ -177,7 +182,7 @@ export class DependencyResolver {
     // Ensure resolution index is loaded so we can record per-file mappings
     if (!this.resolutionIndex) {
       this.resolutionIndex = this.pluginApi
-        ? new ResolutionIndex(this.pluginApi as any, this.debugConfig.enabled || false)
+        ? new ResolutionIndex(this.pluginApi, this.debugConfig.enabled || false)
         : (new FileResolutionIndex(this.io, this.debugConfig.enabled || false) as unknown as ResolutionIndex)
     }
     if (!this.resolutionIndexInitialized) {
@@ -213,8 +218,8 @@ export class DependencyResolver {
     // Check if localhost is connected using the IOAdapter interface
     let isConnected = false
     try {
-      if (typeof (this.io as any).isLocalhostConnected === 'function') {
-        isConnected = await (this.io as any).isLocalhostConnected()
+      if (hasLocalhostSupport(this.io)) {
+        isConnected = await this.io.isLocalhostConnected()
       }
     } catch (err) {
       this.logIf('localhost', `[DependencyResolver]   ⚠️  Error checking localhost connection:`, err)
@@ -244,8 +249,8 @@ export class DependencyResolver {
           this.logIf('localhost', `[DependencyResolver]   ✅ Found at: ${candidatePath}`)
           // Record normalized name for IDE features
           try {
-            if (typeof (this.io as any).addNormalizedName === 'function') {
-              await (this.io as any).addNormalizedName(candidatePath, importPath)
+            if (hasNormalizedNameSupport(this.io)) {
+              await this.io.addNormalizedName(candidatePath, importPath)
             }
           } catch { }
           return { path: candidatePath, content }
@@ -325,8 +330,8 @@ export class DependencyResolver {
     this.resolver.setPackageContext(packageContext)
 
     // Ensure the parent's package.json is loaded so its declared deps influence child resolution
-    if ((this.resolver as any).ensurePackageContextLoaded) {
-      await (this.resolver as any).ensurePackageContextLoaded(packageContext)
+    if (hasPackageContextLoading(this.resolver)) {
+      await this.resolver.ensurePackageContextLoaded(packageContext)
     }
   }
 
@@ -416,7 +421,7 @@ export class DependencyResolver {
 
       const ctx = {
         importPath,
-        targetFile: (this.resolver as any).getTargetFile?.(),
+        targetFile: this.resolver.getTargetFile(),
         targetPath: undefined
       }
       const res = await handler.tryHandle(ctx)
@@ -493,15 +498,15 @@ export class DependencyResolver {
    * Update file package context based on the resolved path
    */
   private async updateFilePackageContext(importPath: string, resolvedPath: string): Promise<void> {
-    const logFn = (msg: string, ...args: any[]) => this.logIf('packageContext', msg, ...args)
+    const logFn = (msg: string, ...args: unknown[]) => this.logIf('packageContext', msg, ...args)
     const filePackageContext = extractPackageContext(importPath) ||
       (!this.isLocalFile(importPath) ? extractUrlContext(importPath, logFn) : null)
 
     if (filePackageContext) {
       this.fileToPackageContext.set(resolvedPath, filePackageContext)
       this.resolver.setPackageContext(filePackageContext)
-      if ((this.resolver as any).ensurePackageContextLoaded) {
-        await (this.resolver as any).ensurePackageContextLoaded(filePackageContext)
+      if (hasPackageContextLoading(this.resolver)) {
+        await this.resolver.ensurePackageContextLoaded(filePackageContext)
       }
       this.logIf('packageContext', `[DependencyResolver]   📦 File belongs to: ${filePackageContext}`)
     }
@@ -676,8 +681,8 @@ export class DependencyResolver {
     if (this.resolutionIndex) {
       try {
         const sources = this.toResolutionFileInput()
-        if ((this.resolutionIndex as any).recordSources) {
-          (this.resolutionIndex as any).recordSources(entryFile, sources)
+        if (hasRecordSources(this.resolutionIndex)) {
+          this.resolutionIndex.recordSources(entryFile, sources)
         }
       } catch (err) {
         this.logIf('resolutionIndex', `[DependencyResolver] ⚠️  Failed to save sources bundle:`, err)

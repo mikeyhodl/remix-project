@@ -1,6 +1,35 @@
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from './logger'
 
+// =============================================================================
+// LOCKFILE TYPES
+// =============================================================================
+
+/**
+ * Entry in a package-lock.json dependencies or packages section
+ */
+interface PackageLockEntry {
+  version?: string
+  resolved?: string
+  integrity?: string
+  dependencies?: Record<string, string>
+}
+
+/**
+ * Structure of a package-lock.json file (npm lockfile v1 and v2)
+ */
+interface PackageLockJson {
+  name?: string
+  version?: string
+  lockfileVersion?: number
+  dependencies?: Record<string, PackageLockEntry>
+  packages?: Record<string, PackageLockEntry>
+}
+
+// =============================================================================
+// STRATEGY TYPES
+// =============================================================================
+
 /**
  * Result of a version resolution attempt
  */
@@ -289,22 +318,22 @@ export class LockFileStrategy extends BaseVersionStrategy {
   private async parsePackageLock(): Promise<void> {
     try {
       const content = await this.io.readFile('package-lock.json')
-      const lockData = JSON.parse(content)
+      const lockData = JSON.parse(content) as PackageLockJson
       
       if (lockData.dependencies) {
         for (const [pkg, data] of Object.entries(lockData.dependencies)) {
-          if (data && typeof data === 'object' && 'version' in data) {
-            this.versions.set(pkg, (data as any).version)
+          if (data?.version) {
+            this.versions.set(pkg, data.version)
           }
         }
       }
       
       if (lockData.packages) {
         for (const [path, data] of Object.entries(lockData.packages)) {
-          if (data && typeof data === 'object' && 'version' in data) {
+          if (data?.version) {
             if (path === '') continue
-            const pkg = (path as string).replace(/^node_modules\//, '')
-            if (pkg) this.versions.set(pkg, (data as any).version)
+            const pkg = path.replace(/^node_modules\//, '')
+            if (pkg) this.versions.set(pkg, data.version)
           }
         }
       }

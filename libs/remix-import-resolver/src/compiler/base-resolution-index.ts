@@ -3,6 +3,29 @@
 import { Logger } from './utils/logger'
 
 /**
+ * Source entry in a sources bundle - may have content and optional resolved path
+ */
+export interface SourceEntry {
+  content: string
+  file?: string
+}
+
+/**
+ * The __sources__ key stores the full source bundle for compilation
+ */
+export type SourcesBundle = Record<string, SourceEntry>
+
+/**
+ * Resolution entry can be either a simple import->path mapping or special __sources__ bundle
+ */
+export type ResolutionEntry = Record<string, string> & { __sources__?: SourcesBundle }
+
+/**
+ * The resolution index maps source files to their resolution entries
+ */
+export type ResolutionIndexData = Record<string, ResolutionEntry>
+
+/**
  * IResolutionIndex Interface
  *
  * Contract for resolution index implementations that track import mappings.
@@ -23,6 +46,16 @@ export interface IResolutionIndex {
 
   /** Persist index to storage if it changed. */
   save(): Promise<void>
+  
+  /** Optional: Record complete source bundle for a file. */
+  recordSources?(sourceFile: string, sources: SourcesBundle): void
+}
+
+/**
+ * Type guard to check if a resolution index supports recordSources.
+ */
+export function hasRecordSources(index: IResolutionIndex): index is IResolutionIndex & { recordSources: (sourceFile: string, sources: SourcesBundle) => void } {
+  return 'recordSources' in index && typeof index.recordSources === 'function'
 }
 
 /**
@@ -33,7 +66,7 @@ export interface IResolutionIndex {
  */
 export abstract class BaseResolutionIndex implements IResolutionIndex {
   protected indexPath: string = '.deps/npm/.resolution-index.json'
-  protected index: Record<string, Record<string, string>> = {}
+  protected index: ResolutionIndexData = {}
   protected isDirty: boolean = false
   protected loadPromise: Promise<void> | null = null
   protected isLoaded: boolean = false
@@ -44,7 +77,7 @@ export abstract class BaseResolutionIndex implements IResolutionIndex {
   }
 
   /** Subclass-specific logging with category. */
-  protected abstract log(message: string, ...args: any[]): void
+  protected abstract log(message: string, ...args: unknown[]): void
 
   /** Load index from storage - implemented by subclasses. */
   abstract load(): Promise<void>

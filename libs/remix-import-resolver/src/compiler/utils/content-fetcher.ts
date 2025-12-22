@@ -1,5 +1,13 @@
 import type { IOAdapter } from '../adapters/io-adapter'
+import { hasCacheSupport } from '../adapters/io-adapter'
 import { Logger } from './logger'
+
+/**
+ * Result from a content fetch operation.
+ */
+export interface FetchResult {
+  content: string
+}
 
 export class ContentFetcher {
   private cacheEnabled = true
@@ -9,18 +17,18 @@ export class ContentFetcher {
     this.logger = new Logger(undefined, debug)
   }
 
-  private log(...args: any[]) {
+  private log(...args: unknown[]) {
     this.logger.logIf('contentFetcher', '[ContentFetcher]', ...args)
   }
 
   setCacheEnabled(enabled: boolean): void {
     this.cacheEnabled = !!enabled
-    if (typeof (this.io as any).setCacheEnabled === 'function') {
-      try { (this.io as any).setCacheEnabled(this.cacheEnabled) } catch {}
+    if (hasCacheSupport(this.io)) {
+      try { this.io.setCacheEnabled(this.cacheEnabled) } catch {}
     }
   }
 
-  async resolve(url: string): Promise<any> {
+  async resolve(url: string): Promise<FetchResult> {
     this.log('resolve', url)
     const content = await this.io.fetch(url)
     return { content }

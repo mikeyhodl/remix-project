@@ -1,7 +1,7 @@
 'use strict'
 
 import { Logger } from './logger'
-import { ContentFetcher } from './content-fetcher'
+import { ContentFetcher, FetchResult } from './content-fetcher'
 import { DependencyStore } from './dependency-store'
 import { PackageVersionResolver } from './package-version-resolver'
 import { ConflictChecker } from './conflict-checker'
@@ -114,8 +114,8 @@ export class PackageMapper {
       } else {
         // Fetch the versioned package.json, not the latest
         const packageJsonUrl = `${packageName}@${resolvedVersion}/package.json`
-        const content = await this.contentFetcher.resolve(packageJsonUrl)
-        packageJson = JSON.parse((content as { content?: string }).content || content as string) as PackageJson
+        const content: FetchResult = await this.contentFetcher.resolve(packageJsonUrl)
+        packageJson = JSON.parse(content.content) as PackageJson
         try {
           const realPackageName = packageJson.name || packageName
           const fetchedVersion = packageJson.version

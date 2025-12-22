@@ -13,10 +13,11 @@ import { ImportHandler, ImportHandlerContext, ImportHandlerResult } from '../imp
 import type { Plugin } from '@remixproject/engine'
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from '../utils/logger'
+import type { PluginLike } from '../types'
 
 export interface RemixTestLibsHandlerConfig {
   /** Remix plugin API for calling solidityUnitTesting.createTestLibs() */
-  pluginApi?: Plugin
+  pluginApi?: Plugin | PluginLike
   /** IO adapter for checking file existence */
   io: IOAdapter
   /** Optional: Direct content providers if not using plugin */
@@ -34,7 +35,8 @@ export class RemixTestLibsHandler extends ImportHandler {
     // Match both 'remix_tests.sol' and 'remix_accounts.sol'
     super(/^remix_(tests|accounts)\.sol$/)
     this.config = config
-    this.logger = new Logger(config.pluginApi, config.debug || false)
+    // Cast to Plugin for Logger - PluginLike is compatible with Plugin interface
+    this.logger = new Logger(config.pluginApi as Plugin | undefined, config.debug || false)
   }
 
   getPriority(): number {
@@ -65,7 +67,7 @@ export class RemixTestLibsHandler extends ImportHandler {
     // Try plugin API first
     if (this.config.pluginApi) {
       try {
-        await (this.config.pluginApi as any).call('solidityUnitTesting', 'createTestLibs')
+        await this.config.pluginApi.call('solidityUnitTesting', 'createTestLibs')
         this.log(`✅ Called solidityUnitTesting.createTestLibs() for ${fileName}`)
 
         // Now read the generated file
