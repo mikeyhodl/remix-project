@@ -10,8 +10,8 @@ export { ImportResolver } from './resolvers/import-resolver'
 export { DependencyResolver } from './resolvers/dependency-resolver'
 export type { CompilerInputDepedencyResolver } from './resolvers/dependency-resolver'
 
-export { SourceFlattener } from './source-flattener'
-export type { FlattenOptions, FlattenResult } from './source-flattener'
+export { SourceFlattener } from './cli/source-flattener'
+export type { FlattenOptions, FlattenResult } from './cli/source-flattener'
 
 // Resolution Index System
 export type { IResolutionIndex } from './resolution-index/base-resolution-index'

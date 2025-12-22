@@ -11,7 +11,7 @@
  * - Remappings can be provided multiple times via --remap or from a file with --remappings-file.
  */
 
-import { SourceFlattener, NodeIOAdapter } from './index'
+import { SourceFlattener, NodeIOAdapter } from '../index'
 
 interface ParsedArgs {
   entry?: string

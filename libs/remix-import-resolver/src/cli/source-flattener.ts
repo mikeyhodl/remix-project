@@ -1,8 +1,8 @@
-import type { IOAdapter } from './adapters/io-adapter'
-import { DependencyResolver } from './resolvers/dependency-resolver'
-import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
-import { Logger } from './utils/logger'
-import { ImportPatterns } from './constants/import-patterns'
+import type { IOAdapter } from '../adapters/io-adapter'
+import { DependencyResolver } from '../resolvers/dependency-resolver'
+import { normalizeRemappings, parseRemappingsFileContent, Remapping } from '../utils/remappings'
+import { Logger } from '../utils/logger'
+import { ImportPatterns } from '../constants/import-patterns'
 
 export interface FlattenResult {
   entry: string
