@@ -4,6 +4,7 @@ import type { Plugin } from '@remixproject/engine'
 import { ImportResolver } from './import-resolver'
 import type { IOAdapter } from './adapters/io-adapter'
 import { RemixPluginAdapter } from './adapters/remix-plugin-adapter'
+import type { IResolutionIndex } from './base-resolution-index'
 import { ResolutionIndex } from './resolution-index'
 import { FileResolutionIndex } from './file-resolution-index'
 import { resolveRelativeImport, applyRemappings, extractImports, extractUrlContext, extractPackageContext } from './utils/dependency-helpers'
@@ -82,7 +83,7 @@ export class DependencyResolver {
   private fileToPackageContext: Map<string, string> = new Map()
   private debugConfig: DependencyResolverDebugConfig
   private remappings: Array<{ from: string; to: string }> = []
-  private resolutionIndex: ResolutionIndex | null = null
+  private resolutionIndex: IResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
   private logger: Logger
   private warnings: WarningSystem

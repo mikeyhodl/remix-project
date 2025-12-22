@@ -12,6 +12,10 @@ export type { CompilerInputDepedencyResolver } from './compiler/dependency-resol
 
 export { SourceFlattener } from './compiler/source-flattener'
 export type { FlattenOptions, FlattenResult } from './compiler/source-flattener'
+
+// Resolution Index System
+export type { IResolutionIndex } from './compiler/base-resolution-index'
+export { BaseResolutionIndex } from './compiler/base-resolution-index'
 export { FileResolutionIndex } from './compiler/file-resolution-index'
 export { ResolutionIndex } from './compiler/resolution-index'
 

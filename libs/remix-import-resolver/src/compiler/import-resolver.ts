@@ -1,6 +1,7 @@
 'use strict'
 
 import { Plugin } from '@remixproject/engine'
+import type { IResolutionIndex } from './base-resolution-index'
 import { ResolutionIndex } from './resolution-index'
 import { IImportResolver } from './import-resolver-interface'
 import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from './utils/url-normalizer'
@@ -51,7 +52,7 @@ export class ImportResolver implements IImportResolver {
   private fetchedGitHubPackages: Set<string> = new Set()
   private warnings: WarningSystem
 
-  private resolutionIndex: ResolutionIndex | null = null
+  private resolutionIndex: IResolutionIndex | null = null
   private resolutionIndexInitialized: boolean = false
   private handlerRegistry: ImportHandlerRegistry
 
