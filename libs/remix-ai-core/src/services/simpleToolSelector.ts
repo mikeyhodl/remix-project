@@ -20,7 +20,7 @@ interface IScoredTool {
 
 export class SimpleToolSelector {
   // Core tools ALWAYS included (essential utilities)
-  private coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile']
+  private coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result']
 
   // Keyword → Category mappings (for category-based scoring)
   private keywordMap: Record<string, string[]> = {
@@ -80,7 +80,7 @@ export class SimpleToolSelector {
     userPrompt: string,
     maxTools: number
   ): IMCPTool[] {
-    const minToolsThreshold = 5
+    const minToolsThreshold = 6
     const minScoreThreshold = 0.1 // Minimum 10% relevance score
 
     // Extract search tokens from user prompt
