@@ -7,6 +7,29 @@ import { PackageVersionResolver } from './package-version-resolver'
 import { ConflictChecker } from './conflict-checker'
 
 /**
+ * Dependencies required by PackageMapper.
+ * Consolidates the 8 constructor parameters into a single typed object.
+ */
+export interface PackageMapperDeps {
+  /** Map of import mapping keys to resolved versioned package names */
+  importMappings: Map<string, string>
+  /** Map of package names to their resolution source */
+  packageSources: Map<string, string>
+  /** Store for package dependencies */
+  dependencyStore: DependencyStore
+  /** Resolver for package versions */
+  packageVersionResolver: PackageVersionResolver
+  /** Fetcher for remote content */
+  contentFetcher: ContentFetcher
+  /** Logger instance */
+  logger: Logger
+  /** Function to resolve a package's version */
+  resolvePackageVersion: (packageName: string) => Promise<{ version: string | null, source: string }>
+  /** Checker for dependency conflicts */
+  conflictChecker: ConflictChecker
+}
+
+/**
  * PackageMapper
  *
  * Encapsulates mapping a package name to a concrete version and persisting metadata needed for
@@ -16,16 +39,25 @@ import { ConflictChecker } from './conflict-checker'
  * - Records dependencies in the DependencyStore and runs ConflictChecker validations
  */
 export class PackageMapper {
-  constructor(
-    private importMappings: Map<string, string>,
-    private packageSources: Map<string, string>,
-    private dependencyStore: DependencyStore,
-    private packageVersionResolver: PackageVersionResolver,
-    private contentFetcher: ContentFetcher,
-    private logger: Logger,
-    private resolvePackageVersion: (packageName: string) => Promise<{ version: string | null, source: string }>,
-    private conflictChecker: ConflictChecker
-  ) {}
+  private importMappings: Map<string, string>
+  private packageSources: Map<string, string>
+  private dependencyStore: DependencyStore
+  private packageVersionResolver: PackageVersionResolver
+  private contentFetcher: ContentFetcher
+  private logger: Logger
+  private resolvePackageVersion: (packageName: string) => Promise<{ version: string | null, source: string }>
+  private conflictChecker: ConflictChecker
+
+  constructor(deps: PackageMapperDeps) {
+    this.importMappings = deps.importMappings
+    this.packageSources = deps.packageSources
+    this.dependencyStore = deps.dependencyStore
+    this.packageVersionResolver = deps.packageVersionResolver
+    this.contentFetcher = deps.contentFetcher
+    this.logger = deps.logger
+    this.resolvePackageVersion = deps.resolvePackageVersion
+    this.conflictChecker = deps.conflictChecker
+  }
 
   private log(message: string, ...args: any[]): void {
     // The logger handles debug toggling internally

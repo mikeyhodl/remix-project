@@ -38,12 +38,12 @@ describe('ConflictChecker', () => {
       messages.push({ type, value })
     }
 
-    const checker = new ConflictChecker(
+    const checker = new ConflictChecker({
       logger,
-      pvr,
-      depStore,
-      (_key: string) => undefined // no imported mapping
-    )
+      versionResolver: pvr,
+      depStore: depStore,
+      getImportMapping: (_key: string) => undefined // no imported mapping
+    })
 
     // Simulate a package.json with a conflicting peer dependency
     const pkgName = 'example-pkg'
@@ -79,7 +79,12 @@ describe('ConflictChecker', () => {
       return undefined
     }
 
-    const checker = new ConflictChecker(logger, pvr, depStore, getImportMapping)
+    const checker = new ConflictChecker({
+      logger,
+      versionResolver: pvr,
+      depStore: depStore,
+      getImportMapping
+    })
 
     const pkgName = 'another-pkg'
     const pkgVersion = '1.0.0'

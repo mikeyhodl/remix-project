@@ -50,6 +50,9 @@ export {
 } from './compiler/utils/version-resolution-strategies'
 
 export { ConflictChecker } from './compiler/utils/conflict-checker'
+export type { ConflictCheckerDeps } from './compiler/utils/conflict-checker'
+export { PackageMapper } from './compiler/utils/package-mapper'
+export type { PackageMapperDeps } from './compiler/utils/package-mapper'
 export { Logger } from './compiler/utils/logger'
 export { WarningSystem } from './compiler/utils/warning-system'
 export { DependencyStore } from './compiler/utils/dependency-store'

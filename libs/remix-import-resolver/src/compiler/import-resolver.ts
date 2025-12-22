@@ -82,22 +82,22 @@ export class ImportResolver implements IImportResolver {
     this.contentFetcher = new ContentFetcher(this.io, debug)
     this.contentFetcher.setCacheEnabled(true)
     this.dependencyStore = new DependencyStore()
-    this.conflictChecker = new ConflictChecker(
-      this.logger,
-      this.packageVersionResolver,
-      this.dependencyStore,
-      (key: string) => this.importMappings.get(key)
-    )
-    this.packageMapper = new PackageMapper(
-      this.importMappings,
-      this.packageSources,
-      this.dependencyStore,
-      this.packageVersionResolver,
-      this.contentFetcher,
-      this.logger,
-      this.resolvePackageVersion.bind(this),
-      this.conflictChecker
-    )
+    this.conflictChecker = new ConflictChecker({
+      logger: this.logger,
+      versionResolver: this.packageVersionResolver,
+      depStore: this.dependencyStore,
+      getImportMapping: (key: string) => this.importMappings.get(key)
+    })
+    this.packageMapper = new PackageMapper({
+      importMappings: this.importMappings,
+      packageSources: this.packageSources,
+      dependencyStore: this.dependencyStore,
+      packageVersionResolver: this.packageVersionResolver,
+      contentFetcher: this.contentFetcher,
+      logger: this.logger,
+      resolvePackageVersion: this.resolvePackageVersion.bind(this),
+      conflictChecker: this.conflictChecker
+    })
     this.resolutionIndex = null
     this.resolutionIndexInitialized = false
     this.fetchedGitHubPackages = new Set()

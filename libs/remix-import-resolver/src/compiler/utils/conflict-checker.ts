@@ -3,15 +3,34 @@ import { isPotentialVersionConflict, isBreakingVersionConflict } from './semver-
 import { PackageVersionResolver } from './package-version-resolver'
 import { DependencyStore } from './dependency-store'
 
+/**
+ * Dependencies required by ConflictChecker.
+ * Consolidates constructor parameters into a single typed object.
+ */
+export interface ConflictCheckerDeps {
+  /** Logger instance for diagnostic output */
+  logger: Logger
+  /** Resolver for package versions (workspace, lockfile, npm) */
+  versionResolver: PackageVersionResolver
+  /** Store for package dependency information */
+  depStore: DependencyStore
+  /** Function to look up existing import mappings */
+  getImportMapping: (key: string) => string | undefined
+}
+
 export class ConflictChecker {
   private warned: Set<string> = new Set()
+  private logger: Logger
+  private versionResolver: PackageVersionResolver
+  private depStore: DependencyStore
+  private getImportMapping: (key: string) => string | undefined
 
-  constructor(
-    private logger: Logger,
-    private versionResolver: PackageVersionResolver,
-    private depStore: DependencyStore,
-    private getImportMapping: (key: string) => string | undefined
-  ) {}
+  constructor(deps: ConflictCheckerDeps) {
+    this.logger = deps.logger
+    this.versionResolver = deps.versionResolver
+    this.depStore = deps.depStore
+    this.getImportMapping = deps.getImportMapping
+  }
 
   async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: any): Promise<void> {
     const allDeps = { ...(packageJson?.dependencies || {}), ...(packageJson?.peerDependencies || {}) }
