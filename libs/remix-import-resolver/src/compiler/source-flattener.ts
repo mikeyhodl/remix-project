@@ -2,6 +2,7 @@ import type { IOAdapter } from './adapters/io-adapter'
 import { DependencyResolver } from './dependency-resolver'
 import { normalizeRemappings, parseRemappingsFileContent, Remapping } from './utils/remappings'
 import { Logger } from './utils/logger'
+import { ImportPatterns } from './constants/import-patterns'
 
 export interface FlattenResult {
   entry: string
@@ -81,9 +82,9 @@ export class SourceFlattener {
       const lines = content.split(/\r?\n/)
       const kept: string[] = []
       for (const line of lines) {
-        const spdxMatch = line.match(/^\s*\/\/\s*SPDX-License-Identifier:\s*(.+)$/)
+        const spdxMatch = line.match(ImportPatterns.SPDX_LICENSE)
         if (spdxMatch) { if (!firstSpdx) firstSpdx = line.trim(); continue }
-        const pragmaMatch = line.match(/^\s*pragma\s+solidity\s+[^;]+;/)
+        const pragmaMatch = line.match(ImportPatterns.PRAGMA_SOLIDITY)
         if (pragmaMatch) { if (!firstPragma) firstPragma = pragmaMatch[0]; continue }
         kept.push(line)
       }
@@ -93,11 +94,11 @@ export class SourceFlattener {
       // Prefer versioned path for comment if it exists in the bundle
       // e.g., @openzeppelin/contracts@5.4.0/... instead of @openzeppelin/contracts/...
       let displayPath = file
-      if (file.startsWith('@') && !file.match(/@\d+\.\d+\.\d+\//)) {
+      if (file.startsWith('@') && !file.match(ImportPatterns.VERSIONED_PATH_SEMVER)) {
         // File is an unversioned external import, check if versioned version exists
         const versionedKeys = Array.from(bundle.keys()).filter(k => {
           // Match the pattern: @scope/package@version/path matches @scope/package/path
-          const versionedPattern = k.match(/^(@[^@/]+\/[^@/]+)@(\d+\.\d+\.\d+)\/(.+)$/)
+          const versionedPattern = k.match(ImportPatterns.VERSIONED_SCOPED_PATH)
           if (!versionedPattern) return false
           const [, pkgBase, , pkgPath] = versionedPattern
           return file === `${pkgBase}/${pkgPath}`

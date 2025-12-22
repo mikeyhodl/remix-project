@@ -6,6 +6,7 @@ import { DependencyStore } from './dependency-store'
 import { PackageVersionResolver } from './package-version-resolver'
 import { ConflictChecker } from './conflict-checker'
 import type { PackageJson, VersionResolutionResult } from '../types'
+import { ALIAS_PREFIX, DEPS_NPM_DIR, ImportPatterns } from '../constants/import-patterns'
 
 /**
  * Dependencies required by PackageMapper.
@@ -77,8 +78,8 @@ export class PackageMapper {
     if (!resolvedVersion) return
 
     let actualPackageName = packageName
-    if (source.startsWith('alias:')) {
-      const aliasMatch = source.match(/^alias:[^→]+→(.+)$/)
+    if (source.startsWith(ALIAS_PREFIX)) {
+      const aliasMatch = source.match(ImportPatterns.ALIAS_RESOLUTION)
       if (aliasMatch) {
         actualPackageName = aliasMatch[1]
         this.log(`[ImportResolver] 🔄 Using real package name: ${packageName} → ${actualPackageName}`)
@@ -105,7 +106,7 @@ export class PackageMapper {
 
   private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string): Promise<void> {
     try {
-      const targetPathCandidate = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
+      const targetPathCandidate = `${DEPS_NPM_DIR}${packageName}@${resolvedVersion}/package.json`
       let packageJson: PackageJson
       if (await this.contentFetcher.exists(targetPathCandidate)) {
         const existing = await this.contentFetcher.readFile(targetPathCandidate)
@@ -119,7 +120,7 @@ export class PackageMapper {
         try {
           const realPackageName = packageJson.name || packageName
           const fetchedVersion = packageJson.version
-          const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
+          const targetPath = `${DEPS_NPM_DIR}${realPackageName}@${resolvedVersion}/package.json`
 
           // Validate that fetched version matches expected version to prevent corruption
           if (fetchedVersion && fetchedVersion !== resolvedVersion) {

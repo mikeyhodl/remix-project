@@ -1,11 +1,13 @@
 'use strict'
 
+import { isHttpUrl, isNpmProtocol, isRelativeImport } from '../constants/import-patterns'
+
 export type LogFn = (message: string, ...args: any[]) => void
 
 const noop: LogFn = () => {}
 
 export function resolveRelativeImport(currentFile: string, importPath: string, log: LogFn = noop): string {
-  if (!importPath.startsWith('./') && !importPath.startsWith('../')) return importPath
+  if (!isRelativeImport(importPath)) return importPath
 
   // Check if currentFile is a URL (has protocol like https://)
   const protocolMatch = currentFile.match(/^([a-zA-Z]+:\/\/)/)
@@ -29,11 +31,11 @@ export function resolveRelativeImport(currentFile: string, importPath: string, l
 }
 
 export function applyRemappings(importPath: string, remappings: Array<{ from: string; to: string }>, log: LogFn = noop): string {
-  if (importPath.startsWith('./') || importPath.startsWith('../')) return importPath
+  if (isRelativeImport(importPath)) return importPath
 
   // Skip remapping if the path already looks like it was remapped (has npm: prefix or is already in target form)
   // This prevents infinite loops from remappings like: @pkg@1.0.0/=npm:@pkg@1.0.0/
-  if (importPath.startsWith('npm:')) {
+  if (isNpmProtocol(importPath)) {
     log(`[DependencyResolver]   ⏭️  Skipping remapping for already-prefixed path: ${importPath}`)
     return importPath
   }
@@ -118,7 +120,7 @@ export function extractUrlContext(path: string, log: LogFn = noop): string | nul
       return baseUrl
     }
   }
-  if (!path.startsWith('http://') && !path.startsWith('https://')) return null
+  if (!isHttpUrl(path)) return null
   const unpkgMatch = path.match(/^(https?:\/\/unpkg\.com\/@?[^/]+(?:\/[^@/]+)?@[^/]+)\//)
   if (unpkgMatch) {
     const baseUrl = unpkgMatch[1]

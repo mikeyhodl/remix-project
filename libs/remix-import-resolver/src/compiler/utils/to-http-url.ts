@@ -4,6 +4,15 @@
 // - ipfs://<hash>/<path> → https://ipfs.io/ipfs/<hash>/<path> (overridable)
 // - bzz://... or bzz-raw://... → https://swarm-gateways.net/bzz(-raw):/<...> (overridable)
 
+import {
+  isHttpUrl,
+  isIpfsUrl,
+  isSwarmUrl,
+  ImportPatterns,
+  SWARM_RAW_SCHEME,
+  SWARM_SCHEME
+} from '../constants/import-patterns'
+
 type RuntimeConfig = { npmURL?: string; ipfsGateway?: string; swarmGateway?: string }
 
 /**
@@ -37,10 +46,6 @@ function getRuntimeConfig(): RuntimeConfig | undefined {
   return undefined
 }
 
-function isHttp(url: string) {
-  return url.startsWith('http://') || url.startsWith('https://')
-}
-
 function toNpmCdn(url: string) {
   // Map bare npm path like "@scope/pkg@1.2.3/file" or "@scope/pkg/file" to CDN
   const runtime = getRuntimeConfig()
@@ -50,7 +55,7 @@ function toNpmCdn(url: string) {
 
 function toIpfsGateway(url: string) {
   // ipfs://[ipfs/]<hash>/<path?> → https://ipfs.io/ipfs/<hash>/<path?>
-  const m = url.match(/^ipfs:\/\/(?:ipfs\/)?([^/]+)(?:\/(.*))?$/)
+  const m = url.match(ImportPatterns.IPFS_URL)
   if (!m) return url
   const hash = m[1]
   const path = m[2] ? `/${m[2]}` : ''
@@ -61,8 +66,8 @@ function toIpfsGateway(url: string) {
 
 function toSwarmGateway(url: string) {
   // bzz://<hash>/<path?> or bzz-raw://<hash>/<path?> → swarm gateways
-  const raw = url.startsWith('bzz-raw://')
-  const clean = url.replace(/^bzz-raw:\/\//, '').replace(/^bzz:\/\//, '')
+  const raw = url.startsWith(SWARM_RAW_SCHEME)
+  const clean = url.replace(SWARM_RAW_SCHEME, '').replace(SWARM_SCHEME, '')
   const prefix = raw ? 'bzz-raw:/' : 'bzz:/'
   const runtime = getRuntimeConfig()
   const base = (runtime?.swarmGateway ? runtime.swarmGateway.replace(/\/+$/, '') : 'https://swarm-gateways.net')
@@ -70,9 +75,9 @@ function toSwarmGateway(url: string) {
 }
 
 export function toHttpUrl(url: string): string {
-  if (isHttp(url)) return url
-  if (url.startsWith('ipfs://')) return toIpfsGateway(url)
-  if (url.startsWith('bzz://') || url.startsWith('bzz-raw://')) return toSwarmGateway(url)
+  if (isHttpUrl(url)) return url
+  if (isIpfsUrl(url)) return toIpfsGateway(url)
+  if (isSwarmUrl(url)) return toSwarmGateway(url)
   // Fallback: treat as npm path
   return toNpmCdn(url)
 }

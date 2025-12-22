@@ -1,5 +1,13 @@
 import type { IOAdapter } from './io-adapter'
 import { toHttpUrl } from '../utils/to-http-url'
+import {
+  isHttpUrl,
+  isDepsPath,
+  DEPS_DIR,
+  DEPS_HTTP_DIR,
+  DEPS_NPM_DIR,
+  sanitizeUrlToPath
+} from '../constants/import-patterns'
 
 // Thin adapter around the Remix plugin APIs previously used throughout the resolver.
 // This keeps the app-coupled logic at the edge while enabling a pure core.
@@ -68,23 +76,22 @@ export class RemixPluginAdapter implements IOAdapter {
     }
     // Determine destination FIRST so we can skip fetching if already present
     let dest = targetPath
-    const isHttp = (u: string) => u.startsWith('http://') || u.startsWith('https://')
     if (!dest) {
-      if (isHttp(url)) {
+      if (isHttpUrl(url)) {
         try {
           const u = new URL(url)
           const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
-          dest = `.deps/http/${u.hostname}/${cleanPath}`
+          dest = `${DEPS_HTTP_DIR}${u.hostname}/${cleanPath}`
         } catch {
-          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
-          dest = `.deps/http/${safe}`
+          const safe = sanitizeUrlToPath(url)
+          dest = `${DEPS_HTTP_DIR}${safe}`
         }
       } else {
         // Treat as npm-like path (e.g., "@scope/pkg@ver/path")
-        dest = `.deps/npm/${url}`
+        dest = `${DEPS_NPM_DIR}${url}`
       }
-    } else if (!dest.startsWith('.deps/')) {
-      dest = `.deps/${dest}`
+    } else if (!isDepsPath(dest)) {
+      dest = `${DEPS_DIR}${dest}`
     }
 
     // Update .raw_paths.json mapping regardless of cache hit/miss
@@ -112,7 +119,7 @@ export class RemixPluginAdapter implements IOAdapter {
   }
 
   private async updateRawPathsMapping(url: string, dest: string): Promise<void> {
-    const mappingPath = '.deps/.raw_paths.json'
+    const mappingPath = `${DEPS_DIR}.raw_paths.json`
     let mapping: Record<string, string> = {}
 
     try {

@@ -3,6 +3,7 @@
 import { Plugin } from '@remixproject/engine'
 import { Logger } from './utils/logger'
 import { BaseResolutionIndex, SourcesBundle } from './base-resolution-index'
+import { DEPS_DIR, DEPS_NPM_DIR, isDepsPath } from './constants/import-patterns'
 
 /**
  * ResolutionIndex (Remix Plugin)
@@ -94,9 +95,9 @@ export class ResolutionIndex extends BaseResolutionIndex {
       }
 
       // If it's an external dependency, look up actual FS path in .raw_paths.json
-      if (resolvedPath.startsWith('.deps/')) {
+      if (isDepsPath(resolvedPath)) {
         try {
-          const rawPathsContent = await this.pluginApi.call('fileManager', 'readFile', '.deps/.raw_paths.json')
+          const rawPathsContent = await this.pluginApi.call('fileManager', 'readFile', `${DEPS_DIR}.raw_paths.json`)
           const rawPaths = JSON.parse(rawPathsContent)
 
           // Find matching entry in raw paths
@@ -134,7 +135,7 @@ export class ResolutionIndex extends BaseResolutionIndex {
   /** Persist index to workspace storage if it changed. */
   async save(): Promise<void> {
     try {
-      const directory = '.deps/npm'
+      const directory = DEPS_NPM_DIR.slice(0, -1) // Remove trailing slash
       try {
         const exists = await this.pluginApi.call('fileManager', 'exists', directory)
         if (!exists) {

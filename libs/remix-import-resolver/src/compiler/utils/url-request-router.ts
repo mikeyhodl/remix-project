@@ -3,6 +3,7 @@
 import { normalizeGithubBlobUrl, normalizeIpfsUrl, normalizeRawGithubUrl, normalizeSwarmUrl, rewriteNpmCdnUrl } from './url-normalizer'
 import { Logger } from './logger'
 import { ContentFetcher } from './content-fetcher'
+import { isHttpUrl, isNpmProtocol, NPM_PROTOCOL } from '../constants/import-patterns'
 
 export type RouteAction =
   | { action: 'none' }
@@ -35,13 +36,13 @@ export async function routeUrl(originalUrl: string, url: string, targetPath: str
   const { contentFetcher, logger, resolutions, fetchGitHubPackageJson } = deps
 
   // Handle npm: alias prefix early
-  if (url.startsWith('npm:')) {
+  if (isNpmProtocol(url)) {
     logger.log(`[ImportResolver] 🔗 Detected npm: alias in URL, normalizing: ${url}`)
-    return { action: 'rewrite', url: url.substring(4) }
+    return { action: 'rewrite', url: url.substring(NPM_PROTOCOL.length) }
   }
 
   // External HTTP(S) handling + CDN/GitHub normalization
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  if (isHttpUrl(url)) {
     logger.log(`[ImportResolver] 🌐 External URL detected: ${url}`)
     const blobToRaw = normalizeGithubBlobUrl(url)
     if (blobToRaw) {

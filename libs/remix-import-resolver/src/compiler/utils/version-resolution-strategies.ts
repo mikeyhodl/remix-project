@@ -1,5 +1,6 @@
 import type { IOAdapter } from '../adapters/io-adapter'
 import { Logger } from './logger'
+import { isNpmProtocol, NPM_PROTOCOL, ALIAS_PREFIX, ImportPatterns } from '../constants/import-patterns'
 
 // =============================================================================
 // LOCKFILE TYPES
@@ -163,15 +164,15 @@ export class WorkspaceResolutionStrategy extends BaseVersionStrategy {
       
       for (const [pkg, versionRange] of Object.entries(allDeps)) {
         if (!this.resolutions.has(pkg) && typeof versionRange === 'string') {
-          if (versionRange.startsWith('npm:')) {
-            const npmAlias = versionRange.substring(4)
-            const match = npmAlias.match(/^(@?[^@]+)@(.+)$/)
+          if (isNpmProtocol(versionRange)) {
+            const npmAlias = versionRange.substring(NPM_PROTOCOL.length)
+            const match = npmAlias.match(ImportPatterns.VERSIONED_PACKAGE)
             if (match) {
               const [, realPackage, version] = match
-              this.resolutions.set(pkg, `alias:${realPackage}@${version}`)
+              this.resolutions.set(pkg, `${ALIAS_PREFIX}${realPackage}@${version}`)
               this.log(`[PkgVer] 🔗 NPM alias: ${pkg} → ${realPackage}@${version}`)
             }
-          } else if (versionRange.match(/^\d+\.\d+\.\d+$/)) {
+          } else if (versionRange.match(ImportPatterns.EXACT_SEMVER)) {
             this.resolutions.set(pkg, versionRange)
             this.log(`[PkgVer] 📦 Workspace dependency (exact): ${pkg} → ${versionRange}`)
           }

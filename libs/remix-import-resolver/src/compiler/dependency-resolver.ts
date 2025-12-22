@@ -15,6 +15,14 @@ import { resolveRelativeImport, applyRemappings, extractImports, extractUrlConte
 import { Logger } from './utils/logger'
 import { WarningSystem } from './utils/warning-system'
 import { isPlugin } from './types'
+import {
+  ImportPatterns,
+  isHttpUrl,
+  isNpmProtocol,
+  isDepsPath,
+  isRelativeImport,
+  DEPS_DIR
+} from './constants/import-patterns'
 
 /**
  * Solidity compiler input format
@@ -201,9 +209,9 @@ export class DependencyResolver {
 
   private isLocalFile(path: string): boolean {
     // External schemes are never local
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('npm:')) return false
+    if (isHttpUrl(path) || isNpmProtocol(path)) return false
     // Treat on-disk cached deps as local (they are already materialized in workspace)
-    if (path.startsWith('.deps/')) return path.endsWith('.sol')
+    if (isDepsPath(path)) return path.endsWith('.sol')
     // Check special npm imports (e.g., hardhat/console.sol)
     if (SPECIAL_NPM_IMPORTS.some(spec => spec.isNpmImport(path))) return false
     // Everything else that is a .sol path in the workspace (including relative paths) is local
@@ -237,7 +245,7 @@ export class DependencyResolver {
     const candidatePaths = [
       `localhost/installed_contracts/${importPath}`,
       `localhost/node_modules/${importPath}`,
-      `localhost/.deps/remix-tests/${importPath}`
+      `localhost/${DEPS_DIR}remix-tests/${importPath}`
     ]
 
     // Try each path in order
@@ -569,7 +577,7 @@ export class DependencyResolver {
     let nextPath = importedPath
 
     // Resolve relative paths
-    if (importedPath.startsWith('./') || importedPath.startsWith('../')) {
+    if (isRelativeImport(importedPath)) {
       const relLogFn = (msg: string, ...args: any[]) => this.logIf('imports', msg, ...args)
       nextPath = resolveRelativeImport(parentImportPath, importedPath, relLogFn)
       this.logIf('imports', `[DependencyResolver]   🔗 Resolved relative: "${importedPath}" → "${nextPath}"`)

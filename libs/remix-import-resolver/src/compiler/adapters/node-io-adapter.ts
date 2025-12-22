@@ -2,10 +2,14 @@ import type { IOAdapter } from './io-adapter'
 import { promises as fs } from 'fs'
 import { dirname } from 'path'
 import { toHttpUrl } from '../utils/to-http-url'
-
-function isHttp(url: string) {
-  return url.startsWith('http://') || url.startsWith('https://')
-}
+import {
+  isHttpUrl,
+  isDepsPath,
+  DEPS_DIR,
+  DEPS_HTTP_DIR,
+  DEPS_NPM_DIR,
+  sanitizeUrlToPath
+} from '../constants/import-patterns'
 
 export class NodeIOAdapter implements IOAdapter {
   private cacheEnabled = true
@@ -48,23 +52,23 @@ export class NodeIOAdapter implements IOAdapter {
     let dest = targetPath
     if (!dest) {
       // Determine a deterministic destination under .deps
-      if (isHttp(url)) {
+      if (isHttpUrl(url)) {
         try {
           const u = new URL(url)
           const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
-          dest = `.deps/http/${u.hostname}/${cleanPath}`
+          dest = `${DEPS_HTTP_DIR}${u.hostname}/${cleanPath}`
         } catch {
           // Fallback to hashing or raw, but keep inside .deps/http
-          const safe = url.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
-          dest = `.deps/http/${safe}`
+          const safe = sanitizeUrlToPath(url)
+          dest = `${DEPS_HTTP_DIR}${safe}`
         }
       } else {
         // Treat as npm-like path (e.g., "@scope/pkg@ver/path")
-        dest = `.deps/npm/${url}`
+        dest = `${DEPS_NPM_DIR}${url}`
       }
-    } else if (!dest.startsWith('.deps/')) {
+    } else if (!isDepsPath(dest)) {
       // Ensure all resolver-managed artifacts live under .deps
-      dest = `.deps/${dest}`
+      dest = `${DEPS_DIR}${dest}`
     }
 
     // If cache is enabled and file exists, return cached content from disk

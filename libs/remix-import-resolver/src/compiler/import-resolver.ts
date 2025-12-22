@@ -21,6 +21,17 @@ import { FileResolutionIndex } from './file-resolution-index'
 import { ImportHandlerRegistry } from './import-handler-registry'
 import type { ImportHandlerContext } from './import-handler-interface'
 import { isPlugin, PartialPackageJson } from './types'
+import {
+  DEPS_DIR,
+  DEPS_NPM_DIR,
+  DEPS_GITHUB_DIR,
+  DEPS_HTTP_DIR,
+  isDepsPath,
+  isHttpUrl,
+  ImportPatterns,
+  ensureNpmDepsPrefix,
+  sanitizeUrlToPath
+} from './constants/import-patterns'
 
 /**
  * ImportResolver
@@ -170,7 +181,7 @@ export class ImportResolver implements IImportResolver {
       if (!m) return
       const packageName = m[1]
       const version = m[2]
-      const pkgJsonPath = `.deps/npm/${packageName}@${version}/package.json`
+      const pkgJsonPath = `${DEPS_NPM_DIR}${packageName}@${version}/package.json`
       // If already present on disk, read and use it; otherwise fetch and persist
       let packageJson: PartialPackageJson
       if (await this.contentFetcher.exists(pkgJsonPath)) {
@@ -231,7 +242,7 @@ export class ImportResolver implements IImportResolver {
   private async ensurePackageJsonSaved(versionedPackageName: string): Promise<void> {
     if (this.dependencyStore.hasParent(versionedPackageName) && this.cacheEnabled) return
     try {
-      const pkgJsonPath = `.deps/npm/${versionedPackageName}/package.json`
+      const pkgJsonPath = `${DEPS_NPM_DIR}${versionedPackageName}/package.json`
       let packageJson: PartialPackageJson
       if (this.cacheEnabled && await this.contentFetcher.exists(pkgJsonPath)) {
         const existing = await this.contentFetcher.readFile(pkgJsonPath)
@@ -362,7 +373,7 @@ export class ImportResolver implements IImportResolver {
   private async fetchGitHubPackageJson(owner: string, repo: string, ref: string): Promise<void> {
     try {
       const key = `${owner}/${repo}@${ref}`
-      const targetPath = `.deps/github/${owner}/${repo}@${ref}/package.json`
+      const targetPath = `${DEPS_GITHUB_DIR}${owner}/${repo}@${ref}/package.json`
 
       // Skip if we already processed this repo/ref in this session
       if (this.cacheEnabled && this.fetchedGitHubPackages.has(key)) {
@@ -518,28 +529,27 @@ export class ImportResolver implements IImportResolver {
   private toLocalPath(resolved: string, targetPath?: string): string {
     if (!resolved) return resolved
     // If a specific targetPath was provided and is already rooted under .deps, respect it
-    if (targetPath && targetPath.startsWith('.deps/')) return targetPath
+    if (targetPath && isDepsPath(targetPath)) return targetPath
     // If it already points under .deps, return as-is
-    if (resolved.startsWith('.deps/')) return resolved
+    if (isDepsPath(resolved)) return resolved
     // If a specific targetPath was provided but not rooted, root it now
-    if (targetPath) return targetPath.startsWith('.deps/') ? targetPath : `.deps/${targetPath}`
+    if (targetPath) return isDepsPath(targetPath) ? targetPath : `${DEPS_DIR}${targetPath}`
     // Derive from the resolved string
-    const isHttp = resolved.startsWith('http://') || resolved.startsWith('https://')
-    if (isHttp) {
+    if (isHttpUrl(resolved)) {
       try {
         const u = new URL(resolved)
         const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
-        return `.deps/http/${u.hostname}/${cleanPath}`
+        return `${DEPS_HTTP_DIR}${u.hostname}/${cleanPath}`
       } catch {
-        const safe = resolved.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
-        return `.deps/http/${safe}`
+        const safe = sanitizeUrlToPath(resolved)
+        return `${DEPS_HTTP_DIR}${safe}`
       }
     }
     // Canonical alias families used by the router
-    if (resolved.startsWith('github/')) return `.deps/${resolved}`
-    if (resolved.startsWith('ipfs/')) return `.deps/${resolved}`
-    if (resolved.startsWith('swarm/')) return `.deps/${resolved}`
+    if (resolved.startsWith('github/')) return `${DEPS_DIR}${resolved}`
+    if (resolved.startsWith('ipfs/')) return `${DEPS_DIR}${resolved}`
+    if (resolved.startsWith('swarm/')) return `${DEPS_DIR}${resolved}`
     // Treat non-HTTP as npm-like canonical path
-    return `.deps/npm/${resolved}`
+    return `${DEPS_NPM_DIR}${resolved}`
   }
 }

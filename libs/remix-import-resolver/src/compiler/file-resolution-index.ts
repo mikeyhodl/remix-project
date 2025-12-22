@@ -1,6 +1,7 @@
 import type { IOAdapter } from './adapters/io-adapter'
 import { Logger } from './utils/logger'
 import { BaseResolutionIndex } from './base-resolution-index'
+import { DEPS_NPM_DIR } from './constants/import-patterns'
 
 /**
  * FileResolutionIndex (Node)
@@ -42,7 +43,7 @@ export class FileResolutionIndex extends BaseResolutionIndex {
   async save(): Promise<void> {
     if (!this.isDirty) return
     try {
-      const dir = '.deps/npm'
+      const dir = DEPS_NPM_DIR.slice(0, -1) // Remove trailing slash for directory
       if (!(await this.io.exists(dir))) await this.io.mkdir(dir)
       await this.io.writeFile(this.indexPath, JSON.stringify(this.index, null, 2))
       this.isDirty = false

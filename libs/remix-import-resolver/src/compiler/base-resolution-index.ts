@@ -1,6 +1,17 @@
 'use strict'
 
 import { Logger } from './utils/logger'
+import {
+  DEPS_NPM_DIR,
+  DEPS_GITHUB_DIR,
+  DEPS_HTTP_DIR,
+  DEPS_DIR,
+  isDepsPath,
+  isHttpUrl,
+  isNormalizedExternalPath,
+  ImportPatterns,
+  sanitizeUrlToPath
+} from './constants/import-patterns'
 
 /**
  * Source entry in a sources bundle - may have content and optional resolved path
@@ -65,7 +76,7 @@ export function hasRecordSources(index: IResolutionIndex): index is IResolutionI
  * Handles path normalization, local path translation, and common index operations.
  */
 export abstract class BaseResolutionIndex implements IResolutionIndex {
-  protected indexPath: string = '.deps/npm/.resolution-index.json'
+  protected indexPath: string = `${DEPS_NPM_DIR}.resolution-index.json`
   protected index: ResolutionIndexData = {}
   protected isDirty: boolean = false
   protected loadPromise: Promise<void> | null = null
@@ -94,9 +105,9 @@ export abstract class BaseResolutionIndex implements IResolutionIndex {
   protected normalizeSourceFile(path: string): string {
     if (!path) return path
     // Strip .deps/npm/, .deps/github/, .deps/http/ prefixes to get canonical package path
-    if (path.startsWith('.deps/npm/')) return path.substring('.deps/npm/'.length)
-    if (path.startsWith('.deps/github/')) return path.substring('.deps/github/'.length)
-    if (path.startsWith('.deps/http/')) {
+    if (path.startsWith(DEPS_NPM_DIR + '/')) return path.substring(DEPS_NPM_DIR.length + 1)
+    if (path.startsWith(DEPS_GITHUB_DIR + '/')) return path.substring(DEPS_GITHUB_DIR.length + 1)
+    if (path.startsWith(DEPS_HTTP_DIR + '/')) {
       // For HTTP paths, keep them as http URLs would be stored
       return path
     }
@@ -106,29 +117,28 @@ export abstract class BaseResolutionIndex implements IResolutionIndex {
   /** Translate a resolved path into a deterministic local path under .deps. */
   protected toLocalPath(resolved: string): string {
     if (!resolved) return resolved
-    if (resolved.startsWith('.deps/')) return resolved
+    if (isDepsPath(resolved)) return resolved
 
-    const isHttp = resolved.startsWith('http://') || resolved.startsWith('https://')
-    if (isHttp) {
+    if (isHttpUrl(resolved)) {
       try {
         const u = new URL(resolved)
         const cleanPath = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
-        return `.deps/http/${u.hostname}/${cleanPath}`
+        return `${DEPS_HTTP_DIR}/${u.hostname}/${cleanPath}`
       } catch {
-        const safe = resolved.replace(/^[a-zA-Z]+:\/\//, '').replace(/[^-a-zA-Z0-9._/]/g, '_')
-        return `.deps/http/${safe}`
+        const safe = sanitizeUrlToPath(resolved)
+        return `${DEPS_HTTP_DIR}/${safe}`
       }
     }
 
-    if (resolved.startsWith('github/') || resolved.startsWith('ipfs/') || resolved.startsWith('swarm/')) {
-      return `.deps/${resolved}`
+    if (isNormalizedExternalPath(resolved)) {
+      return `${DEPS_DIR}${resolved}`
     }
 
     // For npm packages (must contain @ to be a package), add .deps/npm/ prefix
     // This catches both scoped packages (@org/pkg) and versioned packages (pkg@1.0.0)
     // but excludes local workspace files (security/Pausable.sol)
-    if (resolved.includes('@') && resolved.match(/^@?[a-zA-Z0-9-~][a-zA-Z0-9._-]*[@/]/) && !resolved.startsWith('.deps/npm/')) {
-      return `.deps/npm/${resolved}`
+    if (resolved.includes('@') && resolved.match(ImportPatterns.NPM_PACKAGE) && !resolved.startsWith(DEPS_NPM_DIR)) {
+      return `${DEPS_NPM_DIR}${resolved}`
     }
 
     return resolved
