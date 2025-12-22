@@ -72,8 +72,8 @@ export interface DependencyResolverDebugConfig {
  */
 interface FileResolutionResult {
   content: string
-  actualPath: string  // Where we actually read from (might be localhost/...)
-  resolvedPath: string  // The canonical versioned path
+  actualPath: string // Where we actually read from (might be localhost/...)
+  resolvedPath: string // The canonical versioned path
 }
 
 /**

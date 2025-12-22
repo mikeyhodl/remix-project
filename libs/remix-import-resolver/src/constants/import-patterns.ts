@@ -2,7 +2,7 @@
 
 /**
  * Import Patterns & Constants
- * 
+ *
  * Centralized definitions for path prefixes, URL schemes, and regex patterns
  * used throughout the import resolver. This eliminates magic strings and
  * provides a single source of truth for pattern matching.
@@ -114,8 +114,8 @@ export function isScopedPackage(path: string): boolean {
 
 /** Check if a path is a normalized external path (github/, ipfs/, swarm/) */
 export function isNormalizedExternalPath(path: string): boolean {
-  return path.startsWith(GITHUB_PREFIX) || 
-         path.startsWith(IPFS_PREFIX) || 
+  return path.startsWith(GITHUB_PREFIX) ||
+         path.startsWith(IPFS_PREFIX) ||
          path.startsWith(SWARM_PREFIX)
 }
 

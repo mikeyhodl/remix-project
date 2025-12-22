@@ -1,6 +1,6 @@
-import { 
-  ImportPatterns, 
-  isScopedPackage 
+import {
+  ImportPatterns,
+  isScopedPackage
 } from '../constants/import-patterns'
 
 export function extractPackageName(url: string, workspaceResolutions?: ReadonlyMap<string, string> | null): string | null {

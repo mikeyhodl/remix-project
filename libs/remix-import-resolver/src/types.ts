@@ -2,7 +2,7 @@
 
 /**
  * Type-safe path types for the import resolver.
- * 
+ *
  * Uses branded types (nominal typing) to distinguish between different path contexts
  * at compile time, preventing accidental mixing of path types.
  */
@@ -205,9 +205,9 @@ export interface PluginLike {
  * This is used to distinguish between Plugin and IOAdapter in overloaded constructors.
  */
 export function isPlugin(obj: unknown): obj is PluginLike {
-  return obj !== null && 
-         typeof obj === 'object' && 
-         'call' in obj && 
+  return obj !== null &&
+         typeof obj === 'object' &&
+         'call' in obj &&
          typeof (obj as PluginLike).call === 'function'
 }
 

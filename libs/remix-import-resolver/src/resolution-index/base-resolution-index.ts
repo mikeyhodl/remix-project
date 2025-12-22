@@ -57,7 +57,7 @@ export interface IResolutionIndex {
 
   /** Persist index to storage if it changed. */
   save(): Promise<void>
-  
+
   /** Optional: Record complete source bundle for a file. */
   recordSources?(sourceFile: string, sources: SourcesBundle): void
 }

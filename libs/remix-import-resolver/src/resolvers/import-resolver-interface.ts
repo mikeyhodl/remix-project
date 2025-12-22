@@ -2,7 +2,7 @@ export interface IImportResolver {
   resolveAndSave(url: string): Promise<string>
   saveResolutionsToIndex(): Promise<void>
   getTargetFile(): string
-  
+
   // Optional methods that may be implemented by specific resolvers
   setCacheEnabled?(enabled: boolean): void
   ensurePackageContextLoaded?(context: string): Promise<void>
