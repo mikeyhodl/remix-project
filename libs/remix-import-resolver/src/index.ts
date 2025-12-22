@@ -64,3 +64,30 @@ export {
   normalizeSwarmUrl
 } from './compiler/utils/url-normalizer'
 export { toHttpUrl } from './compiler/utils/to-http-url'
+
+// Type-safe path types and common interfaces
+export type {
+  ImportPath,
+  LocalPath,
+  ResolvedPath,
+  VersionedPackage,
+  PackageName,
+  SemVerString,
+  PackageJson,
+  PartialPackageJson,
+  FileResolutionResult,
+  VersionResolutionResult,
+  ResolutionMapping,
+  LogFunction,
+  DeepReadonly,
+  StringRecord
+} from './compiler/types'
+export {
+  asImportPath,
+  asLocalPath,
+  asResolvedPath,
+  asVersionedPackage,
+  asPackageName,
+  asSemVer,
+  toRawPath
+} from './compiler/types'

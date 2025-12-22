@@ -1,22 +1,24 @@
-export class DependencyStore {
-  private parentPackageDependencies: Map<string, Map<string, string>> = new Map()
-  private importedFiles: Map<string, string> = new Map()
-  private packageSources: Map<string, string> = new Map()
+import type { PartialPackageJson } from '../types'
 
-  setPackageSource(pkg: string, source: string) { this.packageSources.set(pkg, source) }
+export class DependencyStore {
+  private readonly parentPackageDependencies: Map<string, Map<string, string>> = new Map()
+  private readonly importedFiles: Map<string, string> = new Map()
+  private readonly packageSources: Map<string, string> = new Map()
+
+  setPackageSource(pkg: string, source: string): void { this.packageSources.set(pkg, source) }
   getPackageSource(pkg: string): string | undefined { return this.packageSources.get(pkg) }
 
-  setImportedFile(fileKey: string, version: string) { this.importedFiles.set(fileKey, version) }
+  setImportedFile(fileKey: string, version: string): void { this.importedFiles.set(fileKey, version) }
   getImportedFile(fileKey: string): string | undefined { return this.importedFiles.get(fileKey) }
 
-  storePackageDependencies(packageKey: string, packageJson: any): Map<string, string> | null {
+  storePackageDependencies(packageKey: string, packageJson: PartialPackageJson | null): Map<string, string> | null {
     if (!packageJson) return null
     if (!packageJson.dependencies && !packageJson.peerDependencies) return null
     const deps = new Map<string, string>()
-    const addDeps = (obj: Record<string, string>) => {
+    const addDeps = (obj: Readonly<Record<string, string>>) => {
       for (const [dep, versionRange] of Object.entries(obj)) {
         if (!deps.has(dep)) {
-          const clean = (versionRange as string).replace(/^[\^~>=<]+/, '')
+          const clean = versionRange.replace(/^[\^~>=<]+/, '')
           deps.set(dep, clean)
         }
       }

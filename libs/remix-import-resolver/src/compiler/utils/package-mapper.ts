@@ -5,6 +5,7 @@ import { ContentFetcher } from './content-fetcher'
 import { DependencyStore } from './dependency-store'
 import { PackageVersionResolver } from './package-version-resolver'
 import { ConflictChecker } from './conflict-checker'
+import type { PackageJson, VersionResolutionResult } from '../types'
 
 /**
  * Dependencies required by PackageMapper.
@@ -12,21 +13,21 @@ import { ConflictChecker } from './conflict-checker'
  */
 export interface PackageMapperDeps {
   /** Map of import mapping keys to resolved versioned package names */
-  importMappings: Map<string, string>
+  readonly importMappings: Map<string, string>
   /** Map of package names to their resolution source */
-  packageSources: Map<string, string>
+  readonly packageSources: Map<string, string>
   /** Store for package dependencies */
-  dependencyStore: DependencyStore
+  readonly dependencyStore: DependencyStore
   /** Resolver for package versions */
-  packageVersionResolver: PackageVersionResolver
+  readonly packageVersionResolver: PackageVersionResolver
   /** Fetcher for remote content */
-  contentFetcher: ContentFetcher
+  readonly contentFetcher: ContentFetcher
   /** Logger instance */
-  logger: Logger
+  readonly logger: Logger
   /** Function to resolve a package's version */
-  resolvePackageVersion: (packageName: string) => Promise<{ version: string | null, source: string }>
+  readonly resolvePackageVersion: (packageName: string) => Promise<VersionResolutionResult>
   /** Checker for dependency conflicts */
-  conflictChecker: ConflictChecker
+  readonly conflictChecker: ConflictChecker
 }
 
 /**
@@ -39,14 +40,14 @@ export interface PackageMapperDeps {
  * - Records dependencies in the DependencyStore and runs ConflictChecker validations
  */
 export class PackageMapper {
-  private importMappings: Map<string, string>
-  private packageSources: Map<string, string>
-  private dependencyStore: DependencyStore
-  private packageVersionResolver: PackageVersionResolver
-  private contentFetcher: ContentFetcher
-  private logger: Logger
-  private resolvePackageVersion: (packageName: string) => Promise<{ version: string | null, source: string }>
-  private conflictChecker: ConflictChecker
+  private readonly importMappings: Map<string, string>
+  private readonly packageSources: Map<string, string>
+  private readonly dependencyStore: DependencyStore
+  private readonly packageVersionResolver: PackageVersionResolver
+  private readonly contentFetcher: ContentFetcher
+  private readonly logger: Logger
+  private readonly resolvePackageVersion: (packageName: string) => Promise<VersionResolutionResult>
+  private readonly conflictChecker: ConflictChecker
 
   constructor(deps: PackageMapperDeps) {
     this.importMappings = deps.importMappings
@@ -59,7 +60,7 @@ export class PackageMapper {
     this.conflictChecker = deps.conflictChecker
   }
 
-  private log(message: string, ...args: any[]): void {
+  private log(message: string, ...args: unknown[]): void {
     // The logger handles debug toggling internally
     this.logger.log(message, ...args)
   }
@@ -105,19 +106,19 @@ export class PackageMapper {
   private async checkPackageDependenciesIfNeeded(packageName: string, resolvedVersion: string): Promise<void> {
     try {
       const targetPathCandidate = `.deps/npm/${packageName}@${resolvedVersion}/package.json`
-      let packageJson: any
+      let packageJson: PackageJson
       if (await this.contentFetcher.exists(targetPathCandidate)) {
         const existing = await this.contentFetcher.readFile(targetPathCandidate)
-        packageJson = JSON.parse(existing)
+        packageJson = JSON.parse(existing) as PackageJson
         this.log(`[ImportResolver] 📦 Using cached package.json: ${targetPathCandidate}`)
       } else {
         // Fetch the versioned package.json, not the latest
         const packageJsonUrl = `${packageName}@${resolvedVersion}/package.json`
         const content = await this.contentFetcher.resolve(packageJsonUrl)
-        packageJson = JSON.parse((content as any).content || content)
+        packageJson = JSON.parse((content as { content?: string }).content || content as string) as PackageJson
         try {
-          const realPackageName = (packageJson as any).name || packageName
-          const fetchedVersion = (packageJson as any).version
+          const realPackageName = packageJson.name || packageName
+          const fetchedVersion = packageJson.version
           const targetPath = `.deps/npm/${realPackageName}@${resolvedVersion}/package.json`
 
           // Validate that fetched version matches expected version to prevent corruption

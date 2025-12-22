@@ -2,6 +2,7 @@ import { Logger } from './logger'
 import { isPotentialVersionConflict, isBreakingVersionConflict } from './semver-utils'
 import { PackageVersionResolver } from './package-version-resolver'
 import { DependencyStore } from './dependency-store'
+import type { PackageJson, PartialPackageJson } from '../types'
 
 /**
  * Dependencies required by ConflictChecker.
@@ -9,21 +10,21 @@ import { DependencyStore } from './dependency-store'
  */
 export interface ConflictCheckerDeps {
   /** Logger instance for diagnostic output */
-  logger: Logger
+  readonly logger: Logger
   /** Resolver for package versions (workspace, lockfile, npm) */
-  versionResolver: PackageVersionResolver
+  readonly versionResolver: PackageVersionResolver
   /** Store for package dependency information */
-  depStore: DependencyStore
+  readonly depStore: DependencyStore
   /** Function to look up existing import mappings */
-  getImportMapping: (key: string) => string | undefined
+  readonly getImportMapping: (key: string) => string | undefined
 }
 
 export class ConflictChecker {
-  private warned: Set<string> = new Set()
-  private logger: Logger
-  private versionResolver: PackageVersionResolver
-  private depStore: DependencyStore
-  private getImportMapping: (key: string) => string | undefined
+  private readonly warned: Set<string> = new Set()
+  private readonly logger: Logger
+  private readonly versionResolver: PackageVersionResolver
+  private readonly depStore: DependencyStore
+  private readonly getImportMapping: (key: string) => string | undefined
 
   constructor(deps: ConflictCheckerDeps) {
     this.logger = deps.logger
@@ -32,7 +33,7 @@ export class ConflictChecker {
     this.getImportMapping = deps.getImportMapping
   }
 
-  async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: any): Promise<void> {
+  async checkPackageDependencies(packageName: string, resolvedVersion: string, packageJson: PartialPackageJson): Promise<void> {
     const allDeps = { ...(packageJson?.dependencies || {}), ...(packageJson?.peerDependencies || {}) }
     if (Object.keys(allDeps).length === 0) return
     const depTypes: string[] = []
@@ -49,7 +50,7 @@ export class ConflictChecker {
     packageVersion: string,
     dep: string,
     requestedRange: string,
-    peerDependencies: any
+    peerDependencies: Readonly<Record<string, string>> | undefined
   ): Promise<void> {
     const isPeerDep = peerDependencies && dep in peerDependencies
     const depMappingKey = `__PKG__${dep}`

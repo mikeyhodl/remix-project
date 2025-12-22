@@ -5,22 +5,24 @@
  * Handlers can intercept imports matching specific patterns and generate/resolve content.
  */
 
+import type { ImportPath, LocalPath, ResolvedPath } from './types'
+
 export interface ImportHandlerContext {
-  /** The original import string */
-  importPath: string
+  /** The original import string (readonly - handlers should not mutate) */
+  readonly importPath: ImportPath | string
   /** The target file being compiled */
-  targetFile: string
+  readonly targetFile: string
   /** Optional target path override */
-  targetPath?: string
+  readonly targetPath?: LocalPath | string
 }
 
 export interface ImportHandlerResult {
   /** Whether this handler handled the import */
-  handled: boolean
+  readonly handled: boolean
   /** Generated/resolved content if handled */
-  content?: string
+  readonly content?: string
   /** Optional resolved path if different from original */
-  resolvedPath?: string
+  readonly resolvedPath?: ResolvedPath | string
 }
 
 /**
