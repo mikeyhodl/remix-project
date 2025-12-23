@@ -322,7 +322,7 @@ module.exports = {
           'Correct content')
       })
   },
-  'Confirm that editing workspace name works': function (browser: NightwatchBrowser) {
+  'Confirm that editing workspace name works #group3': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -356,7 +356,7 @@ module.exports = {
       .currentWorkspaceIs('ChangedWorkspaceName')
       .switchWorkspace('Basic')
   },
-  'Creating a workspace with the same name as an existing one should show an error': function (browser: NightwatchBrowser) {
+  'Creating a workspace with the same name as an existing one should show an error #group3': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
