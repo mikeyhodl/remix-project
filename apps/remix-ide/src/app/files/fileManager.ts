@@ -196,7 +196,7 @@ export default class FileManager extends Plugin {
   async open(path) {
     path = this.normalize(path)
     path = this.limitPluginScope(path)
-    path = (await this.getPathFromUrl(path)).file
+    path = this.getPathFromUrl(path).file
     await this._handleExists(path, `Cannot open file ${path}`)
     await this._handleIsFile(path, `Cannot open file ${path}`)
     await this.openFile(path)
