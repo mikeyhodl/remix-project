@@ -62,6 +62,15 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
+    },
+    {
+      name: 'Web Search',
+      description: 'Web search capabilities',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/web-search',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
     }
     // {
     //   name: 'Etherscan',
