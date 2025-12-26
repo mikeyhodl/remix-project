@@ -98,6 +98,7 @@ let requiredModules = [
   'desktopClient',
   'auth',
   'transactionSimulator',
+  'resolutionIndex',
   'amp',
   'vega',
   'chartjs'
