@@ -50,6 +50,7 @@ import { FileDecorator } from './app/plugins/file-decorator'
 import { TransactionSimulator } from './app/plugins/transaction-simulator'
 import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
+import { AuthPlugin } from './app/plugins/auth-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
 import { fsPlugin } from './app/plugins/electron/fsPlugin'
@@ -86,6 +87,8 @@ import { QueryParams } from '@remix-project/remix-lib'
 import { SearchPlugin } from './app/tabs/search'
 import { ScriptRunnerBridgePlugin } from './app/plugins/script-runner-bridge'
 import { ElectronProvider } from './app/files/electronProvider'
+import { IframePlugin } from '@remixproject/engine-web'
+import { endpointUrls } from '@remix-endpoints-helper'
 
 const Storage = remixLib.Storage
 import RemixDProvider from './app/files/remixDProvider'
@@ -161,6 +164,7 @@ class AppComponent {
   topBar: Topbar
   templateExplorerModal: TemplateExplorerModalPlugin
   settings: SettingsTab
+  authPlugin: AuthPlugin
   params: any
   desktopClientMode: boolean
 
@@ -581,6 +585,8 @@ class AppComponent {
       contentImport
     )
 
+    this.authPlugin = new AuthPlugin()
+
     this.engine.register([
       compileTab,
       run,
@@ -592,7 +598,8 @@ class AppComponent {
       linkLibraries,
       deployLibraries,
       openZeppelinProxy,
-      run.recorder
+      run.recorder,
+      this.authPlugin
     ])
     this.engine.register([templateExplorerModal, this.topBar])
 
@@ -659,6 +666,8 @@ class AppComponent {
       'remixAI',
       'remixaiassistant'
     ])
+
+    await this.appManager.activatePlugin(['auth'])
     await this.appManager.activatePlugin(['settings'])
 
     await this.appManager.activatePlugin(['walkthrough', 'storage', 'search', 'compileAndRun', 'recorder', 'dgitApi', 'dgit'])

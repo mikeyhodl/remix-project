@@ -96,6 +96,7 @@ let requiredModules = [
   'templateexplorermodal',
   'githubAuthHandler',
   'desktopClient',
+  'auth',
   'transactionSimulator',
   'amp',
   'vega',
