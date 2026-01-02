@@ -13,7 +13,7 @@ const profile = {
 
 interface WorkspaceStats {
   sizeKB: number
-  codeOnlySizeKB: number  // Size excluding .git, node_modules, .deps
+  codeOnlySizeKB: number // Size excluding .git, node_modules, .deps
   hasNodeModules: boolean
   nodeModulesSizeKB: number
   hasGit: boolean
