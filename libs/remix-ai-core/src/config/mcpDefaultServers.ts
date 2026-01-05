@@ -67,7 +67,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'Web Search',
       description: 'Web search capabilities',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy + '/web-search',
+      url: endpointUrls.mcpCorsProxy8443 + '/web-search',
       autoStart: true,
       enabled: true,
       timeout: 30000
