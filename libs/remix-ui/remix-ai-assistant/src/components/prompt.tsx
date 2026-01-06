@@ -206,29 +206,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             >
               <button
                 data-id="remix-ai-stop-request"
-                className="position-absolute"
+                className="position-absolute prompt-stop-button"
                 onClick={handleStop}
-                style={{
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '36px',
-                  height: '36px',
-                  padding: '0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#4a4a4a',
-                  border: 'none',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
-                }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#5a5a5a'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4a4a4a'
+                  e.currentTarget.style.backgroundColor = 'var(--bs-danger)'
                 }}
               >
                 <div
