@@ -121,6 +121,17 @@ export function getErc20ContractCode (contractType: 'erc20', state: ContractType
         return erc20.erc20PausableOwnableOptions(state.contractName || 'MyToken')
       }
     }
+    else if (state.contractUpgradability.uups) {
+      if (state.contractAccessControl === 'ownable') {
+        return erc20.erc20UUPSOwnableNoOptions(state.contractName || 'MyToken')
+      }
+      else if (state.contractAccessControl === 'roles') {
+        return erc20.erc20UUPSRolesNoOptions(state.contractName || 'MyToken')
+      }
+      else if (state.contractAccessControl === 'managed') {
+        return erc20.erc20UUPSManagedNoOptions(state.contractName || 'MyToken')
+      }
+    }
     return erc20.erc20DefaultNoOptions(state.contractName || 'MyToken')
   }
 }
