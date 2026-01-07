@@ -172,7 +172,6 @@ export class CallContractHandler extends BaseToolHandler {
       contractName: {
         type: 'string',
         description: 'Contract name',
-        pattern: '^0x[a-fA-F0-9]{40}$'
       },
       address: {
         type: 'string',
