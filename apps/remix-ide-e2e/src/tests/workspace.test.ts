@@ -162,6 +162,7 @@ module.exports = {
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .pause(1000)
       // check js and ts files are not transformed
+      .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .click('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .waitForElementPresent({
