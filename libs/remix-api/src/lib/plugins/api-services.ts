@@ -30,6 +30,13 @@ import {
  */
 export class SSOApiService {
   constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
   
   // ==================== Authentication ====================
   
@@ -120,6 +127,13 @@ export class SSOApiService {
  */
 export class CreditsApiService {
   constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
   
   /**
    * Get current credit balance
@@ -146,6 +160,13 @@ export class CreditsApiService {
  */
 export class PermissionsApiService {
   constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
   
   /**
    * Check if user is authenticated

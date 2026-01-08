@@ -7,7 +7,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'checkPermission', 'hasPermission'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked']
 }
 
@@ -134,6 +134,80 @@ export class AuthPlugin extends Plugin {
   async hasPermission(feature: string): Promise<boolean> {
     const { allowed } = await this.checkPermission(feature)
     return allowed
+  }
+
+  /**
+   * Get all permissions for the current user
+   * @returns Array of all user permissions with their limits
+   */
+  async getAllPermissions(): Promise<{ feature_name: string; allowed: boolean; limit_value?: number; limit_unit?: string; category?: string }[]> {
+    try {
+      const response = await this.permissionsApi.getPermissions()
+      if (response.ok && response.data) {
+        return response.data.features
+      }
+      return []
+    } catch (error) {
+      console.error('[AuthPlugin] Get all permissions failed:', error)
+      return []
+    }
+  }
+
+  /**
+   * Check multiple features at once
+   * @param features - Array of feature names to check
+   * @returns Map of feature names to their permission status
+   */
+  async checkPermissions(features: string[]): Promise<Record<string, { allowed: boolean; limit_value?: number; limit_unit?: string }>> {
+    try {
+      const response = await this.permissionsApi.checkFeatures(features)
+      if (response.ok && response.data) {
+        return response.data.results
+      }
+      return {}
+    } catch (error) {
+      console.error('[AuthPlugin] Check permissions failed:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Get all features in a category
+   * @param category - Category name (e.g., 'ai', 'storage', 'wallet')
+   * @returns Array of features in the category
+   */
+  async getFeaturesByCategory(category: string): Promise<{ feature_name: string; allowed: boolean; limit_value?: number; limit_unit?: string }[]> {
+    try {
+      const response = await this.permissionsApi.getFeaturesInCategory(category)
+      if (response.ok && response.data) {
+        return response.data.features
+      }
+      return []
+    } catch (error) {
+      console.error('[AuthPlugin] Get features by category failed:', error)
+      return []
+    }
+  }
+
+  /**
+   * Get the limit for a specific feature
+   * @param feature - Feature name to check
+   * @returns Object with limit value and unit
+   */
+  async getFeatureLimit(feature: string): Promise<{ limit?: number; unit?: string }> {
+    try {
+      const response = await this.permissionsApi.checkFeature(feature)
+      if (response.ok && response.data) {
+        return {
+          limit: response.data.limit_value,
+          unit: response.data.limit_unit
+        }
+      }
+      return {}
+    } catch (error) {
+      console.error('[AuthPlugin] Get feature limit failed:', error)
+      return {}
+    }
   }
 
   async login(provider: AuthProviderType): Promise<void> {
@@ -385,10 +459,9 @@ export class AuthPlugin extends Plugin {
     // Update API clients with current token
     if (token) {
       this.apiClient.setToken(token)
-      // Update credits client too
-      const creditsClient = await this.getCreditsApi()
-      const creditsApiClient = (creditsClient as any).apiClient as ApiClient
-      creditsApiClient.setToken(token)
+      // Update other API services too
+      this.creditsApi.setToken(token)
+      this.permissionsApi.setToken(token)
     }
 
     return token
@@ -423,16 +496,10 @@ export class AuthPlugin extends Plugin {
 
         // Update all API clients
         this.apiClient.setToken(newAccessToken)
-        const creditsClient = await this.getCreditsApi()
-        const creditsApiClient = (creditsClient as any).apiClient as ApiClient
-        creditsApiClient.setToken(newAccessToken)
+        this.creditsApi.setToken(newAccessToken)
+        this.permissionsApi.setToken(newAccessToken)
 
         console.log('[AuthPlugin] Access token refreshed successfully')
-        const permissionsApi = await this.getPermissionsApi()
-        const permissionsApiClient = (permissionsApi as any).apiClient as ApiClient
-        permissionsApiClient.setToken(newAccessToken)
-        const { data } = await permissionsApi.getPermissions()
-        console.log('[AuthPlugin] User permissions:', data)
         // Reschedule next proactive refresh
         this.scheduleRefresh(newAccessToken)
         return newAccessToken
