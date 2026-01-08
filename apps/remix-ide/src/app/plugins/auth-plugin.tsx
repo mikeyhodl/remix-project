@@ -60,7 +60,6 @@ export class AuthPlugin extends Plugin {
 
   private scheduleRefresh(accessToken: string) {
     const expMs = this.getTokenExpiryMs(accessToken)
-    console.log('[AuthPlugin] Scheduling token refresh, expiry at ms:', expMs)
     if (!expMs) return
 
     // Don’t schedule if we don’t have a refresh token available
@@ -70,7 +69,6 @@ export class AuthPlugin extends Plugin {
     const now = Date.now()
     // Refresh 90s before expiry (min 5s)
     const delay = Math.max(expMs - now - 90_000, 5_000)
-    console.log('[AuthPlugin] Token refresh scheduled in minutes:', (delay / 60000).toFixed(2))
 
     this.clearRefreshTimer()
     this.refreshTimer = window.setTimeout(() => {
