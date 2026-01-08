@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, Credits } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, Credits } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
 
@@ -7,7 +7,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'checkPermission', 'hasPermission'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked']
 }
 
@@ -15,6 +15,7 @@ export class AuthPlugin extends Plugin {
   private apiClient: ApiClient
   private ssoApi: SSOApiService
   private creditsApi: CreditsApiService
+  private permissionsApi: PermissionsApiService
   private refreshTimer: number | null = null
 
   constructor() {
@@ -28,9 +29,14 @@ export class AuthPlugin extends Plugin {
     const creditsClient = new ApiClient(endpointUrls.credits)
     this.creditsApi = new CreditsApiService(creditsClient)
 
+    // Permissions API
+    const permissionsClient = new ApiClient(endpointUrls.permissions)
+    this.permissionsApi = new PermissionsApiService(permissionsClient)
+
     // Set up token refresh callback for auto-renewal
     this.apiClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     creditsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
+    permissionsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
   }
 
   private clearRefreshTimer() {
@@ -54,6 +60,7 @@ export class AuthPlugin extends Plugin {
 
   private scheduleRefresh(accessToken: string) {
     const expMs = this.getTokenExpiryMs(accessToken)
+    console.log('[AuthPlugin] Scheduling token refresh, expiry at ms:', expMs)
     if (!expMs) return
 
     // Don’t schedule if we don’t have a refresh token available
@@ -63,10 +70,11 @@ export class AuthPlugin extends Plugin {
     const now = Date.now()
     // Refresh 90s before expiry (min 5s)
     const delay = Math.max(expMs - now - 90_000, 5_000)
+    console.log('[AuthPlugin] Token refresh scheduled in minutes:', (delay / 60000).toFixed(2))
 
     this.clearRefreshTimer()
     this.refreshTimer = window.setTimeout(() => {
-      this.refreshAccessToken().catch(() => {/* handled in method */})
+      this.refreshAccessToken().catch(() => {/* handled in method */ })
     }, delay)
   }
 
@@ -91,6 +99,45 @@ export class AuthPlugin extends Plugin {
     return this.creditsApi
   }
 
+  /**
+   * Get the typed Permissions API service
+   */
+  async getPermissionsApi(): Promise<PermissionsApiService> {
+    return this.permissionsApi
+  }
+
+  /**
+   * Check if user has a specific permission/feature
+   * @param feature - Feature name (e.g., 'ai:gpt-4', 'wallet:mainnet')
+   * @returns Object with allowed status and optional limits
+   */
+  async checkPermission(feature: string): Promise<{ allowed: boolean; limit?: number; unit?: string }> {
+    try {
+      const response = await this.permissionsApi.checkFeature(feature)
+      if (response.ok && response.data) {
+        return {
+          allowed: response.data.allowed,
+          limit: response.data.limit_value,
+          unit: response.data.limit_unit
+        }
+      }
+      return { allowed: false }
+    } catch (error) {
+      console.error('[AuthPlugin] Permission check failed:', error)
+      return { allowed: false }
+    }
+  }
+
+  /**
+   * Simple boolean check for a feature permission
+   * @param feature - Feature name to check
+   * @returns true if feature is allowed
+   */
+  async hasPermission(feature: string): Promise<boolean> {
+    const { allowed } = await this.checkPermission(feature)
+    return allowed
+  }
+
   async login(provider: AuthProviderType): Promise<void> {
     try {
       console.log('[AuthPlugin] Starting popup-based login for:', provider)
@@ -113,7 +160,7 @@ export class AuthPlugin extends Plugin {
       }
 
       // Wait for message from popup
-      const result = await new Promise<{user: AuthUser; accessToken: string; refreshToken: string}>((resolve, reject) => {
+      const result = await new Promise<{ user: AuthUser; accessToken: string; refreshToken: string }>((resolve, reject) => {
         const timeout = setTimeout(() => {
           cleanup()
           reject(new Error('Login timeout'))
@@ -197,11 +244,8 @@ export class AuthPlugin extends Plugin {
         credentials: 'include'
       })
 
-      // Clear localStorage
-      this.clearRefreshTimer()
-      localStorage.removeItem('remix_access_token')
-      localStorage.removeItem('remix_refresh_token')
-      localStorage.removeItem('remix_user')
+      // Clear stored auth data
+      this.clearStoredAuth()
 
       // Emit auth state change
       this.emit('authStateChanged', {
@@ -249,7 +293,7 @@ export class AuthPlugin extends Plugin {
       }
 
       // Wait for message from popup
-      const result = await new Promise<{user: AuthUser; accessToken: string}>((resolve, reject) => {
+      const result = await new Promise<{ user: AuthUser; accessToken: string }>((resolve, reject) => {
         const timeout = setTimeout(() => {
           cleanup()
           reject(new Error('Account linking timeout'))
@@ -386,7 +430,11 @@ export class AuthPlugin extends Plugin {
         creditsApiClient.setToken(newAccessToken)
 
         console.log('[AuthPlugin] Access token refreshed successfully')
-
+        const permissionsApi = await this.getPermissionsApi()
+        const permissionsApiClient = (permissionsApi as any).apiClient as ApiClient
+        permissionsApiClient.setToken(newAccessToken)
+        const { data } = await permissionsApi.getPermissions()
+        console.log('[AuthPlugin] User permissions:', data)
         // Reschedule next proactive refresh
         this.scheduleRefresh(newAccessToken)
         return newAccessToken
@@ -485,9 +533,88 @@ export class AuthPlugin extends Plugin {
   onActivation(): void {
     console.log('[AuthPlugin] Activated - using popup + localStorage mode')
 
-    // Check if user is already logged in
+    // Validate existing token with the API on load
+    this.validateAndRestoreSession()
+  }
+
+  /**
+   * Validate stored token with the API and restore session if valid
+   * This ensures tokens can't be forged and catches expired/revoked tokens
+   */
+  private async validateAndRestoreSession(): Promise<void> {
     const token = localStorage.getItem('remix_access_token')
-    if (token) {
+    if (!token) {
+      console.log('[AuthPlugin] No stored token found')
+      return
+    }
+
+    console.log('[AuthPlugin] Validating stored token with API...')
+
+    try {
+      // First check if token is expired locally (quick check)
+      const expMs = this.getTokenExpiryMs(token)
+      if (expMs && expMs < Date.now()) {
+        console.log('[AuthPlugin] Token expired, attempting refresh...')
+        const refreshed = await this.refreshAccessToken()
+        if (!refreshed) {
+          console.log('[AuthPlugin] Refresh failed, clearing session')
+          this.clearStoredAuth()
+          return
+        }
+        // refreshAccessToken already emits authStateChanged if successful
+        return
+      }
+
+      // Verify token with the API
+      const response = await this.ssoApi.verify()
+      
+      if (response.ok && response.data?.authenticated) {
+        console.log('[AuthPlugin] Token verified successfully')
+        
+        // Update user data from API response if available
+        let user = response.data.user
+        if (!user) {
+          // Fallback to stored user data
+          const userStr = localStorage.getItem('remix_user')
+          if (userStr) {
+            user = JSON.parse(userStr)
+          }
+        } else {
+          // Update stored user with fresh data from API
+          localStorage.setItem('remix_user', JSON.stringify(user))
+        }
+
+        if (user) {
+          this.emit('authStateChanged', {
+            isAuthenticated: true,
+            user,
+            token
+          })
+          
+          // Auto-refresh credits
+          this.refreshCredits().catch(console.error)
+          
+          // Schedule proactive token refresh
+          this.scheduleRefresh(token)
+        }
+      } else {
+        console.log('[AuthPlugin] Token validation failed, attempting refresh...')
+        // Token is invalid, try to refresh
+        const refreshed = await this.refreshAccessToken()
+        if (!refreshed) {
+          console.log('[AuthPlugin] Refresh failed, clearing session')
+          this.clearStoredAuth()
+          this.emit('authStateChanged', {
+            isAuthenticated: false,
+            user: null,
+            token: null
+          })
+        }
+      }
+    } catch (error) {
+      console.error('[AuthPlugin] Session validation error:', error)
+      // Network error - don't clear session, user might be offline
+      // Try to use cached session but mark as unverified
       const userStr = localStorage.getItem('remix_user')
       if (userStr) {
         try {
@@ -495,17 +622,24 @@ export class AuthPlugin extends Plugin {
           this.emit('authStateChanged', {
             isAuthenticated: true,
             user,
-            token
+            token,
+            verified: false // Indicate session is not verified
           })
-          // Auto-refresh credits
-          this.refreshCredits().catch(console.error)
-          // Schedule proactive refresh if possible
-          this.scheduleRefresh(token)
         } catch (e) {
-          console.error('[AuthPlugin] Failed to restore user session:', e)
+          // Invalid stored data
         }
       }
     }
+  }
+
+  /**
+   * Clear all stored authentication data
+   */
+  private clearStoredAuth(): void {
+    localStorage.removeItem('remix_access_token')
+    localStorage.removeItem('remix_refresh_token')
+    localStorage.removeItem('remix_user')
+    this.clearRefreshTimer()
   }
 
   // Convert address to EIP-55 checksum format using ethers

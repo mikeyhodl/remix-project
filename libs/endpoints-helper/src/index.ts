@@ -19,6 +19,7 @@ type EndpointUrls = {
     billing: string;
     credits: string;
     audio;
+    permissions: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -42,6 +43,7 @@ const defaultUrls: EndpointUrls = {
   billing: 'https://auth.api.remix.live:8443//billing',
   credits: 'https://auth.api.remix.live:8443/credits',
   audio: 'https://audio.api.remix.live',
+  permissions: 'https://auth.api.remix.live:8443/permissions',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -65,6 +67,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   billing: 'billing',
   credits: 'credits',
   audio: 'audio',
+  permissions: 'permissions',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -102,6 +105,9 @@ const localhostUrls: EndpointUrls = {
   billing: 'http://localhost:3002/billing',
   credits: 'http://localhost:3002/credits',
   audio: 'http://localhost:3004/audio',
+  
+  // PERMISSIONS service
+  permissions: 'http://localhost:3002/permissions',
 };
 
 const resolvedUrls: EndpointUrls = prefix
