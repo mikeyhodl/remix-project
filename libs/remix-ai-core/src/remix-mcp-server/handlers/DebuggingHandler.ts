@@ -710,6 +710,57 @@ export class StorageViewAtHandler extends BaseToolHandler {
 }
 
 /**
+ * Jump To Step Handler
+ */
+export class JumpToHandler extends BaseToolHandler {
+  name = 'jump_to';
+  description = 'Jump directly to a specific step in the execution trace';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'The target step index to jump to'
+      }
+    },
+    required: ['step']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:control'];
+  }
+
+  validate(args: { step: number }): boolean | string {
+    const required = this.validateRequired(args, ['step']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, { step: 'number' });
+    if (types !== true) return types;
+
+    if (args.step < 0) {
+      return 'Step index must be a non-negative number';
+    }
+
+    return true;
+  }
+
+  async execute(args: { step: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      await plugin.call('debugger', 'jumpTo', args.step);
+
+      return this.createSuccessResult({
+        success: true,
+        step: args.step,
+        message: `Successfully jumped to step ${args.step}`
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to jump to step: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create debugging tool definitions
  */
 export function createDebuggingTools(): RemixToolDefinition[] {
@@ -809,6 +860,14 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:read'],
       handler: new StorageViewAtHandler()
+    },
+    {
+      name: 'jump_to',
+      description: 'Jump directly to a specific step in the execution trace',
+      inputSchema: new JumpToHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:control'],
+      handler: new JumpToHandler()
     }
   ];
 }

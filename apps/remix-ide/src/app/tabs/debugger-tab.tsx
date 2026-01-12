@@ -249,4 +249,15 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
     if (!this.debuggerBackend) return null
     return this.debuggerBackend.debugger.storageViewAt(step, address)
   }
+
+  /**
+   * Jumps directly to a specific step in the execution trace.
+   *
+   * @param {number} step - The target step index to jump to
+   * @returns {void|null} Returns null if debugger backend is not initialized
+   */
+  jumpTo (step: number) {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.step_manager.jumpTo(step)
+  }
 }
