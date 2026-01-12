@@ -10,7 +10,20 @@ const css = require('./styles/debugger-tab-styles')
 const profile = {
   name: 'debugger',
   displayName: 'Debugger',
-  methods: ['debug', 'getTrace', 'decodeLocalVariable', 'decodeStateVariable', 'globalContext'],
+  methods: [
+    'debug',
+    'getTrace',
+    'decodeLocalVariable',
+    'decodeStateVariable',
+    'globalContext',
+    'getValidSourceLocationFromVMTraceIndex',
+    'sourceLocationFromInstructionIndex',
+    'extractLocalsAt',
+    'decodeLocalsAt',
+    'extractStateAt',
+    'decodeStateAt',
+    'storageViewAt'
+  ],
   events: [],
   icon: 'assets/img/debuggerLogo.webp',
   description: 'Debug transactions',
@@ -146,5 +159,93 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
         tx: null
       }
     }
+  }
+
+  /**
+   * Retrieves a valid source location from a VM trace step index.
+   * Similar to sourceLocationFromVMTraceIndex but ensures the location is valid (non-empty).
+   *
+   * @param {string} address - Contract address
+   * @param {number} stepIndex - VM trace step index
+   * @returns {Promise<any|null>} Valid source location object with file, start, and length information, or null if debugger backend is not initialized
+   */
+  async getValidSourceLocationFromVMTraceIndex (address: string, stepIndex: number) {
+    if (!this.debuggerBackend) return null
+    return await this.debuggerBackend.debugger.getValidSourceLocationFromVMTraceIndex(address, stepIndex)
+  }
+
+  /**
+   * Retrieves the source location from an instruction index (bytecode position).
+   *
+   * @param {string} address - Contract address
+   * @param {number} instIndex - Instruction index in the bytecode
+   * @returns {Promise<any|null>} Source location object with file, start, and length information, or null if debugger backend is not initialized
+   */
+  async sourceLocationFromInstructionIndex (address: string, instIndex: number) {
+    if (!this.debuggerBackend) return null
+    return await this.debuggerBackend.debugger.sourceLocationFromInstructionIndex(address, instIndex)
+  }
+
+  /**
+   * Extracts the scope information (local variables context) at a specific execution step.
+   *
+   * @param {number} step - Execution step index
+   * @returns {any|null} Scope information containing local variables for the given step, or null if debugger backend is not initialized
+   */
+  async extractLocalsAt (step: number) {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.debugger.extractLocalsAt(step)
+  }
+
+  /**
+   * Decodes all local variables at a specific execution step and source location.
+   * Uses the EVM stack, memory, storage, and calldata to reconstruct variable values.
+   *
+   * @param {number} step - Execution step index
+   * @param {any} sourceLocation - Source code location for context
+   * @param {Function} callback - Callback function with signature (error, locals)
+   * @returns {Promise<void>} Calls callback with decoded locals or error
+   */
+  async decodeLocalsAt (step: number, sourceLocation: any, callback: (error: any, locals?: any) => void) {
+    if (!this.debuggerBackend) return callback('Debugger backend is not initialized')
+    return await this.debuggerBackend.debugger.decodeLocalsAt(step, sourceLocation, callback)
+  }
+
+  /**
+   * Extracts all state variables at a specific execution step.
+   * Returns metadata about the state variables without decoding their values.
+   *
+   * @param {number} step - Execution step index
+   * @returns {Promise<any|null>} Array of state variable metadata objects, or null if debugger backend is not initialized
+   */
+  async extractStateAt (step: number) {
+    if (!this.debuggerBackend) return null
+    return await this.debuggerBackend.debugger.extractStateAt(step)
+  }
+
+  /**
+   * Decodes the values of specified state variables at a specific execution step.
+   * Retrieves values from contract storage and decodes them according to their types.
+   *
+   * @param {number} step - Execution step index
+   * @param {any[]} stateVars - Array of state variable metadata to decode
+   * @param {Function} [callback] - Optional callback function receiving the result or error
+   * @returns {Promise<any|null>} Object mapping variable names to their decoded values, or null if debugger backend is not initialized
+   */
+  async decodeStateAt (step: number, stateVars: any[], callback?: (result: any) => void) {
+    if (!this.debuggerBackend) return null
+    return await this.debuggerBackend.debugger.decodeStateAt(step, stateVars, callback)
+  }
+
+  /**
+   * Creates a StorageViewer instance for inspecting contract storage at a specific step.
+   *
+   * @param {number} step - Execution step index
+   * @param {string} address - Contract address whose storage to view
+   * @returns {any|null} StorageViewer instance configured for the given step and address, or null if debugger backend is not initialized
+   */
+  async storageViewAt (step: number, address: string) {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.debugger.storageViewAt(step, address)
   }
 }

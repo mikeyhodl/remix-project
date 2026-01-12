@@ -294,6 +294,422 @@ export class GlobalContextHandler extends BaseToolHandler {
 }
 
 /**
+ * Get Valid Source Location From VM Trace Index Handler
+ */
+export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandler {
+  name = 'get_valid_source_location_from_vm_trace_index';
+  description = 'Get a valid source location from a VM trace step index';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        description: 'Contract address',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
+      stepIndex: {
+        type: 'number',
+        description: 'VM trace step index'
+      }
+    },
+    required: ['address', 'stepIndex']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { address: string; stepIndex: number }): boolean | string {
+    const required = this.validateRequired(args, ['address', 'stepIndex']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      address: 'string',
+      stepIndex: 'number',
+    });
+    if (types !== true) return types;
+
+    if (!args.address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Invalid contract address format';
+    }
+
+    return true;
+  }
+
+  async execute(args: { address: string; stepIndex: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'getValidSourceLocationFromVMTraceIndex', args.address, args.stepIndex);
+
+      if (!result) {
+        return this.createErrorResult('Source location not available. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        address: args.address,
+        stepIndex: args.stepIndex,
+        sourceLocation: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to get valid source location: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Source Location From Instruction Index Handler
+ */
+export class SourceLocationFromInstructionIndexHandler extends BaseToolHandler {
+  name = 'source_location_from_instruction_index';
+  description = 'Get the source location from an instruction index (bytecode position)';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        description: 'Contract address',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
+      instIndex: {
+        type: 'number',
+        description: 'Instruction index in the bytecode'
+      }
+    },
+    required: ['address', 'instIndex']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { address: string; instIndex: number }): boolean | string {
+    const required = this.validateRequired(args, ['address', 'instIndex']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      address: 'string',
+      instIndex: 'number',
+    });
+    if (types !== true) return types;
+
+    if (!args.address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Invalid contract address format';
+    }
+
+    return true;
+  }
+
+  async execute(args: { address: string; instIndex: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'sourceLocationFromInstructionIndex', args.address, args.instIndex);
+
+      if (!result) {
+        return this.createErrorResult('Source location not available. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        address: args.address,
+        instIndex: args.instIndex,
+        sourceLocation: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to get source location from instruction index: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Extract Locals At Handler
+ */
+export class ExtractLocalsAtHandler extends BaseToolHandler {
+  name = 'extract_locals_at';
+  description = 'Extract the scope information (local variables context) at a specific execution step';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'Execution step index'
+      }
+    },
+    required: ['step']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { step: number }): boolean | string {
+    const required = this.validateRequired(args, ['step']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, { step: 'number' });
+    if (types !== true) return types;
+
+    return true;
+  }
+
+  async execute(args: { step: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'extractLocalsAt', args.step);
+
+      if (!result) {
+        return this.createErrorResult('Scope information not available. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        step: args.step,
+        scope: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to extract locals: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Decode Locals At Handler
+ */
+export class DecodeLocalsAtHandler extends BaseToolHandler {
+  name = 'decode_locals_at';
+  description = 'Decode all local variables at a specific execution step and source location';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'Execution step index'
+      },
+      sourceLocation: {
+        type: 'object',
+        description: 'Source code location for context'
+      }
+    },
+    required: ['step', 'sourceLocation']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { step: number; sourceLocation: any }): boolean | string {
+    const required = this.validateRequired(args, ['step', 'sourceLocation']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      step: 'number',
+      sourceLocation: 'object'
+    });
+    if (types !== true) return types;
+
+    return true;
+  }
+
+  async execute(args: { step: number; sourceLocation: any }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      return new Promise((resolve) => {
+        plugin.call('debugger', 'decodeLocalsAt', args.step, args.sourceLocation, (error, locals) => {
+          if (error) {
+            resolve(this.createErrorResult(`Failed to decode locals: ${error}`));
+          } else {
+            resolve(this.createSuccessResult({
+              success: true,
+              step: args.step,
+              locals: locals
+            }));
+          }
+        });
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to decode locals: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Extract State At Handler
+ */
+export class ExtractStateAtHandler extends BaseToolHandler {
+  name = 'extract_state_at';
+  description = 'Extract all state variables metadata at a specific execution step';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'Execution step index'
+      }
+    },
+    required: ['step']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { step: number }): boolean | string {
+    const required = this.validateRequired(args, ['step']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, { step: 'number' });
+    if (types !== true) return types;
+
+    return true;
+  }
+
+  async execute(args: { step: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'extractStateAt', args.step);
+
+      if (!result) {
+        return this.createErrorResult('State variables not available. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        step: args.step,
+        stateVariables: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to extract state variables: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Decode State At Handler
+ */
+export class DecodeStateAtHandler extends BaseToolHandler {
+  name = 'decode_state_at';
+  description = 'Decode the values of specified state variables at a specific execution step';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'Execution step index'
+      },
+      stateVars: {
+        type: 'array',
+        description: 'Array of state variable metadata to decode'
+      }
+    },
+    required: ['step', 'stateVars']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { step: number; stateVars: any[] }): boolean | string {
+    const required = this.validateRequired(args, ['step', 'stateVars']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      step: 'number',
+      stateVars: 'object'
+    });
+    if (types !== true) return types;
+
+    if (!Array.isArray(args.stateVars)) {
+      return 'stateVars must be an array';
+    }
+
+    return true;
+  }
+
+  async execute(args: { step: number; stateVars: any[] }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'decodeStateAt', args.step, args.stateVars);
+
+      if (!result) {
+        return this.createErrorResult('Failed to decode state variables. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        step: args.step,
+        decodedState: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to decode state: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Storage View At Handler
+ */
+export class StorageViewAtHandler extends BaseToolHandler {
+  name = 'storage_view_at';
+  description = 'Create a storage viewer for inspecting contract storage at a specific step';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      step: {
+        type: 'number',
+        description: 'Execution step index'
+      },
+      address: {
+        type: 'string',
+        description: 'Contract address whose storage to view',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      }
+    },
+    required: ['step', 'address']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { step: number; address: string }): boolean | string {
+    const required = this.validateRequired(args, ['step', 'address']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      step: 'number',
+      address: 'string'
+    });
+    if (types !== true) return types;
+
+    if (!args.address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Invalid contract address format';
+    }
+
+    return true;
+  }
+
+  async execute(args: { step: number; address: string }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'storageViewAt', args.step, args.address);
+
+      if (!result) {
+        return this.createErrorResult('Storage viewer not available. Ensure a debug session is active.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        step: args.step,
+        address: args.address,
+        message: 'Storage viewer created successfully. Use this for inspecting contract storage.'
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to create storage viewer: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create debugging tool definitions
  */
 export function createDebuggingTools(): RemixToolDefinition[] {
@@ -337,6 +753,62 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:read'],
       handler: new GlobalContextHandler()
+    },
+    {
+      name: 'get_valid_source_location_from_vm_trace_index',
+      description: 'Get a valid source location from a VM trace step index',
+      inputSchema: new GetValidSourceLocationFromVMTraceIndexHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new GetValidSourceLocationFromVMTraceIndexHandler()
+    },
+    {
+      name: 'source_location_from_instruction_index',
+      description: 'Get the source location from an instruction index (bytecode position)',
+      inputSchema: new SourceLocationFromInstructionIndexHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new SourceLocationFromInstructionIndexHandler()
+    },
+    {
+      name: 'extract_locals_at',
+      description: 'Extract the scope information (local variables context) at a specific execution step',
+      inputSchema: new ExtractLocalsAtHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new ExtractLocalsAtHandler()
+    },
+    {
+      name: 'decode_locals_at',
+      description: 'Decode all local variables at a specific execution step and source location',
+      inputSchema: new DecodeLocalsAtHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new DecodeLocalsAtHandler()
+    },
+    {
+      name: 'extract_state_at',
+      description: 'Extract all state variables metadata at a specific execution step',
+      inputSchema: new ExtractStateAtHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new ExtractStateAtHandler()
+    },
+    {
+      name: 'decode_state_at',
+      description: 'Decode the values of specified state variables at a specific execution step',
+      inputSchema: new DecodeStateAtHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new DecodeStateAtHandler()
+    },
+    {
+      name: 'storage_view_at',
+      description: 'Create a storage viewer for inspecting contract storage at a specific step',
+      inputSchema: new StorageViewAtHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new StorageViewAtHandler()
     }
   ];
 }
