@@ -791,7 +791,7 @@ export class JumpToHandler extends BaseToolHandler {
  */
 export class GetCallTreeScopesHandler extends BaseToolHandler {
   name = 'get_call_tree_scopes';
-  description = `Retrieve comprehensive scope information from the call tree analysis. The call tree represents execution flow including function calls, internal jumps, and constructor executions.
+  description = `Retrieve comprehensive scope information from the call tree analysis of the current debug session. The call tree represents execution flow including function calls, internal jumps, and constructor executions.
 
 Returns an object with the following properties:
 
