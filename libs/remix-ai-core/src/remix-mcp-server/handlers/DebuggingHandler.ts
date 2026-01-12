@@ -129,6 +129,171 @@ export class StopDebugSessionHandler extends BaseToolHandler {
 }
 
 /**
+ * Decode Local Variable Tool Handler
+ */
+export class DecodeLocalVariableHandler extends BaseToolHandler {
+  name = 'decode_local_variable';
+  description = 'Decode a local variable at a specific step in the transaction execution';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      variableId: {
+        type: 'number',
+        description: 'The unique identifier of the local variable to decode'
+      },
+      stepIndex: {
+        type: 'number',
+        description: 'Optional step index in the trace; defaults to current step if not provided'
+      }
+    },
+    required: ['variableId']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { variableId: number; stepIndex?: number }): boolean | string {
+    const required = this.validateRequired(args, ['variableId']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      variableId: 'number',
+    });
+    if (types !== true) return types;
+
+    if (args.stepIndex !== undefined) {
+      const stepTypes = this.validateTypes({ stepIndex: args.stepIndex }, { stepIndex: 'number' });
+      if (stepTypes !== true) return stepTypes;
+    }
+
+    return true;
+  }
+
+  async execute(args: { variableId: number; stepIndex?: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'decodeLocalVariable', args.variableId, args.stepIndex);
+
+      if (result === null) {
+        return this.createErrorResult('Debugger backend is not initialized. Please start a debug session first.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        variableId: args.variableId,
+        stepIndex: args.stepIndex,
+        decodedValue: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to decode local variable: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Decode State Variable Tool Handler
+ */
+export class DecodeStateVariableHandler extends BaseToolHandler {
+  name = 'decode_state_variable';
+  description = 'Decode a state variable at a specific step in the transaction execution';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      variableId: {
+        type: 'number',
+        description: 'The unique identifier of the state variable to decode'
+      },
+      stepIndex: {
+        type: 'number',
+        description: 'Optional step index in the trace; defaults to current step if not provided'
+      }
+    },
+    required: ['variableId']
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: { variableId: number; stepIndex?: number }): boolean | string {
+    const required = this.validateRequired(args, ['variableId']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      variableId: 'number',
+    });
+    if (types !== true) return types;
+
+    if (args.stepIndex !== undefined) {
+      const stepTypes = this.validateTypes({ stepIndex: args.stepIndex }, { stepIndex: 'number' });
+      if (stepTypes !== true) return stepTypes;
+    }
+
+    return true;
+  }
+
+  async execute(args: { variableId: number; stepIndex?: number }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'decodeStateVariable', args.variableId, args.stepIndex);
+
+      if (result === null) {
+        return this.createErrorResult('Debugger backend is not initialized. Please start a debug session first.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        variableId: args.variableId,
+        stepIndex: args.stepIndex,
+        decodedValue: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to decode state variable: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Global Context Tool Handler
+ */
+export class GlobalContextHandler extends BaseToolHandler {
+  name = 'get_global_context';
+  description = 'Retrieve the global execution context (block, msg, tx) for the transaction being debugged';
+  inputSchema = {
+    type: 'object',
+    properties: {},
+    required: []
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(args: {}): boolean | string {
+    return true;
+  }
+
+  async execute(args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'globalContext');
+
+      if (!result || (!result.block && !result.msg && !result.tx)) {
+        return this.createErrorResult('Global context is not available. Please start a debug session first.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        context: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to get global context: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create debugging tool definitions
  */
 export function createDebuggingTools(): RemixToolDefinition[] {
@@ -148,6 +313,30 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:stop'],
       handler: new StopDebugSessionHandler()
+    },
+    {
+      name: 'decode_local_variable',
+      description: 'Decode a local variable at a specific step in the transaction execution',
+      inputSchema: new DecodeLocalVariableHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new DecodeLocalVariableHandler()
+    },
+    {
+      name: 'decode_state_variable',
+      description: 'Decode a state variable at a specific step in the transaction execution',
+      inputSchema: new DecodeStateVariableHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new DecodeStateVariableHandler()
+    },
+    {
+      name: 'get_global_context',
+      description: 'Retrieve the global execution context (block, msg, tx) for the transaction being debugged',
+      inputSchema: new GlobalContextHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new GlobalContextHandler()
     }
   ];
 }

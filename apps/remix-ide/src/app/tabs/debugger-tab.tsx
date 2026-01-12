@@ -63,21 +63,53 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
     }
   }
 
+  /**
+   * Retrieves the execution trace for the transaction currently being debugged.
+   *
+   * @returns {Promise<any|null>} The complete execution trace including all steps, or null if debugger backend is not initialized
+   */
   async getTrace () {
     if (!this.debuggerBackend) return null
     return await this.debuggerBackend.debugger.getTrace()
   }
 
-  async decodeLocalVariable (variableId) {
+  /**
+   * Decodes a local variable at a specific step in the transaction execution.
+   * Local variables are function-scoped variables in the smart contract.
+   *
+   * @param {number} variableId - The unique identifier of the local variable to decode
+   * @param {number} [stepIndex] - Optional step index in the trace; defaults to current step if not provided
+   * @returns {Promise<any|null>} The decoded variable value and metadata, or null if debugger backend is not initialized
+   */
+  async decodeLocalVariable (variableId: number, stepIndex?: number) {
     if (!this.debuggerBackend) return null
-    return await this.debuggerBackend.debugger.decodeLocalVariableByIdAtCurrentStep(this.debuggerBackend.step_manager.currentStepIndex, variableId)
+    return await this.debuggerBackend.debugger.decodeLocalVariableById(stepIndex || this.debuggerBackend.step_manager.currentStepIndex, variableId)
   }
 
-  async decodeStateVariable (variableId) {
+  /**
+   * Decodes a state variable at a specific step in the transaction execution.
+   * State variables are contract-level storage variables that persist between function calls.
+   *
+   * @param {number} variableId - The unique identifier of the state variable to decode
+   * @param {number} [stepIndex] - Optional step index in the trace; defaults to current step if not provided
+   * @returns {Promise<any|null>} The decoded variable value and metadata, or null if debugger backend is not initialized
+   */
+  async decodeStateVariable (variableId: number, stepIndex?: number) {
     if (!this.debuggerBackend) return null
-    return await this.debuggerBackend.debugger.decodeStateVariableByIdAtCurrentStep(this.debuggerBackend.step_manager.currentStepIndex, variableId)
+    return await this.debuggerBackend.debugger.decodeStateVariableById(stepIndex || this.debuggerBackend.step_manager.currentStepIndex, variableId)
   }
 
+  /**
+   * Retrieves the global execution context for the transaction being debugged.
+   * This includes blockchain context (block), message context (msg), and transaction context (tx)
+   * similar to Solidity's global variables.
+   *
+   * @returns {Promise<{block: object|null, msg: object|null, tx: object|null}>} An object containing:
+   *   - block: Block context including chainid, coinbase, difficulty, gaslimit, number, timestamp, and optionally basefee
+   *   - msg: Message context with sender address, function signature, and value in Wei
+   *   - tx: Transaction context with origin address
+   *   Returns null values if the API context is not available
+   */
   async globalContext () {
     if (this.api?.globalContext) {
       const { tx, block } = await this.api.globalContext()

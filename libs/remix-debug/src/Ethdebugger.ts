@@ -107,7 +107,7 @@ export class Ethdebugger {
     return this.callTree.findScope(step)
   }
 
-  async decodeLocalVariableByIdAtCurrentStep (step: number, id: number) {
+  async decodeLocalVariableById (step: number, id: number) {
     const variable = this.callTree.getLocalVariableById(id)
     if (!variable) return null
     const stack = this.traceManager.getStackAt(step)
@@ -118,7 +118,7 @@ export class Ethdebugger {
     return await variable.type.decodeFromStack(variable.stackDepth, stack, memory, storageViewer, calldata, null, variable)
   }
 
-  async decodeStateVariableByIdAtCurrentStep (step: number, id: number) {
+  async decodeStateVariableById (step: number, id: number) {
     const stateVars = await this.solidityProxy.extractStateVariablesAt(step)
     const variable = stateVars.filter((el) => el.variable.id === id)
     if (variable && variable.length) {
