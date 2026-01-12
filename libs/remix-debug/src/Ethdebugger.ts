@@ -7,6 +7,10 @@ import { CodeManager } from './code/codeManager'
 import { contractCreationToken } from './trace/traceHelper'
 import { EventManager } from './eventManager'
 import { SolidityProxy, stateDecoder, localDecoder, InternalCallTree } from './solidity-decoder'
+import { type BreakpointManager } from './code/breakpointManager'
+import { CompilerAbstract } from '@remix-project/remix-solidity'
+import { BrowserProvider } from 'ethers'
+import type { OffsetToLineColumnConverterFn } from './types'
 
 /**
   * Ethdebugger is a wrapper around a few classes that helps debug a transaction
@@ -21,18 +25,18 @@ import { SolidityProxy, stateDecoder, localDecoder, InternalCallTree } from './s
   * @param {Map} opts  -  { function compilationResult } //
   */
 export class Ethdebugger {
-  compilationResult
-  web3
+  compilationResult: (contractAddress: string) => Promise<CompilerAbstract>
+  web3: BrowserProvider
   opts
-  event
+  event: EventManager
   tx
-  traceManager
-  codeManager
-  solidityProxy
-  storageResolver
-  callTree
-  breakpointManager
-  offsetToLineColumnConverter
+  traceManager: TraceManager
+  codeManager: CodeManager
+  solidityProxy: SolidityProxy
+  storageResolver: StorageResolver
+  callTree: InternalCallTree
+  breakpointManager: BreakpointManager
+  offsetToLineColumnConverter: OffsetToLineColumnConverterFn
 
   /**
    * Creates a new Ethdebugger instance with the specified options.
@@ -289,7 +293,7 @@ export class Ethdebugger {
     this.traceManager.init()
     this.codeManager.clear()
     this.solidityProxy.reset()
-    this.event.trigger('traceUnloaded')
+    this.event.trigger('traceUnloaded', {})
   }
 
   /**
@@ -301,7 +305,7 @@ export class Ethdebugger {
    * @param {String} [tx.to] - Recipient address (defaults to contract creation token if not provided)
    * @returns {Promise<void>} Resolves when trace is loaded and ready for debugging
    */
-  async debug (tx) {
+  async debug (tx: any) {
     if (this.traceManager.isLoading) {
       return
     }
@@ -311,7 +315,7 @@ export class Ethdebugger {
     await this.traceManager.resolveTrace(tx)
     this.event.trigger('newTraceLoaded', [this.traceManager.trace])
     if (this.breakpointManager && this.breakpointManager.hasBreakpoint()) {
-      this.breakpointManager.jumpNextBreakpoint(false)
+      this.breakpointManager.jumpNextBreakpoint(false, false)
     }
     this.storageResolver = new StorageResolver({ web3: this.traceManager.web3 })
   }

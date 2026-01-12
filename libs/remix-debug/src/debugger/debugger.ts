@@ -150,8 +150,7 @@ export class Debugger {
       tx = await web3.getTransaction(txNumber)
       if (!tx) throw new Error('cannot find transaction ' + txNumber)
     } else {
-      tx = await web3.getTransactionFromBlock(blockNumber, txNumber)
-      if (!tx) throw new Error('cannot find transaction ' + blockNumber + ' ' + txNumber)
+      throw new Error('only transaction hash is supported currently')
     }
     return await this.debugTx(tx, loadingCb)
   }

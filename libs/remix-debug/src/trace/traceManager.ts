@@ -5,6 +5,7 @@ import { TraceAnalyser } from './traceAnalyser'
 import { TraceCache } from './traceCache'
 import { TraceStepManager } from './traceStepManager'
 import { isCreateInstruction } from './traceHelper'
+import { DebugTraceTransactionResult } from '../types'
 
 export class TraceManager {
   web3
@@ -60,7 +61,7 @@ export class TraceManager {
     }
   }
 
-  getTrace (txHash) {
+  getTrace (txHash): Promise<DebugTraceTransactionResult> {
     return new Promise((resolve, reject) => {
       const options = {
         disableStorage: true,
