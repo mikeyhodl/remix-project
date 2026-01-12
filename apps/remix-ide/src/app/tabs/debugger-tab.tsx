@@ -24,7 +24,8 @@ const profile = {
     'decodeStateAt',
     'storageViewAt',
     'jumpTo',
-    'getCallTreeScopes'
+    'getCallTreeScopes',
+    'getAllDebugCache'
   ],
   events: [],
   icon: 'assets/img/debuggerLogo.webp',
@@ -277,5 +278,42 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
   getCallTreeScopes () {
     if (!this.debuggerBackend) return null
     return this.debuggerBackend.debugger.callTree.getScopes()
+  }
+
+  /**
+   * Retrieves all trace cache data accumulated during transaction execution debugging.
+   * The trace cache stores comprehensive metadata about the execution trace including calls, storage changes, memory changes, and more.
+   *
+   * @returns {Object|null} Object containing all trace cache data:
+   *   - returnValues: Object mapping VM trace step indices to return values from RETURN operations
+   *   - stopIndexes: Array of STOP operation occurrences [{index: number, address: string}]
+   *   - outofgasIndexes: Array of out-of-gas occurrences [{index: number, address: string}]
+   *   - callsTree: Root node of nested call tree representing execution flow
+   *     Structure: {call: {op, address, callStack, calls, start, return?, reverted?}}
+   *     - op: EVM operation that initiated the call (CALL, DELEGATECALL, CREATE, etc.)
+   *     - address: Contract address being called
+   *     - callStack: Stack trace at the point of call
+   *     - calls: Nested object of child calls indexed by their start step
+   *     - start: VM trace index where call begins
+   *     - return: VM trace index where call ends (optional)
+   *     - reverted: Boolean indicating if the call was reverted (optional)
+   *   - callsData: Object mapping VM trace indices to calldata at that point
+   *   - contractCreation: Object mapping creation tokens to deployed contract bytecode (hex format '0x...')
+   *   - addresses: Array of all contract addresses encountered during execution (chronological, may have duplicates)
+   *   - callDataChanges: Array of VM trace step indices where calldata changed
+   *   - memoryChanges: Array of VM trace step indices where EVM memory changed (MSTORE, MLOAD operations)
+   *   - storageChanges: Array of VM trace step indices where storage was modified (SSTORE operations)
+   *   - sstore: Object mapping VM trace indices to SSTORE operation details
+   *     Each entry: {address, key, value, hashedKey, contextCall}
+   *     - address: Contract address where storage was modified
+   *     - key: Storage slot key (unhashed)
+   *     - value: New storage value
+   *     - hashedKey: SHA3-256 hash of the key
+   *     - contextCall: Reference to the call context when SSTORE occurred
+   *   Returns null if debugger backend is not initialized
+   */
+  getAllDebugCache () {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.debugger.traceManager.traceCache.getAll()
   }
 }

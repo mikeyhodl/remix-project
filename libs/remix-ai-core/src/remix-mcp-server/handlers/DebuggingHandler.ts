@@ -761,6 +761,133 @@ export class JumpToHandler extends BaseToolHandler {
 }
 
 /**
+ * Get All Debug Cache Handler
+ *
+ * Returns comprehensive trace cache data accumulated during transaction execution debugging.
+ * The trace cache stores metadata about the execution trace including calls, storage changes, memory changes, and more.
+ *
+ * Returned properties:
+ *
+ * - returnValues: Object mapping VM trace step indices to their return values
+ *   - Keys: VM trace step indices (numbers)
+ *   - Values: Return value data from RETURN operations
+ *
+ * - stopIndexes: Array of STOP operation occurrences
+ *   - Each element: {index: number, address: string} where index is VM trace step and address is contract address
+ *
+ * - outofgasIndexes: Array of out-of-gas occurrences
+ *   - Each element: {index: number, address: string} indicating where out-of-gas errors occurred
+ *
+ * - callsTree: Root node of the nested call tree structure representing the execution flow
+ *   - Structure: {call: {op, address, callStack, calls, start, return?, reverted?}}
+ *   - op: EVM operation that initiated the call (CALL, DELEGATECALL, CREATE, etc.)
+ *   - address: Contract address being called
+ *   - callStack: Stack trace at the point of call
+ *   - calls: Nested object of child calls indexed by their start step
+ *   - start: VM trace index where call begins
+ *   - return: VM trace index where call ends (optional)
+ *   - reverted: Boolean indicating if the call was reverted (optional)
+ *
+ * - callsData: Object mapping VM trace indices to calldata at that point
+ *   - Keys: VM trace step indices where calldata changed
+ *   - Values: Calldata byte arrays or hex strings
+ *
+ * - contractCreation: Object mapping creation tokens to deployed contract bytecode
+ *   - Keys: Unique tokens identifying contract creation operations
+ *   - Values: Hex-encoded bytecode of created contracts (format: '0x...')
+ *
+ * - addresses: Array of all contract addresses encountered during execution
+ *   - Ordered chronologically as they appear in the trace
+ *   - May contain duplicates if same address accessed multiple times
+ *
+ * - callDataChanges: Array of VM trace step indices where calldata changed
+ *   - Indices correspond to keys in callsData object
+ *   - Useful for tracking when new calls are made
+ *
+ * - memoryChanges: Array of VM trace step indices where EVM memory changed
+ *   - Tracks all MSTORE, MLOAD, and similar operations
+ *   - Use to identify when memory is read/written
+ *
+ * - storageChanges: Array of VM trace step indices where storage was modified (SSTORE operations)
+ *   - Indices correspond to keys in sstore object
+ *   - Chronologically ordered
+ *
+ * - sstore: Object mapping VM trace indices to detailed SSTORE operation information
+ *   - Keys: VM trace step indices where SSTORE occurred
+ *   - Values: Objects containing:
+ *     * address: Contract address where storage was modified
+ *     * key: Storage slot key (unhashed)
+ *     * value: New storage value
+ *     * hashedKey: SHA3-256 hash of the key
+ *     * contextCall: Reference to the call context when SSTORE occurred
+ */
+export class GetAllDebugCacheHandler extends BaseToolHandler {
+  name = 'get_all_debug_cache';
+  description = `Retrieve comprehensive trace cache data accumulated during transaction execution debugging. The trace cache stores metadata about execution including calls, storage changes, memory changes, return values, and more.
+
+Returns an object with the following properties:
+
+1. returnValues: Object mapping VM trace step indices to return values from RETURN operations
+
+2. stopIndexes: Array of STOP operation occurrences [{index: number, address: string}]
+
+3. outofgasIndexes: Array of out-of-gas occurrences [{index: number, address: string}]
+
+4. callsTree: Root node of nested call tree representing execution flow
+   - Structure: {call: {op, address, callStack, calls, start, return?, reverted?}}
+   - Captures all CALL, DELEGATECALL, CREATE operations and their nesting
+
+5. callsData: Object mapping VM trace indices to calldata at each point
+
+6. contractCreation: Object mapping creation tokens to deployed contract bytecode (hex format)
+
+7. addresses: Array of all contract addresses encountered during execution (chronological, may have duplicates)
+
+8. callDataChanges: Array of VM trace indices where calldata changed
+
+9. memoryChanges: Array of VM trace indices where EVM memory changed (MSTORE, MLOAD operations)
+
+10. storageChanges: Array of VM trace indices where storage was modified (SSTORE operations)
+
+11. sstore: Object mapping VM trace indices to SSTORE operation details
+    - Each entry: {address, key, value, hashedKey, contextCall}
+    - Tracks all storage modifications with context
+
+Use this to analyze transaction execution patterns, track state changes, debug call flows, and understand contract interactions.`;
+  inputSchema = {
+    type: 'object',
+    properties: {},
+    required: []
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(_args: {}): boolean | string {
+    return true;
+  }
+
+  async execute(_args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'getAllDebugCache');
+
+      if (!result) {
+        return this.createErrorResult('Debug cache not available. Please start a debug session first.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        cache: result
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to get debug cache: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Get Call Tree Scopes Handler
  *
  * Returns comprehensive scope information from the internal call tree analysis.
@@ -969,6 +1096,14 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:read'],
       handler: new GetCallTreeScopesHandler()
+    },
+    {
+      name: 'get_all_debug_cache',
+      description: new GetAllDebugCacheHandler().description,
+      inputSchema: new GetAllDebugCacheHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new GetAllDebugCacheHandler()
     }
   ];
 }
