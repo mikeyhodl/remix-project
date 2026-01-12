@@ -823,7 +823,7 @@ export class JumpToHandler extends BaseToolHandler {
  */
 export class GetAllDebugCacheHandler extends BaseToolHandler {
   name = 'get_all_debug_cache';
-  description = `Retrieve comprehensive trace cache data accumulated during transaction execution debugging. The trace cache stores metadata about execution including calls, storage changes, memory changes, return values, and more.
+  description = `Retrieve comprehensive trace cache data for the current debugging session. The trace cache stores metadata about execution including calls, storage changes, memory changes, return values, and more.
 
 Returns an object with the following properties:
 
@@ -872,6 +872,7 @@ Use this to analyze transaction execution patterns, track state changes, debug c
     try {
       const result = await plugin.call('debugger', 'getAllDebugCache');
 
+      console.log('GetAllDebugCacheHandler result:', result)
       if (!result) {
         return this.createErrorResult('Debug cache not available. Please start a debug session first.');
       }
@@ -961,7 +962,7 @@ Use this to understand the execution structure, navigate between scopes, analyze
   async execute(_args: {}, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const result = await plugin.call('debugger', 'getCallTreeScopes');
-
+      console.log('GetCallTreeScopesHandler result:', result);
       if (!result) {
         return this.createErrorResult('Call tree scopes not available. Please start a debug session first.');
       }

@@ -12,7 +12,6 @@ const profile = {
   displayName: 'Debugger',
   methods: [
     'debug',
-    'getTrace',
     'decodeLocalVariable',
     'decodeStateVariable',
     'globalContext',
@@ -78,16 +77,6 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
     } catch (e) {
       console.log(e)
     }
-  }
-
-  /**
-   * Retrieves the execution trace for the transaction currently being debugged.
-   *
-   * @returns {Promise<any|null>} The complete execution trace including all steps, or null if debugger backend is not initialized
-   */
-  async getTrace () {
-    if (!this.debuggerBackend) return null
-    return await this.debuggerBackend.debugger.getTrace()
   }
 
   /**
