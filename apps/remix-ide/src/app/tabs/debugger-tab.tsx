@@ -22,7 +22,9 @@ const profile = {
     'decodeLocalsAt',
     'extractStateAt',
     'decodeStateAt',
-    'storageViewAt'
+    'storageViewAt',
+    'jumpTo',
+    'getCallTreeScopes'
   ],
   events: [],
   icon: 'assets/img/debuggerLogo.webp',
