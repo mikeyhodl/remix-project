@@ -761,6 +761,99 @@ export class JumpToHandler extends BaseToolHandler {
 }
 
 /**
+ * Get Call Tree Scopes Handler
+ *
+ * Returns comprehensive scope information from the internal call tree analysis.
+ * The call tree represents the execution flow including function calls, internal jumps, and constructor executions.
+ *
+ * Returned properties:
+ *
+ * - scopes: Map of all scopes in the execution trace. Each scope represents a function call or execution context.
+ *   - Keys: scopeId strings in dotted notation (e.g., "1", "1.2", "1.2.3" for nested scopes)
+ *   - Values: Scope objects containing:
+ *     - firstStep: VM trace index where the scope begins
+ *     - lastStep: VM trace index where the scope ends
+ *     - locals: Map of local variables in this scope (variable name -> {name, type, stackDepth, sourceLocation})
+ *     - isCreation: Boolean indicating if this is a contract creation context
+ *     - gasCost: Total gas consumed within this scope
+ *
+ * - scopeStarts: Map linking VM trace indices to scope identifiers
+ *   - Keys: VM trace step indices
+ *   - Values: scopeId strings indicating which scope starts at each step
+ *
+ * - functionDefinitionsByScope: Map of function definitions for each scope
+ *   - Keys: scopeId strings
+ *   - Values: Objects containing:
+ *     - functionDefinition: AST node with function metadata (name, parameters, returnParameters, etc.)
+ *     - inputs: Array of input parameter names
+ *
+ * - functionCallStack: Array of VM trace step indices where function calls occur, ordered chronologically
+ */
+export class GetCallTreeScopesHandler extends BaseToolHandler {
+  name = 'get_call_tree_scopes';
+  description = `Retrieve comprehensive scope information from the call tree analysis. The call tree represents execution flow including function calls, internal jumps, and constructor executions.
+
+Returns an object with the following properties:
+
+1. scopes: Map of all scopes in the execution trace. Each scope represents a function call or execution context.
+   - Keys: scopeId strings in dotted notation (e.g., "1" for top-level, "1.2" for nested, "1.2.3" for deeply nested)
+   - Values: Scope objects with:
+     * firstStep: VM trace index where scope begins
+     * lastStep: VM trace index where scope ends
+     * locals: Map of local variables (variable name -> {name, type, stackDepth, sourceLocation})
+     * isCreation: Boolean indicating if this is a contract creation context
+     * gasCost: Total gas consumed within this scope
+
+2. scopeStarts: Map linking VM trace indices to scope identifiers
+   - Keys: VM trace step indices
+   - Values: scopeId strings indicating which scope starts at each step
+
+3. functionDefinitionsByScope: Map of function definitions for each scope
+   - Keys: scopeId strings
+   - Values: Objects containing:
+     * functionDefinition: AST node with function metadata (name, parameters, returnParameters, kind, etc.)
+     * inputs: Array of input parameter names
+
+4. functionCallStack: Array of VM trace step indices where function calls occur, ordered chronologically
+
+Use this to understand the execution structure, navigate between scopes, analyze function calls, and inspect local variables at different execution levels.`;
+  inputSchema = {
+    type: 'object',
+    properties: {},
+    required: []
+  };
+
+  getPermissions(): string[] {
+    return ['debug:read'];
+  }
+
+  validate(_args: {}): boolean | string {
+    return true;
+  }
+
+  async execute(_args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const result = await plugin.call('debugger', 'getCallTreeScopes');
+
+      if (!result) {
+        return this.createErrorResult('Call tree scopes not available. Please start a debug session first.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        scopes: result.scopes,
+        scopeStarts: result.scopeStarts,
+        functionDefinitionsByScope: result.functionDefinitionsByScope,
+        functionCallStack: result.functionCallStack
+      });
+
+    } catch (error) {
+      return this.createErrorResult(`Failed to get call tree scopes: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create debugging tool definitions
  */
 export function createDebuggingTools(): RemixToolDefinition[] {
@@ -868,6 +961,14 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:control'],
       handler: new JumpToHandler()
+    },
+    {
+      name: 'get_call_tree_scopes',
+      description: new GetCallTreeScopesHandler().description,
+      inputSchema: new GetCallTreeScopesHandler().inputSchema,
+      category: ToolCategory.DEBUGGING,
+      permissions: ['debug:read'],
+      handler: new GetCallTreeScopesHandler()
     }
   ];
 }

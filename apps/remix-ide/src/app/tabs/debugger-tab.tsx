@@ -260,4 +260,20 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
     if (!this.debuggerBackend) return null
     return this.debuggerBackend.step_manager.jumpTo(step)
   }
+
+  /**
+   * Retrieves all scope information from the call tree analysis.
+   * Returns comprehensive data about execution scopes, function calls, and local variables.
+   *
+   * @returns {Object|null} Object containing:
+   *   - scopes: Map of scopeIds to scope objects {firstStep, lastStep, locals, isCreation, gasCost}
+   *   - scopeStarts: Map of VM trace indices to scopeIds
+   *   - functionDefinitionsByScope: Map of scopeIds to function definitions
+   *   - functionCallStack: Array of VM trace step indices where function calls occur
+   *   Returns null if debugger backend is not initialized
+   */
+  getCallTreeScopes () {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.debugger.callTree.getScopes()
+  }
 }
