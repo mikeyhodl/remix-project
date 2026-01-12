@@ -36,6 +36,7 @@ const profile = {
 
 export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
   constructor () {
+    // @ts-ignore
     super(profile)
     this.el = document.createElement('div')
     this.el.setAttribute('id', 'debugView')

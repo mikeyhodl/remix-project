@@ -1,4 +1,4 @@
-import { init , traceHelper, TransactionDebugger as Debugger } from '@remix-project/remix-debug'
+import { init , traceHelper, TransactionDebugger as Debugger, OffsetToLineColumnConverterFn } from '@remix-project/remix-debug'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import { lineText } from '@remix-ui/editor'
 import { util } from '@remix-project/remix-lib'
@@ -7,8 +7,9 @@ const { toHexPaddedString } = util
 
 export const DebuggerApiMixin = (Base) => class extends Base {
 
+  offsetToLineColumnConverter: OffsetToLineColumnConverterFn
   initialWeb3: BrowserProvider
-  debuggerBackend
+  debuggerBackend: Debugger
   web3Provider: any
 
   initDebuggerApi () {
@@ -166,7 +167,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     else this._web3 = this.initialWeb3
     init.extendProvider(this._web3)
     if (this.onDebugRequestedListener) {
-      this.onDebugRequestedListener(hash, this._web3).then((debuggerBackend) => {
+      this.onDebugRequestedListener(hash, this._web3).then((debuggerBackend: Debugger) => {
         this.debuggerBackend = debuggerBackend
       })
     }

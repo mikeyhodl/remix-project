@@ -132,10 +132,9 @@ export class Ethdebugger {
    *
    * @param {String} address - Contract address
    * @param {Number} instIndex - Instruction index in the bytecode
-   * @param {Function} callback - Optional callback function (deprecated parameter, not used)
    * @returns {Promise<Object>} Source location object with file, start, and length information
    */
-  async sourceLocationFromInstructionIndex (address, instIndex, callback) {
+  async sourceLocationFromInstructionIndex (address, instIndex) {
     const compilationResult = await this.compilationResult(address)
     return this.callTree.sourceLocationTracker.getSourceLocationFromInstructionIndex(address, instIndex, compilationResult.data.contracts)
   }

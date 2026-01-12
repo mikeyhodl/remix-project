@@ -5,15 +5,18 @@ import { contractCreationToken } from '../trace/traceHelper'
 import { BreakpointManager } from '../code/breakpointManager'
 import { DebuggerStepManager } from './stepManager'
 import { VmDebuggerLogic } from './VmDebugger'
+import { OffsetToLineColumnConverterFn } from '../types'
+import type { CompilerAbstract } from '@remix-project/remix-solidity'
+
 
 export class Debugger {
-  event
-  offsetToLineColumnConverter
-  compilationResult
-  debugger
-  breakPointManager
-  step_manager // eslint-disable-line camelcase
-  vmDebuggerLogic
+  event: EventManager
+  offsetToLineColumnConverter: OffsetToLineColumnConverterFn
+  compilationResult: (contractAddress: string) => Promise<CompilerAbstract>
+  debugger: Ethdebugger
+  breakPointManager: BreakpointManager
+  step_manager: DebuggerStepManager // eslint-disable-line camelcase
+  vmDebuggerLogic: VmDebuggerLogic
   currentFile = -1
   currentLine = -1
 
@@ -161,7 +164,7 @@ export class Debugger {
 
     this.step_manager.event.register('stepChanged', this, (stepIndex) => {
       if (typeof stepIndex !== 'number' || stepIndex >= this.step_manager.traceLength) {
-        return this.event.trigger('endDebug')
+        return this.event.trigger('endDebug', {})
       }
 
       this.debugger.codeManager.resolveStep(stepIndex, tx)
@@ -177,6 +180,6 @@ export class Debugger {
 
   unload () {
     this.debugger.unLoad()
-    this.event.trigger('debuggerUnloaded')
+    this.event.trigger('debuggerUnloaded', {})
   }
 }
