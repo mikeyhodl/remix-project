@@ -197,4 +197,8 @@ export class Ethdebugger {
     }
     this.storageResolver = new StorageResolver({ web3: this.traceManager.web3 })
   }
+
+  getTrace () {
+    return this.traceManager?.trace
+  }
 }

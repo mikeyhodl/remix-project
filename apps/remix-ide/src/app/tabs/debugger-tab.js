@@ -63,6 +63,11 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
     }
   }
 
+  async getTrace () {
+    if (!this.debuggerBackend) return null
+    return await this.debuggerBackend.debugger.getTrace()
+  }
+
   async decodeLocalVariable (variableId) {
     if (!this.debuggerBackend) return null
     return await this.debuggerBackend.debugger.decodeLocalVariableByIdAtCurrentStep(this.debuggerBackend.step_manager.currentStepIndex, variableId)
