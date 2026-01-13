@@ -132,9 +132,10 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
       if (block.baseFeePerGas) {
         blockContext['basefee'] = BigInt(block.baseFeePerGas).toString(10) + ` Wei (${block.baseFeePerGas})`
       }
+      const data = tx.input || tx.data
       const msg = {
         'sender': tx.from,
-        'sig': tx.input.substring(0, 10),
+        'sig': data?.substring(0, 10),
         'value': tx.value + ' Wei'
       }
 
