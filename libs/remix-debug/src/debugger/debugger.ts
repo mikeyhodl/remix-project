@@ -8,7 +8,6 @@ import { VmDebuggerLogic } from './VmDebugger'
 import { OffsetToLineColumnConverterFn } from '../types'
 import type { CompilerAbstract } from '@remix-project/remix-solidity'
 
-
 export class Debugger {
   event: EventManager
   offsetToLineColumnConverter: OffsetToLineColumnConverterFn
@@ -65,7 +64,7 @@ export class Debugger {
     })
   }
 
-  async getValidSourceLocationVMTraceIndexFromCache (index: number) { 
+  async getValidSourceLocationVMTraceIndexFromCache (index: number) {
     const address = this.debugger.traceManager.getCurrentCalledAddressAt(index)
     const compilationResultForAddress = await this.compilationResult(address)
     if (!compilationResultForAddress) return null

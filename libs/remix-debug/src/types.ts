@@ -49,9 +49,9 @@ export interface StructLog {
   memory: string[];
   /** An error message if the execution failed at this step, otherwise undefined. */
   error?: string;
-  // Note: 'storage' is usually omitted in public trace formats for performance, 
+  // Note: 'storage' is usually omitted in public trace formats for performance,
   // but can be included if tracing options explicitly request it.
-  // storage?: Record<string, string>; 
+  // storage?: Record<string, string>;
 }
 
 /**
