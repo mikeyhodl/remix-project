@@ -11,6 +11,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
   initialWeb3: BrowserProvider
   debuggerBackend: Debugger
   web3Provider: any
+  currentSourceLocation: any
 
   initDebuggerApi () {
     const self = this
@@ -47,8 +48,11 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     await this.call('editor', 'discardLineTexts' as any)
   }
 
+  getCurrentSourceLocation () {
+    return this.currentSourceLocation
+  }
+
   async highlight (lineColumnPos, path, rawLocation, stepDetail, lineGasCost, origin?) {
-    console.log('highlight', { lineColumnPos, path, rawLocation, stepDetail, lineGasCost, origin })
     // Pass the main contract being debugged as the origin for proper resolution
     await this.call('editor', 'highlight', lineColumnPos, path, '', { focus: true, origin })
     const label = `${stepDetail.op} costs ${stepDetail.gasCost} gas - this line costs ${lineGasCost} gas - ${stepDetail.gas} gas left`
@@ -65,6 +69,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       ],
     }
     await this.call('editor', 'addLineText' as any, linetext, path)
+    this.currentSourceLocation = { lineColumnPos, path, stepDetail, lineGasCost, origin }
   }
 
   async getFile (path) {
@@ -178,6 +183,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     this.on('editor', 'breakpointAdded', (fileName, row) => { if (this.onBreakpointAddedListener) this.onBreakpointAddedListener(fileName, row) })
     this.on('editor', 'contentChanged', () => { if (this.onEditorContentChangedListener) this.onEditorContentChangedListener() })
     this.on('network', 'providerChanged', (provider) => { if (this.onEnvChangedListener) this.onEnvChangedListener(provider) })
+    this.currentSourceLocation = null
   }
 
   onDeactivation () {
@@ -185,11 +191,13 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     this.off('editor', 'breakpointCleared')
     this.off('editor', 'breakpointAdded')
     this.off('editor', 'contentChanged')
+    this.currentSourceLocation = null
   }
 
   showMessage (title: string, message: string) {}
 
   async onStartDebugging (debuggerBackend: any) {
+    this.currentSourceLocation = null
     const pinnedPlugin = await this.call('rightSidePanel', 'currentFocus')
 
     if (pinnedPlugin === 'debugger') {
@@ -198,10 +206,11 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       this.call('layout', 'maximiseSidePanel')
     }
     this.emit('startDebugging')
-    this.debuggerBackend = debuggerBackend
+    this.debuggerBackend = debuggerBackend    
   }
 
   async onStopDebugging () {
+    this.currentSourceLocation = null
     const pinnedPlugin = await this.call('rightSidePanel', 'currentFocus')
 
     if (pinnedPlugin === 'debugger') {
@@ -210,7 +219,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       this.call('layout', 'resetSidePanel')
     }
     this.emit('stopDebugging')
-    this.debuggerBackend = null
+    this.debuggerBackend = null    
   }
 }
 

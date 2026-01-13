@@ -24,7 +24,8 @@ const profile = {
     'storageViewAt',
     'jumpTo',
     'getCallTreeScopes',
-    'getAllDebugCache'
+    'getAllDebugCache',
+    'getCurrentSourceLocation'
   ],
   events: [],
   icon: 'assets/img/debuggerLogo.webp',

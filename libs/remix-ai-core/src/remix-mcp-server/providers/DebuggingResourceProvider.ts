@@ -51,6 +51,21 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
         )
       );
 
+      // Add trace cache resource
+      resources.push(
+        this.createResource(
+          'debug://current-source-location',
+          'Source Location',
+          'Current source code highlighted in the editor',
+          'application/json',
+          {
+            category: ResourceCategory.DEBUG_SESSIONS,
+            tags: ['debugging', 'source', 'code'],
+            priority: 8
+          }
+        )
+      );
+
     } catch (error) {
       console.warn('Failed to get debugging resources:', error);
     }
@@ -67,11 +82,40 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       return this.getTraceCache(plugin);
     }
 
+    if (uri === 'debug://current-source-location') {
+      return this.getCurrentSourceLocation(plugin);
+    }
+
     throw new Error(`Unsupported debugging resource URI: ${uri}`);
   }
 
   canHandle(uri: string): boolean {
     return uri.startsWith('debug://');
+  }
+
+  private async getCurrentSourceLocation(plugin: Plugin): Promise<IMCPResourceContent> {
+    try {
+      const result = await plugin.call('debugger', 'getCurrentSourceLocation');
+      console.log('getCurrentSourceLocation', result)
+      if (!result) {
+        return this.createTextContent(
+          'debug://current-source-location',
+          'current source location is not available. There is no debug session going on.'
+        );
+      }
+
+      return this.createJsonContent('debug://current-source-location', {
+        success: true,
+        description: 'Current source code highlighted in the editor',
+        result
+      });
+
+    } catch (error) {
+      return this.createTextContent(
+        'debug://current-source-location',
+        `Error getting current source location: ${error.message}`
+      );
+    }
   }
 
   callTreeScopesDesc = `
@@ -131,7 +175,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
   private async getCallTreeScopes(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const result = await plugin.call('debugger', 'getCallTreeScopes');
-
+      console.log('getCallTreeScopes', result)
       if (!result) {
         return this.createTextContent(
           'debug://call-tree-scopes',
@@ -228,7 +272,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
   private async getTraceCache(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const result = await plugin.call('debugger', 'getAllDebugCache');
-
+      console.log('getTraceCache', result)
       if (!result) {
         return this.createTextContent(
           'debug://trace-cache',
