@@ -199,6 +199,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     }
     this.emit('startDebugging')
     this.debuggerBackend = debuggerBackend
+    this.initiateDebugChat()
   }
 
   async onStopDebugging () {
@@ -211,6 +212,19 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     }
     this.emit('stopDebugging')
     this.debuggerBackend = null
+  }
+
+  async initiateDebugChat() {
+    // Show right side panel if it's hidden
+    const isPanelHidden = await this.call('rightSidePanel', 'isPanelHidden')
+    if (isPanelHidden) {
+      await this.call('rightSidePanel', 'togglePanel')
+    }
+    await this.call('menuicons', 'select', 'remixaiassistant')
+
+    const message = `We currently entered a debug session, query the get_all_debug_cache and get_call_tree_scopes tools and give me more information about it.
+    If the execution fails, tell me what's the reason and point me to the specific place in the code (get_valid_source_location_from_vm_trace_index).`
+    this.call('remixaiassistant', 'chatPipe', message)
   }
 }
 
