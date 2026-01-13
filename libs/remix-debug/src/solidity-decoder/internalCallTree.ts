@@ -4,7 +4,7 @@ import { util } from '@remix-project/remix-lib'
 import { SourceLocationTracker } from '../source/sourceLocationTracker'
 import { EventManager } from '../eventManager'
 import { parseType } from './decodeInfo'
-import { isContractCreation, isCallInstruction, isCreateInstruction, isJumpDestInstruction } from '../trace/traceHelper'
+import { isContractCreation, isCallInstruction, isCreateInstruction, isRevertInstruction } from '../trace/traceHelper'
 import { extractLocationFromAstVariable } from './types/util'
 
 /**
@@ -461,6 +461,7 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
     const isCreateInstrn = isCreateInstruction(stepDetail)
     // we are checking if we are jumping in a new CALL or in an internal function
 
+    const isRevert = isRevertInstruction(stepDetail)
     const constructorExecutionStarts = tree.pendingConstructorExecutionAt > -1 && tree.pendingConstructorExecutionAt < validSourceLocation.start
     if (functionDefinition && functionDefinition.kind === 'constructor' && tree.pendingConstructorExecutionAt === -1 && !tree.constructorsStartExecution[functionDefinition.id]) {
       tree.pendingConstructorExecutionAt = validSourceLocation.start
@@ -474,7 +475,7 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
       try {
         const newScopeId = scopeId === '' ? subScope.toString() : scopeId + '.' + subScope
         tree.scopeStarts[step] = newScopeId
-        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0 }
+        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0, startLocation: lineColumnPos }
         // for the ctor we are at the start of its trace, we have to replay this step in order to catch all the locals:
         const nextStep = constructorExecutionStarts ? step : step + 1
         if (constructorExecutionStarts) {
@@ -494,9 +495,11 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
       } catch (e) {
         return { outStep: step, error: 'InternalCallTree - ' + e.message }
       }
-    } else if (callDepthChange(step, tree.traceManager.trace) || (sourceLocation.jump === 'o' && functionDefinition)) {
+    } else if (callDepthChange(step, tree.traceManager.trace) || (sourceLocation.jump === 'o' && functionDefinition) || isRevert) {
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
       tree.scopes[scopeId].lastStep = step
+      tree.scopes[scopeId].reverted = isRevert
+      tree.scopes[scopeId].endLocation = lineColumnPos
       return { outStep: step + 1 }
     } else {
       // if not, we are in the current scope.
