@@ -315,18 +315,13 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
   }
 
   validate(args: { address: string; stepIndex: number }): boolean | string {
-    const required = this.validateRequired(args, ['address', 'stepIndex']);
+    const required = this.validateRequired(args, ['stepIndex']);
     if (required !== true) return required;
 
     const types = this.validateTypes(args, {
-      address: 'string',
       stepIndex: 'number',
     });
     if (types !== true) return types;
-
-    if (!args.address.match(/^0x[a-fA-F0-9]{40}$/)) {
-      return 'Invalid contract address format';
-    }
 
     return true;
   }
@@ -1012,22 +1007,6 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:control'],
       handler: new JumpToHandler()
-    },
-    {
-      name: 'get_call_tree_scopes',
-      description: new GetCallTreeScopesHandler().description,
-      inputSchema: new GetCallTreeScopesHandler().inputSchema,
-      category: ToolCategory.DEBUGGING,
-      permissions: ['debug:read'],
-      handler: new GetCallTreeScopesHandler()
-    },
-    {
-      name: 'get_all_debug_cache',
-      description: new GetAllDebugCacheHandler().description,
-      inputSchema: new GetAllDebugCacheHandler().inputSchema,
-      category: ToolCategory.DEBUGGING,
-      permissions: ['debug:read'],
-      handler: new GetAllDebugCacheHandler()
     }
   ];
 }
