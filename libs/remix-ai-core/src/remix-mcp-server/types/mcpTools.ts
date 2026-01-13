@@ -175,7 +175,6 @@ export interface StartDebuggerArgs {
   txHash: string;
 }
 
-
 export interface InspectVariableArgs {
   variable: string;
   scope?: string;

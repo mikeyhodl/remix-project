@@ -270,11 +270,11 @@ export class GlobalContextHandler extends BaseToolHandler {
     return ['debug:read'];
   }
 
-  validate(args: {}): boolean | string {
+  validate(args: any): boolean | string {
     return true;
   }
 
-  async execute(args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const result = await plugin.call('debugger', 'globalContext');
 
@@ -345,7 +345,6 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
     }
   }
 }
-
 
 /**
  * Extract Locals At Handler
@@ -790,11 +789,11 @@ Use this to analyze transaction execution patterns, track state changes, debug c
     return ['debug:read'];
   }
 
-  validate(_args: {}): boolean | string {
+  validate(args: any): boolean | string {
     return true;
   }
 
-  async execute(_args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const result = await plugin.call('debugger', 'getAllDebugCache');
 
@@ -881,11 +880,11 @@ Use this to understand the execution structure, navigate between scopes, analyze
     return ['debug:read'];
   }
 
-  validate(_args: {}): boolean | string {
+  validate(args: any): boolean | string {
     return true;
   }
 
-  async execute(_args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const result = await plugin.call('debugger', 'getCallTreeScopes');
       console.log('GetCallTreeScopesHandler result:', result);

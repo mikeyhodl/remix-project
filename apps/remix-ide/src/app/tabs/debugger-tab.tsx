@@ -5,7 +5,8 @@ import * as packageJson from '../../../../../package.json'
 import React from 'react' // eslint-disable-line
 import { bleach } from '@remix-ui/helper'
 import { compilationFinishedToastMsg, compilingToastMsg, notFoundToastMsg, sourceVerificationNotAvailableToastMsg } from '@remix-ui/helper'
-const css = require('./styles/debugger-tab-styles')
+
+const css = require('./styles/debugger-tab-styles') // eslint-disable-line
 
 const profile = {
   name: 'debugger',
