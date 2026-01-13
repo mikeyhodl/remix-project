@@ -13,6 +13,7 @@ const profile = {
   displayName: 'Debugger',
   methods: [
     'debug',
+    'getTrace',
     'decodeLocalVariable',
     'decodeStateVariable',
     'globalContext',
