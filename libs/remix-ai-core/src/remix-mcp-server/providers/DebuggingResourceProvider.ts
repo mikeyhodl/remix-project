@@ -146,32 +146,6 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
    * 4. functionCallStack: Array of VM trace step indices where function calls occur, ordered chronologically
    */
   `
-  /**
-   * Retrieves comprehensive scope information from the call tree analysis.
-   *
-   * Returns an object with the following properties:
-   *
-   * 1. scopes: Map of all scopes in the execution trace
-   *    - Keys: scopeId strings in dotted notation (e.g., "1", "1.2", "1.2.3" for nested scopes)
-   *    - Values: Scope objects with:
-   *      * firstStep: VM trace index where scope begins
-   *      * lastStep: VM trace index where scope ends
-   *      * locals: Map of local variables (variable name -> {name, type, stackDepth, sourceLocation})
-   *      * isCreation: Boolean indicating if this is a contract creation context
-   *      * gasCost: Total gas consumed within this scope
-   *
-   * 2. scopeStarts: Map linking VM trace indices to scope identifiers
-   *    - Keys: VM trace step indices
-   *    - Values: scopeId strings indicating which scope starts at each step
-   *
-   * 3. functionDefinitionsByScope: Map of function definitions for each scope
-   *    - Keys: scopeId strings
-   *    - Values: Objects containing:
-   *      * functionDefinition: AST node with function metadata (name, parameters, returnParameters, etc.)
-   *      * inputs: Array of input parameter names
-   *
-   * 4. functionCallStack: Array of VM trace step indices where function calls occur, ordered chronologically
-   */
   private async getCallTreeScopes(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const result = await plugin.call('debugger', 'getCallTreeScopes');
@@ -238,37 +212,6 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
    *     - Tracks all storage modifications with context
    */
   `
-  /**
-   * Retrieves all trace cache data accumulated during transaction execution debugging.
-   *
-   * Returns an object with the following properties:
-   *
-   * 1. returnValues: Object mapping VM trace step indices to return values from RETURN operations
-   *
-   * 2. stopIndexes: Array of STOP operation occurrences [{index: number, address: string}]
-   *
-   * 3. outofgasIndexes: Array of out-of-gas occurrences [{index: number, address: string}]
-   *
-   * 4. callsTree: Root node of nested call tree representing execution flow
-   *    - Structure: {call: {op, address, callStack, calls, start, return?, reverted?}}
-   *    - Captures all CALL, DELEGATECALL, CREATE operations and their nesting
-   *
-   * 5. callsData: Object mapping VM trace indices to calldata at each point
-   *
-   * 6. contractCreation: Object mapping creation tokens to deployed contract bytecode (hex format)
-   *
-   * 7. addresses: Array of all contract addresses encountered during execution (chronological, may have duplicates)
-   *
-   * 8. callDataChanges: Array of VM trace indices where calldata changed
-   *
-   * 9. memoryChanges: Array of VM trace indices where EVM memory changed (MSTORE, MLOAD operations)
-   *
-   * 10. storageChanges: Array of VM trace indices where storage was modified (SSTORE operations)
-   *
-   * 11. sstore: Object mapping VM trace indices to SSTORE operation details
-   *     - Each entry: {address, key, value, hashedKey, contextCall}
-   *     - Tracks all storage modifications with context
-   */
   private async getTraceCache(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const result = await plugin.call('debugger', 'getAllDebugCache');
