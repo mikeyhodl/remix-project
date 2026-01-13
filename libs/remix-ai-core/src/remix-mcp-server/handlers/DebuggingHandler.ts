@@ -302,17 +302,12 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
   inputSchema = {
     type: 'object',
     properties: {
-      address: {
-        type: 'string',
-        description: 'Contract address',
-        pattern: '^0x[a-fA-F0-9]{40}$'
-      },
       stepIndex: {
         type: 'number',
         description: 'VM trace step index'
       }
     },
-    required: ['address', 'stepIndex']
+    required: ['stepIndex']
   };
 
   getPermissions(): string[] {
@@ -338,7 +333,7 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
 
   async execute(args: { address: string; stepIndex: number }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const result = await plugin.call('debugger', 'getValidSourceLocationFromVMTraceIndex', args.address, args.stepIndex);
+      const result = await plugin.call('debugger', 'getValidSourceLocationFromVMTraceIndex', args.stepIndex);
 
       if (!result) {
         return this.createErrorResult('Source location not available. Ensure a debug session is active.');
@@ -346,7 +341,6 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
 
       return this.createSuccessResult({
         success: true,
-        address: args.address,
         stepIndex: args.stepIndex,
         sourceLocation: result
       });
@@ -357,69 +351,6 @@ export class GetValidSourceLocationFromVMTraceIndexHandler extends BaseToolHandl
   }
 }
 
-/**
- * Source Location From Instruction Index Handler
- */
-export class SourceLocationFromInstructionIndexHandler extends BaseToolHandler {
-  name = 'source_location_from_instruction_index';
-  description = 'Get the source location from an instruction index (bytecode position)';
-  inputSchema = {
-    type: 'object',
-    properties: {
-      address: {
-        type: 'string',
-        description: 'Contract address',
-        pattern: '^0x[a-fA-F0-9]{40}$'
-      },
-      instIndex: {
-        type: 'number',
-        description: 'Instruction index in the bytecode'
-      }
-    },
-    required: ['address', 'instIndex']
-  };
-
-  getPermissions(): string[] {
-    return ['debug:read'];
-  }
-
-  validate(args: { address: string; instIndex: number }): boolean | string {
-    const required = this.validateRequired(args, ['address', 'instIndex']);
-    if (required !== true) return required;
-
-    const types = this.validateTypes(args, {
-      address: 'string',
-      instIndex: 'number',
-    });
-    if (types !== true) return types;
-
-    if (!args.address.match(/^0x[a-fA-F0-9]{40}$/)) {
-      return 'Invalid contract address format';
-    }
-
-    return true;
-  }
-
-  async execute(args: { address: string; instIndex: number }, plugin: Plugin): Promise<IMCPToolResult> {
-    try {
-      const result = await plugin.call('debugger', 'sourceLocationFromInstructionIndex', args.address, args.instIndex);
-
-      if (!result) {
-        return this.createErrorResult('Source location not available. Ensure a debug session is active.');
-      }
-
-      return this.createSuccessResult({
-        success: true,
-        address: args.address,
-        instIndex: args.instIndex,
-        sourceLocation: result
-      });
-
-    } catch (error) {
-      return this.createErrorResult(`Failed to get source location from instruction index: ${error.message}`);
-    }
-  }
-}
 
 /**
  * Extract Locals At Handler
@@ -1033,14 +964,6 @@ export function createDebuggingTools(): RemixToolDefinition[] {
       category: ToolCategory.DEBUGGING,
       permissions: ['debug:read'],
       handler: new GetValidSourceLocationFromVMTraceIndexHandler()
-    },
-    {
-      name: 'source_location_from_instruction_index',
-      description: 'Get the source location from an instruction index (bytecode position)',
-      inputSchema: new SourceLocationFromInstructionIndexHandler().inputSchema,
-      category: ToolCategory.DEBUGGING,
-      permissions: ['debug:read'],
-      handler: new SourceLocationFromInstructionIndexHandler()
     },
     {
       name: 'extract_locals_at',

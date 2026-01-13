@@ -65,6 +65,14 @@ export class Debugger {
     })
   }
 
+  async getValidSourceLocationVMTraceIndexFromCache (index: number) { 
+    const address = this.debugger.traceManager.getCurrentCalledAddressAt(index)
+    const compilationResultForAddress = await this.compilationResult(address)
+    if (!compilationResultForAddress) return null
+    const location = await this.debugger.callTree.getValidSourceLocationFromVMTraceIndexFromCache(address, index, compilationResultForAddress.data.contracts)
+    return location
+  }
+
   async registerAndHighlightCodeItem (index) {
     // register selected code item, highlight the corresponding source location
     // this.debugger.traceManager.getCurrentCalledAddressAt(index, async (error, address) => {

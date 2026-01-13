@@ -158,13 +158,12 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
    * Retrieves a valid source location from a VM trace step index.
    * Similar to sourceLocationFromVMTraceIndex but ensures the location is valid (non-empty).
    *
-   * @param {string} address - Contract address
    * @param {number} stepIndex - VM trace step index
    * @returns {Promise<any|null>} Valid source location object with file, start, and length information, or null if debugger backend is not initialized
    */
-  async getValidSourceLocationFromVMTraceIndex (address: string, stepIndex: number) {
+  async getValidSourceLocationFromVMTraceIndex (stepIndex: number) {
     if (!this.debuggerBackend) return null
-    return await this.debuggerBackend.debugger.getValidSourceLocationFromVMTraceIndex(address, stepIndex)
+    return await this.debuggerBackend.getValidSourceLocationVMTraceIndexFromCache(stepIndex)
   }
 
   /**
