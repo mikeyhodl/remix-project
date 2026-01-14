@@ -499,12 +499,12 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
       tree.scopes[scopeId].lastStep = step
       if (isRevert) {
-        tree.scopes[scopeId].reverted = {  
+        tree.scopes[scopeId].reverted = {
           step: stepDetail,
           line: lineColumnPos.start.line + 1
         }
       }
-      
+
       tree.scopes[scopeId].endExecution = lineColumnPos.end.line + 1
       return { outStep: step + 1 }
     } else {
