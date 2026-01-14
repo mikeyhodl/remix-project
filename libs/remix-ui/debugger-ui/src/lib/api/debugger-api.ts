@@ -69,7 +69,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       ],
     }
     await this.call('editor', 'addLineText' as any, linetext, path)
-    this.currentSourceLocation = { lineColumnPos, path, stepDetail, lineGasCost, origin }
+    this.currentSourceLocation = { line: lineColumnPos.start.line + 1, path, stepDetail, lineGasCost, origin }
   }
 
   async getFile (path) {

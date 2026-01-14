@@ -54,13 +54,13 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       // Add trace cache resource
       resources.push(
         this.createResource(
-          'debug://current-source-location',
-          'Source Location',
-          'Current source code highlighted in the editor',
+          'debug://current-debugging-step',
+          'debugging step',
+          'Debugging step that the user is currently inspecting',
           'application/json',
           {
             category: ResourceCategory.DEBUG_SESSIONS,
-            tags: ['debugging', 'source', 'code'],
+            tags: ['debugging step', 'code'],
             priority: 8
           }
         )
@@ -82,7 +82,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       return this.getTraceCache(plugin);
     }
 
-    if (uri === 'debug://current-source-location') {
+    if (uri === 'debug://current-debugging-step') {
       return this.getCurrentSourceLocation(plugin);
     }
 
@@ -99,12 +99,12 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       console.log('getCurrentSourceLocation', result)
       if (!result) {
         return this.createTextContent(
-          'debug://current-source-location',
+          'debug://current-debugging-step',
           'current source location is not available. There is no debug session going on.'
         );
       }
 
-      return this.createJsonContent('debug://current-source-location', {
+      return this.createJsonContent('debug://current-debugging-step', {
         success: true,
         description: 'Current source code highlighted in the editor',
         result
@@ -112,7 +112,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
 
     } catch (error) {
       return this.createTextContent(
-        'debug://current-source-location',
+        'debug://current-debugging-step',
         `Error getting current source location: ${error.message}`
       );
     }
