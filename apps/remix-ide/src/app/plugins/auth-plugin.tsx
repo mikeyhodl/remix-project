@@ -632,10 +632,10 @@ export class AuthPlugin extends Plugin {
 
       // Verify token with the API
       const response = await this.ssoApi.verify()
-      
+
       if (response.ok && response.data?.authenticated) {
         console.log('[AuthPlugin] Token verified successfully')
-        
+
         // Update user data from API response if available
         let user = response.data.user
         if (!user) {
@@ -655,10 +655,10 @@ export class AuthPlugin extends Plugin {
             user,
             token
           })
-          
+
           // Auto-refresh credits
           this.refreshCredits().catch(console.error)
-          
+
           // Schedule proactive token refresh
           this.scheduleRefresh(token)
         }
