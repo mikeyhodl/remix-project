@@ -475,7 +475,8 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
       try {
         const newScopeId = scopeId === '' ? subScope.toString() : scopeId + '.' + subScope
         tree.scopeStarts[step] = newScopeId
-        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0, startExecution: lineColumnPos.start.line + 1 }
+        const startExecution = lineColumnPos && lineColumnPos.start ? lineColumnPos.start.line + 1 : undefined
+        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0, startExecution }
         // for the ctor we are at the start of its trace, we have to replay this step in order to catch all the locals:
         const nextStep = constructorExecutionStarts ? step : step + 1
         if (constructorExecutionStarts) {
@@ -499,13 +500,14 @@ async function buildTree (tree, step, scopeId, isCreation, functionDefinition?, 
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
       tree.scopes[scopeId].lastStep = step
       if (isRevert) {
+        const revertLine = lineColumnPos && lineColumnPos.start ? lineColumnPos.start.line + 1 : undefined
         tree.scopes[scopeId].reverted = {
           step: stepDetail,
-          line: lineColumnPos.start.line + 1
+          line: revertLine
         }
       }
 
-      tree.scopes[scopeId].endExecution = lineColumnPos.end.line + 1
+      tree.scopes[scopeId].endExecution = lineColumnPos && lineColumnPos.end ? lineColumnPos.end.line + 1 : undefined
       return { outStep: step + 1 }
     } else {
       // if not, we are in the current scope.
