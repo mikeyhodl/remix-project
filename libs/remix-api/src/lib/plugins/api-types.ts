@@ -154,3 +154,99 @@ export interface MultiFeatureCheckResponse {
 export interface CategoryFeaturesResponse {
   features: Permission[]
 }
+
+// ==================== Billing ====================
+
+/**
+ * Credit package - one-time purchasable bundle of credits
+ */
+export interface CreditPackage {
+  id: string
+  name: string
+  description: string
+  credits: number
+  priceUsd: number  // Price in cents (500 = $5.00)
+  popular?: boolean
+  savings?: string | null
+  paddlePriceId?: string | null
+  source?: 'database' | 'config' | 'provider'
+}
+
+/**
+ * Subscription plan - recurring monthly credit allocation
+ */
+export interface SubscriptionPlan {
+  id: string
+  name: string
+  description: string
+  creditsPerMonth: number
+  priceUsd: number  // Price in cents
+  features: string[]
+  popular?: boolean
+  paddlePriceId?: string | null
+  source?: 'database' | 'config' | 'provider'
+}
+
+/**
+ * User's active subscription
+ */
+export interface UserSubscription {
+  id: string
+  planId: string
+  status: 'active' | 'paused' | 'canceled' | 'past_due'
+  creditsPerMonth: number
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  cancelAtPeriodEnd: boolean
+}
+
+/**
+ * Response from credit packages endpoint
+ */
+export interface CreditPackagesResponse {
+  packages: CreditPackage[]
+}
+
+/**
+ * Response from subscription plans endpoint
+ */
+export interface SubscriptionPlansResponse {
+  plans: SubscriptionPlan[]
+}
+
+/**
+ * Response from user subscription endpoint
+ */
+export interface UserSubscriptionResponse {
+  subscription: UserSubscription | null
+}
+
+/**
+ * Request to purchase credits
+ */
+export interface PurchaseCreditsRequest {
+  packageId: string
+}
+
+/**
+ * Response from purchase credits endpoint
+ */
+export interface PurchaseCreditsResponse {
+  checkoutUrl: string
+  transactionId: string
+}
+
+/**
+ * Request to subscribe to a plan
+ */
+export interface SubscribeRequest {
+  planId: string
+}
+
+/**
+ * Response from subscribe endpoint
+ */
+export interface SubscribeResponse {
+  checkoutUrl: string
+  transactionId: string
+}

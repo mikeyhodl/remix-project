@@ -1,0 +1,421 @@
+import React, { useState, useEffect, useCallback } from 'react'
+import { BillingManagerProps, CreditPackage, SubscriptionPlan, UserSubscription, Credits } from './types'
+import { BillingApiService, ApiClient } from '@remix-api'
+import { endpointUrls } from '@remix-endpoints-helper'
+import { CreditPackagesView } from './components/credit-packages-view'
+import { SubscriptionPlansView } from './components/subscription-plans-view'
+import { CurrentSubscription } from './components/current-subscription'
+import { initPaddle, getPaddle, openCheckout, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
+import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
+
+type TabType = 'credits' | 'subscription'
+
+/**
+ * Main Billing Manager component
+ * Handles credit packages, subscription plans, and Paddle checkout integration
+ */
+export const BillingManager: React.FC<BillingManagerProps> = ({
+  plugin,
+  paddleClientToken,
+  paddleEnvironment = 'sandbox',
+  onPurchaseComplete,
+  onSubscriptionChange
+}) => {
+  // Billing API client
+  const [billingApi] = useState(() => {
+    const client = new ApiClient(endpointUrls.billing)
+    // Set up token refresh callback
+    client.setTokenRefreshCallback(async () => {
+      const token = localStorage.getItem('remix_access_token')
+      return token
+    })
+    return new BillingApiService(client)
+  })
+
+  // UI State
+  const [activeTab, setActiveTab] = useState<TabType>('credits')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Credit packages state
+  const [packages, setPackages] = useState<CreditPackage[]>([])
+  const [packagesLoading, setPackagesLoading] = useState(true)
+  const [packagesError, setPackagesError] = useState<string | null>(null)
+
+  // Subscription plans state
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState<string | null>(null)
+
+  // User data state
+  const [credits, setCredits] = useState<Credits | null>(null)
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null)
+  const [userLoading, setUserLoading] = useState(true)
+
+  // Purchase state
+  const [purchasing, setPurchasing] = useState(false)
+  const [subscribing, setSubscribing] = useState(false)
+
+  // Paddle state
+  const [paddle, setPaddle] = useState<Paddle | null>(null)
+  const [paddleLoading, setPaddleLoading] = useState(false)
+  const [paddleError, setPaddleError] = useState<string | null>(null)
+
+  // Initialize Paddle
+  useEffect(() => {
+    if (!paddleClientToken) {
+      console.log('[BillingManager] No Paddle client token provided')
+      return
+    }
+
+    let mounted = true
+    setPaddleLoading(true)
+
+    initPaddle(paddleClientToken, paddleEnvironment)
+      .then((instance) => {
+        if (mounted) {
+          setPaddle(instance)
+          setPaddleError(null)
+        }
+      })
+      .catch((err) => {
+        if (mounted) {
+          setPaddleError(err.message || 'Failed to initialize payment system')
+          console.error('[BillingManager] Paddle init error:', err)
+        }
+      })
+      .finally(() => {
+        if (mounted) setPaddleLoading(false)
+      })
+
+    return () => { mounted = false }
+  }, [paddleClientToken, paddleEnvironment])
+
+  // Listen for Paddle checkout events
+  useEffect(() => {
+    const handlePaddleEvent = (event: PaddleEventData) => {
+      if (event.name === 'checkout.completed') {
+        console.log('[BillingManager] Checkout completed')
+        setPurchasing(false)
+        setSubscribing(false)
+        // Refresh user data
+        setTimeout(() => {
+          loadUserData()
+          onPurchaseComplete?.()
+          onSubscriptionChange?.()
+        }, 1500) // Give webhook time to process
+      } else if (event.name === 'checkout.closed') {
+        console.log('[BillingManager] Checkout closed')
+        setPurchasing(false)
+        setSubscribing(false)
+      }
+    }
+
+    onPaddleEvent(handlePaddleEvent)
+    return () => offPaddleEvent(handlePaddleEvent)
+  }, [onPurchaseComplete, onSubscriptionChange])
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await plugin?.call('auth', 'getUser')
+        setIsAuthenticated(!!user)
+        
+        // Set token for billing API
+        const token = localStorage.getItem('remix_access_token')
+        if (token) {
+          billingApi.setToken(token)
+        }
+      } catch (err) {
+        setIsAuthenticated(false)
+      }
+    }
+
+    checkAuth()
+
+    // Listen for auth changes
+    const handleAuthChange = (authState: { isAuthenticated: boolean }) => {
+      setIsAuthenticated(authState.isAuthenticated)
+      if (authState.isAuthenticated) {
+        const token = localStorage.getItem('remix_access_token')
+        if (token) billingApi.setToken(token)
+        loadUserData()
+      } else {
+        setCredits(null)
+        setSubscription(null)
+      }
+    }
+
+    try {
+      plugin?.on('auth', 'authStateChanged', handleAuthChange)
+    } catch {
+      // Ignore if plugin not available
+    }
+
+    return () => {
+      try {
+        plugin?.off('auth', 'authStateChanged')
+      } catch {
+        // Ignore
+      }
+    }
+  }, [plugin, billingApi])
+
+  // Load public data (packages and plans)
+  useEffect(() => {
+    loadPublicData()
+  }, [])
+
+  // Load user data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserData()
+    }
+  }, [isAuthenticated])
+
+  const loadPublicData = async () => {
+    // Load credit packages
+    setPackagesLoading(true)
+    try {
+      const response = await billingApi.getCreditPackages()
+      if (response.ok && response.data) {
+        setPackages(response.data.packages)
+        setPackagesError(null)
+      } else {
+        setPackagesError(response.error || 'Failed to load credit packages')
+      }
+    } catch (err) {
+      setPackagesError('Failed to load credit packages')
+    } finally {
+      setPackagesLoading(false)
+    }
+
+    // Load subscription plans
+    setPlansLoading(true)
+    try {
+      const response = await billingApi.getSubscriptionPlans()
+      if (response.ok && response.data) {
+        setPlans(response.data.plans)
+        setPlansError(null)
+      } else {
+        setPlansError(response.error || 'Failed to load subscription plans')
+      }
+    } catch (err) {
+      setPlansError('Failed to load subscription plans')
+    } finally {
+      setPlansLoading(false)
+    }
+  }
+
+  const loadUserData = useCallback(async () => {
+    if (!isAuthenticated) return
+
+    setUserLoading(true)
+    try {
+      // Load credits
+      const creditsResponse = await billingApi.getCredits()
+      if (creditsResponse.ok && creditsResponse.data) {
+        setCredits(creditsResponse.data)
+      }
+
+      // Load subscription
+      const subResponse = await billingApi.getSubscription()
+      if (subResponse.ok && subResponse.data) {
+        setSubscription(subResponse.data.subscription)
+      }
+    } catch (err) {
+      console.error('[BillingManager] Failed to load user data:', err)
+    } finally {
+      setUserLoading(false)
+    }
+  }, [isAuthenticated, billingApi])
+
+  const handlePurchaseCredits = async (packageId: string, priceId: string | null) => {
+    if (!isAuthenticated) {
+      // Prompt login
+      try {
+        await plugin?.call('auth', 'login', 'github')
+        return
+      } catch {
+        console.error('[BillingManager] Login failed')
+        return
+      }
+    }
+
+    if (!priceId) {
+      console.error('[BillingManager] No price ID for package:', packageId)
+      return
+    }
+
+    // Use Paddle directly if available
+    const paddleInstance = paddle || getPaddle()
+    if (paddleInstance) {
+      setPurchasing(true)
+      openCheckout(paddleInstance, priceId, {
+        settings: {
+          displayMode: 'overlay',
+          theme: 'light'
+        }
+      })
+    } else {
+      // Fallback to backend checkout URL
+      setPurchasing(true)
+      try {
+        const response = await billingApi.purchaseCredits(packageId)
+        if (response.ok && response.data?.checkoutUrl) {
+          window.open(response.data.checkoutUrl, '_blank')
+        } else {
+          console.error('[BillingManager] Failed to create checkout:', response.error)
+        }
+      } catch (err) {
+        console.error('[BillingManager] Purchase error:', err)
+      } finally {
+        setPurchasing(false)
+      }
+    }
+  }
+
+  const handleSubscribe = async (planId: string, priceId: string | null) => {
+    if (!isAuthenticated) {
+      try {
+        await plugin?.call('auth', 'login', 'github')
+        return
+      } catch {
+        console.error('[BillingManager] Login failed')
+        return
+      }
+    }
+
+    if (!priceId) {
+      console.error('[BillingManager] No price ID for plan:', planId)
+      return
+    }
+
+    const paddleInstance = paddle || getPaddle()
+    if (paddleInstance) {
+      setSubscribing(true)
+      openCheckout(paddleInstance, priceId, {
+        settings: {
+          displayMode: 'overlay',
+          theme: 'light'
+        }
+      })
+    } else {
+      setSubscribing(true)
+      try {
+        const response = await billingApi.subscribe(planId)
+        if (response.ok && response.data?.checkoutUrl) {
+          window.open(response.data.checkoutUrl, '_blank')
+        } else {
+          console.error('[BillingManager] Failed to create checkout:', response.error)
+        }
+      } catch (err) {
+        console.error('[BillingManager] Subscribe error:', err)
+      } finally {
+        setSubscribing(false)
+      }
+    }
+  }
+
+  const handleManageSubscription = () => {
+    // Open Paddle customer portal or custom management page
+    console.log('[BillingManager] Manage subscription')
+    // TODO: Implement subscription management
+  }
+
+  return (
+    <div className="billing-manager">
+      {/* Header with credits balance */}
+      {isAuthenticated && credits && (
+        <div className="p-3 border-bottom d-flex justify-content-between align-items-center">
+          <div>
+            <i className="fas fa-wallet me-2"></i>
+            <strong>Your Balance</strong>
+          </div>
+          <div className="h5 mb-0">
+            <span className="badge bg-primary">
+              <i className="fas fa-coins me-1"></i>
+              {credits.balance.toLocaleString()} credits
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Paddle status warning */}
+      {paddleError && (
+        <div className="alert alert-warning m-3 mb-0">
+          <i className="fas fa-exclamation-triangle me-2"></i>
+          {paddleError}
+        </div>
+      )}
+
+      {/* Login prompt */}
+      {!isAuthenticated && (
+        <div className="alert alert-info m-3">
+          <i className="fas fa-info-circle me-2"></i>
+          <a href="#" onClick={(e) => { e.preventDefault(); plugin?.call('auth', 'login', 'github') }}>
+            Sign in
+          </a> to purchase credits or manage your subscription.
+        </div>
+      )}
+
+      {/* Current subscription */}
+      {isAuthenticated && (
+        <div className="p-3 border-bottom">
+          <CurrentSubscription
+            subscription={subscription}
+            loading={userLoading}
+            onManage={handleManageSubscription}
+          />
+        </div>
+      )}
+
+      {/* Tabs */}
+      <ul className="nav nav-tabs px-3 pt-3">
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'credits' ? 'active' : ''}`}
+            onClick={() => setActiveTab('credits')}
+          >
+            <i className="fas fa-coins me-2"></i>
+            Credit Packages
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'subscription' ? 'active' : ''}`}
+            onClick={() => setActiveTab('subscription')}
+          >
+            <i className="fas fa-sync-alt me-2"></i>
+            Subscription Plans
+          </button>
+        </li>
+      </ul>
+
+      {/* Tab content */}
+      <div className="p-3">
+        {activeTab === 'credits' && (
+          <CreditPackagesView
+            packages={packages}
+            loading={packagesLoading}
+            error={packagesError}
+            currentBalance={credits?.balance}
+            onPurchase={handlePurchaseCredits}
+            purchasing={purchasing}
+          />
+        )}
+
+        {activeTab === 'subscription' && (
+          <SubscriptionPlansView
+            plans={plans}
+            loading={plansLoading}
+            error={plansError}
+            currentSubscription={subscription}
+            onSubscribe={handleSubscribe}
+            subscribing={subscribing}
+          />
+        )}
+      </div>
+    </div>
+  )
+}

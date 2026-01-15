@@ -22,7 +22,14 @@ import {
   PermissionsResponse,
   FeatureCheckResponse,
   MultiFeatureCheckResponse,
-  CategoryFeaturesResponse
+  CategoryFeaturesResponse,
+  CreditPackagesResponse,
+  SubscriptionPlansResponse,
+  UserSubscriptionResponse,
+  PurchaseCreditsRequest,
+  PurchaseCreditsResponse,
+  SubscribeRequest,
+  SubscribeResponse
 } from './api-types'
 
 /**
@@ -235,6 +242,102 @@ export class PermissionsApiService {
       return { limit: undefined, unit: undefined }
     } catch {
       return { limit: undefined, unit: undefined }
+    }
+  }
+}
+
+/**
+ * Billing API Service - Credit packages, subscription plans, and purchases
+ */
+export class BillingApiService {
+  constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
+
+  // ==================== Public Endpoints (No Auth Required) ====================
+
+  /**
+   * Get available credit packages for purchase
+   */
+  async getCreditPackages(): Promise<ApiResponse<CreditPackagesResponse>> {
+    return this.apiClient.get<CreditPackagesResponse>('/credit-packages')
+  }
+
+  /**
+   * Get available subscription plans
+   */
+  async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlansResponse>> {
+    return this.apiClient.get<SubscriptionPlansResponse>('/subscription-plans')
+  }
+
+  // ==================== Authenticated Endpoints ====================
+
+  /**
+   * Get user's current credit balance
+   */
+  async getCredits(): Promise<ApiResponse<Credits>> {
+    return this.apiClient.get<Credits>('/credits')
+  }
+
+  /**
+   * Get user's credit transaction history
+   */
+  async getCreditHistory(limit?: number, offset?: number): Promise<ApiResponse<{ transactions: CreditTransaction[], total: number }>> {
+    const params = new URLSearchParams()
+    if (limit !== undefined) params.set('limit', limit.toString())
+    if (offset !== undefined) params.set('offset', offset.toString())
+    
+    const query = params.toString()
+    return this.apiClient.get(`/credits/history${query ? '?' + query : ''}`)
+  }
+
+  /**
+   * Get user's active subscription
+   */
+  async getSubscription(): Promise<ApiResponse<UserSubscriptionResponse>> {
+    return this.apiClient.get<UserSubscriptionResponse>('/subscription')
+  }
+
+  /**
+   * Purchase a credit package - returns Paddle checkout URL
+   */
+  async purchaseCredits(packageId: string): Promise<ApiResponse<PurchaseCreditsResponse>> {
+    return this.apiClient.post<PurchaseCreditsResponse>('/purchase-credits', { packageId })
+  }
+
+  /**
+   * Subscribe to a plan - returns Paddle checkout URL
+   */
+  async subscribe(planId: string): Promise<ApiResponse<SubscribeResponse>> {
+    return this.apiClient.post<SubscribeResponse>('/subscribe', { planId })
+  }
+
+  // ==================== Helper Methods ====================
+
+  /**
+   * Format price from cents to display string
+   */
+  static formatPrice(cents: number): string {
+    return `$${(cents / 100).toFixed(2)}`
+  }
+
+  /**
+   * Check if user has enough credits for an operation
+   */
+  async hasEnoughCredits(requiredCredits: number): Promise<boolean> {
+    try {
+      const response = await this.getCredits()
+      if (response.ok && response.data) {
+        return response.data.balance >= requiredCredits
+      }
+      return false
+    } catch {
+      return false
     }
   }
 }
