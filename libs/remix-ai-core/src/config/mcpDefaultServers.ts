@@ -80,6 +80,15 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
+    },
+    {
+      name: 'Thegraph API',
+      description: 'Thegraph API (subgraph and token API',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/thegraph-tokenapi',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
     }
   ]
 };
