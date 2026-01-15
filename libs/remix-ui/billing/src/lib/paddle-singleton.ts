@@ -180,11 +180,59 @@ export async function initPaddle(
 }
 
 /**
- * Open Paddle checkout overlay
+ * Open Paddle checkout overlay with a transaction ID
+ * 
+ * The transactionId should be obtained from your backend API which creates
+ * the transaction with customData (userId, etc.) already set.
+ * 
+ * @param paddle - Paddle instance
+ * @param transactionId - Transaction ID from backend (e.g., "txn_01abc123...")
+ * @param options - Additional checkout options
+ */
+export function openCheckoutWithTransaction(
+  paddle: Paddle,
+  transactionId: string,
+  options?: {
+    settings?: {
+      displayMode?: 'overlay' | 'inline'
+      theme?: 'light' | 'dark'
+      locale?: string
+    }
+  }
+): void {
+  if (!paddle) {
+    console.error('[Paddle] Cannot open checkout - Paddle not initialized')
+    return
+  }
+
+  if (!transactionId) {
+    console.error('[Paddle] Cannot open checkout - No transaction ID provided')
+    return
+  }
+
+  console.log('[Paddle] Opening checkout for transaction:', transactionId)
+
+  paddle.Checkout.open({
+    transactionId,
+    settings: {
+      displayMode: options?.settings?.displayMode || 'overlay',
+      theme: options?.settings?.theme || 'light',
+      locale: options?.settings?.locale || 'en',
+      allowLogout: false,
+    }
+  })
+}
+
+/**
+ * Open Paddle checkout overlay with a price ID (direct checkout)
+ * 
+ * NOTE: This bypasses the backend and won't include customData like userId.
+ * Prefer using openCheckoutWithTransaction() with a backend-created transaction.
  * 
  * @param paddle - Paddle instance
  * @param priceId - Paddle price ID (e.g., "pri_01abc123...")
  * @param options - Additional checkout options
+ * @deprecated Use openCheckoutWithTransaction for proper customData handling
  */
 export function openCheckout(
   paddle: Paddle,
@@ -214,12 +262,12 @@ export function openCheckout(
   paddle.Checkout.open({
     items: [{ priceId, quantity: 1 }],
     customData: options?.customData,
-    successUrl: options?.successUrl,
     settings: {
       displayMode: options?.settings?.displayMode || 'overlay',
       theme: options?.settings?.theme || 'light',
       locale: options?.settings?.locale || 'en',
       allowLogout: false,
+      successUrl: options?.successUrl,
     }
   })
 }

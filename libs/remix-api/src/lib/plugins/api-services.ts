@@ -23,6 +23,9 @@ import {
   FeatureCheckResponse,
   MultiFeatureCheckResponse,
   CategoryFeaturesResponse,
+  CreditPackage,
+  SubscriptionPlan,
+  ProductProvider,
   CreditPackagesResponse,
   SubscriptionPlansResponse,
   UserSubscriptionResponse,
@@ -304,17 +307,27 @@ export class BillingApiService {
   }
 
   /**
-   * Purchase a credit package - returns Paddle checkout URL
+   * Purchase a credit package - returns checkout URL for the specified provider
+   * @param packageId - Package slug (e.g., "starter", "pro")
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
    */
-  async purchaseCredits(packageId: string): Promise<ApiResponse<PurchaseCreditsResponse>> {
-    return this.apiClient.post<PurchaseCreditsResponse>('/purchase-credits', { packageId })
+  async purchaseCredits(packageId: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<PurchaseCreditsResponse>> {
+    const body: { packageId: string; provider: string; returnUrl?: string } = { packageId, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<PurchaseCreditsResponse>('/purchase-credits', body)
   }
 
   /**
-   * Subscribe to a plan - returns Paddle checkout URL
+   * Subscribe to a plan - returns checkout URL for the specified provider
+   * @param planId - Plan slug (e.g., "pro", "team")
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
    */
-  async subscribe(planId: string): Promise<ApiResponse<SubscribeResponse>> {
-    return this.apiClient.post<SubscribeResponse>('/subscribe', { planId })
+  async subscribe(planId: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<SubscribeResponse>> {
+    const body: { planId: string; provider: string; returnUrl?: string } = { planId, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<SubscribeResponse>('/subscribe', body)
   }
 
   // ==================== Helper Methods ====================
@@ -324,6 +337,33 @@ export class BillingApiService {
    */
   static formatPrice(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`
+  }
+
+  /**
+   * Check if a package has an active provider
+   * @param pkg - Credit package to check
+   * @param providerSlug - Provider to check for (default: "paddle")
+   */
+  static hasActiveProvider(pkg: CreditPackage | SubscriptionPlan, providerSlug: string = 'paddle'): boolean {
+    return pkg.providers?.some(p => p.slug === providerSlug && p.isActive && p.syncStatus === 'synced') ?? false
+  }
+
+  /**
+   * Get the active provider for a package/plan
+   * @param pkg - Credit package or subscription plan
+   * @param providerSlug - Provider to get (default: "paddle")
+   */
+  static getActiveProvider(pkg: CreditPackage | SubscriptionPlan, providerSlug: string = 'paddle'): ProductProvider | undefined {
+    return pkg.providers?.find(p => p.slug === providerSlug && p.isActive && p.syncStatus === 'synced')
+  }
+
+  /**
+   * Filter packages to only those with an active provider
+   * @param packages - Array of credit packages
+   * @param providerSlug - Provider to filter by (default: "paddle")
+   */
+  static filterByActiveProvider<T extends CreditPackage | SubscriptionPlan>(items: T[], providerSlug: string = 'paddle'): T[] {
+    return items.filter(item => BillingApiService.hasActiveProvider(item, providerSlug))
   }
 
   /**

@@ -54,47 +54,53 @@ export const CreditPackagesView: React.FC<CreditPackagesViewProps> = ({
       )}
 
       <div className="row g-3">
-        {packages.map((pkg) => (
-          <div key={pkg.id} className="col-12 col-md-6 col-lg-3">
-            <div className={`card h-100 ${pkg.popular ? 'border-primary' : ''}`}>
-              {pkg.popular && (
-                <div className="card-header bg-primary text-white text-center py-1">
-                  <small><i className="fas fa-star me-1"></i>Popular</small>
-                </div>
-              )}
-              <div className="card-body d-flex flex-column">
-                <h5 className="card-title">{pkg.name}</h5>
-                <p className="card-text text-muted small flex-grow-1">
-                  {pkg.description}
-                </p>
-                
-                <div className="mb-3">
-                  <div className="h4 mb-0">
-                    <i className="fas fa-coins me-2 text-warning"></i>
-                    {pkg.credits.toLocaleString()}
+        {packages.map((pkg) => {
+          // Get active Paddle provider
+          const paddleProvider = BillingApiService.getActiveProvider(pkg, 'paddle')
+          const priceId = paddleProvider?.priceId || null
+          
+          return (
+            <div key={pkg.id} className="col-12 col-md-6 col-lg-3">
+              <div className={`card h-100 ${pkg.popular ? 'border-primary' : ''}`}>
+                {pkg.popular && (
+                  <div className="card-header bg-primary text-white text-center py-1">
+                    <small><i className="fas fa-star me-1"></i>Popular</small>
                   </div>
-                  <small className="text-muted">credits</small>
-                </div>
+                )}
+                <div className="card-body d-flex flex-column">
+                  <h5 className="card-title">{pkg.name}</h5>
+                  <p className="card-text text-muted small flex-grow-1">
+                    {pkg.description}
+                  </p>
+                  
+                  <div className="mb-3">
+                    <div className="h4 mb-0">
+                      <i className="fas fa-coins me-2 text-warning"></i>
+                      {pkg.credits.toLocaleString()}
+                    </div>
+                    <small className="text-muted">credits</small>
+                  </div>
 
-                <div className="mb-3">
-                  <span className="h5">{BillingApiService.formatPrice(pkg.priceUsd)}</span>
-                  {pkg.savings && (
-                    <span className="badge bg-success ms-2">{pkg.savings}</span>
-                  )}
-                </div>
+                  <div className="mb-3">
+                    <span className="h5">{BillingApiService.formatPrice(pkg.priceUsd)}</span>
+                    {pkg.savings && (
+                      <span className="badge bg-success ms-2">{pkg.savings}</span>
+                    )}
+                  </div>
 
-                <PurchaseButton
-                  label="Buy Now"
-                  priceId={pkg.paddlePriceId || null}
-                  onClick={() => onPurchase(pkg.id, pkg.paddlePriceId || null)}
-                  loading={purchasing}
-                  disabled={!pkg.paddlePriceId}
-                  variant={pkg.popular ? 'primary' : 'outline'}
-                />
+                  <PurchaseButton
+                    label="Buy Now"
+                    priceId={priceId}
+                    onClick={() => onPurchase(pkg.id, priceId)}
+                    loading={purchasing}
+                    disabled={!priceId}
+                    variant={pkg.popular ? 'primary' : 'outline'}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

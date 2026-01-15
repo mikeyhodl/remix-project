@@ -158,17 +158,32 @@ export interface CategoryFeaturesResponse {
 // ==================== Billing ====================
 
 /**
+ * Payment provider configuration for a product
+ */
+export interface ProductProvider {
+  slug: string              // Provider identifier (e.g., "paddle")
+  name: string              // Display name
+  priceId: string | null    // Provider's external price ID
+  productId: string | null  // Provider's external product ID
+  isActive: boolean
+  syncStatus: 'pending' | 'synced' | 'error'
+}
+
+/**
  * Credit package - one-time purchasable bundle of credits
  */
 export interface CreditPackage {
   id: string
+  internalId: number
   name: string
   description: string
   credits: number
   priceUsd: number  // Price in cents (500 = $5.00)
+  currency: string
   popular?: boolean
   savings?: string | null
-  paddlePriceId?: string | null
+  providers: ProductProvider[]  // Available payment providers
+  paddlePriceId?: string | null // Legacy: prefer providers array
   source?: 'database' | 'config' | 'provider'
 }
 
@@ -177,13 +192,17 @@ export interface CreditPackage {
  */
 export interface SubscriptionPlan {
   id: string
+  internalId: number
   name: string
   description: string
   creditsPerMonth: number
   priceUsd: number  // Price in cents
+  currency: string
+  billingInterval: 'month' | 'year'
   features: string[]
   popular?: boolean
-  paddlePriceId?: string | null
+  providers: ProductProvider[]  // Available payment providers
+  paddlePriceId?: string | null // Legacy: prefer providers array
   source?: 'database' | 'config' | 'provider'
 }
 
@@ -226,6 +245,8 @@ export interface UserSubscriptionResponse {
  */
 export interface PurchaseCreditsRequest {
   packageId: string
+  provider?: string   // Provider slug (default: "paddle")
+  returnUrl?: string  // Redirect URL after checkout
 }
 
 /**
@@ -234,6 +255,13 @@ export interface PurchaseCreditsRequest {
 export interface PurchaseCreditsResponse {
   checkoutUrl: string
   transactionId: string
+  provider: string
+  package: {
+    id: string
+    name: string
+    credits: number
+    price: number  // In cents
+  }
 }
 
 /**
@@ -241,6 +269,8 @@ export interface PurchaseCreditsResponse {
  */
 export interface SubscribeRequest {
   planId: string
+  provider?: string   // Provider slug (default: "paddle")
+  returnUrl?: string  // Redirect URL after checkout
 }
 
 /**
@@ -249,4 +279,5 @@ export interface SubscribeRequest {
 export interface SubscribeResponse {
   checkoutUrl: string
   transactionId: string
+  provider: string
 }

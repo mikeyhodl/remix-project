@@ -5,7 +5,7 @@ import { endpointUrls } from '@remix-endpoints-helper'
 import { CreditPackagesView } from './components/credit-packages-view'
 import { SubscriptionPlansView } from './components/subscription-plans-view'
 import { CurrentSubscription } from './components/current-subscription'
-import { initPaddle, getPaddle, openCheckout, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
+import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 
 type TabType = 'credits' | 'subscription'
@@ -179,7 +179,9 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     try {
       const response = await billingApi.getCreditPackages()
       if (response.ok && response.data) {
-        setPackages(response.data.packages)
+        // Filter to only show packages with active Paddle provider
+        const availablePackages = BillingApiService.filterByActiveProvider(response.data.packages, 'paddle')
+        setPackages(availablePackages)
         setPackagesError(null)
       } else {
         setPackagesError(response.error || 'Failed to load credit packages')
@@ -195,7 +197,9 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     try {
       const response = await billingApi.getSubscriptionPlans()
       if (response.ok && response.data) {
-        setPlans(response.data.plans)
+        // Filter to only show plans with active Paddle provider
+        const availablePlans = BillingApiService.filterByActiveProvider(response.data.plans, 'paddle')
+        setPlans(availablePlans)
         setPlansError(null)
       } else {
         setPlansError(response.error || 'Failed to load subscription plans')
@@ -247,31 +251,36 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
       return
     }
 
-    // Use Paddle directly if available
-    const paddleInstance = paddle || getPaddle()
-    if (paddleInstance) {
-      setPurchasing(true)
-      openCheckout(paddleInstance, priceId, {
-        settings: {
-          displayMode: 'overlay',
-          theme: 'light'
-        }
-      })
-    } else {
-      // Fallback to backend checkout URL
-      setPurchasing(true)
-      try {
-        const response = await billingApi.purchaseCredits(packageId)
-        if (response.ok && response.data?.checkoutUrl) {
-          window.open(response.data.checkoutUrl, '_blank')
-        } else {
-          console.error('[BillingManager] Failed to create checkout:', response.error)
-        }
-      } catch (err) {
-        console.error('[BillingManager] Purchase error:', err)
-      } finally {
-        setPurchasing(false)
+    setPurchasing(true)
+    try {
+      // Always call backend API first to create transaction with customData (userId)
+      const response = await billingApi.purchaseCredits(packageId, 'paddle')
+      if (!response.ok || !response.data) {
+        console.error('[BillingManager] Failed to create checkout:', response.error)
+        return
       }
+
+      const { transactionId, checkoutUrl } = response.data
+
+      // Use Paddle.js overlay if available and we have a transactionId
+      const paddleInstance = paddle || getPaddle()
+      if (paddleInstance && transactionId) {
+        openCheckoutWithTransaction(paddleInstance, transactionId, {
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light'
+          }
+        })
+      } else if (checkoutUrl) {
+        // Fallback to redirect checkout URL
+        window.open(checkoutUrl, '_blank')
+        setPurchasing(false)
+      } else {
+        console.error('[BillingManager] No transactionId or checkoutUrl returned')
+      }
+    } catch (err) {
+      console.error('[BillingManager] Purchase error:', err)
+      setPurchasing(false)
     }
   }
 
@@ -291,29 +300,36 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
       return
     }
 
-    const paddleInstance = paddle || getPaddle()
-    if (paddleInstance) {
-      setSubscribing(true)
-      openCheckout(paddleInstance, priceId, {
-        settings: {
-          displayMode: 'overlay',
-          theme: 'light'
-        }
-      })
-    } else {
-      setSubscribing(true)
-      try {
-        const response = await billingApi.subscribe(planId)
-        if (response.ok && response.data?.checkoutUrl) {
-          window.open(response.data.checkoutUrl, '_blank')
-        } else {
-          console.error('[BillingManager] Failed to create checkout:', response.error)
-        }
-      } catch (err) {
-        console.error('[BillingManager] Subscribe error:', err)
-      } finally {
-        setSubscribing(false)
+    setSubscribing(true)
+    try {
+      // Always call backend API first to create transaction with customData (userId)
+      const response = await billingApi.subscribe(planId, 'paddle')
+      if (!response.ok || !response.data) {
+        console.error('[BillingManager] Failed to create checkout:', response.error)
+        return
       }
+
+      const { transactionId, checkoutUrl } = response.data
+
+      // Use Paddle.js overlay if available and we have a transactionId
+      const paddleInstance = paddle || getPaddle()
+      if (paddleInstance && transactionId) {
+        openCheckoutWithTransaction(paddleInstance, transactionId, {
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light'
+          }
+        })
+      } else if (checkoutUrl) {
+        // Fallback to redirect checkout URL
+        window.open(checkoutUrl, '_blank')
+        setSubscribing(false)
+      } else {
+        console.error('[BillingManager] No transactionId or checkoutUrl returned')
+      }
+    } catch (err) {
+      console.error('[BillingManager] Subscribe error:', err)
+      setSubscribing(false)
     }
   }
 

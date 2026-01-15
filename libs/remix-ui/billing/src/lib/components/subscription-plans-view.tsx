@@ -49,6 +49,9 @@ export const SubscriptionPlansView: React.FC<SubscriptionPlansViewProps> = ({
         {plans.map((plan) => {
           const isCurrent = isCurrentPlan(plan.id)
           const isFree = plan.priceUsd === 0
+          // Get active Paddle provider
+          const paddleProvider = BillingApiService.getActiveProvider(plan, 'paddle')
+          const priceId = paddleProvider?.priceId || null
 
           return (
             <div key={plan.id} className="col-12 col-md-6 col-lg-4">
@@ -112,10 +115,10 @@ export const SubscriptionPlansView: React.FC<SubscriptionPlansViewProps> = ({
                   ) : (
                     <PurchaseButton
                       label={currentSubscription ? 'Upgrade' : 'Subscribe'}
-                      priceId={plan.paddlePriceId || null}
-                      onClick={() => onSubscribe(plan.id, plan.paddlePriceId || null)}
+                      priceId={priceId}
+                      onClick={() => onSubscribe(plan.id, priceId)}
                       loading={subscribing}
-                      disabled={!plan.paddlePriceId}
+                      disabled={!priceId}
                       variant={plan.popular ? 'primary' : 'outline'}
                     />
                   )}

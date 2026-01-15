@@ -123,7 +123,7 @@ export class AuthPlugin extends Plugin {
   async getPaddleConfig(): Promise<{ clientToken: string | null; environment: 'sandbox' | 'production' }> {
     // Client token from environment or config
     // In production, this should come from a secure config endpoint
-    const clientToken = (window as any).__PADDLE_CLIENT_TOKEN__ || process.env.PADDLE_CLIENT_TOKEN || null
+    const clientToken = (window as any).__PADDLE_CLIENT_TOKEN__ || process.env.PADDLE_CLIENT_TOKEN || 'test_aa605484fa99283bb809c6fba32'
     const environment = process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
     return { clientToken, environment }
   }
