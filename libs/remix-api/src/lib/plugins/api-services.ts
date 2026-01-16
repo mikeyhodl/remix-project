@@ -32,7 +32,8 @@ import {
   PurchaseCreditsRequest,
   PurchaseCreditsResponse,
   SubscribeRequest,
-  SubscribeResponse
+  SubscribeResponse,
+  BillingConfigResponse
 } from './api-types'
 
 /**
@@ -279,6 +280,14 @@ export class BillingApiService {
   }
 
   // ==================== Authenticated Endpoints ====================
+
+  /**
+   * Get billing configuration (Paddle token, environment, etc.)
+   * Requires authentication
+   */
+  async getConfig(): Promise<ApiResponse<BillingConfigResponse>> {
+    return this.apiClient.get<BillingConfigResponse>('/config')
+  }
 
   /**
    * Get user's current credit balance

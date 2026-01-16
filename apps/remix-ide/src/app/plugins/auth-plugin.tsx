@@ -118,14 +118,27 @@ export class AuthPlugin extends Plugin {
   }
 
   /**
-   * Get Paddle configuration for checkout
+   * Get Paddle configuration for checkout (fetched from backend)
    */
   async getPaddleConfig(): Promise<{ clientToken: string | null; environment: 'sandbox' | 'production' }> {
-    // Client token from environment or config
-    // In production, this should come from a secure config endpoint
-    const clientToken = (window as any).__PADDLE_CLIENT_TOKEN__ || process.env.PADDLE_CLIENT_TOKEN || 'test_aa605484fa99283bb809c6fba32'
-    const environment = process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
-    return { clientToken, environment }
+    try {
+      // Ensure we have a token set
+      await this.getToken()
+      
+      const response = await this.billingApi.getConfig()
+      if (response.ok && response.data?.paddle) {
+        return {
+          clientToken: response.data.paddle.token,
+          environment: response.data.paddle.environment
+        }
+      }
+      
+      console.warn('[AuthPlugin] Failed to fetch Paddle config:', response.error)
+      return { clientToken: null, environment: 'sandbox' }
+    } catch (error) {
+      console.error('[AuthPlugin] Error fetching Paddle config:', error)
+      return { clientToken: null, environment: 'sandbox' }
+    }
   }
 
   /**

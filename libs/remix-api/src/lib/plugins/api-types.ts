@@ -281,3 +281,13 @@ export interface SubscribeResponse {
   transactionId: string
   provider: string
 }
+
+/**
+ * Response from billing config endpoint
+ */
+export interface BillingConfigResponse {
+  paddle: {
+    environment: 'sandbox' | 'production'
+    token: string
+  }
+}
