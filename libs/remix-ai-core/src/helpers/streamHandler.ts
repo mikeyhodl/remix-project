@@ -346,9 +346,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             }));
 
             if (toolCalls.length > 0) {
-              uiToolCallback?.(true);
-              const response = await tool_callback(toolCalls)
-              uiToolCallback?.(false);
+              const response = await tool_callback(toolCalls, uiToolCallback)
               // Keep the callback attached for recursive calls
               if (response && typeof response === 'object') {
                 response.uiToolCallback = uiToolCallback;
