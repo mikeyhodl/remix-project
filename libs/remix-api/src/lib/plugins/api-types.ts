@@ -207,16 +207,59 @@ export interface SubscriptionPlan {
 }
 
 /**
- * User's active subscription
+ * Subscription item from Paddle
+ */
+export interface SubscriptionItem {
+  priceId: string
+  productId: string
+  description: string
+  quantity: number
+  unitPrice: {
+    amount: string
+    currencyCode: string
+  }
+  billingCycle: {
+    interval: 'month' | 'year'
+    frequency: number
+  }
+  product: {
+    id: string
+    name: string
+    description: string
+    imageUrl: string | null
+  }
+}
+
+/**
+ * User's active subscription (Paddle format)
  */
 export interface UserSubscription {
   id: string
-  planId: string
-  status: 'active' | 'paused' | 'canceled' | 'past_due'
-  creditsPerMonth: number
-  currentPeriodStart: string
-  currentPeriodEnd: string
-  cancelAtPeriodEnd: boolean
+  status: 'active' | 'paused' | 'canceled' | 'past_due' | 'trialing'
+  customerId: string
+  currentBillingPeriod: {
+    startsAt: string
+    endsAt: string
+  }
+  scheduledChange: {
+    action: string
+    effectiveAt: string
+  } | null
+  items: SubscriptionItem[]
+  nextBilledAt: string | null
+  createdAt: string
+  updatedAt: string
+  firstBilledAt: string
+  discount: unknown | null
+  collectionMode: string
+  billingDetails: unknown | null
+  currencyCode: string
+  // Legacy fields for backwards compatibility
+  planId?: string
+  creditsPerMonth?: number
+  currentPeriodStart?: string
+  currentPeriodEnd?: string
+  cancelAtPeriodEnd?: boolean
 }
 
 /**
@@ -237,6 +280,8 @@ export interface SubscriptionPlansResponse {
  * Response from user subscription endpoint
  */
 export interface UserSubscriptionResponse {
+  userId: number
+  hasActiveSubscription: boolean
   subscription: UserSubscription | null
 }
 

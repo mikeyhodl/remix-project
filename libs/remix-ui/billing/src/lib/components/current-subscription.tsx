@@ -44,6 +44,8 @@ export const CurrentSubscription: React.FC<CurrentSubscriptionProps> = ({
         return <span className="badge bg-secondary">Canceled</span>
       case 'past_due':
         return <span className="badge bg-danger">Past Due</span>
+      case 'trialing':
+        return <span className="badge bg-info">Trial</span>
       default:
         return <span className="badge bg-secondary">{subscription.status}</span>
     }
@@ -57,40 +59,68 @@ export const CurrentSubscription: React.FC<CurrentSubscriptionProps> = ({
     })
   }
 
+  // Extract plan info from subscription items
+  const mainItem = subscription.items?.[0]
+  const planName = mainItem?.product?.name || subscription.planId || 'Unknown Plan'
+  const planDescription = mainItem?.description || ''
+  
+  // Parse credits from description (e.g., "Pro - 1000 credits/month")
+  const creditsMatch = planDescription.match(/(\d+)\s*credits/)
+  const creditsPerMonth = creditsMatch ? parseInt(creditsMatch[1], 10) : subscription.creditsPerMonth
+  
+  // Get billing period dates
+  const periodStart = subscription.currentBillingPeriod?.startsAt || subscription.currentPeriodStart
+  const periodEnd = subscription.currentBillingPeriod?.endsAt || subscription.currentPeriodEnd
+  
+  // Check for scheduled cancellation
+  const isCanceling = subscription.scheduledChange?.action === 'cancel' || subscription.cancelAtPeriodEnd
+
+  // Format price
+  const price = mainItem?.unitPrice 
+    ? `$${(parseInt(mainItem.unitPrice.amount, 10) / 100).toFixed(2)}`
+    : null
+  const billingInterval = mainItem?.billingCycle?.interval || 'month'
+
   return (
     <div className="current-subscription p-3 bg-light rounded">
       <div className="d-flex justify-content-between align-items-start mb-2">
         <div>
           <h6 className="mb-1">
-            Current Subscription {getStatusBadge()}
+            {planName} {getStatusBadge()}
           </h6>
-          <small className="text-muted">Plan: {subscription.planId}</small>
+          {price && (
+            <small className="text-muted">{price}/{billingInterval}</small>
+          )}
         </div>
-        <div className="text-end">
-          <div className="h5 mb-0 text-primary">
-            <i className="fas fa-coins me-1"></i>
-            {subscription.creditsPerMonth.toLocaleString()}
-          </div>
-          <small className="text-muted">credits/month</small>
-        </div>
-      </div>
-
-      <div className="row g-2 mb-3">
-        <div className="col-6">
-          <small className="text-muted d-block">Current Period</small>
-          <small>
-            {formatDate(subscription.currentPeriodStart)} - {formatDate(subscription.currentPeriodEnd)}
-          </small>
-        </div>
-        {subscription.cancelAtPeriodEnd && (
-          <div className="col-6">
-            <small className="text-warning d-block">
-              <i className="fas fa-exclamation-triangle me-1"></i>
-              Cancels at period end
-            </small>
+        {creditsPerMonth && (
+          <div className="text-end">
+            <div className="h5 mb-0 text-primary">
+              <i className="fas fa-coins me-1"></i>
+              {creditsPerMonth.toLocaleString()}
+            </div>
+            <small className="text-muted">credits/month</small>
           </div>
         )}
       </div>
+
+      {periodStart && periodEnd && (
+        <div className="row g-2 mb-3">
+          <div className="col-6">
+            <small className="text-muted d-block">Current Period</small>
+            <small>
+              {formatDate(periodStart)} - {formatDate(periodEnd)}
+            </small>
+          </div>
+          {isCanceling && (
+            <div className="col-6">
+              <small className="text-warning d-block">
+                <i className="fas fa-exclamation-triangle me-1"></i>
+                Cancels at period end
+              </small>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="d-flex gap-2">
         {onManage && (
