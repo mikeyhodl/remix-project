@@ -46,7 +46,6 @@ export class MCPConfigManager {
         if (userConfig?.mcp) {
           this.config = this.mergeConfig(defaultMCPConfig, userConfig.mcp);
           console.log('[MCPConfigManager] Config loaded from file:', this.configPath);
-          console.log('[MCPConfigManager] File write permissions:', this.config.security.fileWritePermissions);
 
           // Validate fileWritePermissions mode
           if (this.config.security.fileWritePermissions?.mode) {
@@ -88,7 +87,6 @@ export class MCPConfigManager {
       const newConfigContent = JSON.stringify(userConfig, null, 2);
       await this.plugin.call('fileManager', 'writeFile', this.configPath, newConfigContent);
       this.config = config;
-
     } catch (error) {
       console.error(`[MCPConfigManager] Error saving config: ${error.message}`);
       throw error;
@@ -129,11 +127,12 @@ export class MCPConfigManager {
   }
 
   getFileWritePermission() {
-    return this.config.security.fileWritePermissions || {
+    const permissions = this.config.security.fileWritePermissions || {
       mode: 'ask' as const,
       allowedFiles: [],
       lastPrompted: null
     };
+    return permissions;
   }
 
   updateConfig(partialConfig: Partial<MCPConfig>): void {

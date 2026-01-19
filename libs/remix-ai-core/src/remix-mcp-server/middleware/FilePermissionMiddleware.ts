@@ -27,7 +27,8 @@ export class FilePermissionMiddleware extends BaseMiddleware {
   ): Promise<FilePermissionResult> {
     try {
       const permissions = this.configManager.getFileWritePermission();
-      console.log('Cheking file permissin', permissions)
+      console.log('[FilePermissionMiddleware] Checking file permission for:', filePath);
+      console.log('[FilePermissionMiddleware] Current permissions from config:', JSON.stringify(permissions, null, 2));
 
       // Check current mode
       switch (permissions.mode) {
