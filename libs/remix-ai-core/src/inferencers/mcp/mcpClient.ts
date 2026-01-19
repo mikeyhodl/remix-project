@@ -41,7 +41,7 @@ export class MCPClient {
   private toolListCache?: { tools: IMCPTool[], timestamp: number }; // Cache for HTTP servers
   private readonly CACHE_TTL = 120000; // 120 seconds cache TTL
   private sessionId: string
-  
+
   constructor(server: IMCPServer, remixMCPServer?: any) {
     this.server = server;
     this.eventEmitter = new EventEmitter();
