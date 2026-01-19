@@ -71,15 +71,24 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
+    },
+    {
+      name: 'Etherscan',
+      description: 'Etherscan block explorer',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/etherscan/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Thegraph API',
+      description: 'Thegraph API (subgraph and token API',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/thegraph/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
     }
-    // {
-    //   name: 'Etherscan',
-    //   description: 'Etherscan block explorer',
-    //   transport: 'http',
-    //   url: endpointUrls.mcpCorsProxy + '/etherscan',
-    //   autoStart: true,
-    //   enabled: true,
-    //   timeout: 30000
-    // }
   ]
 };
