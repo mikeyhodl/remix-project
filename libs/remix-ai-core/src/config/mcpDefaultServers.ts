@@ -89,6 +89,15 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
+    },
+    {
+      name: 'Sourcify',
+      description: 'Sourcify smart contract verification',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/sourcify/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
     }
   ]
 };
