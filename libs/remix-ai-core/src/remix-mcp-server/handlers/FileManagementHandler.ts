@@ -126,8 +126,8 @@ export class FileWriteHandler extends BaseToolHandler {
         console.warn(`Failed to open file in editor: ${openError.message}`);
       }
       await new Promise(resolve => setTimeout(resolve, 1000))
-      await plugin.call('editor', 'showCustomDiff', args.path, args.content)
-      //await plugin.call('fileManager', 'writeFile', args.path, args.content);
+      //await plugin.call('editor', 'showCustomDiff', args.path, args.content)
+      await plugin.call('fileManager', 'writeFile', args.path, args.content);
 
       const result: FileOperationResult = {
         success: true,
@@ -207,7 +207,8 @@ export class FileCreateHandler extends BaseToolHandler {
         await plugin.call('fileManager', 'writeFile', args.path, '');
         await plugin.call('fileManager', 'open', args.path)
         await new Promise(resolve => setTimeout(resolve, 1000))
-        await plugin.call('editor', 'showCustomDiff', args.path, args.content || "")
+        // await plugin.call('editor', 'showCustomDiff', args.path, args.content || "")
+        await plugin.call('fileManager', 'writeFile', args.path, args.content);
       }
 
       const result: FileOperationResult = {

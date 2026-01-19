@@ -19,12 +19,16 @@ export class MCPConfigManager {
         const exists = await this.plugin.call('fileManager', 'exists', this.configPath);
 
         if (exists) {
-          const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
-          const userConfig = JSON.parse(configContent);
-          if (userConfig.mcp) {this.config = userConfig.mcp}
-          else {
-            this.config = minimalMCPConfig
-            this.saveConfig(this.config)
+          try {
+            const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
+            const userConfig = JSON.parse(configContent);
+            if (userConfig.mcp) {
+              // Merge with defaults to preserve any new default settings
+              this.config = this.mergeConfig(defaultMCPConfig, userConfig.mcp);
+              console.log('[MCPConfigManager] Config reloaded from file save');
+            }
+          } catch (error) {
+            console.error('[MCPConfigManager] Error reloading config on file save:', error);
           }
         }
       }
@@ -39,17 +43,33 @@ export class MCPConfigManager {
         const configContent = await this.plugin.call('fileManager', 'readFile', this.configPath);
         const userConfig = JSON.parse(configContent);
         // Merge with defaults
-        if (userConfig?.mcp) { this.config = this.mergeConfig(defaultMCPConfig, userConfig)}
+        if (userConfig?.mcp) {
+          this.config = this.mergeConfig(defaultMCPConfig, userConfig.mcp);
+          console.log('[MCPConfigManager] Config loaded from file:', this.configPath);
+          console.log('[MCPConfigManager] File write permissions:', this.config.security.fileWritePermissions);
+
+          // Validate fileWritePermissions mode
+          if (this.config.security.fileWritePermissions?.mode) {
+            const validModes = ['ask', 'allow-all', 'deny-all', 'allow-specific'];
+            if (!validModes.includes(this.config.security.fileWritePermissions.mode)) {
+              console.warn('[MCPConfigManager] Invalid fileWritePermissions mode, resetting to "ask"');
+              this.config.security.fileWritePermissions.mode = 'ask';
+            }
+          }
+        }
         else {
+          console.log('[MCPConfigManager] No mcp config in file, creating default');
           this.saveConfig(this.config)
         }
       } else {
+        console.log('[MCPConfigManager] Config file does not exist, creating default');
         this.config = minimalMCPConfig;
         this.saveConfig(this.config)
       }
 
       return this.config;
     } catch (error) {
+      console.error('[MCPConfigManager] Error loading config:', error);
       this.config = defaultMCPConfig;
       return this.config;
     }
@@ -108,9 +128,45 @@ export class MCPConfigManager {
     return this.config.resources;
   }
 
+  getFileWritePermission() {
+    return this.config.security.fileWritePermissions || {
+      mode: 'ask' as const,
+      allowedFiles: [],
+      lastPrompted: null
+    };
+  }
+
   updateConfig(partialConfig: Partial<MCPConfig>): void {
     this.config = this.mergeConfig(this.config, partialConfig);
     console.log('[MCPConfigManager] Config updated at runtime');
+  }
+
+  async setFileWritePermission(
+    mode: 'ask' | 'allow-all' | 'deny-all' | 'allow-specific',
+    filePath?: string
+  ): Promise<void> {
+    const config = this.getConfig();
+
+    if (!config.security.fileWritePermissions) {
+      config.security.fileWritePermissions = {
+        mode: 'ask',
+        allowedFiles: [],
+        lastPrompted: null
+      };
+    }
+
+    const perms = config.security.fileWritePermissions;
+    perms.mode = mode;
+    perms.lastPrompted = new Date().toISOString();
+
+    if (mode === 'allow-specific' && filePath) {
+      if (!perms.allowedFiles.includes(filePath)) {
+        perms.allowedFiles.push(filePath);
+      }
+    }
+
+    await this.saveConfig(config);
+    console.log(`[MCPConfigManager] File write permission updated: ${mode}${filePath ? ` for ${filePath}` : ''}`);
   }
 
   isToolAllowed(toolName: string): boolean {
