@@ -18,7 +18,8 @@ const defaultStrategy: ContractTypeStrategy = {
   contractOptions: {
     mintable: false,
     burnable: false,
-    pausable: false
+    pausable: false,
+    permit: true,
   },
   contractAccessControl: '',
   contractUpgradability: {
@@ -177,6 +178,10 @@ export function ContractWizard () {
               <div className="form-check mb-1">
                 <input data-id="contract-wizard-pausable-checkbox" className="form-check-input" type="checkbox" id="featPausable" checked={strategy.contractOptions.pausable} onChange={() => toggleContractOption('pausable')} />
                 <label className="form-check-label" htmlFor="featPausable">Pausable</label>
+              </div>
+              <div className="form-check mb-1">
+                <input data-id="contract-wizard-permit-checkbox" className="form-check-input" type="checkbox" id="featPermit" checked={strategy.contractOptions.permit} onChange={() => toggleContractOption('permit')} />
+                <label className="form-check-label" htmlFor="featPermit">Permit</label>
               </div>
             </div>
 
