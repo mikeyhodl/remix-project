@@ -300,7 +300,7 @@ export function RemixUiTopbar() {
   const deleteCurrentWorkspace = (workspaceName?: string) => {
     global.modal(
       intl.formatMessage({ id: 'filePanel.workspace.delete' }),
-      intl.formatMessage({ id: 'filePanel.workspace.deleteConfirm' }),
+      intl.formatMessage({ id: 'filePanel.workspace.deleteConfirm' }, { currentWorkspace: workspaceName }),
       intl.formatMessage({ id: 'filePanel.ok' }),
       () => onFinishDeleteWorkspace(workspaceName),
       intl.formatMessage({ id: 'filePanel.cancel' })

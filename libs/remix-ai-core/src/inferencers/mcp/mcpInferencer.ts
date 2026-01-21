@@ -506,20 +506,23 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolsMessagesArray
+              toolsMessages: toolsMessagesArray,
+              chatHistory: options.provider === 'anthropic'
+                ? [...(enhancedOptions.chatHistory || []), { role: 'user', content: prompt }]
+                : enhancedOptions.chatHistory
             };
 
-            // Send empty prompt - the tool results are in toolsMessages
-            // Don't add extra prompts as they cause Anthropic to summarize instead of using full tool results
             if (options.provider === 'openai' || options.provider === 'mistralai') {
               return {
                 streamResponse: await this.baseInferencer.answer(prompt, followUpOptions),
-                callback: toolExecutionStatusCallback
+                callback: toolExecutionStatusCallback,
+                uiToolCallback: uiCallback
               } as IAIStreamResponse;
             } else {
               return {
                 streamResponse: await this.baseInferencer.answer("", followUpOptions),
-                callback: toolExecutionStatusCallback
+                callback: toolExecutionStatusCallback,
+                uiToolCallback: uiCallback
               } as IAIStreamResponse;
             }
           }
@@ -832,7 +835,6 @@ ${toolsList}`,
           }
 
           if (uiCallback){
-            console.log('on UI tool callback', innerToolCall.name, innerToolCall.arguments)
             uiCallback(true, innerToolCall.name, innerToolCall.arguments);
           }
           const result = await this.executeTool(targetServer, innerToolCall);
