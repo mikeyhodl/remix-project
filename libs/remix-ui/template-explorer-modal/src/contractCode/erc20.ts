@@ -261,6 +261,55 @@ contract ${contractName} is ERC20, ERC20Burnable, Ownable, ERC20Permit {
 }
 `
 
+export const erc20MintableOwnableUUPSPermitOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __Ownable_init(initialOwner);
+        __ERC20Permit_init("${contractName}");
+    }
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+}
+`
+
+export const erc20BurnablePermitOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+
+contract ${contractName} is ERC20, ERC20Burnable, ERC20Permit {
+    constructor() ERC20("${contractName}", "MTK") ERC20Permit("${contractName}") {}
+}
+`
+
 export const erc20PausableBurnableMintableOwnableOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0

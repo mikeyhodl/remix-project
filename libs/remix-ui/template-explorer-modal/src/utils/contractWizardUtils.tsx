@@ -161,8 +161,11 @@ export function getErc20ContractCode (contractType: 'erc20', state: ContractType
         if (state.contractUpgradability.uups) {
           return erc20.erc20UUPSBurnableOptions(state.contractName || 'MyToken')
         }
-        return erc20.erc20BurnableMintableOwnableOptions(state.contractName)
+        return erc20.erc20BurnablePermitOnlyOptions(state.contractName)
       } else if (state.contractOptions.mintable) {
+        if (state.contractUpgradability.uups) {
+          return erc20.erc20MintableOwnableUUPSPermitOnlyOptions(state.contractName || 'MyToken')
+        }
         return erc20.erc20BurnableMintableOwnableOptions(state.contractName)
       }
       //  else if (state.contractOptions.mintable && state.contractOptions.burnable && state.contractOptions.pausable) {
