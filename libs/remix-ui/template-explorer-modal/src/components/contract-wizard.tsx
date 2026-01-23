@@ -60,10 +60,10 @@ export function ContractWizard () {
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {
       dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
-      switchAccessControl(strategy.contractAccessControl)
+      switchAccessControl(strategy.contractAccessControl || 'ownable')
     } else if (key === 'pausable') {
       dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
-      switchAccessControl(strategy.contractAccessControl)
+      switchAccessControl(strategy.contractAccessControl || 'ownable')
     }
     dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
     if (strategy.contractUpgradability.uups) {
