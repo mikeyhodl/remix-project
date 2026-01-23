@@ -787,19 +787,33 @@ export const erc20UUPSMintableOwnableOnlyOption = (contractName: string) => `
 // Compatible with OpenZeppelin Contracts ^5.5.0
 pragma solidity ^0.8.27;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract ${contractName} is ERC20, Ownable {
-    constructor(address initialOwner)
-        ERC20("${contractName}", "MTK")
-        Ownable(initialOwner)
-    {}
+contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __Ownable_init(initialOwner);
+    }
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
 }
+
 `
 
 export const erc20UUPSMintableRolesOnlyOption = (contractName: string) => `
@@ -807,21 +821,43 @@ export const erc20UUPSMintableRolesOnlyOption = (contractName: string) => `
 // Compatible with OpenZeppelin Contracts ^5.5.0
 pragma solidity ^0.8.27;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract ${contractName} is ERC20, AccessControl {
+contract ${contractName} is Initializable, ERC20Upgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
-    constructor(address defaultAdmin, address minter) ERC20("${contractName}", "MTK") {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address defaultAdmin, address minter, address upgrader)
+        public
+        initializer
+    {
+        __ERC20_init("${contractName}", "MTK");
+        __AccessControl_init();
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
+        _grantRole(UPGRADER_ROLE, upgrader);
     }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {}
 }
+
 `
 
 export const erc20UUPSMintableManagedOnlyOption = (contractName: string) => `
