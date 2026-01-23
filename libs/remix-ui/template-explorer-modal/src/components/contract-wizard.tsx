@@ -216,7 +216,7 @@ export function ContractWizard () {
               <div className="form-check mb-1">
                 <input data-id="contract-wizard-upgradability-uups-checkbox" className="form-check-input" type="checkbox" id="featUups" checked={strategy.contractUpgradability.uups} onChange={() => {
                   dispatch({ type: ContractWizardAction.CONTRACT_UPGRADABILITY_UPDATE, payload: { ...strategy.contractUpgradability, uups: !strategy.contractUpgradability.uups } })
-                  dispatch({ type: ContractWizardAction.CONTRACT_ACCESS_CONTROL_UPDATE, payload: 'ownable' as AccessControlType })
+                  dispatch({ type: ContractWizardAction.CONTRACT_ACCESS_CONTROL_UPDATE, payload: strategy.contractAccessControl })
                 }} />
                 <label className="form-check-label" htmlFor="featUups">UUPS</label>
               </div>

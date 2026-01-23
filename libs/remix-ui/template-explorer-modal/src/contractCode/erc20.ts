@@ -894,6 +894,35 @@ contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgrad
 
 `
 
+export const erc20UUPSNoOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __Ownable_init(initialOwner);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+}
+`
+
 export const erc20UUPSMintableBurnableManagedPermitOnlyOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0
@@ -1305,6 +1334,41 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgrad
 
 `
 
+export const erc20UUPSMintableManagedPermitOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialAuthority) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __AccessManaged_init(initialAuthority);
+        __ERC20Permit_init("${contractName}");
+    }
+
+    function mint(address to, uint256 amount) public restricted {
+        _mint(to, amount);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        restricted
+    {}
+}
+`
+
 export const erc20UUPSManagedFullOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0
@@ -1443,11 +1507,10 @@ pragma solidity ^0.8.27;
 
 import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -1455,7 +1518,6 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradea
 
     function initialize(address initialAuthority) public initializer {
         __ERC20_init("${contractName}", "MTK");
-        __ERC20Permit_init("${contractName}");
         __AccessManaged_init(initialAuthority);
     }
 
@@ -1465,10 +1527,40 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradea
         restricted
     {}
 }
-
 `
 
-export const erc20UUPSRolesNoOptions = (contractName: string) => `
+export const erc20UUPSOwnablePermitNoOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __ERC20Permit_init("${contractName}");
+        __Ownable_init(initialOwner);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+}
+`
+
+export const erc20UUPSRolesPermitNoOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0
 pragma solidity ^0.8.27;
@@ -1502,7 +1594,71 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradea
         onlyRole(UPGRADER_ROLE)
     {}
 }
+`
 
+export const erc20UUPSManagedPermitNoOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialAuthority) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __ERC20Permit_init("${contractName}");
+        __AccessManaged_init(initialAuthority);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        restricted
+    {}
+}
+`
+
+export const erc20UUPSRolesNoOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address defaultAdmin, address upgrader) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(UPGRADER_ROLE, upgrader);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {}
+}
 `
 
 export const erc20UUPSRolesMintableOptions = (contractName: string) => `
@@ -1745,6 +1901,51 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PausableUpgrad
 }
 `
 
+export const erc20UUPSMintableRolesPermitOnlyOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address defaultAdmin, address minter, address upgrader)
+        public
+        initializer
+    {
+        __ERC20_init("${contractName}", "MTK");
+        __AccessControl_init();
+        __ERC20Permit_init("${contractName}");
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(MINTER_ROLE, minter);
+        _grantRole(UPGRADER_ROLE, upgrader);
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+        _mint(to, amount);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {}
+}
+`
+
 export const erc20UUPSRolesFullOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0
@@ -1819,12 +2020,11 @@ export const erc20UUPSOwnableNoOptions = (contractName: string) => `
 pragma solidity ^0.8.27;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract ${contractName} is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -1832,7 +2032,6 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradea
 
     function initialize(address initialOwner) public initializer {
         __ERC20_init("${contractName}", "MTK");
-        __ERC20Permit_init("${contractName}");
         __Ownable_init(initialOwner);
     }
 
@@ -1842,7 +2041,6 @@ contract ${contractName} is Initializable, ERC20Upgradeable, ERC20PermitUpgradea
         onlyOwner
     {}
 }
-
 `
 
 export const erc20UUPSOwnableMintableOptions = (contractName: string) => `
@@ -1894,6 +2092,37 @@ contract ${contractName} is ERC20, ERC20Burnable, AccessControl {
     constructor(address defaultAdmin) ERC20("${contractName}", "MTK") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
     }
+}
+`
+
+export const erc20UUPSBurnableManagedNonPermitOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessManagedUpgradeable} from "@openzeppelin/contracts-upgradeable/access/manager/AccessManagedUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, AccessManagedUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialAuthority) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __ERC20Burnable_init();
+        __AccessManaged_init(initialAuthority);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        restricted
+    {}
 }
 `
 
@@ -3654,6 +3883,42 @@ contract ${contractName} is ERC20, ERC20Burnable, Ownable {
 }
 `
 
+export const erc20UUPSBurnableRolesNonPermitOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address defaultAdmin, address upgrader) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __ERC20Burnable_init();
+        __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(UPGRADER_ROLE, upgrader);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {}
+}
+`
+
 export const erc20BurnableOwnablePermitOptions = (contractName: string) => `
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.5.0
@@ -3672,6 +3937,37 @@ contract ${contractName} is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     {}
 }
 
+`
+
+export const erc20UUPSOwnableBurnableNonPermitOptions = (contractName: string) => `
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.5.0
+pragma solidity ^0.8.27;
+
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+contract ${contractName} is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("${contractName}", "MTK");
+        __ERC20Burnable_init();
+        __Ownable_init(initialOwner);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+}
 `
 
 export const erc20UUPSOwnableBurnableOptions = (contractName: string) => `
