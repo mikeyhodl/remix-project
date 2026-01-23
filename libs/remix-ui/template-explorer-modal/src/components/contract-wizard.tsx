@@ -60,16 +60,26 @@ export function ContractWizard () {
   function toggleContractOption(key: keyof typeof strategy.contractOptions) {
     if (key === 'mintable') {
       dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
-      switchAccessControl('ownable')
+      switchAccessControl(strategy.contractAccessControl)
     } else if (key === 'pausable') {
       dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
-      switchAccessControl('ownable')
+      switchAccessControl(strategy.contractAccessControl)
     }
     dispatch({ type: ContractWizardAction.CONTRACT_OPTIONS_UPDATE, payload: { ...strategy.contractOptions, [key]: !strategy.contractOptions[key] } })
+    if (strategy.contractUpgradability.uups) {
+      updateUpgradability(strategy.contractUpgradability)
+    }
   }
 
   function switchAccessControl(accessControl: AccessControlType) {
     dispatch({ type: ContractWizardAction.CONTRACT_ACCESS_CONTROL_UPDATE, payload: accessControl })
+  }
+  function updateUpgradability(upgradability: { uups?: boolean; transparent?: boolean }) {
+    dispatch({ type: ContractWizardAction.CONTRACT_UPGRADABILITY_UPDATE, payload: upgradability })
+    switchAccessControl(strategy.contractAccessControl)
+    if (strategy.contractOptions.permit === false && strategy.contractType === 'erc20') {
+      dispatch({ type: ContractWizardAction.UPDATE_ERC20_PERMIT, payload: { ...strategy.contractOptions, permit: true } })
+    }
   }
   function updateTokenName(tokenName: string) {
     dispatch({ type: ContractWizardAction.TOKEN_NAME_UPDATE, payload: tokenName })
@@ -179,10 +189,10 @@ export function ContractWizard () {
                 <input data-id="contract-wizard-pausable-checkbox" className="form-check-input" type="checkbox" id="featPausable" checked={strategy.contractOptions.pausable} onChange={() => toggleContractOption('pausable')} />
                 <label className="form-check-label" htmlFor="featPausable">Pausable</label>
               </div>
-              <div className="form-check mb-1">
+              {strategy.contractType === 'erc20' && <div className="form-check mb-1">
                 <input data-id="contract-wizard-permit-checkbox" className="form-check-input" type="checkbox" id="featPermit" checked={strategy.contractOptions.permit} onChange={() => toggleContractOption('permit')} />
                 <label className="form-check-label" htmlFor="featPermit">Permit</label>
-              </div>
+              </div>}
             </div>
 
             <div className="mb-3">
