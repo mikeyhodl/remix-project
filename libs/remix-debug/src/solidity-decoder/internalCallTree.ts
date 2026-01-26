@@ -130,11 +130,12 @@ export class InternalCallTree {
         try {
           buildTree(this, 0, scopeId, isCreation).then((result) => {
             if (result.error) {
+              console.error('analyzing trace fails ' + result.error)
               this.event.trigger('callTreeBuildFailed', [result.error])
             } else {
               createReducedTrace(this, traceManager.trace.length - 1)
               console.log('call tree build lasts ', (Date.now() - time) / 1000)
-              this.event.trigger('callTreeReady', [this.scopes, this.scopeStarts])
+              this.event.trigger('callTreeReady', [this.scopes, this.scopeStarts, this.traceManager.trace])
             }
           }, (reason) => {
             console.log('analyzing trace falls ' + reason)
@@ -200,7 +201,6 @@ export class InternalCallTree {
     let scopeId = this.findScopeId(vmtraceIndex)
     if (scopeId !== '' && !scopeId) return null
     let scope = this.scopes[scopeId]
-    console.log('findScope', this.scopes)
     while (scope.lastStep && scope.lastStep < vmtraceIndex && scope.firstStep > 0) {
       scopeId = this.parentScope(scopeId)
       scope = this.scopes[scopeId]
@@ -469,23 +469,20 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
 
     try {
       address = tree.traceManager.getCurrentCalledAddressAt(step)
-      sourceLocation = await tree.extractValidSourceLocation(step, address)
-
+      sourceLocation = await tree.extractSourceLocation(step, address)
       if (!compareSource(sourceLocation, currentSourceLocation)) {
         tree.reducedTrace.push(step)
-        currentSourceLocation = sourceLocation
       }
+      currentSourceLocation = sourceLocation
       if (currentAddress !== address) {
         compilationResult = await tree.solidityProxy.compilationResult(address)
         currentAddress = address
       }
       const amountOfSources = tree.sourceLocationTracker.getTotalAmountOfSources(address, compilationResult.data.contracts)
-      if (tree.sourceLocationTracker.isInvalidSourceLocation(currentSourceLocation, amountOfSources)) { // file is -1 or greater than amount of sources
-        validSourceLocation = previousValidSourceLocation
-      } else
-        validSourceLocation = currentSourceLocation
+      validSourceLocation = await tree.extractValidSourceLocation(step, address)
 
     } catch (e) {
+      console.error(e)
       return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
     }
     if (!sourceLocation) {
@@ -528,7 +525,9 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         console.log(e)
       }
     }
-
+    if (tree.locationAndOpcodePerVMTraceIndex[step]) {
+      console.warn('Duplicate entry for step ', step)
+    }
     tree.locationAndOpcodePerVMTraceIndex[step] = { sourceLocation, stepDetail, lineColumnPos, contractAddress: address }
     tree.scopes[scopeId].gasCost += stepDetail.gasCost
 
@@ -543,7 +542,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     
     const contractObj = await tree.solidityProxy.contractObjectAtAddress(address)
     const generatedSources = getGeneratedSources(tree, scopeId, contractObj)
-    const stackedNodes = await resolveAllNodes(tree, sourceLocation, generatedSources, address)
+    const stackedNodes = await resolveAllNodes(tree, validSourceLocation, generatedSources, address)
     const reverseStackedNodes = stackedNodes.slice().reverse()
     const functionDefinition = reverseStackedNodes.find((node) => node.nodeType === 'FunctionDefinition' || node.nodeType === 'YulFunctionDefinition')
     
@@ -560,10 +559,13 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       tree.pendingConstructorEntryStackDepth = stepDetail.stack.length
       // from now on we'll be waiting for a change in the source location which will mark the beginning of the constructor execution.
       // constructorsStartExecution allows to keep track on which constructor has already been executed.
+      console.log('Pending constructor execution at ', tree.pendingConstructorExecutionAt, ' for constructor id ', tree.pendingConstructorId)
     }
-    const internalfunctionCall = functionDefinition && previousSourceLocation.jump === 'i' && functionDefinition.kind !== 'constructor'
+    const internalfunctionCall = functionDefinition && (previousSourceLocation && previousSourceLocation.jump === 'i') && functionDefinition.kind !== 'constructor'
+    const isJumpOutOfFunction = functionDefinition && (validSourceLocation && validSourceLocation.jump === 'o') && functionDefinition.kind !== 'constructor'
     if (constructorExecutionStarts || isInternalTxInstrn || internalfunctionCall) {
       try {
+        previousSourceLocation = null
         const newScopeId = scopeId === '' ? subScope.toString() : scopeId + '.' + subScope
         tree.scopeStarts[step] = newScopeId
         const startExecution = lineColumnPos && lineColumnPos.start ? lineColumnPos.start.line + 1 : undefined
@@ -577,7 +579,14 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
           await registerFunctionParameters(tree, tree.pendingConstructor, step, newScopeId, contractObj, previousValidSourceLocation, address)
           tree.pendingConstructor = null
         }
-        const externalCallResult = await buildTree(tree, nextStep, newScopeId, isCreateInstrn, functionDefinition, contractObj, sourceLocation, validSourceLocation)
+        let externalCallResult
+        try {
+          externalCallResult = await buildTree(tree, nextStep, newScopeId, isCreateInstrn, functionDefinition, contractObj, sourceLocation, validSourceLocation)
+        } catch (e) {
+          console.error(e)
+          return { outStep: step, error: 'InternalCallTree - ' + e.message }
+        }
+        
         if (externalCallResult.error) {
           return { outStep: step, error: 'InternalCallTree - ' + externalCallResult.error }
         } else {
@@ -585,9 +594,10 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
           subScope++
         }
       } catch (e) {
+        console.error(e)
         return { outStep: step, error: 'InternalCallTree - ' + e.message }
       }
-    } else if (callDepthChange(step, tree.traceManager.trace) || (sourceLocation.jump === 'o' && functionDefinition) || isRevert || isConstructorExit(tree, scopeId, tree.pendingConstructorEntryStackDepth, stepDetail)) {
+    } else if (callDepthChange(step, tree.traceManager.trace) || isJumpOutOfFunction || isRevert || isConstructorExit(tree, scopeId, tree.pendingConstructorEntryStackDepth, stepDetail)) {
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
       // For constructors in inheritance chains, we also check if stack depth has returned to entry level
       tree.scopes[scopeId].lastStep = step
@@ -605,7 +615,11 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       // if not, we are in the current scope.
       // We check in `includeVariableDeclaration` if there is a new local variable in scope for this specific `step`
       if (tree.includeLocalVariables) {
-        await includeVariableDeclaration(tree, step, sourceLocation, scopeId, contractObj, generatedSources, address)
+        try {
+          await includeVariableDeclaration(tree, step, sourceLocation, scopeId, contractObj, generatedSources, address)
+        } catch (e) {
+          console.error('includeVariableDeclaration error at step ', step, e)
+        }        
       }
       previousSourceLocation = sourceLocation
       previousValidSourceLocation = validSourceLocation
@@ -728,12 +742,11 @@ async function includeVariableDeclaration (tree: InternalCallTree, step, sourceL
               safeToDecodeAtStep: safeStep,
               id: variableDeclaration.id
             }
-            console.log('New local variable:', newVar)
             tree.scopes[scopeId].locals[variableDeclaration.name] = newVar
             tree.variables[variableDeclaration.id] = newVar
 
             // Bind variable to symbolic stack
-            tree.symbolicStackManager.bindVariable(step + 1, newVar, stack.length) // step + 1 because the symbolic stack represents the state AFTER the opcode execution
+            tree.symbolicStackManager.bindVariable(step, newVar, stack.length) // step + 1 because the symbolic stack represents the state AFTER the opcode execution
           }
         } catch (error) {
           console.log(error)
@@ -877,7 +890,7 @@ function addParams (parameterList, tree: InternalCallTree, scopeId, states, cont
       // Bind parameter to symbolic stack at function entry step
       const entryStep = tree.functionCallStack[tree.functionCallStack.length - 1]
       if (entryStep !== undefined) {
-        tree.symbolicStackManager.bindVariable(entryStep + 1, newParam, stackDepth)
+        tree.symbolicStackManager.bindVariable(entryStep, newParam, stackDepth)
       }
     }
     stackPosition += dir

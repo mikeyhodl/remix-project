@@ -67,7 +67,6 @@ export class SymbolicStackManager {
    * @returns Symbolic stack at that step, or empty array if not found
    */
   getStackAtStep(step: number): SymbolicStackSlot[] {
-    console.log('getStackAtStep', this.stackPerStep)
     return this.stackPerStep[step] || []
   }
 
@@ -111,7 +110,6 @@ export class SymbolicStackManager {
     const stack = this.getStackAtStep(step)
 
     if (stackIndex >= 0 && stackIndex < stack.length) {
-      console.log(`Binding variable ${variable.name} at step ${step} to stack index ${stackIndex}`, stack.length)
       stack[stackIndex] = {
         kind: variable.isParameter ? 'parameter' : 'variable',
         variableId: variable.id,
@@ -120,7 +118,7 @@ export class SymbolicStackManager {
         originStep: variable.declarationStep,
         isParameter: variable.isParameter || false
       }
-      console.log(`Binding variable ${variable.name} at step ${step} to stack index ${stackIndex}`, stack)
+      // console.log(`Bound variable ${variable.name} at step ${step} to stack index ${stackIndex}`, stack)
     } else {
       // This should not happen if stackDepth is correctly set (> 0)
       if (variable.stackDepth <= 0) {
@@ -159,7 +157,6 @@ export class SymbolicStackManager {
    */
   getAllVariablesAtStep(step: number): Array<{ slot: SymbolicStackSlot, position: number }> {
     const stack = this.getStackAtStep(step)
-    console.log(` getAllVariablesAtStep - Getting all variables at step ${step} with stack length ${stack.length}`)
     const variables: Array<{ slot: SymbolicStackSlot, position: number }> = []
 
     stack.forEach((slot, position) => {

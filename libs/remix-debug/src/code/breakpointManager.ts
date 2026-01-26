@@ -98,6 +98,7 @@ export class BreakpointManager {
       try {
         previousSourceLocation = sourceLocation
         const stepInfo = this.callTree.locationAndOpcodePerVMTraceIndex[currentStep]
+        // console.log('Checking step', currentStep, 'at', stepInfo)
         sourceLocation = stepInfo.sourceLocation
         lineColumn = stepInfo.lineColumnPos
         contractAddress = stepInfo.contractAddress
