@@ -159,7 +159,6 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
 
       return this.createJsonContent('debug://call-tree-scopes', {
         success: true,
-        scopes: result.scopes,
         scopeStarts: result.scopeStarts,
         functionDefinitionsByScope: result.functionDefinitionsByScope,
         functionCallStack: result.functionCallStack,
