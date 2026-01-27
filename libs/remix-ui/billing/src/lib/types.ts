@@ -2,7 +2,7 @@
  * Types for the Billing UI components
  */
 
-import { CreditPackage, SubscriptionPlan, UserSubscription, Credits } from '@remix-api'
+import { CreditPackage, SubscriptionPlan, UserSubscription, Credits, FeatureAccessProduct, UserFeatureMembership } from '@remix-api'
 
 export interface BillingManagerProps {
   /** Auth plugin instance for making API calls */
@@ -73,6 +73,25 @@ export interface PurchaseButtonProps {
   variant?: 'primary' | 'secondary' | 'outline'
   /** Additional CSS classes */
   className?: string
+  /** Whether priceId is required for the button to be enabled (default: true) */
+  requirePriceId?: boolean
 }
 
-export type { CreditPackage, SubscriptionPlan, UserSubscription, Credits }
+export interface FeatureAccessProductsViewProps {
+  /** Available feature access products */
+  products: FeatureAccessProduct[]
+  /** Whether products are loading */
+  loading?: boolean
+  /** Error message if loading failed */
+  error?: string | null
+  /** User's current feature memberships */
+  memberships?: UserFeatureMembership[]
+  /** Callback when user clicks to purchase a product */
+  onPurchase: (productSlug: string, priceId: string | null) => void
+  /** Whether purchase is in progress */
+  purchasing?: boolean
+  /** Filter: show only subscriptions (true) or one-time passes (false) or all (undefined) */
+  filterRecurring?: boolean
+}
+
+export type { CreditPackage, SubscriptionPlan, UserSubscription, Credits, FeatureAccessProduct, UserFeatureMembership }

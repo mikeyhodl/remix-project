@@ -336,3 +336,103 @@ export interface BillingConfigResponse {
     token: string
   }
 }
+
+// ==================== Feature Access Products ====================
+
+/**
+ * Feature group info included in product response
+ */
+export interface FeatureGroupInfo {
+  id: number
+  name: string              // Feature group slug (e.g., "ai-pro")
+  displayName: string       // Human-readable name (e.g., "AI Pro")
+  description: string | null
+  priority: number          // Display priority (higher = more prominent)
+}
+
+/**
+ * Feature access product - time-based pass or subscription for feature groups
+ */
+export interface FeatureAccessProduct {
+  id: number
+  slug: string
+  name: string
+  description: string
+  featureGroup: string           // Primary feature group (legacy, single value)
+  featureGroups: FeatureGroupInfo[]  // All feature groups this product grants
+  durationType: 'days' | 'months' | 'years' | 'unlimited'
+  durationValue: number          // How many units of duration
+  isRecurring: boolean           // true for subscriptions
+  billingInterval: 'day' | 'week' | 'month' | 'year' | null
+  priceCents: number
+  currency: string
+  isPopular: boolean
+  providers?: ProductProvider[]  // Available payment providers
+}
+
+/**
+ * Response from feature access products endpoint
+ */
+export interface FeatureAccessProductsResponse {
+  products: FeatureAccessProduct[]
+}
+
+/**
+ * Request to purchase feature access
+ */
+export interface FeatureAccessPurchaseRequest {
+  productSlug?: string       // Product slug to purchase
+  productId?: number         // Or product ID
+  provider?: string          // Provider slug (default: "paddle")
+  returnUrl?: string         // Redirect URL after checkout
+}
+
+/**
+ * Response from feature access purchase endpoint
+ */
+export interface FeatureAccessPurchaseResponse {
+  checkoutUrl: string
+  transactionId: string
+  provider: string
+  product: {
+    id: number
+    slug: string
+    name: string
+    featureGroup: string
+    durationType: string
+    durationValue: number
+    isRecurring: boolean
+    priceCents: number
+  }
+}
+
+/**
+ * User's active feature group membership
+ */
+export interface UserFeatureMembership {
+  id: number
+  featureGroup: string
+  startsAt: string            // ISO date
+  expiresAt: string | null    // ISO date, null = never expires
+  status: 'active' | 'expired' | 'canceled' | 'revoked'
+  isRecurring: boolean
+  sourceType: 'purchase' | 'subscription' | 'admin_grant' | 'promo' | 'trial'
+  renewalCount: number
+}
+
+/**
+ * Response from user memberships endpoint
+ */
+export interface UserMembershipsResponse {
+  userId: number
+  memberships: UserFeatureMembership[]
+}
+
+/**
+ * Response from feature access check endpoint
+ */
+export interface FeatureAccessCheckResponse {
+  userId: number
+  featureGroup: string
+  hasAccess: boolean
+}

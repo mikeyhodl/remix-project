@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { BillingManagerProps, CreditPackage, SubscriptionPlan, UserSubscription, Credits } from './types'
+import { BillingManagerProps, CreditPackage, SubscriptionPlan, UserSubscription, Credits, FeatureAccessProduct, UserFeatureMembership } from './types'
 import { BillingApiService, ApiClient } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { CreditPackagesView } from './components/credit-packages-view'
 import { SubscriptionPlansView } from './components/subscription-plans-view'
+import { FeatureAccessProductsView } from './components/feature-access-products-view'
 import { CurrentSubscription } from './components/current-subscription'
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 
-type TabType = 'credits' | 'subscription'
+type TabType = 'features' | 'credits' | 'subscription'
 
 /**
  * Main Billing Manager component
@@ -33,8 +34,14 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
   })
 
   // UI State
-  const [activeTab, setActiveTab] = useState<TabType>('credits')
+  const [activeTab, setActiveTab] = useState<TabType>('features')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Feature Access Products state
+  const [featureProducts, setFeatureProducts] = useState<FeatureAccessProduct[]>([])
+  const [featureProductsLoading, setFeatureProductsLoading] = useState(true)
+  const [featureProductsError, setFeatureProductsError] = useState<string | null>(null)
+  const [featureMemberships, setFeatureMemberships] = useState<UserFeatureMembership[]>([])
 
   // Credit packages state
   const [packages, setPackages] = useState<CreditPackage[]>([])
@@ -54,6 +61,7 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
   // Purchase state
   const [purchasing, setPurchasing] = useState(false)
   const [subscribing, setSubscribing] = useState(false)
+  const [purchasingFeature, setPurchasingFeature] = useState(false)
 
   // Paddle state
   const [paddle, setPaddle] = useState<Paddle | null>(null)
@@ -97,6 +105,7 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
         console.log('[BillingManager] Checkout completed')
         setPurchasing(false)
         setSubscribing(false)
+        setPurchasingFeature(false)
         // Refresh user data
         setTimeout(() => {
           loadUserData()
@@ -107,6 +116,7 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
         console.log('[BillingManager] Checkout closed')
         setPurchasing(false)
         setSubscribing(false)
+        setPurchasingFeature(false)
       }
     }
 
@@ -174,6 +184,22 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
   }, [isAuthenticated])
 
   const loadPublicData = async () => {
+    // Load feature access products
+    setFeatureProductsLoading(true)
+    try {
+      const response = await billingApi.getFeatureAccessProducts()
+      if (response.ok && response.data) {
+        setFeatureProducts(response.data.products || [])
+        setFeatureProductsError(null)
+      } else {
+        setFeatureProductsError(response.error || 'Failed to load feature products')
+      }
+    } catch (err) {
+      setFeatureProductsError('Failed to load feature products')
+    } finally {
+      setFeatureProductsLoading(false)
+    }
+
     // Load credit packages
     setPackagesLoading(true)
     try {
@@ -226,6 +252,12 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
       const subResponse = await billingApi.getSubscription()
       if (subResponse.ok && subResponse.data) {
         setSubscription(subResponse.data.subscription)
+      }
+
+      // Load feature memberships
+      const membershipsResponse = await billingApi.getFeatureMemberships()
+      if (membershipsResponse.ok && membershipsResponse.data) {
+        setFeatureMemberships(membershipsResponse.data.memberships || [])
       }
     } catch (err) {
       console.error('[BillingManager] Failed to load user data:', err)
@@ -333,6 +365,57 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     }
   }
 
+  const handlePurchaseFeatureAccess = async (productSlug: string, priceId: string | null) => {
+    if (!isAuthenticated) {
+      try {
+        await plugin?.call('auth', 'login', 'github')
+        return
+      } catch {
+        console.error('[BillingManager] Login failed')
+        return
+      }
+    }
+
+    if (!priceId) {
+      console.error('[BillingManager] No price ID for product:', productSlug)
+      return
+    }
+
+    setPurchasingFeature(true)
+    try {
+      // Call backend API to create transaction
+      const response = await billingApi.purchaseFeatureAccess(productSlug, 'paddle')
+      if (!response.ok || !response.data) {
+        console.error('[BillingManager] Failed to create checkout:', response.error)
+        setPurchasingFeature(false)
+        return
+      }
+
+      const { transactionId, checkoutUrl } = response.data
+
+      // Use Paddle.js overlay if available
+      const paddleInstance = paddle || getPaddle()
+      if (paddleInstance && transactionId) {
+        openCheckoutWithTransaction(paddleInstance, transactionId, {
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light'
+          }
+        })
+      } else if (checkoutUrl) {
+        // Fallback to redirect checkout URL
+        window.open(checkoutUrl, '_blank')
+        setPurchasingFeature(false)
+      } else {
+        console.error('[BillingManager] No transactionId or checkoutUrl returned')
+        setPurchasingFeature(false)
+      }
+    } catch (err) {
+      console.error('[BillingManager] Feature access purchase error:', err)
+      setPurchasingFeature(false)
+    }
+  }
+
   const handleManageSubscription = () => {
     // Open Paddle customer portal or custom management page
     console.log('[BillingManager] Manage subscription')
@@ -390,6 +473,15 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
       <ul className="nav nav-tabs px-3 pt-3">
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === 'features' ? 'active' : ''}`}
+            onClick={() => setActiveTab('features')}
+          >
+            <i className="fas fa-unlock-alt me-2"></i>
+            Feature Access
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === 'credits' ? 'active' : ''}`}
             onClick={() => setActiveTab('credits')}
           >
@@ -410,6 +502,17 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
 
       {/* Tab content */}
       <div className="p-3">
+        {activeTab === 'features' && (
+          <FeatureAccessProductsView
+            products={featureProducts}
+            loading={featureProductsLoading}
+            error={featureProductsError}
+            memberships={featureMemberships}
+            onPurchase={handlePurchaseFeatureAccess}
+            purchasing={purchasingFeature}
+          />
+        )}
+
         {activeTab === 'credits' && (
           <CreditPackagesView
             packages={packages}

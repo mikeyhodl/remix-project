@@ -11,7 +11,8 @@ export const PurchaseButton: React.FC<PurchaseButtonProps> = ({
   loading = false,
   onClick,
   variant = 'primary',
-  className = ''
+  className = '',
+  requirePriceId = true
 }) => {
   const getButtonClass = () => {
     const base = 'btn w-100'
@@ -27,7 +28,7 @@ export const PurchaseButton: React.FC<PurchaseButtonProps> = ({
     }
   }
 
-  const isDisabled = disabled || loading || !priceId
+  const isDisabled = disabled || loading || (requirePriceId && !priceId)
 
   return (
     <button
@@ -43,7 +44,7 @@ export const PurchaseButton: React.FC<PurchaseButtonProps> = ({
         </>
       ) : (
         <>
-          {!priceId && <i className="fas fa-lock me-2"></i>}
+          {requirePriceId && !priceId && <i className="fas fa-lock me-2"></i>}
           {label}
         </>
       )}

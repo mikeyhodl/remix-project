@@ -33,7 +33,13 @@ import {
   PurchaseCreditsResponse,
   SubscribeRequest,
   SubscribeResponse,
-  BillingConfigResponse
+  BillingConfigResponse,
+  FeatureAccessProduct,
+  FeatureAccessProductsResponse,
+  FeatureAccessPurchaseRequest,
+  FeatureAccessPurchaseResponse,
+  UserMembershipsResponse,
+  FeatureAccessCheckResponse
 } from './api-types'
 
 /**
@@ -388,5 +394,92 @@ export class BillingApiService {
     } catch {
       return false
     }
+  }
+
+  // ==================== Feature Access Products ====================
+
+  /**
+   * Get available feature access products (passes and subscriptions)
+   * @param recurring - Optional filter: true = subscriptions only, false = one-time passes only
+   */
+  async getFeatureAccessProducts(recurring?: boolean): Promise<ApiResponse<FeatureAccessProductsResponse>> {
+    const params = new URLSearchParams()
+    if (recurring !== undefined) params.set('recurring', recurring.toString())
+    const query = params.toString()
+    return this.apiClient.get<FeatureAccessProductsResponse>(`/feature-access/products${query ? '?' + query : ''}`)
+  }
+
+  /**
+   * Get a single feature access product by slug
+   * @param slug - Product slug
+   */
+  async getFeatureAccessProduct(slug: string): Promise<ApiResponse<FeatureAccessProduct>> {
+    return this.apiClient.get<FeatureAccessProduct>(`/feature-access/products/${slug}`)
+  }
+
+  /**
+   * Purchase a feature access product - returns checkout URL
+   * @param productSlug - Product slug to purchase
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
+   */
+  async purchaseFeatureAccess(productSlug: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<FeatureAccessPurchaseResponse>> {
+    const body: FeatureAccessPurchaseRequest = { productSlug, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<FeatureAccessPurchaseResponse>('/feature-access/purchase', body)
+  }
+
+  /**
+   * Get user's active feature group memberships
+   * @param includeExpired - Include expired memberships
+   */
+  async getFeatureMemberships(includeExpired: boolean = false): Promise<ApiResponse<UserMembershipsResponse>> {
+    const params = includeExpired ? '?includeExpired=true' : ''
+    return this.apiClient.get<UserMembershipsResponse>(`/feature-access/memberships${params}`)
+  }
+
+  /**
+   * Check if user has access to a specific feature group
+   * @param featureGroup - Feature group slug (e.g., "ai-pro")
+   */
+  async checkFeatureAccess(featureGroup: string): Promise<ApiResponse<FeatureAccessCheckResponse>> {
+    return this.apiClient.get<FeatureAccessCheckResponse>(`/feature-access/check/${featureGroup}`)
+  }
+
+  /**
+   * Helper: Check if user has access to a feature group (returns boolean)
+   * @param featureGroup - Feature group slug
+   */
+  async hasFeatureAccess(featureGroup: string): Promise<boolean> {
+    try {
+      const response = await this.checkFeatureAccess(featureGroup)
+      return response.ok && response.data?.hasAccess === true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Helper: Format duration for display
+   */
+  static formatDuration(durationType: string, durationValue: number): string {
+    if (durationType === 'unlimited') return 'Unlimited'
+    const unit = durationValue === 1 ? durationType.slice(0, -1) : durationType
+    return `${durationValue} ${unit}`
+  }
+
+  /**
+   * Helper: Format billing interval for display
+   */
+  static formatBillingInterval(interval: string | null): string {
+    if (!interval) return ''
+    return `/${interval}`
+  }
+
+  /**
+   * Filter feature access products by recurring status
+   */
+  static filterFeatureProducts(products: FeatureAccessProduct[], recurring: boolean): FeatureAccessProduct[] {
+    return products.filter(p => p.isRecurring === recurring)
   }
 }
