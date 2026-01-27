@@ -325,7 +325,6 @@ export class InternalCallTree {
    * @throws {Error} If gas cost data is not available for the specified file and line
    */
   async getGasCostPerLine(file: number, line: number, scopeId: string) {
-    console.log(this.gasCostPerLine[file])
     if (this.gasCostPerLine[file] && this.gasCostPerLine[file][scopeId] && this.gasCostPerLine[file][scopeId][line]) {
       return this.gasCostPerLine[file][scopeId][line]
     }
@@ -479,9 +478,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         compilationResult = await tree.solidityProxy.compilationResult(address)
         currentAddress = address
       }
-      const amountOfSources = tree.sourceLocationTracker.getTotalAmountOfSources(address, compilationResult.data.contracts)
       validSourceLocation = await tree.extractValidSourceLocation(step, address)
-
     } catch (e) {
       console.error(e)
       return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
@@ -543,9 +540,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     tree.symbolicStackManager.setStackAtStep(step + 1, newSymbolicStack)
     const contractObj = await tree.solidityProxy.contractObjectAtAddress(address)
     const generatedSources = getGeneratedSources(tree, scopeId, contractObj)
-    const stackedNodes = await resolveAllNodes(tree, validSourceLocation, generatedSources, address)
-    const reverseStackedNodes = stackedNodes.slice().reverse()
-    const functionDefinition = reverseStackedNodes.find((node) => node.nodeType === 'FunctionDefinition' || node.nodeType === 'YulFunctionDefinition')
+    const functionDefinition = await resolveFunctionDefinition(tree, sourceLocation, generatedSources, address)
     const isInternalTxInstrn = isCallInstruction(stepDetail)
     const isCreateInstrn = isCreateInstruction(stepDetail)
     // we are checking if we are jumping in a new CALL or in an internal function
