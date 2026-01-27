@@ -324,9 +324,9 @@ export class InternalCallTree {
    * @returns {Promise<Object>} Object containing gasCost (total gas) and indexes (array of VM trace steps)
    * @throws {Error} If gas cost data is not available for the specified file and line
    */
-  async getGasCostPerLine(file: number, line: number) {
-    if (this.gasCostPerLine[file] && this.gasCostPerLine[file][line]) {
-      return this.gasCostPerLine[file][line]
+  async getGasCostPerLine(file: number, line: number, scopeId: string) {
+    if (this.gasCostPerLine[file] && this.gasCostPerLine[file][scopeId] && this.gasCostPerLine[file][scopeId][line]) {
+      return this.gasCostPerLine[file][scopeId][line]
     }
     throw new Error('Could not find gas cost per line')
   }
@@ -513,14 +513,15 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
 
         lineColumnPos = await tree.offsetToLineColumnConverter.offsetToLineColumn(validSourceLocation, validSourceLocation.file, sources, astSources)
         if (!tree.gasCostPerLine[validSourceLocation.file]) tree.gasCostPerLine[validSourceLocation.file] = {}
-        if (!tree.gasCostPerLine[validSourceLocation.file][lineColumnPos.start.line]) {
-          tree.gasCostPerLine[validSourceLocation.file][lineColumnPos.start.line] = {
+        if (!tree.gasCostPerLine[validSourceLocation.file][scopeId]) tree.gasCostPerLine[validSourceLocation.file][scopeId] = {}
+        if (!tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line]) {
+          tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line] = {
             gasCost: 0,
             indexes: []
           }
         }
-        tree.gasCostPerLine[validSourceLocation.file][lineColumnPos.start.line].gasCost += stepDetail.gasCost
-        tree.gasCostPerLine[validSourceLocation.file][lineColumnPos.start.line].indexes.push(step)
+        tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line].gasCost += stepDetail.gasCost
+        tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line].indexes.push(step)
       } catch (e) {
         console.log(e)
       }
@@ -528,7 +529,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     if (tree.locationAndOpcodePerVMTraceIndex[step]) {
       console.warn('Duplicate entry for step ', step)
     }
-    tree.locationAndOpcodePerVMTraceIndex[step] = { sourceLocation, stepDetail, lineColumnPos, contractAddress: address }
+    tree.locationAndOpcodePerVMTraceIndex[step] = { sourceLocation, stepDetail, lineColumnPos, contractAddress: address, scopeId }
     tree.scopes[scopeId].gasCost += stepDetail.gasCost
 
     // Update symbolic stack based on opcode execution
