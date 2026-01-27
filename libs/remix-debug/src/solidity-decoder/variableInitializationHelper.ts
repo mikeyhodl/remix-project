@@ -95,9 +95,9 @@ export async function findSafeStepForVariable(
 
   try {
     for (let step = declarationStep + 1;
-         step < tree.traceManager.trace.length &&
+      step < tree.traceManager.trace.length &&
          step <= declarationStep + maxLookAhead;
-         step++) {
+      step++) {
       try {
         const nextSourceLocation = await tree.extractSourceLocation(step, address)
 
@@ -154,9 +154,9 @@ export function findSafeStepByStackStability(
     let previousValue = initialStack[initialStack.length - 1 - stackDepth]
 
     for (let step = declarationStep + 1;
-         step <= declarationStep + maxLookAhead &&
+      step <= declarationStep + maxLookAhead &&
          step < tree.traceManager.trace.length;
-         step++) {
+      step++) {
       try {
         const currentStack = tree.traceManager.getStackAt(step)
 

@@ -536,18 +536,16 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     // Update symbolic stack based on opcode execution
     const previousSymbolicStack = tree.symbolicStackManager.getStackAtStep(step)
     if (stepDetail.stack.length !== previousSymbolicStack.length) {
-      console.warn('STACK SIZE MISMATCH at step ', step, ' opcode ', stepDetail.op, ' symbolic stack size ', previousSymbolicStack.length, ' actual stack size ', stepDetail.stack.length  )
+      console.warn('STACK SIZE MISMATCH at step ', step, ' opcode ', stepDetail.op, ' symbolic stack size ', previousSymbolicStack.length, ' actual stack size ', stepDetail.stack.length )
     }
     const newSymbolicStack = updateSymbolicStack(previousSymbolicStack, stepDetail.op, step)
     // step + 1 because the symbolic stack represents the state AFTER the opcode execution
     tree.symbolicStackManager.setStackAtStep(step + 1, newSymbolicStack)
-    
     const contractObj = await tree.solidityProxy.contractObjectAtAddress(address)
     const generatedSources = getGeneratedSources(tree, scopeId, contractObj)
     const stackedNodes = await resolveAllNodes(tree, validSourceLocation, generatedSources, address)
     const reverseStackedNodes = stackedNodes.slice().reverse()
     const functionDefinition = reverseStackedNodes.find((node) => node.nodeType === 'FunctionDefinition' || node.nodeType === 'YulFunctionDefinition')
-    
     const isInternalTxInstrn = isCallInstruction(stepDetail)
     const isCreateInstrn = isCreateInstruction(stepDetail)
     // we are checking if we are jumping in a new CALL or in an internal function
@@ -570,8 +568,8 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         previousSourceLocation = null
         const newScopeId = scopeId === '' ? subScope.toString() : scopeId + '.' + subScope
         tree.scopeStarts[step] = newScopeId
-        const startExecution = lineColumnPos && lineColumnPos.start ? lineColumnPos.start.line + 1 : undefined
-        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0, startExecution, functionDefinition }
+        const startExecutionLine = lineColumnPos && lineColumnPos.start ? lineColumnPos.start.line + 1 : undefined
+        tree.scopes[newScopeId] = { firstStep: step, locals: {}, isCreation, gasCost: 0, startExecutionLine, functionDefinition }
         // for the ctor we are at the start of its trace, we have to replay this step in order to catch all the locals:
         const nextStep = constructorExecutionStarts ? step : step + 1
         if (constructorExecutionStarts) {
@@ -588,7 +586,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
           console.error(e)
           return { outStep: step, error: 'InternalCallTree - ' + e.message }
         }
-        
+
         if (externalCallResult.error) {
           return { outStep: step, error: 'InternalCallTree - ' + externalCallResult.error }
         } else {
@@ -611,7 +609,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         }
       }
 
-      tree.scopes[scopeId].endExecution = lineColumnPos && lineColumnPos.end ? lineColumnPos.end.line + 1 : undefined
+      tree.scopes[scopeId].endExecutionLine = lineColumnPos && lineColumnPos.end ? lineColumnPos.end.line + 1 : undefined
       return { outStep: step + 1 }
     } else {
       // if not, we are in the current scope.
@@ -621,7 +619,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
           await includeVariableDeclaration(tree, step, sourceLocation, scopeId, contractObj, generatedSources, address)
         } catch (e) {
           console.error('includeVariableDeclaration error at step ', step, e)
-        }        
+        }
       }
       previousSourceLocation = sourceLocation
       previousValidSourceLocation = validSourceLocation
