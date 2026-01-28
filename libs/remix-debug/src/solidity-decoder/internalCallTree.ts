@@ -462,6 +462,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
   let previousValidSourceLocation = validSourceLocation || currentSourceLocation
   let compilationResult
   let currentAddress = ''
+  console.log('TRACE LENGTH', tree.traceManager.trace.length)
   while (step < tree.traceManager.trace.length) {
     let sourceLocation
     let validSourceLocation
@@ -562,6 +563,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     }
     const internalfunctionCall = functionDefinition && (previousSourceLocation && previousSourceLocation.jump === 'i') && functionDefinition.kind !== 'constructor'
     const isJumpOutOfFunction = functionDefinition && (validSourceLocation && validSourceLocation.jump === 'o') && functionDefinition.kind !== 'constructor'
+    console.log('step', step, internalfunctionCall, isJumpOutOfFunction, previousSourceLocation, validSourceLocation, functionDefinition)
     if (constructorExecutionStarts || isInternalTxInstrn || internalfunctionCall) {
       try {
         previousSourceLocation = null
