@@ -67,8 +67,6 @@ const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt }) => {
   )
 }
 
-const content = []
-
 export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   messages,
   isStreaming,
