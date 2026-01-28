@@ -37,6 +37,7 @@ module.exports = {
       .pause(4000)
       .waitForElementVisible('*[data-id="solidityLocals"]')
       .scrollAndClick('*[data-id="solidityLocals"]')
+      .getBrowserLogs()
       .waitForElementContainsText('*[data-id="solidityLocals"]', 'toast', 60000)
       .waitForElementContainsText('*[data-id="solidityLocals"]', '999', 60000)
   },
