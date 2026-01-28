@@ -130,6 +130,7 @@ module.exports = {
       .clearConsole()
       .clickInstance(0)
       .clickFunction('test1 - transact (not payable)', { types: 'bytes userData', values: '0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000015b38da6a701c568545dcfcb03fcb875f56beddc4' })
+      .pause(2000)
       .debugTransaction(0)
       .waitForElementVisible('#stepdetail')
       .waitForElementVisible({
@@ -147,7 +148,7 @@ module.exports = {
         In that case the source highlight at 261 should be the same as for step 262
       */
 
-      .goToVMTraceStep(266)
+      .goToVMTraceStep(265)
       .checkVariableDebug('soliditylocals', localVariable_step266_ABIEncoder) // locals should not be initiated at this point, only idAsk should
       .goToVMTraceStep(717)
       .checkVariableDebug('soliditylocals', localVariable_step717_ABIEncoder) // all locals should be initiaed
