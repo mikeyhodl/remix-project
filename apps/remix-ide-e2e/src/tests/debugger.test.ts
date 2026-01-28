@@ -83,7 +83,7 @@ module.exports = {
       .waitForElementContainsText('*[data-id="stepdetail"]', 'execution step:\n352', 60000)
   },
 
-  'Should display solidity imported code while debugging github import #group2 #pr': function (browser: NightwatchBrowser) {
+  'Should display solidity imported code while debugging gitjhub import #group2 #pr': function (browser: NightwatchBrowser) {
     browser
       .clearConsole()
       .clearTransactions()
