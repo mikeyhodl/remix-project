@@ -462,8 +462,9 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
   let previousValidSourceLocation = validSourceLocation || currentSourceLocation
   let compilationResult
   let currentAddress = ''
-  console.log('TRACE LENGTH', tree.traceManager.trace.length)
+  console.warn('TRACE LENGTH', tree.traceManager.trace.length)
   while (step < tree.traceManager.trace.length) {
+    console.warn(' start step', step, ' scopeId ', scopeId)
     let sourceLocation
     let validSourceLocation
     let address
@@ -486,10 +487,12 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         validSourceLocation = currentSourceLocation
     } catch (e) {
       console.error(e)
-      return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
+      throw new Error('InternalCallTree - Error resolving source location. ' + step + ' ' + e)
+      // return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
     }
     if (!sourceLocation) {
-      return { outStep: step, error: 'InternalCallTree - No source Location. ' + step }
+      throw new Error('InternalCallTree - No source Location. ' + step + ' ' + e)
+      // return { outStep: step, error: 'InternalCallTree - No source Location. ' + step }
     }
     const stepDetail: StepDetail = tree.traceManager.trace[step]
     const nextStepDetail: StepDetail = tree.traceManager.trace[step + 1]
@@ -526,7 +529,9 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line].gasCost += stepDetail.gasCost
         tree.gasCostPerLine[validSourceLocation.file][scopeId][lineColumnPos.start.line].indexes.push(step)
       } catch (e) {
-        console.log(e)
+        throw new Error('InternalCallTree - cannot convert offset to line/column. ' + step + ' ' + e)
+        // console.error(e)
+        // console.log(e)
       }
     }
     if (tree.locationAndOpcodePerVMTraceIndex[step]) {
@@ -563,7 +568,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
     }
     const internalfunctionCall = functionDefinition && (previousSourceLocation && previousSourceLocation.jump === 'i') && functionDefinition.kind !== 'constructor'
     const isJumpOutOfFunction = functionDefinition && (validSourceLocation && validSourceLocation.jump === 'o') && functionDefinition.kind !== 'constructor'
-    console.log('step', step, internalfunctionCall, isJumpOutOfFunction, previousSourceLocation, validSourceLocation, functionDefinition)
+    console.warn('step', step, internalfunctionCall, isJumpOutOfFunction, previousSourceLocation, validSourceLocation, functionDefinition)
     if (constructorExecutionStarts || isInternalTxInstrn || internalfunctionCall) {
       try {
         previousSourceLocation = null
@@ -585,7 +590,8 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
           externalCallResult = await buildTree(tree, nextStep, newScopeId, isCreateInstrn, functionDefinition, contractObj, sourceLocation, validSourceLocation)
         } catch (e) {
           console.error(e)
-          return { outStep: step, error: 'InternalCallTree - ' + e.message }
+          throw new Error('InternalCallTree - ' + e.message)
+         //  return { outStep: step, error: 'InternalCallTree - ' + e.message }
         }
 
         if (externalCallResult.error) {
@@ -596,7 +602,8 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         }
       } catch (e) {
         console.error(e)
-        return { outStep: step, error: 'InternalCallTree - ' + e.message }
+        throw new Error('InternalCallTree - ' + e.message)
+        // return { outStep: step, error: 'InternalCallTree - ' + e.message }
       }
     } else if (callDepthChange(step, tree.traceManager.trace) || isJumpOutOfFunction || isRevert || isConstructorExit(tree, scopeId, tree.pendingConstructorEntryStackDepth, stepDetail)) {
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
@@ -627,6 +634,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       step++
     }
   }
+  console.warn('end of trace reached at step ', step)
   return { outStep: step }
 }
 
