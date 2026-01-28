@@ -121,9 +121,10 @@ module.exports = {
     */
     browser
       .refreshPage()
-      .clickLaunchIcon('solidity')
-      //.pause()
-      //.setSolidityCompilerVersion('soljson-v0.6.12+commit.27d51765.js')
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//*[@data-id="treeViewDivDraggableItemREADME.txt"]',
+      })
       .testContracts('withABIEncoderV2.sol', sources[2]['withABIEncoderV2.sol'], ['test'])
       .clickLaunchIcon('udapp')
       .selectContract('test')
