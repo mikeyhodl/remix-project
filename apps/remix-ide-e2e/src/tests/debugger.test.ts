@@ -135,6 +135,7 @@ module.exports = {
       .pause(2000)
       .debugTransaction(0)
       .waitForElementVisible('#stepdetail')
+      .getBrowserLogs()     
       .waitForElementVisible({
         locateStrategy: 'xpath',
         selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"133")]',
