@@ -478,7 +478,11 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         compilationResult = await tree.solidityProxy.compilationResult(address)
         currentAddress = address
       }
-      validSourceLocation = await tree.extractValidSourceLocation(step, address)
+      const amountOfSources = tree.sourceLocationTracker.getTotalAmountOfSources(address, compilationResult.data.contracts)
+      if (tree.sourceLocationTracker.isInvalidSourceLocation(currentSourceLocation, amountOfSources)) { // file is -1 or greater than amount of sources
+        validSourceLocation = previousValidSourceLocation
+      } else
+        validSourceLocation = currentSourceLocation
     } catch (e) {
       console.error(e)
       return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
