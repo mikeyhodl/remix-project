@@ -121,10 +121,13 @@ module.exports = {
     */
     browser
       .refreshPage()
+    
       .waitForElementVisible({
         locateStrategy: 'xpath',
         selector: '//*[@data-id="treeViewDivDraggableItemREADME.txt"]',
       })
+      .clickLaunchIcon('solidity')
+      .saveScreenshot('./reports/screenshots/ABIEncoderV2_beforeAddingContract.png')
       .testContracts('withABIEncoderV2.sol', sources[2]['withABIEncoderV2.sol'], ['test'])
       .clickLaunchIcon('udapp')
       .selectContract('test')
