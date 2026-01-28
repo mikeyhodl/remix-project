@@ -312,7 +312,7 @@ const tests = {
       .pause(1000)
       // Reload page
       .refresh()
-      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
+      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 2000)
       .pause(3000)
       // Trigger file write - should NOT show modal
       .execute(function () {
@@ -324,7 +324,7 @@ const tests = {
           });
         }
       })
-      .pause(2000)
+      .pause(1000)
       // Verify no modal appeared
       .elements('css selector', '*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', function (result) {
         const elements = Array.isArray(result.value) ? result.value : [];
@@ -348,9 +348,7 @@ const tests = {
         (window as any).getRemixAIPlugin.remixMCPServer.reloadConfig();
       })
       .refresh()
-      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
-      .pause(1000)
-      // Trigger file create via AI plugin's MCP server
+      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 1000)
       .execute(function () {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (aiPlugin && aiPlugin.remixMCPServer) {
@@ -362,7 +360,7 @@ const tests = {
       })
       .pause(1000)
       // Should show permission modal
-      .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 30000)
+      .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 2000)
       .waitForElementContainsText('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 'File Write Permission Required', 5000)
       .assert.textContains('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 'newfile.txt')
   },
