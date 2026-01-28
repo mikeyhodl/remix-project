@@ -364,7 +364,7 @@ const tests = {
       // Should show permission modal
       .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 30000)
       .waitForElementContainsText('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 'File Write Permission Required', 5000)
-      .assert.containsText('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 'newfile.txt')
+      .assert.textContains('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 'newfile.txt')
   },
 
 }
