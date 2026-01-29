@@ -130,11 +130,11 @@ export class InternalCallTree {
   pendingConstructorId: number
   /** Pending constructor function definition waiting for execution */
   pendingConstructor
-  /** Pending constructor entry stack depth */
-  pendingConstructorEntryStackDepth
+  /** Pending constructor entry stack index */
+  pendingConstructorEntryStackIndex
   /** Map tracking which constructors have started execution and at what source location offset */
   constructorsStartExecution
-  /** Map of variable IDs to their metadata (name, type, stackDepth, sourceLocation, declarationStep, safeToDecodeAtStep) */
+  /** Map of variable IDs to their metadata (name, type, stackIndex, sourceLocation, declarationStep, safeToDecodeAtStep) */
   variables: {
     [Key: number]: any
   }
@@ -226,7 +226,7 @@ export class InternalCallTree {
     this.pendingConstructorExecutionAt = -1
     this.pendingConstructorId = -1
     this.constructorsStartExecution = {}
-    this.pendingConstructorEntryStackDepth = -1
+    this.pendingConstructorEntryStackIndex = -1
     this.pendingConstructor = null
     this.variables = {}
     this.symbolicStackManager.reset()
@@ -387,7 +387,7 @@ export class InternalCallTree {
    * Retrieves a local variable's metadata by its AST node ID.
    *
    * @param {number} id - AST node ID of the variable
-   * @returns {Object|undefined} Variable metadata object with name, type, stackDepth, and sourceLocation, or undefined if not found
+   * @returns {Object|undefined} Variable metadata object with name, type, stackIndex, and sourceLocation, or undefined if not found
    */
   getLocalVariableById (id: number) {
     return this.variables[id]
@@ -458,11 +458,11 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
    *
    * @param {InternalCallTree} tree - The call tree instance
    * @param {string} scopeId - Current scope identifier
-   * @param {number} initialEntryStackDepth - Stack depth at constructor entry
+   * @param {number} initialEntrystackIndex - Stack depth at constructor entry
    * @param {StepDetail} stepDetail - Current step details with stack info
    * @returns {boolean} True if exiting a constructor scope
    */
-  function isConstructorExit (tree, scopeId, initialEntryStackDepth, stepDetail) {
+  function isConstructorExit (tree, scopeId, initialEntrystackIndex, stepDetail) {
     const scope = tree.scopes[scopeId]
     if (scope.firstStep === step) {
       // we are just entering the constructor
@@ -472,7 +472,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       return false
     }
     // Check if stack has returned to entry depth (or below, in case of cleanup)
-    if (initialEntryStackDepth !== undefined && stepDetail.stack.length <= initialEntryStackDepth) {
+    if (initialEntrystackIndex !== undefined && stepDetail.stack.length <= initialEntrystackIndex) {
       console.log('Exiting constructor scope ', scopeId, ' at step ', step)
       return true
     }
@@ -607,7 +607,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       tree.pendingConstructorExecutionAt = validSourceLocation.start
       tree.pendingConstructorId = functionDefinition.id
       tree.pendingConstructor = functionDefinition
-      tree.pendingConstructorEntryStackDepth = stepDetail.stack.length
+      tree.pendingConstructorEntryStackIndex = stepDetail.stack.length
       // from now on we'll be waiting for a change in the source location which will mark the beginning of the constructor execution.
       // constructorsStartExecution allows to keep track on which constructor has already been executed.
       console.log('Pending constructor execution at ', tree.pendingConstructorExecutionAt, ' for constructor id ', tree.pendingConstructorId)
@@ -648,7 +648,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
         console.error(e)
         return { outStep: step, error: 'InternalCallTree - ' + e.message }
       }
-    } else if (callDepthChange(step, tree.traceManager.trace) || isJumpOutOfFunction || isRevert || isConstructorExit(tree, scopeId, tree.pendingConstructorEntryStackDepth, stepDetail)) {
+    } else if (callDepthChange(step, tree.traceManager.trace) || isJumpOutOfFunction || isRevert || isConstructorExit(tree, scopeId, tree.pendingConstructorEntryStackIndex, stepDetail)) {
       // if not, we might be returning from a CALL or internal function. This is what is checked here.
       // For constructors in inheritance chains, we also check if stack depth has returned to entry level
       tree.scopes[scopeId].lastStep = step
@@ -787,7 +787,7 @@ async function includeVariableDeclaration (tree: InternalCallTree, step, sourceL
             const newVar = {
               name: variableDeclaration.name,
               type: parseType(variableDeclaration.typeDescriptions.typeString, states, contractObj.name, location),
-              stackDepth: stack.length,
+              stackIndex: stack.length,
               sourceLocation: sourceLocation,
               declarationStep: step,
               safeToDecodeAtStep: safeStep,
@@ -918,15 +918,15 @@ function addParams (parameterList, tree: InternalCallTree, scopeId, states, cont
   const params = []
   for (const inputParam in parameterList.parameters) {
     const param = parameterList.parameters[inputParam]
-    const stackDepth = stackLength + (dir * stackPosition)
-    if (stackDepth >= 0) {
+    const stackIndex = stackLength + (dir * stackPosition)
+    if (stackIndex >= 0) {
       let location = extractLocationFromAstVariable(param)
       location = location === 'default' ? 'memory' : location
       const attributesName = param.name === '' ? `$${inputParam}` : param.name
       const newParam = {
         name: attributesName,
         type: parseType(param.typeDescriptions.typeString, states, contractName, location),
-        stackDepth: stackDepth,
+        stackIndex: stackIndex,
         sourceLocation: sourceLocation,
         abi: contractObj.contract.abi,
         isParameter: true,
@@ -941,7 +941,7 @@ function addParams (parameterList, tree: InternalCallTree, scopeId, states, cont
       // Bind parameter to symbolic stack at function entry step
       const entryStep = tree.functionCallStack[tree.functionCallStack.length - 1]
       if (entryStep !== undefined) {
-        tree.symbolicStackManager.bindVariable(entryStep, newParam, stackDepth)
+        tree.symbolicStackManager.bindVariable(entryStep, newParam, stackIndex)
       }
     }
     stackPosition += dir
