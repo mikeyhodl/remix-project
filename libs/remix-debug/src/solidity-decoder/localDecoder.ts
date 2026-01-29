@@ -46,7 +46,7 @@ export async function solidityLocals (vmtraceIndex, internalTreeCall, stack, mem
  * @param variable - Variable metadata
  * @returns Current stack depth (position) of the variable
  */
-function findVariableStackPosition(internalTreeCall: any, vmtraceIndex: number, variable: any) {
+export function findVariableStackPosition(internalTreeCall: any, vmtraceIndex: number, variable: any) {
   // Try to find the variable in the symbolic stack
   const variablesOnStack = internalTreeCall.getVariablesOnStackAtStep(vmtraceIndex)
 
