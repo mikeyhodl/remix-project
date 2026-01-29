@@ -165,7 +165,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
           for (const [scopeId, scope] of Object.entries(result.scopes)) {
             const scopeData = scope
             const processedScope = { ...scopeData } as any
-            
+
             // Replace functionDefinition with just id and name
             if (scopeData.functionDefinition) {
               processedScope.functionDefinition = {
@@ -173,7 +173,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
                 name: scopeData.functionDefinition.name
               };
             }
-            
+
             // Process locals to remove abi properties
             if (scopeData.locals) {
               const processedLocals = {};
@@ -186,7 +186,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
               }
               processedScope.locals = processedLocals;
             }
-            
+
             processedScopes[scopeId] = processedScope;
           }
         }
@@ -208,7 +208,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
         processedScopes = result.scopes;
         processedFunctionDefinitionsByScope = result.functionDefinitionsByScope;
       }
-      
+
       return this.createJsonContent('debug://call-tree-scopes', {
         success: true,
         scopes: processedScopes,
