@@ -83,7 +83,7 @@ module.exports = {
       .waitForElementContainsText('*[data-id="stepdetail"]', 'execution step:\n352', 60000)
   },
 
-  'Should display solidity imported code while debugging gitjhub import #group2 #pr': function (browser: NightwatchBrowser) {
+  'Should display solidity imported code while debugging gitjhub import #group2': function (browser: NightwatchBrowser) {
     browser
       .clearConsole()
       .clearTransactions()
@@ -113,7 +113,7 @@ module.exports = {
       })
   },
 
-  'Should display correct source highlighting while debugging a contract which has ABIEncoderV2 #pr #group22': function (browser: NightwatchBrowser) {
+  'Should display correct source highlighting while debugging a contract which has ABIEncoderV2 #group2': function (browser: NightwatchBrowser) {
     /*
       localVariable_step266_ABIEncoder and localVariable_step717_ABIEncoder
       still contains unwanted values (related to decoding calldata types)
