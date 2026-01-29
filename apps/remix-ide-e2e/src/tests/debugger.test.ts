@@ -118,9 +118,7 @@ module.exports = {
       This is still an issue @todo(https://github.com/ethereum/remix-project/issues/481), so this test will fail when this issue is fixed
     */
     browser
-      
-    
-    
+      .refreshPage()
       .clickLaunchIcon('solidity')
       .testContracts('withABIEncoderV2.sol', sources[2]['withABIEncoderV2.sol'], ['test'])
       .clickLaunchIcon('udapp')
