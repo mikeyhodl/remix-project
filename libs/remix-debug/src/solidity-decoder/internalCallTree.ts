@@ -32,6 +32,30 @@ export type StepDetail = {
 }
 
 /**
+ * Represents a local variable or parameter with its metadata.
+ */
+export interface LocalVariable {
+  /** Variable name */
+  name: string
+  /** Parsed type information */
+  type: any
+  /** Stack position where the variable is stored */
+  stackIndex: number
+  /** Source location where the variable is declared */
+  sourceLocation: any
+  /** VM trace step where the variable is declared */
+  declarationStep: number
+  /** VM trace step where it's safe to decode this variable */
+  safeToDecodeAtStep: number
+  /** AST node ID of the variable */
+  id: number
+  /** ABI information (for parameters) */
+  abi?: any
+  /** Whether this is a function parameter */
+  isParameter?: boolean
+}
+
+/**
  * Represents a scope in the call tree with execution details.
  */
 export interface Scope {
@@ -40,7 +64,7 @@ export interface Scope {
   /** Last VM trace step index where this scope ends (optional) */
   lastStep?: number
   /** Map of local variables in this scope by name */
-  locals: { [name: string]: any }
+  locals: { [name: string]: LocalVariable }
   /** Whether this scope represents contract creation */
   isCreation: boolean
   /** Total gas cost for this scope */
@@ -50,7 +74,7 @@ export interface Scope {
   /** Source line where execution ends (optional) */
   endExecutionLine?: number
   /** Function definition AST node if this scope represents a function */
-  functionDefinition?: any
+  functionDefinition?: FunctionDefinition
   /** Information about revert if scope was reverted */
   reverted?: {
     step: StepDetail
@@ -59,11 +83,43 @@ export interface Scope {
 }
 
 /**
+ * Represents an AST function definition node from Solidity compiler.
+ */
+export interface FunctionDefinition {
+  /** Unique identifier for the function in the AST */
+  id: number
+  /** Function name */
+  name: string
+  /** Function kind (function, constructor, fallback, receive, etc.) */
+  kind: string
+  /** Source location string (start:length:file) */
+  src: string
+  /** Input parameters */
+  parameters?: {
+    parameters: any[]
+  }
+  /** Return parameters */
+  returnParameters?: {
+    parameters: any[]
+  }
+  /** Function visibility (public, private, internal, external) */
+  visibility?: string
+  /** State mutability (pure, view, payable, nonpayable) */
+  stateMutability?: string
+  /** Whether function is virtual */
+  virtual?: boolean
+  /** Function modifiers */
+  modifiers?: any[]
+  /** Function body (block statement) */
+  body?: any
+}
+
+/**
  * Represents a function definition with its inputs for a specific scope.
  */
 export interface FunctionDefinitionWithInputs {
   /** AST function definition node */
-  functionDefinition: any
+  functionDefinition: FunctionDefinition
   /** Array of input parameter names */
   inputs: string[]
 }
