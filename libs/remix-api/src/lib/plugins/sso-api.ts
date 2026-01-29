@@ -16,7 +16,7 @@ export interface AuthState {
   token: string | null
 }
 
-export type AuthProvider = 'google' | 'github' | 'apple' | 'discord' | 'coinbase' | 'siwe' | 'email' 
+export type AuthProvider = 'google' | 'github' | 'apple' | 'discord' | 'coinbase' | 'siwe' | 'email' | 'test' 
 
 export interface ISSOApi {
   events: {

@@ -24,12 +24,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
   const [showOtpInput, setShowOtpInput] = useState(false)
   const [emailValue, setEmailValue] = useState('')
   const [otpValue, setOtpValue] = useState('')
+  const [testAccountsAvailable, setTestAccountsAvailable] = useState(false)
 
   useEffect(() => {
     const fetchSupportedProviders = async () => {
       try {
         // Detect environment
         const baseUrl = endpointUrls.sso
+
+        // Check if test accounts are available (for protected origins)
+        try {
+          const testResponse = await fetch(`${baseUrl}/test/available`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+          })
+          if (testResponse.ok) {
+            const testData = await testResponse.json()
+            setTestAccountsAvailable(testData.available === true)
+            console.log('[LoginModal] Test accounts available:', testData.available)
+          }
+        } catch (testErr) {
+          console.log('[LoginModal] Test accounts check failed (this is normal for production):', testErr)
+        }
 
         const response = await fetch(`${baseUrl}/providers`, {
           method: 'GET',
@@ -529,6 +546,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                         )}
                       </button>
                     ))}
+
+                    {/* Test Accounts button - only shown for protected origins */}
+                    {testAccountsAvailable && (
+                      <button
+                        className="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center py-2 no-hover-effect"
+                        onClick={() => handleLogin('test')}
+                        disabled={loading}
+                      >
+                        <span className="me-2 login-modal-provider-icon fs-medium">
+                          <i className="fas fa-flask"></i>
+                        </span>
+                        <span className="fs-medium">Test Accounts</span>
+                        {loading && (
+                          <div className="spinner-border spinner-border-sm text-warning ms-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

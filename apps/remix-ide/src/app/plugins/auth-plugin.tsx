@@ -7,7 +7,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'isTestAccountsAvailable'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked']
 }
 
@@ -210,6 +210,31 @@ export class AuthPlugin extends Plugin {
     }
   }
 
+  /**
+   * Check if test accounts login is available (for protected origins)
+   * @returns Object with available status and optional reason
+   */
+  async isTestAccountsAvailable(): Promise<{ available: boolean; reason?: string }> {
+    try {
+      const response = await fetch(`${endpointUrls.sso}/test/available`, {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return {
+          available: data.available === true,
+          reason: data.reason
+        }
+      }
+
+      return { available: false, reason: 'Request failed' }
+    } catch (error) {
+      console.log('[AuthPlugin] Test accounts check failed:', error)
+      return { available: false, reason: 'Network error' }
+    }
+  }
+
   async login(provider: AuthProviderType): Promise<void> {
     try {
       console.log('[AuthPlugin] Starting popup-based login for:', provider)
@@ -220,9 +245,14 @@ export class AuthPlugin extends Plugin {
         return
       }
 
+      // Build login URL - test accounts use different endpoint
+      const loginUrl = provider === 'test'
+        ? `${endpointUrls.sso}/test/login?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
+        : `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
+
       // Open popup directly (must be in user click event)
       const popup = window.open(
-        `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`,
+        loginUrl,
         'RemixLogin',
         'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
       )
