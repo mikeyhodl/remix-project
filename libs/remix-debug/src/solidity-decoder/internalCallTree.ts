@@ -32,6 +32,57 @@ export type StepDetail = {
 }
 
 /**
+ * Represents a scope in the call tree with execution details.
+ */
+export interface Scope {
+  /** First VM trace step index where this scope starts */
+  firstStep: number
+  /** Last VM trace step index where this scope ends (optional) */
+  lastStep?: number
+  /** Map of local variables in this scope by name */
+  locals: { [name: string]: any }
+  /** Whether this scope represents contract creation */
+  isCreation: boolean
+  /** Total gas cost for this scope */
+  gasCost: number
+  /** Source line where execution starts (optional) */
+  startExecutionLine?: number
+  /** Source line where execution ends (optional) */
+  endExecutionLine?: number
+  /** Function definition AST node if this scope represents a function */
+  functionDefinition?: any
+  /** Information about revert if scope was reverted */
+  reverted?: {
+    step: StepDetail
+    line?: number
+  }
+}
+
+/**
+ * Represents a function definition with its inputs for a specific scope.
+ */
+export interface FunctionDefinitionWithInputs {
+  /** AST function definition node */
+  functionDefinition: any
+  /** Array of input parameter names */
+  inputs: string[]
+}
+
+/**
+ * Return type for the getScopes method containing all scope-related data.
+ */
+export interface ScopesData {
+  /** Map of scopeIds to their scope details */
+  scopes: { [scopeId: string]: Scope }
+  /** Map of VM trace indices to scopeIds representing scope starts */
+  scopeStarts: { [stepIndex: number]: string }
+  /** Map of scopeIds to function definitions with their inputs */
+  functionDefinitionsByScope: { [scopeId: string]: FunctionDefinitionWithInputs }
+  /** Stack of VM trace step indices where function calls occur */
+  functionCallStack: number[]
+}
+
+/**
  * Tree representing internal jump into function.
  * Triggers `callTreeReady` event when tree is ready
  * Triggers `callTreeBuildFailed` event when tree fails to build
@@ -50,13 +101,13 @@ export class InternalCallTree {
   /** Tracker for mapping VM trace indices to source code locations */
   sourceLocationTracker: SourceLocationTracker
   /** Map of scopes defined by range in the VM trace. Keys are scopeIds, values contain firstStep, lastStep, locals, isCreation, gasCost */
-  scopes
+  scopes: { [scopeId: string]: Scope }
   /** Map of VM trace indices to scopeIds, representing the start of each scope */
-  scopeStarts
+  scopeStarts: { [stepIndex: number]: string }
   /** Stack of VM trace step indices where function calls occur */
-  functionCallStack
+  functionCallStack: number[]
   /** Map of scopeIds to function definitions with their inputs */
-  functionDefinitionsByScope
+  functionDefinitionsByScope: { [scopeId: string]: FunctionDefinitionWithInputs }
   /** Cache of variable declarations indexed by file and source location */
   variableDeclarationByFile
   /** Cache of function definitions indexed by file and source location */
@@ -184,9 +235,9 @@ export class InternalCallTree {
   /**
    * Retrieves all scope-related data structures.
    *
-   * @returns {Object} Object containing scopes, scopeStarts, functionDefinitionsByScope, and functionCallStack
+   * @returns {ScopesData} Object containing scopes, scopeStarts, functionDefinitionsByScope, and functionCallStack
    */
-  getScopes () {
+  getScopes (): ScopesData {
     return { scopes: this.scopes, scopeStarts: this.scopeStarts, functionDefinitionsByScope: this.functionDefinitionsByScope, functionCallStack: this.functionCallStack }
   }
 
