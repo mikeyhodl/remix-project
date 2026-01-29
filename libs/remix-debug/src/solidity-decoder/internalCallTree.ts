@@ -491,7 +491,7 @@ async function buildTree (tree: InternalCallTree, step, scopeId, isCreation, fun
       // return { outStep: step, error: 'InternalCallTree - Error resolving source location. ' + step + ' ' + e }
     }
     if (!sourceLocation) {
-      throw new Error('InternalCallTree - No source Location. ' + step + ' ' + e)
+      throw new Error('InternalCallTree - No source Location. ' + step )
       // return { outStep: step, error: 'InternalCallTree - No source Location. ' + step }
     }
     const stepDetail: StepDetail = tree.traceManager.trace[step]
