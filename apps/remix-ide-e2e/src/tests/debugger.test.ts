@@ -34,10 +34,8 @@ module.exports = {
       .setValue('*[data-bs-title="string name, uint256 goal"]', '"toast", 999')
       .click('*[data-id="createProject - transact (not payable)"]')
       .debugTransaction(0)
-      .pause(4000)
-      .waitForElementVisible('*[data-id="solidityLocals"]')
+      .pause(2000)
       .scrollAndClick('*[data-id="solidityLocals"]')
-      .getBrowserLogs()
       .waitForElementContainsText('*[data-id="solidityLocals"]', 'toast', 60000)
       .waitForElementContainsText('*[data-id="solidityLocals"]', '999', 60000)
   },
@@ -83,7 +81,7 @@ module.exports = {
       .waitForElementContainsText('*[data-id="stepdetail"]', 'execution step:\n352', 60000)
   },
 
-  'Should display solidity imported code while debugging gitjhub import #group2': function (browser: NightwatchBrowser) {
+  'Should display solidity imported code while debugging github import #group2': function (browser: NightwatchBrowser) {
     browser
       .clearConsole()
       .clearTransactions()
@@ -124,7 +122,6 @@ module.exports = {
     
     
       .clickLaunchIcon('solidity')
-      .saveScreenshot('./reports/screenshots/ABIEncoderV2_beforeAddingContract.png')
       .testContracts('withABIEncoderV2.sol', sources[2]['withABIEncoderV2.sol'], ['test'])
       .clickLaunchIcon('udapp')
       .selectContract('test')
@@ -132,10 +129,8 @@ module.exports = {
       .clearConsole()
       .clickInstance(0)
       .clickFunction('test1 - transact (not payable)', { types: 'bytes userData', values: '0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000015b38da6a701c568545dcfcb03fcb875f56beddc4' })
-      .pause(2000)
       .debugTransaction(0)
       .waitForElementVisible('#stepdetail')
-      .getBrowserLogs()     
       .waitForElementVisible({
         locateStrategy: 'xpath',
         selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"133")]',

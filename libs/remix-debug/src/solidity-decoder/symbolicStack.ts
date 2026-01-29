@@ -124,7 +124,7 @@ export class SymbolicStackManager {
       if (variable.stackDepth <= 0) {
         console.error(`Invalid stackDepth for variable ${variable.name} at step ${step}: stackDepth=${variable.stackDepth} (must be > 0)`)
       } else {
-        //console.warn(`Cannot bind variable ${variable.name} at step ${step}: stackIndex ${stackIndex} out of bounds (stack length: ${stack.length}, stackDepth: ${variable.stackDepth})`)
+        console.warn(`Cannot bind variable ${variable.name} at step ${step}: stackIndex ${stackIndex} out of bounds (stack length: ${stack.length}, stackDepth: ${variable.stackDepth})`)
       }
     }
   }

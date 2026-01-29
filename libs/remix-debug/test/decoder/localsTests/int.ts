@@ -56,12 +56,6 @@ module.exports = function (st, privateKey, contractBytecode, compilationResult, 
               const functions2 = callTree.retrieveFunctionsStack(116)
               const functions3 = callTree.retrieveFunctionsStack(13)
 
-              console.log('Functions at 103', functions1)
-              console.log('Functions at 116', functions2)
-              console.log('Functions at 13', functions3)
-              console.log('Scopes', scopes)
-              console.log('Scope starts', scopeStarts)
-
               st.equals(functions1.length, 2)
               st.equals(functions2.length, 3)
               st.equals(functions3.length, 1)

@@ -149,7 +149,6 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
   private async getCallTreeScopes(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       const result = await plugin.call('debugger', 'getCallTreeScopes');
-      console.log('getCallTreeScopes', result)
       if (!result) {
         return this.createTextContent(
           'debug://call-tree-scopes',
@@ -159,6 +158,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
 
       return this.createJsonContent('debug://call-tree-scopes', {
         success: true,
+        scopes: result.scopes,
         scopeStarts: result.scopeStarts,
         functionDefinitionsByScope: result.functionDefinitionsByScope,
         functionCallStack: result.functionCallStack,
