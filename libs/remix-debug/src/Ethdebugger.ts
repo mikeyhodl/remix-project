@@ -178,7 +178,7 @@ export class Ethdebugger {
     const address = this.traceManager.getCurrentCalledAddressAt(step)
     const calldata = this.traceManager.getCallDataAt(step)
     const storageViewer = new StorageViewer({ stepIndex: step, tx: this.tx, address: address }, this.storageResolver, this.traceManager)
-    return await variable.type.decodeFromStack(variable.stackDepth, stack, memory, storageViewer, calldata, null, variable)
+    return await variable.type.decodeFromStack(variable.stackIndex, stack, memory, storageViewer, calldata, null, variable)
   }
 
   /**

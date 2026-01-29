@@ -60,10 +60,10 @@ function findVariableStackPosition(internalTreeCall: any, vmtraceIndex: number, 
     return foundVar.position
   }
 
-  console.warn(`Variable ${variable.name} (ID: ${variable.id}) not found in symbolic stack at step ${vmtraceIndex}. Falling back to original stackDepth.`);
-  // Fallback to original stackDepth if not found in symbolic stack
+  console.warn(`Variable ${variable.name} (ID: ${variable.id}) not found in symbolic stack at step ${vmtraceIndex}. Falling back to original stackIndex.`);
+  // Fallback to original stackIndex if not found in symbolic stack
   // This handles cases where symbolic stack might not be fully populated
-  return variable.stackDepth
+  return variable.stackIndex
 }
 
 function formatMemory (memory: any) {

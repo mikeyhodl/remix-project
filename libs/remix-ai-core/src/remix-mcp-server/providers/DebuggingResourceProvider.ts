@@ -129,7 +129,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
    *    - Values: Scope objects with:
    *      * firstStep: VM trace index where scope begins
    *      * lastStep: VM trace index where scope ends
-   *      * locals: Map of local variables (variable name -> {name, type, stackDepth, sourceLocation})
+   *      * locals: Map of local variables (variable name -> {name, type, stackIndex, sourceLocation})
    *      * isCreation: Boolean indicating if this is a contract creation context
    *      * gasCost: Total gas consumed within this scope
    *

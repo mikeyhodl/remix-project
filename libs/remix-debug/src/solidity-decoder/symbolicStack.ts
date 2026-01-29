@@ -103,7 +103,7 @@ export class SymbolicStackManager {
    * Binds a variable to a specific position in the symbolic stack
    *
    * @param step - VM trace step where variable is declared/assigned
-   * @param variable - Variable metadata (name, type, stackDepth, etc.)
+   * @param variable - Variable metadata (name, type, stackIndex, etc.)
    * @param stackIndex - Index in the symbolic stack where the variable should be bound
    */
   bindVariable(step: number, variable: any, stackIndex: number) {
@@ -120,11 +120,11 @@ export class SymbolicStackManager {
       }
       // console.log(`Bound variable ${variable.name} at step ${step} to stack index ${stackIndex}`, stack)
     } else {
-      // This should not happen if stackDepth is correctly set (> 0)
-      if (variable.stackDepth <= 0) {
-        console.error(`Invalid stackDepth for variable ${variable.name} at step ${step}: stackDepth=${variable.stackDepth} (must be > 0)`)
+      // This should not happen if stackIndex is correctly set (> 0)
+      if (variable.stackIndex <= 0) {
+        console.error(`Invalid stackIndex for variable ${variable.name} at step ${step}: stackIndex=${variable.stackIndex} (must be > 0)`)
       } else {
-        console.warn(`Cannot bind variable ${variable.name} at step ${step}: stackIndex ${stackIndex} out of bounds (stack length: ${stack.length}, stackDepth: ${variable.stackDepth})`)
+        console.warn(`Cannot bind variable ${variable.name} at step ${step}: stackIndex ${stackIndex} out of bounds (stack length: ${stack.length}, stackIndex: ${variable.stackIndex})`)
       }
     }
   }
