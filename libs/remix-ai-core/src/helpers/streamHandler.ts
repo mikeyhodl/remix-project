@@ -174,9 +174,11 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
             const toolCallsArray = Array.from(toolCalls.values());
             const response = await tool_callback(toolCallsArray, uiToolCallback)
 
+            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
             if (response && typeof response === 'object') {
-              response.uiToolCallback = uiToolCallback;
-              response.abortSignal = abortSignal;
+              if (!response.uiToolCallback && uiToolCallback) {
+                response.uiToolCallback = uiToolCallback;
+              }
             }
             cb("\n\n");
             HandleOpenAIResponse(response, cb, done_cb)
@@ -279,8 +281,11 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
             const toolCalls = json.choices[0].delta.tool_calls;
             const response = await tool_callback(toolCalls, uiToolCallback)
 
+            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
             if (response && typeof response === 'object') {
-              response.uiToolCallback = uiToolCallback;
+              if (!response.uiToolCallback && uiToolCallback) {
+                response.uiToolCallback = uiToolCallback;
+              }
             }
             HandleMistralAIResponse(response, cb, done_cb)
           } else if (json.choices[0].delta.content){
@@ -388,12 +393,11 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             }));
 
             if (toolCalls.length > 0) {
-              uiToolCallback?.(true);
-              const response = await tool_callback(toolCalls)
-              uiToolCallback?.(false);
-              // Keep the callback attached for recursive calls
+              const response = await tool_callback(toolCalls, uiToolCallback)
               if (response && typeof response === 'object') {
-                response.uiToolCallback = uiToolCallback;
+                if (!response.uiToolCallback && uiToolCallback) {
+                  response.uiToolCallback = uiToolCallback;
+                }
               }
               cb("\n\n");
               HandleAnthropicResponse(response, cb, done_cb)
@@ -466,9 +470,11 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
             const toolCalls = parsed.message.tool_calls;
             const response = await tool_callback(toolCalls, uiToolCallback)
             // Keep the callback attached for recursive calls
+            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
             if (response && typeof response === 'object') {
-              response.uiToolCallback = uiToolCallback;
-              response.abortSignal = abortSignal;
+              if (!response.uiToolCallback && uiToolCallback) {
+                response.uiToolCallback = uiToolCallback;
+              }
             }
             cb("\n\n");
             HandleOllamaResponse(response, cb, done_cb, reasoning_cb)

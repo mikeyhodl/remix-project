@@ -480,7 +480,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         let toolExecutionStartTime: number | null = null
 
         const uiToolCallback = (isExecuting: boolean, toolName?: string, toolArgs?: Record<string, any>) => {
-          const MIN_DISPLAY_TIME = 2000 // 2 seconds
+          const MIN_DISPLAY_TIME = 30000 // 30 seconds
 
           // Clear any pending timeout
           if (clearToolTimeout) {
@@ -489,16 +489,17 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           }
 
           if (isExecuting) {
-            // Tool execution starting or updating - show immediately
             if (!toolExecutionStartTime) {
               toolExecutionStartTime = Date.now()
             }
+
             setMessages(prev =>
               prev.map(m => (m.id === assistantId ? {
                 ...m,
-                isExecutingTools: isExecuting,
-                executingToolName: toolName,
-                executingToolArgs: toolArgs
+                // Only show tool execution indicator if no content has arrived yet
+                isExecutingTools: m.content.length === 0 ? isExecuting : m.isExecutingTools,
+                executingToolName: m.content.length === 0 ? toolName : m.executingToolName,
+                executingToolArgs: m.content.length === 0 ? toolArgs : m.executingToolArgs
               } : m))
             )
           } else {
@@ -637,8 +638,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             }
           )
         }
-        setIsStreaming(false)
-        abortControllerRef.current = null
+        // Note: setIsStreaming(false) is called in each handler's completion callback
+        // DO NOT call it here as it would stop the spinner before the response completes
       }
       catch (error) {
         console.error('Error sending prompt:', error)
