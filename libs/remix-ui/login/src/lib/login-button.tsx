@@ -81,7 +81,8 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
       'apple': 'Apple',
       'discord': 'Discord',
       'coinbase': 'Coinbase Wallet',
-      'siwe': 'Ethereum'
+      'siwe': 'Ethereum',
+      'base': 'Base'
     }
     return providerNames[provider] || provider
   }

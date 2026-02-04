@@ -2,6 +2,7 @@ import { Plugin } from '@remixproject/engine'
 import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, Credits } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
+import { SiweMessage } from 'siwe'
 
 const profile = {
   name: 'auth',
@@ -257,6 +258,12 @@ export class AuthPlugin extends Plugin {
         return
       }
 
+      // Base Account uses Base SDK for SIWE-based authentication
+      if (provider === 'base') {
+        await this.loginWithBase()
+        return
+      }
+
       // Open popup directly (must be in user click event)
       const popup = window.open(
         `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`,
@@ -387,6 +394,12 @@ export class AuthPlugin extends Plugin {
       // SIWE linking
       if (provider === 'siwe') {
         await this.linkSIWEAccount()
+        return
+      }
+
+      // Base wallet linking
+      if (provider === 'base') {
+        await this.linkBaseAccount()
         return
       }
 
@@ -789,21 +802,18 @@ export class AuthPlugin extends Plugin {
 
       const nonce = await nonceResponse.text()
 
-      // Create SIWE message
-      const domain = window.location.host
-      const origin = window.location.origin
-      const statement = 'Link this Ethereum account to your Remix account'
-
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-${statement}
-
-URI: ${origin}
-Version: 1
-Chain ID: ${chainIdNumber}
-Nonce: ${nonce}
-Issued At: ${new Date().toISOString()}`
+      // Create SIWE message using the siwe library
+      const siweMessage = new SiweMessage({
+        domain: window.location.host,
+        address: address,
+        statement: 'Link this Ethereum account to your Remix account',
+        uri: window.location.origin,
+        version: '1',
+        chainId: chainIdNumber,
+        nonce: nonce,
+        issuedAt: new Date().toISOString()
+      })
+      const message = siweMessage.prepareMessage()
 
       // Request signature
       console.log('[SIWE Link] Requesting signature...')
@@ -860,6 +870,110 @@ Issued At: ${new Date().toISOString()}`
     }
   }
 
+  /**
+   * Link Base wallet to existing account
+   */
+  private async linkBaseAccount(): Promise<void> {
+    try {
+      console.log('[Base Link] Starting Base Account linking...')
+
+      const token = await this.getToken()
+      if (!token) {
+        throw new Error('You must be logged in to link a Base account')
+      }
+
+      // Dynamically import the Base Account SDK
+      const { createBaseAccountSDK } = await import('@base-org/account')
+
+      // Initialize the SDK
+      const sdk = createBaseAccountSDK({
+        appName: 'Remix IDE',
+      })
+      const provider = sdk.getProvider()
+
+      // Get nonce from Base-specific endpoint
+      console.log('[Base Link] Fetching nonce from backend...')
+      const nonceResponse = await fetch(`${endpointUrls.sso}/base/nonce`, {
+        credentials: 'include'
+      })
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server')
+      }
+
+      const nonce = await nonceResponse.text()
+      console.log('[Base Link] Got nonce:', nonce.substring(0, 10) + '...')
+
+      // Base Mainnet chain ID
+      const BASE_MAINNET_CHAIN_ID = '0x2105' // 8453
+
+      // Switch to Base chain
+      console.log('[Base Link] Switching to Base chain...')
+      try {
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASE_MAINNET_CHAIN_ID }],
+        })
+      } catch (switchError: any) {
+        console.log('[Base Link] Chain switch response:', switchError)
+      }
+
+      // Connect wallet and sign SIWE message
+      console.log('[Base Link] Connecting wallet with SIWE...')
+      const connectResult = await provider.request({
+        method: 'wallet_connect',
+        params: [{
+          version: '1',
+          capabilities: {
+            signInWithEthereum: {
+              version: '1',
+              domain: window.location.host,
+              uri: window.location.origin,
+              nonce,
+              chainId: BASE_MAINNET_CHAIN_ID,
+              statement: 'Link this Base account to your Remix account',
+              issuedAt: new Date().toISOString(),
+            },
+          },
+        }],
+      }) as { accounts: Array<{ address: string; capabilities: { signInWithEthereum: { message: string; signature: string } } }> }
+
+      const { address } = connectResult.accounts[0]
+      const { message, signature } = connectResult.accounts[0].capabilities.signInWithEthereum
+
+      console.log('[Base Link] Got address:', address)
+      console.log('[Base Link] Got message:', message)
+      console.log('[Base Link] Got signature:', signature.substring(0, 20) + '...')
+
+      // Link the Base account using the dedicated endpoint
+      console.log('[Base Link] Linking Base account...')
+      const linkResponse = await fetch(`${endpointUrls.sso}/base/link`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message,
+          signature
+        })
+      })
+
+      if (!linkResponse.ok) {
+        const error = await linkResponse.json().catch(() => ({ error: 'Failed to link account' }))
+        throw new Error(error.error || 'Base account linking failed')
+      }
+
+      console.log('[Base Link] Account linked successfully!')
+      this.emit('accountLinked', { provider: 'base' })
+
+    } catch (error: any) {
+      console.error('[Base Link] Failed:', error)
+      throw error
+    }
+  }
+
   private async loginWithSIWE(): Promise<void> {
     try {
       // Check if wallet is available
@@ -899,21 +1013,18 @@ Issued At: ${new Date().toISOString()}`
       const nonce = await nonceResponse.text()
       console.log('[SIWE] Got nonce:', nonce.substring(0, 10) + '...')
 
-      // Create SIWE message
-      const domain = window.location.host
-      const origin = window.location.origin
-      const statement = 'Sign in to Remix IDE with your Ethereum account'
-
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-${statement}
-
-URI: ${origin}
-Version: 1
-Chain ID: ${chainIdNumber}
-Nonce: ${nonce}
-Issued At: ${new Date().toISOString()}`
+      // Create SIWE message using the siwe library
+      const siweMessage = new SiweMessage({
+        domain: window.location.host,
+        address: address,
+        statement: 'Sign in to Remix IDE with your Ethereum account',
+        uri: window.location.origin,
+        version: '1',
+        chainId: chainIdNumber,
+        nonce: nonce,
+        issuedAt: new Date().toISOString()
+      })
+      const message = siweMessage.prepareMessage()
 
       console.log('[SIWE] Message to sign:', message)
 
@@ -968,6 +1079,126 @@ Issued At: ${new Date().toISOString()}`
 
     } catch (error: any) {
       console.error('[SIWE] Login failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Login with Base Account SDK
+   * Uses Base's smart wallet and SIWE-based authentication
+   */
+  private async loginWithBase(): Promise<void> {
+    try {
+      console.log('[Base] Starting Base Account authentication...')
+
+      // Dynamically import the Base Account SDK
+      const { createBaseAccountSDK } = await import('@base-org/account')
+
+      // Initialize the SDK
+      const sdk = createBaseAccountSDK({
+        appName: 'Remix IDE',
+      })
+      const provider = sdk.getProvider()
+
+      // Get nonce from Base-specific endpoint
+      console.log('[Base] Fetching nonce from backend...')
+      const nonceResponse = await fetch(`${endpointUrls.sso}/base/nonce`, {
+        credentials: 'include'
+      })
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server')
+      }
+
+      const nonce = await nonceResponse.text()
+      console.log('[Base] Got nonce:', nonce.substring(0, 10) + '...')
+
+      // Base Mainnet chain ID
+      const BASE_MAINNET_CHAIN_ID = '0x2105' // 8453
+
+      // Switch to Base chain
+      console.log('[Base] Switching to Base chain...')
+      try {
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASE_MAINNET_CHAIN_ID }],
+        })
+      } catch (switchError: any) {
+        console.log('[Base] Chain switch response:', switchError)
+        // Some wallets might throw even on success, continue if it's not a real error
+      }
+
+      // Connect wallet and sign SIWE message using Base's wallet_connect method
+      console.log('[Base] Connecting wallet with SIWE...')
+      const connectResult = await provider.request({
+        method: 'wallet_connect',
+        params: [{
+          version: '1',
+          capabilities: {
+            signInWithEthereum: {
+              version: '1',
+              domain: window.location.host,
+              uri: window.location.origin,
+              nonce,
+              chainId: BASE_MAINNET_CHAIN_ID,
+              statement: 'Sign in to Remix IDE with your Base account',
+              issuedAt: new Date().toISOString(),
+            },
+          },
+        }],
+      }) as { accounts: Array<{ address: string; capabilities: { signInWithEthereum: { message: string; signature: string } } }> }
+
+      const { address } = connectResult.accounts[0]
+      const { message, signature } = connectResult.accounts[0].capabilities.signInWithEthereum
+
+      console.log('[Base] Got address:', address)
+      console.log('[Base] Got message:', message)
+      console.log('[Base] Got signature:', signature.substring(0, 20) + '...')
+
+      // Verify with Base-specific endpoint
+      console.log('[Base] Verifying signature with backend...')
+      const verifyResponse = await fetch(`${endpointUrls.sso}/base/verify`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          signature
+        })
+      })
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
+        throw new Error(error.error || error.message || 'Base account verification failed')
+      }
+
+      const result = await verifyResponse.json()
+      console.log('[Base] Verification successful!')
+
+      // Store tokens and user info
+      localStorage.setItem('remix_access_token', result.token)
+      if (result.user) {
+        // Ensure provider is set to 'base'
+        result.user.provider = 'base'
+        localStorage.setItem('remix_user', JSON.stringify(result.user))
+      }
+
+      console.log('[Base] Login successful!')
+
+      // Emit auth state changed
+      this.emit('authStateChanged', {
+        isAuthenticated: true,
+        user: result.user,
+        token: result.token
+      })
+
+      // Auto-refresh credits
+      this.refreshCredits().catch(console.error)
+
+    } catch (error: any) {
+      console.error('[Base] Login failed:', error)
       throw error
     }
   }

@@ -32,6 +32,7 @@ const getProviderIcon = (provider: AuthProvider | string) => {
   case 'github': return 'fab fa-github'
   case 'discord': return 'fab fa-discord'
   case 'siwe': return 'fab fa-ethereum'
+  case 'base': return 'base-icon' // Custom handling for Base icon
   default: return 'fas fa-sign-in-alt'
   }
 }

@@ -93,6 +93,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             icon: <i className="fas fa-coins"></i>,
             description: 'Sign in with your Coinbase account',
             enabled: data.providers?.includes('coinbase') ?? false
+          },
+          {
+            id: 'base',
+            label: 'Base',
+            icon: <svg width="18" height="18" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z" fill="currentColor"/></svg>,
+            description: 'Sign in with Base smart wallet',
+            enabled: data.providers?.includes('base') ?? true
           }
         ]
 
@@ -129,6 +136,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             label: 'Ethereum Wallet',
             icon: <i className="fab fa-ethereum"></i>,
             description: 'Sign in with MetaMask, Coinbase Wallet, or any Ethereum wallet',
+            enabled: true
+          },
+          {
+            id: 'base',
+            label: 'Base',
+            icon: <svg width="18" height="18" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z" fill="currentColor"/></svg>,
+            description: 'Sign in with Base smart wallet',
             enabled: true
           },
           {
@@ -482,25 +496,49 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                     </div>
                   )}
 
-                  {/* Ethereum Wallet - Primary button at top */}
-                  {providers.filter(p => p.id === 'siwe').map((provider) => (
-                    <button
-                      key={provider.id}
-                      className="btn btn-primary w-100 d-flex align-items-center justify-content-center py-2 mb-3"
-                      onClick={() => handleLogin(provider.id)}
-                      disabled={loading || !provider.enabled}
-                    >
-                      <span className="me-1 login-modal-provider-icon fs-medium">
-                        {provider.icon}
-                      </span>
-                      <span className="fw-medium fs-medium">{provider.label}</span>
-                      {loading && (
-                        <div className="spinner-border spinner-border-sm text-white ms-2" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                  {/* Wallet Options - Primary buttons at top */}
+                  <div className="d-flex flex-column gap-2 mb-3">
+                    {/* Ethereum Wallet (SIWE) */}
+                    {providers.filter(p => p.id === 'siwe').map((provider) => (
+                      <button
+                        key={provider.id}
+                        className="btn btn-primary w-100 d-flex align-items-center justify-content-center py-2"
+                        onClick={() => handleLogin(provider.id)}
+                        disabled={loading || !provider.enabled}
+                      >
+                        <span className="me-2 login-modal-provider-icon fs-medium">
+                          {provider.icon}
+                        </span>
+                        <span className="fw-medium fs-medium">{provider.label}</span>
+                        {loading && (
+                          <div className="spinner-border spinner-border-sm text-white ms-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+
+                    {/* Base Smart Wallet */}
+                    {providers.filter(p => p.id === 'base').map((provider) => (
+                      <button
+                        key={provider.id}
+                        className="btn w-100 d-flex align-items-center justify-content-center py-2"
+                        style={{ backgroundColor: '#0052FF', color: 'white', border: 'none' }}
+                        onClick={() => handleLogin(provider.id)}
+                        disabled={loading || !provider.enabled}
+                      >
+                        <span className="me-2 login-modal-provider-icon fs-medium">
+                          {provider.icon}
+                        </span>
+                        <span className="fw-medium fs-medium">Continue with {provider.label}</span>
+                        {loading && (
+                          <div className="spinner-border spinner-border-sm text-white ms-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
 
                   {/* Divider with "or" text */}
                   <div className="d-flex align-items-center my-4">
@@ -511,7 +549,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
 
                   {/* Other providers - Light buttons */}
                   <div className="d-flex flex-column gap-2">
-                    {providers.filter(p => p.id !== 'siwe').map((provider) => (
+                    {providers.filter(p => p.id !== 'siwe' && p.id !== 'base').map((provider) => (
                       <button
                         key={provider.id}
                         className="btn btn-light border-0 w-100 d-flex align-items-center justify-content-center py-2 no-hover-effect"
