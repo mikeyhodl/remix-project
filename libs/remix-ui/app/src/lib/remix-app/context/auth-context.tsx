@@ -116,15 +116,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
   useEffect(() => {
     if (!isReady || !plugin) return
 
+    // Session restoration is handled by the AuthPlugin's validateAndRestoreSession()
+    // which runs during plugin activation (before isReady becomes true).
+    // By this point, localStorage has already been validated/cleaned by the server.
+    // We just read the validated state — no separate API call needed here.
     const initAuth = async () => {
       try {
-        const isAuth = await plugin.isAuthenticated()
-        if (isAuth) {
-          const user = await plugin.getUser()
-          const token = await plugin.getToken()
-          if (user && token) {
-            dispatch({ type: 'AUTH_SUCCESS', payload: { user, token } })
-          }
+        const token = await plugin.getToken()
+        if (!token) {
+          // No token after validation means user is not authenticated
+          return
+        }
+        const user = await plugin.getUser()
+        if (user) {
+          dispatch({ type: 'AUTH_SUCCESS', payload: { user, token } })
 
           // Fetch credits
           const credits = await plugin.getCredits()

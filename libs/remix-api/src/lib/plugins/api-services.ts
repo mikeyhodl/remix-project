@@ -72,10 +72,11 @@ export class SSOApiService {
   }
   
   /**
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token.
+   * Uses skipTokenRefresh to prevent recursive auto-refresh on 401.
    */
   async refreshToken(refreshToken: string): Promise<ApiResponse<RefreshTokenResponse>> {
-    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken })
+    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken }, { skipTokenRefresh: true })
   }
   
   /**

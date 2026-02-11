@@ -512,7 +512,8 @@ export class AuthPlugin extends Plugin {
     try {
       const refreshToken = localStorage.getItem('remix_refresh_token')
       if (!refreshToken) {
-        console.warn('[AuthPlugin] No refresh token available')
+        console.warn('[AuthPlugin] No refresh token available, logging out')
+        await this.logout()
         return null
       }
 
@@ -544,10 +545,8 @@ export class AuthPlugin extends Plugin {
 
       console.warn('[AuthPlugin] Token refresh failed:', response.error)
 
-      // If refresh failed, clear tokens and emit logout
-      if (response.status === 401) {
-        await this.logout()
-      }
+      // Any failed refresh means tokens are no longer usable — log out
+      await this.logout()
 
       return null
     } catch (error) {
@@ -632,11 +631,14 @@ export class AuthPlugin extends Plugin {
     }
   }
 
-  onActivation(): void {
+  async onActivation(): Promise<void> {
     console.log('[AuthPlugin] Activated - using popup + localStorage mode')
 
     // Validate existing token with the API on load
-    this.validateAndRestoreSession()
+    // Awaited so that plugin activation only completes after validation.
+    // This ensures AuthContext (which polls for activation) never sees
+    // stale/unvalidated tokens in localStorage.
+    await this.validateAndRestoreSession()
   }
 
   /**
@@ -661,9 +663,25 @@ export class AuthPlugin extends Plugin {
         if (!refreshed) {
           console.log('[AuthPlugin] Refresh failed, clearing session')
           this.clearStoredAuth()
+          this.emit('authStateChanged', {
+            isAuthenticated: false,
+            user: null,
+            token: null
+          })
           return
         }
-        // refreshAccessToken already emits authStateChanged if successful
+        // Refresh succeeded — emit authenticated state with refreshed data
+        const refreshedToken = localStorage.getItem('remix_access_token')
+        const userStr = localStorage.getItem('remix_user')
+        const user = userStr ? JSON.parse(userStr) : null
+        if (user && refreshedToken) {
+          this.emit('authStateChanged', {
+            isAuthenticated: true,
+            user,
+            token: refreshedToken
+          })
+          this.refreshCredits().catch(console.error)
+        }
         return
       }
 
@@ -715,22 +733,15 @@ export class AuthPlugin extends Plugin {
       }
     } catch (error) {
       console.error('[AuthPlugin] Session validation error:', error)
-      // Network error - don't clear session, user might be offline
-      // Try to use cached session but mark as unverified
-      const userStr = localStorage.getItem('remix_user')
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr)
-          this.emit('authStateChanged', {
-            isAuthenticated: true,
-            user,
-            token,
-            verified: false // Indicate session is not verified
-          })
-        } catch (e) {
-          // Invalid stored data
-        }
-      }
+      // Network error — cannot verify token, clear session to be safe.
+      // An unverifiable token should not grant access.
+      console.log('[AuthPlugin] Cannot reach auth server, clearing session')
+      this.clearStoredAuth()
+      this.emit('authStateChanged', {
+        isAuthenticated: false,
+        user: null,
+        token: null
+      })
     }
   }
 
