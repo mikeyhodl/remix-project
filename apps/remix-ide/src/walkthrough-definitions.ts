@@ -8,7 +8,7 @@ import { WalkthroughDefinition } from '@remix-api'
 
 export const builtinWalkthroughs: WalkthroughDefinition[] = [
   {
-    id: 'remix-intro',
+    id: 'remix-intro-basics',
     name: 'Getting Started with Remix',
     description: 'A quick tour of the Remix IDE interface and basic features.',
     sourcePlugin: 'walkthrough',
@@ -53,11 +53,33 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
         },
       },
       {
-        targetSelector: '[data-id="terminalContainer"]',
-        title: 'Terminal',
-        content: 'The terminal shows transaction logs, compilation output, and lets you run JavaScript/Solidity scripts.',
-        placement: 'top',
+        targetSelector: '[plugin="remixaiassistant"]',
+        title: 'AI Assistant',
+        content: 'Remix has a built-in <b>AI assistant</b> that can explain code, find bugs, suggest fixes, and even generate contracts from a prompt. Open it anytime to chat with AI about your Solidity code.',
+        placement: 'right',
+        preAction: {
+          plugin: 'menuicons',
+          method: 'select',
+          args: ['remixaiassistant'],
+        },
       },
+      {
+        targetSelector: '[plugin="dgit"]',
+        title: 'Git Integration',
+        content: 'The <b>Git plugin</b> lets you initialize repos, commit changes, push/pull to GitHub, and manage branches — all without leaving the IDE.',
+        placement: 'right',
+        preAction: {
+          plugin: 'menuicons',
+          method: 'select',
+          args: ['dgit'],
+        },
+      },
+      {
+        targetSelector: '[data-id="github-dropdown-toggle-login"]',
+        title: 'GitHub Login',
+        content: 'Click here to <b>sign in with GitHub</b>. Once connected you can clone private repos, push changes, and publish Gists directly from Remix.',
+        placement: 'bottom',
+      }
     ],
   },
   {
@@ -68,26 +90,30 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
     steps: [
       {
         targetSelector: '[plugin="filePanel"]',
-        title: 'Step 1: Open a Contract',
-        content: 'First, open a Solidity file from the File Explorer. You can use one of the default workspace templates.',
+        title: 'Step 1: Create a Workspace',
+        content: 'We\'ll create a fresh workspace with a sample contract for you. A new <b>"LearnDeploy"</b> workspace is being set up with the default Remix template.',
         placement: 'right',
+        preAction: [
+          { plugin: 'filePanel', method: 'createWorkspace', args: ['LearnDeploy', 'remixDefault', false] },
+          { plugin: 'menuicons', method: 'select', args: ['filePanel'] },
+        ],
+      },
+      {
+        targetSelector: '#editor-container',
+        title: 'Step 2: Open the Contract',
+        content: 'Here is <b>1_Storage.sol</b> — a simple contract that stores and retrieves a number. Take a look at the code!',
+        placement: 'left',
         preAction: {
-          plugin: 'menuicons',
-          method: 'select',
-          args: ['filePanel'],
+          plugin: 'fileManager',
+          method: 'open',
+          args: ['contracts/1_Storage.sol'],
         },
       },
       {
         targetSelector: '[plugin="solidity"]',
-        title: 'Step 2: Open the Compiler',
-        content: 'Click the Solidity Compiler icon to open the compilation panel.',
+        title: 'Step 3: Open the Compiler',
+        content: 'Click the <b>Solidity Compiler</b> icon in the side panel to open the compilation view.',
         placement: 'right',
-      },
-      {
-        targetSelector: '#compileBtn',
-        title: 'Step 3: Compile',
-        content: 'Click "Compile" to compile your contract. Make sure the correct compiler version is selected.',
-        placement: 'bottom',
         preAction: {
           plugin: 'menuicons',
           method: 'select',
@@ -95,34 +121,21 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
         },
       },
       {
-        targetSelector: '[plugin="udapp"]',
-        title: 'Step 4: Open Deploy Panel',
-        content: 'Now switch to the Deploy & Run panel to deploy your compiled contract.',
-        placement: 'right',
-      },
-      {
-        targetSelector: '#Deploy',
-        title: 'Step 5: Deploy',
-        content: 'Select your contract and click "Deploy". By default, it deploys to the Remix VM — a simulated blockchain in your browser.',
+        targetSelector: '#compileBtn',
+        title: 'Step 4: Compile the Contract',
+        content: 'We\'re compiling <b>1_Storage.sol</b> for you now. Watch the compiler panel — when it succeeds you\'ll see a green check mark.',
         placement: 'bottom',
         preAction: {
-          plugin: 'menuicons',
-          method: 'select',
-          args: ['udapp'],
+          plugin: 'solidity',
+          method: 'compile',
+          args: ['contracts/1_Storage.sol'],
         },
+        clickDelay: 1000,
       },
-    ],
-  },
-  {
-    id: 'remix-recorder',
-    name: 'Transaction Recorder',
-    description: 'Learn how to record and replay transactions across different environments.',
-    sourcePlugin: 'walkthrough',
-    steps: [
       {
-        targetSelector: '#udappRecorderCard',
-        title: 'Transactions Recorder',
-        content: 'Save transactions (deployed contracts and function executions) and replay them in another environment. Transactions created in Remix VM can be replayed with an Injected Provider.',
+        targetSelector: '[plugin="udapp"]',
+        title: 'Step 5: Open the Deploy Panel',
+        content: 'Now switch to <b>Deploy & Run Transactions</b>. This is where you deploy compiled contracts and interact with them.',
         placement: 'right',
         preAction: {
           plugin: 'menuicons',
@@ -131,23 +144,29 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
         },
       },
       {
-        targetSelector: '#udappRecorderUseLatest',
-        title: 'Use Latest Compilation',
-        content: 'If selected, the recorder will run transactions using the latest compilation result.',
-        placement: 'right',
+        targetSelector: '[data-id="Deploy - transact (not payable)"]',
+        title: 'Step 6: Deploy!',
+        content: 'We\'re deploying the Storage contract to the <b>Remix VM</b> for you — a simulated blockchain running in your browser. No real funds needed!',
+        placement: 'bottom',
+        clickSelector: '[data-id="deployAndRunClearInstances"]',
+        clickDelay: 500,
       },
       {
-        targetSelector: '#udappRecorderSave',
-        title: 'Save Scenario',
-        content: 'Once one or more transactions have been executed, click this button to save them as a scenario file.',
-        placement: 'right',
+        targetSelector: '*[data-shared="universalDappUiInstance"]',
+        title: 'Step 7: Interact with Your Contract',
+        content: 'Your contract is now deployed! The instance appears here. You can call <b>store()</b> to save a number and <b>retrieve()</b> to read it back. Try it out!',
+        placement: 'top',
+        clickSelector: '[data-id="Deploy - transact (not payable)"]',
+        clickDelay: 2000,
       },
       {
-        targetSelector: '#udappRecorderRun',
-        title: 'Run Scenario',
-        content: 'Open a scenario file and click this button to run it against the currently selected provider.',
-        placement: 'right',
+        targetSelector: '*[data-id="universalDappUiContractActionWrapper"]',
+        title: 'Step 8: Contract Functions',
+        content: 'Here are all the functions of your contract. <b>Orange</b> buttons are write functions (transactions) and <b>blue</b> buttons are read-only (free calls). Try calling <b>store()</b> with a number and then <b>retrieve()</b> to read it back! 🎉',
+        placement: 'top',
+        clickSelector: '[data-id="universalDappUiTitleExpander0"]',
+        clickDelay: 500,
       },
     ],
   },
-]
+  ]

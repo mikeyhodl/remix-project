@@ -15,9 +15,16 @@ interface RemixUIWalkthroughProps {
 export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, walkthroughs }) => {
   const [searchTerm, setSearchTerm] = useState('')
 
-  const filtered = walkthroughs.filter((w) =>
+  // Sort: unseen first (by priority desc), then completed
+  const sorted = [...walkthroughs].sort((a, b) => {
+    if (a.completed && !b.completed) return 1
+    if (!a.completed && b.completed) return -1
+    return (b.priority ?? 0) - (a.priority ?? 0)
+  })
+
+  const filtered = sorted.filter((w) =>
     w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    w.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (w.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleStart = useCallback(async (id: string) => {
@@ -27,6 +34,8 @@ export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, 
       console.error('Failed to start walkthrough:', e)
     }
   }, [plugin])
+
+  const unseenCount = walkthroughs.filter(w => !w.completed).length
 
   if (!walkthroughs || walkthroughs.length === 0) {
     return (
@@ -41,6 +50,11 @@ export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, 
     <div className="remix-walkthrough-panel d-flex flex-column h-100">
       {/* Search */}
       <div className="px-3 pt-3 pb-2">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <span className="small text-muted">
+            {unseenCount > 0 ? `${unseenCount} new` : 'All completed'}
+          </span>
+        </div>
         <input
           type="text"
           className="form-control form-control-sm"
@@ -56,26 +70,35 @@ export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, 
         {filtered.map((wt) => (
           <div
             key={wt.id}
-            className="walkthrough-card border rounded p-3 mb-2 bg-secondary"
+            className={`walkthrough-card border rounded p-3 mb-2 ${wt.completed ? 'bg-secondary opacity-75' : 'bg-secondary'}`}
             data-id={`walkthrough-card-${wt.id}`}
           >
             <div className="d-flex justify-content-between align-items-start mb-1">
               <h6 className="mb-0 fw-bold">{wt.name}</h6>
-              <span className="badge bg-info ms-2">{wt.steps.length} steps</span>
+              <div className="d-flex align-items-center gap-1">
+                {wt.completed ? (
+                  <span className="badge bg-success ms-2" title={wt.completedAt ? `Completed: ${new Date(wt.completedAt).toLocaleDateString()}` : 'Completed'}>
+                    <i className="fas fa-check me-1"></i>Done
+                  </span>
+                ) : (
+                  <span className="badge bg-warning text-dark ms-2">New</span>
+                )}
+                <span className="badge bg-info ms-1">{wt.steps.length} steps</span>
+              </div>
             </div>
             <p className="small text-muted mb-2">{wt.description}</p>
-            {wt.sourcePlugin && wt.sourcePlugin !== 'unknown' && (
+            {wt.sourcePlugin && wt.sourcePlugin !== 'unknown' && wt.sourcePlugin !== 'api' && (
               <div className="small text-muted mb-2">
                 <i className="fas fa-plug me-1"></i>{wt.sourcePlugin}
               </div>
             )}
             <button
-              className="btn btn-sm btn-primary"
+              className={`btn btn-sm ${wt.completed ? 'btn-outline-primary' : 'btn-primary'}`}
               onClick={() => handleStart(wt.id)}
               data-id={`walkthrough-start-${wt.id}`}
             >
-              <i className="fas fa-play me-1"></i>
-              Start Tour
+              <i className={`fas ${wt.completed ? 'fa-redo' : 'fa-play'} me-1`}></i>
+              {wt.completed ? 'Replay Tour' : 'Start Tour'}
             </button>
           </div>
         ))}

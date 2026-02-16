@@ -1,3 +1,15 @@
+/* Override driver.js overflow:hidden on ancestor containers –
+   this rule clips the popover when the highlighted element sits
+   inside a scrollable panel (e.g. the Deploy & Run tab). */
+:not(body):has(> .driver-active-element) {
+  overflow: visible !important;
+}
+
+/* Make sure the popover itself is never clipped */
+.driver-popover {
+  z-index: 1000000000 !important;
+}
+
 /* Driver.js Remix theme overrides */
 .remix-walkthrough-popover {
   font-family: inherit;
