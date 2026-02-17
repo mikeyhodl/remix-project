@@ -18,8 +18,12 @@ type EndpointUrls = {
     sso: string;
     billing: string;
     credits: string;
-    audio;
+    audio: string;
+    storage: string;
     permissions: string;
+    notifications: string;
+    invite: string;
+    feedback: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -43,7 +47,11 @@ const defaultUrls: EndpointUrls = {
   billing: 'https://auth.api.remix.live:8443/billing',
   credits: 'https://auth.api.remix.live:8443/credits',
   audio: 'https://audio.api.remix.live',
+  storage: 'https://auth.api.remix.live:8443/storage',
   permissions: 'https://auth.api.remix.live:8443/permissions',
+  notifications: 'https://auth.api.remix.live:8443/notifications',
+  invite: 'https://auth.api.remix.live:8443/invite',
+  feedback: 'https://auth.api.remix.live:8443/feedback',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -67,7 +75,11 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   billing: 'billing',
   credits: 'credits',
   audio: 'audio',
+  storage: 'storage',
   permissions: 'permissions',
+  notifications: 'notifications',
+  invite: 'invite',
+  feedback: 'feedback',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -108,8 +120,18 @@ const localhostUrls: EndpointUrls = {
   // AUDIO service (port 3004)
   audio: 'http://localhost:3004/audio',
   
+  // STORAGE service (port 3002 - same as billing)
+  storage: 'http://localhost:3002/storage',
   // PERMISSIONS service
   permissions: 'https://auth.api.remix.live:8443/permissions',
+  
+  // NOTIFICATIONS service (port 3013)
+  notifications: 'http://localhost:3013/notifications',
+  // INVITE service
+  invite: 'https://auth.api.remix.live:8443/invite',
+
+  // FEEDBACK service
+  feedback: 'https://auth.api.remix.live:8443/feedback',
 };
 
 const resolvedUrls: EndpointUrls = prefix
