@@ -271,7 +271,7 @@ class AppComponent {
       this.track({ category: 'MatomoManager', action: 'showConsentDialog', isClick: false });
     }
 
-    this.walkthroughService = new WalkthroughService(appManager)
+    this.walkthroughService = new WalkthroughService()
 
     this.platform = isElectron() ? 'desktop' : 'web'
 
