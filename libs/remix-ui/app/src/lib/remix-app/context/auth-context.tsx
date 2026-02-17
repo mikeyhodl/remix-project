@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react'
-import { AuthUser, AuthProvider as AuthProviderType } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, FeatureGroup } from '@remix-api'
 import { Profile } from '@remixproject/plugin-utils'
 
 export interface Credits {
@@ -13,6 +13,7 @@ export interface AuthState {
   user: AuthUser | null
   token: string | null
   credits: Credits | null
+  featureGroups: FeatureGroup[]
   loading: boolean
   error: string | null
 }
@@ -22,6 +23,7 @@ type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: { user: AuthUser; token: string } }
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'UPDATE_CREDITS'; payload: Credits }
+  | { type: 'UPDATE_FEATURE_GROUPS'; payload: FeatureGroup[] }
   | { type: 'TOKEN_REFRESHED'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' }
@@ -59,6 +61,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       ...state,
       credits: action.payload
     }
+  case 'UPDATE_FEATURE_GROUPS':
+    return {
+      ...state,
+      featureGroups: action.payload
+    }
   case 'TOKEN_REFRESHED':
     return {
       ...state,
@@ -70,6 +77,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       user: null,
       token: null,
       credits: null,
+      featureGroups: [],
       loading: false,
       error: null
     }
@@ -85,6 +93,7 @@ const initialState: AuthState = {
   user: null,
   token: null,
   credits: null,
+  featureGroups: [],
   loading: false,
   error: null
 }
@@ -142,6 +151,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
           if (credits) {
             dispatch({ type: 'UPDATE_CREDITS', payload: credits })
           }
+
+          // Fetch feature groups from permissions
+          try {
+            const permissions = await plugin.call('auth', 'getAllPermissions')
+            if (permissions && permissions.feature_groups) {
+              dispatch({ type: 'UPDATE_FEATURE_GROUPS', payload: permissions.feature_groups })
+            }
+          } catch (permErr) {
+            console.warn('[AuthContext] Failed to fetch feature groups:', permErr)
+          }
         }
       } catch (error) {
         console.error('[AuthContext] Failed to restore session:', error)
@@ -151,13 +170,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
     initAuth()
 
     // Listen to auth plugin events
-    const handleAuthStateChanged = (authState: any) => {
+    const handleAuthStateChanged = async (authState: any) => {
       console.log('[AuthContext] Auth state changed:', authState)
       if (authState.isAuthenticated && authState.user) {
         dispatch({
           type: 'AUTH_SUCCESS',
           payload: { user: authState.user, token: authState.token || null }
         })
+        // Fetch feature groups on auth change
+        try {
+          const permissions = await plugin.call('auth', 'getAllPermissions')
+          if (permissions && permissions.feature_groups) {
+            dispatch({ type: 'UPDATE_FEATURE_GROUPS', payload: permissions.feature_groups })
+          }
+        } catch (permErr) {
+          console.warn('[AuthContext] Failed to fetch feature groups on auth change:', permErr)
+        }
       } else {
         dispatch({ type: 'LOGOUT' })
       }

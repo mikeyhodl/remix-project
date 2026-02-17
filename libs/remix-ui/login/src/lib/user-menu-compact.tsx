@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react'
-import { AuthUser, AuthProvider, LinkedAccount, AccountsResponse } from '@remix-api'
+import { AuthUser, AuthProvider, LinkedAccount, AccountsResponse, FeatureGroup } from '@remix-api'
 import type { Credits } from '../../../app/src/lib/remix-app/context/auth-context'
+import { useAuth } from '../../../app/src/lib/remix-app/context/auth-context'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { AppContext } from '@remix-ui/app'
+import { FeatureBadges } from './feature-badges'
 import './user-menu-compact.css'
 
 interface Theme {
@@ -59,28 +61,39 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   publishToGist
 }) => {
   const [showDropdown, setShowDropdown] = useState(false)
+  const { featureGroups } = useAuth()
   const appContext = useContext(AppContext)
   const gitHubUser = appContext?.appState?.gitHubUser
   const isGitHubConnected = gitHubUser?.isConnected
 
+  const hasBeta = featureGroups?.some(fg => fg.name === 'beta')
+  const buttonClass = `btn btn-sm d-flex flex-nowrap align-items-center user-menu-compact-button ${
+    hasBeta ? 'user-menu-compact-button--beta' : 'btn-success'
+  }`
+
   return (
     <div className={`position-relative ${className}`}>
       <button
-        className="btn btn-sm btn-success d-flex flex-nowrap align-items-center user-menu-compact-button"
+        className={buttonClass}
         onClick={() => setShowDropdown(!showDropdown)}
         data-id="user-menu-compact"
         title={getUserDisplayName()}
       >
         {user.picture && (
-          <img
-            src={user.picture}
-            alt="Avatar"
-            className="user-menu-compact-avatar"
-          />
+          <div className={`user-menu-compact-avatar-wrap ${hasBeta ? 'user-menu-compact-avatar-wrap--beta' : ''}`}>
+            <img
+              src={user.picture}
+              alt="Avatar"
+              className="user-menu-compact-avatar"
+            />
+          </div>
         )}
         <div className="user-menu-compact-info">
           <span className="user-menu-compact-name">{getUserDisplayName()}</span>
         </div>
+        {hasBeta && (
+          <span className="user-menu-compact-beta-tag">BETA</span>
+        )}
       </button>
       {showDropdown && (
         <>
@@ -108,8 +121,11 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
 
             {/* Menu Items */}
             <div className="user-menu-items-container">
-              {/* Account Settings */}
-              {onManageAccounts && (
+              {/* Feature Badges */}
+              <FeatureBadges plugin={plugin} onClose={() => setShowDropdown(false)} />
+
+              {/* Account Settings - temporarily hidden */}
+              {/* {onManageAccounts && (
                 <button
                   className="dropdown-item user-menu-item"
                   onClick={() => {
@@ -120,10 +136,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                   <i className="fas fa-user-cog user-menu-item-icon"></i>
                   Account Settings
                 </button>
-              )}
+              )} */}
 
-              {/* Credits */}
-              {credits && showCredits && (
+              {/* Credits - temporarily hidden */}
+              {/* {credits && showCredits && (
                 <div className="dropdown-item user-menu-credits-item">
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <i className="fas fa-coins user-menu-credits-icon"></i>
@@ -133,7 +149,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                     {credits.balance.toLocaleString()}
                   </strong>
                 </div>
-              )}
+              )} */}
 
               <div className="dropdown-divider user-menu-divider"></div>
 

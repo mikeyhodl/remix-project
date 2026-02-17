@@ -182,18 +182,18 @@ export class AuthPlugin extends Plugin {
 
   /**
    * Get all permissions for the current user
-   * @returns Array of all user permissions with their limits
+   * @returns Full permissions response including feature_groups
    */
-  async getAllPermissions(): Promise<{ feature_name: string; allowed: boolean; limit_value?: number; limit_unit?: string; category?: string }[]> {
+  async getAllPermissions(): Promise<any> {
     try {
       const response = await this.permissionsApi.getPermissions()
       if (response.ok && response.data) {
-        return response.data.features
+        return response.data
       }
-      return []
+      return { features: [] }
     } catch (error) {
       console.error('[AuthPlugin] Get all permissions failed:', error)
-      return []
+      return { features: [] }
     }
   }
 

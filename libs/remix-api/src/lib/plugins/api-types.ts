@@ -252,8 +252,27 @@ export interface Permission {
   category?: string
 }
 
+export interface FeatureGroup {
+  name: string
+  display_name: string
+  description: string
+  priority: number
+  source_type: string
+  starts_at: string
+  expires_at: string | null
+  is_recurring: boolean
+  grant_reason: string | null
+  created_at: string
+}
+
 export interface PermissionsResponse {
-  features: Permission[]
+  user_id?: number
+  group_id?: number
+  is_authenticated?: boolean
+  is_blocked?: boolean
+  is_admin?: boolean
+  feature_groups?: FeatureGroup[]
+  features: Permission[] | Record<string, any>
 }
 
 export interface FeatureCheckRequest {
