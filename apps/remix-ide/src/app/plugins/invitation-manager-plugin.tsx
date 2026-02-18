@@ -118,6 +118,8 @@ export class InvitationManagerPlugin extends Plugin {
       if (result.success) {
         // Clear pending token
         await this.call('auth', 'clearPendingInviteToken')
+        // Reload permissions so UI (top bar, badges) updates immediately
+        await this.call('auth', 'refreshPermissions')
         this.emit('inviteRedeemed', { token, result })
       }
 
