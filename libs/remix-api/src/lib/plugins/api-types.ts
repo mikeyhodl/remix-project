@@ -585,9 +585,11 @@ export interface FeatureAccessCheckResponse {
  * Action that will be performed when a token is redeemed
  */
 export interface InviteTokenAction {
-  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag'
+  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag' | 'walkthrough'
   description: string
   config?: Record<string, unknown>
+  walkthrough_slug?: string
+  auto_trigger?: boolean
 }
 
 /**
@@ -605,8 +607,10 @@ export interface InviteTokenInfo {
  */
 export interface InviteValidateResponse {
   valid: boolean
+  token_id?: number
   name?: string
   description?: string
+  invite_type?: 'default' | 'beta_program' | string
   expires_at?: string | null
   uses_remaining?: number | null
   already_redeemed?: boolean

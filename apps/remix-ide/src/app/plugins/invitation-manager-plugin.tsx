@@ -140,6 +140,18 @@ export class InvitationManagerPlugin extends Plugin {
   }
 
   /**
+   * Start a walkthrough via the walkthrough plugin
+   */
+  async startWalkthrough(slug: string): Promise<void> {
+    try {
+      console.log('[InvitationManager] Starting walkthrough:', slug)
+      await this.call('walkthrough' as any, 'start', slug)
+    } catch (e) {
+      console.error('[InvitationManager] Failed to start walkthrough:', e)
+    }
+  }
+
+  /**
    * Close the invite modal
    */
   async close(): Promise<void> {
@@ -269,6 +281,7 @@ export class InvitationManagerPlugin extends Plugin {
         state={dispatchState.state}
         onRedeem={(token) => this.redeemToken(token)}
         onClose={() => this.close()}
+        onStartWalkthrough={(slug) => this.startWalkthrough(slug)}
       />
     )
   }
