@@ -78,7 +78,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             label: 'Email',
             icon: <i className="fas fa-envelope"></i>,
             description: 'Sign in with your email address',
-            enabled: true
+            enabled: false
           },
           {
             id: 'apple',
