@@ -66,6 +66,12 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   const gitHubUser = appContext?.appState?.gitHubUser
   const isGitHubConnected = gitHubUser?.isConnected
 
+  const trackEvent = (action: string, name?: string) => {
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'userMenu', action, name || '', undefined).catch(() => {})
+    }
+  }
+
   const hasBeta = featureGroups?.some(fg => fg.name === 'beta')
   const buttonClass = `btn btn-sm d-flex flex-nowrap align-items-center user-menu-compact-button ${
     hasBeta ? 'user-menu-compact-button--beta' : 'btn-success'
@@ -75,7 +81,11 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
     <div className={`position-relative ${className}`}>
       <button
         className={buttonClass}
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          const willOpen = !showDropdown
+          setShowDropdown(willOpen)
+          if (willOpen) trackEvent('openDropdown')
+        }}
         data-id="user-menu-compact"
         title={getUserDisplayName()}
       >
@@ -174,6 +184,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                         className="dropdown-item user-menu-item"
                         onClick={() => {
                           cloneGitRepository()
+                          trackEvent('cloneGitRepository')
                           setShowDropdown(false)
                         }}
                       >
@@ -186,6 +197,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                         className="dropdown-item user-menu-item"
                         onClick={() => {
                           publishToGist()
+                          trackEvent('publishToGist')
                           setShowDropdown(false)
                         }}
                       >
@@ -199,6 +211,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                         if (plugin) {
                           await plugin.call('auth', 'disconnectGitHub')
                         }
+                        trackEvent('disconnectGitHub')
                         setShowDropdown(false)
                       }}
                     >
@@ -213,6 +226,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                         className="dropdown-item user-menu-item"
                         onClick={() => {
                           cloneGitRepository()
+                          trackEvent('cloneGitRepository')
                           setShowDropdown(false)
                         }}
                       >
@@ -230,6 +244,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                             console.error('Failed to connect GitHub:', error)
                           }
                         }
+                        trackEvent('connectGitHub')
                         setShowDropdown(false)
                       }}
                     >
@@ -247,6 +262,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 className="dropdown-item user-menu-item"
                 onClick={() => {
                   window.open('https://github.com/ethereum/remix-project/issues/new?template=bug_report.md', '_blank')
+                  trackEvent('reportBug')
                   setShowDropdown(false)
                 }}
               >
@@ -259,6 +275,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 className="dropdown-item user-menu-item"
                 onClick={() => {
                   window.open('https://github.com/ethereum/remix-project/issues/new?template=feature_request.md', '_blank')
+                  trackEvent('requestFeature')
                   setShowDropdown(false)
                 }}
               >
@@ -271,6 +288,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 className="dropdown-item user-menu-item"
                 onClick={() => {
                   window.open('https://remix-ide.readthedocs.io/', '_blank')
+                  trackEvent('documentation')
                   setShowDropdown(false)
                 }}
               >
@@ -298,8 +316,10 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                       onClick={() => {
                         if (isDarkMode && lightTheme) {
                           onThemeChange(lightTheme.name)
+                          trackEvent('themeToggle', 'light')
                         } else if (!isDarkMode && darkTheme) {
                           onThemeChange(darkTheme.name)
+                          trackEvent('themeToggle', 'dark')
                         }
                       }}
                     />
@@ -312,7 +332,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
               {/* Sign Out */}
               <button
                 className="dropdown-item user-menu-item-danger"
-                onClick={onLogout}
+                onClick={() => { trackEvent('signOut'); onLogout() }}
               >
                 <i className="fas fa-sign-out-alt user-menu-item-icon"></i>
                 Sign Out

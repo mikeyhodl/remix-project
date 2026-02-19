@@ -219,6 +219,7 @@ export class WalkthroughService extends ViewPlugin {
       throw new Error(`Walkthrough "${walkthroughId}" not found. Available: ${Array.from(this.walkthroughs.keys()).join(', ')}`)
     }
     console.log(`[walkthrough] starting "${definition.name}" with ${definition.steps.length} steps`)
+    this.call('matomo' as any, 'trackEvent', 'walkthrough', 'start', walkthroughId, definition.steps.length).catch(() => {})
     await this._runWalkthrough(walkthroughId, definition.steps)
   }
 
@@ -329,6 +330,7 @@ export class WalkthroughService extends ViewPlugin {
     definition.completedAt = new Date().toISOString()
     this.walkthroughs.set(walkthroughId, definition)
     this.renderComponent()
+    this.call('matomo' as any, 'trackEvent', 'walkthrough', 'completed', walkthroughId, undefined).catch(() => {})
 
     // Call backend if this is an API walkthrough with a numeric ID
     if (definition.apiId && this.isAuthenticated) {

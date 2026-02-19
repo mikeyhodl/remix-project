@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { WalkthroughDefinition } from '@remix-api'
 import '../css/walkthrough.css'
 
@@ -14,6 +14,18 @@ interface RemixUIWalkthroughProps {
  */
 export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, walkthroughs }) => {
   const [searchTerm, setSearchTerm] = useState('')
+
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>(null)
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value)
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    if (value.trim()) {
+      searchDebounce.current = setTimeout(() => {
+        plugin.call('matomo', 'trackEvent', 'walkthrough', 'search', value.trim(), undefined).catch(() => {})
+      }, 1000)
+    }
+  }, [plugin])
 
   // Sort: unseen first (by priority desc), then completed
   const sorted = [...walkthroughs].sort((a, b) => {
@@ -60,7 +72,7 @@ export const RemixUIWalkthrough: React.FC<RemixUIWalkthroughProps> = ({ plugin, 
           className="form-control form-control-sm"
           placeholder="Search walkthroughs..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           data-id="walkthrough-search"
         />
       </div>

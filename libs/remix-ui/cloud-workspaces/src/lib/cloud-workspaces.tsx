@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { WorkspaceSummary, StorageFile } from '@remix-api'
 import { RemoteWorkspacesList, CurrentWorkspaceSection, CurrentCloudWorkspaceFiles } from './components'
@@ -104,6 +104,32 @@ export const RemixUICloudWorkspaces: React.FC<CloudWorkspacesProps> = ({
   const currentRemoteId = currentWorkspaceStatus.remoteId
   const currentWorkspaceBackupData = currentRemoteId ? workspaceBackups[currentRemoteId] : null
 
+  const trackCloudEvent = useCallback((action: string, name?: string) => {
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'cloudWorkspace', action, name || '', undefined).catch(() => {})
+    }
+  }, [plugin])
+
+  const trackedRestoreBackup = useCallback((folder: string, filename: string) => {
+    trackCloudEvent('restoreBackup', filename)
+    return onRestoreBackup(folder, filename)
+  }, [onRestoreBackup, trackCloudEvent])
+
+  const trackedDeleteBackup = useCallback((folder: string, filename: string) => {
+    trackCloudEvent('deleteBackup', filename)
+    return onDeleteBackup(folder, filename)
+  }, [onDeleteBackup, trackCloudEvent])
+
+  const trackedDownloadBackup = useCallback((folder: string, filename: string) => {
+    trackCloudEvent('downloadBackup', filename)
+    return onDownloadBackup(folder, filename)
+  }, [onDownloadBackup, trackCloudEvent])
+
+  const trackedRefresh = useCallback(() => {
+    trackCloudEvent('refreshWorkspaces')
+    return onRefresh()
+  }, [onRefresh, trackCloudEvent])
+
   // Filter out current workspace from remote workspaces list
   const otherWorkspaces = useMemo(() => {
     if (!currentRemoteId) return workspaces
@@ -122,9 +148,9 @@ export const RemixUICloudWorkspaces: React.FC<CloudWorkspacesProps> = ({
             backups={currentWorkspaceBackupData?.backups || []}
             autosave={currentWorkspaceBackupData?.autosave || null}
             loading={currentWorkspaceBackupData?.loading || false}
-            onRestore={onRestoreBackup}
-            onDelete={onDeleteBackup}
-            onDownload={onDownloadBackup}
+            onRestore={trackedRestoreBackup}
+            onDelete={trackedDeleteBackup}
+            onDownload={trackedDownloadBackup}
           />
         )}
 
@@ -138,10 +164,10 @@ export const RemixUICloudWorkspaces: React.FC<CloudWorkspacesProps> = ({
           error={error}
           onSelectWorkspace={onSelectWorkspace}
           onCollapseWorkspace={onCollapseWorkspace}
-          onRestoreBackup={onRestoreBackup}
-          onDeleteBackup={onDeleteBackup}
-          onDownloadBackup={onDownloadBackup}
-          onRefresh={onRefresh}
+          onRestoreBackup={trackedRestoreBackup}
+          onDeleteBackup={trackedDeleteBackup}
+          onDownloadBackup={trackedDownloadBackup}
+          onRefresh={trackedRefresh}
         />
       </div>
     </CloudWorkspacesProvider>

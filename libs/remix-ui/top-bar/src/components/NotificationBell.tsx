@@ -83,6 +83,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     const willOpen = !isOpen
     setIsOpen(willOpen)
     if (willOpen) {
+      plugin.call('matomo', 'trackEvent', 'notifications', 'openDropdown', '', undefined).catch(() => {})
       setLoading(true)
       try {
         const result = await plugin.call('notificationCenter', 'getNotifications' as any, 20, 0, false)
@@ -101,6 +102,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     e.stopPropagation()
     try {
       await plugin.call('notificationCenter', 'markAsRead' as any, id)
+      plugin.call('matomo', 'trackEvent', 'notifications', 'markAsRead', String(id), undefined).catch(() => {})
     } catch (e) {
       console.error('[NotificationBell] Failed to mark as read:', e)
     }
@@ -110,6 +112,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     e.stopPropagation()
     try {
       await plugin.call('notificationCenter', 'dismiss' as any, id)
+      plugin.call('matomo', 'trackEvent', 'notifications', 'dismiss', String(id), undefined).catch(() => {})
     } catch (e) {
       console.error('[NotificationBell] Failed to dismiss:', e)
     }
@@ -118,12 +121,17 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       await plugin.call('notificationCenter', 'markAllAsRead' as any)
+      plugin.call('matomo', 'trackEvent', 'notifications', 'markAllAsRead', '', undefined).catch(() => {})
     } catch (e) {
       console.error('[NotificationBell] Failed to mark all as read:', e)
     }
   }, [plugin])
 
   const handleAction = useCallback(async (notification: NotificationItem) => {
+    // Track the action click
+    const actionType = notification.action?.action_type || 'legacy'
+    plugin.call('matomo', 'trackEvent', 'notifications', 'actionClick', `${notification.type}:${actionType}`, undefined).catch(() => {})
+
     // Mark as read when acting
     if (notification.read_status === null) {
       plugin.call('notificationCenter', 'markAsRead' as any, notification.id).catch(() => {})

@@ -698,7 +698,10 @@ export function RemixUiTopbar() {
       {feedbackFormUrl && (
         <FeedbackPanel
           isOpen={feedbackPanelOpen}
-          onClose={() => setFeedbackPanelOpen(false)}
+          onClose={() => {
+            setFeedbackPanelOpen(false)
+            trackMatomoEvent({ category: 'topbar', action: 'feedback', name: 'FeedbackClosed', isClick: true })
+          }}
           formUrl={feedbackFormUrl}
         />
       )}

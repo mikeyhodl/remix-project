@@ -6,6 +6,7 @@ import './login-modal.css'
 
 interface LoginModalProps {
   onClose: () => void
+  plugin?: any
 }
 
 interface ProviderConfig {
@@ -16,7 +17,7 @@ interface ProviderConfig {
   enabled: boolean
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const { login, loading, error, dispatch } = useAuth()
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loadingProviders, setLoadingProviders] = useState(true)
@@ -155,17 +156,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     }
   }, [dispatch])
 
+  const trackEvent = (action: string, name?: string) => {
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'auth', action, name || '', undefined).catch(() => {})
+    }
+  }
+
   const handleLogin = async (provider: AuthProvider) => {
     if (provider === 'email') {
       setShowEmailInput(true)
+      trackEvent('loginStart', 'email')
       return
     }
 
+    trackEvent('loginStart', provider)
     try {
       await login(provider)
       // Modal will auto-close via auth state change
     } catch (err) {
       // Error is handled by context
+      trackEvent('loginFailed', provider)
       console.error('[LoginModal] Login failed:', err)
     }
   }
@@ -341,7 +351,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             <div className="modal-header border-0 flex-column align-items-start">
               <div className="d-flex w-100 align-items-center mb-2">
                 <h5 className="modal-title mb-0">Remix IDE</h5>
-                <div className="close ms-auto login-modal-close-btn fs-5" data-id="loginModal" onClick={onClose}>
+                <div className="close ms-auto login-modal-close-btn fs-5" data-id="loginModal" onClick={() => { trackEvent('closeLoginModal'); onClose() }}>
                   <i className="fas fa-times text-dark"></i>
                 </div>
               </div>

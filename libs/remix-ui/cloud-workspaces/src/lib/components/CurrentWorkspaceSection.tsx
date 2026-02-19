@@ -47,8 +47,15 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
     return () => clearInterval(interval)
   }, [])
 
+  const trackCloudEvent = (action: string, name?: string) => {
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'cloudWorkspace', action, name || '', undefined).catch(() => {})
+    }
+  }
+
   const handleSaveToCloud = async () => {
     setLocalError(null)
+    trackCloudEvent('saveToCloud', status.workspaceName)
     try {
       await saveToCloud()
     } catch (e) {
@@ -58,6 +65,7 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
 
   const handleCreateBackup = async () => {
     setLocalError(null)
+    trackCloudEvent('createBackup', status.workspaceName)
     try {
       await createBackup()
     } catch (e) {
@@ -81,8 +89,8 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
       cancelLabel: intl.formatMessage({ id: 'cloudWorkspaces.cancel', defaultMessage: 'Cancel' }),
       okFn: async () => {
         setLocalError(null)
+        trackCloudEvent('restoreAutosave', status.workspaceName)
         try {
-          await restoreAutosave()
         } catch (e) {
           setLocalError(e.message || 'Restore failed')
         }
@@ -108,6 +116,7 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
       cancelLabel: intl.formatMessage({ id: 'cloudWorkspaces.cancel', defaultMessage: 'Cancel' }),
       okFn: async () => {
         setLocalError(null)
+        trackCloudEvent('linkToCurrentUser', status.workspaceName)
         try {
           await linkToCurrentUser()
         } catch (e) {
@@ -123,6 +132,7 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
 
   const handleEnableCloud = async () => {
     setLocalError(null)
+    trackCloudEvent('enableCloud', status.workspaceName)
     try {
       await enableCloud()
     } catch (e) {
@@ -208,6 +218,7 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
   }
 
   const handleToggleEncryption = async (enabled: boolean) => {
+    trackCloudEvent('toggleEncryption', enabled ? 'enable' : 'disable')
     if (enabled && !status.hasEncryptionPassphrase) {
       // If enabling and no passphrase set, open modal first
       handleOpenPassphraseModal()
@@ -510,7 +521,7 @@ export const CurrentWorkspaceSection: React.FC<CurrentWorkspaceSectionProps> = (
             <ToggleSwitch
               id="cloud-autosave-toggle"
               isOn={status.autosaveEnabled}
-              onClick={() => toggleAutosave(!status.autosaveEnabled)}
+              onClick={() => { trackCloudEvent('toggleAutosave', !status.autosaveEnabled ? 'enable' : 'disable'); toggleAutosave(!status.autosaveEnabled) }}
               onstyle="text-success"
               offstyle="text-secondary"
               size="md"
