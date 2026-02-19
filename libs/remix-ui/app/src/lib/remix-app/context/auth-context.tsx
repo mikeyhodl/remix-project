@@ -157,6 +157,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
             const permissions = await plugin.call('auth', 'getAllPermissions')
             if (permissions && permissions.feature_groups) {
               dispatch({ type: 'UPDATE_FEATURE_GROUPS', payload: permissions.feature_groups })
+              // Update Matomo custom dimension with feature group names
+              try {
+                const groupNames = permissions.feature_groups.map((fg: any) => fg.name)
+                await plugin.call('matomo', 'updateFeatureGroups', groupNames)
+              } catch (matomoErr) {
+                console.warn('[AuthContext] Failed to update Matomo feature groups:', matomoErr)
+              }
             }
           } catch (permErr) {
             console.warn('[AuthContext] Failed to fetch feature groups:', permErr)
@@ -182,12 +189,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
           const permissions = await plugin.call('auth', 'getAllPermissions')
           if (permissions && permissions.feature_groups) {
             dispatch({ type: 'UPDATE_FEATURE_GROUPS', payload: permissions.feature_groups })
+            // Update Matomo custom dimension with feature group names
+            try {
+              const groupNames = permissions.feature_groups.map((fg: any) => fg.name)
+              await plugin.call('matomo', 'updateFeatureGroups', groupNames)
+            } catch (matomoErr) {
+              console.warn('[AuthContext] Failed to update Matomo feature groups:', matomoErr)
+            }
           }
         } catch (permErr) {
           console.warn('[AuthContext] Failed to fetch feature groups on auth change:', permErr)
         }
       } else {
         dispatch({ type: 'LOGOUT' })
+        // Clear Matomo feature groups dimension on logout
+        try {
+          await plugin.call('matomo', 'clearFeatureGroups')
+        } catch (matomoErr) {
+          console.warn('[AuthContext] Failed to clear Matomo feature groups:', matomoErr)
+        }
       }
     }
 
