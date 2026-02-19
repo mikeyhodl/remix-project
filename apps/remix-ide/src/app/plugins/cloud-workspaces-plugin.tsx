@@ -17,7 +17,8 @@ const profile = {
     'createBackup',
     'restoreAutosave',
     'linkToCurrentUser',
-    'updateWorkspaceRemoteId'
+    'updateWorkspaceRemoteId',
+    'enableCloud'
   ],
   events: ['workspacesLoaded', 'backupsLoaded', 'statusChanged'],
   icon: 'assets/img/cloud.svg',
@@ -101,6 +102,8 @@ export interface CloudWorkspacesState {
 
 export class CloudWorkspacesPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
+  /** Tracks workspaces we already showed the "enable cloud" action notification for (per session) */
+  private shownCloudNotifications = new Set<string>()
   private state: CloudWorkspacesState = {
     workspaces: [],
     selectedWorkspace: null,
@@ -464,6 +467,34 @@ export class CloudWorkspacesPlugin extends ViewPlugin {
       }
 
       this.renderComponent()
+
+      // Show a non-intrusive action notification if workspace is not connected to cloud
+      if (!remoteId && currentWorkspace.name && !this.shownCloudNotifications.has(currentWorkspace.name)) {
+        this.shownCloudNotifications.add(currentWorkspace.name)
+        try {
+          await this.call('notification', 'actionNotification', {
+            id: `enable-cloud-${currentWorkspace.name}`,
+            title: '☁️ Cloud Backup',
+            message: `"${currentWorkspace.name}" is not backed up to the cloud. Enable cloud backup to keep your work safe.`,
+            actions: [
+              {
+                label: 'Enable Cloud Backup',
+                plugin: 'cloudWorkspaces',
+                method: 'enableCloud',
+                args: [],
+                variant: 'primary'
+              },
+              {
+                label: 'Dismiss',
+                variant: 'secondary'
+              }
+            ],
+            timeout: 0
+          })
+        } catch (e) {
+          console.warn('[CloudWorkspaces] Failed to show action notification:', e)
+        }
+      }
     } catch (e) {
       console.error('[CloudWorkspacesPlugin] Failed to load workspace status:', e)
     }
