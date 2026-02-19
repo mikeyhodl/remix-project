@@ -93,3 +93,29 @@ pre {
   right              : -10px;
   filter             : opacity(0.5);
 }
+
+/* Action notification bar (VS Code-style bottom-right suggestions) */
+@keyframes slideInUp {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.action-notification-bar {
+  animation: slideInUp 0.25s ease-out;
+  backdrop-filter: blur(4px);
+}
+
+.action-notification-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.action-notification-container::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 2px;
+}
