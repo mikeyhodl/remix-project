@@ -836,7 +836,20 @@ export class AuthPlugin extends Plugin {
         console.log('[AuthPlugin] Token validation failed, attempting refresh...')
         // Token is invalid, try to refresh
         const refreshed = await this.refreshAccessToken()
-        if (!refreshed) {
+        if (refreshed) {
+          // Refresh succeeded — emit authenticated state so cloud plugins activate
+          const refreshedToken = localStorage.getItem('remix_access_token')
+          const userStr = localStorage.getItem('remix_user')
+          const user = userStr ? JSON.parse(userStr) : null
+          if (user && refreshedToken) {
+            this.emit('authStateChanged', {
+              isAuthenticated: true,
+              user,
+              token: refreshedToken
+            })
+            this.refreshCredits().catch(console.error)
+          }
+        } else {
           console.log('[AuthPlugin] Refresh failed, clearing session')
           this.clearStoredAuth()
           this.emit('authStateChanged', {

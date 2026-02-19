@@ -372,7 +372,7 @@ export class WalkthroughService extends ViewPlugin {
       showProgress: true,
       animate: true,
       allowClose: true,
-      overlayColor: 'rgba(0, 0, 0, 0.6)',
+      overlayColor: 'rgba(0, 0, 0, 0.35)',
       stagePadding: 8,
       stageRadius: 8,
       popoverClass: 'remix-walkthrough-popover',

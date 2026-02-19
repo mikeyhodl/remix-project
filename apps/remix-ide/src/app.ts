@@ -723,6 +723,11 @@ class AppComponent {
         await this.appManager.deactivatePlugin('s3Storage')
       }
     })
+    // Also ensure cloud plugins stay active when a token is silently refreshed
+    this.appManager.on('auth', 'tokenRefreshed', async () => {
+      await this.appManager.activatePlugin(['s3Storage'])
+      await this.appManager.activatePlugin(['cloudWorkspaces'])
+    })
     await this.appManager.activatePlugin(['invitationManager'])
     await this.appManager.activatePlugin(['account'])
     await this.appManager.activatePlugin(['notificationCenter'])

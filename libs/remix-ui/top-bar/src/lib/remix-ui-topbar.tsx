@@ -103,8 +103,16 @@ export function RemixUiTopbar() {
     plugin.on('feedback', 'feedbackFormChanged', (form: any) => {
       setFeedbackFormUrl(form?.url || null)
     })
+
+    plugin.on('feedback', 'openFeedbackForm', (url: string) => {
+      if (url) {
+        setFeedbackFormUrl(url)
+        setFeedbackPanelOpen(true)
+      }
+    })
     return () => {
       plugin.off('feedback', 'feedbackFormChanged')
+      plugin.off('feedback', 'openFeedbackForm')
     }
   }, [])
 
