@@ -282,17 +282,6 @@ const settingsSections: SettingsSection[] = [
           }]
         }]
       }]
-  },
-  {
-    key: 'cloud-storage', label: 'settings.cloudStorage', description: 'settings.cloudStorageDescription', subSections: [
-      {
-        options: [{
-          name: 'cloud-storage/autosave',
-          label: 'settings.cloudAutosave',
-          description: 'settings.cloudAutosaveDescription',
-          type: 'toggle'
-        }]
-      }]
   }
 ]
 
