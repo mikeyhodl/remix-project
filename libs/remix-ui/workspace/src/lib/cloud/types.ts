@@ -81,6 +81,26 @@ export interface S3Object {
   etag?: string
 }
 
+// ── Sync manifest stored in IndexedDB per workspace ──
+// Tracks the S3 ETag of every file so we only pull what changed.
+// Stored at: /.cloud-workspaces/<uuid>/.sync-manifest.json
+export interface SyncManifest {
+  version: 1
+  /** Timestamp (ms) of the last successful sync */
+  lastSyncTimestamp: number
+  /** Map of workspace-relative key → metadata from S3 */
+  files: Record<string, SyncManifestEntry>
+}
+
+export interface SyncManifestEntry {
+  /** S3 ETag (MD5 hash of content, without quotes) */
+  etag: string
+  /** ISO 8601 last-modified from S3 */
+  lastModified: string
+  /** Size in bytes */
+  size: number
+}
+
 // ── Mapping between local workspace name and cloud UUID ──
 export interface WorkspaceMapping {
   localName: string

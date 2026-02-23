@@ -46,8 +46,9 @@ export class S3Client {
    * @param key  Key relative to the prefix, e.g. "workspaceUuid/contracts/Token.sol"
    * @param body File content (string or Uint8Array)
    * @param contentType MIME type (default text/plain)
+   * @returns The ETag of the uploaded object (MD5 hash, without quotes)
    */
-  async putObject(key: string, body: string | Uint8Array, contentType = 'text/plain'): Promise<void> {
+  async putObject(key: string, body: string | Uint8Array, contentType = 'text/plain'): Promise<string> {
     const fullKey = `${this.token.prefix}${key}`
     const url = `${this.baseUrl}/${encodeS3Key(fullKey)}`
 
@@ -69,6 +70,9 @@ export class S3Client {
       const text = await res.text()
       throw new Error(`S3 PutObject failed (${res.status}): ${text}`)
     }
+
+    // Return the ETag from the response — S3 always sets this on PutObject
+    return res.headers.get('etag')?.replace(/"/g, '') || ''
   }
 
   // ── Download ────────────────────────────────────────────

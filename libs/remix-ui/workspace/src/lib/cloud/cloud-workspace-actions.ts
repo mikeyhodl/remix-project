@@ -11,7 +11,7 @@
  *   - File change tracking
  */
 
-import { cloudSyncEngine } from './cloud-sync-engine'
+import { cloudSyncEngine, CloudSyncEngine } from './cloud-sync-engine'
 import {
   createCloudWorkspace as apiCreate,
   updateCloudWorkspace as apiUpdate,
@@ -227,23 +227,28 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
     listeners.push({ event, handler })
   }
 
+  const shouldTrack = (relativePath: string) =>
+    relativePath &&
+    !relativePath.startsWith('.git/') &&
+    !relativePath.endsWith(CloudSyncEngine.MANIFEST_FILENAME)
+
   addListener('fileAdded', (path: string) => {
     const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
-    if (relativePath && !relativePath.startsWith('.git/')) {
+    if (shouldTrack(relativePath)) {
       cloudSyncEngine.trackChange({ path: relativePath, type: 'add', timestamp: Date.now() })
     }
   })
 
   addListener('fileChanged', (path: string) => {
     const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
-    if (relativePath && !relativePath.startsWith('.git/')) {
+    if (shouldTrack(relativePath)) {
       cloudSyncEngine.trackChange({ path: relativePath, type: 'change', timestamp: Date.now() })
     }
   })
 
   addListener('fileRemoved', (path: string) => {
     const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
-    if (relativePath && !relativePath.startsWith('.git/')) {
+    if (shouldTrack(relativePath)) {
       cloudSyncEngine.trackChange({ path: relativePath, type: 'delete', timestamp: Date.now() })
     }
   })
@@ -251,7 +256,7 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
   addListener('fileRenamed', (oldPath: string, newPath: string) => {
     const relativeOld = stripWorkspacePrefix(oldPath, workspaceUuid, workspaceProvider.workspacesPath)
     const relativeNew = stripWorkspacePrefix(newPath, workspaceUuid, workspaceProvider.workspacesPath)
-    if (relativeNew && !relativeNew.startsWith('.git/')) {
+    if (shouldTrack(relativeNew)) {
       cloudSyncEngine.trackChange({ path: relativeNew, type: 'rename', oldPath: relativeOld, timestamp: Date.now() })
     }
   })
