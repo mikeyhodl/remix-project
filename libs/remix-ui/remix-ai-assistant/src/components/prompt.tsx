@@ -171,6 +171,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         </div>
         <div className="ai-chat-input d-flex flex-column position-relative">
           <textarea
+            data-id="ai-chat-input"
             ref={textareaRef}
             style={{
               flexGrow: 1,
@@ -230,6 +231,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
             <div className="d-flex">
               <button
+                data-id="remix-ai-setModel"
                 onClick={handleSetModel}
                 className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border border-text rounded"
                 ref={modelBtnRef}
