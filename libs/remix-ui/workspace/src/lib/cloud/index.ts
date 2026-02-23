@@ -7,7 +7,10 @@ export { CloudProvider, useCloudState } from './cloud-context'
 export { cloudStore, useCloudStore } from './cloud-store'
 export {
   setCloudPlugin,
-  createCloudWorkspaceAction,
+  enterCloudProvider,
+  exitCloudProvider,
+  isCloudProvider,
+  getWorkspaceProvider,
   switchToCloudWorkspace,
   renameCloudWorkspaceAction,
   deleteCloudWorkspaceAction,

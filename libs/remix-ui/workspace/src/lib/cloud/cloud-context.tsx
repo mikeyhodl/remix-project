@@ -3,7 +3,8 @@
  *
  * Wraps the module-level `cloudStore` singleton so that:
  *  1. The workspace React tree wires auth plugin events to cloud state.
- *  2. Components inside the workspace tree can use `useCloudState()` as before.
+ *  2. On login: swaps the workspace file provider to CloudWorkspaceFileProvider.
+ *  3. On logout: restores the original WorkspaceFileProvider.
  *
  * IMPORTANT: The `cloudStore` singleton is the source of truth. Components
  * in other React trees (e.g. the topbar) can use `useCloudStore()` directly
@@ -13,7 +14,12 @@
 import React, { useEffect, useRef } from 'react'
 import { cloudStore, useCloudStore } from './cloud-store'
 import { listCloudWorkspaces, fetchSTSToken } from './cloud-workspace-api'
-import { switchToCloudWorkspace, startFileChangeTracking } from './cloud-workspace-actions'
+import {
+  enterCloudProvider,
+  exitCloudProvider,
+  switchToCloudWorkspace,
+  startFileChangeTracking,
+} from './cloud-workspace-actions'
 
 // ── Provider ─────────────────────────────────────────────────
 
@@ -40,10 +46,16 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
         cloudStore.setLoading(true)
         cloudStore.setAuthenticated(true)
         try {
+          // Fetch cloud workspaces and STS token in parallel
           const [workspaces, stsToken] = await Promise.all([
             listCloudWorkspaces(),
             fetchSTSToken(),
           ])
+
+          // Swap the file provider to CloudWorkspaceFileProvider
+          // This handles all name↔UUID translation internally
+          enterCloudProvider(workspaces)
+
           cloudStore.enterCloudMode(workspaces, stsToken)
 
           // Switch to the last active cloud workspace, or the first one
@@ -55,10 +67,10 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
                 cloudStore.updateSyncStatus(targetWs.uuid, status)
               })
               cloudStore.setActiveCloudWorkspace(targetWs.uuid)
-              // Start file change tracking
+              // Start file change tracking for sync
               const workspaceProvider = pluginRef.current.fileProviders?.workspace
               if (workspaceProvider) {
-                startFileChangeTracking(workspaceProvider, targetWs.name)
+                startFileChangeTracking(workspaceProvider, targetWs.uuid)
               }
             } catch (err) {
               console.error('[CloudProvider] Failed to switch to cloud workspace:', err)
@@ -70,7 +82,9 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
           cloudStore.setLoading(false)
         }
       } else {
+        // Logout: restore the original workspace provider
         cloudStore.exitCloudMode()
+        exitCloudProvider()
       }
     }
 

@@ -45,11 +45,14 @@ export class CloudSyncEngine {
   /**
    * Initialize the sync engine for a cloud workspace.
    * Fetches workspace-scoped STS and starts the change push timer.
+   *
+   * @param workspaceUuid  The cloud workspace UUID (also used as local dir name under /.cloud-workspaces/)
+   * @param onStatusChange Optional callback for sync status updates
    */
-  async activate(workspaceUuid: string, localWorkspaceName: string, onStatusChange?: (s: WorkspaceSyncStatus) => void): Promise<void> {
+  async activate(workspaceUuid: string, onStatusChange?: (s: WorkspaceSyncStatus) => void): Promise<void> {
     this.deactivate()
     this.workspaceUuid = workspaceUuid
-    this.localWorkspacePath = `/.workspaces/${localWorkspaceName}`
+    this.localWorkspacePath = `/.cloud-workspaces/${workspaceUuid}`
     this.onStatusChange = onStatusChange || null
     this.pendingChanges = []
 

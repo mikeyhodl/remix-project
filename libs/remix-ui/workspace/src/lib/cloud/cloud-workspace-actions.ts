@@ -1,21 +1,14 @@
 /**
  * Cloud Workspace Actions
  *
- * These functions handle workspace operations in cloud mode.
- * They mirror the existing workspace actions but add cloud synchronization:
+ * Orchestrates cloud workspace operations using the CloudWorkspaceFileProvider.
  *
- *  - getCloudWorkspacesForUI()  → returns workspaces list from cloud API
- *  - createCloudWorkspaceAction() → creates on API + local FS + starts sync
- *  - switchToCloudWorkspace()    → pulls from S3, switches local provider
- *  - renameCloudWorkspaceAction() → renames on API + local
- *  - deleteCloudWorkspaceAction() → deletes on API + local
- *
- * Each workspace in cloud mode gets a `remix.config.json` file
- * that stores the cloud UUID mapping:
- *   { "remote-workspace": { "remoteId": "<uuid>" } }
- *
- * This config file is how the existing `getWorkspaces()` function
- * already reads `remoteId` from workspaces.
+ * The provider handles the name↔UUID translation internally.
+ * These actions handle:
+ *   - Provider swap (enter/exit cloud mode)
+ *   - Cloud API calls (rename, delete, refresh)
+ *   - Sync engine activation
+ *   - File change tracking
  */
 
 import { cloudSyncEngine } from './cloud-sync-engine'
@@ -24,113 +17,88 @@ import {
   updateCloudWorkspace as apiUpdate,
   deleteCloudWorkspace as apiDelete,
   listCloudWorkspaces as apiList,
-  fetchWorkspaceSTS,
 } from './cloud-workspace-api'
-import { CloudWorkspace, FileChangeRecord, WorkspaceSyncStatus } from './types'
+import { CloudWorkspace, WorkspaceSyncStatus } from './types'
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
+import CloudWorkspaceFileProvider from '../../../../../../apps/remix-ide/src/app/files/cloudWorkspaceFileProvider'
 
-/** Reference to the plugin and dispatch — set by integration code */
+// ── Plugin References ────────────────────────────────────────
+
 let _plugin: any = null
 let _dispatch: React.Dispatch<any> = null
+let _originalProvider: any = null // the original WorkspaceFileProvider
 
 export function setCloudPlugin(plugin: any, dispatch: React.Dispatch<any>) {
   _plugin = plugin
   _dispatch = dispatch
 }
 
-// ── Config File ──────────────────────────────────────────────
-
-const CONFIG_FILENAME = 'remix.config.json'
+// ── Provider Swap ────────────────────────────────────────────
 
 /**
- * Write the cloud mapping config into a workspace.
+ * Enter cloud mode: create a CloudWorkspaceFileProvider, populate its
+ * name↔UUID mappings, and swap it in as the active workspace provider.
+ *
+ * @returns The CloudWorkspaceFileProvider instance
  */
-async function writeCloudConfig(workspaceName: string, cloudId: string): Promise<void> {
-  const workspacesPath = _plugin.fileProviders.workspace.workspacesPath
-  const configPath = `/${workspacesPath}/${workspaceName}/${CONFIG_FILENAME}`
-  let config: any = {}
-  try {
-    const exists = await _plugin.fileProviders.browser.exists(configPath)
-    if (exists) {
-      const content = await _plugin.fileProviders.browser.get(configPath)
-      config = JSON.parse(content)
-    }
-  } catch { /* ignore */ }
+export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspaceFileProvider {
+  if (!_plugin) throw new Error('Cloud plugin not initialized')
 
-  config['remote-workspace'] = { remoteId: cloudId }
-  await _plugin.fileProviders.browser.set(configPath, JSON.stringify(config, null, 2))
+  // Save original provider for restore on logout
+  _originalProvider = _plugin.fileProviders.workspace
+
+  // Create cloud provider
+  const cloudProvider = new CloudWorkspaceFileProvider()
+
+  // Share the event manager so fileManager event subscriptions keep working
+  ;(cloudProvider as any).event = _originalProvider.event
+
+  // Populate name↔UUID mappings
+  cloudProvider.setWorkspaceMappings(workspaces)
+
+  // Inject the API create function so createWorkspace can auto-register
+  cloudProvider.setApiCreate(apiCreate)
+
+  // Swap the provider on the fileProviders object.
+  // fileManager.fileProviderOf() returns filesProviders.workspace dynamically,
+  // so it will immediately pick up the new provider.
+  _plugin.fileProviders.workspace = cloudProvider
+
+  return cloudProvider
 }
 
 /**
- * Read the cloud UUID from a workspace's config.
+ * Exit cloud mode: restore the original WorkspaceFileProvider.
  */
-async function readCloudConfig(workspaceName: string): Promise<string | null> {
-  const workspacesPath = _plugin.fileProviders.workspace.workspacesPath
-  const configPath = `/${workspacesPath}/${workspaceName}/${CONFIG_FILENAME}`
-  try {
-    const exists = await _plugin.fileProviders.browser.exists(configPath)
-    if (!exists) return null
-    const content = await _plugin.fileProviders.browser.get(configPath)
-    const config = JSON.parse(content)
-    return config?.['remote-workspace']?.remoteId || null
-  } catch {
-    return null
-  }
+export function exitCloudProvider(): void {
+  if (!_plugin || !_originalProvider) return
+
+  _plugin.fileProviders.workspace = _originalProvider
+  _originalProvider = null
 }
 
-// ── Workspace Name / UUID Mapping ────────────────────────────
+/**
+ * Get the current workspace provider (may be cloud or legacy).
+ */
+export function getWorkspaceProvider(): any {
+  return _plugin?.fileProviders?.workspace
+}
 
 /**
- * In cloud mode, the local workspace name IS the cloud workspace name.
- * The UUID is stored in remix.config.json.
- * However, locally we might have name clashes. We handle that by
- * using the cloud name directly — since the user is in cloud mode,
- * legacy workspaces are hidden.
+ * Check if the current workspace provider is a CloudWorkspaceFileProvider.
  */
-
-/**
- * Get the local workspace name for a cloud workspace.
- * Returns the cloud name directly (since in cloud mode legacy is hidden).
- */
-function localNameForCloud(cloudWorkspace: CloudWorkspace): string {
-  return cloudWorkspace.name
+export function isCloudProvider(): boolean {
+  return _plugin?.fileProviders?.workspace instanceof CloudWorkspaceFileProvider
 }
 
 // ── Cloud Workspace Operations ───────────────────────────────
 
 /**
- * Create a new cloud workspace.
- * 1. Creates the workspace on the API (gets UUID)
- * 2. Creates the local workspace directory
- * 3. Writes the cloud config
- * 4. Returns the cloud workspace metadata
- */
-export async function createCloudWorkspaceAction(
-  name: string,
-  templateName?: string,
-  opts?: any,
-): Promise<CloudWorkspace> {
-  if (!_plugin) throw new Error('Cloud plugin not initialized')
-
-  // 1. Create on API
-  const cloudWs = await apiCreate(name)
-
-  // 2. Create local workspace directory
-  const workspaceProvider = _plugin.fileProviders.workspace
-  await workspaceProvider.createWorkspace(name)
-
-  // 3. Write cloud config
-  await writeCloudConfig(name, cloudWs.uuid)
-
-  return cloudWs
-}
-
-/**
- * Switch to a cloud workspace.
- * 1. Closes all files
- * 2. Sets the local workspace provider
- * 3. Activates sync engine for this workspace
- * 4. Pulls files from S3
- * 5. Dispatches UI state updates
+ * Switch to a cloud workspace by display name.
+ *
+ * 1. Sets workspace in the provider (name → UUID internally)
+ * 2. Ensures the local directory exists
+ * 3. Activates sync engine → pulls files from S3
  */
 export async function switchToCloudWorkspace(
   cloudWorkspace: CloudWorkspace,
@@ -138,31 +106,35 @@ export async function switchToCloudWorkspace(
 ): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
+  const provider = _plugin.fileProviders.workspace
+
   await _plugin.fileManager.closeAllFiles()
 
-  const localName = localNameForCloud(cloudWorkspace)
-  const workspaceProvider = _plugin.fileProviders.workspace
+  // Set workspace — provider translates display name → UUID
+  provider.setWorkspace(cloudWorkspace.name)
 
-  // Ensure local workspace directory exists
-  const workspacesPath = workspaceProvider.workspacesPath
-  const wsPath = `/${workspacesPath}/${localName}`
-  const exists = await _plugin.fileProviders.browser.exists(wsPath)
-  if (!exists) {
-    await workspaceProvider.createWorkspace(localName)
-    await writeCloudConfig(localName, cloudWorkspace.uuid)
+  // Ensure local cloud workspace directory exists
+  const uuid = provider.resolveDisplayName?.(cloudWorkspace.name) || cloudWorkspace.uuid
+  const wsPath = `/${provider.workspacesPath}/${uuid}`
+  const fs = (window as any).remixFileSystem
+  try {
+    await fs.stat(wsPath)
+  } catch {
+    await provider.createWorkspace(cloudWorkspace.name)
   }
 
-  // Set workspace in provider
-  await workspaceProvider.setWorkspace(localName)
-  await _plugin.setWorkspace({ name: localName, isLocalhost: false })
+  // Broadcast display name to other plugins
+  await _plugin.setWorkspace({ name: cloudWorkspace.name, isLocalhost: false })
 
-  // Activate sync engine and pull
-  await cloudSyncEngine.activate(cloudWorkspace.uuid, localName, onSyncStatus)
+  // Activate sync engine and pull from S3
+  await cloudSyncEngine.activate(uuid, onSyncStatus)
   await cloudSyncEngine.pullWorkspace()
 }
 
 /**
  * Rename a cloud workspace.
+ * Only the API name is changed + the provider's mapping is updated.
+ * No local FS rename needed (directory stays as UUID).
  */
 export async function renameCloudWorkspaceAction(
   cloudWorkspace: CloudWorkspace,
@@ -170,61 +142,84 @@ export async function renameCloudWorkspaceAction(
 ): Promise<CloudWorkspace> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
-  // Update on API
   const updated = await apiUpdate(cloudWorkspace.uuid, { name: newName })
 
-  // Rename locally
-  const oldLocalName = localNameForCloud(cloudWorkspace)
-  const browserProvider = _plugin.fileProviders.browser
-  const workspaceProvider = _plugin.fileProviders.workspace
-  const workspacesPath = workspaceProvider.workspacesPath
-  await browserProvider.rename(
-    'browser/' + workspacesPath + '/' + oldLocalName,
-    'browser/' + workspacesPath + '/' + newName,
-    true
-  )
-  await workspaceProvider.setWorkspace(newName)
+  // Update the provider's name↔UUID mapping
+  const provider = _plugin.fileProviders.workspace
+  if (provider.renameWorkspaceMapping) {
+    provider.renameWorkspaceMapping(cloudWorkspace.name, newName)
+  }
 
   return updated
 }
 
 /**
  * Delete a cloud workspace.
+ *
+ * 1. Deactivates sync if active
+ * 2. Deletes on the API
+ * 3. Removes the local directory
+ * 4. Removes from provider mapping
  */
 export async function deleteCloudWorkspaceAction(cloudWorkspace: CloudWorkspace): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
-  // If this workspace is currently active, deactivate sync
+  // Stop sync if this workspace is active
   if (cloudSyncEngine.isActive) {
     cloudSyncEngine.deactivate()
   }
 
-  // Delete on API (also removes S3 files)
+  // Delete on API
   await apiDelete(cloudWorkspace.uuid)
 
-  // Delete locally
+  // Remove local directory
   await _plugin.fileManager.closeAllFiles()
-  const workspacesPath = _plugin.fileProviders.workspace.workspacesPath
-  await _plugin.fileProviders.browser.remove(workspacesPath + '/' + localNameForCloud(cloudWorkspace))
+  const provider = _plugin.fileProviders.workspace
+  const localPath = provider.workspacesPath + '/' + cloudWorkspace.uuid
+  try {
+    await _plugin.fileProviders.browser.remove(localPath)
+  } catch {
+    // Directory may not exist locally — that's fine
+  }
+
+  // Remove from provider mapping
+  if (provider.removeWorkspaceMapping) {
+    provider.removeWorkspaceMapping(cloudWorkspace.name)
+  }
 }
 
 /**
- * Refresh the cloud workspace list from the API.
+ * Refresh the cloud workspace list from the API and update provider mappings.
  */
 export async function refreshCloudWorkspaces(): Promise<CloudWorkspace[]> {
-  return apiList()
+  const workspaces = await apiList()
+  const provider = _plugin?.fileProviders?.workspace
+  if (provider?.setWorkspaceMappings) {
+    provider.setWorkspaceMappings(workspaces)
+  }
+  return workspaces
 }
 
 // ── File Change Tracking ─────────────────────────────────────
 
+/** Stores the cleanup function from the previous startFileChangeTracking call */
+let _cleanupTracking: (() => void) | null = null
+
 /**
- * Hook into file provider events to track changes for sync.
- * Call this after activating sync for a workspace.
- * 
+ * Hook into workspace file provider events to track changes for sync.
+ * Automatically cleans up listeners from any previous call.
+ *
  * @param workspaceProvider  The workspace file provider
- * @param workspaceName      The current workspace name (for path stripping)
+ * @param workspaceUuid      The UUID of the current cloud workspace
+ * @returns Cleanup function to remove all listeners
  */
-export function startFileChangeTracking(workspaceProvider: any, workspaceName: string): () => void {
+export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: string): () => void {
+  // Clean up previous listeners first
+  if (_cleanupTracking) {
+    _cleanupTracking()
+    _cleanupTracking = null
+  }
+
   const listeners: Array<{ event: string; handler: (...args: any[]) => void }> = []
 
   const addListener = (event: string, handler: (...args: any[]) => void) => {
@@ -233,71 +228,58 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceName: s
   }
 
   addListener('fileAdded', (path: string) => {
-    const relativePath = stripWorkspacePrefix(path, workspaceName)
+    const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
     if (relativePath && !relativePath.startsWith('.git/')) {
-      cloudSyncEngine.trackChange({
-        path: relativePath,
-        type: 'add',
-        timestamp: Date.now(),
-      })
+      cloudSyncEngine.trackChange({ path: relativePath, type: 'add', timestamp: Date.now() })
     }
   })
 
   addListener('fileChanged', (path: string) => {
-    const relativePath = stripWorkspacePrefix(path, workspaceName)
+    const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
     if (relativePath && !relativePath.startsWith('.git/')) {
-      cloudSyncEngine.trackChange({
-        path: relativePath,
-        type: 'change',
-        timestamp: Date.now(),
-      })
+      cloudSyncEngine.trackChange({ path: relativePath, type: 'change', timestamp: Date.now() })
     }
   })
 
   addListener('fileRemoved', (path: string) => {
-    const relativePath = stripWorkspacePrefix(path, workspaceName)
+    const relativePath = stripWorkspacePrefix(path, workspaceUuid, workspaceProvider.workspacesPath)
     if (relativePath && !relativePath.startsWith('.git/')) {
-      cloudSyncEngine.trackChange({
-        path: relativePath,
-        type: 'delete',
-        timestamp: Date.now(),
-      })
+      cloudSyncEngine.trackChange({ path: relativePath, type: 'delete', timestamp: Date.now() })
     }
   })
 
   addListener('fileRenamed', (oldPath: string, newPath: string) => {
-    const relativeOld = stripWorkspacePrefix(oldPath, workspaceName)
-    const relativeNew = stripWorkspacePrefix(newPath, workspaceName)
+    const relativeOld = stripWorkspacePrefix(oldPath, workspaceUuid, workspaceProvider.workspacesPath)
+    const relativeNew = stripWorkspacePrefix(newPath, workspaceUuid, workspaceProvider.workspacesPath)
     if (relativeNew && !relativeNew.startsWith('.git/')) {
-      cloudSyncEngine.trackChange({
-        path: relativeNew,
-        type: 'rename',
-        oldPath: relativeOld,
-        timestamp: Date.now(),
-      })
+      cloudSyncEngine.trackChange({ path: relativeNew, type: 'rename', oldPath: relativeOld, timestamp: Date.now() })
     }
   })
 
-  // Return cleanup function
-  return () => {
+  const cleanup = () => {
     for (const { event, handler } of listeners) {
       try {
         workspaceProvider.event.off(event, handler)
       } catch { /* ignore */ }
     }
+    _cleanupTracking = null
   }
+
+  _cleanupTracking = cleanup
+  return cleanup
 }
 
 /**
  * Strip workspace prefix from a path.
- * Paths come in like "contracts/Token.sol" (already stripped by WorkspaceFileProvider)
- * or ".workspaces/name/contracts/Token.sol".
+ *
+ * Paths from the workspace provider may come as:
+ *   - "contracts/Token.sol"  (already relative)
+ *   - ".cloud-workspaces/<uuid>/contracts/Token.sol"
+ *   - ".workspaces/<name>/contracts/Token.sol"  (legacy)
  */
-function stripWorkspacePrefix(path: string, workspaceName: string): string {
-  // Remove leading slash
+function stripWorkspacePrefix(path: string, workspaceId: string, workspacesPath: string): string {
   let p = path.startsWith('/') ? path.slice(1) : path
-  // If it starts with .workspaces/name/, strip it
-  const prefix = `.workspaces/${workspaceName}/`
+  const prefix = `${workspacesPath}/${workspaceId}/`
   if (p.startsWith(prefix)) {
     p = p.slice(prefix.length)
   }
