@@ -353,7 +353,6 @@ const tests = {
 }
 
 const branch = process.env.CIRCLE_BRANCH || 'ai_reale2e_test'
-console.log('Branch ', branch)
 const runTestsConditions = branch && (branch === 'master' || branch === 'ai_reale2e_test')
 
 const checkBrowserIsChrome = function (browser: NightwatchBrowser) {
