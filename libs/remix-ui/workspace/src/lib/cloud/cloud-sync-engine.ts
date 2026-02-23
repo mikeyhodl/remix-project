@@ -92,7 +92,7 @@ export class CloudSyncEngine {
    * @param onStatusChange Optional callback for sync status updates
    */
   async activate(workspaceUuid: string, onStatusChange?: (s: WorkspaceSyncStatus) => void): Promise<void> {
-    this.deactivate()
+    await this.deactivate()
     this.workspaceUuid = workspaceUuid
     this.localWorkspacePath = `/.cloud-workspaces/${workspaceUuid}`
     this.onStatusChange = onStatusChange || null
@@ -115,8 +115,20 @@ export class CloudSyncEngine {
   /**
    * Stop the sync engine, cancel timers.
    * Call this when switching workspaces or logging out.
+   *
+   * Flushes any pending changes first so nothing is lost on workspace switch.
    */
-  deactivate(): void {
+  async deactivate(): Promise<void> {
+    // Flush pending changes before tearing down
+    if (this.pendingChanges.length > 0 && this.s3 && this.workspaceUuid) {
+      console.log(`[CloudSync] Flushing ${this.pendingChanges.length} pending changes before deactivate`)
+      try {
+        await this.flushChanges()
+      } catch (err) {
+        console.warn('[CloudSync] Flush on deactivate failed:', err.message || err)
+      }
+    }
+
     if (this.syncTimer) clearInterval(this.syncTimer)
     if (this.tokenRefreshTimer) clearTimeout(this.tokenRefreshTimer)
     if (this.snapshotTimer) clearTimeout(this.snapshotTimer)
