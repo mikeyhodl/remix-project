@@ -47,6 +47,18 @@ export class CloudSyncEngine {
   private onStatusChange: ((status: WorkspaceSyncStatus) => void) | null = null
   private isSyncing = false
 
+  /**
+   * When true, the FS observer should NOT queue writes as pending changes.
+   * Set during pullWorkspace() so that files downloaded from S3 and written
+   * to IndexedDB don't get immediately re-pushed back.
+   */
+  private _isPulling = false
+
+  /** Public check used by handleRawFSWrite to skip change tracking during pull */
+  get isPulling(): boolean {
+    return this._isPulling
+  }
+
   /** In-memory copy of the manifest, loaded on activate and kept in sync */
   private manifest: SyncManifest | null = null
 
@@ -181,10 +193,13 @@ export class CloudSyncEngine {
         return { downloaded: 0, skipped, deleted: 0 }
       }
 
-      // ── 4. Ensure workspace root exists ──
+      // ── 4. Suppress change tracking during pull writes ──
+      this._isPulling = true
+
+      // ── 5. Ensure workspace root exists ──
       await this.ensureDir(this.localWorkspacePath)
 
-      // ── 5. Download changed / new files ──
+      // ── 6. Download changed / new files ──
       for (const obj of toDownload) {
         const localPath = `${this.localWorkspacePath}/${obj.key}`
         const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
@@ -202,7 +217,7 @@ export class CloudSyncEngine {
         }
       }
 
-      // ── 6. Delete files removed on remote ──
+      // ── 7. Delete files removed on remote ──
       for (const key of toDelete) {
         const localPath = `${this.localWorkspacePath}/${key}`
         try {
@@ -213,13 +228,17 @@ export class CloudSyncEngine {
         delete manifest.files[key]
       }
 
-      // ── 7. Persist updated manifest ──
+      // ── 8. Re-enable change tracking ──
+      this._isPulling = false
+
+      // ── 9. Persist updated manifest ──
       manifest.lastSyncTimestamp = Date.now()
       await this.saveManifest(manifest)
 
       this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
       return { downloaded: toDownload.length, skipped, deleted: toDelete.length }
     } catch (error) {
+      this._isPulling = false  // always re-enable on error too
       console.error('[CloudSync] Pull failed:', error)
       this.updateStatus({ status: 'error', lastSync: this._status.lastSync, pendingChanges: this._status.pendingChanges, error: error.message })
       throw error

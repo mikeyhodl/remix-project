@@ -336,10 +336,10 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   if (relativePath.startsWith('.git/') || relativePath === '.git') return
   if (relativePath === CloudSyncEngine.MANIFEST_FILENAME) return
 
-  // 1) Feed into sync engine for S3 push — but NOT for mkdir/rmdir.
-  //    S3 uses key prefixes, not real directories.  Pushing a directory
-  //    path causes readFile to return undefined → crash.
-  if (op.type !== 'mkdir' && op.type !== 'rmdir') {
+  // 1) Feed into sync engine for S3 push — but NOT for mkdir/rmdir,
+  //    and NOT while the engine is pulling (writes from S3→local should
+  //    not be re-pushed back to S3).
+  if (op.type !== 'mkdir' && op.type !== 'rmdir' && !cloudSyncEngine.isPulling) {
     const changeType = op.type === 'writeFile' ? 'change'
       : op.type === 'unlink' ? 'delete'
       : op.type === 'rename' ? 'rename'
