@@ -933,10 +933,12 @@ export const cloneRepository = async (url: string) => {
           }
           await fetchWorkspaceDirectory(ROOT_PATH)
           const workspacesPath = plugin.fileProviders.workspace.workspacesPath
-          const branches = await getGitRepoBranches(workspacesPath + '/' + repoName)
+          // Use the provider's internal workspace dir (UUID in cloud mode, name in legacy)
+          const workspaceDir = plugin.fileProviders.workspace.workspace
+          const branches = await getGitRepoBranches(workspacesPath + '/' + workspaceDir)
 
           dispatch(setCurrentWorkspaceBranches(branches))
-          const currentBranch = await getGitRepoCurrentBranch(workspacesPath + '/' + repoName)
+          const currentBranch = await getGitRepoCurrentBranch(workspacesPath + '/' + workspaceDir)
 
           dispatch(setCurrentWorkspaceCurrentBranch(currentBranch))
           dispatch(cloneRepositorySuccess())

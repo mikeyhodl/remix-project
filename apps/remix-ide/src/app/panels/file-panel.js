@@ -307,10 +307,12 @@ export default class Filepanel extends ViewPlugin {
   setWorkspace(workspace) {
     const workspaceProvider = this.fileProviders.workspace
     const current = this.currentWorkspaceMetadata
+    // Cloud mode: resolve display name → UUID for the actual directory path
+    const dirName = workspaceProvider.getWorkspaceDirName?.(workspace.name) || workspace.name
     this.currentWorkspaceMetadata = {
       name: workspace.name,
       isLocalhost: workspace.isLocalhost,
-      absolutePath: `${workspaceProvider.workspacesPath}/${workspace.name}`,
+      absolutePath: `${workspaceProvider.workspacesPath}/${dirName}`,
     }
     if (this.currentWorkspaceMetadata.name !== current) {
       this.saveRecent(workspace.name)
