@@ -18,6 +18,16 @@ export {
   startFileChangeTracking,
 } from './cloud-workspace-actions'
 export {
+  enableCloudFSObserver,
+  disableCloudFSObserver,
+  onCloudFSWrite,
+  clearCloudFSListeners,
+  isCloudFSObserverActive,
+  extractCloudWorkspaceUuid,
+  extractRelativePath,
+} from './cloud-fs-observer'
+export type { FSWriteOperation } from './cloud-fs-observer'
+export {
   fetchSTSToken,
   fetchWorkspaceSTS,
   listCloudWorkspaces,

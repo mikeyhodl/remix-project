@@ -38,6 +38,7 @@ export interface FileChangeRecord {
   type: 'add' | 'change' | 'delete' | 'rename'
   timestamp: number
   oldPath?: string        // only for renames
+  _retryCount?: number    // internal: number of times this change has been re-queued
 }
 
 // ── Overall cloud state exposed via React context ──

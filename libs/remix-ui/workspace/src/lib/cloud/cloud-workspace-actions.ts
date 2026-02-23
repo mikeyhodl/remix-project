@@ -19,6 +19,15 @@ import {
   listCloudWorkspaces as apiList,
 } from './cloud-workspace-api'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
+import {
+  enableCloudFSObserver,
+  disableCloudFSObserver,
+  onCloudFSWrite,
+  clearCloudFSListeners,
+  extractCloudWorkspaceUuid,
+  extractRelativePath,
+  FSWriteOperation,
+} from './cloud-fs-observer'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import CloudWorkspaceFileProvider from '../../../../../../apps/remix-ide/src/app/files/cloudWorkspaceFileProvider'
 
@@ -27,6 +36,11 @@ import CloudWorkspaceFileProvider from '../../../../../../apps/remix-ide/src/app
 let _plugin: any = null
 let _dispatch: React.Dispatch<any> = null
 let _originalProvider: any = null // the original WorkspaceFileProvider
+let _fsObserverUnsub: (() => void) | null = null  // FS observer subscription
+
+/** Debounce timer for file explorer refresh triggered by raw FS writes */
+let _refreshTimer: ReturnType<typeof setTimeout> | null = null
+const REFRESH_DEBOUNCE_MS = 600
 
 export function setCloudPlugin(plugin: any, dispatch: React.Dispatch<any>) {
   _plugin = plugin
@@ -64,6 +78,17 @@ export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspace
   // so it will immediately pick up the new provider.
   _plugin.fileProviders.workspace = cloudProvider
 
+  // ── Enable FS observer for raw write detection ──────────
+  // This patches LightningFS to intercept write operations that bypass the
+  // provider (e.g. isomorphic-git writes, or any tool using remixFileSystem
+  // directly).  When such a write targets a cloud workspace path, we:
+  //   1. Debounce a file explorer refresh (provider emits 'refresh')
+  //   2. Feed the change into the sync engine for S3 push
+  enableCloudFSObserver()
+  _fsObserverUnsub = onCloudFSWrite((op: FSWriteOperation) => {
+    handleRawFSWrite(op, cloudProvider)
+  })
+
   return cloudProvider
 }
 
@@ -72,6 +97,18 @@ export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspace
  */
 export function exitCloudProvider(): void {
   if (!_plugin || !_originalProvider) return
+
+  // Disable FS observer and clean up subscription
+  if (_fsObserverUnsub) {
+    _fsObserverUnsub()
+    _fsObserverUnsub = null
+  }
+  clearCloudFSListeners()
+  disableCloudFSObserver()
+  if (_refreshTimer) {
+    clearTimeout(_refreshTimer)
+    _refreshTimer = null
+  }
 
   _plugin.fileProviders.workspace = _originalProvider
   _originalProvider = null
@@ -272,6 +309,71 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
 
   _cleanupTracking = cleanup
   return cleanup
+}
+
+/**
+ * Handle a raw FS write detected by the CloudFSObserver.
+ *
+ * This fires for ALL writes to cloud workspace paths — including ones
+ * from the provider itself.  That's fine because:
+ *   - File explorer refresh via 'refresh' event is idempotent
+ *   - Sync engine's trackChange de-duplicates by path
+ *
+ * We debounce the file explorer refresh so a burst of writes (e.g. git
+ * checkout writing 50 files) results in a single refresh.
+ */
+function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
+  const uuid = extractCloudWorkspaceUuid(op.path)
+  if (!uuid) return
+
+  // Only act on the currently active workspace
+  if (!cloudSyncEngine.isActive) return
+
+  const relativePath = extractRelativePath(op.path)
+  if (!relativePath) return
+
+  // Skip .git internals and the sync manifest
+  if (relativePath.startsWith('.git/') || relativePath === '.git') return
+  if (relativePath === CloudSyncEngine.MANIFEST_FILENAME) return
+
+  // 1) Feed into sync engine for S3 push — but NOT for mkdir/rmdir.
+  //    S3 uses key prefixes, not real directories.  Pushing a directory
+  //    path causes readFile to return undefined → crash.
+  if (op.type !== 'mkdir' && op.type !== 'rmdir') {
+    const changeType = op.type === 'writeFile' ? 'change'
+      : op.type === 'unlink' ? 'delete'
+      : op.type === 'rename' ? 'rename'
+      : 'change'
+
+    // For renames:  op.path = old path,  op.newPath = new path
+    // The tracked change should have path = new (what to upload) and oldPath = old (what to delete).
+    const changePath = (op.type === 'rename' && op.newPath)
+      ? extractRelativePath(op.newPath)!
+      : relativePath
+    const changeOldPath = op.type === 'rename' ? relativePath : undefined
+
+    if (!changePath) return  // safety — newPath outside cloud workspace
+
+    cloudSyncEngine.trackChange({
+      path: changePath,
+      type: changeType as any,
+      oldPath: changeOldPath,
+      timestamp: Date.now(),
+    })
+  }
+
+  // 2) Debounce file explorer refresh
+  if (_refreshTimer) clearTimeout(_refreshTimer)
+  _refreshTimer = setTimeout(() => {
+    _refreshTimer = null
+    try {
+      // The 'refresh' event on the provider triggers fetchWorkspaceDirectory('/')
+      // in events.ts, which reloads the entire file tree.
+      provider?.event?.emit?.('refresh')
+    } catch (e) {
+      console.warn('[CloudFSObserver] Failed to emit refresh:', e)
+    }
+  }, REFRESH_DEBOUNCE_MS)
 }
 
 /**

@@ -283,9 +283,13 @@ export class CloudSyncEngine {
         try {
           await this.pushChange(change)
         } catch (err) {
-          console.error(`[CloudSync] Failed to push change ${change.type} ${change.path}:`, err)
-          // Re-queue failed change
-          this.pendingChanges.push(change)
+          const retries = (change._retryCount || 0) + 1
+          if (retries < 5) {
+            console.warn(`[CloudSync] Failed to push change ${change.type} ${change.path} (retry ${retries}/5):`, err.message || err)
+            this.pendingChanges.push({ ...change, _retryCount: retries })
+          } else {
+            console.error(`[CloudSync] Giving up on ${change.type} ${change.path} after 5 retries:`, err.message || err)
+          }
         }
       }
 
@@ -319,14 +323,21 @@ export class CloudSyncEngine {
     case 'change': {
       const localPath = `${this.localWorkspacePath}/${change.path}`
       try {
+        // Check if this is a directory — S3 uses key prefixes, not real dirs.
+        // Directories should never be pushed as file objects.
+        const stat = await this.fs.stat(localPath)
+        if (stat.isDirectory()) return
+
         const content = await this.fs.readFile(localPath, 'utf8')
+        if (content == null) return  // guard against undefined readFile results
         const etag = await this.s3.putObject(change.path, content)
+        if (!etag) return  // guard against missing ETag (shouldn't happen)
         // Capture the ETag from S3's response so the next pull recognises
         // this file as already-synced and skips the GET.
         this.manifest.files[change.path] = {
           etag,
           lastModified: new Date().toISOString(),
-          size: typeof content === 'string' ? new TextEncoder().encode(content).byteLength : content.length,
+          size: typeof content === 'string' ? new TextEncoder().encode(content).byteLength : (content as any).length ?? 0,
         }
       } catch (err) {
         // File may have been deleted between tracking and flushing
@@ -336,28 +347,44 @@ export class CloudSyncEngine {
       break
     }
     case 'delete':
-      await this.s3.deleteObject(change.path)
+      try {
+        await this.s3.deleteObject(change.path)
+      } catch (err) {
+        // CORS / network errors on DELETE should not block the sync engine.
+        // The file will be cleaned up on the next full sync or stay as orphan.
+        console.warn(`[CloudSync] DELETE ${change.path} failed (non-fatal):`, err.message || err)
+      }
       delete this.manifest.files[change.path]
       break
     case 'rename':
       if (change.oldPath) {
-        // Delete old
-        await this.s3.deleteObject(change.oldPath)
-        delete this.manifest.files[change.oldPath]
-        // Upload new
+        // Upload the new file FIRST — PUTs are reliable.
         const localPath = `${this.localWorkspacePath}/${change.path}`
         try {
+          const stat = await this.fs.stat(localPath)
+          if (stat.isDirectory()) return
+
           const content = await this.fs.readFile(localPath, 'utf8')
+          if (content == null) return
           const etag = await this.s3.putObject(change.path, content)
+          if (!etag) return
           this.manifest.files[change.path] = {
             etag,
             lastModified: new Date().toISOString(),
-            size: typeof content === 'string' ? new TextEncoder().encode(content).byteLength : content.length,
+            size: typeof content === 'string' ? new TextEncoder().encode(content).byteLength : (content as any).length ?? 0,
           }
         } catch (err) {
           if (err.code === 'ENOENT') return
           throw err
         }
+        // Best-effort delete old key.  If CORS blocks DELETE, the orphan
+        // will be cleaned up on next full sync.  Don't let it block the rename.
+        try {
+          await this.s3.deleteObject(change.oldPath)
+        } catch (err) {
+          console.warn(`[CloudSync] DELETE old key ${change.oldPath} failed (non-fatal):`, err.message || err)
+        }
+        delete this.manifest.files[change.oldPath]
       }
       break
     }
