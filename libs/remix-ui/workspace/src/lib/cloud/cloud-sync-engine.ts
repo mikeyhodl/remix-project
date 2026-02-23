@@ -1,29 +1,35 @@
 /**
- * Cloud Sync Engine
+ * Cloud Sync Engine — Hybrid ZIP + Incremental
  *
  * Responsible for:
  *  1. Pulling workspace files from S3 into the local IndexedDB filesystem
  *  2. Tracking local file changes and pushing them to S3
  *  3. Periodic flush of pending changes
+ *  4. Maintaining a workspace.zip snapshot for fast bulk loads
  *
- * Pull strategy — **ETag-based manifest diffing**:
+ * Pull strategy — **hybrid ZIP + ETag-based diffing**:
  *
- *  We keep a sync manifest per workspace (`.sync-manifest.json`) in IndexedDB
- *  that records the S3 ETag of every file we've synced. On workspace open:
+ *  On workspace open we check for a local sync manifest:
  *
- *   1. Load the local manifest  (free — IndexedDB read)
- *   2. LIST objects on S3        (one cheap LIST request, ~$0.005/1k)
- *   3. Diff ETags: manifest vs. LIST response
- *   4. Only GET files whose ETag differs or that are new
- *   5. Delete local files that exist in manifest but not in LIST
- *   6. Save the updated manifest
+ *  A) **No manifest (first load on this device)**:
+ *     1. GET `_workspace.zip` from S3          (1 request)
+ *     2. Extract into IndexedDB                (local, fast)
+ *     3. LIST objects on S3 to build manifest   (1 request)
+ *     → Total: 2 requests regardless of workspace size
  *
- *  Result: switching back to a workspace you just worked on costs exactly
- *  1 LIST request and 0 GETs. First-time sync or changed files pay GETs.
+ *  B) **Manifest exists (returning visit)**:
+ *     1. LIST objects on S3                     (1 request)
+ *     2. Diff ETags: manifest vs. LIST
+ *     3. GET only files whose ETag changed       (N requests, usually 0)
+ *     → Total: 1 LIST + N GETs
  *
- * Push strategy — unchanged (batch every 10s):
- *  After each successful PUT the S3 response ETag is captured and written
- *  into the manifest so the next pull won't re-download the same file.
+ *  Result: first-time load of a 200-file workspace costs 2 requests (ZIP+LIST),
+ *  not 201 (LIST + 200 GETs).  Return visits cost 1 LIST + 0-few GETs.
+ *
+ * Push strategy:
+ *  - Individual file PUTs every 10s (batch flush) — immediate, granular
+ *  - After each flush, a debounced snapshot re-zips the workspace and
+ *    PUTs `_workspace.zip` so the next fresh client gets a fast bulk load.
  *
  * This does NOT attempt real-time conflict resolution (not Google Docs collab).
  * It's single-user cloud backup keeping the remote in sync with the local.
@@ -32,10 +38,12 @@
 import { S3Client } from './s3-client'
 import { FileChangeRecord, WorkspaceSyncStatus, STSToken, S3Object, SyncManifest } from './types'
 import { fetchWorkspaceSTS } from './cloud-workspace-api'
+import { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
 
 const SYNC_INTERVAL_MS = 10_000   // flush pending changes every 10s
 const TOKEN_REFRESH_BUFFER_MS = 60_000  // refresh STS token 60s before expiry
 const MANIFEST_FILENAME = '.sync-manifest.json'
+const SNAPSHOT_DEBOUNCE_MS = 30_000  // re-zip 30s after last push flush
 
 export class CloudSyncEngine {
   private s3: S3Client | null = null
@@ -43,6 +51,7 @@ export class CloudSyncEngine {
   private pendingChanges: FileChangeRecord[] = []
   private syncTimer: ReturnType<typeof setInterval> | null = null
   private tokenRefreshTimer: ReturnType<typeof setTimeout> | null = null
+  private snapshotTimer: ReturnType<typeof setTimeout> | null = null
   private _status: WorkspaceSyncStatus = { status: 'idle', lastSync: null, pendingChanges: 0 }
   private onStatusChange: ((status: WorkspaceSyncStatus) => void) | null = null
   private isSyncing = false
@@ -110,8 +119,10 @@ export class CloudSyncEngine {
   deactivate(): void {
     if (this.syncTimer) clearInterval(this.syncTimer)
     if (this.tokenRefreshTimer) clearTimeout(this.tokenRefreshTimer)
+    if (this.snapshotTimer) clearTimeout(this.snapshotTimer)
     this.syncTimer = null
     this.tokenRefreshTimer = null
+    this.snapshotTimer = null
     this.s3 = null
     this.workspaceUuid = null
     this.localWorkspacePath = null
@@ -129,12 +140,13 @@ export class CloudSyncEngine {
     return { ...this._status }
   }
 
-  // ── Pull: S3 → Local (manifest-diffed) ───────────────────
+  // ── Pull: S3 → Local (hybrid ZIP + incremental) ────────
 
   /**
-   * Smart pull: compare S3 listing against local manifest, only download
-   * files whose ETag has changed or that are new. Delete local files
-   * whose keys have been removed from S3.
+   * Hybrid pull:
+   *
+   * A) No manifest (first load) → GET _workspace.zip, extract, LIST to build manifest
+   * B) Manifest exists → LIST + ETag diff, GET only changed files
    *
    * @returns Stats about what happened
    */
@@ -146,103 +158,174 @@ export class CloudSyncEngine {
 
     try {
       const manifest = this.manifest!
+      const isFreshLoad = Object.keys(manifest.files).length === 0
 
-      // ── 1. One LIST request to get all remote objects + their ETags ──
-      const remoteObjects = await this.s3.listObjects('')
-      const remoteMap = new Map<string, S3Object>()
-      for (const obj of remoteObjects) {
-        if (!obj.key.endsWith('/')) { // skip directory markers
-          remoteMap.set(obj.key, obj)
-        }
-      }
-
-      // ── 2. Diff against manifest ──
-      const toDownload: S3Object[] = []
-      const toDelete: string[] = []
-      let skipped = 0
-
-      // Check each remote object against what we already have
-      for (const [key, obj] of remoteMap) {
-        const entry = manifest.files[key]
-        if (entry && entry.etag && entry.etag === obj.etag) {
-          // ETag matches — content unchanged since last sync, skip
-          skipped++
-        } else {
-          // New file or ETag mismatch — need to download
-          toDownload.push(obj)
-        }
-      }
-
-      // Check for remote deletions: files in manifest but no longer on S3
-      for (const key of Object.keys(manifest.files)) {
-        if (!remoteMap.has(key)) {
-          toDelete.push(key)
-        }
-      }
-
-      console.log(
-        `[CloudSync] Pull diff: ${toDownload.length} to download, ` +
-        `${skipped} up-to-date, ${toDelete.length} remote deletions`
-      )
-
-      // ── 3. Short-circuit if nothing to do ──
-      if (toDownload.length === 0 && toDelete.length === 0) {
-        manifest.lastSyncTimestamp = Date.now()
-        await this.saveManifest(manifest)
-        this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
-        return { downloaded: 0, skipped, deleted: 0 }
-      }
-
-      // ── 4. Suppress change tracking during pull writes ──
+      // ── Suppress change tracking for all writes during pull ──
       this._isPulling = true
 
-      // ── 5. Ensure workspace root exists ──
-      await this.ensureDir(this.localWorkspacePath)
-
-      // ── 6. Download changed / new files ──
-      for (const obj of toDownload) {
-        const localPath = `${this.localWorkspacePath}/${obj.key}`
-        const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
-        await this.ensureDir(parentDir)
-
-        const content = await this.s3.getObject(obj.key)
-        if (content !== null) {
-          await this.fs.writeFile(localPath, content, 'utf8')
-          // Update manifest with the remote ETag
-          manifest.files[obj.key] = {
-            etag: obj.etag || '',
-            lastModified: obj.lastModified.toISOString(),
-            size: obj.size,
-          }
-        }
+      if (isFreshLoad) {
+        // ── Strategy A: ZIP-based bulk load ──────────────────
+        const stats = await this.pullViaZip(manifest)
+        this._isPulling = false
+        return stats
+      } else {
+        // ── Strategy B: Incremental ETag-based diff ──────────
+        const stats = await this.pullIncremental(manifest)
+        this._isPulling = false
+        return stats
       }
-
-      // ── 7. Delete files removed on remote ──
-      for (const key of toDelete) {
-        const localPath = `${this.localWorkspacePath}/${key}`
-        try {
-          await this.fs.unlink(localPath)
-        } catch {
-          // file may already be gone locally — that's fine
-        }
-        delete manifest.files[key]
-      }
-
-      // ── 8. Re-enable change tracking ──
-      this._isPulling = false
-
-      // ── 9. Persist updated manifest ──
-      manifest.lastSyncTimestamp = Date.now()
-      await this.saveManifest(manifest)
-
-      this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
-      return { downloaded: toDownload.length, skipped, deleted: toDelete.length }
     } catch (error) {
-      this._isPulling = false  // always re-enable on error too
+      this._isPulling = false
       console.error('[CloudSync] Pull failed:', error)
       this.updateStatus({ status: 'error', lastSync: this._status.lastSync, pendingChanges: this._status.pendingChanges, error: error.message })
       throw error
     }
+  }
+
+  /**
+   * Strategy A: Download _workspace.zip, extract all files, then LIST
+   * to populate manifest ETags for future incremental syncs.
+   */
+  private async pullViaZip(manifest: SyncManifest): Promise<{ downloaded: number; skipped: number; deleted: number }> {
+    console.log('[CloudSync] Fresh load — attempting ZIP-based pull')
+
+    const zipData = await this.s3!.getObjectBinary(WORKSPACE_ZIP_KEY)
+
+    if (zipData) {
+      // ── 1. Extract ZIP into local FS ──
+      const { manifest: zipManifest, fileCount } = await unpackWorkspace(
+        zipData,
+        this.localWorkspacePath!,
+        this.fs,
+      )
+      console.log(`[CloudSync] Extracted ${fileCount} files from workspace.zip`)
+
+      // ── 2. LIST to get real ETags for the manifest ──
+      const remoteObjects = await this.s3!.listObjects('')
+      for (const obj of remoteObjects) {
+        if (obj.key.endsWith('/')) continue  // skip dir markers
+        if (obj.key === WORKSPACE_ZIP_KEY) continue  // skip the zip itself
+        if (zipManifest.files[obj.key]) {
+          // Overwrite with real S3 ETag so incremental diff works next time
+          zipManifest.files[obj.key].etag = obj.etag || ''
+          zipManifest.files[obj.key].lastModified = obj.lastModified.toISOString()
+          zipManifest.files[obj.key].size = obj.size
+        } else {
+          // File on S3 but not in ZIP (added after last snapshot) — download it
+          const localPath = `${this.localWorkspacePath}/${obj.key}`
+          const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
+          await this.ensureDir(parentDir)
+
+          const content = await this.s3!.getObject(obj.key)
+          if (content !== null) {
+            await this.fs.writeFile(localPath, content, 'utf8')
+            zipManifest.files[obj.key] = {
+              etag: obj.etag || '',
+              lastModified: obj.lastModified.toISOString(),
+              size: obj.size,
+            }
+          }
+        }
+      }
+
+      // ── 3. Adopt the zip manifest as our manifest ──
+      Object.assign(manifest, { files: zipManifest.files, lastSyncTimestamp: Date.now() })
+      await this.saveManifest(manifest)
+
+      const downloaded = fileCount
+      this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
+      return { downloaded, skipped: 0, deleted: 0 }
+    } else {
+      // No ZIP exists yet — fall back to incremental (downloads every file one by one)
+      console.log('[CloudSync] No workspace.zip found — falling back to incremental pull')
+      return this.pullIncremental(manifest)
+    }
+  }
+
+  /**
+   * Strategy B: LIST + ETag diff, GET only changed files.
+   * This is the original smart-pull logic.
+   */
+  private async pullIncremental(manifest: SyncManifest): Promise<{ downloaded: number; skipped: number; deleted: number }> {
+    // ── 1. LIST request to get all remote objects + their ETags ──
+    const remoteObjects = await this.s3!.listObjects('')
+    const remoteMap = new Map<string, S3Object>()
+    for (const obj of remoteObjects) {
+      if (!obj.key.endsWith('/') && obj.key !== WORKSPACE_ZIP_KEY) {
+        remoteMap.set(obj.key, obj)
+      }
+    }
+
+    // ── 2. Diff against manifest ──
+    const toDownload: S3Object[] = []
+    const toDelete: string[] = []
+    let skipped = 0
+
+    for (const [key, obj] of remoteMap) {
+      const entry = manifest.files[key]
+      if (entry && entry.etag && entry.etag === obj.etag) {
+        skipped++
+      } else {
+        toDownload.push(obj)
+      }
+    }
+
+    for (const key of Object.keys(manifest.files)) {
+      if (!remoteMap.has(key)) {
+        toDelete.push(key)
+      }
+    }
+
+    console.log(
+      `[CloudSync] Pull diff: ${toDownload.length} to download, ` +
+      `${skipped} up-to-date, ${toDelete.length} remote deletions`
+    )
+
+    // ── 3. Short-circuit if nothing to do ──
+    if (toDownload.length === 0 && toDelete.length === 0) {
+      manifest.lastSyncTimestamp = Date.now()
+      await this.saveManifest(manifest)
+      this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
+      return { downloaded: 0, skipped, deleted: 0 }
+    }
+
+    // ── 4. Ensure workspace root exists ──
+    await this.ensureDir(this.localWorkspacePath!)
+
+    // ── 5. Download changed / new files ──
+    for (const obj of toDownload) {
+      const localPath = `${this.localWorkspacePath}/${obj.key}`
+      const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
+      await this.ensureDir(parentDir)
+
+      const content = await this.s3!.getObject(obj.key)
+      if (content !== null) {
+        await this.fs.writeFile(localPath, content, 'utf8')
+        manifest.files[obj.key] = {
+          etag: obj.etag || '',
+          lastModified: obj.lastModified.toISOString(),
+          size: obj.size,
+        }
+      }
+    }
+
+    // ── 6. Delete files removed on remote ──
+    for (const key of toDelete) {
+      const localPath = `${this.localWorkspacePath}/${key}`
+      try {
+        await this.fs.unlink(localPath)
+      } catch {
+        // file may already be gone locally
+      }
+      delete manifest.files[key]
+    }
+
+    // ── 7. Persist updated manifest ──
+    manifest.lastSyncTimestamp = Date.now()
+    await this.saveManifest(manifest)
+
+    this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
+    return { downloaded: toDownload.length, skipped, deleted: toDelete.length }
   }
 
   /**
@@ -268,6 +351,9 @@ export class CloudSyncEngine {
 
     // Never track the manifest file itself
     if (change.path === MANIFEST_FILENAME || change.path.endsWith('/' + MANIFEST_FILENAME)) return
+
+    // Never track the snapshot ZIP (managed by the engine, not user files)
+    if (change.path === WORKSPACE_ZIP_KEY || change.path.endsWith('/' + WORKSPACE_ZIP_KEY)) return
 
     // De-duplicate: if there's already a pending change for this path, update it
     const existingIdx = this.pendingChanges.findIndex(c => c.path === change.path)
@@ -321,6 +407,10 @@ export class CloudSyncEngine {
         pendingChanges: this.pendingChanges.length,
         error: this.pendingChanges.length > 0 ? 'Some changes failed to sync' : undefined,
       })
+
+      // Schedule a debounced snapshot update so the next fresh client
+      // gets a ZIP that includes these changes.
+      this.scheduleSnapshotUpdate()
     } catch (error) {
       console.error('[CloudSync] Flush failed:', error)
       // Re-queue all changes
@@ -414,6 +504,55 @@ export class CloudSyncEngine {
    */
   async forcePush(): Promise<void> {
     await this.flushChanges()
+  }
+
+  // ── Snapshot ZIP ──────────────────────────────────────────
+
+  /**
+   * Schedule a debounced re-zip of the workspace.
+   * Called after each successful flush so the _workspace.zip stays
+   * roughly up-to-date without zipping on every single file save.
+   */
+  private scheduleSnapshotUpdate(): void {
+    if (this.snapshotTimer) clearTimeout(this.snapshotTimer)
+    this.snapshotTimer = setTimeout(() => {
+      this.snapshotTimer = null
+      this.pushSnapshot().catch(err => {
+        console.warn('[CloudSync] Snapshot update failed (non-fatal):', err.message || err)
+      })
+    }, SNAPSHOT_DEBOUNCE_MS)
+  }
+
+  /**
+   * Re-zip the entire workspace and PUT _workspace.zip to S3.
+   * This is a background operation — failure is non-fatal.
+   */
+  private async pushSnapshot(): Promise<void> {
+    if (!this.s3 || !this.localWorkspacePath) return
+
+    console.log('[CloudSync] Generating workspace snapshot ZIP...')
+    const startTime = Date.now()
+
+    const zipData = await packWorkspace(this.localWorkspacePath, this.fs)
+
+    console.log(
+      `[CloudSync] Snapshot ZIP: ${(zipData.byteLength / 1024).toFixed(1)} KB, ` +
+      `packed in ${Date.now() - startTime}ms`
+    )
+
+    await this.s3.putObject(WORKSPACE_ZIP_KEY, zipData, 'application/zip')
+    console.log('[CloudSync] Snapshot ZIP uploaded to S3')
+  }
+
+  /**
+   * Force an immediate snapshot push (e.g. on workspace close or logout).
+   */
+  async forceSnapshot(): Promise<void> {
+    if (this.snapshotTimer) {
+      clearTimeout(this.snapshotTimer)
+      this.snapshotTimer = null
+    }
+    await this.pushSnapshot()
   }
 
   // ── Manifest persistence ──────────────────────────────────

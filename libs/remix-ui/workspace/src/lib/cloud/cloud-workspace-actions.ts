@@ -332,9 +332,10 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   const relativePath = extractRelativePath(op.path)
   if (!relativePath) return
 
-  // Skip .git internals and the sync manifest
+  // Skip .git internals, sync manifest, and snapshot ZIP
   if (relativePath.startsWith('.git/') || relativePath === '.git') return
   if (relativePath === CloudSyncEngine.MANIFEST_FILENAME) return
+  if (relativePath === '_workspace.zip') return
 
   // 1) Feed into sync engine for S3 push — but NOT for mkdir/rmdir,
   //    and NOT while the engine is pulling (writes from S3→local should

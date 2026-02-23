@@ -36,6 +36,7 @@ export {
   updateCloudWorkspace,
   deleteCloudWorkspace,
 } from './cloud-workspace-api'
+export { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
 export type {
   STSToken,
   CloudWorkspace,
