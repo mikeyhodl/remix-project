@@ -352,20 +352,18 @@ const tests = {
   },
 }
 
-module.exports = tests
+const branch = process.env.CIRCLE_BRANCH || 'ai_reale2e_test'
+console.log('Branch ', branch)
+const runTestsConditions = branch && (branch === 'master' || branch === 'ai_reale2e_test')
 
-// const branch = process.env.CIRCLE_BRANCH || 'ai_reale2e_test'
-// console.log('Branch ', branch)
-// const runTestsConditions = branch && (branch === 'master' || branch === 'ai_reale2e_test')
+const checkBrowserIsChrome = function (browser: NightwatchBrowser) {
+  return browser.browserName.indexOf('chrome') > -1
+}
 
-// const checkBrowserIsChrome = function (browser: NightwatchBrowser) {
-//   return browser.browserName.indexOf('chrome') > -1
-// }
-
-// if (!checkBrowserIsChrome(browser)) {
-//   module.exports = {}
-// } else {
-//   module.exports = {
-//     ...(branch ? (runTestsConditions ? tests : {}) : tests)
-//   };
-// }
+if (!checkBrowserIsChrome(browser)) {
+  module.exports = {}
+} else {
+  module.exports = {
+    ...(branch ? (runTestsConditions ? tests : {}) : tests)
+  };
+}
