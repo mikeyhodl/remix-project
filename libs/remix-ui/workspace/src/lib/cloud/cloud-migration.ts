@@ -59,6 +59,24 @@ export interface MigrationItem {
   error?: string
   /** Set to true if a cloud workspace with the same name already exists */
   nameConflict: boolean
+
+  // ── Fine-grained progress fields ──
+  /** Total number of files in this workspace */
+  totalFiles?: number
+  /** Number of files copied so far (copying phase) */
+  copiedFiles?: number
+  /** Number of files uploaded so far (uploading phase) */
+  uploadedFiles?: number
+  /** Current file being processed (path) */
+  currentFile?: string
+  /** Snapshot zip size in bytes (after zip phase) */
+  snapshotSize?: number
+  /** Whether the snapshot upload is done */
+  snapshotDone?: boolean
+  /** Size of all files uploaded so far in bytes */
+  uploadedBytes?: number
+  /** Total size of all files in bytes */
+  totalBytes?: number
 }
 
 export type MigrationProgressCallback = (items: MigrationItem[]) => void
@@ -205,11 +223,18 @@ export async function migrateWorkspace(
   let cloudWorkspace: CloudWorkspace | null = null
   let cloudLocalPath: string | null = null
 
+  // helper: emit progress with current item state
+  const emit = () => onProgress({ ...item })
+
   try {
     // ── 1. Create cloud workspace via API ──
     item.status = 'creating'
-    item.progress = 'Creating cloud workspace...'
-    onProgress(item)
+    item.progress = 'Creating cloud workspace…'
+    item.copiedFiles = 0
+    item.uploadedFiles = 0
+    item.uploadedBytes = 0
+    item.snapshotDone = false
+    emit()
 
     cloudWorkspace = await createCloudWorkspace(item.cloudName, true)
     cloudLocalPath = `${CLOUD_WORKSPACES_PATH}/${cloudWorkspace.uuid}`
@@ -217,45 +242,75 @@ export async function migrateWorkspace(
 
     // ── 2. Copy files from local → cloud path in IndexedDB ──
     item.status = 'copying'
-    item.progress = 'Copying files...'
-    onProgress(item)
+    item.progress = 'Copying files…'
+    emit()
 
-    const fileMap = await copyWorkspaceTree(localPath, cloudLocalPath, fs)
+    const fileMap = await copyWorkspaceTree(localPath, cloudLocalPath, fs, (copiedCount, currentFile) => {
+      item.copiedFiles = copiedCount
+      item.currentFile = currentFile
+      item.progress = `Copying ${currentFile}`
+      emit()
+    })
     const fileCount = Object.keys(fileMap).length
+    item.totalFiles = fileCount
+    item.copiedFiles = fileCount
+
+    // Calculate total bytes
+    let totalBytes = 0
+    for (const content of Object.values(fileMap)) {
+      totalBytes += new TextEncoder().encode(content as string).byteLength
+    }
+    item.totalBytes = totalBytes
     item.progress = `Copied ${fileCount} files`
-    onProgress(item)
+    item.currentFile = undefined
+    emit()
     console.log(`[Migration] Copied ${fileCount} files to ${cloudLocalPath}`)
 
     // ── 3. Upload to S3 ──
     item.status = 'uploading'
-    item.progress = 'Uploading to cloud...'
-    onProgress(item)
+    item.progress = 'Preparing snapshot…'
+    emit()
 
     const token = await fetchWorkspaceSTS(cloudWorkspace.uuid)
     const s3 = new S3Client(token)
 
     // 3a. Upload ZIP snapshot (for fast bulk load by other clients)
     const zipData = await packWorkspace(cloudLocalPath, fs)
+    item.snapshotSize = zipData.byteLength
+    item.progress = `Uploading snapshot (${(zipData.byteLength / 1024).toFixed(1)} KB)…`
+    emit()
+
     await s3.putObject(WORKSPACE_ZIP_KEY, zipData, 'application/zip')
-    item.progress = `Uploaded snapshot (${(zipData.byteLength / 1024).toFixed(1)} KB)`
-    onProgress(item)
+    item.snapshotDone = true
+    item.progress = `Snapshot uploaded (${(zipData.byteLength / 1024).toFixed(1)} KB)`
+    emit()
 
     // 3b. Upload individual files (for incremental sync compatibility)
+    item.progress = 'Uploading files…'
+    emit()
+
     const manifest: SyncManifest = { version: 1, lastSyncTimestamp: Date.now(), files: {} }
     let uploaded = 0
+    let uploadedBytes = 0
     for (const [relPath, content] of Object.entries(fileMap)) {
+      item.currentFile = relPath
+      const bytes = new TextEncoder().encode(content as string)
       const etag = await s3.putObject(relPath, content as string)
       manifest.files[relPath] = {
         etag,
         lastModified: new Date().toISOString(),
-        size: new TextEncoder().encode(content as string).byteLength,
+        size: bytes.byteLength,
       }
       uploaded++
-      if (uploaded % 10 === 0 || uploaded === fileCount) {
-        item.progress = `Uploaded ${uploaded}/${fileCount} files`
-        onProgress(item)
-      }
+      uploadedBytes += bytes.byteLength
+      item.uploadedFiles = uploaded
+      item.uploadedBytes = uploadedBytes
+      item.progress = `Uploading ${relPath}`
+      emit()
     }
+    item.currentFile = undefined
+    item.progress = `Uploaded all ${fileCount} files`
+    emit()
 
     // 3c. Save manifest locally
     await ensureDir(cloudLocalPath, fs)
@@ -267,22 +322,23 @@ export async function migrateWorkspace(
 
     // ── 4. Verify upload ──
     item.status = 'verifying'
-    item.progress = 'Verifying upload...'
-    onProgress(item)
+    item.progress = 'Verifying upload…'
+    item.currentFile = undefined
+    emit()
 
     const remoteObjects = await s3.listObjects('')
     const remoteKeys = new Set(remoteObjects.map(o => o.key))
     const missing = Object.keys(fileMap).filter(k => !remoteKeys.has(k))
 
     if (missing.length > 0) {
-      throw new Error(`Verification failed: ${missing.length} files missing on S3: ${missing.slice(0, 3).join(', ')}...`)
+      throw new Error(`Verification failed: ${missing.length} files missing on S3: ${missing.slice(0, 3).join(', ')}…`)
     }
     console.log(`[Migration] Verified: all ${fileCount} files present on S3`)
 
     // ── 5. Delete local workspace ──
     item.status = 'cleaning'
-    item.progress = 'Removing local copy...'
-    onProgress(item)
+    item.progress = 'Cleaning up local copy…'
+    emit()
 
     await deleteDirectoryRecursive(localPath, fs)
     console.log(`[Migration] Deleted local workspace ${localPath}`)
@@ -291,7 +347,7 @@ export async function migrateWorkspace(
     markAsMigrated(item.localName)
     item.status = 'done'
     item.progress = 'Migration complete'
-    onProgress(item)
+    emit()
 
     return cloudWorkspace
 
@@ -299,25 +355,20 @@ export async function migrateWorkspace(
     console.error(`[Migration] Failed for "${item.localName}":`, error)
     item.status = 'error'
     item.error = error.message || String(error)
-    item.progress = 'Failed — rolling back...'
-    onProgress(item)
+    item.progress = 'Failed — rolling back…'
+    item.currentFile = undefined
+    emit()
 
     // ── Rollback ──
-    // Remove cloud local copy
     if (cloudLocalPath) {
-      try {
-        await deleteDirectoryRecursive(cloudLocalPath, fs)
-      } catch { /* ignore */ }
+      try { await deleteDirectoryRecursive(cloudLocalPath, fs) } catch { /* ignore */ }
     }
-    // Delete cloud workspace via API (also cleans S3)
     if (cloudWorkspace) {
-      try {
-        await deleteCloudWorkspace(cloudWorkspace.uuid)
-      } catch { /* ignore */ }
+      try { await deleteCloudWorkspace(cloudWorkspace.uuid) } catch { /* ignore */ }
     }
 
     item.progress = `Failed: ${item.error}`
-    onProgress(item)
+    emit()
     return null
   }
 }
@@ -352,13 +403,17 @@ export async function migrateWorkspaces(
 /**
  * Recursively copy all files from srcPath to destPath.
  * Returns a map of relative-path → content (for S3 upload).
+ *
+ * @param onFileCopied  Optional callback (copiedCount, relativePath) called after each file.
  */
 async function copyWorkspaceTree(
   srcPath: string,
   destPath: string,
   fs: any,
+  onFileCopied?: (copiedCount: number, relativePath: string) => void,
 ): Promise<Record<string, string>> {
   const fileMap: Record<string, string> = {}
+  let copiedCount = 0
   await ensureDir(destPath, fs)
 
   async function walk(srcDir: string, destDir: string, relativeBase: string) {
@@ -386,6 +441,8 @@ async function copyWorkspaceTree(
           const content = await fs.readFile(srcChild, 'utf8')
           await fs.writeFile(destChild, content, 'utf8')
           fileMap[relativePath] = content
+          copiedCount++
+          onFileCopied?.(copiedCount, relativePath)
         }
       } catch {
         // Skip unreadable files

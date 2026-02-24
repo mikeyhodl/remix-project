@@ -12,6 +12,7 @@
  */
 
 import { cloudSyncEngine, CloudSyncEngine } from './cloud-sync-engine'
+import { cloudStore } from './cloud-store'
 import {
   createCloudWorkspace as apiCreate,
   updateCloudWorkspace as apiUpdate,
@@ -229,7 +230,8 @@ export async function deleteCloudWorkspaceAction(cloudWorkspace: CloudWorkspace)
 }
 
 /**
- * Refresh the cloud workspace list from the API and update provider mappings.
+ * Refresh the cloud workspace list from the API, update provider mappings,
+ * and update the reactive cloud store so the UI re-renders.
  */
 export async function refreshCloudWorkspaces(): Promise<CloudWorkspace[]> {
   const workspaces = await apiList()
@@ -237,6 +239,8 @@ export async function refreshCloudWorkspaces(): Promise<CloudWorkspace[]> {
   if (provider?.setWorkspaceMappings) {
     provider.setWorkspaceMappings(workspaces)
   }
+  // Update the reactive store so dropdown / UI picks up new workspaces
+  cloudStore.setCloudWorkspaces(workspaces)
   return workspaces
 }
 
