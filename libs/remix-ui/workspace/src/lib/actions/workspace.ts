@@ -668,10 +668,12 @@ export const switchToWorkspace = async (name: string) => {
       const cloudState = cloudStore.getState()
       const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === name)
       if (cloudWs) {
+        // Set active immediately so the UI can show loading state for this workspace
+        cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
+        cloudStore.updateSyncStatus(cloudWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
         await switchToCloudWorkspace(cloudWs, (status) => {
           cloudStore.updateSyncStatus(cloudWs.uuid, status)
         })
-        cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
         // Set up file change tracking
         const workspaceProvider = plugin.fileProviders.workspace
         startFileChangeTracking(workspaceProvider, cloudWs.uuid)

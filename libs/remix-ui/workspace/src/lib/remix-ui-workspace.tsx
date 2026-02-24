@@ -59,7 +59,10 @@ export function Workspace() {
 
   const [canPaste, setCanPaste] = useState(false)
   const [showMigrationDialog, setShowMigrationDialog] = useState(false)
-  const { isCloudMode } = useCloudStore()
+  const { isCloudMode, activeWorkspaceId, syncStatus } = useCloudStore()
+  const isCloudLoading = isCloudMode && activeWorkspaceId
+    ? (syncStatus[activeWorkspaceId]?.status === 'loading' || syncStatus[activeWorkspaceId]?.status === 'syncing')
+    : false
 
   const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -1120,12 +1123,19 @@ export function Workspace() {
             }}
           >
             <div className="h-100">
-              {(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning) && (
+              {(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning || isCloudLoading) && (
                 <div className="text-center py-5">
-                  <i className="fas fa-spinner fa-pulse fa-2x"></i>
+                  {isCloudLoading ? (
+                    <>
+                      <i className="fas fa-cloud-arrow-down fa-beat-fade fa-2x" style={{ color: 'var(--bs-info)' }}></i>
+                      <div className="small mt-2" style={{ color: 'var(--bs-secondary-color)' }}>Loading cloud workspace…</div>
+                    </>
+                  ) : (
+                    <i className="fas fa-spinner fa-pulse fa-2x"></i>
+                  )}
                 </div>
               )}
-              {!(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning) && global.fs.mode === 'browser' && currentWorkspace !== NO_WORKSPACE && (
+              {!(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning || isCloudLoading) && global.fs.mode === 'browser' && currentWorkspace !== NO_WORKSPACE && (
                 <FileExplorer
                   fileState={global.fs.browser.fileState}
                   name={currentWorkspace}

@@ -64,8 +64,8 @@ export interface CloudState {
 }
 
 export interface WorkspaceSyncStatus {
-  /** 'idle' | 'syncing' | 'error' */
-  status: 'idle' | 'syncing' | 'error'
+  /** 'idle' | 'syncing' | 'loading' | 'error' */
+  status: 'idle' | 'syncing' | 'loading' | 'error'
   /** Last successful sync timestamp */
   lastSync: number | null
   /** Pending changes count */

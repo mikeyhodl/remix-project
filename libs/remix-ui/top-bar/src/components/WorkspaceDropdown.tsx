@@ -12,6 +12,7 @@ import path from 'path'
 import { DesktopDownload } from 'libs/remix-ui/desktop-download'
 import { ElectronWorkspaceMenu } from './ElectronWorkspaceMenu'
 import { useCloudStore } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-store'
+import { CloudSyncStatusIcon, getSyncIconProps } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
 
 interface Branch {
   name: string
@@ -93,6 +94,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
   const cloudState = useCloudStore()
   const { isCloudMode, loading: cloudLoading, syncStatus, activeWorkspaceId } = cloudState
   const activeSyncStatus = activeWorkspaceId ? syncStatus[activeWorkspaceId] : null
+  const isWorkspaceLoading = activeSyncStatus?.status === 'loading' || activeSyncStatus?.status === 'syncing'
 
   const toggleSubmenu = (id) => {
     setOpenSubmenuId((current) => (current === id ? null : id));
@@ -278,24 +280,19 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
           data-id="workspacesSelect-togglerText"
           className="text-truncate position-absolute start-50 translate-middle d-flex align-items-center"
         >
-          {isCloudMode && (
-            <i
-              className={`fas fa-cloud me-2 ${
-                activeSyncStatus?.status === 'syncing' ? 'text-warning' :
-                  activeSyncStatus?.status === 'error' ? 'text-danger' :
-                    'text-info'
-              }`}
-              style={{ fontSize: '0.8em' }}
-              title={
-                activeSyncStatus?.status === 'syncing' ? 'Syncing...' :
-                  activeSyncStatus?.status === 'error' ? `Sync error: ${activeSyncStatus.error || 'Unknown'}` :
-                    'Cloud workspace'
-              }
-            ></i>
-          )}
+          {isCloudMode && (() => {
+            const props = getSyncIconProps(activeSyncStatus)
+            return (
+              <i
+                className={`${props.icon}${props.animate ? ' ' + props.animate : ''} me-2`}
+                style={{ color: props.color, fontSize: '0.8em' }}
+                title={props.title}
+              />
+            )
+          })()}
           {cloudLoading ? 'Loading workspaces...' : togglerText}
           {!isCloudMode && selectedWorkspace && selectedWorkspace.remoteId && (
-            <i className="fas fa-cloud ms-2" style={{ color: 'var(--info)', fontSize: '0.8em' }} title="Connected to cloud"></i>
+            <CloudSyncStatusIcon remoteId={selectedWorkspace.remoteId} className="ms-2" />
           )}
         </div>
       </Dropdown.Toggle>
@@ -306,7 +303,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
         show={showMain}
         as={"div"}
       >
-        <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px' }}>
+        <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px', opacity: isWorkspaceLoading ? 0.5 : 1, pointerEvents: isWorkspaceLoading ? 'none' : 'auto' }}>
           {menuItems.map((item, idx) => {
             const id = idx + 1
             if (!iconRefs.current[id]) iconRefs.current[id] = { current: null }
@@ -316,6 +313,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   key={id}
                   className="dropdown-item d-flex align-items-center position-relative"
                   onMouseDown={(e) => {
+                    if (isWorkspaceLoading) { e.preventDefault(); return }
                     switchWorkspace(item.name)
                     e.preventDefault()
                   } }
@@ -325,7 +323,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                     <i className="fas fa-code-branch pt-1 me-2"></i>
                   )}
                   {item.remoteId && (
-                    <i className="fas fa-cloud pt-1 me-2" style={{ color: 'var(--info)', fontSize: '0.8em' }} title="Connected to cloud"></i>
+                    <CloudSyncStatusIcon remoteId={item.remoteId} className="pt-1 me-2" />
                   )}
                   <span className="pl-1">{item.name}</span>
                 </Dropdown.Item>
@@ -468,26 +466,28 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
           </Dropdown.Item>
 
           {/* ── Cloud mode: show sync status ── */}
-          {isCloudMode && activeSyncStatus && (
-            <>
-              <Dropdown.Divider className="border mb-0 mt-0 remixui_menuhr" style={{ pointerEvents: 'none' }} />
-              <Dropdown.Item disabled style={{ fontSize: '0.85em', opacity: 0.8 }}>
-                <span className="d-flex align-items-center">
-                  <i className={`fas fa-cloud me-2 ${
-                    activeSyncStatus.status === 'syncing' ? 'text-warning' :
-                      activeSyncStatus.status === 'error' ? 'text-danger' : 'text-success'
-                  }`}></i>
-                  {activeSyncStatus.status === 'syncing' && 'Syncing to cloud...'}
-                  {activeSyncStatus.status === 'idle' && activeSyncStatus.lastSync && `Synced ${new Date(activeSyncStatus.lastSync).toLocaleTimeString()}`}
-                  {activeSyncStatus.status === 'idle' && !activeSyncStatus.lastSync && 'Cloud workspace'}
-                  {activeSyncStatus.status === 'error' && `Sync error: ${activeSyncStatus.error || 'Unknown'}`}
-                  {activeSyncStatus.pendingChanges > 0 && (
-                    <span className="badge bg-warning ms-2">{activeSyncStatus.pendingChanges}</span>
-                  )}
-                </span>
-              </Dropdown.Item>
-            </>
-          )}
+          {isCloudMode && activeSyncStatus && (() => {
+            const statusProps = getSyncIconProps(activeSyncStatus)
+            return (
+              <>
+                <Dropdown.Divider className="border mb-0 mt-0 remixui_menuhr" style={{ pointerEvents: 'none' }} />
+                <Dropdown.Item disabled style={{ fontSize: '0.85em', opacity: 0.8 }}>
+                  <span className="d-flex align-items-center">
+                    <i className={`${statusProps.icon}${statusProps.animate ? ' ' + statusProps.animate : ''} me-2`}
+                       style={{ color: statusProps.color }} />
+                    {activeSyncStatus.status === 'loading' && 'Loading workspace…'}
+                    {activeSyncStatus.status === 'syncing' && 'Syncing to cloud…'}
+                    {activeSyncStatus.status === 'idle' && activeSyncStatus.lastSync && `Synced ${new Date(activeSyncStatus.lastSync).toLocaleTimeString()}`}
+                    {activeSyncStatus.status === 'idle' && !activeSyncStatus.lastSync && 'Cloud workspace'}
+                    {activeSyncStatus.status === 'error' && `Sync error: ${activeSyncStatus.error || 'Unknown'}`}
+                    {activeSyncStatus.pendingChanges > 0 && (
+                      <span className="badge bg-warning ms-2">{activeSyncStatus.pendingChanges}</span>
+                    )}
+                  </span>
+                </Dropdown.Item>
+              </>
+            )
+          })()}
 
           {/* ── Legacy mode only: Backup, Restore, Localhost, Delete All ── */}
           {!isCloudMode && (

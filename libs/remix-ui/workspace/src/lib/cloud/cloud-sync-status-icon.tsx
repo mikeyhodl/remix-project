@@ -8,8 +8,9 @@ import { WorkspaceSyncStatus } from './types'
  *  ┌────────────────────────────────┬─────────────────────────────┬──────────────────┬───────────────────────────┐
  *  │ State                          │ Icon                        │ Color            │ Tooltip                   │
  *  ├────────────────────────────────┼─────────────────────────────┼──────────────────┼───────────────────────────┤
+ *  │ loading                        │ fa-cloud-arrow-down beat    │ var(--bs-info)   │ Loading workspace…        │
  *  │ syncing                        │ fa-cloud fa-beat-fade       │ var(--bs-warning)│ Syncing…                  │
- *  │ error                          │ fa-cloud-exclamation / bolt │ var(--bs-danger) │ Sync error: <msg>         │
+ *  │ error                          │ fa-cloud-bolt               │ var(--bs-danger) │ Sync error: <msg>         │
  *  │ idle + pendingChanges > 0      │ fa-cloud-arrow-up           │ var(--bs-warning)│ N pending changes         │
  *  │ idle + pendingChanges=0 synced │ fa-cloud                    │ var(--bs-success)│ Synced <time>             │
  *  │ idle + never synced            │ fa-cloud                    │ var(--bs-info)   │ Connected to cloud        │
@@ -24,6 +25,15 @@ export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
   if (!status) {
     // No status yet — initial/unknown
     return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+  }
+
+  if (status.status === 'loading') {
+    return {
+      icon: 'fas fa-cloud-arrow-down',
+      color: 'var(--bs-info)',
+      title: 'Loading workspace…',
+      animate: 'fa-beat-fade',
+    }
   }
 
   if (status.status === 'syncing') {

@@ -163,6 +163,9 @@ export async function switchToCloudWorkspace(
   // Broadcast display name to other plugins
   await _plugin.setWorkspace({ name: cloudWorkspace.name, isLocalhost: false })
 
+  // Signal loading state before pull
+  onSyncStatus?.({ status: 'loading', lastSync: null, pendingChanges: 0 })
+
   // Activate sync engine and pull from S3
   await cloudSyncEngine.activate(uuid, onSyncStatus)
   await cloudSyncEngine.pullWorkspace()
