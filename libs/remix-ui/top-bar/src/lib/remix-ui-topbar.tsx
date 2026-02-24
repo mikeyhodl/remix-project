@@ -568,7 +568,7 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
-          <CloudTopbarIndicator className="ms-2" />
+          <CloudTopbarIndicator className="ms-2" onClick={() => plugin.call('auth', 'login', 'github')} />
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
           <WorkspacesDropdown
