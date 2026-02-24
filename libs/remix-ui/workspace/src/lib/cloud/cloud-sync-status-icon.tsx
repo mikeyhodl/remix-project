@@ -1,0 +1,136 @@
+import React from 'react'
+import { useCloudStore } from './cloud-store'
+import { WorkspaceSyncStatus } from './types'
+
+/**
+ * Derive icon class + color + tooltip from a WorkspaceSyncStatus.
+ *
+ *  ┌────────────────────────────────┬─────────────────────────────┬──────────────────┬───────────────────────────┐
+ *  │ State                          │ Icon                        │ Color            │ Tooltip                   │
+ *  ├────────────────────────────────┼─────────────────────────────┼──────────────────┼───────────────────────────┤
+ *  │ syncing                        │ fa-cloud fa-beat-fade       │ var(--bs-warning)│ Syncing…                  │
+ *  │ error                          │ fa-cloud-exclamation / bolt │ var(--bs-danger) │ Sync error: <msg>         │
+ *  │ idle + pendingChanges > 0      │ fa-cloud-arrow-up           │ var(--bs-warning)│ N pending changes         │
+ *  │ idle + pendingChanges=0 synced │ fa-cloud                    │ var(--bs-success)│ Synced <time>             │
+ *  │ idle + never synced            │ fa-cloud                    │ var(--bs-info)   │ Connected to cloud        │
+ *  └────────────────────────────────┴─────────────────────────────┴──────────────────┴───────────────────────────┘
+ */
+export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
+  icon: string
+  color: string
+  title: string
+  animate?: string
+} {
+  if (!status) {
+    // No status yet — initial/unknown
+    return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+  }
+
+  if (status.status === 'syncing') {
+    return {
+      icon: 'fas fa-cloud',
+      color: 'var(--bs-warning)',
+      title: 'Syncing…',
+      animate: 'fa-beat-fade',
+    }
+  }
+
+  if (status.status === 'error') {
+    return {
+      icon: 'fas fa-cloud-bolt',
+      color: 'var(--bs-danger)',
+      title: `Sync error${status.error ? ': ' + status.error : ''}`,
+    }
+  }
+
+  // idle
+  if (status.pendingChanges > 0) {
+    return {
+      icon: 'fas fa-cloud-arrow-up',
+      color: 'var(--bs-warning)',
+      title: `${status.pendingChanges} pending change${status.pendingChanges !== 1 ? 's' : ''}`,
+    }
+  }
+
+  if (status.lastSync) {
+    return {
+      icon: 'fas fa-cloud',
+      color: 'var(--bs-success)',
+      title: `Synced ${formatRelativeTime(status.lastSync)}`,
+    }
+  }
+
+  // idle, no pending, never synced
+  return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return new Date(ts).toLocaleDateString()
+}
+
+// ── Inline icon for workspace dropdown items ──────────────────────────
+
+interface CloudSyncStatusIconProps {
+  /** The cloud workspace UUID (remoteId from WorkspaceMetadata) */
+  remoteId: string
+  /** Extra CSS classes */
+  className?: string
+  /** Font size override (default: 0.8em — matches the existing dropdown icon) */
+  fontSize?: string
+}
+
+/**
+ * A small cloud icon that reflects the live sync status of a cloud workspace.
+ * Drop-in replacement for the old static `<i className="fas fa-cloud" …>` icons
+ * in the workspace dropdown.
+ */
+export const CloudSyncStatusIcon: React.FC<CloudSyncStatusIconProps> = ({
+  remoteId,
+  className = 'ms-2',
+  fontSize = '0.8em',
+}) => {
+  const { syncStatus } = useCloudStore()
+  const ws = syncStatus[remoteId]
+  const { icon, color, title, animate } = getSyncIconProps(ws)
+
+  return (
+    <i
+      className={`${icon}${animate ? ' ' + animate : ''} ${className}`}
+      style={{ color, fontSize }}
+      title={title}
+    />
+  )
+}
+
+// ── Topbar-sized indicator ────────────────────────────────────────────
+
+/**
+ * Cloud status badge for the topbar.
+ * Shows the sync status of the *active* cloud workspace.
+ * Renders nothing when cloud mode is off.
+ */
+export const CloudTopbarIndicator: React.FC<{ className?: string }> = ({ className = 'ms-2' }) => {
+  const { isCloudMode, activeWorkspaceId, syncStatus } = useCloudStore()
+
+  if (!isCloudMode) return null
+
+  const ws = activeWorkspaceId ? syncStatus[activeWorkspaceId] : undefined
+  const { icon, color, title, animate } = getSyncIconProps(ws)
+
+  return (
+    <span
+      className={`d-inline-flex align-items-center ${className}`}
+      title={title}
+      style={{ cursor: 'default' }}
+    >
+      <i
+        className={`${icon}${animate ? ' ' + animate : ''}`}
+        style={{ color, fontSize: '1rem' }}
+      />
+    </span>
+  )
+}

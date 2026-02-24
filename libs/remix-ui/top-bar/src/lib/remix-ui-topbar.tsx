@@ -5,6 +5,7 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
+import { CloudTopbarIndicator } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
 import { AppContext, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { useAuth } from 'libs/remix-ui/app/src/lib/remix-app/context/auth-context'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -567,6 +568,7 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
+          <CloudTopbarIndicator className="ms-2" />
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
           <WorkspacesDropdown

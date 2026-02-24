@@ -37,6 +37,20 @@ export {
   deleteCloudWorkspace,
 } from './cloud-workspace-api'
 export { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
+export { CloudMigrationDialog } from './cloud-migration-dialog'
+export {
+  discoverLocalWorkspaces,
+  buildMigrationItems,
+  migrateWorkspace,
+  migrateWorkspaces,
+  hasPendingMigrations,
+} from './cloud-migration'
+export type {
+  LocalWorkspaceInfo,
+  MigrationStatus,
+  MigrationItem,
+  MigrationProgressCallback,
+} from './cloud-migration'
 export type {
   STSToken,
   CloudWorkspace,

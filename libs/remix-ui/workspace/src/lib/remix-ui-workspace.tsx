@@ -9,6 +9,10 @@ import { FileSystemContext } from './contexts'
 import './css/remix-ui-workspace.css'
 import { ROOT_PATH, TEMPLATE_NAMES } from './utils/constants'
 import { HamburgerMenu } from './components/workspace-hamburger'
+import { CloudMigrationDialog } from './cloud/cloud-migration-dialog'
+import { hasPendingMigrations } from './cloud/cloud-migration'
+import { useCloudStore } from './cloud/cloud-store'
+import { CloudSyncStatusIcon } from './cloud/cloud-sync-status-icon'
 
 import { MenuItems, WorkSpaceState, WorkspaceMetadata } from './types'
 import { contextMenuActions } from './utils'
@@ -54,6 +58,8 @@ export function Workspace() {
   const currentBranch = selectedWorkspace ? selectedWorkspace.currentBranch : null
 
   const [canPaste, setCanPaste] = useState(false)
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false)
+  const { isCloudMode } = useCloudStore()
 
   const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -118,6 +124,23 @@ export function Workspace() {
       ])
     }
   }, [canPaste])
+
+  // ── Auto-show migration dialog on first cloud login ──
+  useEffect(() => {
+    if (!isCloudMode) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const pending = await hasPendingMigrations()
+        if (!cancelled && pending) {
+          setShowMigrationDialog(true)
+        }
+      } catch (e) {
+        console.warn('[Workspace] Failed to check pending migrations:', e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isCloudMode])
 
   const [modalState, setModalState] = useState<{
     searchInput: string
@@ -960,14 +983,14 @@ export function Workspace() {
           <div className="d-flex justify-content-between">
             <span>
               {currentWorkspace === props.mName ? <span>&#10003; {props.mName} </span> : <span className="ps-3">{props.mName}</span>}
-              {props.remoteId && <i className="fas fa-cloud ms-2" style={{ color: 'var(--info)', fontSize: '0.8em' }} title="Connected to cloud"></i>}
+              {props.remoteId && <CloudSyncStatusIcon remoteId={props.remoteId} />}
             </span>
             <i className="fas fa-code-branch pt-1"></i>
           </div>
         ) : (
           <span>
             {currentWorkspace === props.mName ? <span>&#10003; {props.mName} </span> : <span className="ps-3">{props.mName}</span>}
-            {props.remoteId && <i className="fas fa-cloud ms-2" style={{ color: 'var(--info)', fontSize: '0.8em' }} title="Connected to cloud"></i>}
+            {props.remoteId && <CloudSyncStatusIcon remoteId={props.remoteId} />}
           </span>
         )}
       </>
@@ -1452,6 +1475,16 @@ export function Workspace() {
           </div>
         </div>
       </ModalDialog>
+
+      <CloudMigrationDialog
+        visible={showMigrationDialog}
+        onHide={() => setShowMigrationDialog(false)}
+        onMigrationComplete={() => {
+          // Refresh workspace list after migration
+          global.dispatchFetchWorkspaceDirectory('/')
+        }}
+        plugin={global.plugin}
+      />
     </div>
   )
 }
