@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState, useRef } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
-import { CustomToggle, CustomTooltip, extractDataDefault, getTimeAgo, shortenAddress, isNumeric, is0XPrefixed, isHexadecimal, logBuilder } from '@remix-ui/helper'
+import { CustomToggle, CustomTooltip, getTimeAgo, shortenAddress, isNumeric, is0XPrefixed, isHexadecimal, logBuilder } from '@remix-ui/helper'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import * as remixLib from '@remix-project/remix-lib'
 import { Dropdown } from 'react-bootstrap'
@@ -9,8 +9,8 @@ import { FuncABI } from '@remix-project/core-plugin'
 import { DeployedContractsAppContext } from '../contexts'
 import { DeployedContract } from '../types'
 import { runTransactions } from '../actions'
-import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { ContractKebabMenu } from './ContractKebabMenu'
+import { ContractFunctionItem } from './ContractFunctionItem'
 import { AIRequestForm } from '@remix-ui/run-tab'
 import BN from 'bn.js'
 
@@ -366,34 +366,6 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
     handleRemove({ stopPropagation: () => {} } as React.MouseEvent)
   }
 
-  const label = (key: string | number, value: string) => {
-    return (
-      <div className="d-flex mt-2 flex-row label_item align-items-baseline">
-        <label className="small fw-bold mb-0 pe-1 label_key">{key}:</label>
-        <label className="m-0 label_value">{value}</label>
-      </div>
-    )
-  }
-
-  const renderData = (item, parent, key: string | number, keyPath: string) => {
-    const data = extractDataDefault(item, parent)
-    const children = (data.children || []).map((child, index) => {
-      return renderData(child.value, data, child.key, keyPath + '/' + child.key)
-    })
-
-    if (children && children.length > 0) {
-      return (
-        <TreeViewItem id={`treeViewItem${key}`} key={keyPath} label={label(key, data.self)} onClick={() => handleExpand(keyPath)} expand={expandPath.includes(keyPath)}>
-          <TreeView id={`treeView${key}`} key={keyPath}>
-            {children}
-          </TreeView>
-        </TreeViewItem>
-      )
-    } else {
-      return <TreeViewItem id={key.toString()} key={keyPath} label={label(key, data.self)} onClick={() => handleExpand(keyPath)} expand={expandPath.includes(keyPath)} />
-    }
-  }
-
   return (
     <div className="mb-3">
       <div
@@ -464,92 +436,23 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                       .filter((item: any) => item.type === 'function')
                       .map((funcABI: FuncABI, funcIndex: number) => {
                         if (funcABI.type !== 'function') return null
-                        const isConstant = funcABI.constant !== undefined ? funcABI.constant : false
-                        const lookupOnly = funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure' || isConstant
-                        const inputNames = funcABI.inputs.map(input => input.name).join(', ')
-                        const inputTypes = funcABI.inputs.map(input => input.type).join(', ')
 
                         return (
-                          <div key={funcIndex} className="mb-1 px-0 py-2 rounded" data-id={`contractItem-${funcIndex}`}>
-                            <div className="d-flex align-items-center mb-2" key={funcIndex}>
-                              {
-                                funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure' ?
-                                  <span className='badge text-info me-1' style={{ backgroundColor: '#64C4FF14' }}>call</span>
-                                  : funcABI.stateMutability === 'payable' ? <span className='badge text-danger me-1' style={{ backgroundColor: '#FF777714' }}>payable</span>
-                                    : <span className='badge text-warning me-1' style={{ backgroundColor: '#FFB96414' }}>transact</span>
-                              }
-                              <div className="d-flex align-items-center" style={{ minWidth: 0, flex: 1 }}>
-                                <label
-                                  className="mb-0 me-1 text-secondary"
-                                  style={{
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0,
-                                    maxWidth: '100%'
-                                  }}
-                                  title={funcABI.name}
-                                >
-                                  { funcABI.name }
-                                </label>
-                                {inputNames && (
-                                  <span
-                                    style={{
-                                      fontWeight: 'lighter',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      minWidth: 0,
-                                      flexShrink: 1
-                                    }}
-                                    title={inputNames}
-                                  >
-                                    { inputNames }
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="position-relative flex-fill">
-                              <input
-                                type="text"
-                                placeholder={inputTypes}
-                                className="form-control"
-                                value={funcInputs[funcIndex] || ''}
-                                onChange={(e) => handleInputChange(funcIndex, e.target.value)}
-                                style={{
-                                  backgroundColor: 'var(--bs-body-bg)',
-                                  color: themeQuality === 'dark' ? 'white' : 'black', flex: 1, padding: '0.75rem', paddingRight: '4.5rem', fontSize: '0.75rem',
-                                  cursor: !inputNames ? 'not-allowed' : 'text'
-                                }}
-                                disabled={!inputNames && !inputTypes}
-                                data-id={`deployedContractItem-${index}-input-${funcIndex}`}
-                              />
-                              <button
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => handleExecuteTransaction(funcABI, funcIndex, lookupOnly)}
-                                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', zIndex: 2, fontSize: '0.65rem', fontWeight: 'bold' }}
-                                data-id={`deployedContractItem-${index}-button-${funcIndex}`}
-                              >
-                              Execute
-                              </button>
-                            </div>
-                            {lookupOnly && (
-                              <div className="udapp_value" data-id="udapp_tree_value">
-                                <TreeView id="treeView">
-                                  {Object.keys(contract.decodedResponse || {}).map((key) => {
-                                    const response = contract.decodedResponse[key]
-
-                                    return parseInt(key) === funcIndex
-                                      ? Object.keys(response || {}).map((innerkey, index) => {
-                                        return renderData(contract.decodedResponse[key][innerkey], response, innerkey, innerkey)
-                                      })
-                                      : null
-                                  })}
-                                </TreeView>
-                              </div>
-                            )}
-                          </div>
-                        )})}
+                          <ContractFunctionItem
+                            key={funcIndex}
+                            funcABI={funcABI}
+                            funcIndex={funcIndex}
+                            contractIndex={index}
+                            themeQuality={themeQuality}
+                            funcInputs={funcInputs}
+                            decodedResponse={contract.decodedResponse}
+                            expandPath={expandPath}
+                            onInputChange={handleInputChange}
+                            onExecute={handleExecuteTransaction}
+                            onExpand={handleExpand}
+                          />
+                        )
+                      })}
                     {/* Value and Gas Limit */}
                     <div className='pt-3'>
                       {/* Value */}
