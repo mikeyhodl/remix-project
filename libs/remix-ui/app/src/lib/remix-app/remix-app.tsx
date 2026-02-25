@@ -260,6 +260,7 @@ const RemixApp = (props: IRemixAppUi) => {
               {appState.genericModalState.showModal && props.app.templateExplorerModal.render()
               }
               {props.app.invitationManager.render()}
+              {props.app.membershipRequest.render()}
             </AppProvider>
           </AuthProvider>
         </onLineContext.Provider>

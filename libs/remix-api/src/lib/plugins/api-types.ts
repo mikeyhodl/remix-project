@@ -4,6 +4,7 @@
  */
 
 import { AuthUser, AuthProvider } from './sso-api'
+import { NotificationItem } from './notification-center-api'
 
 // ==================== Credits ====================
 
@@ -685,5 +686,47 @@ export interface UserTag {
  */
 export interface UserTagsResponse {
   tags: UserTag[]
+}
+
+// ==================== Anonymous Membership Requests ====================
+
+export interface MembershipGroup {
+  id: number
+  name: string
+  display_name: string
+  description: string
+}
+
+export interface MembershipGroupsResponse {
+  groups: MembershipGroup[]
+}
+
+export interface MembershipSubmitRequest {
+  feature_group_id: number
+  nickname?: string
+  email?: string
+  comment?: string
+}
+
+export interface MembershipSubmitResponse {
+  claim_token: string
+  request_id: number
+}
+
+export interface MembershipStatusRequest {
+  id: number
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
+  nickname: string | null
+  comment: string | null
+  resolution_note: string | null
+  created_at: string
+  resolved_at: string | null
+  feature_group_name: string
+  feature_group_display_name: string
+}
+
+export interface MembershipStatusResponse {
+  request: MembershipStatusRequest
+  notifications: NotificationItem[]
 }
 

@@ -78,5 +78,7 @@ export interface INotificationCenterApi {
     markAllAsRead(): Promise<void>
     startPolling(): Promise<void>
     stopPolling(): Promise<void>
+    addLocalNotification(notification: NotificationItem, key?: string): Promise<number>
+    removeLocalNotification(id: number): Promise<void>
   }
 }

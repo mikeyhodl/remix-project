@@ -110,6 +110,7 @@ let requiredModules = [
   'indexedDbCache',
   'notificationCenter',
   'invitationManager',
+  'membershipRequest',
   'feedback',
   'cloudWorkspaces'
 ]

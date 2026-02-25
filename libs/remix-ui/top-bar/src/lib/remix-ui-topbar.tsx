@@ -23,6 +23,7 @@ import { LoginButton } from '@remix-ui/login'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { NotificationBell } from '../components/NotificationBell'
 import { FeedbackPanel } from '../components/FeedbackPanel'
+import { BetaPromoPill } from '../components/BetaPromoPill'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
@@ -663,6 +664,7 @@ export function RemixUiTopbar() {
               />
             )}
           </>
+          <BetaPromoPill plugin={plugin} />
           <NotificationBell className="ms-3" />
           {feedbackFormUrl && (
             <CustomTooltip placement="bottom" tooltipText="Send Feedback">

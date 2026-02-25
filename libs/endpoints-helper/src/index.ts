@@ -25,6 +25,7 @@ type EndpointUrls = {
     notifications: string;
     invite: string;
     feedback: string;
+    membershipRequests: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -54,6 +55,7 @@ const defaultUrls: EndpointUrls = {
   notifications: 'https://auth.api.remix.live:8443/notifications',
   invite: 'https://auth.api.remix.live:8443/invite',
   feedback: 'https://auth.api.remix.live:8443/feedback',
+  membershipRequests: 'https://auth.api.remix.live:8443/permissions/membership-requests/anonymous',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -83,6 +85,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   notifications: 'notifications',
   invite: 'invite',
   feedback: 'feedback',
+  membershipRequests: 'permissions/membership-requests/anonymous',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -138,6 +141,9 @@ const localhostUrls: EndpointUrls = {
 
   // FEEDBACK service
   feedback: 'https://auth.api.remix.live:8443/feedback',
+
+  // MEMBERSHIP REQUESTS (anonymous, no auth needed)
+  membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
 };
 
 const resolvedUrls: EndpointUrls = prefix
