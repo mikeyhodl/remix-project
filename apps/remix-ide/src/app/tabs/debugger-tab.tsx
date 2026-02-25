@@ -5,6 +5,7 @@ import * as packageJson from '../../../../../package.json'
 import React from 'react' // eslint-disable-line
 import { bleach } from '@remix-ui/helper'
 import { compilationFinishedToastMsg, compilingToastMsg, notFoundToastMsg, sourceVerificationNotAvailableToastMsg } from '@remix-ui/helper'
+import { ScopeFilterMode } from '@remix-project/remix-debug'
 
 const css = require('./styles/debugger-tab-styles') // eslint-disable-line
 
@@ -27,9 +28,11 @@ const profile = {
     'jumpTo',
     'getCallTreeScopes',
     'getAllDebugCache',
-    'getCurrentSourceLocation'
+    'getCurrentSourceLocation',
+    'getScopesAsNestedJSON',
+    'getStackAt'
   ],
-  events: [],
+  events: ['debuggingStarted', 'debuggingStopped', 'debuggingStepChanged'],
   icon: 'assets/img/debuggerLogo.webp',
   description: 'Debug transactions',
   kind: 'debugging',
@@ -67,7 +70,14 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
       this.call('notification', 'toast', sourceVerificationNotAvailableToastMsg())
     })
     const onReady = (api) => { this.api = api }
-    return <div className="overflow-hidden px-1" id='debugView'><DebuggerUI debuggerAPI={this} onReady={onReady} /></div>
+
+    // Expose jumpTo to window for E2E testing
+    // This makes the debugger's jumpTo method available from browser.execute() in Nightwatch tests
+    ;(window as any).jumpToDebuggerStep = (step: number) => {
+      this.jumpTo(step)
+    }
+
+    return <div className="overflow-hidden" id='debugView'><DebuggerUI debuggerAPI={this} onReady={onReady} /></div>
   }
 
   showMessage (title, message) {
@@ -270,6 +280,11 @@ export default class DebuggerTab extends DebuggerApiMixin(ViewPlugin) {
   getCallTreeScopes () {
     if (!this.debuggerBackend) return null
     return this.debuggerBackend.debugger.callTree.getScopes()
+  }
+
+  getScopesAsNestedJSON (filterMode: ScopeFilterMode, rootScopeId?: string) {
+    if (!this.debuggerBackend) return null
+    return this.debuggerBackend.debugger.callTree.getScopesAsNestedJSON(filterMode, rootScopeId)
   }
 
   /**

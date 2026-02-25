@@ -72,6 +72,13 @@ export interface GitHubLinkResponse {
   }
 }
 
+export interface GitHubTokenResponse {
+  access_token: string
+  login?: string
+  avatar_url?: string
+  scopes?: string[]
+}
+
 // ==================== SIWE ====================
 
 export interface SiweVerifyRequest {
@@ -119,6 +126,122 @@ export interface RefreshTokenResponse {
   refresh_token?: string
 }
 
+// ==================== Storage ====================
+
+/**
+ * Storage health check response
+ */
+export interface StorageHealthResponse {
+  ok: boolean
+  provider: string
+  message?: string
+}
+
+/**
+ * Storage configuration (limits and allowed types)
+ */
+export interface StorageConfig {
+  maxFileSize: number
+  maxTotalStorage: number
+  allowedMimeTypes: string[]
+  allowedExtensions: string[]
+}
+
+/**
+ * Request for presigned upload URL
+ */
+export interface PresignUploadRequest {
+  filename: string
+  folder?: string
+  contentType: string
+  fileSize?: number
+  /** Optional metadata to store with the file (e.g., workspaceName, userId) */
+  metadata?: Record<string, string>
+}
+
+/**
+ * Response with presigned upload URL
+ */
+export interface PresignUploadResponse {
+  url: string
+  headers: Record<string, string>
+  expiresAt: string
+  key: string
+}
+
+/**
+ * Request for presigned download URL
+ */
+export interface PresignDownloadRequest {
+  filename: string
+  folder?: string
+}
+
+/**
+ * Response with presigned download URL
+ */
+export interface PresignDownloadResponse {
+  url: string
+  expiresAt: string
+}
+
+/**
+ * File metadata stored in the system
+ */
+export interface StorageFile {
+  filename: string
+  folder: string
+  key: string
+  contentType: string
+  size: number
+  uploadedAt: string
+  lastModified: string
+  etag?: string
+  /** S3 object metadata (workspaceName, userId, etc.) */
+  metadata?: Record<string, string>
+}
+
+/**
+ * List of user's files
+ */
+export interface StorageFilesResponse {
+  files: StorageFile[]
+  totalSize: number
+  totalCount: number
+  nextCursor?: string
+}
+
+/**
+ * File list request options
+ */
+export interface StorageListOptions {
+  folder?: string
+  limit?: number
+  cursor?: string
+}
+
+/**
+ * Summary of a remote workspace
+ */
+export interface WorkspaceSummary {
+  id: string
+  backupCount: number
+  lastBackup: string | null
+  totalSize: number
+  /** Original workspace name from the most recent backup metadata */
+  workspaceName?: string
+  /** User ID who owns this remote workspace */
+  userId?: string
+  /** Names of local workspaces on this device that are linked to this remote ID */
+  localWorkspaceNames?: string[]
+}
+
+/**
+ * List of user's remote workspaces
+ */
+export interface WorkspacesResponse {
+  workspaces: WorkspaceSummary[]
+}
 // ==================== Permissions ====================
 
 export interface Permission {
@@ -436,3 +559,108 @@ export interface FeatureAccessCheckResponse {
   featureGroup: string
   hasAccess: boolean
 }
+
+// ==================== Invite Tokens ====================
+
+/**
+ * Action that will be performed when a token is redeemed
+ */
+export interface InviteTokenAction {
+  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag'
+  description: string
+  config?: Record<string, unknown>
+}
+
+/**
+ * Token info returned from validation
+ */
+export interface InviteTokenInfo {
+  name: string
+  description: string
+  expires_at: string | null
+  remaining_uses: number | null
+}
+
+/**
+ * Response from validate token endpoint
+ */
+export interface InviteValidateResponse {
+  valid: boolean
+  name?: string
+  description?: string
+  expires_at?: string | null
+  uses_remaining?: number | null
+  already_redeemed?: boolean
+  redeemed_at?: string | null
+  actions?: InviteTokenAction[]
+  error?: string
+  error_code?: 'NOT_FOUND' | 'INACTIVE' | 'EXPIRED' | 'NOT_STARTED' | 'EXHAUSTED' | 'MAX_USES_REACHED'
+}
+
+/**
+ * Request to redeem a token
+ */
+export interface InviteRedeemRequest {
+  token: string
+}
+
+/**
+ * Action result after redemption
+ */
+export interface InviteActionResult {
+  type: string
+  success: boolean
+  details?: Record<string, unknown>
+  error?: string
+}
+
+/**
+ * Response from redeem token endpoint
+ */
+export interface InviteRedeemResponse {
+  success: boolean
+  message?: string
+  error?: string
+  error_code?: 'NOT_FOUND' | 'INACTIVE' | 'EXPIRED' | 'NOT_STARTED' | 'EXHAUSTED' | 'ALREADY_REDEEMED'
+  redeemed_at?: string
+  actions_applied?: InviteActionResult[]
+  redemption?: {
+    id: number
+    redeemed_at: string
+  }
+}
+
+/**
+ * A redemption record
+ */
+export interface InviteRedemption {
+  id: number
+  token_name: string
+  token_description: string
+  redeemed_at: string
+  actions: InviteTokenAction[]
+}
+
+/**
+ * Response from my-redemptions endpoint
+ */
+export interface InviteRedemptionsResponse {
+  redemptions: InviteRedemption[]
+}
+
+/**
+ * A user tag
+ */
+export interface UserTag {
+  tag: string
+  source: 'invite_token' | 'admin' | 'system'
+  created_at: string
+}
+
+/**
+ * Response from my-tags endpoint
+ */
+export interface UserTagsResponse {
+  tags: UserTag[]
+}
+

@@ -1,11 +1,12 @@
 import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
-import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel } from '@remix/remix-ai-core';
+import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer, isOllamaAvailable, getBestAvailableModel, listModels } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
+import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 import { QueryParams } from '@remix-project/remix-lib'
@@ -22,10 +23,11 @@ const profile = {
     "code_insertion", "error_explaining", "vulnerability_check", 'generate',
     "initialize", 'chatPipe', 'ProcessChatRequestBuffer', 'isChatRequestPending',
     'resetChatRequestBuffer', 'setAssistantThrId',
-    'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel',
+    'getAssistantThrId', 'getAssistantProvider', 'setAssistantProvider', 'setModel', 'setOllamaModel',
+    'getSelectedModel', 'getModelAccess', 'getOllamaModels',
     'addMCPServer', 'removeMCPServer', 'getMCPConnectionStatus', 'getMCPResources', 'getMCPTools', 'executeMCPTool',
     'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers',
-    'loadMCPServersFromSettings', 'clearCaches'
+    'clearCaches'
   ],
   events: [],
   icon: 'assets/img/remix-logo-blue.png',
@@ -40,14 +42,15 @@ const profile = {
 // add Plugin<any, CustomRemixApi>
 export class RemixAIPlugin extends Plugin {
   aiIsActivated:boolean = false
-  remoteInferencer:RemoteInferencer = null
+  remoteInferencer:RemoteInferencer | OllamaInferencer | MCPInferencer = null
   isInferencing: boolean = false
   chatRequestBuffer: chatRequestBufferT<any> = null
   codeExpAgent: CodeExplainAgent
   securityAgent: SecurityAgent
   contractor: ContractAgent
   workspaceAgent: workspaceAgent
-  assistantProvider: string = 'mistralai' // default provider
+  selectedModel: AIModel = getDefaultModel() // default model
+  selectedModelId: string = getDefaultModel().id
   assistantThreadId: string = ''
   useRemoteInferencer:boolean = true
   completionAgent: CodeCompletionAgent
@@ -70,8 +73,26 @@ export class RemixAIPlugin extends Plugin {
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
 
-    // Load MCP servers from settings (after initialize() completes)
-    await this.loadMCPServersFromSettings();
+    // Initialize MCP servers with defaults (after initialize() completes)
+    this.mcpServers = mcpDefaultServersConfig.defaultServers;
+
+    // Initialize MCP inferencer if we have servers and remixMCPServer exists
+    if (this.mcpServers.length > 0 && this.remixMCPServer) {
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+        console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
+      });
+      this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+        console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
+      });
+
+      // Connect to enabled servers for status tracking
+      const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
+      if (enabledServers.length > 0) {
+        await this.mcpInferencer.connectAllServers();
+        this.emit('mcpServersLoaded');
+      }
+    }
   }
 
   async initialize(remoteModel?:IRemoteModel){
@@ -83,7 +104,9 @@ export class RemixAIPlugin extends Plugin {
       this.isInferencing = false
     })
 
-    this.setAssistantProvider(this.assistantProvider) // propagate the provider to the remote inferencer
+    // Always initialize with default model on page reload
+    await this.setModel(this.selectedModelId)
+
     this.aiIsActivated = true
 
     this.on('blockchain', 'transactionExecuted', async () => {
@@ -134,7 +157,6 @@ export class RemixAIPlugin extends Plugin {
     let newPrompt = await this.codeExpAgent.chatCommand(prompt)
     // add workspace context
     newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
-
     let result
     if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.answer(prompt, params)
@@ -190,8 +212,9 @@ export class RemixAIPlugin extends Plugin {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
+    params.model = 'claude-haiku-4-5'
     useRag = false
-    trackMatomoEvent(this, { category: 'ai', action: 'GenerateNewAIWorkspace', name: 'GenerateNewAIWorkspace', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
 
     if (useRag) {
@@ -233,9 +256,9 @@ export class RemixAIPlugin extends Plugin {
   async generateWorkspace (userPrompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
-    params.provider = this.assistantProvider
+    params.provider = this.selectedModel.provider
     useRag = false
-    trackMatomoEvent(this, { category: 'ai', action: 'GenerateNewAIWorkspace', name: 'WorkspaceAgentEdit', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
 
     await statusCallback?.('Performing workspace request...')
     if (useRag) {
@@ -302,7 +325,7 @@ export class RemixAIPlugin extends Plugin {
     else {
       console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
-    trackMatomoEvent(this, { category: 'ai', action: 'chatting', name: 'remixAI_chat', isClick: false })
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'remixAI_chat', isClick: false })
   }
 
   async ProcessChatRequestBuffer(params:IParams=GenerationParams){
@@ -333,72 +356,108 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async getAssistantProvider(){
-    return this.assistantProvider
+    // Legacy method for backwards compatibility
+    return this.selectedModel.provider
+  }
+
+  async getSelectedModel(){
+    return this.selectedModelId
   }
 
   async setAssistantProvider(provider: string) {
-    if (provider === 'openai' || provider === 'mistralai' || provider === 'anthropic') {
-      GenerationParams.provider = provider
-      CompletionParams.provider = provider
-      AssistantParams.provider = provider
+    const providerToModelMap: Record<string, string> = {
+      'openai': 'gpt-4-turbo',
+      'mistralai': 'mistral-medium-latest',
+      'anthropic': 'claude-sonnet-4-5',
+      'ollama': 'ollama'
+    }
+    const modelId = providerToModelMap[provider] || getDefaultModel().id
+    await this.setModel(modelId)
+  }
 
-      if (this.assistantProvider !== provider){
-        // clear the threadDds
-        this.assistantThreadId = ''
-        GenerationParams.threadId = ''
-        CompletionParams.threadId = ''
-        AssistantParams.threadId = ''
-      }
-      this.assistantProvider = provider
-
-      // Switch back to remote inferencer for cloud providers -- important
-      if (this.remoteInferencer && this.remoteInferencer instanceof OllamaInferencer) {
-        this.remoteInferencer = new RemoteInferencer()
-        this.remoteInferencer.event.on('onInference', () => {
-          this.isInferencing = true
-        })
-        this.remoteInferencer.event.on('onInferenceDone', () => {
-          this.isInferencing = false
-        })
-      }
-    } else if (provider === 'ollama') {
-      const isAvailable = await isOllamaAvailable();
-      if (!isAvailable) {
-        return
-      }
-
-      const bestModel = await getBestAvailableModel();
-      if (!bestModel) {
-        return
-      }
-
-      // Switch to Ollama inferencer
-      this.remoteInferencer = new OllamaInferencer(bestModel);
-      this.remoteInferencer.event.on('onInference', () => {
-        this.isInferencing = true
-      })
-      this.remoteInferencer.event.on('onInferenceDone', () => {
-        this.isInferencing = false
-      })
-
-      if (this.assistantProvider !== provider){
-        // clear the threadIds
-        this.assistantThreadId = ''
-        GenerationParams.threadId = ''
-        CompletionParams.threadId = ''
-        AssistantParams.threadId = ''
-      }
-      this.assistantProvider = provider
-    } else {
-      console.error(`Unknown assistant provider: ${provider}`)
+  async setModel(modelId: string) {
+    let model = getModelById(modelId)
+    if (!model) {
+      model = getDefaultModel()
+      modelId = model.id
     }
 
-    // If MCP is enabled, update it to use the new Ollama inferencer
+    // Store previous model for comparison
+    const previousModelId = this.selectedModelId
+
+    this.selectedModelId = modelId
+    this.selectedModel = model
+
+    // Update inference parameters
+    GenerationParams.provider = model.provider
+    GenerationParams.model = modelId
+    CompletionParams.provider = model.provider
+    CompletionParams.model = modelId
+    AssistantParams.provider = model.provider
+    AssistantParams.model = modelId
+
+    // Clear thread IDs when switching models
+    if (previousModelId !== modelId) {
+      this.assistantThreadId = ''
+      GenerationParams.threadId = ''
+      CompletionParams.threadId = ''
+      AssistantParams.threadId = ''
+    }
+
+    // Switch inferencer based on provider
+    if (model.provider === 'ollama') {
+      // Ollama requires sub-model selection, use best available for now
+      const isAvailable = await isOllamaAvailable();
+      if (!isAvailable) {
+        console.error('Ollama is not available. Please ensure Ollama is running. Falling back to default model.')
+        const defaultModel = getDefaultModel()
+        model = defaultModel
+        modelId = defaultModel.id
+        this.selectedModelId = modelId
+        this.selectedModel = model
+        GenerationParams.provider = model.provider
+        GenerationParams.model = modelId
+        CompletionParams.provider = model.provider
+        CompletionParams.model = modelId
+        AssistantParams.provider = model.provider
+        AssistantParams.model = modelId
+      } else {
+        const bestModel = await getBestAvailableModel();
+        if (!bestModel) {
+          console.error('No Ollama models available. Falling back to default model.')
+          // Fall back to default model
+          const defaultModel = getDefaultModel()
+          model = defaultModel
+          modelId = defaultModel.id
+          this.selectedModelId = modelId
+          this.selectedModel = model
+          GenerationParams.provider = model.provider
+          GenerationParams.model = modelId
+          CompletionParams.provider = model.provider
+          CompletionParams.model = modelId
+          AssistantParams.provider = model.provider
+          AssistantParams.model = modelId
+        } else {
+          // Switch to Ollama inferencer
+          this.remoteInferencer = new OllamaInferencer(bestModel);
+          this.remoteInferencer.event.on('onInference', () => {
+            this.isInferencing = true
+          })
+          this.remoteInferencer.event.on('onInferenceDone', () => {
+            this.isInferencing = false
+          })
+        }
+      }
+    }
+
+    // Update MCP inferencer if enabled
     if (this.mcpEnabled) {
       this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+        // Handle server connected
       })
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+        // Handle server error
       })
       this.mcpInferencer.event.on('onInference', () => {
         this.isInferencing = true
@@ -408,31 +467,73 @@ export class RemixAIPlugin extends Plugin {
       })
       await this.mcpInferencer.connectAllServers();
     }
+
+    // Emit event for UI updates
+    this.emit('modelChanged', modelId)
   }
 
-  async setModel(modelName: string) {
-    if (this.assistantProvider === 'ollama' && this.remoteInferencer instanceof OllamaInferencer) {
-      try {
-        const isAvailable = await isOllamaAvailable();
-        if (!isAvailable) {
-          console.error('Ollama is not available. Please ensure Ollama is running.')
-          return
-        }
-
-        this.remoteInferencer = new OllamaInferencer(modelName);
-        this.remoteInferencer.event.on('onInference', () => {
-          this.isInferencing = true
-        })
-        this.remoteInferencer.event.on('onInferenceDone', () => {
-          this.isInferencing = false
-        })
-
-      } catch (error) {
-        console.error('Failed to set Ollama model:', error)
-      }
-    } else {
-      console.warn(`setModel is only supported for Ollama provider. Current provider: ${this.assistantProvider}`)
+  async setOllamaModel(ollamaModelName: string) {
+    // Special method for selecting specific Ollama model after "Ollama" is selected
+    if (this.selectedModel.provider !== 'ollama') {
+      console.warn('setOllamaModel should only be called when Ollama provider is selected')
+      return
     }
+
+    const isAvailable = await isOllamaAvailable();
+    if (!isAvailable) {
+      console.error('Ollama is not available. Please ensure Ollama is running.')
+      return
+    }
+
+    this.remoteInferencer = new OllamaInferencer(ollamaModelName);
+    this.remoteInferencer.event.on('onInference', () => {
+      this.isInferencing = true
+    })
+    this.remoteInferencer.event.on('onInferenceDone', () => {
+      this.isInferencing = false
+    })
+
+    // Update MCP if enabled
+    if (this.mcpEnabled && this.mcpInferencer) {
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      await this.mcpInferencer.connectAllServers();
+    }
+  }
+
+  async getModelAccess(): Promise<string[]> {
+    try {
+      const token = localStorage.getItem('remix_access_token')
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+
+      const response = await fetch(`${endpointUrls.sso}/accounts`, {
+        credentials: 'include',
+        headers
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data.allowed_models || []
+      }
+    } catch (err) {
+      console.error('Failed to fetch model access:', err)
+    }
+
+    // Fallback: default model + ollama
+    return [getDefaultModel().id, 'ollama']
+  }
+
+  async getOllamaModels(): Promise<string[]> {
+    if (this.selectedModel.provider !== 'ollama') {
+      throw new Error('Ollama is not the selected provider')
+    }
+
+    const available = await isOllamaAvailable()
+    if (!available) {
+      throw new Error('Ollama is not running')
+    }
+
+    const models = await listModels()
+    return models
   }
 
   isChatRequestPending(){
@@ -446,16 +547,12 @@ export class RemixAIPlugin extends Plugin {
   // MCP Server Management Methods
   async addMCPServer(server: IMCPServer): Promise<void> {
     try {
-      // Add to local configuration
       this.mcpServers.push(server);
 
       // If MCP inferencer is active, add the server dynamically
       if (this.mcpInferencer) {
         await this.mcpInferencer.addMCPServer(server);
       }
-
-      // Persist configuration
-      await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
     } catch (error) {
       console.error(`[RemixAI Plugin] Failed to add MCP server ${server.name}:`, error);
       throw error;
@@ -464,7 +561,6 @@ export class RemixAIPlugin extends Plugin {
 
   async removeMCPServer(serverName: string): Promise<void> {
     try {
-
       const serverToRemove = this.mcpServers.find(s => s.name === serverName);
       if (serverToRemove?.isBuiltIn) {
         throw new Error(`Cannot remove built-in server: ${serverName}`);
@@ -475,8 +571,6 @@ export class RemixAIPlugin extends Plugin {
       if (this.mcpInferencer) {
         await this.mcpInferencer.removeMCPServer(serverName);
       }
-
-      await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(this.mcpServers));
     } catch (error) {
       console.error(`[RemixAI Plugin] Failed to remove MCP server ${serverName}:`, error);
       throw error;
@@ -521,70 +615,9 @@ export class RemixAIPlugin extends Plugin {
     throw new Error('MCP provider not active');
   }
 
-  async loadMCPServersFromSettings(): Promise<void> {
-    try {
-      const savedServers = await this.call('settings', 'get', 'settings/mcp/servers');
-      if (savedServers) {
-        const loadedServers = JSON.parse(savedServers);
-        // Get built-in servers from config file
-        const builtInServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers.filter(s => s.isBuiltIn);
-
-        // Add built-in servers if they don't exist, or ensure they're enabled if they do
-        for (const builtInServer of builtInServers) {
-          const existingServer = loadedServers.find(s => s.name === builtInServer.name);
-          if (!existingServer) {
-            loadedServers.push(builtInServer);
-          } else if (!existingServer.enabled || !existingServer.isBuiltIn) {
-            // Force enable and mark as built-in
-            existingServer.enabled = true;
-            existingServer.isBuiltIn = true;
-          }
-        }
-
-        this.mcpServers = loadedServers;
-        const originalServers = JSON.parse(savedServers);
-        const serversChanged = loadedServers.length !== originalServers.length ||
-                               loadedServers.some(server => {
-                                 const original = originalServers.find(s => s.name === server.name);
-                                 return !original || (server.isBuiltIn && (!original.enabled || !original.isBuiltIn));
-                               });
-
-        if (serversChanged) {
-          await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(loadedServers));
-        }
-      } else {
-        // Initialize with default MCP servers from config file
-        const defaultServers: IMCPServer[] = mcpDefaultServersConfig.defaultServers;
-        this.mcpServers = defaultServers;
-        // Save default servers to settings
-        await this.call('settings', 'set', 'settings/mcp/servers', JSON.stringify(defaultServers));
-      }
-
-      // Initialize MCP inferencer if we have servers and it's not already initialized
-      // NOTE: Always initialize if remixMCPServer exists (internal server should always connect)
-      // The mcpEnabled flag only controls whether MCP is used to enhance AI requests
-      if (this.mcpServers.length > 0 && !this.mcpInferencer && this.remixMCPServer) {
-        this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
-        this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-          console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
-        });
-        this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-          console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
-        });
-
-        // Connect to enabled servers for status tracking
-        const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
-        if (enabledServers.length > 0) {
-          await this.mcpInferencer.connectAllServers();
-          this.emit('mcpServersLoaded');
-        }
-      }
-    } catch (error) {
-      this.mcpServers = [];
-    }
-  }
-
   async enableMCPEnhancement(): Promise<void> {
+    this.mcpEnabled = true;
+
     if (!this.mcpServers || this.mcpServers.length === 0) {
       return;
     }
@@ -604,8 +637,6 @@ export class RemixAIPlugin extends Plugin {
 
       await this.mcpInferencer.connectAllServers();
     }
-
-    this.mcpEnabled = true;
   }
 
   async disableMCPEnhancement(): Promise<void> {

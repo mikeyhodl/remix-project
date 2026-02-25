@@ -1,10 +1,13 @@
 import { fileDecoration, FileDecorationIcons } from '@remix-ui/file-decorators'
 import { CustomTooltip } from '@remix-ui/helper'
 import { Plugin } from '@remixproject/engine'
-import React, { useState, useRef, useEffect, useReducer, useContext } from 'react' // eslint-disable-line
+
+import React, { useState, useRef, useEffect, useReducer, useContext, useCallback } from 'react' // eslint-disable-line
 import { FormattedMessage } from 'react-intl'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import './remix-ui-tabs.css'
+import { QuickDappBanner } from './components/QuickDappBanner'
+import { AIRequestForm } from '@remix-ui/run-tab'
 import { values } from 'lodash'
 import { AppContext } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
@@ -24,6 +27,8 @@ export interface TabsUIProps {
   onReady: (api: any) => void
   themeQuality: string
   maximize: boolean
+  isDebugging?: boolean
+  canRunScenario: boolean
 }
 
 export interface Tab {
@@ -86,10 +91,12 @@ export const TabsUI = (props: TabsUIProps) => {
   const tabsRef = useRef({})
   const tabsElement = useRef(null)
   const [ai_switch, setAI_switch] = useState<boolean>(true)
+  const [bannerVisible, setBannerVisible] = useState<boolean>(true)
   const tabs = useRef(props.tabs)
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
   const { trackMatomoEvent } = useContext(TrackingContext)
+  const canRunScenario = props.canRunScenario
 
   const compileSeq = useRef(0)
   const compileWatchdog = useRef<number | null>(null)
@@ -434,7 +441,29 @@ export const TabsUI = (props: TabsUIProps) => {
     props.plugin.on(compilerName, 'compilationFinished', onFinished)
   }
 
+  const handleRunScenario = async () => {
+    try {
+      const currentFile = await props.plugin.call('fileManager', 'getCurrentFile')
+      if (!currentFile) {
+        await props.plugin.call('notification', 'toast', 'No file selected.')
+        return
+      }
+      setCompileState('compiling')
+      await props.plugin.call('udappTransactions', 'runScenario', currentFile)
+      setCompileState('compiled')
+    } catch (error) {
+      console.error('Error running scenario:', error)
+      await props.plugin.call('notification', 'toast', `Error running scenario: ${error.message}`)
+      setCompileState('idle')
+    }
+  }
+
   const handleCompileClick = async () => {
+    if (canRunScenario) {
+      await handleRunScenario()
+      return
+    }
+
     setCompileState('compiling')
     trackMatomoEvent?.({
       category: 'editor',
@@ -572,8 +601,171 @@ export const TabsUI = (props: TabsUIProps) => {
     props.plugin.call('notification', 'toast', text, duration)
   }
 
+  const handleQuickDappBannerClose = () => {
+    setBannerVisible(false)
+  }
+
+  const handleQuickDappStartNow = async () => {
+    const currentFile = tabsState.name
+
+    try {
+      const instances = await props.plugin.call('udappDeployedContracts', 'getDeployedContracts') || []
+
+      const currentFileName = currentFile.split('/').pop()
+      const matchingInstances = instances.filter((inst: any) => {
+        const instFile = inst.contractData?.contract?.file || inst.filePath || ''
+        return instFile.endsWith(currentFileName)
+      })
+
+      if (matchingInstances.length === 0) {
+        props.plugin.call('notification', 'modal', {
+          id: 'quick-dapp-no-instance',
+          title: 'No Deployed Contracts',
+          message: `No deployed contracts found for "${currentFileName}".\n\nWe'll compile your contract and take you to the Deploy & Run tab.\n\nPlease deploy to your desired network, then click "Start now" again.`,
+          modalType: 'confirm',
+          okLabel: 'Compile & Continue',
+          cancelLabel: 'Cancel',
+          okFn: async () => {
+            try {
+              const filePath = currentFile.indexOf('/') !== -1
+                ? currentFile.substr(currentFile.indexOf('/') + 1)
+                : currentFile
+              await props.plugin.call('solidity', 'compile', filePath)
+              await props.plugin.call('menuicons', 'select', 'udapp')
+            } catch (e) {
+              console.error('Compile error:', e)
+              props.plugin.call('notification', 'toast', 'Compilation failed. Please check your contract.')
+            }
+          },
+          cancelFn: () => {}
+        })
+      } else if (matchingInstances.length === 1) {
+        const inst = matchingInstances[0]
+        props.plugin.call('notification', 'modal', {
+          id: 'quick-dapp-confirm-instance',
+          title: 'Create DApp',
+          message: `Deployed contract found:\n\n• ${inst.name} at ${inst.address}\n\nCreate a DApp with this contract?`,
+          modalType: 'confirm',
+          okLabel: 'Create DApp',
+          cancelLabel: 'Cancel',
+          okFn: async () => {
+            await openSparkleModal(inst)
+          },
+          cancelFn: () => {}
+        })
+      } else {
+        let selectedIndex = 0
+
+        const InstanceSelector = () => (
+          <div>
+            <div className="mb-3">Deployed contracts from "{currentFileName}":</div>
+            <select
+              className="form-select"
+              defaultValue="0"
+              onChange={(e) => { selectedIndex = parseInt(e.target.value) }}
+            >
+              {matchingInstances.map((inst: any, idx: number) => (
+                <option key={idx} value={idx}>
+                  {inst.name} at {inst.address.slice(0, 10)}...{inst.address.slice(-8)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+
+        props.plugin.call('notification', 'modal', {
+          id: 'quick-dapp-select-instance',
+          title: 'Select Contract Instance',
+          message: <InstanceSelector />,
+          modalType: 'custom',
+          okLabel: 'Create DApp',
+          cancelLabel: 'Cancel',
+          okFn: async () => {
+            await openSparkleModal(matchingInstances[selectedIndex])
+          },
+          cancelFn: () => {}
+        })
+      }
+    } catch (error) {
+      console.error('Quick DApp error:', error)
+      props.plugin.call('notification', 'toast', 'Error checking deployed contracts')
+    }
+  }
+
+  const openSparkleModal = async (instance: any) => {
+    try {
+      const data = await props.plugin.call('compilerArtefacts', 'getArtefactsByContractName', instance.name)
+
+      const descriptionObj: any = await new Promise((resolve, reject) => {
+        let getFormData: () => Promise<any>
+
+        const modalContent = {
+          id: 'generate-website-ai-banner',
+          title: 'Generate a Dapp UI with AI',
+          message: <AIRequestForm onMount={(fn) => { getFormData = fn }} />,
+          modalType: 'custom',
+          okLabel: 'Generate',
+          cancelLabel: 'Cancel',
+          okFn: async () => {
+            if (getFormData) {
+              const formData = await getFormData()
+              resolve(formData)
+            } else {
+              reject(new Error('Form data not initialized'))
+            }
+          },
+          cancelFn: () => reject(new Error('Canceled')),
+          hideFn: () => reject(new Error('Hide'))
+        }
+        props.plugin.call('notification', 'modal', modalContent)
+      })
+
+      const providerObject = await props.plugin.call('blockchain', 'getProviderObject')
+      const providerName = providerObject?.name || 'vm-unknown'
+      const isVM = providerName.startsWith('vm')
+
+      let chainId: string
+      if (isVM) {
+        chainId = providerName
+      } else {
+        const network = await props.plugin.call('network', 'detectNetwork')
+        chainId = network?.id?.toString() || providerName
+      }
+
+      await props.plugin.call('quick-dapp-v2', 'createDapp', {
+        description: descriptionObj.text,
+        contractName: instance.name,
+        address: instance.address,
+        abi: instance.abi || instance.contractData?.abi,
+        chainId: chainId,
+        compilerData: data,
+        isBaseMiniApp: descriptionObj.isBaseMiniApp,
+        image: descriptionObj.image,
+        figmaUrl: descriptionObj.figmaUrl,
+        figmaToken: descriptionObj.figmaToken,
+        sourceFilePath: tabsState.name
+      })
+
+      await props.plugin.call('menuicons', 'select', 'quick-dapp-v2')
+
+    } catch (error) {
+      if (error.message !== 'Canceled' && error.message !== 'Hide') {
+        console.error('Error generating DApp:', error)
+        props.plugin.call('notification', 'toast', 'Error generating DApp')
+      }
+    }
+  }
+
+  useEffect(() => {
+    setBannerVisible(true)
+  }, [tabsState.selectedIndex])
+
+  const shouldShowQuickDappBanner = tabsState.currentExt === 'sol' && bannerVisible
+
   let mainLabel = ''
-  if (tabsState.currentExt === 'sql') {
+  if (canRunScenario) {
+    mainLabel = compileState === 'compiling' ? 'Running...' : 'Run'
+  } else if (tabsState.currentExt === 'sql') {
     mainLabel = 'Run SQL'
   } else if (isVegaVisualization) {
     mainLabel = 'Generate Visualization'
@@ -630,106 +822,188 @@ export const TabsUI = (props: TabsUIProps) => {
   if (isVegaVisualization) {
     btnDisabled = false
   }
+
+  const handleAskRemixAI = async () => {
+    try {
+      // When debugging is active, ensure AI assistant is always on the right side
+      if (props.isDebugging) {
+        // First, activate the AI assistant to ensure it's loaded
+        await props.plugin.call('manager', 'activatePlugin', 'remixaiassistant')
+
+        // Check if AI assistant is currently active in the left side panel
+        const leftPanelActive = await props.plugin.call('sidePanel', 'currentFocus')
+
+        // Check if AI assistant is currently active in the right side panel
+        const rightPanelActive = await props.plugin.call('rightSidePanel', 'currentFocus')
+
+        if (leftPanelActive === 'remixaiassistant') {
+          // AI is on the left side during debugging - move it to the right side
+          const profile = await props.plugin.call('remixaiassistant', 'getProfile')
+          await props.plugin.call('sidePanel', 'pinView', profile)
+        } else if (rightPanelActive !== 'remixaiassistant') {
+          // AI is not on either panel - pin it to the right side
+          const profile = await props.plugin.call('remixaiassistant', 'getProfile')
+          await props.plugin.call('sidePanel', 'pinView', profile)
+        }
+      }
+
+      // Show right side panel if it's hidden
+      const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+      if (isPanelHidden) {
+        await props.plugin.call('rightSidePanel', 'togglePanel')
+      }
+      await props.plugin.call('menuicons', 'select', 'remixaiassistant')
+
+      // Wait a bit for the panel to open and then send the debugging prompt
+      setTimeout(async () => {
+        const message = 'Give me more info about current debugging session'
+        await props.plugin.call('remixAI', 'chatPipe', 'code_explaining', '', '', message)
+      }, 500)
+    } catch (err) {
+      console.error('Failed to open RemixAI:', err)
+    }
+  }
+
+  if (canRunScenario) {
+    btnDisabled = compileState === 'compiling'
+  }
   return (
-    <div
-      className={`remix-ui-tabs justify-content-between  border-0 header nav-tabs ${
-        appContext.appState.connectedToDesktop === desktopConnectionType .disabled ? 'd-flex' : 'd-none'
-      }`}
-      data-id="tabs-component"
-    >
-      <div className="d-flex flex-row" style={{ maxWidth: 'fit-content', width: '99%' }}>
-        <div className="d-flex flex-row justify-content-center align-items-center m-1 mt-1">
-          <div className="d-flex align-items-center m-1">
-            <div className="btn-group" role="group" data-id="compile_group" aria-label="compile group">
-              <CustomTooltip
-                placement="bottom"
-                tooltipId="overlay-tooltip-run-script"
-                tooltipText={
-                  <span>
-                    {tabsState.currentExt === 'js' || tabsState.currentExt === 'ts' ? (
-                      <FormattedMessage id="remixUiTabs.tooltipText1" />
-                    ) : tabsState.currentExt === 'sol' || tabsState.currentExt === 'yul' || tabsState.currentExt === 'circom' || tabsState.currentExt === 'vy' ? (
-                      <FormattedMessage id="remixUiTabs.tooltipText2" />
-                    ) : (
-                      <FormattedMessage id="remixUiTabs.tooltipText3" />
-                    )}
-                  </span>
-                }
-              >
-                <button
-                  className="btn btn-primary d-flex align-items-center justify-content-center"
-                  data-id="compile-action"
-                  style={{
-                    padding: "4px 8px",
-                    height: "28px",
-                    fontFamily: "Nunito Sans, sans-serif",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    lineHeight: "14px",
-                    whiteSpace: "nowrap",
-                    borderRadius: "4px 0 0 4px"
-                  }}
-                  disabled={btnDisabled}
-                  onClick={handleCompileClick}
+    <>
+      <div
+        className={`remix-ui-tabs justify-content-between  border-0 header nav-tabs ${
+          appContext.appState.connectedToDesktop === desktopConnectionType .disabled ? 'd-flex' : 'd-none'
+        }`}
+        data-id="tabs-component"
+      >
+        <div className="d-flex flex-row" style={{ maxWidth: 'fit-content', width: '99%' }}>
+          <div className="d-flex flex-row justify-content-center align-items-center m-1 mt-1">
+            <div className="d-flex align-items-center m-1">
+              {props.isDebugging ? (
+                <CustomTooltip
+                  placement="bottom"
+                  tooltipId="overlay-tooltip-ask-remixai"
+                  tooltipText={<span>Ask RemixAI about debugging</span>}
                 >
-                  <i className={
-                    compileState === 'compiled' ? "fas fa-check"
-                      : "fas fa-play"
-                  }></i>
-                  <span className="ms-2" style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
-                    {mainLabel}
-                  </span>
-                </button>
+                  <button
+                    className="btn btn-ai d-flex align-items-center justify-content-center border-0 px-3 py-1"
+                    data-id="ask-remixai-action"
+                    style={{
+                      fontFamily: "Nunito Sans, sans-serif",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      lineHeight: "14px",
+                      whiteSpace: "nowrap",
+                      height: "28px"
+                    }}
+                    onClick={handleAskRemixAI}
+                  >
+                    <img src="assets/img/remixAI_small.svg" alt="Remix AI" style={{ width: "16px", height: "16px" }} />
+                    <span style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
+                      Ask RemixAI
+                    </span>
+                  </button>
+                </CustomTooltip>
+              ) : (
+                <>
+                  <div className="btn-group" role="group" data-id="compile_group" aria-label="compile group">
+                    <CustomTooltip
+                      placement="bottom"
+                      tooltipId="overlay-tooltip-run-script"
+                      tooltipText={
+                        <span>
+                          {tabsState.currentExt === 'js' || tabsState.currentExt === 'ts' ? (
+                            <FormattedMessage id="remixUiTabs.tooltipText1" />
+                          ) : tabsState.currentExt === 'sol' || tabsState.currentExt === 'yul' || tabsState.currentExt === 'circom' || tabsState.currentExt === 'vy' ? (
+                            <FormattedMessage id="remixUiTabs.tooltipText2" />
+                          ) : (
+                            <FormattedMessage id="remixUiTabs.tooltipText3" />
+                          )}
+                        </span>
+                      }
+                    >
+                      <button
+                        className="btn btn-primary d-flex align-items-center justify-content-center"
+                        data-id="compile-action"
+                        style={{
+                          padding: "4px 8px",
+                          height: "28px",
+                          fontFamily: "Nunito Sans, sans-serif",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          lineHeight: "14px",
+                          whiteSpace: "nowrap",
+                          borderRadius: "4px 0 0 4px"
+                        }}
+                        disabled={btnDisabled}
+                        onClick={handleCompileClick}
+                      >
+                        <i className={
+                          compileState === 'compiled' ? "fas fa-check"
+                            : "fas fa-play"
+                        }></i>
+                        <span className="ms-2" style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
+                          {mainLabel}
+                        </span>
+                      </button>
+                    </CustomTooltip>
+                  </div>
+                  {dropDown}
+                </>
+              )}
+            </div>
+
+            <div className="d-flex border-start ms-1 align-items-center" style={{ height: "3em" }}>
+              <CustomTooltip placement="bottom" tooltipId="overlay-tooltip-zoom-out" tooltipText={<FormattedMessage id="remixUiTabs.zoomOut" />}>
+                <span data-id="tabProxyZoomOut" className="btn fas fa-search-minus text-dark ps-2 pe-0 py-0 d-flex" onClick={() => props.onZoomOut()}></span>
+              </CustomTooltip>
+              <CustomTooltip placement="bottom" tooltipId="overlay-tooltip-run-zoom-in" tooltipText={<FormattedMessage id="remixUiTabs.zoomIn" />}>
+                <span data-id="tabProxyZoomIn" className="btn fas fa-search-plus text-dark ps-2 pe-0 py-0 d-flex" onClick={() => props.onZoomIn()}></span>
               </CustomTooltip>
             </div>
-            {dropDown}
           </div>
-
-          <div className="d-flex border-start ms-2 align-items-center" style={{ height: "3em" }}>
-            <CustomTooltip placement="bottom" tooltipId="overlay-tooltip-zoom-out" tooltipText={<FormattedMessage id="remixUiTabs.zoomOut" />}>
-              <span data-id="tabProxyZoomOut" className="btn fas fa-search-minus text-dark ps-2 pe-0 py-0 d-flex" onClick={() => props.onZoomOut()}></span>
-            </CustomTooltip>
-            <CustomTooltip placement="bottom" tooltipId="overlay-tooltip-run-zoom-in" tooltipText={<FormattedMessage id="remixUiTabs.zoomIn" />}>
-              <span data-id="tabProxyZoomIn" className="btn fas fa-search-plus text-dark ps-2 pe-0 py-0 d-flex" onClick={() => props.onZoomIn()}></span>
-            </CustomTooltip>
-          </div>
-        </div>
-        <Tabs
-          className="tab-scroll"
-          selectedIndex={tabsState.selectedIndex}
-          domRef={(domEl) => {
-            if (tabsElement.current) return
-            tabsElement.current = domEl
-            tabsElement.current.addEventListener('wheel', transformScroll)
-          }}
-          onSelect={(index) => {
-            props.onSelect(index)
-            currentIndexRef.current = index
-            const ext = getExt(props.tabs[currentIndexRef.current].name)
-            props.plugin.emit('extChanged', ext)
-            dispatch({
-              type: 'SELECT_INDEX',
-              payload: index,
-              ext: getExt(props.tabs[currentIndexRef.current].name)
-            })
-            setCompileState('idle')
-          }}
-        >
-          <TabList className="d-flex flex-row align-items-center">
-            {props.tabs.map((tab, i) => (
-              <Tab className={tab.show ? '' : 'd-none'} key={tab.name} data-id={tab.id}>
-                {renderTab(tab, i)}
-              </Tab>
+          <Tabs
+            className="tab-scroll"
+            selectedIndex={tabsState.selectedIndex}
+            domRef={(domEl) => {
+              if (tabsElement.current) return
+              tabsElement.current = domEl
+              tabsElement.current.addEventListener('wheel', transformScroll)
+            }}
+            onSelect={(index) => {
+              props.onSelect(index)
+              currentIndexRef.current = index
+              const ext = getExt(props.tabs[currentIndexRef.current].name)
+              props.plugin.emit('extChanged', ext)
+              dispatch({
+                type: 'SELECT_INDEX',
+                payload: index,
+                ext: getExt(props.tabs[currentIndexRef.current].name)
+              })
+              setCompileState('idle')
+            }}
+          >
+            <TabList className="d-flex flex-row align-items-center">
+              {props.tabs.map((tab, i) => (
+                <Tab className={tab.show ? '' : 'd-none'} key={tab.name} data-id={tab.id}>
+                  {renderTab(tab, i)}
+                </Tab>
+              ))}
+              <div style={{ minWidth: '4rem', height: '1rem' }} id="dummyElForLastXVisibility"></div>
+            </TabList>
+            {props.tabs.map((tab) => (
+              <TabPanel className={tab.show ? '' : 'd-none'} key={tab.name}></TabPanel>
             ))}
-            <div style={{ minWidth: '4rem', height: '1rem' }} id="dummyElForLastXVisibility"></div>
-          </TabList>
-          {props.tabs.map((tab) => (
-            <TabPanel className={tab.show ? '' : 'd-none'} key={tab.name}></TabPanel>
-          ))}
-        </Tabs>
+          </Tabs>
 
+        </div>
       </div>
-    </div>
+      {shouldShowQuickDappBanner && (
+        <QuickDappBanner
+          onClose={handleQuickDappBannerClose}
+          onStartNow={handleQuickDappStartNow}
+        />
+      )}
+    </>
   )
 }
 
