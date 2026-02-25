@@ -16,6 +16,8 @@ export {
   deleteCloudWorkspaceAction,
   refreshCloudWorkspaces,
   startFileChangeTracking,
+  enableCloud,
+  disableCloud,
 } from './cloud-workspace-actions'
 export {
   enableCloudFSObserver,

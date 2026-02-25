@@ -69,9 +69,18 @@ class CloudStore extends EventEmitter {
     this.emit('change', this.state)
   }
 
-  /** Deactivate cloud mode (logout) */
+  /** Deactivate cloud mode (logout — resets everything) */
   exitCloudMode() {
     this.state = { ...initialState }
+    this.emit('change', this.state)
+  }
+
+  /** Deactivate cloud mode but keep auth state (toggle off) */
+  disableCloud() {
+    this.state = {
+      ...initialState,
+      isAuthenticated: this.state.isAuthenticated,
+    }
     this.emit('change', this.state)
   }
 

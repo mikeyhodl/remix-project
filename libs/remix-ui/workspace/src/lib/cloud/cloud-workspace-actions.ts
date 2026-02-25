@@ -18,6 +18,7 @@ import {
   updateCloudWorkspace as apiUpdate,
   deleteCloudWorkspace as apiDelete,
   listCloudWorkspaces as apiList,
+  fetchSTSToken,
 } from './cloud-workspace-api'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
 import {
@@ -113,6 +114,83 @@ export function exitCloudProvider(): void {
 
   _plugin.fileProviders.workspace = _originalProvider
   _originalProvider = null
+}
+
+// ── Cloud Toggle ─────────────────────────────────────────────
+
+/**
+ * Enable cloud mode for an already-authenticated user.
+ *
+ * Fetches workspaces + STS token, swaps the provider, enters cloud mode,
+ * and switches to the last-active (or first) cloud workspace.
+ */
+export async function enableCloud(): Promise<void> {
+  if (!_plugin) throw new Error('Cloud plugin not initialized')
+  if (cloudStore.isCloudMode) return  // already on
+
+  cloudStore.setLoading(true)
+  try {
+    const [workspaces, stsToken] = await Promise.all([
+      apiList(),
+      fetchSTSToken(),
+    ])
+
+    enterCloudProvider(workspaces)
+    cloudStore.enterCloudMode(workspaces, stsToken)
+
+    if (workspaces.length > 0) {
+      const lastWorkspaceName = localStorage.getItem('currentWorkspace')
+      const targetWs = workspaces.find(w => w.name === lastWorkspaceName) || workspaces[0]
+      try {
+        await switchToCloudWorkspace(targetWs, (status) => {
+          cloudStore.updateSyncStatus(targetWs.uuid, status)
+        })
+        cloudStore.setActiveCloudWorkspace(targetWs.uuid)
+        const workspaceProvider = _plugin.fileProviders?.workspace
+        if (workspaceProvider) {
+          startFileChangeTracking(workspaceProvider, targetWs.uuid)
+        }
+      } catch (err) {
+        console.error('[enableCloud] Failed to switch to cloud workspace:', err)
+      }
+    }
+  } catch (err) {
+    console.error('[enableCloud] Failed to enable cloud:', err)
+    cloudStore.setError(err.message)
+    cloudStore.setLoading(false)
+    throw err
+  }
+}
+
+/**
+ * Disable cloud mode without logging out.
+ *
+ * Deactivates sync, restores the original provider, updates the store,
+ * and switches back to a legacy workspace.
+ */
+export async function disableCloud(): Promise<void> {
+  if (!_plugin) throw new Error('Cloud plugin not initialized')
+  if (!cloudStore.isCloudMode) return  // already off
+
+  // 1. Deactivate sync engine
+  cloudSyncEngine.deactivate()
+
+  // 2. Restore original file provider
+  exitCloudProvider()
+
+  // 3. Update store — keeps isAuthenticated = true
+  cloudStore.disableCloud()
+
+  // 4. Switch to the last used legacy workspace (or default)
+  try {
+    const lastWorkspaceName = localStorage.getItem('currentWorkspace')
+    if (lastWorkspaceName) {
+      await _plugin.fileProviders.workspace.setWorkspace(lastWorkspaceName)
+      await _plugin.setWorkspace({ name: lastWorkspaceName, isLocalhost: false })
+    }
+  } catch (err) {
+    console.warn('[disableCloud] Failed to switch to legacy workspace:', err)
+  }
 }
 
 /**

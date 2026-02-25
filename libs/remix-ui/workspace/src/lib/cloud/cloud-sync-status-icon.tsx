@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useCloudStore } from './cloud-store'
 import { WorkspaceSyncStatus } from './types'
 import { CustomTooltip } from '@remix-ui/helper'
@@ -127,43 +127,122 @@ export const CloudSyncStatusIcon: React.FC<CloudSyncStatusIconProps> = ({
     )
 }
 
-// ── Topbar-sized indicator ────────────────────────────────────────────
+// ── Cloud Toggle (with integrated sync status icon) ───────────────────
+
+interface CloudToggleProps {
+  /** Called when the user clicks while NOT authenticated — should trigger login */
+  onLogin: () => void
+  /** Called when the user toggles cloud ON while authenticated */
+  onEnableCloud: () => void
+  /** Called when the user toggles cloud OFF */
+  onDisableCloud: () => void
+  className?: string
+}
 
 /**
- * Cloud status badge for the topbar.
+ * Single topbar widget: toggle switch + reactive cloud/sync icon.
  *
- * - Cloud mode ON  → shows sync status icon (green/orange/red etc.)
- * - Cloud mode OFF → shows a clickable disconnected-cloud button
+ * - Not logged in       → cloud-slash (muted) + off toggle → click logs in
+ * - Logged in, cloud OFF → cloud-slash (muted) + off toggle → click enables
+ * - Logged in, cloud ON  → live sync icon (green/orange/red) + on toggle
  */
-export const CloudTopbarIndicator: React.FC<{ className?: string; onClick?: () => void }> = ({ className = 'ms-2', onClick }) => {
-    const { isCloudMode, activeWorkspaceId, syncStatus } = useCloudStore()
+export const CloudToggle: React.FC<CloudToggleProps> = ({
+  onLogin,
+  onEnableCloud,
+  onDisableCloud,
+  className = '',
+}) => {
+  const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus } = useCloudStore()
 
-    if (!isCloudMode) {
-        return (
-            <CustomTooltip placement="bottom" tooltipText="Connect to cloud storage">
-                <span
-                    className={`d-inline-flex align-items-center ${className}`}
-                    style={{ cursor: 'default' }}
-                >
-                    <i className="fas text-warning fa-cloud-slash" style={{ fontSize: '1rem' }} />
-                </span>
-            </CustomTooltip>
-        )
+  const isOn = isCloudMode
+
+  // Derive the icon: when cloud is on, reflect live sync status; when off, show cloud-slash
+  const syncProps = isOn
+    ? getSyncIconProps(activeWorkspaceId ? syncStatus[activeWorkspaceId] : undefined)
+    : null
+
+  const iconClass = isOn
+    ? `${syncProps!.icon}${syncProps!.animate ? ' ' + syncProps!.animate : ''}`
+    : `fas fa-cloud-slash${loading ? ' fa-beat-fade' : ''}`
+
+  const iconColor = isOn
+    ? syncProps!.color
+    : 'var(--bs-white)'
+
+  const handleClick = useCallback(() => {
+    if (loading) return
+    if (!isAuthenticated) {
+      onLogin()
+      return
     }
+    if (isOn) {
+      onDisableCloud()
+    } else {
+      onEnableCloud()
+    }
+  }, [isAuthenticated, isOn, loading, onLogin, onEnableCloud, onDisableCloud])
 
-    const ws = activeWorkspaceId ? syncStatus[activeWorkspaceId] : undefined
-    const { icon, color, title, animate } = getSyncIconProps(ws)
+  const tooltipText = loading
+    ? 'Connecting…'
+    : !isAuthenticated
+      ? 'Log in to enable cloud storage'
+      : isOn
+        ? (syncProps!.title + ' — click to disable cloud')
+        : 'Cloud storage is OFF — click to enable'
 
-    return (
+  return (
+    <CustomTooltip placement="bottom" tooltipText={tooltipText}>
+      <button
+        className={`d-inline-flex align-items-center border-0 p-0 ${className}`}
+        style={{
+          background: 'transparent',
+          cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? 0.5 : 1,
+          outline: 'none',
+          gap: '6px',
+        }}
+        onClick={handleClick}
+        aria-label={tooltipText}
+      >
+        {/* Cloud / sync-status icon */}
+        <i
+          className={iconClass}
+          style={{
+            fontSize: '1rem',
+            color: iconColor,
+            transition: 'color 0.2s',
+          }}
+        />
+
+        {/* Toggle track */}
         <span
-            className={`d-inline-flex align-items-center ${className}`}
-            title={title}
-            style={{ cursor: 'default' }}
+          style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: '36px',
+            height: '20px',
+            borderRadius: '10px',
+            backgroundColor: isOn ? 'var(--bs-success)' : 'var(--bs-secondary)',
+            transition: 'background-color 0.25s ease',
+            flexShrink: 0,
+          }}
         >
-            <i
-                className={`${icon}${animate ? ' ' + animate : ''}`}
-                style={{ color, fontSize: '1rem' }}
-            />
+          {/* Toggle knob */}
+          <span
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: isOn ? '18px' : '2px',
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              backgroundColor: '#fff',
+              transition: 'left 0.25s ease',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }}
+          />
         </span>
-    )
+      </button>
+    </CustomTooltip>
+  )
 }
