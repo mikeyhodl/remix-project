@@ -139,7 +139,14 @@ export async function unpackWorkspace(
       try {
         await fs.stat(current)
       } catch {
-        await fs.mkdir(current)
+        try {
+          await fs.mkdir(current)
+        } catch (mkdirErr: any) {
+          // Ignore EEXIST — concurrent extractions may race to create the same dir
+          if (mkdirErr?.code !== 'EEXIST' && mkdirErr?.message !== 'EEXIST' && !String(mkdirErr).includes('EEXIST')) {
+            throw mkdirErr
+          }
+        }
       }
       ensuredDirs.add(current)
     }

@@ -391,7 +391,7 @@ export class CloudSyncEngine {
     if (!this.isActive || this.isSyncing || this.pendingChanges.length === 0) return
 
     this.isSyncing = true
-    this.updateStatus({ ...this._status, status: 'syncing' })
+    this.updateStatus({ ...this._status, status: 'pushing' })
     const changes = [...this.pendingChanges]
     this.pendingChanges = []
 
@@ -615,7 +615,14 @@ export class CloudSyncEngine {
         try {
           await this.fs.stat(current)
         } catch {
-          await this.fs.mkdir(current)
+          try {
+            await this.fs.mkdir(current)
+          } catch (mkdirErr: any) {
+            // Ignore EEXIST — another operation may have created the dir concurrently
+            if (mkdirErr?.code !== 'EEXIST' && mkdirErr?.message !== 'EEXIST' && !String(mkdirErr).includes('EEXIST')) {
+              throw mkdirErr
+            }
+          }
         }
       }
     }

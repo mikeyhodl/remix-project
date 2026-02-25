@@ -63,6 +63,8 @@ export function Workspace() {
   const isCloudLoading = isCloudMode && activeWorkspaceId
     ? (syncStatus[activeWorkspaceId]?.status === 'loading' || syncStatus[activeWorkspaceId]?.status === 'syncing')
     : false
+  // Note: 'pushing' status is intentionally excluded — the file tree already
+  // reflects local edits, so we don't show a loading overlay for S3 uploads.
 
   const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)

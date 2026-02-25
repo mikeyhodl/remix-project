@@ -10,7 +10,8 @@ import { CustomTooltip } from '@remix-ui/helper'
  *  │ State                          │ Icon                        │ Color            │ Tooltip                   │
  *  ├────────────────────────────────┼─────────────────────────────┼──────────────────┼───────────────────────────┤
  *  │ loading                        │ fa-cloud-arrow-down beat    │ var(--bs-info)   │ Loading workspace…        │
- *  │ syncing                        │ fa-cloud fa-beat-fade       │ var(--bs-warning)│ Syncing…                  │
+ *  │ syncing (pull)                 │ fa-cloud fa-beat-fade       │ var(--bs-warning)│ Syncing…                  │
+ *  │ pushing (local→S3)             │ fa-cloud-arrow-up beat-fade │ var(--bs-info)   │ Uploading changes…        │
  *  │ error                          │ fa-cloud-bolt               │ var(--bs-danger) │ Sync error: <msg>         │
  *  │ idle + pendingChanges > 0      │ fa-cloud-arrow-up           │ var(--bs-warning)│ N pending changes         │
  *  │ idle + pendingChanges=0 synced │ fa-cloud                    │ var(--bs-success)│ Synced <time>             │
@@ -42,6 +43,15 @@ export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
             icon: 'fas fa-cloud',
             color: 'var(--bs-warning)',
             title: 'Syncing…',
+            animate: 'fa-beat-fade',
+        }
+    }
+
+    if (status.status === 'pushing') {
+        return {
+            icon: 'fas fa-cloud-arrow-up',
+            color: 'var(--bs-info)',
+            title: 'Uploading changes…',
             animate: 'fa-beat-fade',
         }
     }

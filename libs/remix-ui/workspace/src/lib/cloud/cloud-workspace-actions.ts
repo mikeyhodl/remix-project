@@ -323,11 +323,12 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
  *
  * This fires for ALL writes to cloud workspace paths — including ones
  * from the provider itself.  That's fine because:
- *   - File explorer refresh via 'refresh' event is idempotent
  *   - Sync engine's trackChange de-duplicates by path
  *
- * We debounce the file explorer refresh so a burst of writes (e.g. git
- * checkout writing 50 files) results in a single refresh.
+ * File explorer refresh is only emitted during a pull (isPulling=true),
+ * because that's when new/changed files arrive from S3 and the tree
+ * needs updating.  Local edits already reflect in the UI — refreshing
+ * on every push-bound write would cause an unnecessary tree flicker.
  */
 function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   const uuid = extractCloudWorkspaceUuid(op.path)
@@ -370,18 +371,22 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
     })
   }
 
-  // 2) Debounce file explorer refresh
-  if (_refreshTimer) clearTimeout(_refreshTimer)
-  _refreshTimer = setTimeout(() => {
-    _refreshTimer = null
-    try {
-      // The 'refresh' event on the provider triggers fetchWorkspaceDirectory('/')
-      // in events.ts, which reloads the entire file tree.
-      provider?.event?.emit?.('refresh')
-    } catch (e) {
-      console.warn('[CloudFSObserver] Failed to emit refresh:', e)
-    }
-  }, REFRESH_DEBOUNCE_MS)
+  // 2) Debounce file explorer refresh — but ONLY during a pull.
+  //    When the user edits locally the tree already reflects the change;
+  //    refreshing on every push-bound write causes an unnecessary flicker.
+  if (cloudSyncEngine.isPulling) {
+    if (_refreshTimer) clearTimeout(_refreshTimer)
+    _refreshTimer = setTimeout(() => {
+      _refreshTimer = null
+      try {
+        // The 'refresh' event on the provider triggers fetchWorkspaceDirectory('/')
+        // in events.ts, which reloads the entire file tree.
+        provider?.event?.emit?.('refresh')
+      } catch (e) {
+        console.warn('[CloudFSObserver] Failed to emit refresh:', e)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }
 }
 
 /**
