@@ -44,6 +44,7 @@ const SYNC_INTERVAL_MS = 10_000   // flush pending changes every 10s
 const TOKEN_REFRESH_BUFFER_MS = 60_000  // refresh STS token 60s before expiry
 const MANIFEST_FILENAME = '.sync-manifest.json'
 const SNAPSHOT_DEBOUNCE_MS = 30_000  // re-zip 30s after last push flush
+const PARALLEL_CONCURRENCY = 6      // max parallel S3 requests (browser limit per origin)
 
 export class CloudSyncEngine {
   private s3: S3Client | null = null
@@ -214,6 +215,7 @@ export class CloudSyncEngine {
 
       // ── 2. LIST to get real ETags for the manifest ──
       const remoteObjects = await this.s3!.listObjects('')
+      const extraDownloads: S3Object[] = []
       for (const obj of remoteObjects) {
         if (obj.key.endsWith('/')) continue  // skip dir markers
         if (obj.key === WORKSPACE_ZIP_KEY) continue  // skip the zip itself
@@ -223,7 +225,15 @@ export class CloudSyncEngine {
           zipManifest.files[obj.key].lastModified = obj.lastModified.toISOString()
           zipManifest.files[obj.key].size = obj.size
         } else {
-          // File on S3 but not in ZIP (added after last snapshot) — download it
+          // File on S3 but not in ZIP (added after last snapshot) — download later
+          extraDownloads.push(obj)
+        }
+      }
+
+      // Download extra files in parallel
+      if (extraDownloads.length > 0) {
+        console.log(`[CloudSync] Downloading ${extraDownloads.length} files not in ZIP (parallel)`)
+        await parallelMap(extraDownloads, async (obj) => {
           const localPath = `${this.localWorkspacePath}/${obj.key}`
           const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
           await this.ensureDir(parentDir)
@@ -237,7 +247,7 @@ export class CloudSyncEngine {
               size: obj.size,
             }
           }
-        }
+        }, PARALLEL_CONCURRENCY)
       }
 
       // ── 3. Adopt the zip manifest as our manifest ──
@@ -304,13 +314,16 @@ export class CloudSyncEngine {
     // ── 4. Ensure workspace root exists ──
     await this.ensureDir(this.localWorkspacePath!)
 
-    // ── 5. Download changed / new files ──
-    for (const obj of toDownload) {
+    // ── 5. Download changed / new files (parallel) ──
+    await parallelMap(toDownload, async (obj) => {
       const localPath = `${this.localWorkspacePath}/${obj.key}`
       const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
       await this.ensureDir(parentDir)
 
-      const content = await this.s3!.getObject(obj.key)
+      // Send If-None-Match with the old ETag we have locally — S3 returns
+      // 304 if the file was reverted between LIST and GET, saving bandwidth.
+      const localEtag = manifest.files[obj.key]?.etag
+      const content = await this.s3!.getObject(obj.key, localEtag || undefined)
       if (content !== null) {
         await this.fs.writeFile(localPath, content, 'utf8')
         manifest.files[obj.key] = {
@@ -319,10 +332,10 @@ export class CloudSyncEngine {
           size: obj.size,
         }
       }
-    }
+    }, PARALLEL_CONCURRENCY)
 
-    // ── 6. Delete files removed on remote ──
-    for (const key of toDelete) {
+    // ── 6. Delete files removed on remote (parallel) ──
+    await parallelMap(toDelete, async (key) => {
       const localPath = `${this.localWorkspacePath}/${key}`
       try {
         await this.fs.unlink(localPath)
@@ -330,7 +343,7 @@ export class CloudSyncEngine {
         // file may already be gone locally
       }
       delete manifest.files[key]
-    }
+    }, PARALLEL_CONCURRENCY)
 
     // ── 7. Persist updated manifest ──
     manifest.lastSyncTimestamp = Date.now()
@@ -396,7 +409,8 @@ export class CloudSyncEngine {
     this.pendingChanges = []
 
     try {
-      for (const change of changes) {
+      // Push changes in parallel batches for throughput
+      await parallelMap(changes, async (change) => {
         try {
           await this.pushChange(change)
         } catch (err) {
@@ -408,7 +422,7 @@ export class CloudSyncEngine {
             console.error(`[CloudSync] Giving up on ${change.type} ${change.path} after 5 retries:`, err.message || err)
           }
         }
-      }
+      }, PARALLEL_CONCURRENCY)
 
       // Persist manifest after batch (captures all new ETags from PUT responses)
       await this.saveManifest(this.manifest!)
@@ -651,6 +665,31 @@ export class CloudSyncEngine {
     this._status = status
     this.onStatusChange?.(status)
   }
+}
+
+// ── Concurrency helper ──────────────────────────────────────
+
+/**
+ * Process items in parallel with a concurrency limit.
+ * Like Promise.all but runs at most `concurrency` tasks at a time.
+ */
+async function parallelMap<T>(
+  items: T[],
+  fn: (item: T) => Promise<void>,
+  concurrency: number,
+): Promise<void> {
+  if (items.length === 0) return
+  const limit = Math.min(concurrency, items.length)
+  let idx = 0
+
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++
+      await fn(items[i])
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()))
 }
 
 // Singleton

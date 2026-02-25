@@ -52,16 +52,25 @@ export class S3Client {
     const fullKey = `${this.token.prefix}${key}`
     const url = `${this.baseUrl}/${encodeS3Key(fullKey)}`
 
+    // Gzip text content for smaller transfers; skip for already-compressed types
+    const skipGzip = contentType === 'application/zip' || contentType === 'application/gzip'
+    const raw = typeof body === 'string' ? new TextEncoder().encode(body) : body
+    const payload = (!skipGzip && raw.byteLength > 128) ? await gzipCompress(raw) : raw
+    const isCompressed = payload !== raw
+
     const headers: Record<string, string> = {
       'x-amz-security-token': this.token.sessionToken,
       'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
       'Content-Type': contentType,
     }
+    if (isCompressed) {
+      headers['Content-Encoding'] = 'gzip'
+    }
 
     const res = await this.signedFetch(url, {
       method: 'PUT',
       headers,
-      body: (typeof body === 'string' ? new TextEncoder().encode(body) : body) as BodyInit,
+      body: payload as BodyInit,
     })
 
     console.log(`[S3Client] PUT ${key} → ${res.status}`)
@@ -79,26 +88,41 @@ export class S3Client {
 
   /**
    * Download a file from S3.
-   * @returns File content as string, or null if not found.
+   * @param key  Object key relative to user prefix
+   * @param ifNoneMatch  Optional ETag — if S3 still has this ETag, returns null (304 Not Modified)
+   * @returns File content as string, or null if not found / not modified.
    */
-  async getObject(key: string): Promise<string | null> {
+  async getObject(key: string, ifNoneMatch?: string): Promise<string | null> {
     const fullKey = `${this.token.prefix}${key}`
     const url = `${this.baseUrl}/${encodeS3Key(fullKey)}`
 
+    const headers: Record<string, string> = {
+      'x-amz-security-token': this.token.sessionToken,
+      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+    }
+    if (ifNoneMatch) {
+      headers['If-None-Match'] = `"${ifNoneMatch}"`
+    }
+
     const res = await this.signedFetch(url, {
       method: 'GET',
-      headers: {
-        'x-amz-security-token': this.token.sessionToken,
-        'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
-      },
+      headers,
     })
 
     console.log(`[S3Client] GET ${key} → ${res.status}`)
 
+    if (res.status === 304) return null  // Not Modified
     if (res.status === 404 || res.status === 403) return null
     if (!res.ok) {
       const text = await res.text()
       throw new Error(`S3 GetObject failed (${res.status}): ${text}`)
+    }
+    // If the object was stored with Content-Encoding: gzip, decompress it
+    const encoding = res.headers.get('content-encoding') || ''
+    if (encoding.includes('gzip')) {
+      const buf = await res.arrayBuffer()
+      const decompressed = await gzipDecompress(new Uint8Array(buf))
+      return new TextDecoder().decode(decompressed)
     }
     return res.text()
   }
@@ -333,4 +357,66 @@ async function sha256Hex(message: string): Promise<string> {
 
 function bufToHex(buf: Uint8Array): string {
   return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// ── Gzip helpers (Compression Streams API) ────────────────
+
+/**
+ * Gzip-compress a Uint8Array using the browser's native CompressionStream.
+ * Falls back to uncompressed if the API is unavailable.
+ */
+async function gzipCompress(data: Uint8Array): Promise<Uint8Array> {
+  if (typeof CompressionStream === 'undefined') return data
+  try {
+    const cs = new CompressionStream('gzip')
+    const writer = cs.writable.getWriter()
+    writer.write(data)
+    writer.close()
+    const reader = cs.readable.getReader()
+    const chunks: Uint8Array[] = []
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+    }
+    const totalLen = chunks.reduce((s, c) => s + c.byteLength, 0)
+    const result = new Uint8Array(totalLen)
+    let offset = 0
+    for (const chunk of chunks) {
+      result.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return result
+  } catch {
+    return data
+  }
+}
+
+/**
+ * Gzip-decompress a Uint8Array using the browser's native DecompressionStream.
+ */
+async function gzipDecompress(data: Uint8Array): Promise<Uint8Array> {
+  if (typeof DecompressionStream === 'undefined') {
+    // Fallback: return as-is (caller will get garbled text, but won't crash)
+    return data
+  }
+  const ds = new DecompressionStream('gzip')
+  const writer = ds.writable.getWriter()
+  writer.write(data)
+  writer.close()
+  const reader = ds.readable.getReader()
+  const chunks: Uint8Array[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  const totalLen = chunks.reduce((s, c) => s + c.byteLength, 0)
+  const result = new Uint8Array(totalLen)
+  let offset = 0
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return result
 }
