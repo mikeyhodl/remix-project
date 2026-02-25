@@ -680,6 +680,7 @@ export const switchToWorkspace = async (name: string) => {
         dispatch(setMode('browser'))
         dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
         dispatch(setReadOnlyMode(false))
+        localStorage.setItem('lastCloudWorkspace', name)
         return
       }
     } catch (e) {

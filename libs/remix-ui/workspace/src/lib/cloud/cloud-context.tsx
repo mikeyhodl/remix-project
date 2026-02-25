@@ -13,12 +13,9 @@
 
 import React, { useEffect, useRef } from 'react'
 import { cloudStore, useCloudStore } from './cloud-store'
-import { listCloudWorkspaces, fetchSTSToken } from './cloud-workspace-api'
 import {
-  enterCloudProvider,
-  exitCloudProvider,
-  switchToCloudWorkspace,
-  startFileChangeTracking,
+  enableCloud,
+  disableCloud,
 } from './cloud-workspace-actions'
 
 // ── Provider ─────────────────────────────────────────────────
@@ -43,48 +40,23 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
 
     const handleAuthStateChanged = async (authState: { isAuthenticated: boolean; user: any; token: string }) => {
       if (authState.isAuthenticated) {
-        cloudStore.setLoading(true)
+        // Delegate to enableCloud which handles everything:
+        // provider swap, store update, workspace switch, Redux dispatches
         cloudStore.setAuthenticated(true)
         try {
-          // Fetch cloud workspaces and STS token in parallel
-          const [workspaces, stsToken] = await Promise.all([
-            listCloudWorkspaces(),
-            fetchSTSToken(),
-          ])
-
-          // Swap the file provider to CloudWorkspaceFileProvider
-          // This handles all name↔UUID translation internally
-          enterCloudProvider(workspaces)
-
-          cloudStore.enterCloudMode(workspaces, stsToken)
-
-          // Switch to the last active cloud workspace, or the first one
-          if (workspaces.length > 0) {
-            const lastWorkspaceName = localStorage.getItem('currentWorkspace')
-            const targetWs = workspaces.find(w => w.name === lastWorkspaceName) || workspaces[0]
-            try {
-              await switchToCloudWorkspace(targetWs, (status) => {
-                cloudStore.updateSyncStatus(targetWs.uuid, status)
-              })
-              cloudStore.setActiveCloudWorkspace(targetWs.uuid)
-              // Start file change tracking for sync
-              const workspaceProvider = pluginRef.current.fileProviders?.workspace
-              if (workspaceProvider) {
-                startFileChangeTracking(workspaceProvider, targetWs.uuid)
-              }
-            } catch (err) {
-              console.error('[CloudProvider] Failed to switch to cloud workspace:', err)
-            }
-          }
+          await enableCloud()
         } catch (err) {
-          console.error('[CloudProvider] Failed to initialize cloud mode:', err)
-          cloudStore.setError(err.message)
-          cloudStore.setLoading(false)
+          console.error('[CloudProvider] Failed to enable cloud on login:', err)
         }
       } else {
-        // Logout: restore the original workspace provider
-        cloudStore.exitCloudMode()
-        exitCloudProvider()
+        // Logout: disable cloud (restores provider, switches to local workspace)
+        // then fully reset auth state
+        try {
+          await disableCloud()
+        } catch (err) {
+          console.error('[CloudProvider] Failed to disable cloud on logout:', err)
+        }
+        cloudStore.exitCloudMode()  // full reset including isAuthenticated
       }
     }
 

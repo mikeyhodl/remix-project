@@ -22,6 +22,11 @@ import {
 } from './cloud-workspace-api'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
 import {
+  setCurrentWorkspace,
+  setMode,
+  setReadOnlyMode,
+} from '../actions/payload'
+import {
   enableCloudFSObserver,
   disableCloudFSObserver,
   onCloudFSWrite,
@@ -128,6 +133,10 @@ export async function enableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
   if (cloudStore.isCloudMode) return  // already on
 
+  // Remember the current local workspace so we can restore it on disable
+  const currentLocal = localStorage.getItem('currentWorkspace')
+  if (currentLocal) localStorage.setItem('lastLocalWorkspace', currentLocal)
+
   cloudStore.setLoading(true)
   try {
     const [workspaces, stsToken] = await Promise.all([
@@ -139,8 +148,8 @@ export async function enableCloud(): Promise<void> {
     cloudStore.enterCloudMode(workspaces, stsToken)
 
     if (workspaces.length > 0) {
-      const lastWorkspaceName = localStorage.getItem('currentWorkspace')
-      const targetWs = workspaces.find(w => w.name === lastWorkspaceName) || workspaces[0]
+      const lastCloudName = localStorage.getItem('lastCloudWorkspace')
+      const targetWs = workspaces.find(w => w.name === lastCloudName) || workspaces[0]
       try {
         await switchToCloudWorkspace(targetWs, (status) => {
           cloudStore.updateSyncStatus(targetWs.uuid, status)
@@ -150,6 +159,11 @@ export async function enableCloud(): Promise<void> {
         if (workspaceProvider) {
           startFileChangeTracking(workspaceProvider, targetWs.uuid)
         }
+        // Dispatch Redux state so the workspace panel UI updates
+        _dispatch(setMode('browser'))
+        _dispatch(setCurrentWorkspace({ name: targetWs.name, isGitRepo: false }))
+        _dispatch(setReadOnlyMode(false))
+        localStorage.setItem('lastCloudWorkspace', targetWs.name)
       } catch (err) {
         console.error('[enableCloud] Failed to switch to cloud workspace:', err)
       }
@@ -172,6 +186,11 @@ export async function disableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
   if (!cloudStore.isCloudMode) return  // already off
 
+  // Remember the current cloud workspace for when the user re-enables
+  const activeId = cloudStore.getState().activeWorkspaceId
+  const activeWs = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === activeId)
+  if (activeWs) localStorage.setItem('lastCloudWorkspace', activeWs.name)
+
   // 1. Deactivate sync engine
   cloudSyncEngine.deactivate()
 
@@ -181,12 +200,16 @@ export async function disableCloud(): Promise<void> {
   // 3. Update store — keeps isAuthenticated = true
   cloudStore.disableCloud()
 
-  // 4. Switch to the last used legacy workspace (or default)
+  // 4. Close all open files and switch to the last used legacy workspace
   try {
-    const lastWorkspaceName = localStorage.getItem('currentWorkspace')
-    if (lastWorkspaceName) {
-      await _plugin.fileProviders.workspace.setWorkspace(lastWorkspaceName)
-      await _plugin.setWorkspace({ name: lastWorkspaceName, isLocalhost: false })
+    await _plugin.fileManager.closeAllFiles()
+    const lastLocal = localStorage.getItem('lastLocalWorkspace') || localStorage.getItem('currentWorkspace')
+    if (lastLocal) {
+      await _plugin.fileProviders.workspace.setWorkspace(lastLocal)
+      await _plugin.setWorkspace({ name: lastLocal, isLocalhost: false })
+      _dispatch(setMode('browser'))
+      _dispatch(setCurrentWorkspace({ name: lastLocal, isGitRepo: false }))
+      _dispatch(setReadOnlyMode(false))
     }
   } catch (err) {
     console.warn('[disableCloud] Failed to switch to legacy workspace:', err)
