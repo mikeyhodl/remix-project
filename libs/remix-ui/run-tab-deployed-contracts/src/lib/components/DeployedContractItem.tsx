@@ -478,12 +478,36 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                                   : funcABI.stateMutability === 'payable' ? <span className='badge text-danger me-1' style={{ backgroundColor: '#FF777714' }}>payable</span>
                                     : <span className='badge text-warning me-1' style={{ backgroundColor: '#FFB96414' }}>transact</span>
                               }
-                              <label className="mb-0 me-1 text-secondary">
-                                { funcABI.name }
-                              </label>
-                              <span className="text-nowrap" style={{ fontWeight: 'lighter' }}>
-                                { inputNames }
-                              </span>
+                              <div className="d-flex align-items-center" style={{ minWidth: 0, flex: 1 }}>
+                                <label
+                                  className="mb-0 me-1 text-secondary"
+                                  style={{
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                    maxWidth: '100%'
+                                  }}
+                                  title={funcABI.name}
+                                >
+                                  { funcABI.name }
+                                </label>
+                                {inputNames && (
+                                  <span
+                                    style={{
+                                      fontWeight: 'lighter',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      minWidth: 0,
+                                      flexShrink: 1
+                                    }}
+                                    title={inputNames}
+                                  >
+                                    { inputNames }
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="position-relative flex-fill">
                               <input
