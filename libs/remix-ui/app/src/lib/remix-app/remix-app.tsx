@@ -20,6 +20,7 @@ import { RemixUiTemplateExplorerModal } from 'libs/remix-ui/template-explorer-mo
 import { TemplateExplorerProvider } from 'libs/remix-ui/template-explorer-modal/context/template-explorer-context'
 import { AiWorkspaceGeneration } from './components/modals/aiworkspace-generation'
 
+
 interface IRemixAppUi {
   app: any
 }
@@ -268,6 +269,7 @@ const RemixApp = (props: IRemixAppUi) => {
               }
               {props.app.invitationManager.render()}
               {props.app.membershipRequest.render()}
+              {props.app.betaCornerWidget.render()}
             </AppProvider>
           </AuthProvider>
         </onLineContext.Provider>

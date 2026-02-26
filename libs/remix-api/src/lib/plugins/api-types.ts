@@ -595,11 +595,15 @@ export interface FeatureAccessCheckResponse {
  * Action that will be performed when a token is redeemed
  */
 export interface InviteTokenAction {
-  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag' | 'walkthrough'
+  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag' | 'walkthrough' | 'membership_request'
   description: string
   config?: Record<string, unknown>
   walkthrough_slug?: string
   auto_trigger?: boolean
+  /** membership_request action fields */
+  feature_group_id?: number
+  feature_group_name?: string
+  feature_group_display_name?: string
 }
 
 /**
@@ -620,12 +624,13 @@ export interface InviteValidateResponse {
   token_id?: number
   name?: string
   description?: string
-  invite_type?: 'default' | 'beta_program' | string
+  invite_type?: 'default' | 'beta_program' | 'request' | string
   expires_at?: string | null
   uses_remaining?: number | null
   already_redeemed?: boolean
   redeemed_at?: string | null
   actions?: InviteTokenAction[]
+  content?: any[]
   error?: string
   error_code?: 'NOT_FOUND' | 'INACTIVE' | 'EXPIRED' | 'NOT_STARTED' | 'EXHAUSTED' | 'MAX_USES_REACHED'
 }

@@ -50,7 +50,7 @@ export function BetaPromoPill({ plugin }: BetaPromoPillProps) {
         data-id="beta-promo-pill"
       >
         <i className="fas fa-flask me-1"></i>
-        <span>Try Beta</span>
+        <span>Join Remix Beta</span>
         <span
           className="beta-promo-dismiss ms-1"
           onClick={handleDismiss}

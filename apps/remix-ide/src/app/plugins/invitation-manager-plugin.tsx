@@ -60,6 +60,28 @@ export class InvitationManagerPlugin extends Plugin {
     // Validate the token first
     const validation = await this.validateToken(token)
 
+    // ── "request" invite type ──
+    // Instead of granting access, these tokens trigger the membership request
+    // flow.  Each action with type === 'membership_request' maps to a feature
+    // group.  For 'beta' we open the AI interest survey; for anything else we
+    // open the default membership request form.
+    if (validation.valid && validation.invite_type === 'request') {
+      const membershipActions = (validation.actions || []).filter(
+        a => a.type === 'membership_request' && a.feature_group_name
+      )
+
+      if (membershipActions.length > 0) {
+        // Pick the first membership_request action to determine which form to show
+        const action = membershipActions[0]
+        console.log(
+          '[InvitationManager] "request" invite detected – routing to membershipRequest for group:',
+          action.feature_group_name
+        )
+        await this.call('membershipRequest', 'showRequestForm', action.feature_group_name)
+        return
+      }
+    }
+
     // Check auth state
     const isAuthenticated = await this.checkAuthState()
 

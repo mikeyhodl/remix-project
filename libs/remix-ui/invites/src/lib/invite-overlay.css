@@ -35,7 +35,7 @@
 }
 
 .invite-modal-dialog--wide {
-  max-width: 700px;
+  max-width: 860px;
 }
 
 /* ---------- card (the visible box) ---------- */
@@ -173,7 +173,7 @@
   flex: 1;
   padding: 1.15rem 1.35rem;
   overflow-y: auto;
-  max-height: 400px;
+  max-height: 65vh;
 }
 
 .invite-modal-right-footer {
