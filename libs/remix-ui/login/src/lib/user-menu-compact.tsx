@@ -98,12 +98,13 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
             />
           </div>
         )}
-        <div className="user-menu-compact-info">
-          <span className="user-menu-compact-name">{getUserDisplayName()}</span>
-        </div>
+        {!user.picture && (
+          <div className="user-menu-compact-info">
+            <span className="user-menu-compact-name">{getUserDisplayName()}</span>
+          </div>
+        )}
         {hasBeta && (
           <span className="user-menu-compact-beta-tag">BETA</span>
-        )}
         )}
       </button>
       {showDropdown && (
