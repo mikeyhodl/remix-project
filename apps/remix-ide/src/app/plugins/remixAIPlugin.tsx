@@ -119,11 +119,7 @@ export class RemixAIPlugin extends Plugin {
     (window as any).getRemixAIPlugin = this
 
     // initialize the remix MCP server
-    const qp = new QueryParams()
-    const hasFlag = qp.exists('experimental')
-    if (hasFlag) {
-      this.remixMCPServer = await createRemixMCPServer(this)
-    }
+    this.remixMCPServer = await createRemixMCPServer(this)
 
     return true
   }
