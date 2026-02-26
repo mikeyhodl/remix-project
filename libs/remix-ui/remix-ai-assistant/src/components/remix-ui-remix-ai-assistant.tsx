@@ -72,7 +72,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
   const [isMaximized, setIsMaximized] = useState(false)
-  const mcpEnabled = useState(true)
+  const mcpEnabled = true
 
   const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
