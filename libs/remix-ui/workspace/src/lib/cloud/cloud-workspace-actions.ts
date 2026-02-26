@@ -45,10 +45,20 @@ let _plugin: any = null
 let _dispatch: React.Dispatch<any> = null
 let _originalProvider: any = null // the original WorkspaceFileProvider
 let _fsObserverUnsub: (() => void) | null = null  // FS observer subscription
+let _fileOpenListenerActive = false  // whether we're listening to currentFileChanged
 
 /** Debounce timer for file explorer refresh triggered by raw FS writes */
 let _refreshTimer: ReturnType<typeof setTimeout> | null = null
 const REFRESH_DEBOUNCE_MS = 600
+
+/**
+ * Debounce timer for proactive version check on first user write.
+ * When the user starts typing after being away, we check the remote
+ * version once (debounced) to catch conflicts early — before the
+ * next flush cycle tries to push and gets a 409.
+ */
+let _versionCheckTimer: ReturnType<typeof setTimeout> | null = null
+const VERSION_CHECK_DEBOUNCE_MS = 2_000  // 2s after first write activity
 
 export function setCloudPlugin(plugin: any, dispatch: React.Dispatch<any>) {
   _plugin = plugin
@@ -97,6 +107,14 @@ export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspace
     handleRawFSWrite(op, cloudProvider)
   })
 
+  // ── Listen to file open events for proactive version checks ──
+  // When the user opens a file (e.g. coming back to device A), immediately
+  // check if the remote version advanced while we were away.
+  if (!_fileOpenListenerActive) {
+    _plugin.on('fileManager', 'currentFileChanged', _onCurrentFileChanged)
+    _fileOpenListenerActive = true
+  }
+
   return cloudProvider
 }
 
@@ -116,6 +134,18 @@ export function exitCloudProvider(): void {
   if (_refreshTimer) {
     clearTimeout(_refreshTimer)
     _refreshTimer = null
+  }
+  if (_versionCheckTimer) {
+    clearTimeout(_versionCheckTimer)
+    _versionCheckTimer = null
+  }
+
+  // Remove fileManager listener
+  if (_fileOpenListenerActive && _plugin) {
+    try {
+      _plugin.off('fileManager', 'currentFileChanged')
+    } catch { /* plugin may already be gone */ }
+    _fileOpenListenerActive = false
   }
 
   _plugin.fileProviders.workspace = _originalProvider
@@ -332,7 +362,17 @@ export async function switchToCloudWorkspace(
   onSyncStatus?.({ status: 'loading', lastSync: null, pendingChanges: 0 })
 
   // Activate sync engine and pull from S3
-  await cloudSyncEngine.activate(uuid, onSyncStatus)
+  await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
+    // Called when a version conflict is detected — close all editor tabs
+    // so Remix autosave stops writing stale content, and notify the user.
+    console.log('[CloudSync:version] onConflictDetected: closing all editors')
+    try {
+      await _plugin.fileManager.closeAllFiles()
+    } catch (err) {
+      console.warn('[CloudSync:version] Failed to close editors:', err)
+    }
+    _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
+  })
   await cloudSyncEngine.pullWorkspace()
 }
 
@@ -483,6 +523,17 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
 }
 
 /**
+ * Proactive version check when the user opens/switches a file.
+ * Catches the "come back to device A" scenario immediately on file open,
+ * rather than waiting for the next write or 10s flush cycle.
+ */
+function _onCurrentFileChanged(_file: string): void {
+  if (!cloudSyncEngine.isActive) return
+  console.log(`[CloudSync:version] File opened — triggering proactive version check`)
+  cloudSyncEngine.checkRemoteVersion().catch(() => {})
+}
+
+/**
  * Handle a raw FS write detected by the CloudFSObserver.
  *
  * This fires for ALL writes to cloud workspace paths — including ones
@@ -533,6 +584,19 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
       oldPath: changeOldPath,
       timestamp: Date.now(),
     })
+
+    // Proactive version check: on the first write activity, debounce a
+    // remote version check so we catch conflicts before the next flush.
+    // This way when the user comes back to device A and starts editing,
+    // we detect that device B pushed in the meantime within ~2s instead
+    // of waiting for the full 10s flush cycle to hit a 409.
+    if (!_versionCheckTimer) {
+      _versionCheckTimer = setTimeout(() => {
+        _versionCheckTimer = null
+        console.log('[CloudSync:version] Write-triggered proactive version check')
+        cloudSyncEngine.checkRemoteVersion().catch(() => {})
+      }, VERSION_CHECK_DEBOUNCE_MS)
+    }
   }
 
   // 2) Debounce file explorer refresh — but ONLY during a pull.

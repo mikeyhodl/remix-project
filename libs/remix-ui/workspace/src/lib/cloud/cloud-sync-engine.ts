@@ -37,8 +37,9 @@
 
 import { S3Client } from './s3-client'
 import { FileChangeRecord, WorkspaceSyncStatus, STSToken, S3Object, SyncManifest } from './types'
-import { fetchWorkspaceSTS } from './cloud-workspace-api'
+import { fetchWorkspaceSTS, getCloudWorkspace, updateCloudWorkspace, VersionConflictException } from './cloud-workspace-api'
 import { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
+import { cloudStore } from './cloud-store'
 
 const SYNC_INTERVAL_MS = 10_000   // flush pending changes every 10s
 const TOKEN_REFRESH_BUFFER_MS = 60_000  // refresh STS token 60s before expiry
@@ -72,6 +73,38 @@ export class CloudSyncEngine {
   /** In-memory copy of the manifest, loaded on activate and kept in sync */
   private manifest: SyncManifest | null = null
 
+  // ── Version-based conflict detection ──────────────────────
+
+  /**
+   * The workspace version known to this device. Loaded from the API on
+   * activate and updated after each successful PATCH. Used as
+   * `expected_version` in the pre-push PATCH call.
+   */
+  private _localVersion: number = 0
+
+  /** Read the current local version (for debugging / UI) */
+  get localVersion(): number {
+    return this._localVersion
+  }
+
+  /** Bound handlers for visibility / online events so we can remove them */
+  private _onVisibilityChange: (() => void) | null = null
+  private _onOnline: (() => void) | null = null
+
+  /**
+   * Called when a version conflict is detected, BEFORE pulling remote state.
+   * The host (cloud-workspace-actions) uses this to close all open editor
+   * tabs so that Remix's autosave doesn't keep writing stale content and
+   * creating an update-fight loop.
+   */
+  private _onConflictDetected: (() => Promise<void>) | null = null
+
+  /**
+   * True while we're resolving a conflict — suppresses trackChange() so
+   * autosave writes from stale editor buffers are silently dropped.
+   */
+  private _isResolvingConflict = false
+
   /** Reference to the local filesystem (window.remixFileSystem) */
   private get fs(): any {
     return (window as any).remixFileSystem
@@ -92,11 +125,16 @@ export class CloudSyncEngine {
    * @param workspaceUuid  The cloud workspace UUID (also used as local dir name under /.cloud-workspaces/)
    * @param onStatusChange Optional callback for sync status updates
    */
-  async activate(workspaceUuid: string, onStatusChange?: (s: WorkspaceSyncStatus) => void): Promise<void> {
+  async activate(
+    workspaceUuid: string,
+    onStatusChange?: (s: WorkspaceSyncStatus) => void,
+    onConflictDetected?: () => Promise<void>,
+  ): Promise<void> {
     await this.deactivate()
     this.workspaceUuid = workspaceUuid
     this.localWorkspacePath = `/.cloud-workspaces/${workspaceUuid}`
     this.onStatusChange = onStatusChange || null
+    this._onConflictDetected = onConflictDetected || null
     this.pendingChanges = []
 
     // Get workspace-scoped STS
@@ -107,8 +145,35 @@ export class CloudSyncEngine {
     // Load existing manifest (or create empty one)
     this.manifest = await this.loadManifest()
 
+    // Load current workspace version from the API for conflict detection.
+    // The version is already in the cloudStore if we just fetched the list,
+    // but re-fetching ensures we have the latest value.
+    try {
+      console.log(`[CloudSync:version] Fetching workspace version for ${workspaceUuid}...`)
+      const ws = await getCloudWorkspace(workspaceUuid)
+      this._localVersion = ws.version ?? 0
+      console.log(`[CloudSync:version] Loaded workspace version: ${this._localVersion} (raw: ${ws.version})`)
+    } catch (err) {
+      console.warn('[CloudSync:version] Could not fetch workspace version, defaulting to 0:', err.message || err)
+      this._localVersion = 0
+    }
+
     // Start periodic flush
     this.syncTimer = setInterval(() => this.flushChanges(), SYNC_INTERVAL_MS)
+
+    // Install visibility / online listeners for proactive version checks
+    this._onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log(`[CloudSync:version] Tab became visible — checking remote version (local: ${this._localVersion})`)
+        this.checkRemoteVersion().catch(() => {})
+      }
+    }
+    this._onOnline = () => {
+      console.log(`[CloudSync:version] Browser came online — checking remote version (local: ${this._localVersion})`)
+      this.checkRemoteVersion().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', this._onVisibilityChange)
+    window.addEventListener('online', this._onOnline)
 
     this.updateStatus({ status: 'idle', lastSync: null, pendingChanges: 0 })
   }
@@ -136,13 +201,27 @@ export class CloudSyncEngine {
     this.syncTimer = null
     this.tokenRefreshTimer = null
     this.snapshotTimer = null
+
+    // Remove visibility / online listeners
+    if (this._onVisibilityChange) {
+      document.removeEventListener('visibilitychange', this._onVisibilityChange)
+      this._onVisibilityChange = null
+    }
+    if (this._onOnline) {
+      window.removeEventListener('online', this._onOnline)
+      this._onOnline = null
+    }
+
     this.s3 = null
     this.workspaceUuid = null
     this.localWorkspacePath = null
     this.pendingChanges = []
     this.isSyncing = false
+    this._isResolvingConflict = false
     this.onStatusChange = null
+    this._onConflictDetected = null
     this.manifest = null
+    this._localVersion = 0
   }
 
   get isActive(): boolean {
@@ -376,6 +455,13 @@ export class CloudSyncEngine {
   trackChange(change: FileChangeRecord): void {
     if (!this.isActive) return
 
+    // During conflict resolution, drop all incoming changes — the editors
+    // are being closed and the files are about to be overwritten by the pull.
+    if (this._isResolvingConflict) {
+      console.log(`[CloudSync:version] Dropping change during conflict resolution: ${change.type} ${change.path}`)
+      return
+    }
+
     // Never track the manifest file itself
     if (change.path === MANIFEST_FILENAME || change.path.endsWith('/' + MANIFEST_FILENAME)) return
 
@@ -404,6 +490,10 @@ export class CloudSyncEngine {
 
   /**
    * Flush all pending changes to S3. Called periodically and on-demand.
+   *
+   * Uses optimistic concurrency: before pushing files to S3 we PATCH
+   * the workspace with `expected_version`. If another device pushed
+   * since our last pull the API returns 409 and we pull instead.
    */
   async flushChanges(): Promise<void> {
     if (!this.isActive || this.isSyncing || this.pendingChanges.length === 0) return
@@ -414,7 +504,39 @@ export class CloudSyncEngine {
     this.pendingChanges = []
 
     try {
-      // Push changes in parallel batches for throughput
+      // ── Version check: claim the next version before pushing files ──
+      if (this.workspaceUuid) {
+        try {
+          console.log(`[CloudSync:version] PATCH version check — sending expected_version=${this._localVersion} for ${this.workspaceUuid}`)
+          const updated = await updateCloudWorkspace(this.workspaceUuid, {
+            expected_version: this._localVersion,
+          })
+          const previousVersion = this._localVersion
+          // Store the bumped version for next push
+          this._localVersion = updated.version ?? (this._localVersion + 1)
+          // Keep cloudStore in sync so the UI reflects the new version
+          cloudStore.updateCloudWorkspace(updated)
+          console.log(`[CloudSync:version] ✓ Version bumped ${previousVersion} → ${this._localVersion}. Proceeding to push ${changes.length} changes.`)
+        } catch (err) {
+          if (err instanceof VersionConflictException) {
+            console.warn(`[CloudSync:version] ✗ VERSION CONFLICT! local=${this._localVersion}, remote=${err.currentVersion}. Re-queuing ${changes.length} changes and pulling remote state.`)
+            // Re-queue the changes — they'll be retried after pull
+            this.pendingChanges.push(...changes)
+            this.isSyncing = false
+            // Pull the latest workspace from S3
+            await this.handleVersionConflict(err.currentVersion)
+            return
+          }
+          // Non-version error (network, auth, etc.) — re-queue and bail
+          console.error(`[CloudSync:version] ✗ Version check failed (non-conflict):`, err.message || err)
+          this.pendingChanges.push(...changes)
+          this.updateStatus({ status: 'error', lastSync: this._status.lastSync, pendingChanges: this.pendingChanges.length, error: err.message })
+          this.isSyncing = false
+          return
+        }
+      }
+
+      // ── Push files to S3 ──
       await parallelMap(changes, async (change) => {
         try {
           await this.pushChange(change)
@@ -535,6 +657,117 @@ export class CloudSyncEngine {
    */
   async forcePush(): Promise<void> {
     await this.flushChanges()
+  }
+
+  // ── Version conflict handling ─────────────────────────────
+
+  /**
+   * Proactively check if the remote workspace version has advanced
+   * past our local version. Called on tab-focus and online events.
+   *
+   * If the remote is ahead we pull automatically. This catches the
+   * common multi-device scenario: user edits on Device B, comes back
+   * to Device A, and the tab-focus fires before they start editing.
+   */
+  async checkRemoteVersion(): Promise<void> {
+    if (!this.workspaceUuid || !this.isActive) {
+      console.log(`[CloudSync:version] checkRemoteVersion skipped (uuid=${!!this.workspaceUuid}, active=${this.isActive})`)
+      return
+    }
+    try {
+      console.log(`[CloudSync:version] Checking remote version (local: ${this._localVersion})...`)
+      const ws = await getCloudWorkspace(this.workspaceUuid)
+      const remoteVersion = ws.version ?? 0
+      if (remoteVersion > this._localVersion) {
+        console.log(
+          `[CloudSync:version] ⚡ Remote is ahead! remote=${remoteVersion} > local=${this._localVersion}. Pulling updates.`
+        )
+        await this.handleVersionConflict(remoteVersion)
+      } else {
+        console.log(`[CloudSync:version] Versions in sync (local=${this._localVersion}, remote=${remoteVersion})`)
+      }
+    } catch (err) {
+      // Non-fatal — we'll catch it on the next push via 409 anyway
+      console.warn('[CloudSync:version] Remote version check failed:', err.message || err)
+    }
+  }
+
+  /**
+   * Handle a version conflict: the remote workspace has been updated
+   * by another device. We pull the full remote state, update local
+   * version, and let pending changes retry on the next flush cycle.
+   */
+  private async handleVersionConflict(remoteVersion: number): Promise<void> {
+    const previousVersion = this._localVersion
+    console.log(`[CloudSync:version] ── CONFLICT RESOLUTION START ──`)
+    console.log(`[CloudSync:version]   Local version:  ${previousVersion}`)
+    console.log(`[CloudSync:version]   Remote version: ${remoteVersion}`)
+    console.log(`[CloudSync:version]   Pending changes queued: ${this.pendingChanges.length}`)
+
+    // ── 1. Freeze: block new changes from autosave / editor writes ──
+    this._isResolvingConflict = true
+
+    // ── 2. Close all editor tabs so autosave stops firing ──
+    if (this._onConflictDetected) {
+      try {
+        console.log(`[CloudSync:version] Closing editors & notifying user...`)
+        await this._onConflictDetected()
+      } catch (err) {
+        console.warn('[CloudSync:version] onConflictDetected callback error (non-fatal):', err)
+      }
+    }
+
+    // ── 3. Discard all pending changes — they're from the old version ──
+    const discarded = this.pendingChanges.length
+    this.pendingChanges = []
+    console.log(`[CloudSync:version] Discarded ${discarded} stale pending changes`)
+
+    this.updateStatus({ ...this._status, status: 'syncing', pendingChanges: 0 })
+
+    try {
+      // ── 4. Pull latest from S3 (overwrites local files with remote state) ──
+      console.log(`[CloudSync:version] Pulling remote workspace state...`)
+      const result = await this.pullWorkspace()
+      console.log(
+        `[CloudSync:version] Pull complete: ${result.downloaded} downloaded, ` +
+        `${result.skipped} skipped, ${result.deleted} deleted`
+      )
+
+      // Adopt the remote version
+      this._localVersion = remoteVersion
+      console.log(`[CloudSync:version] Adopted remote version: ${previousVersion} → ${this._localVersion}`)
+
+      // Update the workspace record in the cloud store
+      const ws = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === this.workspaceUuid)
+      if (ws) {
+        cloudStore.updateCloudWorkspace({ ...ws, version: remoteVersion })
+        console.log(`[CloudSync:version] Updated cloudStore version`)
+      }
+
+      this.updateStatus({
+        status: 'idle',
+        lastSync: Date.now(),
+        pendingChanges: this.pendingChanges.length,
+      })
+
+      // ── 5. Unfreeze: allow new changes to be tracked again ──
+      this._isResolvingConflict = false
+
+      console.log(`[CloudSync:version] ── CONFLICT RESOLUTION COMPLETE ──`)
+      console.log(`[CloudSync:version]   Version: ${previousVersion} → ${this._localVersion}`)
+      console.log(`[CloudSync:version]   Discarded: ${discarded} stale changes`)
+      console.log(`[CloudSync:version]   Pending changes: ${this.pendingChanges.length}`)
+
+    } catch (err) {
+      this._isResolvingConflict = false
+      console.error(`[CloudSync:version] ✗ Conflict resolution FAILED:`, err.message || err)
+      this.updateStatus({
+        status: 'error',
+        lastSync: this._status.lastSync,
+        pendingChanges: this.pendingChanges.length,
+        error: 'Failed to pull remote changes after version conflict',
+      })
+    }
   }
 
   // ── Snapshot ZIP ──────────────────────────────────────────

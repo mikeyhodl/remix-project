@@ -27,6 +27,14 @@ export interface CloudWorkspace {
   file_count: number
   total_size: number   // bytes
   migrated_from_local: boolean
+  version: number      // optimistic concurrency counter
+}
+
+// ── Version conflict from PATCH /api/workspaces/:uuid ──
+export interface VersionConflictError {
+  error: 'VERSION_CONFLICT'
+  message: string
+  current_version: number
 }
 
 // ── Sync state for a given file ──

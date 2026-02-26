@@ -124,11 +124,17 @@ export async function getCloudWorkspace(uuid: string): Promise<CloudWorkspace> {
 
 /**
  * Update workspace metadata (rename, update stats).
+ *
+ * If `expected_version` is provided, the backend performs an optimistic
+ * concurrency check: UPDATE … WHERE version = expected_version.
+ * On mismatch the API returns 409 and we throw a VersionConflictException
+ * that callers can catch to trigger a pull.
  */
 export async function updateCloudWorkspace(uuid: string, updates: {
   name?: string
   file_count?: number
   total_size?: number
+  expected_version?: number
 }): Promise<CloudWorkspace> {
   const res = await fetch(`${storageBase()}/api/workspaces/${uuid}`, {
     method: 'PATCH',
@@ -136,11 +142,31 @@ export async function updateCloudWorkspace(uuid: string, updates: {
     headers: authHeaders(),
     body: JSON.stringify(updates),
   })
+  if (res.status === 409) {
+    const conflict = await res.json()
+    const err = new VersionConflictException(
+      conflict.message || 'Workspace was modified on another device',
+      conflict.current_version ?? 0,
+    )
+    throw err
+  }
   if (!res.ok) {
     const body = await res.text()
     throw new Error(`Update workspace failed (${res.status}): ${body}`)
   }
   return res.json()
+}
+
+/**
+ * Typed error thrown when the version check fails (409 Conflict).
+ */
+export class VersionConflictException extends Error {
+  readonly currentVersion: number
+  constructor(message: string, currentVersion: number) {
+    super(message)
+    this.name = 'VersionConflictException'
+    this.currentVersion = currentVersion
+  }
 }
 
 /**

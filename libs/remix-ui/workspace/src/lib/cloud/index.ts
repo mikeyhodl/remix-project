@@ -37,6 +37,7 @@ export {
   getCloudWorkspace,
   updateCloudWorkspace,
   deleteCloudWorkspace,
+  VersionConflictException,
 } from './cloud-workspace-api'
 export { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
 export { CloudMigrationDialog } from './cloud-migration-dialog'
@@ -65,4 +66,5 @@ export type {
   S3Object,
   WorkspaceMapping,
   FileSyncStatus,
+  VersionConflictError,
 } from './types'
