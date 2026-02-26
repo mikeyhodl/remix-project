@@ -104,6 +104,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
         {hasBeta && (
           <span className="user-menu-compact-beta-tag">BETA</span>
         )}
+        )}
       </button>
       {showDropdown && (
         <>

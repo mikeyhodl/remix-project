@@ -55,6 +55,12 @@ export interface FileReadArgs {
   path: string;
 }
 
+export interface FileReplacerArgs {
+  path: string
+  contentToReplace: string
+  regEx: string
+}
+
 export interface FileWriteArgs {
   path: string;
   content: string;
@@ -148,6 +154,12 @@ export interface RunScriptArgs {
   file: string
 }
 
+export interface AddInstanceArgs {
+  contractAddress: string;
+  abi: any[] | string;
+  contractName: string;
+}
+
 /**
  * Math utilities argument types
  */
@@ -234,7 +246,7 @@ export interface FileOperationResult {
   success: boolean;
   path: string;
   message?: string;
-  content?: string;
+  payload?: string;
   size?: number;
   lastModified?: string;
 }
@@ -251,7 +263,7 @@ export interface CompilationResult {
   errors: any[];
   errorFiles?: any[];
   warnings: any[];
-  sources: Record<string, any>;
+  // sources: Record<string, any>; // comment out to avoid large payloads, can be added back if needed
 }
 
 export interface DeploymentResult {
@@ -266,6 +278,13 @@ export interface DeploymentResult {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface RunScriptResult {}
+
+export interface AddInstanceResult {
+  success: boolean;
+  contractAddress: string;
+  contractName: string;
+  message?: string;
+}
 
 export interface ContractInteractionResult {
   success: boolean;
