@@ -80,11 +80,20 @@ export interface GitHubTokenResponse {
   scopes?: string[]
 }
 
+// ==================== Registration Mode ====================
+
+export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'
+
+export interface RegistrationModeResponse {
+  mode: RegistrationMode
+}
+
 // ==================== SIWE ====================
 
 export interface SiweVerifyRequest {
   message: string
   signature: string
+  invite_token?: string
 }
 
 export interface SiweVerifyResponse {

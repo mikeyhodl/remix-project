@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { AuthProvider } from '@remix-api'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
+import { AuthProvider, RegistrationMode, InviteValidateResponse } from '@remix-api'
 import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
 import { endpointUrls } from '@remix-endpoints-helper'
 import './login-modal.css'
@@ -39,6 +39,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loadingProviders, setLoadingProviders] = useState(true)
 
+  // Registration mode
+  const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('open')
+
+  // Invite token handling
+  const [inviteToken, setInviteToken] = useState<string | undefined>(() => {
+    const params = new URLSearchParams(window.location.search)
+    // Support both ?invite=TOKEN and ?invite_token=TOKEN
+    return params.get('invite') || params.get('invite_token') || undefined
+  })
+  const [inviteValidation, setInviteValidation] = useState<InviteValidateResponse | null>(null)
+  const [inviteValidating, setInviteValidating] = useState(false)
+  const [inviteInputValue, setInviteInputValue] = useState('')
+  const [showInviteInput, setShowInviteInput] = useState(false)
+
   // Email OTP flow
   const [otpStep, setOtpStep] = useState<'idle' | 'code'>('idle')
   const [emailValue, setEmailValue] = useState('')
@@ -53,9 +67,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const emailInputRef = useRef<HTMLInputElement>(null)
   const verifyingRef = useRef(false)
-
-  // Check for invite token in URL
-  const inviteToken = new URLSearchParams(window.location.search).get('invite_token') || undefined
 
   // Is email provider enabled?
   const emailEnabled = providers.some(p => p.id === 'email' && p.enabled)
@@ -72,6 +83,77 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     const timer = setTimeout(() => setCodeExpiresIn(c => c - 1), 1000)
     return () => clearTimeout(timer)
   }, [codeExpiresIn])
+
+  // --- Fetch registration mode ---
+  useEffect(() => {
+    const fetchRegistrationMode = async () => {
+      try {
+        const response = await fetch(`${endpointUrls.sso}/registration-mode`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setRegistrationMode(data.mode || 'open')
+          console.log('[LoginModal] Registration mode:', data.mode)
+        }
+      } catch (err) {
+        console.warn('[LoginModal] Failed to fetch registration mode, defaulting to open:', err)
+      }
+    }
+    fetchRegistrationMode()
+  }, [])
+
+  // --- Validate invite token ---
+  const validateInvite = useCallback(async (token: string) => {
+    setInviteValidating(true)
+    try {
+      const response = await fetch(`${endpointUrls.invite}/validate/${token}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      })
+      const data: InviteValidateResponse = await response.json()
+      setInviteValidation(data)
+
+      // Store as pending in auth plugin so login flows can pick it up
+      if (plugin && data.valid) {
+        try {
+          await plugin.call('auth', 'setPendingInviteToken', token)
+          await plugin.call('auth', 'setPendingInviteValidation', token, data)
+        } catch (e) {
+          console.warn('[LoginModal] Failed to store pending invite:', e)
+        }
+      }
+
+      return data
+    } catch (err) {
+      console.error('[LoginModal] Failed to validate invite token:', err)
+      const errorResult: InviteValidateResponse = {
+        valid: false,
+        error: 'Failed to validate token',
+        error_code: 'NOT_FOUND'
+      }
+      setInviteValidation(errorResult)
+      return errorResult
+    } finally {
+      setInviteValidating(false)
+    }
+  }, [plugin])
+
+  // Auto-validate invite token from URL on mount
+  useEffect(() => {
+    if (inviteToken) {
+      validateInvite(inviteToken)
+    }
+  }, [inviteToken, validateInvite])
+
+  // Handler for manual invite code submission
+  const handleInviteSubmit = async () => {
+    const token = inviteInputValue.trim()
+    if (!token) return
+    setInviteToken(token)
+    // Store and validate — the useEffect above will trigger validation
+  }
 
   // --- Fetch providers ---
   useEffect(() => {
@@ -166,6 +248,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
       if (response.status === 429) {
         setSendCooldown(data.retry_after || 60)
         setEmailError('Please wait before requesting another code')
+        return
+      }
+
+      if (response.status === 403 && data.error === 'REGISTRATION_CLOSED') {
+        setEmailError('Registration is currently closed. Only existing users can sign in.')
         return
       }
 
@@ -398,7 +485,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
               <p className="text-muted mb-0 fs-small-medium">
                 {otpStep === 'code'
                   ? 'Enter the verification code we sent to your email'
-                  : 'Log in or register to unlock our wide range of features'
+                  : registrationMode === 'existing_only'
+                    ? 'Sign in with your existing account'
+                    : registrationMode === 'invite_only' && inviteToken && inviteValidation?.valid
+                      ? 'You\'ve been invited! Sign in to claim your access.'
+                      : registrationMode === 'invite_only'
+                        ? 'Sign in with your existing account or enter an invite code'
+                        : 'Log in or register to unlock our wide range of features'
                 }
               </p>
             </div>
@@ -527,6 +620,103 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                     <div className="alert alert-danger" role="alert">
                       <strong>Error:</strong> {error}
                     </div>
+                  )}
+
+                  {/* Registration mode notices */}
+                  {registrationMode === 'existing_only' && (
+                    <div className="alert alert-info py-2 px-3 fs-small-medium mb-3" role="alert">
+                      <i className="fas fa-info-circle me-2"></i>
+                      Registration is currently closed. Only existing users can sign in.
+                    </div>
+                  )}
+
+                  {registrationMode === 'invite_only' && !inviteToken && !showInviteInput && (
+                    <div className="alert alert-info py-2 px-3 fs-small-medium mb-3" role="alert">
+                      <i className="fas fa-info-circle me-2"></i>
+                      New accounts require an invite. Existing users can sign in below.
+                    </div>
+                  )}
+
+                  {/* Invite token validation result */}
+                  {inviteToken && inviteValidating && (
+                    <div className="d-flex align-items-center justify-content-center py-3 mb-3">
+                      <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                        <span className="visually-hidden">Validating invite...</span>
+                      </div>
+                      <span className="text-muted fs-small-medium">Validating invite code...</span>
+                    </div>
+                  )}
+
+                  {inviteToken && inviteValidation && !inviteValidating && (
+                    inviteValidation.valid ? (
+                      <div className="alert alert-success py-2 px-3 fs-small-medium mb-3" role="alert">
+                        <i className="fas fa-gift me-2"></i>
+                        <strong>{inviteValidation.name || 'Invite'}</strong>
+                        {inviteValidation.description && (
+                          <span className="d-block mt-1">{inviteValidation.description}</span>
+                        )}
+                        {inviteValidation.actions && inviteValidation.actions.length > 0 && (
+                          <ul className="list-unstyled mb-0 mt-1">
+                            {inviteValidation.actions.map((action, i) => (
+                              <li key={i} className="fs-small">
+                                <i className="fas fa-check me-1 text-success"></i>
+                                {action.description}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="alert alert-warning py-2 px-3 fs-small-medium mb-3" role="alert">
+                        <i className="fas fa-exclamation-triangle me-2"></i>
+                        {inviteValidation.error || 'This invite link is invalid or expired.'}
+                      </div>
+                    )
+                  )}
+
+                  {/* Invite code input for invite_only mode */}
+                  {registrationMode === 'invite_only' && !inviteToken && showInviteInput && (
+                    <div className="mb-3">
+                      <label className="form-label fs-small-medium fw-medium">Enter your invite code</label>
+                      <div className="d-flex gap-2">
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          placeholder="Paste your invite code"
+                          value={inviteInputValue}
+                          onChange={(e) => setInviteInputValue(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleInviteSubmit()}
+                        />
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={handleInviteSubmit}
+                          disabled={!inviteInputValue.trim() || inviteValidating}
+                        >
+                          {inviteValidating ? (
+                            <div className="spinner-border spinner-border-sm text-white" role="status">
+                              <span className="visually-hidden">Validating...</span>
+                            </div>
+                          ) : 'Apply'}
+                        </button>
+                      </div>
+                      <button
+                        className="btn btn-link btn-sm p-0 mt-1 text-muted text-decoration-none fs-small"
+                        onClick={() => setShowInviteInput(false)}
+                      >
+                        <i className="fas fa-arrow-left me-1"></i>Back
+                      </button>
+                    </div>
+                  )}
+
+                  {/* "I have an invite" button for invite_only mode */}
+                  {registrationMode === 'invite_only' && !inviteToken && !showInviteInput && (
+                    <button
+                      className="btn btn-outline-primary btn-sm w-100 mb-3"
+                      onClick={() => setShowInviteInput(true)}
+                    >
+                      <i className="fas fa-ticket-alt me-2"></i>
+                      I have an invite code
+                    </button>
                   )}
 
                   {/* Ethereum Wallet — Primary CTA */}

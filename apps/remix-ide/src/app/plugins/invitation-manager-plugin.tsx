@@ -224,14 +224,35 @@ export class InvitationManagerPlugin extends Plugin {
 
   /**
    * Check URL for invite token on startup
+   * Supports: ?invite=TOKEN, ?invite_token=TOKEN, and #invite=TOKEN
    */
   private async checkUrlForInvite(): Promise<void> {
+    // Check query params first (?invite= or ?invite_token=)
+    const params = new URLSearchParams(window.location.search)
+    const queryToken = params.get('invite') || params.get('invite_token')
+
+    if (queryToken) {
+      console.log('[InvitationManager] Found invite token in query params:', queryToken)
+
+      // Clean URL — remove invite params from query string
+      params.delete('invite')
+      params.delete('invite_token')
+      const newSearch = params.toString()
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash
+      window.history.replaceState(null, '', newUrl)
+
+      // Show the invite modal
+      await this.showInvite(queryToken)
+      return
+    }
+
+    // Fallback: check hash (#invite=TOKEN)
     const hash = window.location.hash
     const match = hash.match(/[#&]invite=([A-Za-z0-9_-]+)/)
 
     if (match) {
       const token = match[1]
-      console.log('[InvitationManager] Found invite token in URL:', token)
+      console.log('[InvitationManager] Found invite token in URL hash:', token)
 
       // Clean URL
       this.cleanInviteFromUrl()

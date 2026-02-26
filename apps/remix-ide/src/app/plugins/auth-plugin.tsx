@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
 
@@ -7,8 +7,8 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken'],
-  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed']
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode'],
+  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged']
 }
 
 export class AuthPlugin extends Plugin {
@@ -20,6 +20,7 @@ export class AuthPlugin extends Plugin {
   private inviteApi: InviteApiService
   private refreshTimer: number | null = null
   private pendingInviteToken: string | null = null
+  private cachedRegistrationMode: RegistrationMode | null = null
 
   constructor() {
     super(profile)
@@ -272,19 +273,55 @@ export class AuthPlugin extends Plugin {
     }
   }
 
+  /**
+   * Get the current registration mode from the server.
+   * Returns 'open', 'existing_only', or 'invite_only'.
+   * No authentication required.
+   */
+  async getRegistrationMode(): Promise<RegistrationMode> {
+    try {
+      // Return cached value if available (mode rarely changes)
+      if (this.cachedRegistrationMode) {
+        return this.cachedRegistrationMode
+      }
+
+      const response = await this.ssoApi.getRegistrationMode()
+      if (response.ok && response.data) {
+        this.cachedRegistrationMode = response.data.mode
+        return response.data.mode
+      }
+
+      // Default to 'open' if endpoint not available
+      console.warn('[AuthPlugin] Failed to fetch registration mode, defaulting to open')
+      return 'open'
+    } catch (error) {
+      console.warn('[AuthPlugin] Error fetching registration mode:', error)
+      return 'open'
+    }
+  }
+
   async login(provider: AuthProviderType): Promise<void> {
     try {
       console.log('[AuthPlugin] Starting popup-based login for:', provider)
 
+      // Get pending invite token to pass through login flow
+      const inviteToken = this.getPendingInviteToken()
+
       // SIWE requires special handling (client-side wallet signature)
       if (provider === 'siwe') {
-        await this.loginWithSIWE()
+        await this.loginWithSIWE(inviteToken || undefined)
         return
+      }
+
+      // Build popup URL with invite_token if present
+      let loginUrl = `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
+      if (inviteToken) {
+        loginUrl += `&invite_token=${encodeURIComponent(inviteToken)}`
       }
 
       // Open popup directly (must be in user click event)
       const popup = window.open(
-        `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`,
+        loginUrl,
         'RemixLogin',
         'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
       )
@@ -328,7 +365,11 @@ export class AuthPlugin extends Plugin {
             })
           } else if (event.data.type === 'sso-auth-error') {
             cleanup()
-            reject(new Error(event.data.error || 'Login failed'))
+            // Map REGISTRATION_CLOSED to a user-friendly error
+            const errorMsg = event.data.error === 'REGISTRATION_CLOSED'
+              ? 'Registration is currently closed. Only existing users can sign in.'
+              : (event.data.error || 'Login failed')
+            reject(new Error(errorMsg))
           }
         }
 
@@ -371,6 +412,11 @@ export class AuthPlugin extends Plugin {
 
       // Fetch credits after successful login
       this.refreshCredits().catch(console.error)
+
+      // Auto-redeem pending invite token after successful login
+      this.autoRedeemPendingInvite().catch(err =>
+        console.warn('[AuthPlugin] Auto-redeem invite failed:', err)
+      )
 
       console.log('[AuthPlugin] Login successful')
     } catch (error) {
@@ -999,7 +1045,7 @@ Issued At: ${new Date().toISOString()}`
     }
   }
 
-  private async loginWithSIWE(): Promise<void> {
+  private async loginWithSIWE(inviteToken?: string): Promise<void> {
     try {
       // Check if wallet is available
       if (!(window as any).ethereum) {
@@ -1067,20 +1113,24 @@ Issued At: ${new Date().toISOString()}`
 
       // Send to backend for verification
       console.log('[SIWE] Verifying signature with backend...')
+      const verifyBody: Record<string, string> = { message, signature }
+      if (inviteToken) {
+        verifyBody.invite_token = inviteToken
+      }
       const verifyResponse = await fetch(`${endpointUrls.sso}/siwe/verify`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          message,
-          signature
-        })
+        body: JSON.stringify(verifyBody)
       })
 
       if (!verifyResponse.ok) {
         const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
+        if (verifyResponse.status === 403 && error.error === 'REGISTRATION_CLOSED') {
+          throw new Error('Registration is currently closed. Only existing users can sign in.')
+        }
         throw new Error(error.error || error.message || 'SIWE verification failed')
       }
 
@@ -1105,9 +1155,39 @@ Issued At: ${new Date().toISOString()}`
       // Auto-refresh credits
       this.refreshCredits().catch(console.error)
 
+      // Auto-redeem pending invite token after successful SIWE login
+      this.autoRedeemPendingInvite().catch(err =>
+        console.warn('[SIWE] Auto-redeem invite failed:', err)
+      )
+
     } catch (error: any) {
       console.error('[SIWE] Login failed:', error)
       throw error
+    }
+  }
+
+  /**
+   * Automatically redeem a pending invite token after successful login.
+   * Safe to call even if no invite is pending or already redeemed.
+   */
+  private async autoRedeemPendingInvite(): Promise<void> {
+    const token = this.getPendingInviteToken()
+    if (!token) return
+
+    console.log('[AuthPlugin] Auto-redeeming pending invite token...')
+    try {
+      const result = await this.redeemInviteToken(token)
+      if (result.success) {
+        console.log('[AuthPlugin] Invite token redeemed successfully')
+        this.clearPendingInviteToken()
+      } else if (result.error_code === 'ALREADY_REDEEMED') {
+        console.log('[AuthPlugin] Invite token was already redeemed')
+        this.clearPendingInviteToken()
+      } else {
+        console.warn('[AuthPlugin] Invite redemption failed:', result.error)
+      }
+    } catch (err) {
+      console.warn('[AuthPlugin] Auto-redeem error:', err)
     }
   }
 

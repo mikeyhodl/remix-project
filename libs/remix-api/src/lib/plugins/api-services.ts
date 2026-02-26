@@ -20,6 +20,7 @@ import {
   GenericSuccessResponse,
   CreditTransaction,
   RefreshTokenResponse,
+  RegistrationModeResponse,
   StorageHealthResponse,
   StorageConfig,
   PresignUploadRequest,
@@ -100,6 +101,14 @@ export class SSOApiService {
    */
   async getProviders(): Promise<ApiResponse<ProvidersResponse>> {
     return this.apiClient.get<ProvidersResponse>('/providers')
+  }
+
+  /**
+   * Get current registration mode (no auth required)
+   * Returns 'open', 'existing_only', or 'invite_only'
+   */
+  async getRegistrationMode(): Promise<ApiResponse<RegistrationModeResponse>> {
+    return this.apiClient.get<RegistrationModeResponse>('/registration-mode')
   }
   
   // ==================== SIWE ====================
