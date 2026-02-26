@@ -81,6 +81,8 @@ async function walkAndZip(
     // Skip the sync manifest and the ZIP itself — they're not user data
     if (entry === '.sync-manifest.json') continue
     if (entry === '_workspace.zip') continue
+    // Skip .git — managed locally by isomorphic-git, never synced
+    if (entry === '.git') continue
 
     const childRelative = relativePath ? `${relativePath}/${entry}` : entry
     const childAbs = `${basePath}/${childRelative}`
@@ -159,6 +161,7 @@ export async function unpackWorkspace(
 
   zip.forEach((relativePath: string, zipEntry: JSZip.JSZipObject) => {
     if (zipEntry.dir) return // skip directory entries
+    if (relativePath === '.git' || relativePath.startsWith('.git/')) return // skip .git internals
 
     filePromises.push((async () => {
       const localPath = `${localWorkspacePath}/${relativePath}`

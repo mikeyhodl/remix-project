@@ -70,6 +70,7 @@ export function onCloudFSWrite(listener: FSWriteListener): () => void {
  * Safe to call multiple times — only patches once.
  */
 export function enableCloudFSObserver(): void {
+  console.debug('[CloudFSObserver] Enabling... is active?', _active)
   if (_active) return
 
   const fsCallback = (window as any).remixFileSystemCallback
@@ -90,6 +91,7 @@ export function enableCloudFSObserver(): void {
     _originals[method] = original.bind(promises)
 
     promises[method] = async function (...args: any[]) {
+      console.debug(`[CloudFSObserver] Intercepted ${method} with args:`, args)
       const result = await _originals[method](...args)
       const filepath: string = args[0]
       notify({ type: method, path: filepath })
@@ -101,6 +103,7 @@ export function enableCloudFSObserver(): void {
   if (promises.rename) {
     _originals['rename'] = promises.rename.bind(promises)
     promises.rename = async function (oldPath: string, newPath: string, ...rest: any[]) {
+      console.debug(`[CloudFSObserver] Intercepted rename with args:`, [oldPath, newPath, ...rest]) 
       const result = await _originals['rename'](oldPath, newPath, ...rest)
       // Emit for both old (delete-like) and new (add-like) paths
       notify({ type: 'rename', path: oldPath, newPath })

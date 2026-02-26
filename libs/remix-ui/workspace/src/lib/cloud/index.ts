@@ -46,6 +46,8 @@ export {
   migrateWorkspace,
   migrateWorkspaces,
   hasPendingMigrations,
+  dismissMigration,
+  clearMigrationDismissal,
 } from './cloud-migration'
 export type {
   LocalWorkspaceInfo,

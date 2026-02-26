@@ -698,6 +698,13 @@ export const switchToWorkspace = async (name: string) => {
     dispatch(setMode('localhost'))
     plugin.emit('setWorkspace', { name: null, isLocalhost: true })
   } else if (name === NO_WORKSPACE) {
+    // If we're in cloud mode, don't create a local default workspace.
+    // The cloud enableCloud() flow already handles creating a default
+    // cloud workspace when needed.  Just ignore this path in cloud mode.
+    if (cloudStore.isCloudMode) {
+      console.log('[switchToWorkspace] NO_WORKSPACE in cloud mode — skipping local default creation')
+      return
+    }
     // if there is no other workspace, create remix default workspace
     plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
     await createWorkspace('default_workspace', 'remixDefault')

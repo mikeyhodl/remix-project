@@ -26,6 +26,7 @@ import {
   setMode,
   setReadOnlyMode,
 } from '../actions/payload'
+import { createWorkspace } from '../actions/workspace'
 import {
   enableCloudFSObserver,
   disableCloudFSObserver,
@@ -167,6 +168,33 @@ export async function enableCloud(): Promise<void> {
       } catch (err) {
         console.error('[enableCloud] Failed to switch to cloud workspace:', err)
       }
+    } else {
+      // No cloud workspaces yet — create a default one so the user isn't stuck
+      // in an empty state.  This parallels the legacy behavior where Remix
+      // always ensures at least one workspace exists.
+      console.log('[enableCloud] No cloud workspaces — creating default')
+      try {
+        const newWs = await apiCreate('default_workspace')
+        cloudStore.addCloudWorkspace(newWs)
+        const provider = _plugin.fileProviders.workspace
+        if (provider.setWorkspaceMappings) {
+          provider.setWorkspaceMappings([newWs])
+        }
+        await switchToCloudWorkspace(newWs, (status) => {
+          cloudStore.updateSyncStatus(newWs.uuid, status)
+        })
+        cloudStore.setActiveCloudWorkspace(newWs.uuid)
+        const workspaceProvider = _plugin.fileProviders?.workspace
+        if (workspaceProvider) {
+          startFileChangeTracking(workspaceProvider, newWs.uuid)
+        }
+        _dispatch(setMode('browser'))
+        _dispatch(setCurrentWorkspace({ name: newWs.name, isGitRepo: false }))
+        _dispatch(setReadOnlyMode(false))
+        localStorage.setItem('lastCloudWorkspace', newWs.name)
+      } catch (err) {
+        console.error('[enableCloud] Failed to create default cloud workspace:', err)
+      }
     }
   } catch (err) {
     console.error('[enableCloud] Failed to enable cloud:', err)
@@ -204,12 +232,47 @@ export async function disableCloud(): Promise<void> {
   try {
     await _plugin.fileManager.closeAllFiles()
     const lastLocal = localStorage.getItem('lastLocalWorkspace') || localStorage.getItem('currentWorkspace')
-    if (lastLocal) {
-      await _plugin.fileProviders.workspace.setWorkspace(lastLocal)
-      await _plugin.setWorkspace({ name: lastLocal, isLocalhost: false })
+
+    // Check if the legacy workspace actually exists
+    let targetLocal = lastLocal
+    if (targetLocal) {
+      try {
+        const wsPath = `/.workspaces/${targetLocal}`
+        await (window as any).remixFileSystem.stat(wsPath)
+      } catch {
+        targetLocal = null  // workspace doesn't exist anymore
+      }
+    }
+
+    // If no valid legacy workspace, check if any exist at all
+    if (!targetLocal) {
+      try {
+        const entries = await (window as any).remixFileSystem.readdir('/.workspaces')
+        const dirs = []
+        for (const e of entries) {
+          try {
+            const s = await (window as any).remixFileSystem.stat(`/.workspaces/${e}`)
+            if (s.isDirectory()) dirs.push(e)
+          } catch { /* skip */ }
+        }
+        if (dirs.length > 0) {
+          targetLocal = dirs[0]
+        }
+      } catch { /* /.workspaces may not exist */ }
+    }
+
+    if (targetLocal) {
+      await _plugin.fileProviders.workspace.setWorkspace(targetLocal)
+      await _plugin.setWorkspace({ name: targetLocal, isLocalhost: false })
       _dispatch(setMode('browser'))
-      _dispatch(setCurrentWorkspace({ name: lastLocal, isGitRepo: false }))
+      _dispatch(setCurrentWorkspace({ name: targetLocal, isGitRepo: false }))
       _dispatch(setReadOnlyMode(false))
+    } else {
+      // No local workspaces at all — create a default one
+      // This mirrors the standard Remix behavior (switchToWorkspace(NO_WORKSPACE))
+      console.log('[disableCloud] No local workspaces — creating default')
+      _plugin.call('notification', 'toast', 'No local workspace found — creating default workspace…')
+      await createWorkspace('default_workspace', 'remixDefault')
     }
   } catch (err) {
     console.warn('[disableCloud] Failed to switch to legacy workspace:', err)

@@ -22,6 +22,7 @@ import {
   discoverLocalWorkspaces,
   buildMigrationItems,
   migrateWorkspaces,
+  dismissMigration,
   MigrationItem,
   MigrationStatus,
   LocalWorkspaceInfo,
@@ -415,6 +416,11 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
 
   const handleHide = useCallback(() => {
     if (phase === 'migrating') return
+    // If the user is dismissing from the selection phase (i.e. "Skip"),
+    // persist the dismissal so we don't re-ask every time cloud mode activates.
+    if (phase === 'select' || phase === 'loading') {
+      dismissMigration()
+    }
     startTimeRef.current = null
     setElapsed(0)
     onHide()

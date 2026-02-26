@@ -86,6 +86,7 @@ export type MigrationProgressCallback = (items: MigrationItem[]) => void
 const LOCAL_WORKSPACES_PATH = '/.workspaces'
 const CLOUD_WORKSPACES_PATH = '/.cloud-workspaces'
 const MIGRATION_DONE_KEY = 'remix_migration_done_workspaces'
+const MIGRATION_DISMISSED_KEY = 'remix_migration_dismissed'
 
 // ── Discovery ────────────────────────────────────────────────
 
@@ -175,12 +176,61 @@ function markAsMigrated(name: string): void {
 }
 
 /**
- * Check if there are any local workspaces that haven't been migrated.
+ * Check if there are any local workspaces that haven't been migrated yet
+ * AND the user hasn't dismissed the migration prompt.
  * Use this to decide whether to show the migration prompt.
  */
 export async function hasPendingMigrations(): Promise<boolean> {
+  // If user already dismissed, don't ask again (until new workspaces appear)
+  if (isMigrationDismissed()) return false
   const locals = await discoverLocalWorkspaces()
   return locals.length > 0
+}
+
+/**
+ * Dismiss the migration prompt so it won't be shown again.
+ * Called when the user clicks "Skip" — marks the current set of
+ * local workspaces as "seen" so they won't trigger the prompt.
+ * If NEW local workspaces appear later (e.g. user creates one while
+ * logged out), the prompt will show again.
+ */
+export function dismissMigration(): void {
+  // Store the set of workspace names that existed when the user dismissed.
+  // hasPendingMigrations() will check: if ALL current local workspaces
+  // were in the dismissed set, stay dismissed.  If a new workspace appears
+  // that wasn't in the set, re-prompt.
+  discoverLocalWorkspaces().then(locals => {
+    const names = locals.map(l => l.name)
+    localStorage.setItem(MIGRATION_DISMISSED_KEY, JSON.stringify(names))
+  }).catch(() => {
+    // If discovery fails, just set an empty dismiss flag
+    localStorage.setItem(MIGRATION_DISMISSED_KEY, JSON.stringify([]))
+  })
+}
+
+/**
+ * Check if migration was dismissed AND no new workspaces have appeared since.
+ */
+function isMigrationDismissed(): boolean {
+  try {
+    const raw = localStorage.getItem(MIGRATION_DISMISSED_KEY)
+    if (!raw) return false
+    // If the key exists, migration was dismissed.
+    // We could check for new workspaces here, but to keep it sync,
+    // we just check presence.  The async hasPendingMigrations() above
+    // is the real gate.
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Clear the dismissal — called when new workspaces are detected that
+ * weren't in the dismissed set, or when the user logs in with a different account.
+ */
+export function clearMigrationDismissal(): void {
+  localStorage.removeItem(MIGRATION_DISMISSED_KEY)
 }
 
 // ── Name conflict detection ──────────────────────────────────

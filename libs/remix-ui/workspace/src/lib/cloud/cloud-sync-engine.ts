@@ -219,6 +219,7 @@ export class CloudSyncEngine {
       for (const obj of remoteObjects) {
         if (obj.key.endsWith('/')) continue  // skip dir markers
         if (obj.key === WORKSPACE_ZIP_KEY) continue  // skip the zip itself
+        if (obj.key === '.git' || obj.key.startsWith('.git/')) continue  // skip .git internals
         if (zipManifest.files[obj.key]) {
           // Overwrite with real S3 ETag so incremental diff works next time
           zipManifest.files[obj.key].etag = obj.etag || ''
@@ -273,7 +274,8 @@ export class CloudSyncEngine {
     const remoteObjects = await this.s3!.listObjects('')
     const remoteMap = new Map<string, S3Object>()
     for (const obj of remoteObjects) {
-      if (!obj.key.endsWith('/') && obj.key !== WORKSPACE_ZIP_KEY) {
+      if (!obj.key.endsWith('/') && obj.key !== WORKSPACE_ZIP_KEY
+        && obj.key !== '.git' && !obj.key.startsWith('.git/')) {
         remoteMap.set(obj.key, obj)
       }
     }
@@ -379,6 +381,9 @@ export class CloudSyncEngine {
 
     // Never track the snapshot ZIP (managed by the engine, not user files)
     if (change.path === WORKSPACE_ZIP_KEY || change.path.endsWith('/' + WORKSPACE_ZIP_KEY)) return
+
+    // Never sync .git internals — managed locally by isomorphic-git
+    if (change.path === '.git' || change.path.startsWith('.git/')) return
 
     // De-duplicate: if there's already a pending change for this path, update it
     const existingIdx = this.pendingChanges.findIndex(c => c.path === change.path)
