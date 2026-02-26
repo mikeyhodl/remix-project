@@ -730,20 +730,22 @@ class AppComponent {
 
     await this.appManager.activatePlugin(['auth'])
     // Activate/deactivate cloud plugins based on auth state
-    this.appManager.on('auth', 'authStateChanged', async (state: any) => {
-      if (state.isAuthenticated) {
-        await this.appManager.activatePlugin(['s3Storage'])
-        await this.appManager.activatePlugin(['cloudWorkspaces'])
-      } else {
-        await this.appManager.deactivatePlugin('cloudWorkspaces')
-        await this.appManager.deactivatePlugin('s3Storage')
-      }
-    })
+    // disabled for this PR
+    /*     this.appManager.on('auth', 'authStateChanged', async (state: any) => {
+          if (state.isAuthenticated) {
+            await this.appManager.activatePlugin(['s3Storage'])
+            await this.appManager.activatePlugin(['cloudWorkspaces'])
+          } else {
+            await this.appManager.deactivatePlugin('cloudWorkspaces')
+            await this.appManager.deactivatePlugin('s3Storage')
+          }
+        }) 
     // Also ensure cloud plugins stay active when a token is silently refreshed
     this.appManager.on('auth', 'tokenRefreshed', async () => {
       await this.appManager.activatePlugin(['s3Storage'])
       await this.appManager.activatePlugin(['cloudWorkspaces'])
     })
+      */
     await this.appManager.activatePlugin(['invitationManager'])
     await this.appManager.activatePlugin(['membershipRequest'])
     await this.appManager.activatePlugin(['betaCornerWidget'])
@@ -752,7 +754,7 @@ class AppComponent {
     await this.appManager.activatePlugin(['feedback'])
     await this.appManager.activatePlugin(['settings'])
 
-    await this.appManager.activatePlugin(['walkthrough', 'storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
+    await this.appManager.activatePlugin(['storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
     await this.appManager.activatePlugin(['solidity-script', 'remix-templates'])
 
     if (isElectron()) {
@@ -861,7 +863,7 @@ class AppComponent {
     // activate solidity plugin
     this.appManager.activatePlugin(['solidity', 'udapp', 'deploy-libraries', 'link-libraries', 'openzeppelin-proxy', 'scriptRunnerBridge', 'resolutionIndex'])
 
-    if (isElectron()){
+    if (isElectron()) {
       this.appManager.activatePlugin(['desktopHost'])
     }
     // await this.appManager.activatePlugin(['compilerArtefacts'])
