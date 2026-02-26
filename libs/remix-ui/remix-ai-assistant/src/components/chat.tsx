@@ -39,12 +39,9 @@ const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt, theme, plugin, ha
   const [conversationStarters, setConversationStarters] = useState<ConversationStarter[]>([])
 
   useEffect(() => {
-    const qp = new QueryParams()
-    const hasFlag = qp.exists('experimental')
-
     // Sample new conversation starters when component mounts
     // Use MCP starters only if experimental flag is set
-    const starters = sampleConversationStarters(hasFlag)
+    const starters = sampleConversationStarters(true)
     setConversationStarters(starters)
   }, [])
 
