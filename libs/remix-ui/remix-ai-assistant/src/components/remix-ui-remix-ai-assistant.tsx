@@ -975,6 +975,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showButton={showButton}
               setShowButton={setShowButton}
               theme={themeTracker?.name}
+              chatTitle={messages.find(m => m.role === 'user')?.content}
             />
             <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
               <div data-id="remix-ai-assistant-ready"></div>
@@ -1015,7 +1016,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 </button>
               </div>
               {/* Chat history content */}
-              <div className="flex-grow-1" style={{ overflow: 'hidden' }}>
+              <div className="flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
                 <ChatHistorySidebar
                   conversations={props.conversations}
                   currentConversationId={props.currentConversationId || null}
@@ -1049,6 +1050,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 showButton={showButton}
                 setShowButton={setShowButton}
                 theme={themeTracker?.name}
+                chatTitle={messages.find(m => m.role === 'user')?.content}
               />
               <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
                 <div data-id="remix-ai-assistant-ready"></div>

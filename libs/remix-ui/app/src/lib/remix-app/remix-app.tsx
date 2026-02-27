@@ -277,7 +277,8 @@ const RemixApp = (props: IRemixAppUi) => {
     overflow: 'hidden',
     top: floatingChatTop,
     left: floatingChatLeft,
-    width: `${floatingChatWidth}px`
+    width: `${floatingChatWidth}px`,
+    height: '45vh'
   }), [floatingChatTop, floatingChatLeft, floatingChatWidth])
   const [showArchived, setShowArchived] = useState(false);
 
