@@ -262,8 +262,8 @@ export async function disableCloud(): Promise<void> {
   const activeWs = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === activeId)
   if (activeWs) localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), activeWs.name)
 
-  // 1. Deactivate sync engine
-  cloudSyncEngine.deactivate()
+  // 1. Deactivate sync engine (await so flush completes before tearing down)
+  await cloudSyncEngine.deactivate()
 
   // 2. Restore original file provider
   exitCloudProvider()

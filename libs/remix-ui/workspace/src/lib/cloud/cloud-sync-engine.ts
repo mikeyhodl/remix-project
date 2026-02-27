@@ -61,6 +61,12 @@ export class CloudSyncEngine {
   private onStatusChange: ((status: WorkspaceSyncStatus) => void) | null = null
   private isSyncing = false
 
+  /**
+   * Tracks the in-progress flushChanges() promise so that deactivate()
+   * can await it even if the flush was already started by the periodic timer.
+   */
+  private _flushPromise: Promise<void> | null = null
+
   /** ETag of the last _git.zip we pushed or saw — used to detect remote changes */
   private _lastGitZipEtag: string | null = null
 
@@ -255,7 +261,18 @@ export class CloudSyncEngine {
    * Flushes any pending changes first so nothing is lost on workspace switch.
    */
   async deactivate(): Promise<void> {
-    // Flush pending changes before tearing down
+    // If a flush is already in progress (e.g. from the periodic timer),
+    // wait for it to finish before tearing down state.
+    if (this._flushPromise) {
+      console.log('[CloudSync] Waiting for in-progress flush before deactivate...')
+      try {
+        await this._flushPromise
+      } catch (err) {
+        console.warn('[CloudSync] In-progress flush failed during deactivate:', err.message || err)
+      }
+    }
+
+    // Flush any remaining pending changes before tearing down
     if (this.pendingChanges.length > 0 && this.s3 && this.workspaceUuid) {
       console.log(`[CloudSync] Flushing ${this.pendingChanges.length} pending changes before deactivate`)
       try {
@@ -307,6 +324,7 @@ export class CloudSyncEngine {
     this.localWorkspacePath = null
     this.pendingChanges = []
     this.isSyncing = false
+    this._flushPromise = null
     this._isResolvingConflict = false
     this.onStatusChange = null
     this._onConflictDetected = null
@@ -608,9 +626,27 @@ export class CloudSyncEngine {
    * Uses optimistic concurrency: before pushing files to S3 we PATCH
    * the workspace with `expected_version`. If another device pushed
    * since our last pull the API returns 409 and we pull instead.
+   *
+   * Stores the active promise in `_flushPromise` so that `deactivate()`
+   * can await an in-progress flush even if it was started by the periodic timer.
    */
   async flushChanges(): Promise<void> {
     if (!this.isActive || this.isSyncing || this.pendingChanges.length === 0) return
+
+    const promise = this._doFlush()
+    this._flushPromise = promise
+    try {
+      await promise
+    } finally {
+      // Clear the reference only if it's still OUR promise (not a newer one)
+      if (this._flushPromise === promise) this._flushPromise = null
+    }
+  }
+
+  /**
+   * Internal flush implementation.
+   */
+  private async _doFlush(): Promise<void> {
 
     this.isSyncing = true
     this.updateStatus({ ...this._status, status: 'pushing' })
