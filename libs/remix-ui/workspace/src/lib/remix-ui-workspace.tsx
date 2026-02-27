@@ -66,6 +66,27 @@ export function Workspace() {
   // Note: 'pushing' status is intentionally excluded — the file tree already
   // reflects local edits, so we don't show a loading overlay for S3 uploads.
 
+  // ── Debounced loading overlay ──
+  // Turns on instantly when any source fires, turns off after a short delay
+  // once all sources settle. Smooths over the rapid state gaps during cloud
+  // workspace switches (cl→off … rw→on flickers).
+  const rawLoading = global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning || isCloudLoading
+  const [isLoadingOverlay, setIsLoadingOverlay] = useState(rawLoading)
+  const _offTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (rawLoading) {
+      // Instantly show
+      if (_offTimer.current) { clearTimeout(_offTimer.current); _offTimer.current = null }
+      setIsLoadingOverlay(true)
+    } else {
+      // Delay hiding so rapid on/off gaps don't flash the tree
+      _offTimer.current = setTimeout(() => setIsLoadingOverlay(false), isCloudMode ? 1500 : 300)
+    }
+    return () => { if (_offTimer.current) clearTimeout(_offTimer.current) }
+  }, [rawLoading])
+  // ── End debounced loading overlay ──
+
   const appContext = useContext(AppContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = WorkspaceEvent>(event: T) => {
@@ -1125,9 +1146,9 @@ export function Workspace() {
             }}
           >
             <div className="h-100">
-              {(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning || isCloudLoading) && (
+              {isLoadingOverlay && (
                 <div className="text-center py-5">
-                  {isCloudLoading ? (
+                  {isCloudMode ? (
                     <>
                       <i className="fas fa-cloud-arrow-down fa-beat-fade fa-2x" style={{ color: 'var(--bs-info)' }}></i>
                       <div className="small mt-2" style={{ color: 'var(--bs-secondary-color)' }}>Loading cloud workspace…</div>
@@ -1137,7 +1158,7 @@ export function Workspace() {
                   )}
                 </div>
               )}
-              {!(global.fs.browser.isRequestingWorkspace || global.fs.browser.isRequestingCloning || isCloudLoading) && global.fs.mode === 'browser' && currentWorkspace !== NO_WORKSPACE && (
+              {!isLoadingOverlay && global.fs.mode === 'browser' && currentWorkspace !== NO_WORKSPACE && (
                 <FileExplorer
                   fileState={global.fs.browser.fileState}
                   name={currentWorkspace}

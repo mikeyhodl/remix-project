@@ -579,7 +579,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
             </Dropdown>
           </span>
 
-          {!isDappWorkspace && (isCheckingDappMappings || isSwitchingToDapp || dappMappings.length > 0) && (
+          {!isDappWorkspace && !isCheckingDappMappings && (isSwitchingToDapp || dappMappings.length > 0) && (
             <span className="ps-0 pb-1 w-50">
               <Button
                 variant="primary"
