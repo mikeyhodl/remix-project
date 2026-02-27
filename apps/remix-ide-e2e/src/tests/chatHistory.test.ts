@@ -262,5 +262,150 @@ module.exports = {
       .waitForElementVisible('*[data-id="chat-history-sidebar-maximized"]', 500)
       .assert.visible('*[data-id="floating-chat-heading"]')
       .assert.containsText('*[data-id="floating-chat-heading"]', 'Chat history')
+  },
+
+  'Should seed many conversations into IndexedDB for scroll test #group2': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-assistant-ready']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      // Seed 25 conversations
+      .executeAsync(function (done) {
+        const request = indexedDB.open('RemixAIChatHistory', 1)
+        request.onerror = () => done(false)
+        request.onsuccess = () => {
+          const db = request.result
+          const tx = db.transaction('conversations', 'readwrite')
+          const store = tx.objectStore('conversations')
+          const now = Date.now()
+          for (let i = 0; i < 25; i++) {
+            store.put({
+              id: `scroll-test-conv-${i}`,
+              title: `Scroll Test Conversation ${i + 1}`,
+              preview: `Preview text for scroll test conversation number ${i + 1}`,
+              createdAt: now - (i * 60000),
+              updatedAt: now - (i * 60000),
+              lastAccessedAt: now - (i * 60000),
+              messageCount: 2,
+              archived: false
+            })
+          }
+          tx.oncomplete = () => done(true)
+          tx.onerror = () => done(false)
+        }
+        // DB may not exist yet; create it with the right schema
+        request.onupgradeneeded = (event: any) => {
+          const db = event.target.result
+          if (!db.objectStoreNames.contains('conversations')) {
+            const store = db.createObjectStore('conversations', { keyPath: 'id' })
+            store.createIndex('createdAt', 'createdAt', { unique: false })
+            store.createIndex('archived', 'archived', { unique: false })
+            store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false })
+          }
+          if (!db.objectStoreNames.contains('messages')) {
+            const msgStore = db.createObjectStore('messages', { keyPath: 'id' })
+            msgStore.createIndex('conversationId', 'conversationId', { unique: false })
+            msgStore.createIndex('timestamp', 'timestamp', { unique: false })
+          }
+        }
+      }, [], function (result) {
+        browser.assert.equal(result.value, true, 'Conversations seeded into IndexedDB successfully')
+      })
+  },
+
+  'Should show all seeded conversations in sidebar after reload #group2': function (browser: NightwatchBrowser) {
+    browser
+      .refreshPage()
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-assistant-ready']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      .waitForElementVisible('*[data-id="toggle-history-btn"]')
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(1000)
+      .execute(function () {
+        const items = document.querySelectorAll('[data-id^="conversation-item-"]')
+        return items.length
+      }, [], function (result) {
+        browser.assert.ok((result.value as number) >= 25, `At least 25 conversation items rendered, got ${result.value}`)
+      })
+  },
+
+  'Should scroll conversation list in non-maximized sidebar #group2': function (browser: NightwatchBrowser) {
+    browser
+      // Verify the sidebar body overflows (content taller than the visible area)
+      .execute(function () {
+        const sidebarBody = document.querySelector('.sidebar-body') as HTMLElement
+        if (!sidebarBody) return { error: 'sidebar-body not found' }
+        return {
+          scrollHeight: sidebarBody.scrollHeight,
+          clientHeight: sidebarBody.clientHeight,
+          overflows: sidebarBody.scrollHeight > sidebarBody.clientHeight
+        }
+      }, [], function (result) {
+        const info = result.value as any
+        browser.assert.ok(!info.error, `sidebar-body element found`)
+        browser.assert.ok(info.overflows, `sidebar-body overflows: scrollHeight(${info.scrollHeight}) > clientHeight(${info.clientHeight})`)
+      })
+      // Scroll to the bottom and verify scrollTop actually moved
+      .execute(function () {
+        const sidebarBody = document.querySelector('.sidebar-body') as HTMLElement
+        if (!sidebarBody) return -1
+        sidebarBody.scrollTop = sidebarBody.scrollHeight
+        return sidebarBody.scrollTop
+      }, [], function (result) {
+        browser.assert.ok((result.value as number) > 0, `Sidebar scrolled: scrollTop is ${result.value} (> 0)`)
+      })
+      // Scroll back to top and verify
+      .execute(function () {
+        const sidebarBody = document.querySelector('.sidebar-body') as HTMLElement
+        if (!sidebarBody) return -1
+        sidebarBody.scrollTop = 0
+        return sidebarBody.scrollTop
+      }, [], function (result) {
+        browser.assert.equal(result.value, 0, 'Sidebar scrolled back to top')
+      })
+  },
+
+  'Should scroll conversation list in floating chat history (full-screen mode) #group2': function (browser: NightwatchBrowser) {
+    browser
+      // Close the non-maximized sidebar first to get back to chat view
+      .click('*[data-id="chat-history-back-btn"]')
+      .pause(500)
+      // Go full-screen — toggle-history-btn is hidden by design in this mode
+      .waitForElementVisible('*[data-id="maximizeRightSidePanel"]')
+      .click('*[data-id="maximizeRightSidePanel"]')
+      .pause(500)
+      .waitForElementVisible('*[data-id="chat-history-sidebar-maximized"]', 5000)
+      // Verify the floating sidebar-body overflows with many conversations
+      .execute(function () {
+        const sidebar = document.querySelector('[data-id="chat-history-sidebar-maximized"]')
+        const sidebarBody = sidebar ? sidebar.querySelector('.sidebar-body') as HTMLElement : null
+        if (!sidebarBody) return { error: 'sidebar-body not found inside chat-history-sidebar-maximized' }
+        return {
+          scrollHeight: sidebarBody.scrollHeight,
+          clientHeight: sidebarBody.clientHeight,
+          overflows: sidebarBody.scrollHeight > sidebarBody.clientHeight
+        }
+      }, [], function (result) {
+        const info = result.value as any
+        browser.assert.ok(!info.error, `floating sidebar-body found: ${info.error || 'ok'}`)
+        browser.assert.ok(info.overflows, `Floating sidebar-body overflows: scrollHeight(${info.scrollHeight}) > clientHeight(${info.clientHeight})`)
+      })
+      // Confirm programmatic scrolling works
+      .execute(function () {
+        const sidebar = document.querySelector('[data-id="chat-history-sidebar-maximized"]')
+        const sidebarBody = sidebar ? sidebar.querySelector('.sidebar-body') as HTMLElement : null
+        if (!sidebarBody) return -1
+        sidebarBody.scrollTop = sidebarBody.scrollHeight
+        return sidebarBody.scrollTop
+      }, [], function (result) {
+        browser.assert.ok((result.value as number) > 0, `Floating sidebar scrolled: scrollTop is ${result.value} (> 0)`)
+      })
   }
 }
