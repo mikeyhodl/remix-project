@@ -20,6 +20,7 @@ import {
   listCloudWorkspaces as apiList,
   fetchSTSToken,
 } from './cloud-workspace-api'
+import { WorkspaceLockedError } from './cloud-workspace-lock'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
 import {
   setCurrentWorkspace,
@@ -361,37 +362,125 @@ export async function switchToCloudWorkspace(
   // Signal loading state before pull
   onSyncStatus?.({ status: 'loading', lastSync: null, pendingChanges: 0 })
 
-  // Activate sync engine and pull from S3
-  await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
-    // Called when a version conflict is detected — close all editor tabs
-    // so Remix autosave stops writing stale content, and notify the user.
-    console.log('[CloudSync:version] onConflictDetected: closing all editors')
-    try {
-      await _plugin.fileManager.closeAllFiles()
-    } catch (err) {
-      console.warn('[CloudSync:version] Failed to close editors:', err)
-    }
-    _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
-  }, async () => {
-    // Non-blocking prompt: remote _git.zip changed, ask user if they want to
-    // replace their local .git with the remote version.  This callback is
-    // fired as fire-and-forget from the sync engine, so the modal doesn't
-    // block the sync flow.
-    const result = await _plugin.call('notification', 'modal', {
-      id: 'cloud-git-conflict',
-      title: 'Git History Updated',
-      message: 'The git history for this workspace was updated on another device. Do you want to replace your local git history with the remote version?',
-      okLabel: 'Replace with Remote',
-      cancelLabel: 'Keep Local',
+  try {
+    // Activate sync engine and pull from S3
+    // acquireLock() inside activate() will throw WorkspaceLockedError if
+    // another device/tab already holds the lock.
+    await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
+      // Called when a version conflict is detected — close all editor tabs
+      // so Remix autosave stops writing stale content, and notify the user.
+      console.log('[CloudSync:version] onConflictDetected: closing all editors')
+      try {
+        await _plugin.fileManager.closeAllFiles()
+      } catch (err) {
+        console.warn('[CloudSync:version] Failed to close editors:', err)
+      }
+      _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
+    }, async () => {
+      // Non-blocking prompt: remote _git.zip changed, ask user if they want to
+      // replace their local .git with the remote version.  This callback is
+      // fired as fire-and-forget from the sync engine, so the modal doesn't
+      // block the sync flow.
+      const result = await _plugin.call('notification', 'modal', {
+        id: 'cloud-git-conflict',
+        title: 'Git History Updated',
+        message: 'The git history for this workspace was updated on another device. Do you want to replace your local git history with the remote version?',
+        okLabel: 'Replace with Remote',
+        cancelLabel: 'Keep Local',
+      })
+      if (result) {
+        _plugin.call('notification', 'toast', 'Updating git history from remote…')
+        await cloudSyncEngine.pullGitSnapshot(true)
+        _plugin.call('notification', 'toast', 'Git history updated from remote.')
+      }
+    }, (message: string) => {
+      _plugin.call('notification', 'toast', message)
+    }, async (reason: 'stolen' | 'expired' | 'error') => {
+      // Lock lost — close the cloud workspace and switch back to legacy.
+      const reasonText = reason === 'stolen'
+        ? 'Another device opened this workspace.'
+        : reason === 'expired'
+          ? 'The workspace lock expired.'
+          : 'Lost connection to the workspace lock server.'
+      console.warn(`[CloudSync:lock] Lock lost (${reason}) — disabling cloud`)
+      _plugin.call('notification', 'modal', {
+        id: 'cloud-lock-lost',
+        title: 'Workspace Closed',
+        message: `${reasonText} The workspace has been closed to prevent conflicts. Any unsaved changes have been preserved locally.`,
+        okLabel: 'OK',
+      })
+      try {
+        await disableCloud()
+      } catch (err) {
+        console.error('[CloudSync:lock] disableCloud after lock loss failed:', err)
+      }
     })
-    if (result) {
-      _plugin.call('notification', 'toast', 'Updating git history from remote…')
-      await cloudSyncEngine.pullGitSnapshot(true)
-      _plugin.call('notification', 'toast', 'Git history updated from remote.')
+  } catch (err) {
+    if (err instanceof WorkspaceLockedError) {
+      // Workspace is locked by another device — offer to take over
+      console.warn(`[CloudSync:lock] Workspace locked by ${err.holder} (ttl=${err.ttlRemaining}s) — asking user`)
+      onSyncStatus?.({ status: 'error', lastSync: null, pendingChanges: 0, error: 'Workspace is in use on another device' })
+      const takeOver = await _plugin.call('notification', 'modal', {
+        id: 'cloud-workspace-locked',
+        title: 'Workspace In Use',
+        message: 'This workspace is currently open on another device or browser tab. Do you want to take over? The other session will be closed.',
+        okLabel: 'Take Over',
+        cancelLabel: 'Cancel',
+      })
+      if (takeOver) {
+        // Force-acquire the lock — the old holder's heartbeat will get
+        // 409 "stolen" and trigger its onLockLost → disableCloud.
+        console.log('[CloudSync:lock] User chose Take Over — force-acquiring lock')
+        onSyncStatus?.({ status: 'loading', lastSync: null, pendingChanges: 0 })
+        await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
+          console.log('[CloudSync:version] onConflictDetected: closing all editors')
+          try { await _plugin.fileManager.closeAllFiles() } catch (e) { /* */ }
+          _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
+        }, async () => {
+          const result = await _plugin.call('notification', 'modal', {
+            id: 'cloud-git-conflict',
+            title: 'Git History Updated',
+            message: 'The git history for this workspace was updated on another device. Do you want to replace your local git history with the remote version?',
+            okLabel: 'Replace with Remote',
+            cancelLabel: 'Keep Local',
+          })
+          if (result) {
+            _plugin.call('notification', 'toast', 'Updating git history from remote…')
+            await cloudSyncEngine.pullGitSnapshot(true)
+            _plugin.call('notification', 'toast', 'Git history updated from remote.')
+          }
+        }, (message: string) => {
+          _plugin.call('notification', 'toast', message)
+        }, async (reason: 'stolen' | 'expired' | 'error') => {
+          const reasonText = reason === 'stolen'
+            ? 'Another device opened this workspace.'
+            : reason === 'expired'
+              ? 'The workspace lock expired.'
+              : 'Lost connection to the workspace lock server.'
+          console.warn(`[CloudSync:lock] Lock lost (${reason}) — disabling cloud`)
+          _plugin.call('notification', 'modal', {
+            id: 'cloud-lock-lost',
+            title: 'Workspace Closed',
+            message: `${reasonText} The workspace has been closed to prevent conflicts. Any unsaved changes have been preserved locally.`,
+            okLabel: 'OK',
+          })
+          try { await disableCloud() } catch (e) { console.error('[CloudSync:lock] disableCloud after lock loss failed:', e) }
+        }, true /* forceLock */)
+        // Fall through to the pull logic below
+      } else {
+        // User cancelled — switch back to a legacy workspace
+        console.log('[CloudSync:lock] User cancelled — falling back to legacy')
+        try {
+          await disableCloud()
+        } catch (disableErr) {
+          console.error('[CloudSync:lock] disableCloud after lock denied failed:', disableErr)
+        }
+        return
+      }
+    } else {
+      throw err  // re-throw non-lock errors
     }
-  }, (message: string) => {
-    _plugin.call('notification', 'toast', message)
-  })
+  }
 
   // Capture the git ETag BEFORE the initial pull — it will be null on fresh
   // activate.  After pullWorkspace() the engine will have the remote ETag.

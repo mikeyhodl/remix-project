@@ -40,6 +40,7 @@ import { FileChangeRecord, WorkspaceSyncStatus, STSToken, S3Object, SyncManifest
 import { fetchWorkspaceSTS, getCloudWorkspace, updateCloudWorkspace, VersionConflictException } from './cloud-workspace-api'
 import { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY, packGitDir, unpackGitDir, GIT_ZIP_KEY } from './cloud-workspace-zip'
 import { cloudStore } from './cloud-store'
+import { LockHeartbeatManager, acquireLock, releaseLock, releaseLockBeacon } from './cloud-workspace-lock'
 
 const SYNC_INTERVAL_MS = 10_000   // flush pending changes every 10s
 const TOKEN_REFRESH_BUFFER_MS = 60_000  // refresh STS token 60s before expiry
@@ -123,6 +124,20 @@ export class CloudSyncEngine {
    */
   private _onToast: ((message: string) => void) | null = null
 
+  // ── Lock coordination ─────────────────────────────────────
+
+  /** Heartbeat manager — sends periodic PUTs to keep the workspace lock alive */
+  private _lockHeartbeat = new LockHeartbeatManager()
+
+  /** Callback when the lock is lost (stolen by another device, expired, or error) */
+  private _onLockLost: ((reason: 'stolen' | 'expired' | 'error') => void) | null = null
+
+  /** beforeunload handler — releases lock via sendBeacon */
+  private _onBeforeUnload: (() => void) | null = null
+
+  /** offline handler — triggers lock loss so the workspace is closed */
+  private _onOffline: (() => void) | null = null
+
   /**
    * True while we're resolving a conflict — suppresses trackChange() so
    * autosave writes from stale editor buffers are silently dropped.
@@ -155,6 +170,8 @@ export class CloudSyncEngine {
     onConflictDetected?: () => Promise<void>,
     onGitConflictPrompt?: () => Promise<void>,
     onToast?: (message: string) => void,
+    onLockLost?: (reason: 'stolen' | 'expired' | 'error') => void,
+    forceLock?: boolean,
   ): Promise<void> {
     await this.deactivate()
     this.workspaceUuid = workspaceUuid
@@ -163,7 +180,31 @@ export class CloudSyncEngine {
     this._onConflictDetected = onConflictDetected || null
     this._onGitConflictPrompt = onGitConflictPrompt || null
     this._onToast = onToast || null
+    this._onLockLost = onLockLost || null
     this.pendingChanges = []
+
+    // ── Acquire workspace lock ─────────────────────────────
+    // Throws WorkspaceLockedError if another device holds the lock.
+    // Must be before STS / S3 — no point setting up sync if locked out.
+    // If forceLock is true, we steal the lock from the current holder.
+    await acquireLock(workspaceUuid, { force: forceLock })
+
+    // Start heartbeat to keep the lock alive (20s interval, 60s TTL)
+    this._lockHeartbeat.start(workspaceUuid, (reason) => {
+      console.log(`[CloudSync:lock] Lock lost: ${reason}`)
+      this._onLockLost?.(reason)
+    })
+
+    // beforeunload → release lock via sendBeacon (POST /unlock)
+    this._onBeforeUnload = () => releaseLockBeacon(workspaceUuid)
+    window.addEventListener('beforeunload', this._onBeforeUnload)
+
+    // offline → trigger lock loss so the workspace is closed
+    this._onOffline = () => {
+      console.log('[CloudSync:lock] Browser went offline — triggering lock loss')
+      this._onLockLost?.('error')
+    }
+    window.addEventListener('offline', this._onOffline)
 
     // Get workspace-scoped STS
     const token = await fetchWorkspaceSTS(workspaceUuid)
@@ -193,21 +234,16 @@ export class CloudSyncEngine {
     // Start periodic flush
     this.syncTimer = setInterval(() => this.flushChanges(), SYNC_INTERVAL_MS)
 
-    // Install visibility / online listeners for proactive version checks
+    // Install visibility listener — send immediate heartbeat on tab focus.
+    // Background tabs may throttle setInterval (Chrome ≥ 1min), so the lock
+    // could be close to expiry when the user returns.
     this._onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log(`[CloudSync:version] Tab became visible — checking remote version (local: ${this._localVersion}, lastGitZipEtag: ${this._lastGitZipEtag})`)
-        this.checkRemoteVersion().catch(() => {})
-      } else {
-        console.log(`[CloudSync:version] Tab became hidden`)
+        console.log('[CloudSync:lock] Tab became visible — sending immediate heartbeat')
+        this._lockHeartbeat.sendImmediate()
       }
     }
-    this._onOnline = () => {
-      console.log(`[CloudSync:version] Browser came online — checking remote version (local: ${this._localVersion}, lastGitZipEtag: ${this._lastGitZipEtag})`)
-      this.checkRemoteVersion().catch(() => {})
-    }
     document.addEventListener('visibilitychange', this._onVisibilityChange)
-    window.addEventListener('online', this._onOnline)
 
     this.updateStatus({ status: 'idle', lastSync: null, pendingChanges: 0 })
   }
@@ -229,6 +265,13 @@ export class CloudSyncEngine {
       }
     }
 
+    // ── Stop lock heartbeat and release lock ──
+    this._lockHeartbeat.stop()
+    if (this.workspaceUuid) {
+      // Best-effort release — don't await. Lock will expire naturally if this fails.
+      releaseLock(this.workspaceUuid)
+    }
+
     if (this.syncTimer) clearInterval(this.syncTimer)
     if (this.tokenRefreshTimer) clearTimeout(this.tokenRefreshTimer)
     if (this.snapshotTimer) clearTimeout(this.snapshotTimer)
@@ -238,11 +281,22 @@ export class CloudSyncEngine {
     this.snapshotTimer = null
     this.gitSnapshotTimer = null
 
-    // Remove visibility / online listeners
+    // Remove visibility listener
     if (this._onVisibilityChange) {
       document.removeEventListener('visibilitychange', this._onVisibilityChange)
       this._onVisibilityChange = null
     }
+    // Remove beforeunload listener
+    if (this._onBeforeUnload) {
+      window.removeEventListener('beforeunload', this._onBeforeUnload)
+      this._onBeforeUnload = null
+    }
+    // Remove offline listener
+    if (this._onOffline) {
+      window.removeEventListener('offline', this._onOffline)
+      this._onOffline = null
+    }
+    // Legacy: remove _onOnline if still present
     if (this._onOnline) {
       window.removeEventListener('online', this._onOnline)
       this._onOnline = null
@@ -258,6 +312,7 @@ export class CloudSyncEngine {
     this._onConflictDetected = null
     this._onGitConflictPrompt = null
     this._onToast = null
+    this._onLockLost = null
     this.manifest = null
     this._localVersion = 0
     this._lastGitZipEtag = null

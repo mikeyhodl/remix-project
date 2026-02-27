@@ -24,6 +24,7 @@ type EndpointUrls = {
     notifications: string;
     invite: string;
     feedback: string;
+    workspaceLock: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -52,6 +53,7 @@ const defaultUrls: EndpointUrls = {
   notifications: 'https://auth.api.remix.live:8443/notifications',
   invite: 'https://auth.api.remix.live:8443/invite',
   feedback: 'https://auth.api.remix.live:8443/feedback',
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -80,6 +82,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   notifications: 'notifications',
   invite: 'invite',
   feedback: 'feedback',
+  workspaceLock: 'workspace-lock',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -132,6 +135,9 @@ const localhostUrls: EndpointUrls = {
 
   // FEEDBACK service
   feedback: 'https://auth.api.remix.live:8443/feedback',
+
+  // WORKSPACE LOCK service (Redis-based, same auth gateway)
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const resolvedUrls: EndpointUrls = prefix
