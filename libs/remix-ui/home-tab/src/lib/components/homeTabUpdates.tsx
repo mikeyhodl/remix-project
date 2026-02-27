@@ -32,7 +32,7 @@ interface HomeTabUpdatesProps {
 // }
 
 function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
-  const [pluginList, setPluginList] = useState<UpdateInfo[]>([])
+  const [selectedUpdate, setSelectedUpdate] = useState<UpdateInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const theme = useContext(ThemeContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -48,7 +48,14 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
       try {
         setIsLoading(true)
         const response = await axios.get(HOME_TAB_NEW_UPDATES)
-        setPluginList(response.data)
+        const updates = response.data
+        
+        // Randomly select one update if there are any
+        if (updates && updates.length > 0) {
+          const randomIndex = Math.floor(Math.random() * updates.length)
+          setSelectedUpdate(updates[randomIndex])
+        }
+        
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching plugin list:', error)
@@ -108,22 +115,16 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   }
 
   return (
-    <div className="w-100 align-items-end">
-      <div className="row">
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div key={`loading-${index}`} className="col-lg-12 col-xl-6 col-md-6 col-sm-12 mb-4">
-              <LoadingCard />
-            </div>
-          ))
-        ) : (
-          pluginList.map((updateInfo: UpdateInfo, index: number) => (
-            <div key={`update-${index}`} className="col-lg-12 col-xl-6 col-md-6 col-sm-12 mb-4">
-              {UpdateCard(updateInfo)}
-            </div>
-          ))
-        )}
-      </div>
+    <div className="">
+      {isLoading ? (
+        <div className="">
+          <LoadingCard />
+        </div>
+      ) : selectedUpdate ? (
+        <div className="">
+          {UpdateCard(selectedUpdate)}
+        </div>
+      ) : null}
     </div>
   )
 }
