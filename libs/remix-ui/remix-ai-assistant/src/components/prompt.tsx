@@ -147,6 +147,10 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 setInput(e.target.value)
               }}
               onKeyDown={e => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                  e.preventDefault()
+                  setInput(prev => prev + '\n')
+                } else
                 if (e.key === 'Enter' && !isStreaming) handleSend()
               }}
               placeholder="Ask me anything about your code or generate new contracts..."
