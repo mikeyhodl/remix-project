@@ -88,7 +88,7 @@ module.exports = {
             timeout: 60000
           })
         //.waitForElementContainsText(`#instance${instanceAddress} [data-id="instanceContractBal"]`, 'Balance: 0.000000000000000111 ETH', 60000)
-          .clickFunction(1, 0, { types: 'uint256 num', values: '2' })
+          .clickFunction(1, 0, ['2'])
           .pause(1000)
           .waitForElementVisible({
             locateStrategy: 'xpath',
@@ -133,7 +133,7 @@ module.exports = {
       .createContract('')
       .waitForElementPresent('#instance0xd9145CCE52D386f254917e481eB44e9943F39138')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256 num', values: '10' })
+      .clickFunction(0, 0, ['10'])
       .clickFunction(0, 1)
       .waitForElementContainsText('[data-id="treeViewLi0"]', 'uint256: 10')
       .clickLaunchIcon('filePanel')

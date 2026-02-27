@@ -52,7 +52,7 @@ module.exports = {
       .createContract('')
       .waitForElementPresent('#instance0xd9145CCE52D386f254917e481eB44e9943F39138')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256 num', values: '10' })
+      .clickFunction(0, 0, ['10'])
       .clickFunction(0, 1)
       .click('[data-id="movePluginToLeft"]')
       .waitForElementVisible('[data-id="movePluginToRight"]')

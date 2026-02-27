@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from 'react'
+import React, { useContext, useEffect, useState, useRef, useMemo } from 'react'
 import { useIntl } from 'react-intl'
 import { CustomToggle, CustomTooltip, getTimeAgo, shortenAddress, isNumeric, is0XPrefixed, isHexadecimal, logBuilder, extractDataDefault } from '@remix-ui/helper'
 import { CopyToClipboard } from '@remix-ui/clipboard'
@@ -62,6 +62,10 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
       setContractABI(contract.abi)
     }
   }, [])
+
+  const functionABIs = useMemo(() => {
+    return contractABI?.filter((item: FuncABI) => item.type === 'function') || []
+  }, [contractABI])
 
   const handleRemove = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -138,9 +142,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
   }
 
   const handleFunctionClick = (funcIndex: number) => {
-    if (selectedFunctionIndex === funcIndex) {
-      setSelectedFunctionIndex(null)
-    } else {
+    if (selectedFunctionIndex !== funcIndex) {
       setSelectedFunctionIndex(funcIndex)
     }
   }
@@ -153,7 +155,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
   }
 
   const handleExecuteTransaction = async (funcIndex: number) => {
-    const funcABI = contractABI[funcIndex]
+    const funcABI = functionABIs[funcIndex]
     const inputsValues = funcInputs[funcIndex] || ''
     const sendValue = parseUnits(value.toString() || '0', valueUnit || 'wei')
     const gasLimitValue = '0x' + new BN(gasLimit, 10).toString(16)
@@ -491,7 +493,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
           />
           {isExpanded && (
             <div className="p-3 pt-0" onClick={(e) => e.stopPropagation()}>
-              {contractABI && contractABI.length > 0 ? (
+              {functionABIs && functionABIs.length > 0 ? (
                 <>
                   {/* Divider */}
                   <div className="border-top mb-3"></div>
@@ -522,14 +524,13 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                             gap: '4px'
                           }}
                         >
-                          {contractABI.map((funcABI: FuncABI, actualIndex: number) => {
-                            if (funcABI.type !== 'function') return null
-
+                          {functionABIs.map((funcABI: FuncABI, actualIndex: number) => {
                             const inputTypes = funcABI.inputs.map(input => input.type).join(', ')
                             const isSelected = selectedFunctionIndex === actualIndex
 
                             return (
                               <div
+                                data-id={`deployedContractItem-${index}-function-${actualIndex}`}
                                 key={actualIndex}
                                 className="d-flex align-items-center gap-1"
                                 style={{
@@ -628,15 +629,15 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                     )}
                   </div>
 
-                  {selectedFunctionIndex !== null && contractABI[selectedFunctionIndex] && (
+                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
                     // Divider
                     <div className="border-top mb-3"></div>
                   )}
 
-                  {selectedFunctionIndex !== null && contractABI[selectedFunctionIndex] && (
+                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
                     <div className="mb-3">
                       <div className="d-flex align-items-center gap-1 mb-2">
-                        {getStateMutabilityBadge(contractABI[selectedFunctionIndex])}
+                        {getStateMutabilityBadge(functionABIs[selectedFunctionIndex])}
                         <div className="d-flex align-items-baseline gap-1" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
                           <span
                             style={{
@@ -649,11 +650,11 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                               flexShrink: 0,
                               maxWidth: '100%'
                             }}
-                            title={contractABI[selectedFunctionIndex].name}
+                            title={functionABIs[selectedFunctionIndex].name}
                           >
-                            {contractABI[selectedFunctionIndex].name}
+                            {functionABIs[selectedFunctionIndex].name}
                           </span>
-                          {contractABI[selectedFunctionIndex].inputs.length > 0 && (
+                          {functionABIs[selectedFunctionIndex].inputs.length > 0 && (
                             <span
                               style={{
                                 fontSize: '10px',
@@ -664,16 +665,17 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                                 flexShrink: 1,
                                 minWidth: 0
                               }}
-                              title={contractABI[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
+                              title={functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
                             >
-                              {contractABI[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
+                              {functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
                             </span>
                           )}
                         </div>
                       </div>
-                      {contractABI[selectedFunctionIndex].inputs.length > 0 && contractABI[selectedFunctionIndex].inputs.map((input: any, inputIdx: number) => (
+                      {functionABIs[selectedFunctionIndex].inputs.length > 0 && functionABIs[selectedFunctionIndex].inputs.map((input: any, inputIdx: number) => (
                         <div key={inputIdx} className="mb-2">
                           <input
+                            data-id={`selectedFunction-${inputIdx}`}
                             type="text"
                             placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
                             className="form-control form-control-sm"
@@ -699,7 +701,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                           />
                         </div>
                       ))}
-                      {(contractABI[selectedFunctionIndex].stateMutability === 'view' || contractABI[selectedFunctionIndex].stateMutability === 'pure') && (
+                      {(functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure') && (
                         <div className="udapp_value" data-id="udapp_tree_value">
                           <TreeView id="treeView">
                             {Object.keys(contract.decodedResponse || {}).map((key) => {
@@ -717,9 +719,9 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                     </div>
                   )}
 
-                  {selectedFunctionIndex !== null && contractABI[selectedFunctionIndex] &&
-                    contractABI[selectedFunctionIndex].stateMutability !== 'view' &&
-                    contractABI[selectedFunctionIndex].stateMutability !== 'pure' && (
+                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] &&
+                    functionABIs[selectedFunctionIndex].stateMutability !== 'view' &&
+                    functionABIs[selectedFunctionIndex].stateMutability !== 'pure' && (
                     <div className="mb-3">
                       <div className="d-flex align-items-center gap-1 mb-3">
                         <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
@@ -826,8 +828,9 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                       {contract.balance || 0} ETH
                     </div>
                   </div>
-                  {(selectedFunctionIndex !== null && contractABI[selectedFunctionIndex]) || showLowLevel ? (
+                  {(selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel ? (
                     <button
+                      data-id="btnExecute"
                       className="btn btn-primary w-100 mt-3"
                       onClick={() => {
                         if (showLowLevel) {
@@ -845,11 +848,10 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                         padding: '8px 24px',
                         borderRadius: '4px'
                       }}
-                      data-id={showLowLevel ? `fallbackExecute-${index}` : undefined}
                     >
                       {showLowLevel
                         ? 'Transact'
-                        : (contractABI[selectedFunctionIndex].stateMutability === 'view' || contractABI[selectedFunctionIndex].stateMutability === 'pure')
+                        : (functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure')
                           ? 'Call'
                           : 'Transact'}
                     </button>
