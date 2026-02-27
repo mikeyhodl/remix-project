@@ -1070,11 +1070,17 @@ Issued At: ${new Date().toISOString()}`
 
       // Store tokens and user info
       localStorage.setItem('remix_access_token', result.token)
+      if (result.refreshToken) {
+        localStorage.setItem('remix_refresh_token', result.refreshToken)
+      }
       if (result.user) {
         localStorage.setItem('remix_user', JSON.stringify(result.user))
       }
 
       console.log('[SIWE] Login successful!')
+
+      // Schedule proactive token refresh
+      this.scheduleRefresh(result.token)
 
       // Emit auth state changed
       this.emit('authStateChanged', {
