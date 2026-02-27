@@ -69,6 +69,14 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   modelSelectorBtnRef
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+
+  useEffect(() => {
+    if (textareaRef?.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [input])
+
   return (
     <>
       <div
@@ -130,9 +138,11 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
-                paddingRight: isStreaming ? '50px' : '10px'
+                paddingRight: isStreaming ? '50px' : '10px',
+                overflowY: 'auto',
+                minHeight: '3rem',
+                maxHeight: '12rem'
               }}
-              rows={2}
               className="form-control mb-1 border-0"
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
