@@ -710,7 +710,7 @@ function DeployPortraitView() {
                     >
                       {widgetState.valueUnit}
                     </Dropdown.Toggle>
-                    <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
+                    <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', '--bs-dropdown-min-width' : '4rem', padding: 0 } as React.CSSProperties}>
                       <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'wei' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
                       <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'gwei' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
                       <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'finney' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
