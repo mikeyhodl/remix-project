@@ -50,7 +50,7 @@ interface AiChatPromptAreaForHistoryProps {
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
-  const [showMenu, setShowMenu] = useState(false)
+
   return (
     <section
       id="remix-ai-prompt-area"
@@ -58,7 +58,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       style={{ flexShrink: 0, minHeight: '140px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') }}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
-      {showMenu && (
+      {props.showModelSelector && (
         <div
           className="pt-2 mb-2 z-3 bg-light border border-text position-fixed"
           style={{ borderRadius: '8px', top: props.modelOpt.top, left: props.modelOpt.left, zIndex: 1000, minWidth: '300px', maxWidth: '400px' }}
