@@ -7,7 +7,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'notifyEmailOtpLogin'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed']
 }
 
@@ -736,6 +736,27 @@ export class AuthPlugin extends Plugin {
     this.validateAndRestoreSession()
 
     // Note: Invite token URL checking is handled by invitationManager plugin
+  }
+
+  /**
+   * Called by the email OTP flow in the LoginModal after it verifies the code
+   * and stores tokens in localStorage. The OTP flow bypasses `login()` and its
+   * popup-based message exchange, so we need a dedicated entry-point to:
+   *   1. Schedule proactive token refresh
+   *   2. Emit `authStateChanged` so CloudProvider (and others) react
+   *   3. Fetch credits
+   */
+  async notifyEmailOtpLogin(user: any, accessToken: string): Promise<void> {
+    this.scheduleRefresh(accessToken)
+
+    this.emit('authStateChanged', {
+      isAuthenticated: true,
+      user,
+      token: accessToken
+    })
+
+    this.refreshCredits().catch(console.error)
+    console.log('[AuthPlugin] Email OTP login finalised')
   }
 
   /**

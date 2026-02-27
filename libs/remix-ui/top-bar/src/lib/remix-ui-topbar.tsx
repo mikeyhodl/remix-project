@@ -577,7 +577,7 @@ export function RemixUiTopbar() {
             onEnableCloud={() => enableCloud()}
             onDisableCloud={() => disableCloud()}
           />
-          {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} />}
+          {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} plugin={plugin} />}
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
           <WorkspacesDropdown

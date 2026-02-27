@@ -119,7 +119,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
         >
           Sign In
         </button>
-        {showModal && <LoginModal onClose={() => setShowModal(false)} />}
+        {showModal && <LoginModal onClose={() => setShowModal(false)} plugin={plugin} />}
       </>
     )
   }
