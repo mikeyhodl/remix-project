@@ -26,19 +26,16 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
   const isDark = theme.name === 'dark'
 
   useEffect(() => {
-    plugin.on('filePanel', 'setWorkspace', async () => {
-      let recents = JSON.parse(localStorage.getItem('recentWorkspaces'))
+    let recents = JSON.parse(localStorage.getItem('recentWorkspaces'))
+    if (!recents) {
+      recents = []
+    } else {
+      const filtered = recents.filter((workspace) => workspace !== null)
 
-      if (!recents) {
-        recents = []
-      } else {
-        const filtered = recents.filter((workspace) => workspace !== null)
-
-        setState((prevState) => {
-          return { ...prevState, recentWorkspaces: filtered.slice(0, filtered.length <= 3 ? filtered.length : 3) }
-        })
-      }
-    })
+      setState((prevState) => {
+        return { ...prevState, recentWorkspaces: filtered.slice(0, filtered.length <= 3 ? filtered.length : 3) }
+      })
+    }
 
     const deleteSavedWorkspace = (name) => {
       const recents = JSON.parse(localStorage.getItem('recentWorkspaces'))
