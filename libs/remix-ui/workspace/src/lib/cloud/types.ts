@@ -99,6 +99,8 @@ export interface SyncManifest {
   lastSyncTimestamp: number
   /** Map of workspace-relative key → metadata from S3 */
   files: Record<string, SyncManifestEntry>
+  /** Last known S3 ETag of _git.zip — persisted so we don't prompt on every load */
+  lastGitZipEtag?: string
 }
 
 export interface SyncManifestEntry {

@@ -23,6 +23,9 @@ import { SyncManifest } from './types'
 /** S3 key for the workspace snapshot ZIP (relative to workspace prefix) */
 export const WORKSPACE_ZIP_KEY = '_workspace.zip'
 
+/** S3 key for the git directory snapshot ZIP */
+export const GIT_ZIP_KEY = '_git.zip'
+
 // ── Known binary file extensions (stored as Uint8Array, not utf-8) ──
 const BINARY_EXTENSIONS = new Set([
   '.pack', '.idx', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff',
@@ -192,4 +195,161 @@ export async function unpackWorkspace(
   await Promise.all(filePromises)
 
   return { manifest, fileCount }
+}
+
+// ── Git Directory ZIP ────────────────────────────────────────
+
+/**
+ * Pack the `.git/` directory into an atomic ZIP snapshot.
+ *
+ * Everything inside `.git/` is treated as binary to preserve exact byte
+ * content (loose objects, pack files, index, etc.).  The resulting ZIP
+ * is stored on S3 as `_git.zip` and downloaded on workspace load when
+ * no local `.git/` exists (e.g. fresh device, cleared IndexedDB).
+ *
+ * @param localWorkspacePath  Absolute FS path, e.g. `/.cloud-workspaces/<uuid>`
+ * @param fs                  Reference to `window.remixFileSystem`
+ * @returns ZIP as Uint8Array, or `null` if no `.git/` directory exists
+ */
+export async function packGitDir(
+  localWorkspacePath: string,
+  fs: any,
+): Promise<Uint8Array | null> {
+  const gitPath = `${localWorkspacePath}/.git`
+
+  // Check if .git directory exists at all
+  try {
+    const stat = await fs.stat(gitPath)
+    if (!stat.isDirectory()) return null
+  } catch {
+    return null // no .git dir
+  }
+
+  const zip = new JSZip()
+  let fileCount = 0
+
+  async function walkGit(basePath: string, relativePath: string): Promise<void> {
+    const absPath = relativePath ? `${basePath}/${relativePath}` : basePath
+    let entries: string[]
+    try {
+      entries = await fs.readdir(absPath)
+    } catch {
+      return
+    }
+
+    for (const entry of entries) {
+      const childRelative = relativePath ? `${relativePath}/${entry}` : entry
+      const childAbs = `${basePath}/${childRelative}`
+
+      try {
+        const stat = await fs.stat(childAbs)
+        if (stat.isDirectory()) {
+          await walkGit(basePath, childRelative)
+        } else {
+          // Read everything as binary — git internals are byte-sensitive
+          const data = await fs.readFile(childAbs)
+          if (data instanceof Uint8Array) {
+            zip.file(childRelative, data)
+          } else if (typeof data === 'string') {
+            // Some FS implementations return strings for text-like files
+            zip.file(childRelative, new TextEncoder().encode(data))
+          } else {
+            zip.file(childRelative, data)
+          }
+          fileCount++
+        }
+      } catch {
+        // Skip unreadable files
+      }
+    }
+  }
+
+  console.log(`[CloudGitZip] Packing .git directory: ${gitPath}`)
+  await walkGit(gitPath, '')
+  if (fileCount === 0) {
+    console.log('[CloudGitZip] .git directory is empty — skipping ZIP')
+    return null
+  }
+
+  const data = await zip.generateAsync({
+    type: 'uint8array',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  })
+  console.log(
+    `[CloudGitZip] Packed ${fileCount} git objects, ` +
+    `ZIP size: ${(data.byteLength / 1024).toFixed(1)} KB`
+  )
+  return data
+}
+
+/**
+ * Extract `_git.zip` into the `.git/` directory of a workspace.
+ *
+ * All files are written as binary to preserve exact byte content.
+ * This is only called when no local `.git/` exists (fresh device or
+ * cleared storage).
+ *
+ * @param zipData               The ZIP as Uint8Array (from S3 getObjectBinary)
+ * @param localWorkspacePath    Absolute FS path, e.g. `/.cloud-workspaces/<uuid>`
+ * @param fs                    Reference to `window.remixFileSystem`
+ * @returns Number of files extracted
+ */
+export async function unpackGitDir(
+  zipData: Uint8Array,
+  localWorkspacePath: string,
+  fs: any,
+): Promise<number> {
+  const gitPath = `${localWorkspacePath}/.git`
+  const zip = await JSZip.loadAsync(zipData)
+  let fileCount = 0
+
+  // ensureDir helper
+  const ensuredDirs = new Set<string>()
+  const ensureDir = async (dirPath: string) => {
+    if (ensuredDirs.has(dirPath)) return
+    const parts = dirPath.split('/').filter(Boolean)
+    let current = ''
+    for (const part of parts) {
+      current += '/' + part
+      if (ensuredDirs.has(current)) continue
+      try {
+        await fs.stat(current)
+      } catch {
+        try {
+          await fs.mkdir(current)
+        } catch (mkdirErr: any) {
+          if (mkdirErr?.code !== 'EEXIST' && mkdirErr?.message !== 'EEXIST'
+            && !String(mkdirErr).includes('EEXIST')) {
+            throw mkdirErr
+          }
+        }
+      }
+      ensuredDirs.add(current)
+    }
+  }
+
+  await ensureDir(gitPath)
+
+  const filePromises: Promise<void>[] = []
+
+  zip.forEach((relativePath: string, zipEntry: JSZip.JSZipObject) => {
+    if (zipEntry.dir) return
+
+    filePromises.push((async () => {
+      const localPath = `${gitPath}/${relativePath}`
+      const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
+      await ensureDir(parentDir)
+
+      // Write everything as binary
+      const data = await zipEntry.async('uint8array')
+      await fs.writeFile(localPath, data)
+      fileCount++
+    })())
+  })
+
+  await Promise.all(filePromises)
+
+  console.log(`[CloudGitZip] Extracted ${fileCount} git objects into ${gitPath}`)
+  return fileCount
 }

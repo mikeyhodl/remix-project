@@ -372,8 +372,51 @@ export async function switchToCloudWorkspace(
       console.warn('[CloudSync:version] Failed to close editors:', err)
     }
     _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
+  }, async () => {
+    // Non-blocking prompt: remote _git.zip changed, ask user if they want to
+    // replace their local .git with the remote version.  This callback is
+    // fired as fire-and-forget from the sync engine, so the modal doesn't
+    // block the sync flow.
+    const result = await _plugin.call('notification', 'modal', {
+      id: 'cloud-git-conflict',
+      title: 'Git History Updated',
+      message: 'The git history for this workspace was updated on another device. Do you want to replace your local git history with the remote version?',
+      okLabel: 'Replace with Remote',
+      cancelLabel: 'Keep Local',
+    })
+    if (result) {
+      _plugin.call('notification', 'toast', 'Updating git history from remote…')
+      await cloudSyncEngine.pullGitSnapshot(true)
+      _plugin.call('notification', 'toast', 'Git history updated from remote.')
+    }
+  }, (message: string) => {
+    _plugin.call('notification', 'toast', message)
   })
+
+  // Capture the git ETag BEFORE the initial pull — it will be null on fresh
+  // activate.  After pullWorkspace() the engine will have the remote ETag.
+  // Comparing them lets us detect that the remote _git.zip has changed since
+  // this device last synced (i.e. another device pushed a new commit).
+  const gitEtagBeforePull = cloudSyncEngine.lastGitZipEtag
+  console.log(`[CloudSync:init] Starting initial pullWorkspace (gitEtagBeforePull: ${gitEtagBeforePull})`)
+
   await cloudSyncEngine.pullWorkspace()
+
+  console.log(`[CloudSync:init] pullWorkspace done (gitEtagAfterPull: ${cloudSyncEngine.lastGitZipEtag})`)
+
+  // Restore .git from S3 if the local copy is missing (fresh device, cleared storage)
+  await cloudSyncEngine.pullGitSnapshot()
+
+  // If the remote _git.zip changed compared to what we knew before the pull,
+  // AND pullGitSnapshot skipped (because local .git/ already exists), then
+  // the user has a stale local .git/.  Prompt them about it.
+  const gitEtagAfterPull = cloudSyncEngine.lastGitZipEtag
+  if (gitEtagBeforePull !== gitEtagAfterPull && gitEtagAfterPull) {
+    console.log(`[CloudSync:init] ⚡ Remote _git.zip changed during initial pull: ${gitEtagBeforePull} → ${gitEtagAfterPull} — checking if prompt needed`)
+    cloudSyncEngine.notifyIfGitZipChanged(gitEtagBeforePull)
+  } else {
+    console.log(`[CloudSync:init] _git.zip unchanged (${gitEtagBeforePull} → ${gitEtagAfterPull}) — no prompt needed`)
+  }
 }
 
 /**
@@ -555,10 +598,22 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   const relativePath = extractRelativePath(op.path)
   if (!relativePath) return
 
-  // Skip .git internals, sync manifest, and snapshot ZIP
-  if (relativePath.startsWith('.git/') || relativePath === '.git') return
+  // Skip sync manifest and snapshot ZIPs — internal engine files
   if (relativePath === CloudSyncEngine.MANIFEST_FILENAME) return
   if (relativePath === '_workspace.zip') return
+  if (relativePath === '_git.zip') return
+
+  // .git writes: don't sync individually (fragile), but schedule an
+  // atomic _git.zip push so the full git state is backed up to S3.
+  if (relativePath === '.git' || relativePath.startsWith('.git/')) {
+    if (!cloudSyncEngine.isPulling && op.type !== 'mkdir' && op.type !== 'rmdir') {
+      console.log(`[CloudGitZip:observer] .git write detected: ${op.type} ${relativePath} — scheduling snapshot push`)
+      cloudSyncEngine.scheduleGitSnapshotUpdate()
+    } else {
+      console.log(`[CloudGitZip:observer] .git op ignored: ${op.type} ${relativePath} (isPulling=${cloudSyncEngine.isPulling})`)
+    }
+    return
+  }
 
   // 1) Feed into sync engine for S3 push — but NOT for mkdir/rmdir,
   //    and NOT while the engine is pulling (writes from S3→local should
