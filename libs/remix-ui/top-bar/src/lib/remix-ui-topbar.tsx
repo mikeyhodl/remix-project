@@ -22,6 +22,7 @@ import { useCloneRepositoryModal } from '../components/CloneRepositoryModal'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
+import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { NotificationBell } from '../components/NotificationBell'
 import { FeedbackPanel } from '../components/FeedbackPanel'
@@ -60,6 +61,7 @@ export function RemixUiTopbar() {
   const [enableLogin, setEnableLogin] = useState<boolean>(false);
   const [feedbackFormUrl, setFeedbackFormUrl] = useState<string | null>(null);
   const [feedbackPanelOpen, setFeedbackPanelOpen] = useState<boolean>(false);
+  const [showCloudLoginModal, setShowCloudLoginModal] = useState<boolean>(false);
 
   // Auth state for cloud backup/restore
   const { isAuthenticated } = useAuth()
@@ -571,10 +573,11 @@ export function RemixUiTopbar() {
           </span>
           <CloudToggle
             className="ms-2"
-            onLogin={() => plugin.call('auth', 'login', 'github')}
+            onLogin={() => setShowCloudLoginModal(true)}
             onEnableCloud={() => enableCloud()}
             onDisableCloud={() => disableCloud()}
           />
+          {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} />}
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
           <WorkspacesDropdown
