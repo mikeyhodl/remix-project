@@ -61,6 +61,27 @@ const REFRESH_DEBOUNCE_MS = 600
 let _versionCheckTimer: ReturnType<typeof setTimeout> | null = null
 const VERSION_CHECK_DEBOUNCE_MS = 2_000  // 2s after first write activity
 
+/**
+ * Build a user-scoped localStorage key.
+ * E.g. cloudLocalKey('lastCloudWorkspace') → 'lastCloudWorkspace_user_42'
+ * Falls back to the unscoped key if no userId is available yet.
+ */
+export function cloudLocalKey(key: string): string {
+  const uid = cloudStore.userId
+  return uid ? `${key}_user_${uid}` : key
+}
+
+/**
+ * Callback registered by workspace.ts to create a default workspace with
+ * template files.  This avoids a circular import — cloud-workspace-actions
+ * can't import createWorkspace directly.
+ */
+let _createDefaultWorkspaceFn: ((name: string, template: string) => Promise<void>) | null = null
+
+export function setCreateDefaultCloudWorkspaceFn(fn: (name: string, template: string) => Promise<void>) {
+  _createDefaultWorkspaceFn = fn
+}
+
 export function setCloudPlugin(plugin: any, dispatch: React.Dispatch<any>) {
   _plugin = plugin
   _dispatch = dispatch
@@ -168,6 +189,8 @@ export async function enableCloud(): Promise<void> {
   // Remember the current local workspace so we can restore it on disable
   const currentLocal = localStorage.getItem('currentWorkspace')
   if (currentLocal) localStorage.setItem('lastLocalWorkspace', currentLocal)
+  // Note: lastLocalWorkspace is NOT user-scoped because it stores which
+  // local (legacy) workspace to return to — that's independent of cloud user.
 
   cloudStore.setLoading(true)
   try {
@@ -180,7 +203,7 @@ export async function enableCloud(): Promise<void> {
     cloudStore.enterCloudMode(workspaces, stsToken)
 
     if (workspaces.length > 0) {
-      const lastCloudName = localStorage.getItem('lastCloudWorkspace')
+      const lastCloudName = localStorage.getItem(cloudLocalKey('lastCloudWorkspace'))
       const targetWs = workspaces.find(w => w.name === lastCloudName) || workspaces[0]
       try {
         await switchToCloudWorkspace(targetWs, (status) => {
@@ -195,36 +218,25 @@ export async function enableCloud(): Promise<void> {
         _dispatch(setMode('browser'))
         _dispatch(setCurrentWorkspace({ name: targetWs.name, isGitRepo: false }))
         _dispatch(setReadOnlyMode(false))
-        localStorage.setItem('lastCloudWorkspace', targetWs.name)
+        localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), targetWs.name)
       } catch (err) {
         console.error('[enableCloud] Failed to switch to cloud workspace:', err)
       }
     } else {
-      // No cloud workspaces yet — create a default one so the user isn't stuck
-      // in an empty state.  This parallels the legacy behavior where Remix
-      // always ensures at least one workspace exists.
-      console.log('[enableCloud] No cloud workspaces — creating default')
-      try {
-        const newWs = await apiCreate('default_workspace')
-        cloudStore.addCloudWorkspace(newWs)
-        const provider = _plugin.fileProviders.workspace
-        if (provider.setWorkspaceMappings) {
-          provider.setWorkspaceMappings([newWs])
+      // No cloud workspaces yet — create a default one with template files.
+      // Uses the registered createWorkspace callback from workspace.ts which
+      // handles: API creation, template file population, sync engine setup,
+      // Redux dispatches, and file change tracking — all in the right order.
+      console.log('[enableCloud] No cloud workspaces — creating default via createWorkspace')
+      cloudStore.setLoading(false)
+      if (_createDefaultWorkspaceFn) {
+        try {
+          await _createDefaultWorkspaceFn('default_workspace', 'remixDefault')
+        } catch (err) {
+          console.error('[enableCloud] Failed to create default cloud workspace:', err)
         }
-        await switchToCloudWorkspace(newWs, (status) => {
-          cloudStore.updateSyncStatus(newWs.uuid, status)
-        })
-        cloudStore.setActiveCloudWorkspace(newWs.uuid)
-        const workspaceProvider = _plugin.fileProviders?.workspace
-        if (workspaceProvider) {
-          startFileChangeTracking(workspaceProvider, newWs.uuid)
-        }
-        _dispatch(setMode('browser'))
-        _dispatch(setCurrentWorkspace({ name: newWs.name, isGitRepo: false }))
-        _dispatch(setReadOnlyMode(false))
-        localStorage.setItem('lastCloudWorkspace', newWs.name)
-      } catch (err) {
-        console.error('[enableCloud] Failed to create default cloud workspace:', err)
+      } else {
+        console.error('[enableCloud] _createDefaultWorkspaceFn not registered — cannot create default workspace')
       }
     }
   } catch (err) {
@@ -248,7 +260,7 @@ export async function disableCloud(): Promise<void> {
   // Remember the current cloud workspace for when the user re-enables
   const activeId = cloudStore.getState().activeWorkspaceId
   const activeWs = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === activeId)
-  if (activeWs) localStorage.setItem('lastCloudWorkspace', activeWs.name)
+  if (activeWs) localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), activeWs.name)
 
   // 1. Deactivate sync engine
   cloudSyncEngine.deactivate()
@@ -543,7 +555,7 @@ export async function deleteCloudWorkspaceAction(cloudWorkspace: CloudWorkspace)
 
   // Stop sync if this workspace is active
   if (cloudSyncEngine.isActive) {
-    cloudSyncEngine.deactivate()
+    await cloudSyncEngine.deactivate()
   }
 
   // Delete on API

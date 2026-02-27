@@ -88,6 +88,8 @@ const CLOUD_WORKSPACES_PATH = '/.cloud-workspaces'
 const MIGRATION_DONE_KEY = 'remix_migration_done_workspaces'
 const MIGRATION_DISMISSED_KEY = 'remix_migration_dismissed'
 
+import { cloudLocalKey } from './cloud-workspace-actions'
+
 // ── Discovery ────────────────────────────────────────────────
 
 /**
@@ -162,7 +164,7 @@ async function estimateWorkspaceSize(
 
 function getMigratedWorkspaces(): Set<string> {
   try {
-    const raw = localStorage.getItem(MIGRATION_DONE_KEY)
+    const raw = localStorage.getItem(cloudLocalKey(MIGRATION_DONE_KEY))
     return raw ? new Set(JSON.parse(raw)) : new Set()
   } catch {
     return new Set()
@@ -172,7 +174,7 @@ function getMigratedWorkspaces(): Set<string> {
 function markAsMigrated(name: string): void {
   const migrated = getMigratedWorkspaces()
   migrated.add(name)
-  localStorage.setItem(MIGRATION_DONE_KEY, JSON.stringify([...migrated]))
+  localStorage.setItem(cloudLocalKey(MIGRATION_DONE_KEY), JSON.stringify([...migrated]))
 }
 
 /**
@@ -201,10 +203,10 @@ export function dismissMigration(): void {
   // that wasn't in the set, re-prompt.
   discoverLocalWorkspaces().then(locals => {
     const names = locals.map(l => l.name)
-    localStorage.setItem(MIGRATION_DISMISSED_KEY, JSON.stringify(names))
+    localStorage.setItem(cloudLocalKey(MIGRATION_DISMISSED_KEY), JSON.stringify(names))
   }).catch(() => {
     // If discovery fails, just set an empty dismiss flag
-    localStorage.setItem(MIGRATION_DISMISSED_KEY, JSON.stringify([]))
+    localStorage.setItem(cloudLocalKey(MIGRATION_DISMISSED_KEY), JSON.stringify([]))
   })
 }
 
@@ -213,7 +215,7 @@ export function dismissMigration(): void {
  */
 function isMigrationDismissed(): boolean {
   try {
-    const raw = localStorage.getItem(MIGRATION_DISMISSED_KEY)
+    const raw = localStorage.getItem(cloudLocalKey(MIGRATION_DISMISSED_KEY))
     if (!raw) return false
     // If the key exists, migration was dismissed.
     // We could check for new workspaces here, but to keep it sync,
@@ -230,7 +232,7 @@ function isMigrationDismissed(): boolean {
  * weren't in the dismissed set, or when the user logs in with a different account.
  */
 export function clearMigrationDismissal(): void {
-  localStorage.removeItem(MIGRATION_DISMISSED_KEY)
+  localStorage.removeItem(cloudLocalKey(MIGRATION_DISMISSED_KEY))
 }
 
 // ── Name conflict detection ──────────────────────────────────

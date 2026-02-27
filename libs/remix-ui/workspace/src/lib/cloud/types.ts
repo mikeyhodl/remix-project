@@ -55,6 +55,8 @@ export type CloudMode = 'cloud' | 'legacy'
 export interface CloudState {
   /** Whether the user is authenticated and cloud mode is active */
   mode: CloudMode
+  /** Numeric user ID extracted from the STS token prefix (e.g. "users/42/" → "42") */
+  userId: string | null
   /** True while the initial cloud workspace list is loading */
   loading: boolean
   /** Cloud workspaces retrieved from the Workspace API */

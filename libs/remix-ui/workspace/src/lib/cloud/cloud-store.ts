@@ -28,6 +28,7 @@ import {
 
 const initialState: CloudState = {
   mode: 'legacy',
+  userId: null,
   loading: false,
   cloudWorkspaces: [],
   activeWorkspaceId: null,
@@ -55,11 +56,24 @@ class CloudStore extends EventEmitter {
     this.emit('change', this.state)
   }
 
+  /** Extract user ID from STS token prefix (e.g. "users/42/" → "42") */
+  private extractUserId(stsToken: STSToken): string | null {
+    if (!stsToken?.prefix) return null
+    const match = stsToken.prefix.match(/^users\/(\d+)\//)
+    return match ? match[1] : null
+  }
+
+  /** Get the current user ID (null when not authenticated) */
+  get userId(): string | null {
+    return this.state.userId
+  }
+
   /** Activate cloud mode after successful auth + workspace fetch */
   enterCloudMode(workspaces: CloudWorkspace[], stsToken: STSToken) {
     this.state = {
       ...this.state,
       mode: 'cloud',
+      userId: this.extractUserId(stsToken),
       isAuthenticated: true,
       loading: false,
       cloudWorkspaces: workspaces,

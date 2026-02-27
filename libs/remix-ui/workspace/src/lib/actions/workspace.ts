@@ -4,7 +4,7 @@ import { trackMatomoEventAsync } from '@remix-api'
 import { hash } from '@remix-project/remix-lib'
 import { createNonClashingNameAsync } from '@remix-ui/helper'
 import { cloudStore } from '../cloud/cloud-store'
-import { isCloudProvider, switchToCloudWorkspace, renameCloudWorkspaceAction, deleteCloudWorkspaceAction, startFileChangeTracking } from '../cloud/cloud-workspace-actions'
+import { isCloudProvider, switchToCloudWorkspace, renameCloudWorkspaceAction, deleteCloudWorkspaceAction, startFileChangeTracking, cloudLocalKey } from '../cloud/cloud-workspace-actions'
 import { cloudSyncEngine } from '../cloud/cloud-sync-engine'
 import { TEMPLATE_METADATA, TEMPLATE_NAMES } from '../utils/constants'
 import { TemplateType } from '../types'
@@ -65,6 +65,9 @@ const NO_WORKSPACE = ' - none - '
 const ELECTRON = 'electron'
 const queryParams = new QueryParams()
 let plugin: any, dgitPlugin: Plugin<any, CustomRemixApi>,dispatch: React.Dispatch<any>
+
+/** Guard flag to prevent concurrent default-workspace creation in cloud mode */
+let _creatingDefaultCloudWorkspace = false
 
 export const setPlugin = (filePanelPlugin, reducerDispatch) => {
   plugin = filePanelPlugin
@@ -627,6 +630,45 @@ export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, r
       }
       await dispatch(setDeleteWorkspace(workspaceName))
       plugin.workspaceDeleted(workspaceName)
+
+      // Check remaining cloud workspaces
+      const remaining = cloudStore.getState().cloudWorkspaces
+      if (remaining.length > 0) {
+        // Switch to the last remaining cloud workspace
+        const nextWs = remaining[remaining.length - 1]
+        try {
+          cloudStore.setActiveCloudWorkspace(nextWs.uuid)
+          cloudStore.updateSyncStatus(nextWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+          await switchToCloudWorkspace(nextWs, (status) => {
+            cloudStore.updateSyncStatus(nextWs.uuid, status)
+          })
+          const workspaceProvider = plugin.fileProviders.workspace
+          startFileChangeTracking(workspaceProvider, nextWs.uuid)
+          dispatch(setMode('browser'))
+          dispatch(setCurrentWorkspace({ name: nextWs.name, isGitRepo: false }))
+          dispatch(setReadOnlyMode(false))
+          localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), nextWs.name)
+        } catch (switchErr) {
+          console.error('[deleteWorkspace] Failed to switch to next cloud workspace:', switchErr)
+        }
+      } else {
+        // No cloud workspaces left — create a new default one with template
+        // Guard against double-creation: the React useEffect in workspace/topbar
+        // will also fire switchWorkspace(NO_WORKSPACE) when the workspace list empties.
+        if (_creatingDefaultCloudWorkspace) {
+          console.log('[deleteWorkspace] Default cloud workspace creation already in progress — skipping')
+        } else {
+          _creatingDefaultCloudWorkspace = true
+          try {
+            console.log('[deleteWorkspace] No cloud workspaces remaining — creating default')
+            plugin.call('notification', 'toast', 'Creating default cloud workspace…')
+            await createWorkspace('default_workspace', 'remixDefault')
+          } finally {
+            _creatingDefaultCloudWorkspace = false
+          }
+        }
+      }
+
       await plugin.setWorkspaces(await getWorkspaces())
       cb && cb(null, workspaceName)
     } catch (cloudErr) {
@@ -680,7 +722,7 @@ export const switchToWorkspace = async (name: string) => {
         dispatch(setMode('browser'))
         dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
         dispatch(setReadOnlyMode(false))
-        localStorage.setItem('lastCloudWorkspace', name)
+        localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), name)
         return
       }
     } catch (e) {
@@ -698,16 +740,21 @@ export const switchToWorkspace = async (name: string) => {
     dispatch(setMode('localhost'))
     plugin.emit('setWorkspace', { name: null, isLocalhost: true })
   } else if (name === NO_WORKSPACE) {
-    // If we're in cloud mode, don't create a local default workspace.
-    // The cloud enableCloud() flow already handles creating a default
-    // cloud workspace when needed.  Just ignore this path in cloud mode.
-    if (cloudStore.isCloudMode) {
-      console.log('[switchToWorkspace] NO_WORKSPACE in cloud mode — skipping local default creation')
+    // In both legacy and cloud mode, ensure at least one workspace exists.
+    // In cloud mode, createWorkspace() will call the cloud provider which
+    // registers the workspace on the API and sets up sync.
+    // Guard: if deleteWorkspace is already creating a default, skip.
+    if (cloudStore.isCloudMode && _creatingDefaultCloudWorkspace) {
+      console.log('[switchToWorkspace] Default cloud workspace creation already in progress — skipping')
       return
     }
-    // if there is no other workspace, create remix default workspace
-    plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
-    await createWorkspace('default_workspace', 'remixDefault')
+    if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true
+    try {
+      plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
+      await createWorkspace('default_workspace', 'remixDefault')
+    } finally {
+      if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = false
+    }
   } else if (name === ELECTRON) {
     await plugin.fileProviders.workspace.setWorkspace(name)
     await plugin.setWorkspace({ name, isLocalhost: false })

@@ -666,7 +666,10 @@ export class CloudSyncEngine {
       }, PARALLEL_CONCURRENCY)
 
       // Persist manifest after batch (captures all new ETags from PUT responses)
-      await this.saveManifest(this.manifest!)
+      // Guard: manifest may have been nulled by a concurrent deactivate
+      if (this.manifest) {
+        await this.saveManifest(this.manifest)
+      }
 
       this.updateStatus({
         status: this.pendingChanges.length > 0 ? 'error' : 'idle',
@@ -710,6 +713,8 @@ export class CloudSyncEngine {
         if (!etag) return  // guard against missing ETag (shouldn't happen)
         // Capture the ETag from S3's response so the next pull recognises
         // this file as already-synced and skips the GET.
+        // Guard: manifest may have been nulled by a concurrent deactivate
+        if (!this.manifest) return
         this.manifest.files[change.path] = {
           etag,
           lastModified: new Date().toISOString(),
@@ -730,7 +735,7 @@ export class CloudSyncEngine {
         // The file will be cleaned up on the next full sync or stay as orphan.
         console.warn(`[CloudSync] DELETE ${change.path} failed (non-fatal):`, err.message || err)
       }
-      delete this.manifest.files[change.path]
+      if (this.manifest) delete this.manifest.files[change.path]
       break
     case 'rename':
       if (change.oldPath) {
@@ -744,6 +749,8 @@ export class CloudSyncEngine {
           if (content == null) return
           const etag = await this.s3.putObject(change.path, content)
           if (!etag) return
+          // Guard: manifest may have been nulled by a concurrent deactivate
+          if (!this.manifest) return
           this.manifest.files[change.path] = {
             etag,
             lastModified: new Date().toISOString(),

@@ -7,6 +7,8 @@ export { CloudProvider, useCloudState } from './cloud-context'
 export { cloudStore, useCloudStore } from './cloud-store'
 export {
   setCloudPlugin,
+  setCreateDefaultCloudWorkspaceFn,
+  cloudLocalKey,
   enterCloudProvider,
   exitCloudProvider,
   isCloudProvider,
