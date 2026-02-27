@@ -318,7 +318,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const stopRequest = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
-      abortControllerRef.current = null
       setIsStreaming(false)
 
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
@@ -341,6 +340,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         timestamp: Date.now()
       }
       setMessages(prev => [...prev, userMsg])
+
+      // If this is the first message in the conversation, optimistically show it in the sidebar
+      if (messages.length === 0 && props.currentConversationId) {
+        props.plugin.onFirstPromptSent(props.currentConversationId, trimmed)
+      }
 
       // Track tool execution timeout to clear it when content arrives
       let clearToolTimeout: NodeJS.Timeout | null = null
@@ -507,7 +511,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -522,7 +526,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -537,7 +541,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -561,7 +565,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             },
             reasoningCallback
@@ -577,7 +581,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             }
           )

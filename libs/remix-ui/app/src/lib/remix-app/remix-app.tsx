@@ -278,7 +278,7 @@ const RemixApp = (props: IRemixAppUi) => {
     top: floatingChatTop,
     left: floatingChatLeft,
     width: `${floatingChatWidth}px`,
-    height: '45vh'
+    height: '90vh'
   }), [floatingChatTop, floatingChatLeft, floatingChatWidth])
   const [showArchived, setShowArchived] = useState(false);
 

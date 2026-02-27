@@ -72,7 +72,7 @@ export abstract class ChatHistory{
     await this.storage.touchConversation(id)
   }
 
-  public static pushHistory(prompt, result){
+  public static pushHistory(prompt, result): Promise<void> | undefined {
     if (result === "" || !result) return // do not allow empty assistant message due to nested stream handles on toolcalls
 
     // Check if an entry with the same prompt already exists
@@ -88,7 +88,7 @@ export abstract class ChatHistory{
 
     // Persist to storage if enabled and conversation is active
     if (this.storage && this.currentConversationId) {
-      this.persistMessages(prompt, result).catch(err => {
+      return this.persistMessages(prompt, result).catch(err => {
         console.error('Failed to persist chat history:', err)
       })
     }

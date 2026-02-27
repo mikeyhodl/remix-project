@@ -217,6 +217,23 @@ export class RemixAIAssistant extends ViewPlugin {
     }
   }
 
+  onFirstPromptSent(conversationId: string, prompt: string) {
+    if (!conversationId) return
+
+    this.conversations = this.conversations.map(conv => {
+      if (conv.id !== conversationId || conv.messageCount > 0) return conv
+      return {
+        ...conv,
+        title: prompt.substring(0, 50),
+        preview: prompt.substring(0, 100),
+        messageCount: 1,
+        updatedAt: Date.now()
+      }
+    })
+
+    this.renderComponent()
+  }
+
   toggleHistorySidebar() {
     this.showHistorySidebar = !this.showHistorySidebar
     localStorage.setItem('remix-ai-history-sidebar-visible', this.showHistorySidebar.toString())

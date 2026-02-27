@@ -62,7 +62,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
         try {
           const results = await onSearch(searchQuery)
           if (!cancelled) {
-            setFilteredConversations(results.filter(conv => conv.archived === showArchived))
+            setFilteredConversations(results.filter(conv => conv.archived === showArchived && conv.messageCount > 0))
           }
         } finally {
           if (!cancelled) setIsSearching(false)
@@ -70,7 +70,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
         return
       }
 
-      let filtered = conversations.filter(conv => conv.archived === showArchived)
+      let filtered = conversations.filter(conv => conv.archived === showArchived && conv.messageCount > 0)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         filtered = filtered.filter(conv =>
@@ -89,7 +89,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
     setSelectedConversationId(currentConversationId)
   }, [currentConversationId])
 
-  const archivedCount = conversations.filter(c => c.archived).length
+  const archivedCount = conversations.filter(c => c.archived && c.messageCount > 0).length
 
   return (
     <div
