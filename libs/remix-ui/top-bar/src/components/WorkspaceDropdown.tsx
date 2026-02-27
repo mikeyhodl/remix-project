@@ -83,6 +83,7 @@ const ITEM_LABELS = [
 
 export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItems, NO_WORKSPACE, switchWorkspace, CustomToggle, createWorkspace, downloadCurrentWorkspace, restoreBackup, deleteAllWorkspaces, setCurrentMenuItemName, setMenuItems, renameCurrentWorkspace, deleteCurrentWorkspace, downloadWorkspaces, connectToLocalhost, openTemplateExplorer }) => {
   const [showMain, setShowMain] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [openSub, setOpenSub] = useState<number | null>(null)
   const global = useContext(TopbarContext)
   const platform = useContext(platformContext)
@@ -110,18 +111,18 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
   // ── Refresh workspace list when cloud mode changes ──
   useEffect(() => {
     if (platform === appPlatformTypes.desktop) return
-    ;(async () => {
-      try {
-        const workspaces = await getWorkspaces()
-        const updated = (workspaces || []).map((workspace) => {
-          (workspace as any).submenu = subItems
-          return workspace as any
-        })
-        setMenuItems(updated)
-      } catch (error) {
-        console.info('[WorkspaceDropdown] Error fetching workspaces on cloud mode change:', error)
-      }
-    })()
+      ; (async () => {
+        try {
+          const workspaces = await getWorkspaces()
+          const updated = (workspaces || []).map((workspace) => {
+            (workspace as any).submenu = subItems
+            return workspace as any
+          })
+          setMenuItems(updated)
+        } catch (error) {
+          console.info('[WorkspaceDropdown] Error fetching workspaces on cloud mode change:', error)
+        }
+      })()
   }, [isCloudMode, cloudState.cloudWorkspaces.length, platform])
 
   const subItems = useMemo(() => {
@@ -174,7 +175,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
 
   useEffect(() => {
     if (platform !== appPlatformTypes.desktop) {
-      global.plugin.on('filePanel', 'setWorkspace', async(workspace) => {
+      global.plugin.on('filePanel', 'setWorkspace', async (workspace) => {
         setTogglerText(workspace.name)
         let workspaces = []
         const fromLocalStore = localStorage.getItem('currentWorkspace')
@@ -264,6 +265,8 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
   return (
     <Dropdown
       as={ButtonGroup}
+      show={dropdownOpen}
+      onToggle={(open) => setDropdownOpen(open)}
       style={{ minWidth: '70%' }}
       className="d-flex rounded-md"
       id="workspacesSelect"
@@ -314,9 +317,10 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   className="dropdown-item d-flex align-items-center position-relative"
                   onMouseDown={(e) => {
                     if (isWorkspaceLoading) { e.preventDefault(); return }
+                    setDropdownOpen(false)
                     switchWorkspace(item.name)
                     e.preventDefault()
-                  } }
+                  }}
                   data-id={`dropdown-item-${item.name}`}
                 >
                   {item.isGitRepo && item.currentBranch && (
@@ -337,7 +341,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                       e.preventDefault()
                       e.stopPropagation()
                       toggleSubmenu(id)
-                    } }
+                    }}
                     data-id="workspacesubMenuIcon"
                   >
                     <FiMoreVertical size={18} />
@@ -350,7 +354,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                     container={document.body}
                     popperConfig={{
                       modifiers: [
-                        { name: "offset", options: { offset: [8, 22]} },
+                        { name: "offset", options: { offset: [8, 22] } },
                         { name: "preventOverflow", options: { boundary: "viewport", padding: 8 } },
                         { name: 'flip', options: { enabled: false } }
                       ],
@@ -377,7 +381,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                               e.stopPropagation()
                               renameCurrentWorkspace(item.name)
                               setOpenSubmenuId(null)
-                            } }
+                            }}
                             style={{
                               color: 'var(--bs-body-color)',
                               borderBottomRightRadius: 0,
@@ -404,7 +408,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                               downloadCurrentWorkspace()
                               setCurrentMenuItemName(item.name)
                               setOpenSubmenuId(null)
-                            } }
+                            }}
                           >
                             <span className="me-2">
                               <i className="fas fa-download" />
@@ -427,7 +431,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                               deleteCurrentWorkspace(item.name)
                               e.stopPropagation()
                               setOpenSubmenuId(null)
-                            } }
+                            }}
                           >
                             <span className="me-2">
                               <i className="fas fa-trash" />
@@ -461,7 +465,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
               setOpenSub(null)
             }}>
               <i className="fas fa-plus me-2"></i>
-                Create a new Workspace
+              Create a new Workspace
             </button>
           </Dropdown.Item>
 
@@ -474,7 +478,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                 <Dropdown.Item disabled style={{ fontSize: '0.85em', opacity: 0.8 }}>
                   <span className="d-flex align-items-center">
                     <i className={`${statusProps.icon}${statusProps.animate ? ' ' + statusProps.animate : ''} me-2`}
-                       style={{ color: statusProps.color }} />
+                      style={{ color: statusProps.color }} />
                     {activeSyncStatus.status === 'loading' && 'Loading workspace…'}
                     {activeSyncStatus.status === 'syncing' && 'Syncing to cloud…'}
                     {activeSyncStatus.status === 'idle' && activeSyncStatus.lastSync && `Synced ${new Date(activeSyncStatus.lastSync).toLocaleTimeString()}`}
@@ -507,7 +511,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   setOpenSub(null)
                 }}>
                   <i className="far fa-download me-2"></i>
-                    Backup
+                  Backup
                 </span>
               </Dropdown.Item>
               <Dropdown.Item onClick={() => {
@@ -521,7 +525,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   setOpenSub(null)
                 }}>
                   <i className="fas fa-upload me-2"></i>
-                    Restore
+                  Restore
                 </span>
               </Dropdown.Item>
               <Dropdown.Divider />
@@ -536,7 +540,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   setOpenSub(null)
                 }}>
                   <i className="fas fa-desktop me-2"></i>
-                    Connect to Localhost
+                  Connect to Localhost
                 </span>
               </Dropdown.Item>
               <Dropdown.Item
