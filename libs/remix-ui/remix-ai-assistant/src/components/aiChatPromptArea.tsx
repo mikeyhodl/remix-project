@@ -51,7 +51,7 @@ interface AiChatPromptAreaProps {
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
-  const [showMenu, setShowMenu] = React.useState(false)
+
   console.log('Rendering AiChatPromptAreaForHistory with messages:', props.messages)
   {/* Prompt area - fixed at bottom */}
   return (
