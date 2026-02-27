@@ -7,9 +7,8 @@ import { LoadingCard } from './LoaderPlaceholder'
 import { UpdateInfo } from './types/carouselTypes'
 import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
+import { FirstTimeUserCard } from './firstTimeUserCard'
 
-import { CustomTooltip } from '@remix-ui/helper'
-import { FormattedMessage } from 'react-intl'
 interface HomeTabUpdatesProps {
   plugin: any
 }
@@ -34,6 +33,7 @@ interface HomeTabUpdatesProps {
 function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
   const [selectedUpdate, setSelectedUpdate] = useState<UpdateInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [showFirstTime, setShowFirstTime] = useState(false)
   const theme = useContext(ThemeContext)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const isDark = theme.name === 'dark'
@@ -50,15 +50,49 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
         const response = await axios.get(HOME_TAB_NEW_UPDATES)
         const updates = response.data
         
-        // Randomly select one update if there are any
+        // Check if this is the first time visiting
+        const hasVisitedHomeBefore = localStorage.getItem('remix-home-visited')
+        const isFirstTime = !hasVisitedHomeBefore
+        
+        if (isFirstTime) {
+          localStorage.setItem('remix-home-visited', 'true')
+        }
+        
+        // Create array including first-time option and regular updates
+        const allOptions = []
+        
+        // Add first-time card option (higher weight for first-time users)
+        if (isFirstTime) {
+          // Add multiple entries to increase probability for first-time users
+          allOptions.push('first-time', 'first-time', 'first-time')
+        } else {
+          // Still include as option for returning users, but lower probability
+          allOptions.push('first-time')
+        }
+        
+        // Add regular updates if available
         if (updates && updates.length > 0) {
-          const randomIndex = Math.floor(Math.random() * updates.length)
-          setSelectedUpdate(updates[randomIndex])
+          allOptions.push(...updates)
+        }
+        
+        // Randomly select from all options
+        if (allOptions.length > 0) {
+          const randomIndex = Math.floor(Math.random() * allOptions.length)
+          const selected = allOptions[randomIndex]
+          
+          if (selected === 'first-time') {
+            setShowFirstTime(true)
+            setSelectedUpdate(null)
+          } else {
+            setShowFirstTime(false)
+            setSelectedUpdate(selected)
+          }
         }
         
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching plugin list:', error)
+        setIsLoading(false)
       }
     }
     getLatestUpdates()
@@ -77,6 +111,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
       plugin.call(updateInfo.action.pluginName, updateInfo.action.pluginMethod, updateInfo.action.pluginArgs)
     }
   }
+
 
   function UpdateCard(updateInfo: UpdateInfo) {
     return (
@@ -114,11 +149,16 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
     )
   }
 
+
   return (
     <div className="">
       {isLoading ? (
         <div className="">
           <LoadingCard />
+        </div>
+      ) : showFirstTime ? (
+        <div className="">
+          <FirstTimeUserCard plugin={plugin} />
         </div>
       ) : selectedUpdate ? (
         <div className="">
