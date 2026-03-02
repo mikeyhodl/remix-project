@@ -40,7 +40,7 @@ module.exports = {
       .click('*[data-id="deployButton"]')
       .waitForElementPresent('*[data-id="deployedContractItem-0"]', 60000)
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -78,7 +78,7 @@ module.exports = {
       .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3A', true, true)
       .waitForElementVisible('[data-id="deployedContractItem-0"]')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -94,7 +94,7 @@ module.exports = {
       .createContract('2')
       .clickInstance(0)
       .click('*[data-id="terminalClearConsole"]')
-      .clickFunction(0, 0, { types: 'address to', values: '0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c' })
+      .clickFunction(0, 0, ['0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c'])
       .journalLastChildIncludes('Ballot.delegate(address)')
       .journalLastChildIncludes('data: 0x5c1...a733c')
   }

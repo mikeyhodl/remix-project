@@ -82,7 +82,7 @@ module.exports = {
           to: 'Storage.retrieve() 0xd9145CCE52D386f254917e481eB44e9943F39138',
           'decoded output': { "0": "uint256: 0" }
         })
-      .clickFunction(0, 0, { types: 'uint256 num', values: '35' })
+      .clickFunction(0, 0, ['35'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -113,7 +113,7 @@ module.exports = {
           to: 'Storage.retrieve() 0xd9145CCE52D386f254917e481eB44e9943F39138',
           'decoded output': { "0": "uint256: 35" }
         })
-      .clickFunction(0, 0, { types: 'uint256 num', values: '55' })
+      .clickFunction(0, 0, ['55'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
