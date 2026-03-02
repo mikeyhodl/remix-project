@@ -377,6 +377,7 @@ export class RemixAIPlugin extends Plugin {
 
   async setModel(modelId: string) {
     let model = getModelById(modelId)
+    console.log('setting model:', model)
     if (!model) {
       model = getDefaultModel()
       modelId = model.id

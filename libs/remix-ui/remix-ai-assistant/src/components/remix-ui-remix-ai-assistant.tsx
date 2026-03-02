@@ -173,37 +173,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const calcAndConvertToDvw = (coordValue: number) => (coordValue / window.innerWidth) * 100
   const chatCmdParser = new ChatCommandParser(props.plugin)
 
-  const aiAssistantGroupList: groupListType[] = [
-    {
-      label: 'OpenAI',
-      bodyText: 'Better for general purpose coding tasks',
-      icon: 'fa-solid fa-check',
-      stateValue: 'openai',
-      dataId: 'composer-ai-assistant-openai'
-    },
-    {
-      label: 'MistralAI',
-      bodyText: 'Better for more complex coding tasks with solidity, typescript and more',
-      icon: 'fa-solid fa-check',
-      stateValue: 'mistralai',
-      dataId: 'composer-ai-assistant-mistralai'
-    },
-    {
-      label: 'Anthropic',
-      bodyText: 'Best for complex coding tasks but most demanding on resources',
-      icon: 'fa-solid fa-check',
-      stateValue: 'anthropic',
-      dataId: 'composer-ai-assistant-anthropic'
-    },
-    {
-      label: 'Ollama',
-      bodyText: 'Local AI models running on your machine (requires Ollama installation)',
-      icon: 'fa-solid fa-check',
-      stateValue: 'ollama',
-      dataId: 'composer-ai-assistant-ollama'
-    }
-  ]
-
   const dispatchActivity = useCallback(
     (type: ActivityType, payload?: any) => {
       props.onActivity?.(type, payload)
@@ -252,6 +221,35 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('theme', 'themeChanged')
     }
   }, [])
+
+  useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout | null = null
+    let isRefreshing = false // avoid circular calls
+
+    const handleAuthStateChanged = async (authState: any) => {
+      if (authState.isAuthenticated && !isRefreshing) {
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout)
+        }
+
+        refreshTimeout = setTimeout(async () => {
+          isRefreshing = true
+          console.log('Auth state changed to authenticated, refreshing model access...')
+          await modelAccess.refreshAccess()
+          isRefreshing = false
+        }, 500)
+      }
+    }
+
+    props.plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
+
+    return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout)
+      }
+      props.plugin.off('auth', 'authStateChanged')
+    }
+  }, [props.plugin])
 
   // bubble messages up to parent
   useEffect(() => {
@@ -497,7 +495,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           response.abortSignal = abortControllerRef.current?.signal
         }
 
-        switch (assistantChoice) {
+        // Derive provider from selectedModel to avoid stale state issues
+        const currentProvider = selectedModel?.provider || assistantChoice
+
+        switch (currentProvider) {
         case 'openai':
           await HandleOpenAIResponse(
             response,
@@ -608,7 +609,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         ])
       }
     },
-    [isStreaming, props.plugin]
+    [isStreaming, props.plugin, selectedModel, assistantChoice]
   )
 
   const handleSend = useCallback(async () => {
@@ -697,6 +698,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 // Sync the default model with the backend
                 try {
                   await props.plugin.call('remixAI', 'setModel', defaultModel)
+                  setAssistantChoice(selectedModel.provider)
                   setMessages(prev => [...prev, {
                     id: crypto.randomUUID(),
                     role: 'assistant',
@@ -780,9 +782,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setSelectedModelId(modelId)
     setSelectedModel(model)
 
-    // Special handling for Ollama
+    // Always update assistantChoice to match the selected model's provider
+    setAssistantChoice(model.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
+    console.log('Setting assistant choice to:', model.provider)
+
     if (model.provider === 'ollama') {
-      // Fetch available Ollama models
       try {
         const models = await props.plugin.call('remixAI', 'getOllamaModels')
         setOllamaModels(models)
@@ -791,7 +795,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         console.error('Ollama not available:', err)
       }
     } else {
-      // Set model in plugin
       try {
         await props.plugin.call('remixAI', 'setModel', modelId)
         trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
@@ -1086,7 +1089,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
-            aiAssistantGroupList={aiAssistantGroupList}
             mcpEnabled={mcpEnabled}
             mcpEnhanced={mcpEnhanced}
             setMcpEnhanced={setMcpEnhanced}
@@ -1132,7 +1134,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
-            aiAssistantGroupList={aiAssistantGroupList}
             mcpEnabled={mcpEnabled}
             mcpEnhanced={mcpEnhanced}
             setMcpEnhanced={setMcpEnhanced}

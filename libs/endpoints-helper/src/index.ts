@@ -89,7 +89,7 @@ const localhostUrls: EndpointUrls = {
   // PROXY service (port 3005)
   corsProxy: 'http://localhost:3005/corsproxy',
   mcpCorsProxy: 'http://localhost:3005/mcp',
-  mcpCorsProxy8443: 'http://localhost:8443/mcp',
+  mcpCorsProxy8443: "https://mcp.api.remix.live:8443",
   commonCorsProxy: 'http://localhost:3005/common-corsproxy',
   github: 'http://localhost:3005/github',
   ghfolderpull: 'http://localhost:3005/ghfolderpull',

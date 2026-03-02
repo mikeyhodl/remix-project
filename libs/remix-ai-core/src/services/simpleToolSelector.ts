@@ -20,7 +20,7 @@ interface IScoredTool {
 
 export class SimpleToolSelector {
   // Core tools ALWAYS included (essential utilities)
-  private coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result']
+  coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result']
 
   // Keyword → Category mappings (for category-based scoring)
   private keywordMap: Record<string, string[]> = {
@@ -146,9 +146,15 @@ export class SimpleToolSelector {
       return coreToolsOnly
     }
 
-    // Return top scored tools up to maxTools
-    const result = relevantTools.slice(0, maxTools).map(st => st.tool)
-    console.log(`[SimpleToolSelector] Selected ${result.length} tools (limited to max ${maxTools})`)
+    const coreToolResults = relevantTools.filter(st => this.coreTools.includes(st.tool.name))
+    const nonCoreResults = relevantTools.filter(st => !this.coreTools.includes(st.tool.name))
+    const remainingSlots = maxTools - coreToolResults.length
+    const result = [
+      ...coreToolResults.map(st => st.tool),
+      ...nonCoreResults.slice(0, Math.max(0, remainingSlots)).map(st => st.tool)
+    ]
+
+    console.log(`[SimpleToolSelector] Selected ${result.length} tools (${coreToolResults.length} core + ${result.length - coreToolResults.length} others, max ${maxTools})`)
     return result
   }
 

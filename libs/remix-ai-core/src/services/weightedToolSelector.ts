@@ -127,9 +127,8 @@ export class WeightedToolSelector extends SimpleToolSelector {
         st.matchDetails.conversationContext * this.weights.conversationContext;
     });
 
-    const coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result'];
     scoredTools.forEach(st => {
-      if (coreTools.includes(st.tool.name)) {
+      if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0;
       }
     });
@@ -148,8 +147,14 @@ export class WeightedToolSelector extends SimpleToolSelector {
       );
     });
 
-    const result = scoredTools.slice(0, maxTools).map(st => st.tool);
-    console.log(`[WeightedToolSelector] Selected ${result.length} tools with history weighting`);
+    const coreToolResults = scoredTools.filter(st => this.coreTools.includes(st.tool.name));
+    const nonCoreResults = scoredTools.filter(st => !this.coreTools.includes(st.tool.name));
+    const remainingSlots = maxTools - coreToolResults.length;
+    const result = [
+      ...coreToolResults.map(st => st.tool),
+      ...nonCoreResults.slice(0, Math.max(0, remainingSlots)).map(st => st.tool)
+    ];
+    console.log(`[WeightedToolSelector] Selected ${result.length} tools (${coreToolResults.length} core + ${result.length - coreToolResults.length} others, max ${maxTools}) with history weighting`);
 
     return result;
   }
