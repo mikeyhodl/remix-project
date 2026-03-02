@@ -114,7 +114,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       color: '',
       action: () => {
         handleActionClick()
-        // sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
+        sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
       }
     },
     {
@@ -123,7 +123,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       color: '',
       action: () => {
         handleActionClick()
-        // sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
+        sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
       }
     },
     {
