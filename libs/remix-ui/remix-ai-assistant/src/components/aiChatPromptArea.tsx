@@ -12,13 +12,10 @@ interface AiChatPromptAreaProps {
     themeTracker: any
     showHistorySidebar: boolean
     isMaximized: boolean
-    showAssistantOptions: boolean
     modelOpt: { top: number, left: number }
     menuRef: React.RefObject<HTMLDivElement>
-    setShowAssistantOptions: React.Dispatch<React.SetStateAction<boolean>>
     assistantChoice: any
     setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
-    aiAssistantGroupList: any[]
     mcpEnabled: boolean
     mcpEnhanced: boolean
     setMcpEnhanced: React.Dispatch<React.SetStateAction<boolean>>
@@ -32,7 +29,6 @@ interface AiChatPromptAreaProps {
     stopRequest: () => void
     showModelOptions: boolean
     setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
-    handleSetAssistant: () => void
     handleSetModel: () => void
     handleGenerateWorkspace: () => void
     handleRecord: () => void
@@ -151,9 +147,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
         isMaximized={props.isMaximized}
-        showAssistantOptions={props.showAssistantOptions}
         assistantChoice={props.assistantChoice}
-        handleSetAssistant={props.handleSetAssistant}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}
         showOllamaModelSelector={props.showOllamaModelSelector}

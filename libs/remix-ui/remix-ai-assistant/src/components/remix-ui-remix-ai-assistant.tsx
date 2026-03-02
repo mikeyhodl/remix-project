@@ -5,16 +5,13 @@ import '../css/remix-ai-assistant.css'
 import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, AIModel } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 import '../css/color.css'
-import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, RemixAIAssistantEvent } from '@remix-api'
+import { MatomoEvent, AIEvent } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
-import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage, ConversationMetadata } from '../lib/types'
 import { groupListType } from '../types/componentTypes'
-import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
 import { RemixAIAssistant } from 'apps/remix-ide/src/app/plugins/remix-ai-assistant'
 import { useAudioTranscription } from '../hooks/useAudioTranscription'
@@ -60,7 +57,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages || [])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [showAssistantOptions, setShowAssistantOptions] = useState(false)
   const [showModelOptions, setShowModelOptions] = useState(false)
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [assistantChoice, setAssistantChoice] = useState<'openai' | 'mistralai' | 'anthropic' | 'ollama'>(
@@ -71,7 +67,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [showOllamaModelSelector, setShowOllamaModelSelector] = useState(false)
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
-  const [isMaximized, setIsMaximized] = useState(false)
 
   // Check if MCP is enabled via query parameter
   const queryParams = new QueryParams()
@@ -83,8 +78,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     baseTrackEvent?.<T>(event)
   }
   const modelAccess = useModelAccess()
+  const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
+  const menuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
-  const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [themeTracker, setThemeTracker] = useState(null)
@@ -173,34 +169,34 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const calcAndConvertToDvw = (coordValue: number) => (coordValue / window.innerWidth) * 100
   const chatCmdParser = new ChatCommandParser(props.plugin)
 
-  const aiAssistantGroupList: groupListType[] = [
+  const aiContextGroupList: groupListType[] = [
     {
-      label: 'OpenAI',
-      bodyText: 'Better for general purpose coding tasks',
+      label: 'None',
+      bodyText: 'Uses no context',
       icon: 'fa-solid fa-check',
-      stateValue: 'openai',
-      dataId: 'composer-ai-assistant-openai'
+      stateValue: 'none',
+      dataId: 'composer-ai-context-none'
     },
     {
-      label: 'MistralAI',
-      bodyText: 'Better for more complex coding tasks with solidity, typescript and more',
+      label: 'Current file',
+      bodyText: 'Uses the current file in the editor as context',
       icon: 'fa-solid fa-check',
-      stateValue: 'mistralai',
-      dataId: 'composer-ai-assistant-mistralai'
+      stateValue: 'current',
+      dataId: 'currentFile-context-option'
     },
     {
-      label: 'Anthropic',
-      bodyText: 'Best for complex coding tasks but most demanding on resources',
+      label: 'All opened files',
+      bodyText: 'Uses all files opened in the editor as context',
       icon: 'fa-solid fa-check',
-      stateValue: 'anthropic',
-      dataId: 'composer-ai-assistant-anthropic'
+      stateValue: 'opened',
+      dataId: 'allOpenedFiles-context-option'
     },
     {
-      label: 'Ollama',
-      bodyText: 'Local AI models running on your machine (requires Ollama installation)',
+      label: 'Workspace',
+      bodyText: 'Uses the current workspace as context',
       icon: 'fa-solid fa-check',
-      stateValue: 'ollama',
-      dataId: 'composer-ai-assistant-ollama'
+      stateValue: 'workspace',
+      dataId: 'workspace-context-option'
     }
   ]
 
@@ -620,48 +616,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setInput('')
   }, [input, sendPrompt])
 
-  const handleCancel = useCallback(() => {
-    stopRequest()
-  }, [stopRequest])
-
-  const handleSetAssistant = useCallback(() => {
-    dispatchActivity('button', 'setAssistant')
-    setShowAssistantOptions(prev => !prev)
-  }, [])
-
-  // Only send the /setAssistant command when the choice actually changes
-  useEffect(() => {
-    const fetchAssistantChoice = async () => {
-      const choiceSetting = await props.plugin.call('remixAI', 'getAssistantProvider')
-      if (choiceSetting !== assistantChoice) {
-        // Don't send success messages if this is a fallback from Ollama failure
-        if (!isOllamaFailureFallback) {
-          dispatchActivity('button', 'setAssistant')
-          setMessages([])
-          sendPrompt(`/setAssistant ${assistantChoice}`)
-          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetAIProvider', name: assistantChoice, isClick: true })
-          // Log specific Ollama selection
-          if (assistantChoice === 'ollama') {
-            trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_provider_selected', value: `from:${choiceSetting || 'unknown'}`, isClick: false })
-          }
-        } else {
-          // This is a fallback, just update the backend silently
-          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_fallback_to_provider', value: `${assistantChoice}|from:${choiceSetting}`, isClick: false })
-          await props.plugin.call('remixAI', 'setAssistantProvider', assistantChoice)
-        }
-        setAssistantChoice(assistantChoice || 'mistralai')
-
-        // Reset the fallback flag after handling
-        if (isOllamaFailureFallback) {
-          setIsOllamaFailureFallback(false)
-        }
-      }
-    }
-    fetchAssistantChoice()
-  }, [assistantChoice, isOllamaFailureFallback])
-
   useEffect(() => {
     const handleMCPToggle = async () => {
+      // Only toggle MCP if it's enabled via query parameter
+      if (!mcpEnabled) {
+        // Ensure MCP is disabled if query param is not set
+        try {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        } catch (error) {
+          console.warn('Failed to disable MCP enhancement:', error)
+        }
+        return
+      }
+
       try {
         if (mcpEnhanced) {
           await props.plugin.call('remixAI', 'enableMCPEnhancement')
@@ -672,8 +639,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         console.warn('Failed to toggle MCP enhancement:', error)
       }
     }
-    handleMCPToggle()
-  }, [mcpEnhanced])
+    if (mcpEnhanced !== null) { // Only call when state is initialized
+      handleMCPToggle()
+    }
+  }, [mcpEnhanced, mcpEnabled])
 
   // Fetch available Ollama models when Ollama model is selected
   useEffect(() => {
@@ -900,9 +869,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     await props.plugin.call('layout', 'maximiseRightSidePanel')
   }
 
-  const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
-  const menuRef = useRef<any>()
-
   useEffect(() => {
     if (showModelSelector && modelBtnRef.current && menuRef.current) {
       // Use requestAnimationFrame to ensure menu is rendered and has dimensions
@@ -1086,13 +1052,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             themeTracker={themeTracker}
             showHistorySidebar={props.showHistorySidebar || false}
             isMaximized={false}
-            showAssistantOptions={showAssistantOptions}
             modelOpt={modelOpt}
             menuRef={menuRef}
-            setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
-            aiAssistantGroupList={aiAssistantGroupList}
             mcpEnabled={mcpEnabled}
             mcpEnhanced={mcpEnhanced}
             setMcpEnhanced={setMcpEnhanced}
@@ -1106,7 +1069,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             stopRequest={stopRequest}
             showModelOptions={showModelOptions}
             setShowModelOptions={setShowModelOptions}
-            handleSetAssistant={handleSetAssistant}
             handleSetModel={handleSetModel}
             handleGenerateWorkspace={handleGenerateWorkspace}
             handleRecord={handleRecord}
@@ -1132,13 +1094,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             themeTracker={themeTracker}
             showHistorySidebar={props.showHistorySidebar || false}
             isMaximized={false}
-            showAssistantOptions={showAssistantOptions}
             modelOpt={modelOpt}
             menuRef={menuRef}
-            setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
-            aiAssistantGroupList={aiAssistantGroupList}
             mcpEnabled={mcpEnabled}
             mcpEnhanced={mcpEnhanced}
             setMcpEnhanced={setMcpEnhanced}
@@ -1152,7 +1111,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             stopRequest={stopRequest}
             showModelOptions={showModelOptions}
             setShowModelOptions={setShowModelOptions}
-            handleSetAssistant={handleSetAssistant}
             handleSetModel={handleSetModel}
             handleGenerateWorkspace={handleGenerateWorkspace}
             handleRecord={handleRecord}

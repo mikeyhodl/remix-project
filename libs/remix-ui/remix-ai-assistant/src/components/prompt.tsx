@@ -16,9 +16,7 @@ export interface PromptAreaProps {
   setInput: React.Dispatch<React.SetStateAction<string>>
   isStreaming: boolean
   handleSend: () => void
-  showAssistantOptions: boolean
   assistantChoice: AiAssistantType
-  handleSetAssistant: () => void
   selectedOllamaModel: any
   handleAddContext?: () => void
   handleSetModel: () => void
