@@ -11,6 +11,7 @@ import { current } from '@reduxjs/toolkit'
 export interface BrowserState {
   browser: {
     currentWorkspace: string
+    workspaceSwitchVersion: number
     workspaces: {
       name: string
       isGitRepo: boolean
@@ -76,6 +77,7 @@ export interface BrowserState {
 export const browserInitialState: BrowserState = {
   browser: {
     currentWorkspace: '',
+    workspaceSwitchVersion: 0,
     workspaces: [],
     files: {},
     flatTree: [],
@@ -145,6 +147,7 @@ export const browserReducer = (state = browserInitialState, action: Actions) => 
       browser: {
         ...state.browser,
         currentWorkspace: payload.name,
+        workspaceSwitchVersion: (state.browser.workspaceSwitchVersion || 0) + 1,
         workspaces: workspaces.filter((workspace) => workspace)
       }
     }
