@@ -16,13 +16,9 @@ class sendLowLevelTx extends EventEmitter {
       }})
       .pause(1000)
       .waitForElementPresent(`[data-id="fallbackInput-${index}"]`)
-      .perform(() => {
-        if (callData) {
-          this.api
-            .clearValue(`[data-id="fallbackInput-${index}"]`)
-            .sendKeys(`[data-id="fallbackInput-${index}"]`, ['_', this.api.Keys.BACK_SPACE, callData])
-        }
-      })
+      .click(`[data-id="fallbackInput-${index}"]`)
+      .clearValue(`[data-id="fallbackInput-${index}"]`)
+      .sendKeys(`[data-id="fallbackInput-${index}"]`, callData ? ['_', this.api.Keys.BACK_SPACE, callData] : ['_', this.api.Keys.BACK_SPACE])
       .waitForElementVisible(`[data-id="contractItem-sendValue-${index}"]`)
       .clearValue(`[data-id="contractItem-sendValue-${index}"]`)
       .setValue(`[data-id="contractItem-sendValue-${index}"]`, value)
