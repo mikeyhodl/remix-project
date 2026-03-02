@@ -118,7 +118,6 @@ export class LockExpiredError extends Error {
 export async function acquireLock(workspaceUuid: string, opts?: { force?: boolean }): Promise<LockAcquireResult> {
   const deviceId = getDeviceId()
   const force = opts?.force ?? false
-  console.log(`[CloudLock] POST acquire — workspace=${workspaceUuid}, device=${deviceId}, ttl=${LOCK_TTL}, force=${force}`)
 
   const res = await fetch(`${lockBase()}/api/workspaces/${workspaceUuid}/lock`, {
     method: 'POST',
@@ -140,7 +139,6 @@ export async function acquireLock(workspaceUuid: string, opts?: { force?: boolea
   }
 
   const data = await res.json()
-  console.log(`[CloudLock] ✓ Lock acquired — device=${deviceId}, ttl=${data.lock?.ttl || LOCK_TTL}s`)
   return {
     acquired: true,
     deviceId,
@@ -188,7 +186,6 @@ export async function heartbeatLock(workspaceUuid: string): Promise<LockHeartbea
  */
 export async function releaseLock(workspaceUuid: string): Promise<void> {
   const deviceId = getDeviceId()
-  console.log(`[CloudLock] DELETE release — workspace=${workspaceUuid}, device=${deviceId}`)
 
   try {
     await fetch(`${lockBase()}/api/workspaces/${workspaceUuid}/lock`, {
@@ -196,7 +193,6 @@ export async function releaseLock(workspaceUuid: string): Promise<void> {
       headers: authHeaders(),
       body: JSON.stringify({ device_id: deviceId }),
     })
-    console.log(`[CloudLock] ✓ Lock released`)
   } catch (err) {
     console.warn('[CloudLock] Release failed (non-fatal):', (err as any).message || err)
   }
@@ -210,8 +206,6 @@ export function releaseLockBeacon(workspaceUuid: string): void {
   const deviceId = getDeviceId()
   const url = `${lockBase()}/api/workspaces/${workspaceUuid}/unlock`
   const body = JSON.stringify({ device_id: deviceId })
-
-  console.log(`[CloudLock] sendBeacon unlock — workspace=${workspaceUuid}, device=${deviceId}`)
 
   // sendBeacon doesn't support custom headers, but the session cookie is
   // included automatically via credentials. For Bearer token auth, we pass
@@ -246,8 +240,6 @@ export class LockHeartbeatManager {
     this.stop()
     this.workspaceUuid = workspaceUuid
     this.onLockLost = onLockLost
-
-    console.log(`[CloudLock:heartbeat] Starting — workspace=${workspaceUuid}, interval=${HEARTBEAT_INTERVAL / 1000}s`)
 
     this.timer = setInterval(() => {
       this.sendHeartbeat()
@@ -285,7 +277,6 @@ export class LockHeartbeatManager {
 
     try {
       const result = await heartbeatLock(this.workspaceUuid)
-      console.log(`[CloudLock:heartbeat] ✓ Renewed (ttl=${result.ttl}s)`)
     } catch (err) {
       // Save callback before stop() nulls it out
       const callback = this.onLockLost
@@ -299,7 +290,6 @@ export class LockHeartbeatManager {
         // Try to re-acquire instead of immediately giving up
         try {
           await acquireLock(this.workspaceUuid!)
-          console.log(`[CloudLock:heartbeat] ✓ Re-acquired lock after expiry`)
         } catch (reacquireErr) {
           if (reacquireErr instanceof WorkspaceLockedError) {
             console.error(`[CloudLock:heartbeat] ✗ Re-acquire failed — someone else has it`)

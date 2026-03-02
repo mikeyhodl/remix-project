@@ -756,7 +756,6 @@ export class AuthPlugin extends Plugin {
     })
 
     this.refreshCredits().catch(console.error)
-    console.log('[AuthPlugin] Email OTP login finalised')
   }
 
   /**

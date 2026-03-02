@@ -197,7 +197,6 @@ export class CloudSyncEngine {
 
     // Start heartbeat to keep the lock alive (20s interval, 60s TTL)
     this._lockHeartbeat.start(workspaceUuid, (reason) => {
-      console.log(`[CloudSync:lock] Lock lost: ${reason}`)
       this._onLockLost?.(reason)
     })
 
@@ -207,7 +206,6 @@ export class CloudSyncEngine {
 
     // offline → trigger lock loss so the workspace is closed
     this._onOffline = () => {
-      console.log('[CloudSync:lock] Browser went offline — triggering lock loss')
       this._onLockLost?.('error')
     }
     window.addEventListener('offline', this._onOffline)
@@ -222,16 +220,13 @@ export class CloudSyncEngine {
 
     // Restore persisted _git.zip ETag so we don't false-positive on every load
     this._lastGitZipEtag = this.manifest.lastGitZipEtag || null
-    console.log(`[CloudSync:activate] Restored _lastGitZipEtag from manifest: ${this._lastGitZipEtag}`)
 
     // Load current workspace version from the API for conflict detection.
     // The version is already in the cloudStore if we just fetched the list,
     // but re-fetching ensures we have the latest value.
     try {
-      console.log(`[CloudSync:version] Fetching workspace version for ${workspaceUuid}...`)
       const ws = await getCloudWorkspace(workspaceUuid)
       this._localVersion = ws.version ?? 0
-      console.log(`[CloudSync:version] Loaded workspace version: ${this._localVersion} (raw: ${ws.version})`)
     } catch (err) {
       console.warn('[CloudSync:version] Could not fetch workspace version, defaulting to 0:', err.message || err)
       this._localVersion = 0
@@ -245,7 +240,6 @@ export class CloudSyncEngine {
     // could be close to expiry when the user returns.
     this._onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[CloudSync:lock] Tab became visible — sending immediate heartbeat')
         this._lockHeartbeat.sendImmediate()
       }
     }
@@ -264,7 +258,6 @@ export class CloudSyncEngine {
     // If a flush is already in progress (e.g. from the periodic timer),
     // wait for it to finish before tearing down state.
     if (this._flushPromise) {
-      console.log('[CloudSync] Waiting for in-progress flush before deactivate...')
       try {
         await this._flushPromise
       } catch (err) {
@@ -274,7 +267,6 @@ export class CloudSyncEngine {
 
     // Flush any remaining pending changes before tearing down
     if (this.pendingChanges.length > 0 && this.s3 && this.workspaceUuid) {
-      console.log(`[CloudSync] Flushing ${this.pendingChanges.length} pending changes before deactivate`)
       try {
         await this.flushChanges()
       } catch (err) {
@@ -391,8 +383,6 @@ export class CloudSyncEngine {
    * to populate manifest ETags for future incremental syncs.
    */
   private async pullViaZip(manifest: SyncManifest): Promise<{ downloaded: number; skipped: number; deleted: number }> {
-    console.log('[CloudSync] Fresh load — attempting ZIP-based pull')
-
     const zipData = await this.s3!.getObjectBinary(WORKSPACE_ZIP_KEY)
 
     if (zipData) {
@@ -402,7 +392,6 @@ export class CloudSyncEngine {
         this.localWorkspacePath!,
         this.fs,
       )
-      console.log(`[CloudSync] Extracted ${fileCount} files from workspace.zip`)
 
       // ── 2. LIST to get real ETags for the manifest ──
       const remoteObjects = await this.s3!.listObjects('')
@@ -413,7 +402,6 @@ export class CloudSyncEngine {
         if (obj.key === GIT_ZIP_KEY) {
           const oldEtag = this._lastGitZipEtag
           this._lastGitZipEtag = obj.etag || null
-          console.log(`[CloudGitZip:pullViaZip] Found _git.zip in LIST — ETag: ${this._lastGitZipEtag} (previous: ${oldEtag}, changed: ${oldEtag !== this._lastGitZipEtag})`)
           continue
         }
         if (obj.key === '.git' || obj.key.startsWith('.git/')) continue  // skip .git internals
@@ -430,7 +418,6 @@ export class CloudSyncEngine {
 
       // Download extra files in parallel
       if (extraDownloads.length > 0) {
-        console.log(`[CloudSync] Downloading ${extraDownloads.length} files not in ZIP (parallel)`)
         await parallelMap(extraDownloads, async (obj) => {
           const localPath = `${this.localWorkspacePath}/${obj.key}`
           const parentDir = localPath.substring(0, localPath.lastIndexOf('/'))
@@ -457,7 +444,6 @@ export class CloudSyncEngine {
       return { downloaded, skipped: 0, deleted: 0 }
     } else {
       // No ZIP exists yet — fall back to incremental (downloads every file one by one)
-      console.log('[CloudSync] No workspace.zip found — falling back to incremental pull')
       return this.pullIncremental(manifest)
     }
   }
@@ -471,11 +457,9 @@ export class CloudSyncEngine {
     const remoteObjects = await this.s3!.listObjects('')
     const remoteMap = new Map<string, S3Object>()
     let remoteGitZipEtag: string | null = null
-    console.log(`[CloudGitZip:pullIncremental] Starting LIST — current _lastGitZipEtag: ${this._lastGitZipEtag}`)
     for (const obj of remoteObjects) {
       if (obj.key === GIT_ZIP_KEY) {
         remoteGitZipEtag = obj.etag || null
-        console.log(`[CloudGitZip:pullIncremental] Found _git.zip in LIST — remote ETag: ${remoteGitZipEtag}`)
         continue
       }
       if (!obj.key.endsWith('/') && obj.key !== WORKSPACE_ZIP_KEY
@@ -483,13 +467,9 @@ export class CloudSyncEngine {
         remoteMap.set(obj.key, obj)
       }
     }
-    if (!remoteGitZipEtag) {
-      console.log(`[CloudGitZip:pullIncremental] No _git.zip found on S3`)
-    }
     // Store the latest _git.zip ETag we saw on S3
     const oldGitEtag = this._lastGitZipEtag
     if (remoteGitZipEtag !== null) this._lastGitZipEtag = remoteGitZipEtag
-    console.log(`[CloudGitZip:pullIncremental] _lastGitZipEtag updated: ${oldGitEtag} → ${this._lastGitZipEtag} (changed: ${oldGitEtag !== this._lastGitZipEtag})`)
 
     // ── 2. Diff against manifest ──
     const toDownload: S3Object[] = []
@@ -510,11 +490,6 @@ export class CloudSyncEngine {
         toDelete.push(key)
       }
     }
-
-    console.log(
-      `[CloudSync] Pull diff: ${toDownload.length} to download, ` +
-      `${skipped} up-to-date, ${toDelete.length} remote deletions`
-    )
 
     // ── 3. Short-circuit if nothing to do ──
     if (toDownload.length === 0 && toDelete.length === 0) {
@@ -590,7 +565,6 @@ export class CloudSyncEngine {
     // During conflict resolution, drop all incoming changes — the editors
     // are being closed and the files are about to be overwritten by the pull.
     if (this._isResolvingConflict) {
-      console.log(`[CloudSync:version] Dropping change during conflict resolution: ${change.type} ${change.path}`)
       return
     }
 
@@ -657,7 +631,6 @@ export class CloudSyncEngine {
       // ── Version check: claim the next version before pushing files ──
       if (this.workspaceUuid) {
         try {
-          console.log(`[CloudSync:version] PATCH version check — sending expected_version=${this._localVersion} for ${this.workspaceUuid}`)
           const updated = await updateCloudWorkspace(this.workspaceUuid, {
             expected_version: this._localVersion,
           })
@@ -666,7 +639,6 @@ export class CloudSyncEngine {
           this._localVersion = updated.version ?? (this._localVersion + 1)
           // Keep cloudStore in sync so the UI reflects the new version
           cloudStore.updateCloudWorkspace(updated)
-          console.log(`[CloudSync:version] ✓ Version bumped ${previousVersion} → ${this._localVersion}. Proceeding to push ${changes.length} changes.`)
         } catch (err) {
           if (err instanceof VersionConflictException) {
             console.warn(`[CloudSync:version] ✗ VERSION CONFLICT! local=${this._localVersion}, remote=${err.currentVersion}. Re-queuing ${changes.length} changes and pulling remote state.`)
@@ -828,27 +800,20 @@ export class CloudSyncEngine {
    */
   async checkRemoteVersion(): Promise<void> {
     if (!this.workspaceUuid || !this.isActive) {
-      console.log(`[CloudSync:version] checkRemoteVersion skipped (uuid=${!!this.workspaceUuid}, active=${this.isActive})`)
       return
     }
     if (this._isResolvingConflict) {
-      console.log('[CloudSync:version] checkRemoteVersion skipped — conflict resolution already in progress')
       return
     }
     try {
-      console.log(`[CloudSync:version] Checking remote version (local: ${this._localVersion})...`)
       const ws = await getCloudWorkspace(this.workspaceUuid)
       const remoteVersion = ws.version ?? 0
       if (remoteVersion > this._localVersion) {
-        console.log(
-          `[CloudSync:version] ⚡ Remote is ahead! remote=${remoteVersion} > local=${this._localVersion}. Pulling updates.`
-        )
         await this.handleVersionConflict(remoteVersion)
       } else {
         // Versions are equal — backend may not be incrementing versions yet.
         // Do a lightweight incremental pull (LIST + ETag diff) so that
         // changes made on another device are still picked up on tab-focus.
-        console.log(`[CloudSync:version] Versions in sync (local=${this._localVersion}, remote=${remoteVersion}) — running incremental pull`)
         await this.pullIfChanged()
       }
     } catch (err) {
@@ -867,34 +832,24 @@ export class CloudSyncEngine {
    */
   private async pullIfChanged(): Promise<void> {
     if (!this.s3 || !this.localWorkspacePath || !this.manifest) {
-      console.log(`[CloudSync:pullIfChanged] Skipped — missing: s3=${!!this.s3}, path=${!!this.localWorkspacePath}, manifest=${!!this.manifest}`)
       return
     }
     if (this.isSyncing || this._isResolvingConflict) {
-      console.log(`[CloudSync:pullIfChanged] Skipped — isSyncing=${this.isSyncing}, isResolvingConflict=${this._isResolvingConflict}`)
       return
     }
 
     try {
       const previousGitEtag = this._lastGitZipEtag
-      console.log(`[CloudSync:pullIfChanged] Starting incremental pull (previousGitEtag: ${previousGitEtag})`)
       this._isPulling = true
       const result = await this.pullIncremental(this.manifest)
       this._isPulling = false
 
-      console.log(`[CloudSync:pullIfChanged] Result: ${result.downloaded} downloaded, ${result.deleted} deleted, ${result.skipped} skipped`)
-
       if (result.downloaded > 0 || result.deleted > 0) {
-        console.log(
-          `[CloudSync] Incremental pull picked up changes: ` +
-          `${result.downloaded} downloaded, ${result.deleted} deleted, ${result.skipped} skipped`
-        )
         await this.saveManifest(this.manifest)
         this._onToast?.(`Pulled ${result.downloaded} updated file${result.downloaded !== 1 ? 's' : ''} from another device.`)
       }
 
       // Non-blocking: prompt user if remote _git.zip changed
-      console.log(`[CloudSync:pullIfChanged] Checking git zip change: previousEtag=${previousGitEtag}, currentEtag=${this._lastGitZipEtag}, changed=${previousGitEtag !== this._lastGitZipEtag}`)
       this.notifyIfGitZipChanged(previousGitEtag)
     } catch (err) {
       this._isPulling = false
@@ -910,25 +865,18 @@ export class CloudSyncEngine {
   private async handleVersionConflict(remoteVersion: number): Promise<void> {
     // Prevent re-entry (e.g. from concurrent checkRemoteVersion / flushChanges)
     if (this._isResolvingConflict) {
-      console.log('[CloudSync:version] handleVersionConflict skipped — already resolving')
       return
     }
 
     const previousVersion = this._localVersion
-    console.log(`[CloudSync:version] ── CONFLICT RESOLUTION START ──`)
-    console.log(`[CloudSync:version]   Local version:  ${previousVersion}`)
-    console.log(`[CloudSync:version]   Remote version: ${remoteVersion}`)
-    console.log(`[CloudSync:version]   Pending changes queued: ${this.pendingChanges.length}`)
 
     // ── 1. Freeze: block new changes from autosave / editor writes ──
     this._isResolvingConflict = true
     const previousGitEtag = this._lastGitZipEtag
-    console.log(`[CloudSync:version]   Previous _lastGitZipEtag: ${previousGitEtag}`)
 
     // ── 2. Close all editor tabs so autosave stops firing ──
     if (this._onConflictDetected) {
       try {
-        console.log(`[CloudSync:version] Closing editors & notifying user...`)
         await this._onConflictDetected()
       } catch (err) {
         console.warn('[CloudSync:version] onConflictDetected callback error (non-fatal):', err)
@@ -938,22 +886,15 @@ export class CloudSyncEngine {
     // ── 3. Discard all pending changes — they're from the old version ──
     const discarded = this.pendingChanges.length
     this.pendingChanges = []
-    console.log(`[CloudSync:version] Discarded ${discarded} stale pending changes`)
 
     this.updateStatus({ ...this._status, status: 'syncing', pendingChanges: 0 })
 
     try {
       // ── 4. Pull latest from S3 (overwrites local files with remote state) ──
-      console.log(`[CloudSync:version] Pulling remote workspace state...`)
       const result = await this.pullWorkspace()
-      console.log(
-        `[CloudSync:version] Pull complete: ${result.downloaded} downloaded, ` +
-        `${result.skipped} skipped, ${result.deleted} deleted`
-      )
 
       // Adopt the remote version
       this._localVersion = remoteVersion
-      console.log(`[CloudSync:version] Adopted remote version: ${previousVersion} → ${this._localVersion}`)
 
       // Keep local .git/ as-is — automatic conflict resolution should not
       // block on user input. The git snapshot will be pulled only when
@@ -961,14 +902,12 @@ export class CloudSyncEngine {
       // will be snapshotted to S3 again automatically.
 
       // Non-blocking: prompt user if remote _git.zip changed
-      console.log(`[CloudSync:version] Checking git zip change after conflict pull: previousEtag=${previousGitEtag}, currentEtag=${this._lastGitZipEtag}, changed=${previousGitEtag !== this._lastGitZipEtag}`)
       this.notifyIfGitZipChanged(previousGitEtag)
 
       // Update the workspace record in the cloud store
       const ws = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === this.workspaceUuid)
       if (ws) {
         cloudStore.updateCloudWorkspace({ ...ws, version: remoteVersion })
-        console.log(`[CloudSync:version] Updated cloudStore version`)
       }
 
       this.updateStatus({
@@ -984,11 +923,6 @@ export class CloudSyncEngine {
       if (result.downloaded > 0 || result.deleted > 0) {
         this._onToast?.(`Pulled ${result.downloaded} updated file${result.downloaded !== 1 ? 's' : ''} from another device.`)
       }
-
-      console.log(`[CloudSync:version] ── CONFLICT RESOLUTION COMPLETE ──`)
-      console.log(`[CloudSync:version]   Version: ${previousVersion} → ${this._localVersion}`)
-      console.log(`[CloudSync:version]   Discarded: ${discarded} stale changes`)
-      console.log(`[CloudSync:version]   Pending changes: ${this.pendingChanges.length}`)
 
     } catch (err) {
       this._isResolvingConflict = false
@@ -1025,19 +959,11 @@ export class CloudSyncEngine {
    */
   private async pushSnapshot(): Promise<void> {
     if (!this.s3 || !this.localWorkspacePath) return
-
-    console.log('[CloudSync] Generating workspace snapshot ZIP...')
     const startTime = Date.now()
 
     const zipData = await packWorkspace(this.localWorkspacePath, this.fs)
 
-    console.log(
-      `[CloudSync] Snapshot ZIP: ${(zipData.byteLength / 1024).toFixed(1)} KB, ` +
-      `packed in ${Date.now() - startTime}ms`
-    )
-
     await this.s3.putObject(WORKSPACE_ZIP_KEY, zipData, 'application/zip')
-    console.log('[CloudSync] Snapshot ZIP uploaded to S3')
   }
 
   /**
@@ -1063,10 +989,8 @@ export class CloudSyncEngine {
   scheduleGitSnapshotUpdate(): void {
     const wasScheduled = !!this.gitSnapshotTimer
     if (this.gitSnapshotTimer) clearTimeout(this.gitSnapshotTimer)
-    console.log(`[CloudGitZip] ${wasScheduled ? 'Resetting' : 'Scheduling'} git snapshot push (${GIT_SNAPSHOT_DEBOUNCE_MS / 1000}s debounce) — current _lastGitZipEtag: ${this._lastGitZipEtag}`)
     this.gitSnapshotTimer = setTimeout(() => {
       this.gitSnapshotTimer = null
-      console.log(`[CloudGitZip] Debounce fired — pushing git snapshot now (current _lastGitZipEtag: ${this._lastGitZipEtag})`)
       this.pushGitSnapshot().catch(err => {
         console.warn('[CloudGitZip] Git snapshot push failed (non-fatal):', err.message || err)
       })
@@ -1079,30 +1003,21 @@ export class CloudSyncEngine {
    */
   async pushGitSnapshot(): Promise<void> {
     if (!this.s3 || !this.localWorkspacePath) {
-      console.log(`[CloudGitZip:push] Skipped — s3=${!!this.s3}, path=${this.localWorkspacePath}`)
       return
     }
 
     const previousEtag = this._lastGitZipEtag
-    console.log(`[CloudGitZip:push] Generating .git snapshot ZIP... (previous ETag: ${previousEtag})`)
     const startTime = Date.now()
 
     const zipData = await packGitDir(this.localWorkspacePath, this.fs)
     if (!zipData) {
-      console.log('[CloudGitZip:push] No .git directory found — skipping')
       return
     }
-
-    console.log(
-      `[CloudGitZip:push] .git ZIP: ${(zipData.byteLength / 1024).toFixed(1)} KB, ` +
-      `packed in ${Date.now() - startTime}ms — uploading to S3...`
-    )
 
     const etag = await this.s3.putObject(GIT_ZIP_KEY, zipData, 'application/zip')
     // Store the real S3 ETag so that the next pullIfChanged() LIST won't
     // falsely detect our own push as a remote change.
     this._lastGitZipEtag = etag || `local-push-${Date.now()}`
-    console.log(`[CloudGitZip:push] ✅ Uploaded to S3 — new ETag: ${this._lastGitZipEtag} (was: ${previousEtag})`)
 
     // Persist the new ETag to disk so it survives page reloads
     if (this.manifest) {
@@ -1123,9 +1038,7 @@ export class CloudSyncEngine {
    *               user explicitly chooses to accept the remote git history.
    */
   async pullGitSnapshot(force = false): Promise<void> {
-    console.log(`[CloudGitZip:pull] pullGitSnapshot called (force=${force}, s3=${!!this.s3}, path=${this.localWorkspacePath})`)
     if (!this.s3 || !this.localWorkspacePath) {
-      console.log(`[CloudGitZip:pull] Skipped — no s3 or path`)
       return
     }
 
@@ -1136,33 +1049,24 @@ export class CloudSyncEngine {
       const stat = await this.fs.stat(gitPath)
       if (stat.isDirectory()) {
         if (!force) {
-          console.log(`[CloudGitZip:pull] Local .git/ exists at ${gitPath} — skipping (use force=true to overwrite)`)
           return
         }
-        console.log(`[CloudGitZip:pull] Force mode — will overwrite local .git/ at ${gitPath} with remote snapshot`)
-      } else {
-        console.log(`[CloudGitZip:pull] ${gitPath} exists but is NOT a directory (type: ${stat.type || 'unknown'}) — proceeding to download`)
       }
     } catch (e) {
-      console.log(`[CloudGitZip:pull] No local .git/ found at ${gitPath} (${e.message || e}) — proceeding to download`)
+      void e
     }
-
-    console.log('[CloudGitZip:pull] Downloading _git.zip from S3...')
 
     try {
       const zipData = await this.s3.getObjectBinary(GIT_ZIP_KEY)
       if (!zipData) {
-        console.log('[CloudGitZip:pull] No _git.zip on S3 — workspace has no git history yet')
         return
       }
-
-      console.log(`[CloudGitZip:pull] Downloaded _git.zip (${(zipData.byteLength / 1024).toFixed(1)} KB) — extracting to ${gitPath}...`)
 
       // Suppress change tracking during extraction
       this._isPulling = true
       try {
         const fileCount = await unpackGitDir(zipData, this.localWorkspacePath, this.fs)
-        console.log(`[CloudGitZip:pull] ✅ Restored ${fileCount} git objects into .git/`)
+        void fileCount
       } finally {
         this._isPulling = false
       }
@@ -1171,7 +1075,6 @@ export class CloudSyncEngine {
       if (this.manifest && this._lastGitZipEtag) {
         this.manifest.lastGitZipEtag = this._lastGitZipEtag
         await this.saveManifest(this.manifest)
-        console.log(`[CloudGitZip:pull] Persisted lastGitZipEtag: ${this._lastGitZipEtag}`)
       }
     } catch (err) {
       console.warn('[CloudGitZip:pull] ❌ Failed to restore .git from S3:', err.message || err)
@@ -1199,39 +1102,28 @@ export class CloudSyncEngine {
    * flow continues while the modal is visible.
    */
   notifyIfGitZipChanged(previousEtag: string | null): void {
-    console.log(`[CloudGitZip:notify] notifyIfGitZipChanged called — previous: ${previousEtag}, current: ${this._lastGitZipEtag}, hasCallback: ${!!this._onGitConflictPrompt}, path: ${this.localWorkspacePath}`)
-
     if (!this._onGitConflictPrompt || !this.localWorkspacePath) {
-      console.log(`[CloudGitZip:notify] Skipped — no callback (${!!this._onGitConflictPrompt}) or no path (${this.localWorkspacePath})`)
       return
     }
 
     const currentEtag = this._lastGitZipEtag
     // No remote _git.zip, or ETag hasn't changed → nothing to do
     if (!currentEtag) {
-      console.log(`[CloudGitZip:notify] No remote _git.zip ETag — no _git.zip on S3`)
       return
     }
     if (currentEtag === previousEtag) {
-      console.log(`[CloudGitZip:notify] ETag unchanged (${currentEtag}) — no remote git change`)
       return
     }
-
-    console.log(`[CloudGitZip:notify] ⚡ ETag CHANGED: ${previousEtag} → ${currentEtag} — checking if local .git/ exists...`)
     const gitPath = `${this.localWorkspacePath}/.git`
     this.fs.stat(gitPath).then((stat: any) => {
       if (!stat.isDirectory()) {
-        console.log(`[CloudGitZip:notify] ${gitPath} exists but not a directory — skipping prompt`)
         return
       }
-      console.log(`[CloudGitZip:notify] ✅ Local .git/ exists AND remote _git.zip changed — SHOWING PROMPT to user`)
       // Fire-and-forget: don't block the sync flow
       this._onGitConflictPrompt!().catch((err: any) => {
         console.warn('[CloudGitZip:notify] Git conflict prompt error (non-fatal):', err.message || err)
       })
-    }).catch((e: any) => {
-      console.log(`[CloudGitZip:notify] No local .git/ at ${gitPath} (${e.message || e}) — no prompt needed`)
-    })
+    }).catch(() => {})
   }
 
   // ── Manifest persistence ──────────────────────────────────

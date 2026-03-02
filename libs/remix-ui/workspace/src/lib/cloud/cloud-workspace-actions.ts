@@ -227,7 +227,6 @@ export async function enableCloud(): Promise<void> {
       // Uses the registered createWorkspace callback from workspace.ts which
       // handles: API creation, template file population, sync engine setup,
       // Redux dispatches, and file change tracking — all in the right order.
-      console.log('[enableCloud] No cloud workspaces — creating default via createWorkspace')
       cloudStore.setLoading(false)
       if (_createDefaultWorkspaceFn) {
         try {
@@ -313,7 +312,6 @@ export async function disableCloud(): Promise<void> {
     } else {
       // No local workspaces at all — create a default one
       // This mirrors the standard Remix behavior (switchToWorkspace(NO_WORKSPACE))
-      console.log('[disableCloud] No local workspaces — creating default')
       _plugin.call('notification', 'toast', 'No local workspace found — creating default workspace…')
       await createWorkspace('default_workspace', 'remixDefault')
     }
@@ -381,7 +379,6 @@ export async function switchToCloudWorkspace(
     await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
       // Called when a version conflict is detected — close all editor tabs
       // so Remix autosave stops writing stale content, and notify the user.
-      console.log('[CloudSync:version] onConflictDetected: closing all editors')
       try {
         await _plugin.fileManager.closeAllFiles()
       } catch (err) {
@@ -442,10 +439,8 @@ export async function switchToCloudWorkspace(
       if (takeOver) {
         // Force-acquire the lock — the old holder's heartbeat will get
         // 409 "stolen" and trigger its onLockLost → disableCloud.
-        console.log('[CloudSync:lock] User chose Take Over — force-acquiring lock')
         onSyncStatus?.({ status: 'loading', lastSync: null, pendingChanges: 0 })
         await cloudSyncEngine.activate(uuid, onSyncStatus, async () => {
-          console.log('[CloudSync:version] onConflictDetected: closing all editors')
           try { await _plugin.fileManager.closeAllFiles() } catch (e) { /* */ }
           _plugin.call('notification', 'toast', 'Workspace updated on another device — pulling latest changes…')
         }, async () => {
@@ -481,7 +476,6 @@ export async function switchToCloudWorkspace(
         // Fall through to the pull logic below
       } else {
         // User cancelled — switch back to a legacy workspace
-        console.log('[CloudSync:lock] User cancelled — falling back to legacy')
         try {
           await disableCloud()
         } catch (disableErr) {
@@ -499,11 +493,8 @@ export async function switchToCloudWorkspace(
   // Comparing them lets us detect that the remote _git.zip has changed since
   // this device last synced (i.e. another device pushed a new commit).
   const gitEtagBeforePull = cloudSyncEngine.lastGitZipEtag
-  console.log(`[CloudSync:init] Starting initial pullWorkspace (gitEtagBeforePull: ${gitEtagBeforePull})`)
 
   await cloudSyncEngine.pullWorkspace()
-
-  console.log(`[CloudSync:init] pullWorkspace done (gitEtagAfterPull: ${cloudSyncEngine.lastGitZipEtag})`)
 
   // Restore .git from S3 if the local copy is missing (fresh device, cleared storage)
   await cloudSyncEngine.pullGitSnapshot()
@@ -513,10 +504,7 @@ export async function switchToCloudWorkspace(
   // the user has a stale local .git/.  Prompt them about it.
   const gitEtagAfterPull = cloudSyncEngine.lastGitZipEtag
   if (gitEtagBeforePull !== gitEtagAfterPull && gitEtagAfterPull) {
-    console.log(`[CloudSync:init] ⚡ Remote _git.zip changed during initial pull: ${gitEtagBeforePull} → ${gitEtagAfterPull} — checking if prompt needed`)
     cloudSyncEngine.notifyIfGitZipChanged(gitEtagBeforePull)
-  } else {
-    console.log(`[CloudSync:init] _git.zip unchanged (${gitEtagBeforePull} → ${gitEtagAfterPull}) — no prompt needed`)
   }
 }
 
@@ -673,7 +661,6 @@ export function startFileChangeTracking(workspaceProvider: any, workspaceUuid: s
  */
 function _onCurrentFileChanged(_file: string): void {
   if (!cloudSyncEngine.isActive) return
-  console.log(`[CloudSync:version] File opened — triggering proactive version check`)
   cloudSyncEngine.checkRemoteVersion().catch(() => {})
 }
 
@@ -708,10 +695,7 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   // atomic _git.zip push so the full git state is backed up to S3.
   if (relativePath === '.git' || relativePath.startsWith('.git/')) {
     if (!cloudSyncEngine.isPulling && op.type !== 'mkdir' && op.type !== 'rmdir') {
-      console.log(`[CloudGitZip:observer] .git write detected: ${op.type} ${relativePath} — scheduling snapshot push`)
       cloudSyncEngine.scheduleGitSnapshotUpdate()
-    } else {
-      console.log(`[CloudGitZip:observer] .git op ignored: ${op.type} ${relativePath} (isPulling=${cloudSyncEngine.isPulling})`)
     }
     return
   }
@@ -749,7 +733,6 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
     if (!_versionCheckTimer) {
       _versionCheckTimer = setTimeout(() => {
         _versionCheckTimer = null
-        console.log('[CloudSync:version] Write-triggered proactive version check')
         cloudSyncEngine.checkRemoteVersion().catch(() => {})
       }, VERSION_CHECK_DEBOUNCE_MS)
     }

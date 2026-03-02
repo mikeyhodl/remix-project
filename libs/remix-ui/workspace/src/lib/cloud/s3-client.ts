@@ -73,8 +73,6 @@ export class S3Client {
       body: payload as BodyInit,
     })
 
-    console.log(`[S3Client] PUT ${key} → ${res.status}`)
-
     if (!res.ok) {
       const text = await res.text()
       throw new Error(`S3 PutObject failed (${res.status}): ${text}`)
@@ -109,8 +107,6 @@ export class S3Client {
       headers,
     })
 
-    console.log(`[S3Client] GET ${key} → ${res.status}`)
-
     if (res.status === 304) return null  // Not Modified
     if (res.status === 404 || res.status === 403) return null
     if (!res.ok) {
@@ -142,8 +138,6 @@ export class S3Client {
       },
     })
 
-    console.log(`[S3Client] GET ${key} (binary) → ${res.status}`)
-
     if (res.status === 404 || res.status === 403) return null
     if (!res.ok) {
       const text = await res.text()
@@ -166,8 +160,6 @@ export class S3Client {
         'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
       },
     })
-
-    console.log(`[S3Client] DELETE ${key} → ${res.status}`)
 
     if (!res.ok && res.status !== 204) {
       const text = await res.text()
@@ -205,8 +197,6 @@ export class S3Client {
           'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
         },
       })
-
-      console.log(`[S3Client] LIST ${subPrefix} → ${res.status}`)
 
       if (!res.ok) {
         const text = await res.text()

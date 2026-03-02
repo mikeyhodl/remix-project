@@ -290,7 +290,6 @@ export async function migrateWorkspace(
 
     cloudWorkspace = await createCloudWorkspace(item.cloudName, true)
     cloudLocalPath = `${CLOUD_WORKSPACES_PATH}/${cloudWorkspace.uuid}`
-    console.log(`[Migration] Created cloud workspace "${item.cloudName}" → ${cloudWorkspace.uuid}`)
 
     // ── 2. Copy files from local → cloud path in IndexedDB ──
     item.status = 'copying'
@@ -316,7 +315,6 @@ export async function migrateWorkspace(
     item.progress = `Copied ${fileCount} files`
     item.currentFile = undefined
     emit()
-    console.log(`[Migration] Copied ${fileCount} files to ${cloudLocalPath}`)
 
     // ── 3. Upload to S3 ──
     item.status = 'uploading'
@@ -385,7 +383,6 @@ export async function migrateWorkspace(
     if (missing.length > 0) {
       throw new Error(`Verification failed: ${missing.length} files missing on S3: ${missing.slice(0, 3).join(', ')}…`)
     }
-    console.log(`[Migration] Verified: all ${fileCount} files present on S3`)
 
     // ── 5. Delete local workspace ──
     item.status = 'cleaning'
@@ -393,7 +390,6 @@ export async function migrateWorkspace(
     emit()
 
     await deleteDirectoryRecursive(localPath, fs)
-    console.log(`[Migration] Deleted local workspace ${localPath}`)
 
     // ── 6. Mark as migrated ──
     markAsMigrated(item.localName)

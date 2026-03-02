@@ -112,7 +112,6 @@ export function enableCloudFSObserver(): void {
   }
 
   _active = true
-  console.log('[CloudFSObserver] Enabled — intercepting FS writes to cloud workspaces')
 }
 
 /**
@@ -130,7 +129,6 @@ export function disableCloudFSObserver(): void {
   _active = false
   _patchedPromises = null
   Object.keys(_originals).forEach(k => delete _originals[k])
-  console.log('[CloudFSObserver] Disabled — original FS methods restored')
 }
 
 /**

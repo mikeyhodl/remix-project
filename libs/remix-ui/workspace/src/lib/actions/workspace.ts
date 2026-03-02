@@ -552,7 +552,6 @@ export const workspaceExists = async (name: string) => {
 }
 
 export const fetchWorkspaceDirectory = async (path: string) => {
-  console.log(`[fetchWorkspaceDirectory] Fetching directory: ${path}`)
   if (!path) return
   const provider = plugin.fileManager.currentFileProvider()
   const promise: Promise<FileTree> = new Promise((resolve, reject) => {
@@ -656,11 +655,9 @@ export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, r
         // Guard against double-creation: the React useEffect in workspace/topbar
         // will also fire switchWorkspace(NO_WORKSPACE) when the workspace list empties.
         if (_creatingDefaultCloudWorkspace) {
-          console.log('[deleteWorkspace] Default cloud workspace creation already in progress — skipping')
         } else {
           _creatingDefaultCloudWorkspace = true
           try {
-            console.log('[deleteWorkspace] No cloud workspaces remaining — creating default')
             plugin.call('notification', 'toast', 'Creating default cloud workspace…')
             await createWorkspace('default_workspace', 'remixDefault')
           } finally {
@@ -745,7 +742,6 @@ export const switchToWorkspace = async (name: string) => {
     // registers the workspace on the API and sets up sync.
     // Guard: if deleteWorkspace is already creating a default, skip.
     if (cloudStore.isCloudMode && _creatingDefaultCloudWorkspace) {
-      console.log('[switchToWorkspace] Default cloud workspace creation already in progress — skipping')
       return
     }
     if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true

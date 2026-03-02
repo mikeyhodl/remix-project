@@ -72,7 +72,6 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
         }
       } catch (e) {
         // auth plugin may not be activated yet — that's fine
-        console.log('[CloudProvider] Auth plugin not ready yet')
       }
     })()
 

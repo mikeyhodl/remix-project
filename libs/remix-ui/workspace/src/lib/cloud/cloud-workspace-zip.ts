@@ -53,11 +53,8 @@ export async function packWorkspace(
 ): Promise<Uint8Array> {
   const zip = new JSZip()
   const fileList: string[] = []
-  console.log(`[CloudZip] Packing workspace: ${localWorkspacePath}`)
   await walkAndZip(zip, localWorkspacePath, '', fs, fileList)
-  console.log(`[CloudZip] ${fileList.length} files added to ZIP:`, fileList)
   const data = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
-  console.log(`[CloudZip] ZIP generated: ${(data.byteLength / 1024).toFixed(1)} KB`)
   return data
 }
 
@@ -264,10 +261,8 @@ export async function packGitDir(
     }
   }
 
-  console.log(`[CloudGitZip] Packing .git directory: ${gitPath}`)
   await walkGit(gitPath, '')
   if (fileCount === 0) {
-    console.log('[CloudGitZip] .git directory is empty — skipping ZIP')
     return null
   }
 
@@ -276,10 +271,6 @@ export async function packGitDir(
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   })
-  console.log(
-    `[CloudGitZip] Packed ${fileCount} git objects, ` +
-    `ZIP size: ${(data.byteLength / 1024).toFixed(1)} KB`
-  )
   return data
 }
 
@@ -349,7 +340,5 @@ export async function unpackGitDir(
   })
 
   await Promise.all(filePromises)
-
-  console.log(`[CloudGitZip] Extracted ${fileCount} git objects into ${gitPath}`)
   return fileCount
 }
