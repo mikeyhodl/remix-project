@@ -48,7 +48,6 @@ interface AiChatPromptAreaProps {
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
 
-  console.log('Rendering AiChatPromptAreaForHistory with messages:', props.messages)
   {/* Prompt area - fixed at bottom */}
   return (
     <section

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 
 interface AiChatButtonsProps {
   theme: string
   plugin?: any
   sendPrompt: (s: string) => void
   handleGenerateWorkspace: () => void
+  historyRef: React.RefObject<HTMLDivElement>
 }
 
-export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspace }: AiChatButtonsProps) {
+export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspace, historyRef }: AiChatButtonsProps) {
   const [currentFile, setCurrentFile] = useState<string | null>(null)
   const [latestCompiledContracts, setLatestCompiledContracts] = useState<string[] | null>(null)
 
@@ -84,6 +85,13 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
     }
   }
 
+  const handleActionClick = useCallback(async () => {
+    const checkIfNotTheLeft = historyRef.current?.querySelector('*[data-id="maximizeRightSidePanel"]')
+    if (checkIfNotTheLeft) {
+      await plugin.call('rightSidePanel', 'maximizePanel')
+    }
+  }, [historyRef])
+
   const btnList: {
     label: string,
     icon: string,
@@ -107,8 +115,8 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-magic`,
       color: '',
       action: () => {
+        handleActionClick()
         sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
-        plugin.call('rightSidePanel', 'maximizePanel')
       }
     },
     {
@@ -116,8 +124,8 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-graduation-cap`,
       color: '',
       action: () => {
+        handleActionClick()
         sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
-        plugin.call('rightSidePanel', 'maximizePanel')
       }
     },
     {

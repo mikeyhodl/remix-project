@@ -321,6 +321,13 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   chatPipe = (message: string) => {
+    // Navigate back to chat view if the history sidebar is open
+    if (this.showHistorySidebar) {
+      this.showHistorySidebar = false
+      localStorage.setItem('remix-ai-history-sidebar-visible', 'false')
+      this.renderComponent()
+    }
+
     // If the inner component is mounted, call it directly
     if (this.chatRef?.current) {
       this.chatRef.current.sendChat(message)

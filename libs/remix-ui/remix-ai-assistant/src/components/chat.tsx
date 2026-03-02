@@ -33,9 +33,10 @@ interface AiChatIntroProps {
   theme: string
   plugin?: any
   handleGenerateWorkspace: () => void
+  historyRef?: React.RefObject<HTMLDivElement>
 }
 
-const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt, theme, plugin, handleGenerateWorkspace }) => {
+const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt, theme, plugin, handleGenerateWorkspace, historyRef }) => {
   const [conversationStarters, setConversationStarters] = useState<ConversationStarter[]>([])
 
   useEffect(() => {
@@ -56,7 +57,7 @@ const AiChatIntro: React.FC<AiChatIntroProps> = ({ sendPrompt, theme, plugin, ha
       <p className="mb-4" style={{ fontSize: '0.9rem' }}>
         What do you want to build today?
       </p>
-      <AiChatButtons theme={theme} plugin={plugin} sendPrompt={sendPrompt} handleGenerateWorkspace={handleGenerateWorkspace} />
+      <AiChatButtons theme={theme} plugin={plugin} sendPrompt={sendPrompt} handleGenerateWorkspace={handleGenerateWorkspace} historyRef={historyRef} />
     </div>
   )
 }
@@ -77,7 +78,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
       className="d-flex flex-column overflow-y-auto border-box-sizing preserve-wrap overflow-x-hidden"
     >
       {messages.length === 0 ? (
-        <AiChatIntro sendPrompt={sendPrompt} theme={theme} plugin={plugin} handleGenerateWorkspace={handleGenerateWorkspace} />
+        <AiChatIntro sendPrompt={sendPrompt} theme={theme} plugin={plugin} handleGenerateWorkspace={handleGenerateWorkspace} historyRef={historyRef} />
       ) : (
         messages.map(msg => {
           const bubbleClass =
