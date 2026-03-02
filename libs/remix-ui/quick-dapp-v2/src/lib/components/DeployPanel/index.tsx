@@ -161,7 +161,10 @@ function DeployPanel(): JSX.Element {
       const htmlBlob = new Blob([modifiedHtml], { type: 'text/html' });
       formData.append('files', htmlBlob, 'index.html');
 
-      const response = await fetch(`${REMIX_ENDPOINT_IPFS}/upload`, { method: 'POST', body: formData });
+      const uploadHeaders: Record<string, string> = {};
+      const authToken = typeof localStorage !== 'undefined' ? localStorage.getItem('remix_access_token') : null;
+      if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
+      const response = await fetch(`${REMIX_ENDPOINT_IPFS}/upload`, { method: 'POST', body: formData, headers: uploadHeaders });
       if (!response.ok) throw new Error(await response.text());
 
       const data = await response.json();

@@ -53,7 +53,7 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
   const dappManager = useMemo(() => new DappManager(plugin as any), [plugin]);
   const dappManagerRef = useRef(dappManager);
 
-  // Check dapp:quickdapp permission on mount
+  // Check dapp:quickdapp permission on mount and when auth state changes
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -89,7 +89,21 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     };
 
     checkAccess();
-  }, []);
+
+    // Re-check permissions when login/logout occurs
+    const onAuthChanged = () => { checkAccess(); };
+    try {
+      plugin.on('auth' as any, 'authStateChanged', onAuthChanged);
+    } catch (e) {
+      console.warn('[QuickDapp] Could not listen for authStateChanged:', e);
+    }
+
+    return () => {
+      try {
+        (plugin as any).off('auth', 'authStateChanged', onAuthChanged);
+      } catch (_) {}
+    };
+  }, [plugin]);
 
   useEffect(() => {
     dappsRef.current = appState.dapps;
