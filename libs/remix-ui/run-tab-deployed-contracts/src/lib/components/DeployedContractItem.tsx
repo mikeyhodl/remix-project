@@ -493,372 +493,376 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
           />
           {isExpanded && (
             <div className="p-3 pt-0" onClick={(e) => e.stopPropagation()}>
-              {functionABIs && functionABIs.length > 0 ? (
-                <>
-                  {/* Divider */}
-                  <div className="border-top mb-3"></div>
-                  <div className="mb-3">
-                    <div className="d-flex align-items-center justify-content-between mb-2" style={{ cursor: 'pointer' }} onClick={toggleHighLevel}>
-                      <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>High level interaction</p>
+              {/* Divider */}
+              <div className="border-top mb-3"></div>
+
+              {/* High level interaction section */}
+              <div className="mb-3">
+                <div className="d-flex align-items-center justify-content-between mb-2" style={{ cursor: 'pointer' }} onClick={toggleHighLevel}>
+                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>High level interaction</p>
+                  <div
+                    className="d-flex align-items-center justify-center rounded"
+                    style={{
+                      backgroundColor: 'var(--custom-onsurface-layer-3)',
+                      padding: '4px'
+                    }}
+                  >
+                    <i className={`fas fa-${showHighLevel ? 'minus' : 'plus'}`} style={{ fontSize: '10px', color: 'white' }}></i>
+                  </div>
+                </div>
+
+                {showHighLevel && (
+                  <>
+                    {functionABIs && functionABIs.length > 0 ? (
                       <div
-                        className="d-flex align-items-center justify-center rounded"
+                        className="mb-3"
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-layer-3)',
-                          padding: '4px'
+                          maxHeight: '160px',
+                          overflowY: 'auto',
+                          overflowX: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px'
                         }}
                       >
-                        <i className={`fas fa-${showHighLevel ? 'minus' : 'plus'}`} style={{ fontSize: '10px', color: 'white' }}></i>
-                      </div>
-                    </div>
+                        {functionABIs.map((funcABI: FuncABI, actualIndex: number) => {
+                          const inputTypes = funcABI.inputs.map(input => input.type).join(', ')
+                          const isSelected = selectedFunctionIndex === actualIndex
 
-                    {showHighLevel && (
-                      <>
-                        <div
-                          className="mb-3"
-                          style={{
-                            maxHeight: '160px',
-                            overflowY: 'auto',
-                            overflowX: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                          }}
-                        >
-                          {functionABIs.map((funcABI: FuncABI, actualIndex: number) => {
-                            const inputTypes = funcABI.inputs.map(input => input.type).join(', ')
-                            const isSelected = selectedFunctionIndex === actualIndex
-
-                            return (
-                              <div
-                                data-id={`deployedContractItem-${index}-function-${actualIndex}`}
-                                key={actualIndex}
-                                className="d-flex align-items-center gap-1"
-                                style={{
-                                  cursor: 'pointer',
-                                  padding: '4px 0',
-                                  backgroundColor: isSelected ? 'var(--custom-onsurface-layer-3)' : 'transparent'
-                                }}
-                                onClick={() => handleFunctionClick(actualIndex)}
-                              >
-                                {getStateMutabilityBadge(funcABI)}
-                                <div className="d-flex align-items-baseline gap-1" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                          return (
+                            <div
+                              data-id={`deployedContractItem-${index}-function-${actualIndex}`}
+                              key={actualIndex}
+                              className="d-flex align-items-center gap-1"
+                              style={{
+                                cursor: 'pointer',
+                                padding: '4px 0',
+                                backgroundColor: isSelected ? 'var(--custom-onsurface-layer-3)' : 'transparent'
+                              }}
+                              onClick={() => handleFunctionClick(actualIndex)}
+                            >
+                              {getStateMutabilityBadge(funcABI)}
+                              <div className="d-flex align-items-baseline gap-1" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                <span
+                                  style={{
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    color: 'var(--dark/text-secondary, #d5d7e3)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                    maxWidth: '100%'
+                                  }}
+                                  title={funcABI.name}
+                                >
+                                  {funcABI.name}
+                                </span>
+                                {funcABI.inputs.length > 0 && (
                                   <span
                                     style={{
-                                      fontSize: '12px',
-                                      fontWeight: 700,
-                                      color: 'var(--dark/text-secondary, #d5d7e3)',
+                                      fontSize: '10px',
+                                      color: 'var(--text-tertiary, #a2a3bd)',
+                                      fontFamily: 'Monaco, monospace',
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
                                       whiteSpace: 'nowrap',
-                                      flexShrink: 0,
-                                      maxWidth: '100%'
+                                      flexShrink: 1,
+                                      minWidth: 0
                                     }}
-                                    title={funcABI.name}
+                                    title={inputTypes}
                                   >
-                                    {funcABI.name}
+                                    {inputTypes}
                                   </span>
-                                  {funcABI.inputs.length > 0 && (
-                                    <span
-                                      style={{
-                                        fontSize: '10px',
-                                        color: 'var(--text-tertiary, #a2a3bd)',
-                                        fontFamily: 'Monaco, monospace',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 1,
-                                        minWidth: 0
-                                      }}
-                                      title={inputTypes}
-                                    >
-                                      {inputTypes}
-                                    </span>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                            )
-                          })}
-                        </div>
-                      </>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-muted pt-3 text-center">No ABI available for this contract</div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-top mb-3"></div>
+
+              {/* Low level interaction section */}
+              <div className="mb-3">
+                <div
+                  className="d-flex align-items-center justify-content-between mb-2"
+                  style={{ cursor: 'pointer' }}
+                  onClick={toggleLowLevel}
+                >
+                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>Low level interaction</p>
+                  <div
+                    data-id={`btnLowLevel-${index}`}
+                    className="d-flex align-items-center justify-center rounded"
+                    style={{
+                      backgroundColor: 'var(--custom-onsurface-layer-3)',
+                      padding: '4px'
+                    }}
+                  >
+                    <i className={`fas fa-${showLowLevel ? 'minus' : 'plus'}`} style={{ fontSize: '10px', color: 'white' }}></i>
+                  </div>
+                </div>
+
+                {showLowLevel && (
+                  <div className="mt-3">
+                    <input
+                      data-id={`fallbackInput-${index}`}
+                      type="text"
+                      placeholder="calldata"
+                      className="form-control form-control-sm"
+                      value={calldataValue}
+                      onChange={(e) => setCalldataValue(e.target.value)}
+                      style={{
+                        backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                        color: themeQuality === 'dark' ? 'white' : 'black',
+                        border: 'none',
+                        padding: '8px 12px',
+                        fontSize: '10px'
+                      }}
+                    />
+                    {llIError && (
+                      <div data-id="deployAndRunLLTxError" className="alert alert-danger mt-2 p-2" role="alert" style={{ fontSize: '10px' }}>
+                        {llIError}
+                      </div>
                     )}
                   </div>
+                )}
+              </div>
 
-                  {/* Divider */}
-                  <div className="border-top mb-3"></div>
-                  <div className="mb-3">
-                    <div
-                      className="d-flex align-items-center justify-content-between mb-2"
-                      style={{ cursor: 'pointer' }}
-                      onClick={toggleLowLevel}
-                    >
-                      <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>Low level interaction</p>
-                      <div
-                        className="d-flex align-items-center justify-center rounded"
+              {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
+                // Divider
+                <div className="border-top mb-3"></div>
+              )}
+
+              {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
+                <div className="mb-3">
+                  <div className="d-flex align-items-center gap-1 mb-2">
+                    {getStateMutabilityBadge(functionABIs[selectedFunctionIndex])}
+                    <div className="d-flex align-items-baseline gap-1" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                      <span
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-layer-3)',
-                          padding: '4px'
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: 'var(--dark/text-secondary, #d5d7e3)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          maxWidth: '100%'
                         }}
+                        title={functionABIs[selectedFunctionIndex].name}
                       >
-                        <i className={`fas fa-${showLowLevel ? 'minus' : 'plus'}`} style={{ fontSize: '10px', color: 'white' }}></i>
-                      </div>
-                    </div>
-
-                    {showLowLevel && (
-                      <div className="mt-3">
-                        <input
-                          data-id={`fallbackInput-${index}`}
-                          type="text"
-                          placeholder="calldata"
-                          className="form-control form-control-sm"
-                          value={calldataValue}
-                          onChange={(e) => setCalldataValue(e.target.value)}
+                        {functionABIs[selectedFunctionIndex].name}
+                      </span>
+                      {functionABIs[selectedFunctionIndex].inputs.length > 0 && (
+                        <span
                           style={{
-                            backgroundColor: 'var(--custom-onsurface-background, #222336)',
-                            color: themeQuality === 'dark' ? 'white' : 'black',
-                            border: 'none',
-                            padding: '8px 12px',
-                            fontSize: '10px'
+                            fontSize: '10px',
+                            color: 'var(--text-tertiary, #a2a3bd)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 1,
+                            minWidth: 0
                           }}
-                        />
-                        {llIError && (
-                          <div data-id="deployAndRunLLTxError" className="alert alert-danger mt-2 p-2" role="alert" style={{ fontSize: '10px' }}>
-                            {llIError}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
-                    // Divider
-                    <div className="border-top mb-3"></div>
-                  )}
-
-                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] && (
-                    <div className="mb-3">
-                      <div className="d-flex align-items-center gap-1 mb-2">
-                        {getStateMutabilityBadge(functionABIs[selectedFunctionIndex])}
-                        <div className="d-flex align-items-baseline gap-1" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              color: 'var(--dark/text-secondary, #d5d7e3)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              flexShrink: 0,
-                              maxWidth: '100%'
-                            }}
-                            title={functionABIs[selectedFunctionIndex].name}
-                          >
-                            {functionABIs[selectedFunctionIndex].name}
-                          </span>
-                          {functionABIs[selectedFunctionIndex].inputs.length > 0 && (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                color: 'var(--text-tertiary, #a2a3bd)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 1,
-                                minWidth: 0
-                              }}
-                              title={functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
-                            >
-                              {functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {functionABIs[selectedFunctionIndex].inputs.length > 0 && functionABIs[selectedFunctionIndex].inputs.map((input: any, inputIdx: number) => (
-                        <div key={inputIdx} className="mb-2">
-                          <input
-                            data-id={`selectedFunction-${inputIdx}`}
-                            type="text"
-                            placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
-                            className="form-control form-control-sm"
-                            value={(() => {
-                              const inputValue = funcInputs[selectedFunctionIndex] || ''
-                              const values = inputValue.split(',').map((v: string) => v.trim())
-                              return values[inputIdx] || ''
-                            })()}
-                            onChange={(e) => {
-                              const inputValue = funcInputs[selectedFunctionIndex] || ''
-                              const values = inputValue.split(',').map((v: string) => v.trim())
-                              values[inputIdx] = e.target.value
-                              handleFunctionInputChange(selectedFunctionIndex, values.join(', '))
-                            }}
-                            style={{
-                              backgroundColor: 'var(--custom-onsurface-background, #222336)',
-                              color: 'var(--dark/text-quaternary, #959bad)',
-                              border: 'none',
-                              padding: '8px 12px',
-                              fontSize: '0.7rem',
-                              minHeight: '30px'
-                            }}
-                          />
-                        </div>
-                      ))}
-                      {(functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure') && (
-                        <div className="udapp_value" data-id="udapp_tree_value">
-                          <TreeView id="treeView">
-                            {Object.keys(contract.decodedResponse || {}).map((key) => {
-                              const response = contract.decodedResponse[key]
-
-                              return parseInt(key) === selectedFunctionIndex
-                                ? Object.keys(response || {}).map((innerkey) => {
-                                  return renderData(contract.decodedResponse[key][innerkey], response, innerkey, innerkey)
-                                })
-                                : null
-                            })}
-                          </TreeView>
-                        </div>
+                          title={functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
+                        >
+                          {functionABIs[selectedFunctionIndex].inputs.map((input: any) => input.type).join(', ')}
+                        </span>
                       )}
                     </div>
-                  )}
+                  </div>
+                  {functionABIs[selectedFunctionIndex].inputs.length > 0 && functionABIs[selectedFunctionIndex].inputs.map((input: any, inputIdx: number) => (
+                    <div key={inputIdx} className="mb-2">
+                      <input
+                        data-id={`selectedFunction-${inputIdx}`}
+                        type="text"
+                        placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
+                        className="form-control form-control-sm"
+                        value={(() => {
+                          const inputValue = funcInputs[selectedFunctionIndex] || ''
+                          const values = inputValue.split(',').map((v: string) => v.trim())
+                          return values[inputIdx] || ''
+                        })()}
+                        onChange={(e) => {
+                          const inputValue = funcInputs[selectedFunctionIndex] || ''
+                          const values = inputValue.split(',').map((v: string) => v.trim())
+                          values[inputIdx] = e.target.value
+                          handleFunctionInputChange(selectedFunctionIndex, values.join(', '))
+                        }}
+                        style={{
+                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                          color: 'var(--dark/text-quaternary, #959bad)',
+                          border: 'none',
+                          padding: '8px 12px',
+                          fontSize: '0.7rem',
+                          minHeight: '30px'
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {(functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure') && (
+                    <div className="udapp_value" data-id="udapp_tree_value">
+                      <TreeView id="treeView">
+                        {Object.keys(contract.decodedResponse || {}).map((key) => {
+                          const response = contract.decodedResponse[key]
 
-                  {selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] &&
-                    functionABIs[selectedFunctionIndex].stateMutability !== 'view' &&
-                    functionABIs[selectedFunctionIndex].stateMutability !== 'pure' && (
-                    <div className="mb-3">
-                      <div className="d-flex align-items-center gap-1 mb-3">
-                        <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
-                          Value
-                        </label>
-                        <div className="position-relative flex-fill">
-                          <input
-                            data-id={`contractItem-sendValue-${index}`}
-                            type="number"
-                            min="0"
-                            className="form-control form-control-sm border-0"
-                            placeholder="3000000"
-                            value={value || ''}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                              setValue(isNaN(val) ? 0 : Math.max(0, val))
-                            }}
-                            style={{
-                              backgroundColor: 'var(--custom-onsurface-background, #222336)',
-                              color: 'var(--dark/text-quaternary, #959bad)',
-                              flex: 1,
-                              paddingRight: '3.5rem',
-                              fontSize: '0.7rem',
-                              minHeight: '30px'
-                            }}
-                          />
-                          <Dropdown style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', zIndex: 2 }}>
-                            <Dropdown.Toggle
-                              as={CustomToggle}
-                              className="btn-sm border-0 text-secondary rounded font-sm ps-1"
-                              style={{
-                                backgroundColor: 'var(--custom-onsurface-layer-2)',
-                                color: 'var(--text-secondary, #d5d7e3)'
-                              }}
-                              icon="fas fa-caret-down ms-1"
-                              useDefaultIcon={false}
-                            >
-                              {valueUnit}
-                            </Dropdown.Toggle>
-                            <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', '--bs-dropdown-min-width': '4rem', padding: 0 } as React.CSSProperties}>
-                              <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('wei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
-                              <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('gwei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
-                              <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('finney')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
-                              <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('ether')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
-                            </Dropdown.Menu>
-                          </Dropdown>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-1 mb-3">
-                        <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
-                          Gas limit
-                        </label>
-                        <div className="position-relative flex-fill">
-                          <span
-                            className="badge font-sm"
-                            style={{
-                              position: 'absolute',
-                              left: '0.35rem',
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              backgroundColor: '#64C4FF14',
-                              color: '#64c4ff',
-                              cursor: 'pointer',
-                              zIndex: 1
-                            }}
-                            onClick={() => {
-                              if (gasLimit === 0) {
-                                setGasLimit(3000000)
-                              } else {
-                                setGasLimit(0)
-                              }
-                            }}
-                          >
-                            {gasLimit === 0 ? 'auto' : 'custom'}
-                          </span>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm border-0"
-                            placeholder="3000000"
-                            value={gasLimit}
-                            onChange={(e) => setGasLimit(parseInt(e.target.value))}
-                            disabled={gasLimit === 0}
-                            style={{
-                              backgroundColor: 'var(--custom-onsurface-background, #222336)',
-                              color: 'var(--dark/text-quaternary, #959bad)',
-                              flex: 1,
-                              paddingLeft: '4rem',
-                              textAlign: 'right',
-                              opacity: gasLimit === 0 ? 0.6 : 1,
-                              cursor: gasLimit === 0 ? 'not-allowed' : 'text',
-                              fontSize: '0.7rem',
-                              minHeight: '30px'
-                            }}
-                          />
-                        </div>
-                      </div>
+                          return parseInt(key) === selectedFunctionIndex
+                            ? Object.keys(response || {}).map((innerkey) => {
+                              return renderData(contract.decodedResponse[key][innerkey], response, innerkey, innerkey)
+                            })
+                            : null
+                        })}
+                      </TreeView>
                     </div>
                   )}
-                  {/* Divider */}
-                  <div className="border-top mb-3"></div>
-                  <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
-                    <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}>Balance</div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
-                      {contract.balance || 0} ETH
+                </div>
+              )}
+
+              {((selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex] &&
+                functionABIs[selectedFunctionIndex].stateMutability !== 'view' &&
+                functionABIs[selectedFunctionIndex].stateMutability !== 'pure') || showLowLevel) && (
+                <div className="mb-3">
+                  <div className="d-flex align-items-center gap-1 mb-3">
+                    <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
+                      Value
+                    </label>
+                    <div className="position-relative flex-fill">
+                      <input
+                        data-id={`contractItem-sendValue-${index}`}
+                        type="number"
+                        min="0"
+                        className="form-control form-control-sm border-0"
+                        placeholder="3000000"
+                        value={value || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                          setValue(isNaN(val) ? 0 : Math.max(0, val))
+                        }}
+                        style={{
+                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                          color: 'var(--dark/text-quaternary, #959bad)',
+                          flex: 1,
+                          paddingRight: '3.5rem',
+                          fontSize: '0.7rem',
+                          minHeight: '30px'
+                        }}
+                      />
+                      <Dropdown style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', zIndex: 2 }}>
+                        <Dropdown.Toggle
+                          as={CustomToggle}
+                          className="btn-sm border-0 text-secondary rounded font-sm ps-1"
+                          style={{
+                            backgroundColor: 'var(--custom-onsurface-layer-2)',
+                            color: 'var(--text-secondary, #d5d7e3)'
+                          }}
+                          icon="fas fa-caret-down ms-1"
+                          useDefaultIcon={false}
+                        >
+                          {valueUnit}
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', '--bs-dropdown-min-width': '4rem', padding: 0 } as React.CSSProperties}>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('wei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('gwei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('finney')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('ether')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
                     </div>
                   </div>
-                  {(selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel ? (
-                    <button
-                      data-id={`btnExecute-${index}`}
-                      className="btn btn-primary w-100 mt-3"
-                      onClick={() => {
-                        if (showLowLevel) {
-                          sendData()
-                        } else if (selectedFunctionIndex !== null) {
-                          handleExecuteTransaction(selectedFunctionIndex)
-                        }
-                      }}
-                      style={{
-                        backgroundColor: 'var(--button/primary/default, #64c4ff)',
-                        color: 'var(--onsurface/background, #222336)',
-                        border: 'none',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        padding: '8px 24px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      {showLowLevel
-                        ? 'Transact'
-                        : (functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure')
-                          ? 'Call'
-                          : 'Transact'}
-                    </button>
-                  ) : null}
-                </>
-              ) : (
-                <div className="text-muted pt-3 text-center">No ABI available for this contract</div>
+                  <div className="d-flex align-items-center gap-1 mb-3">
+                    <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
+                      Gas limit
+                    </label>
+                    <div className="position-relative flex-fill">
+                      <span
+                        className="badge font-sm"
+                        style={{
+                          position: 'absolute',
+                          left: '0.35rem',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          backgroundColor: '#64C4FF14',
+                          color: '#64c4ff',
+                          cursor: 'pointer',
+                          zIndex: 1
+                        }}
+                        onClick={() => {
+                          if (gasLimit === 0) {
+                            setGasLimit(3000000)
+                          } else {
+                            setGasLimit(0)
+                          }
+                        }}
+                      >
+                        {gasLimit === 0 ? 'auto' : 'custom'}
+                      </span>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm border-0"
+                        placeholder="3000000"
+                        value={gasLimit}
+                        onChange={(e) => setGasLimit(parseInt(e.target.value))}
+                        disabled={gasLimit === 0}
+                        style={{
+                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                          color: 'var(--dark/text-quaternary, #959bad)',
+                          flex: 1,
+                          paddingLeft: '4rem',
+                          textAlign: 'right',
+                          opacity: gasLimit === 0 ? 0.6 : 1,
+                          cursor: gasLimit === 0 ? 'not-allowed' : 'text',
+                          fontSize: '0.7rem',
+                          minHeight: '30px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="border-top mb-3"></div>
+              <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
+                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}>Balance</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
+                  {contract.balance || 0} ETH
+                </div>
+              </div>
+              {((selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel) && (
+                <button
+                  data-id={`btnExecute-${index}`}
+                  className="btn btn-primary w-100 mt-3"
+                  onClick={() => {
+                    if (showLowLevel) {
+                      sendData()
+                    } else if (selectedFunctionIndex !== null) {
+                      handleExecuteTransaction(selectedFunctionIndex)
+                    }
+                  }}
+                  style={{
+                    backgroundColor: 'var(--button/primary/default, #64c4ff)',
+                    color: 'var(--onsurface/background, #222336)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '8px 24px',
+                    borderRadius: '4px'
+                  }}
+                >
+                  {showLowLevel
+                    ? 'Transact'
+                    : (functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure')
+                      ? 'Call'
+                      : 'Transact'}
+                </button>
               )}
             </div>
           )}
