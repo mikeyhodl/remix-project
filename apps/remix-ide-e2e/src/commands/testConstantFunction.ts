@@ -20,13 +20,13 @@ class TestConstantFunction extends EventEmitter {
           contractFunction.click()
         }
       }, [instanceIndex, functionIndex])
-      .waitForElementPresent('[data-id="btnExecute"]')
-      .execute(function () {
-        const executeBtn = document.querySelector(`[data-id="btnExecute"]`) as HTMLElement
+      .waitForElementPresent(`[data-id="btnExecute-${instanceIndex}"]`)
+      .execute(function (instanceIndex) {
+        const executeBtn = document.querySelector(`[data-id="btnExecute-${instanceIndex}"]`) as HTMLElement
         if (executeBtn) {
           executeBtn.scrollIntoView({ behavior: 'auto', block: 'center' })
         }
-      }, [])
+      }, [instanceIndex])
       .perform(function (client, done) {
         (expectedInput || []).forEach((input, index) => {
           client.setValue(
@@ -37,7 +37,7 @@ class TestConstantFunction extends EventEmitter {
         })
         done()
       })
-      .click(`[data-id="btnExecute"]`)
+      .click(`[data-id="btnExecute-${instanceIndex}"]`)
       .pause(2000)
       .waitForElementPresent(`[data-id="udapp_tree_value"]`)
       .assert.containsText(

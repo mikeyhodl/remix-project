@@ -830,7 +830,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                   </div>
                   {(selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel ? (
                     <button
-                      data-id="btnExecute"
+                      data-id={`btnExecute-${index}`}
                       className="btn btn-primary w-100 mt-3"
                       onClick={() => {
                         if (showLowLevel) {
