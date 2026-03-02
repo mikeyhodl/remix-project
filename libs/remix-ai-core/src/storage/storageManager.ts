@@ -156,16 +156,18 @@ export class ChatHistoryStorageManager {
   async saveMessage(message: PersistedChatMessage): Promise<void> {
     await this.localBackend.saveMessage(message)
 
-    // Update conversation title and preview if this is the first user message
-    const conversation = await this.getConversation(message.conversationId)
-    if (conversation && conversation.messageCount === 1 && message.role === 'user') {
-      const title = message.content.substring(0, 50)
-      const preview = message.content.substring(0, 100)
-
-      await this.updateConversation(message.conversationId, {
-        title,
-        preview
-      })
+    // Update conversation title and preview from the first user message.
+    // Previously gated on messageCount === 1, which was unreliable because
+    // messageCount is read after the save (already incremented) and never
+    // matched reliably.  Checking the title directly is the stable condition.
+    if (message.role === 'user') {
+      const conversation = await this.getConversation(message.conversationId)
+      if (conversation && conversation.title === 'New Conversation') {
+        await this.updateConversation(message.conversationId, {
+          title: message.content.substring(0, 50),
+          preview: message.content.substring(0, 100)
+        })
+      }
     }
 
     if (this.syncEnabled) {
@@ -184,17 +186,18 @@ export class ChatHistoryStorageManager {
   async saveBatch(conversationId: string, messages: ChatMessage[]): Promise<void> {
     await this.localBackend.saveBatch(conversationId, messages)
 
-    // Update conversation title and preview from first user message
-    const conversation = await this.getConversation(conversationId)
-    if (conversation) {
-      const firstUserMsg = messages.find(m => m.role === 'user')
-      if (firstUserMsg && conversation.messageCount === messages.length) {
-        const title = firstUserMsg.content.substring(0, 50)
-        const preview = firstUserMsg.content.substring(0, 100)
-
+    // Update conversation title and preview from the first user message in
+    // the batch, but only when the title hasn't been set yet.  The old check
+    // (messageCount === messages.length) was fragile: it breaks when messageCount
+    // has already been incremented by the backend save, or when duplicate batches
+    // inflate the count beyond messages.length.
+    const firstUserMsg = messages.find(m => m.role === 'user')
+    if (firstUserMsg) {
+      const conversation = await this.getConversation(conversationId)
+      if (conversation && conversation.title === 'New Conversation') {
         await this.updateConversation(conversationId, {
-          title,
-          preview
+          title: firstUserMsg.content.substring(0, 50),
+          preview: firstUserMsg.content.substring(0, 100)
         })
       }
     }
