@@ -57,6 +57,7 @@ module.exports = {
       .click('[data-id="movePluginToLeft"]')
       .waitForElementVisible('[data-id="movePluginToRight"]')
       .clickInstance(0)
+      .clickFunction(0, 1)
       .waitForElementContainsText('[data-id="treeViewLi0"]', 'uint256: 10')
   },
   'Should maintain logged state of search plugin after pinning and unpinning': '' + function (browser: NightwatchBrowser) {
