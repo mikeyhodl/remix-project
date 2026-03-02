@@ -5,10 +5,9 @@ interface AiChatButtonsProps {
   plugin?: any
   sendPrompt: (s: string) => void
   handleGenerateWorkspace: () => void
-  historyRef: React.RefObject<HTMLDivElement>
 }
 
-export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspace, historyRef }: AiChatButtonsProps) {
+export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspace }: AiChatButtonsProps) {
   const [currentFile, setCurrentFile] = useState<string | null>(null)
   const [latestCompiledContracts, setLatestCompiledContracts] = useState<string[] | null>(null)
 
@@ -85,12 +84,11 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
     }
   }
 
-  const handleActionClick = useCallback(async () => {
-    const checkIfNotTheLeft = historyRef.current?.querySelector('*[data-id="maximizeRightSidePanel"]')
-    if (checkIfNotTheLeft) {
-      await plugin.call('rightSidePanel', 'maximizePanel')
+  const handleActionClick = useCallback(() => {
+    if (document.querySelector('[data-id="maximizeRightSidePanel"]')) {
+      plugin.call('rightSidePanel', 'maximizePanel')
     }
-  }, [historyRef])
+  }, [])
 
   const btnList: {
     label: string,
@@ -116,7 +114,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       color: '',
       action: () => {
         handleActionClick()
-        sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
+        // sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
       }
     },
     {
@@ -125,7 +123,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       color: '',
       action: () => {
         handleActionClick()
-        sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
+        // sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
       }
     },
     {
