@@ -32,12 +32,14 @@ export interface DeployWidgetState {
   maxPriorityFee: string
   baseFeePerGas: string
   gasPrice: string
+  lastLoadedWorkspace: string | null
 }
 
 export interface ActionPayloadTypes {
   ADD_CONTRACT_FILE: { name: string, filePath: FilePath },
   UPDATE_COMPILED_CONTRACT: CompiledContractPayload,
   REMOVE_CONTRACT_FILE: FilePath,
+  CLEAR_ALL_CONTRACT_FILES: void,
   SET_SELECTED_CONTRACT_INDEX: number | null,
   SET_VALUE: number,
   SET_VALUE_UNIT: 'wei' | 'gwei' | 'finney' | 'ether',
@@ -48,7 +50,8 @@ export interface ActionPayloadTypes {
   SET_MAX_PRIORITY_FEE: string,
   SET_GAS_PRICE: string,
   SET_MAX_FEE: string,
-  SET_BASE_FEE_PER_GAS: string
+  SET_BASE_FEE_PER_GAS: string,
+  SET_LAST_LOADED_WORKSPACE: string
 }
 
 export interface Action<T extends keyof ActionPayloadTypes> {
