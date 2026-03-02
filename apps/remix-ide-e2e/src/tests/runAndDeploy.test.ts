@@ -101,8 +101,7 @@ module.exports = {
   'Should run low level interaction (fallback function) #group3': function (browser: NightwatchBrowser) {
     browser.waitForElementPresent('*[data-id="remixIdeSidePanel"]')
       .clickInstance(0)
-      .waitForElementPresent('[data-id="fallbackExecute-0"]')
-      .click('[data-id="fallbackExecute-0"]')
+      .sendLowLevelTx(0, null, null)
       .pause(5000)
       .testFunction('last', {
         status: '1 Transaction mined and execution succeed'

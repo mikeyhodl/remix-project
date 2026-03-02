@@ -2,7 +2,7 @@ import { NightwatchBrowser } from 'nightwatch'
 import EventEmitter from 'events'
 
 class sendLowLevelTx extends EventEmitter {
-  command (this: NightwatchBrowser, index: number, value: string, callData: string): NightwatchBrowser {
+  command (this: NightwatchBrowser, index: number, value: string, callData): NightwatchBrowser {
     this.api.waitForElementPresent(`[data-id="btnLowLevel-${index}"]`)
     this.api.isVisible({ selector: `[data-id="fallbackInput-${index}"]`, suppressNotFoundErrors: true, timeout: 1000 }, (result) => {
       if (!result.value) {
@@ -16,8 +16,13 @@ class sendLowLevelTx extends EventEmitter {
       }})
       .pause(1000)
       .waitForElementPresent(`[data-id="fallbackInput-${index}"]`)
-      .clearValue(`[data-id="fallbackInput-${index}"]`)
-      .sendKeys(`[data-id="fallbackInput-${index}"]`, ['_', this.api.Keys.BACK_SPACE, callData])
+      .perform(() => {
+        if (callData) {
+          this.api
+            .clearValue(`[data-id="fallbackInput-${index}"]`)
+            .sendKeys(`[data-id="fallbackInput-${index}"]`, ['_', this.api.Keys.BACK_SPACE, callData])
+        }
+      })
       .waitForElementVisible(`[data-id="contractItem-sendValue-${index}"]`)
       .clearValue(`[data-id="contractItem-sendValue-${index}"]`)
       .setValue(`[data-id="contractItem-sendValue-${index}"]`, value)
