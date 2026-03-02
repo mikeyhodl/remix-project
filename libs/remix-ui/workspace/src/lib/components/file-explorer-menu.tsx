@@ -669,7 +669,7 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                           </strong>
                           <br/>
                           <small style={{ color: selectedDappIndex === index ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)' }}>
-                            Network: {mapping.chainId || 'Unknown'}<br/>
+                            Network: {mapping.chainId?.startsWith('vm-') ? 'Remix VM' : mapping.chainId || 'Unknown'}<br/>
                             Address: {mapping.address.substring(0, 15)}...
                           </small>
                         </div>
