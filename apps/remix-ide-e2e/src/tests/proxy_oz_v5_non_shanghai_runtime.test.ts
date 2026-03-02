@@ -28,7 +28,6 @@ module.exports = {
       .clickLaunchIcon('solidity')
       .pause(2000)
       .click('[data-id="compilerContainerCompileBtn"]')
-      .clickLaunchIcon('solidity')
       .waitForElementPresent('select[id="compiledContracts"] option[value=MyToken]', 60000)
       .clickLaunchIcon('udapp')
       .selectContract('MyToken')
@@ -239,7 +238,7 @@ module.exports = {
       .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 5', 60000)
       .goToVMTraceStep(129)
       .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 129', 60000)
-      .waitForElementContainsText('*[data-id="txFunction"]', 'version', 60000)
+      .waitForElementContainsText('*[data-id="txFunction"]', '_delegate', 60000)
       .end()
   }
 }
@@ -265,7 +264,6 @@ const sources = [
           function initialize(address initialOwner) initializer public {
               __ERC721_init("MyToken", "MTK");
               __Ownable_init(initialOwner);
-              __UUPSUpgradeable_init();
           }
       
           function _authorizeUpgrade(address newImplementation)
@@ -310,7 +308,6 @@ const sources = [
           function initialize(string memory tokenName, string memory tokenSymbol, address initialOwner) initializer public {
               __ERC721_init(tokenName, tokenSymbol);
               __Ownable_init(initialOwner);
-              __UUPSUpgradeable_init();
           }
       
           function _authorizeUpgrade(address newImplementation)
