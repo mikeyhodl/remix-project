@@ -60,8 +60,8 @@ export function RemixUiTopbar() {
   const [feedbackFormUrl, setFeedbackFormUrl] = useState<string | null>(null);
   const [feedbackPanelOpen, setFeedbackPanelOpen] = useState<boolean>(false);
 
-  // Auth state for cloud backup/restore
-  const { isAuthenticated } = useAuth()
+  // Auth state for cloud backup/restore and support link
+  const { isAuthenticated, token } = useAuth()
 
   // Use the clone repository modal hook
   const { showCloneModal } = useCloneRepositoryModal({
@@ -666,6 +666,22 @@ export function RemixUiTopbar() {
           </>
           <BetaPromoPill plugin={plugin} />
           <NotificationBell className="ms-3" />
+          {isAuthenticated && token && (
+            <CustomTooltip placement="bottom" tooltipText="Premium Support">
+              <span
+                className="btn btn-sm d-flex align-items-center gap-1 ms-3"
+                style={{ cursor: 'pointer', padding: '0.25rem 0.6rem', color: 'var(--text)' }}
+                onClick={() => {
+                  window.open(`https://support.remix.live/login?token=${encodeURIComponent(token)}`, '_blank')
+                  trackMatomoEvent({ category: 'topbar', action: 'support', name: 'SupportOpened', isClick: true })
+                }}
+                data-id="topbar-supportBtn"
+              >
+                <i className="fas fa-headset"></i>
+                <span>Support</span>
+              </span>
+            </CustomTooltip>
+          )}
           {feedbackFormUrl && (
             <CustomTooltip placement="bottom" tooltipText="Send Feedback">
               <span
