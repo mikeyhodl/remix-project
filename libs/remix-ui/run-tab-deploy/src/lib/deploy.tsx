@@ -62,6 +62,23 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
 
     plugin.on('truffle', 'compilationFinished', (file, source, languageVersion, data) => broadcastCompilationResult('truffle', { file, source, languageVersion, data }, plugin, dispatch))
 
+    plugin.on('filePanel', 'setWorkspace', async (workspace: { name: string }) => {
+      const workspaceName = workspace.name
+      const lastLoadedWorkspaceName = plugin?.getWidgetState()?.lastLoadedWorkspace
+
+      if (workspaceName && lastLoadedWorkspaceName !== workspaceName) {
+        dispatch({ type: 'CLEAR_ALL_CONTRACT_FILES', payload: undefined })
+        const workspaceFiles = await plugin.call('fileManager', 'readdir', '/')
+
+        Object.keys(workspaceFiles).forEach(entry => addContractFile(entry, plugin, dispatch))
+        if (workspaceFiles['contracts'] && workspaceFiles['contracts'].isDirectory) {
+          const contractFiles = await plugin.call('fileManager', 'readdir', '/contracts')
+
+          Object.keys(contractFiles).forEach(entry => addContractFile(entry, plugin, dispatch))
+        }
+        dispatch({ type: 'SET_LAST_LOADED_WORKSPACE', payload: workspaceName })
+      }
+    })
     // plugin.on('desktopHost', 'chainChanged', (context) => {
     //   //console.log('desktopHost chainChanged', context)
     //   fillAccountsList(plugin, dispatch)
@@ -70,15 +87,6 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
 
     // plugin.on('desktopHost', 'disconnected', () => {
     //   setExecutionContext(plugin, dispatch, { context: 'vm-cancun', fork: '' })
-    // })
-
-    // plugin.on('filePanel', 'setWorkspace', async () => {
-    //   dispatch(resetUdapp())
-    //   resetAndInit(plugin)
-    //   await migrateSavedContracts(plugin)
-    //   plugin.call('manager', 'isActive', 'remixd').then((activated) => {
-    //     dispatch(setRemixDActivated(activated))
-    //   })
     // })
 
     // plugin.on('manager', 'pluginActivated', (activatedPlugin: Plugin) => {
@@ -127,6 +135,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       plugin.off('hardhat', 'compilationFinished')
       plugin.off('foundry', 'compilationFinished')
       plugin.off('truffle', 'compilationFinished')
+      plugin.off('filePanel', 'setWorkspace')
     }
   }, [])
 

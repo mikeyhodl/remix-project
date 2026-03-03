@@ -222,6 +222,7 @@ function EditHtmlTemplate(): JSX.Element {
   };
 
   const runBuild = async (showNotification: boolean = false) => {
+    console.log('[QuickDapp][runBuild] START', { slug: activeDapp?.slug, showNotification });
     if (!iframeRef.current || !activeDapp) return;
     if (isBuilding) return;
 
@@ -242,7 +243,7 @@ function EditHtmlTemplate(): JSX.Element {
           name: activeDapp.workspaceName,
           isLocalhost: false,
         });
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 800));
       }
     } catch (e) {
       console.warn('[QuickDapp] Failed to auto-switch workspace:', e);
@@ -258,6 +259,7 @@ function EditHtmlTemplate(): JSX.Element {
     try {
       const dappRootPath = '/';
       await readDappFiles(plugin, dappRootPath, mapFiles, 0);
+      console.log('[QuickDapp][runBuild] Files read:', mapFiles.size);
 
       if (mapFiles.size === 0) {
         setIframeError(`No files found in workspace root. Make sure you are in the DApp workspace "${activeDapp.workspaceName}".`);
@@ -300,6 +302,14 @@ function EditHtmlTemplate(): JSX.Element {
         };
       </script>
     `;
+    const debugScript = `<script>
+window.onerror = function(msg, url, line, col, error) {
+  try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}
+};
+window.addEventListener('unhandledrejection', function(e) {
+  try { parent.console.error('[DApp-iframe] Unhandled rejection:', e.reason); } catch(e2) {}
+});
+</script>`;
     const ext = `<script>
 (function() {
   if (parent.__remixVMBridge) {
@@ -359,9 +369,9 @@ function EditHtmlTemplate(): JSX.Element {
         let finalHtml = indexHtmlContent || '<html><body><div id="root"></div></body></html>';
 
         if (finalHtml.includes('</head>')) {
-          finalHtml = finalHtml.replace('</head>', `${injectionScript}\n${ext}\n</head>`);
+          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
         } else {
-          finalHtml = `<html><head>${injectionScript}${ext}</head>${finalHtml}</html>`;
+          finalHtml = `<html><head>${debugScript}${injectionScript}${ext}</head>${finalHtml}</html>`;
         }
 
         const scriptTag = `\n<script type="module">\n${result.js}\n</script>\n`;
@@ -377,13 +387,15 @@ function EditHtmlTemplate(): JSX.Element {
         doc.open();
         doc.write(finalHtml);
         doc.close();
+        console.log('[QuickDapp][runBuild] doc.write() completed (buildable)');
 
       } else {
         let finalHtml = indexHtmlContent;
-        finalHtml = finalHtml.replace('</head>', `${injectionScript}\n${ext}\n</head>`);
+        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
         doc.open();
         doc.write(finalHtml);
         doc.close();
+        console.log('[QuickDapp][runBuild] doc.write() completed (static HTML)');
       }
 
       if (showNotification) {
