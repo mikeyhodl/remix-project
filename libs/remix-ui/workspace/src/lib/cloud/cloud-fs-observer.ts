@@ -43,6 +43,7 @@ type FSWriteListener = (op: FSWriteOperation) => void
 
 let _active = false
 let _listeners: FSWriteListener[] = []
+let _debug = false
 
 /** Original (unpatched) method references, keyed by method name */
 const _originals: Record<string, Function> = {}
@@ -70,12 +71,12 @@ export function onCloudFSWrite(listener: FSWriteListener): () => void {
  * Safe to call multiple times — only patches once.
  */
 export function enableCloudFSObserver(): void {
-  console.debug('[CloudFSObserver] Enabling... is active?', _active)
+  if (_debug) console.debug('[CloudFSObserver] Enabling... is active?', _active)
   if (_active) return
 
   const fsCallback = (window as any).remixFileSystemCallback
   if (!fsCallback || !fsCallback.promises) {
-    console.warn('[CloudFSObserver] No remixFileSystemCallback.promises — cannot enable')
+    if (_debug) console.warn('[CloudFSObserver] No remixFileSystemCallback.promises — cannot enable')
     return
   }
 
@@ -91,7 +92,7 @@ export function enableCloudFSObserver(): void {
     _originals[method] = original.bind(promises)
 
     promises[method] = async function (...args: any[]) {
-      console.debug(`[CloudFSObserver] Intercepted ${method} with args:`, args)
+      if (_debug) console.debug(`[CloudFSObserver] Intercepted ${method} with args:`, args)
       const result = await _originals[method](...args)
       const filepath: string = args[0]
       notify({ type: method, path: filepath })
@@ -103,7 +104,7 @@ export function enableCloudFSObserver(): void {
   if (promises.rename) {
     _originals['rename'] = promises.rename.bind(promises)
     promises.rename = async function (oldPath: string, newPath: string, ...rest: any[]) {
-      console.debug(`[CloudFSObserver] Intercepted rename with args:`, [oldPath, newPath, ...rest]) 
+      if (_debug) console.debug(`[CloudFSObserver] Intercepted rename with args:`, [oldPath, newPath, ...rest]) 
       const result = await _originals['rename'](oldPath, newPath, ...rest)
       // Emit for both old (delete-like) and new (add-like) paths
       notify({ type: 'rename', path: oldPath, newPath })
@@ -141,6 +142,14 @@ export function clearCloudFSListeners(): void {
 
 export function isCloudFSObserverActive(): boolean {
   return _active
+}
+
+/**
+ * Enable or disable debug logging (console.debug / console.warn).
+ * Disabled by default.
+ */
+export function setCloudFSObserverDebug(enabled: boolean): void {
+  _debug = enabled
 }
 
 // ── Helpers ────────────────────────────────────────────────

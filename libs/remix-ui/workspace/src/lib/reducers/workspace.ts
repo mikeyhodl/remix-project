@@ -8,6 +8,16 @@ import isElectron from 'is-electron'
 import { fileKeySort } from '../utils'
 import { branch } from '@remix-ui/git'
 import { current } from '@reduxjs/toolkit'
+
+let _debug = true
+
+/**
+ * Enable or disable debug logging for the browser reducer.
+ * Disabled by default.
+ */
+export function setBrowserReducerDebug(enabled: boolean): void {
+  _debug = enabled
+}
 export interface BrowserState {
   browser: {
     currentWorkspace: string
@@ -133,6 +143,8 @@ export const browserInitialState: BrowserState = {
 }
 
 export const browserReducer = (state = browserInitialState, action: Actions) => {
+  if (_debug) console.debug('[BrowserReducer] Action:', action.type, 'Payload:', action.payload)
+  if (_debug) console.debug('[BrowserReducer] Current State:', state)
   switch (action.type) {
   case 'SET_CURRENT_WORKSPACE': {
     const payload = action.payload
@@ -1129,7 +1141,7 @@ const checkCurrentParentPathInView = (currentPath: string, expandPath: string[])
       inView
     }
   } catch (e) {
-    console.log(e)
+    if (_debug) console.log(e)
     return {
       rootFolder:undefined,
       rootViewToAdd: false,
