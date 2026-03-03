@@ -67,10 +67,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [showOllamaModelSelector, setShowOllamaModelSelector] = useState(false)
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
-
-  // Check if MCP is enabled via query parameter
-  const queryParams = new QueryParams()
-  const mcpEnabled = queryParams.exists('experimental')
+  const [isMaximized, setIsMaximized] = useState(false)
+  const mcpEnabled = true
 
   const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
