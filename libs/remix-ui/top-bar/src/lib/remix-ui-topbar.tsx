@@ -82,7 +82,7 @@ export function RemixUiTopbar() {
   useEffect(() => {
     const checkLoginEnabled = () => {
       const enabled = localStorage.getItem('enableLogin') === 'true';
-      setEnableLogin(true);
+      setEnableLogin(enabled);
     };
     checkLoginEnabled();
     // Listen for storage changes
@@ -572,12 +572,13 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
+          { enableLogin && (
           <CloudToggle
             className="ms-2"
             onLogin={() => setShowCloudLoginModal(true)}
             onEnableCloud={() => enableCloud()}
             onDisableCloud={() => disableCloud()}
-          />
+          />)}
           {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} plugin={plugin} />}
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
