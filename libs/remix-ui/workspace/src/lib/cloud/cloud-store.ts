@@ -70,14 +70,19 @@ class CloudStore extends EventEmitter {
 
   /** Activate cloud mode after successful auth + workspace fetch */
   enterCloudMode(workspaces: CloudWorkspace[], stsToken: STSToken) {
+    const userId = this.extractUserId(stsToken)
+    // Restore persisted sync status so workspaces show last-known state
+    // instead of all turning blue after a page reload.
+    const restored = this._restoreSyncStatus(userId, workspaces)
     this.state = {
       ...this.state,
       mode: 'cloud',
-      userId: this.extractUserId(stsToken),
+      userId,
       isAuthenticated: true,
       loading: false,
       cloudWorkspaces: workspaces,
       stsToken,
+      syncStatus: restored,
       error: null,
     }
     this.emit('change', this.state)
@@ -144,6 +149,51 @@ class CloudStore extends EventEmitter {
     this.setState({
       syncStatus: { ...this.state.syncStatus, [workspaceId]: status },
     })
+    // Persist the last-known "good" status so it survives page reloads.
+    // Only persist idle states — transient states (loading/syncing/pushing)
+    // shouldn't be restored because they'd be stale.
+    if (status.status === 'idle' && status.lastSync) {
+      this._persistSyncStatus(workspaceId, status)
+    }
+  }
+
+  // ── Sync status persistence helpers ──────────────────────
+  private _syncStatusKey(): string {
+    const uid = this.state.userId
+    return uid ? `cloud_syncStatus_user_${uid}` : 'cloud_syncStatus'
+  }
+
+  private _persistSyncStatus(workspaceId: string, status: WorkspaceSyncStatus) {
+    try {
+      const key = this._syncStatusKey()
+      const existing = JSON.parse(localStorage.getItem(key) || '{}')
+      existing[workspaceId] = {
+        status: 'idle',
+        lastSync: status.lastSync,
+        pendingChanges: 0,
+      }
+      localStorage.setItem(key, JSON.stringify(existing))
+    } catch { /* localStorage full or unavailable — ignore */ }
+  }
+
+  private _restoreSyncStatus(
+    userId: string | null,
+    workspaces: CloudWorkspace[],
+  ): Record<string, WorkspaceSyncStatus> {
+    try {
+      const key = userId ? `cloud_syncStatus_user_${userId}` : 'cloud_syncStatus'
+      const stored = JSON.parse(localStorage.getItem(key) || '{}')
+      const result: Record<string, WorkspaceSyncStatus> = {}
+      // Only restore statuses for workspaces that still exist
+      for (const ws of workspaces) {
+        if (stored[ws.uuid]) {
+          result[ws.uuid] = stored[ws.uuid]
+        }
+      }
+      return result
+    } catch {
+      return {}
+    }
   }
 
   /** Update the STS token */

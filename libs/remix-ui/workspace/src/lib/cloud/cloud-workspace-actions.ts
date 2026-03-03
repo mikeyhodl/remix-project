@@ -194,6 +194,11 @@ export async function enableCloud(): Promise<void> {
 
   cloudStore.setLoading(true)
   try {
+    // Close all files BEFORE swapping the provider — tab-proxy builds tab
+    // names from the current workspace, so files opened under the local
+    // workspace name must be closed while the local provider is still active.
+    await _plugin.fileManager.closeAllFiles()
+
     const [workspaces, stsToken] = await Promise.all([
       apiList(),
       fetchSTSToken(),
@@ -258,18 +263,22 @@ export async function disableCloud(): Promise<void> {
   const activeWs = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === activeId)
   if (activeWs) localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), activeWs.name)
 
-  // 1. Deactivate sync engine (await so flush completes before tearing down)
+  // 1. Close all files BEFORE swapping the provider — tab-proxy builds tab
+  // names from the current workspace, so files opened under the cloud
+  // workspace name must be closed while the cloud provider is still active.
+  await _plugin.fileManager.closeAllFiles()
+
+  // 2. Deactivate sync engine (await so flush completes before tearing down)
   await cloudSyncEngine.deactivate()
 
-  // 2. Restore original file provider
+  // 3. Restore original file provider
   exitCloudProvider()
 
-  // 3. Update store — keeps isAuthenticated = true
+  // 4. Update store — keeps isAuthenticated = true
   cloudStore.disableCloud()
 
-  // 4. Close all open files and switch to the last used legacy workspace
+  // 5. Switch to the last used legacy workspace
   try {
-    await _plugin.fileManager.closeAllFiles()
     const lastLocal = localStorage.getItem('lastLocalWorkspace') || localStorage.getItem('currentWorkspace')
 
     // Check if the legacy workspace actually exists

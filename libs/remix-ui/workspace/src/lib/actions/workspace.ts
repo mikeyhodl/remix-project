@@ -888,7 +888,9 @@ export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
         remoteId: cw.uuid,
         cloudUuid: cw.uuid,
       }))
-      await plugin.setWorkspaces(cloudWorkspaces)
+      // Note: we intentionally do NOT call plugin.setWorkspaces() here to
+      // avoid a cascading re-render loop.  The callers already setWorkspaces
+      // explicitly when needed (e.g. after createWorkspace).
       return cloudWorkspaces
     }
 

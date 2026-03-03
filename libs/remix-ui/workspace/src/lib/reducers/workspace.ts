@@ -9,7 +9,7 @@ import { fileKeySort } from '../utils'
 import { branch } from '@remix-ui/git'
 import { current } from '@reduxjs/toolkit'
 
-let _debug = false
+let _debug = true
 
 /**
  * Enable or disable debug logging for the browser reducer.

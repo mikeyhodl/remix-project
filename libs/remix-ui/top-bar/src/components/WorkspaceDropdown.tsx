@@ -308,7 +308,10 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
         as={"div"}
       >
         <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px', opacity: isWorkspaceLoading ? 0.5 : 1, pointerEvents: isWorkspaceLoading ? 'none' : 'auto' }}>
-          {menuItems.map((item, idx) => {
+          {/* Deduplicate by name — multiple async refresh paths can race and
+              produce duplicates during workspace creation (especially git-based
+              templates that trigger clone → checkGit → setWorkspaces cascades). */}
+          {menuItems.filter((item, idx, arr) => arr.findIndex(i => i.name === item.name) === idx).map((item, idx) => {
             const id = idx + 1
             if (!iconRefs.current[id]) iconRefs.current[id] = { current: null }
             return (
