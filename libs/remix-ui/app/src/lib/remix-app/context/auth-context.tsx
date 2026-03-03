@@ -2,6 +2,10 @@ import React, { createContext, useContext, useReducer, useEffect, useState, Reac
 import { AuthUser, AuthProvider as AuthProviderType, FeatureGroup } from '@remix-api'
 import { Profile } from '@remixproject/plugin-utils'
 
+/** Set to true to enable verbose console.log output for debugging */
+const DEBUG = false
+const log = (...args: any[]) => { if (DEBUG) console.log(...args) }
+
 export interface Credits {
   balance: number
   free_credits: number
@@ -178,7 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
 
     // Listen to auth plugin events
     const handleAuthStateChanged = async (authState: any) => {
-      console.log('[AuthContext] Auth state changed:', authState)
+      log('[AuthContext] Auth state changed:', authState)
       if (authState.isAuthenticated && authState.user) {
         dispatch({
           type: 'AUTH_SUCCESS',
@@ -212,16 +216,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
     }
 
     const handleCreditsUpdated = (credits: Credits) => {
-      console.log('[AuthContext] Credits updated:', credits)
+      log('[AuthContext] Credits updated:', credits)
       dispatch({ type: 'UPDATE_CREDITS', payload: credits })
     }
 
     const handleTokenRefreshed = (data: { token: string }) => {
-      console.log('[AuthContext] Token refreshed')
+      log('[AuthContext] Token refreshed')
       dispatch({ type: 'TOKEN_REFRESHED', payload: data.token })
     }
 
-    console.log('[AuthContext] Setting up event listeners, plugin.on exists:', typeof plugin.on)
+    log('[AuthContext] Setting up event listeners, plugin.on exists:', typeof plugin.on)
     plugin.call('manager', 'isActive', 'auth').then((result) => {
       if (result) {
         plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
@@ -239,7 +243,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
         })
       }
     })
-    console.log('[AuthContext] Event listeners registered')
+    log('[AuthContext] Event listeners registered')
 
     return () => {
       plugin.off('auth', 'authStateChanged', handleAuthStateChanged)

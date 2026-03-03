@@ -12,6 +12,9 @@ const profile = {
 }
 
 export class AuthPlugin extends Plugin {
+  /** Set to true to enable verbose console.log output for debugging */
+  private static DEBUG = false
+
   private apiClient: ApiClient
   private ssoApi: SSOApiService
   private creditsApi: CreditsApiService
@@ -21,6 +24,11 @@ export class AuthPlugin extends Plugin {
   private refreshTimer: number | null = null
   private pendingInviteToken: string | null = null
   private cachedRegistrationMode: RegistrationMode | null = null
+
+  /** Debug-gated logger – silent when DEBUG is false */
+  private log(...args: any[]) {
+    if (AuthPlugin.DEBUG) console.log(...args)
+  }
 
   constructor() {
     super(profile)
@@ -207,7 +215,7 @@ export class AuthPlugin extends Plugin {
     const user = await this.getUser()
     const token = await this.getToken()
     if (user && token) {
-      console.log('[AuthPlugin] refreshPermissions – re-emitting authStateChanged')
+      this.log('[AuthPlugin] refreshPermissions – re-emitting authStateChanged')
       this.emit('authStateChanged', {
         isAuthenticated: true,
         user,
@@ -302,7 +310,7 @@ export class AuthPlugin extends Plugin {
 
   async login(provider: AuthProviderType): Promise<void> {
     try {
-      console.log('[AuthPlugin] Starting popup-based login for:', provider)
+      this.log('[AuthPlugin] Starting popup-based login for:', provider)
 
       // Get pending invite token to pass through login flow
       const inviteToken = this.getPendingInviteToken()
@@ -346,16 +354,16 @@ export class AuthPlugin extends Plugin {
         }, 500) // Check every 500ms
 
         const handleMessage = (event: MessageEvent) => {
-          console.log('[AuthPlugin] Received message event:', event)
+          this.log('[AuthPlugin] Received message event:', event)
           // Verify origin
           if (event.origin !== new URL(endpointUrls.sso).origin) {
             return
           }
 
           if (event.data.type === 'sso-auth-success') {
-            console.log('[AuthPlugin] Received auth success from popup')
-            console.log('[AuthPlugin] User data from popup:', event.data)
-            console.log('[AuthPlugin] User provider field:', event.data.user?.provider)
+            this.log('[AuthPlugin] Received auth success from popup')
+            this.log('[AuthPlugin] User data from popup:', event.data)
+            this.log('[AuthPlugin] User provider field:', event.data.user?.provider)
             cleanup()
             resolve({
               user: event.data.user,
@@ -386,13 +394,13 @@ export class AuthPlugin extends Plugin {
       })
 
       // Store tokens in localStorage
-      console.log(result)
-      console.log('[AuthPlugin] Storing user in localStorage:', result.user)
-      console.log('[AuthPlugin] User has provider field:', result.user.provider)
+      this.log(result)
+      this.log('[AuthPlugin] Storing user in localStorage:', result.user)
+      this.log('[AuthPlugin] User has provider field:', result.user.provider)
       localStorage.setItem('remix_access_token', result.accessToken)
       localStorage.setItem('remix_refresh_token', result.refreshToken)
       localStorage.setItem('remix_user', JSON.stringify(result.user))
-      console.log('[AuthPlugin] Stored user JSON:', localStorage.getItem('remix_user'))
+      this.log('[AuthPlugin] Stored user JSON:', localStorage.getItem('remix_user'))
 
       // Schedule proactive refresh based on access token expiry
       this.scheduleRefresh(result.accessToken)
@@ -406,7 +414,7 @@ export class AuthPlugin extends Plugin {
 
       // If logged in via GitHub, bridge the provider token to dgit config
       if (result.user.provider === 'github' && result.providerToken) {
-        console.log('[AuthPlugin] GitHub provider detected, bridging token to dgit')
+        this.log('[AuthPlugin] GitHub provider detected, bridging token to dgit')
         await this.bridgeGitHubToken(result.providerToken)
       }
 
@@ -418,7 +426,7 @@ export class AuthPlugin extends Plugin {
         console.warn('[AuthPlugin] Auto-redeem invite failed:', err)
       )
 
-      console.log('[AuthPlugin] Login successful')
+      this.log('[AuthPlugin] Login successful')
     } catch (error) {
       console.error('[AuthPlugin] Login failed:', error)
       throw error
@@ -443,7 +451,7 @@ export class AuthPlugin extends Plugin {
         token: null
       })
 
-      console.log('[AuthPlugin] Logout successful')
+      this.log('[AuthPlugin] Logout successful')
     } catch (error) {
       console.error('[AuthPlugin] Logout failed:', error)
     }
@@ -451,7 +459,7 @@ export class AuthPlugin extends Plugin {
 
   async linkAccount(provider: AuthProviderType): Promise<void> {
     try {
-      console.log('[AuthPlugin] Starting account linking for:', provider)
+      this.log('[AuthPlugin] Starting account linking for:', provider)
 
       // Check if already logged in and save current session
       const currentToken = await this.getToken()
@@ -462,7 +470,7 @@ export class AuthPlugin extends Plugin {
         throw new Error('You must be logged in to link additional accounts')
       }
 
-      console.log('[AuthPlugin] Current user:', currentUser.sub)
+      this.log('[AuthPlugin] Current user:', currentUser.sub)
 
       // SIWE linking
       if (provider === 'siwe') {
@@ -520,7 +528,7 @@ export class AuthPlugin extends Plugin {
         window.addEventListener('message', handleMessage)
       })
 
-      console.log('[AuthPlugin] Got new account info:', result.user.sub)
+      this.log('[AuthPlugin] Got new account info:', result.user.sub)
 
       // DON'T update localStorage - keep the original session!
       // We're linking, not switching accounts
@@ -543,7 +551,7 @@ export class AuthPlugin extends Plugin {
         throw new Error(error.error || 'Account linking failed')
       }
 
-      console.log('[AuthPlugin] Account linked successfully! Keeping original session.')
+      this.log('[AuthPlugin] Account linked successfully! Keeping original session.')
       this.emit('accountLinked', { provider })
 
       // Restore original session in case popup response tried to change it
@@ -552,7 +560,7 @@ export class AuthPlugin extends Plugin {
 
       // If linking GitHub, bridge the provider token to dgit config
       if (provider === 'github' && result.providerToken) {
-        console.log('[AuthPlugin] GitHub linked, bridging token to dgit')
+        this.log('[AuthPlugin] GitHub linked, bridging token to dgit')
         await this.bridgeGitHubToken(result.providerToken)
       }
 
@@ -570,7 +578,7 @@ export class AuthPlugin extends Plugin {
     try {
       await this.call('config' as any, 'setAppParameter', 'settings/gist-access-token', token)
       this.emit('gitHubTokenReady' as any, { token })
-      console.log('[AuthPlugin] GitHub token bridged to dgit config')
+      this.log('[AuthPlugin] GitHub token bridged to dgit config')
     } catch (error) {
       console.error('[AuthPlugin] Failed to bridge GitHub token:', error)
     }
@@ -595,7 +603,7 @@ export class AuthPlugin extends Plugin {
       })
 
       if (!response.ok) {
-        console.log('[AuthPlugin] No GitHub token available from backend:', response.status)
+        this.log('[AuthPlugin] No GitHub token available from backend:', response.status)
         return null
       }
 
@@ -619,7 +627,7 @@ export class AuthPlugin extends Plugin {
     try {
       await this.call('config' as any, 'setAppParameter', 'settings/gist-access-token', '')
       this.emit('gitHubTokenReady' as any, { token: null })
-      console.log('[AuthPlugin] GitHub disconnected from dgit')
+      this.log('[AuthPlugin] GitHub disconnected from dgit')
     } catch (error) {
       console.error('[AuthPlugin] Failed to disconnect GitHub:', error)
     }
@@ -668,7 +676,7 @@ export class AuthPlugin extends Plugin {
         return null
       }
 
-      console.log('[AuthPlugin] Refreshing access token...')
+      this.log('[AuthPlugin] Refreshing access token...')
 
       const response = await this.ssoApi.refreshToken(refreshToken)
 
@@ -690,7 +698,7 @@ export class AuthPlugin extends Plugin {
         this.billingApi.setToken(newAccessToken)
         this.inviteApi.setToken(newAccessToken)
 
-        console.log('[AuthPlugin] Access token refreshed successfully')
+        this.log('[AuthPlugin] Access token refreshed successfully')
         // Reschedule next proactive refresh
         this.scheduleRefresh(newAccessToken)
 
@@ -721,7 +729,7 @@ export class AuthPlugin extends Plugin {
       // Ensure token is set
       await this.getToken()
 
-      console.log('[AuthPlugin] Fetching credits using typed API')
+      this.log('[AuthPlugin] Fetching credits using typed API')
 
       const response = await this.creditsApi.getBalance()
 
@@ -793,7 +801,7 @@ export class AuthPlugin extends Plugin {
   }
 
   async onActivation(): Promise<void> {
-    console.log('[AuthPlugin] Activated - using popup + localStorage mode')
+    this.log('[AuthPlugin] Activated - using popup + localStorage mode')
 
     // Validate existing token with the API on load
     // Awaited so that plugin activation only completes after validation.
@@ -809,20 +817,20 @@ export class AuthPlugin extends Plugin {
   private async validateAndRestoreSession(): Promise<void> {
     const token = localStorage.getItem('remix_access_token')
     if (!token) {
-      console.log('[AuthPlugin] No stored token found')
+      this.log('[AuthPlugin] No stored token found')
       return
     }
 
-    console.log('[AuthPlugin] Validating stored token with API...')
+    this.log('[AuthPlugin] Validating stored token with API...')
 
     try {
       // First check if token is expired locally (quick check)
       const expMs = this.getTokenExpiryMs(token)
       if (expMs && expMs < Date.now()) {
-        console.log('[AuthPlugin] Token expired, attempting refresh...')
+        this.log('[AuthPlugin] Token expired, attempting refresh...')
         const refreshed = await this.refreshAccessToken()
         if (!refreshed) {
-          console.log('[AuthPlugin] Refresh failed, clearing session')
+          this.log('[AuthPlugin] Refresh failed, clearing session')
           this.clearStoredAuth()
           this.emit('authStateChanged', {
             isAuthenticated: false,
@@ -850,7 +858,7 @@ export class AuthPlugin extends Plugin {
       const response = await this.ssoApi.verify()
 
       if (response.ok && response.data?.authenticated) {
-        console.log('[AuthPlugin] Token verified successfully')
+        this.log('[AuthPlugin] Token verified successfully')
 
         // Update user data from API response if available
         let user = response.data.user
@@ -879,7 +887,7 @@ export class AuthPlugin extends Plugin {
           this.scheduleRefresh(token)
         }
       } else {
-        console.log('[AuthPlugin] Token validation failed, attempting refresh...')
+        this.log('[AuthPlugin] Token validation failed, attempting refresh...')
         // Token is invalid, try to refresh
         const refreshed = await this.refreshAccessToken()
         if (refreshed) {
@@ -896,7 +904,7 @@ export class AuthPlugin extends Plugin {
             this.refreshCredits().catch(console.error)
           }
         } else {
-          console.log('[AuthPlugin] Refresh failed, clearing session')
+          this.log('[AuthPlugin] Refresh failed, clearing session')
           this.clearStoredAuth()
           this.emit('authStateChanged', {
             isAuthenticated: false,
@@ -909,7 +917,7 @@ export class AuthPlugin extends Plugin {
       console.error('[AuthPlugin] Session validation error:', error)
       // Network error — cannot verify token, clear session to be safe.
       // An unverifiable token should not grant access.
-      console.log('[AuthPlugin] Cannot reach auth server, clearing session')
+      this.log('[AuthPlugin] Cannot reach auth server, clearing session')
       this.clearStoredAuth()
       this.emit('authStateChanged', {
         isAuthenticated: false,
@@ -949,7 +957,7 @@ export class AuthPlugin extends Plugin {
       const token = await this.getToken()
 
       // Request account access
-      console.log('[SIWE Link] Requesting wallet accounts...')
+      this.log('[SIWE Link] Requesting wallet accounts...')
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
       if (!accounts || accounts.length === 0) {
         throw new Error('No wallet accounts available')
@@ -957,7 +965,7 @@ export class AuthPlugin extends Plugin {
 
       const rawAddress = accounts[0].toLowerCase()
       const address = this.toChecksumAddress(rawAddress)
-      console.log('[SIWE Link] Using checksummed address:', address)
+      this.log('[SIWE Link] Using checksummed address:', address)
 
       // Get chain ID
       const chainId = await ethereum.request({ method: 'eth_chainId' })
@@ -991,14 +999,14 @@ Nonce: ${nonce}
 Issued At: ${new Date().toISOString()}`
 
       // Request signature
-      console.log('[SIWE Link] Requesting signature...')
+      this.log('[SIWE Link] Requesting signature...')
       const signature = await ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       })
 
       // Verify and get user_id
-      console.log('[SIWE Link] Verifying signature...')
+      this.log('[SIWE Link] Verifying signature...')
       const verifyResponse = await fetch(`${endpointUrls.sso}/siwe/verify`, {
         method: 'POST',
         credentials: 'include',
@@ -1036,7 +1044,7 @@ Issued At: ${new Date().toISOString()}`
         throw new Error(error.error || 'Account linking failed')
       }
 
-      console.log('[SIWE Link] Account linked successfully!')
+      this.log('[SIWE Link] Account linked successfully!')
       this.emit('accountLinked', { provider: 'siwe' })
 
     } catch (error: any) {
@@ -1055,7 +1063,7 @@ Issued At: ${new Date().toISOString()}`
       const ethereum = (window as any).ethereum
 
       // Request account access
-      console.log('[SIWE] Requesting wallet accounts...')
+      this.log('[SIWE] Requesting wallet accounts...')
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
       if (!accounts || accounts.length === 0) {
         throw new Error('No wallet accounts available')
@@ -1064,15 +1072,15 @@ Issued At: ${new Date().toISOString()}`
       // Convert address to EIP-55 checksum format
       const rawAddress = accounts[0].toLowerCase()
       const address = this.toChecksumAddress(rawAddress)
-      console.log('[SIWE] Using checksummed address:', address)
+      this.log('[SIWE] Using checksummed address:', address)
 
       // Get chain ID
       const chainId = await ethereum.request({ method: 'eth_chainId' })
       const chainIdNumber = parseInt(chainId, 16)
-      console.log('[SIWE] Chain ID:', chainIdNumber)
+      this.log('[SIWE] Chain ID:', chainIdNumber)
 
       // Get nonce from backend
-      console.log('[SIWE] Fetching nonce from backend...')
+      this.log('[SIWE] Fetching nonce from backend...')
       const nonceResponse = await fetch(`${endpointUrls.sso}/siwe/nonce`, {
         credentials: 'include'
       })
@@ -1082,7 +1090,7 @@ Issued At: ${new Date().toISOString()}`
       }
 
       const nonce = await nonceResponse.text()
-      console.log('[SIWE] Got nonce:', nonce.substring(0, 10) + '...')
+      this.log('[SIWE] Got nonce:', nonce.substring(0, 10) + '...')
 
       // Create SIWE message
       const domain = window.location.host
@@ -1100,19 +1108,19 @@ Chain ID: ${chainIdNumber}
 Nonce: ${nonce}
 Issued At: ${new Date().toISOString()}`
 
-      console.log('[SIWE] Message to sign:', message)
+      this.log('[SIWE] Message to sign:', message)
 
       // Request signature from wallet
-      console.log('[SIWE] Requesting signature from wallet...')
+      this.log('[SIWE] Requesting signature from wallet...')
       const signature = await ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       })
 
-      console.log('[SIWE] Got signature:', signature.substring(0, 20) + '...')
+      this.log('[SIWE] Got signature:', signature.substring(0, 20) + '...')
 
       // Send to backend for verification
-      console.log('[SIWE] Verifying signature with backend...')
+      this.log('[SIWE] Verifying signature with backend...')
       const verifyBody: Record<string, string> = { message, signature }
       if (inviteToken) {
         verifyBody.invite_token = inviteToken
@@ -1135,7 +1143,7 @@ Issued At: ${new Date().toISOString()}`
       }
 
       const result = await verifyResponse.json()
-      console.log('[SIWE] Verification successful!')
+      this.log('[SIWE] Verification successful!')
 
       // Store tokens and user info
       localStorage.setItem('remix_access_token', result.token)
@@ -1143,7 +1151,7 @@ Issued At: ${new Date().toISOString()}`
         localStorage.setItem('remix_user', JSON.stringify(result.user))
       }
 
-      console.log('[SIWE] Login successful!')
+      this.log('[SIWE] Login successful!')
 
       // Emit auth state changed
       this.emit('authStateChanged', {
@@ -1174,14 +1182,14 @@ Issued At: ${new Date().toISOString()}`
     const token = this.getPendingInviteToken()
     if (!token) return
 
-    console.log('[AuthPlugin] Auto-redeeming pending invite token...')
+    this.log('[AuthPlugin] Auto-redeeming pending invite token...')
     try {
       const result = await this.redeemInviteToken(token)
       if (result.success) {
-        console.log('[AuthPlugin] Invite token redeemed successfully')
+        this.log('[AuthPlugin] Invite token redeemed successfully')
         this.clearPendingInviteToken()
       } else if (result.error_code === 'ALREADY_REDEEMED') {
-        console.log('[AuthPlugin] Invite token was already redeemed')
+        this.log('[AuthPlugin] Invite token was already redeemed')
         this.clearPendingInviteToken()
       } else {
         console.warn('[AuthPlugin] Invite redemption failed:', result.error)

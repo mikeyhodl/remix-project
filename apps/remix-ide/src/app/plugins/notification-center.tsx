@@ -29,6 +29,9 @@ interface AnonymousTokenResponse {
 }
 
 export class NotificationCenterPlugin extends Plugin<any, CustomRemixApi> {
+  /** Set to true to enable verbose console.log output for debugging */
+  private static DEBUG = false
+
   private apiClient: IApiClient
   private anonymousApiClient: IApiClient
   private pollTimer: ReturnType<typeof setInterval> | null = null
@@ -40,6 +43,11 @@ export class NotificationCenterPlugin extends Plugin<any, CustomRemixApi> {
   private localKeyMap: Record<string, number> = {}
   private nextLocalId: number = -1
   private visibilityHandler: (() => void) | null = null
+
+  /** Debug-gated logger – silent when DEBUG is false */
+  private log(...args: any[]) {
+    if (NotificationCenterPlugin.DEBUG) console.log(...args)
+  }
 
   constructor() {
     super(profile)
@@ -188,7 +196,7 @@ export class NotificationCenterPlugin extends Plugin<any, CustomRemixApi> {
       if (response.ok && response.data?.token) {
         this.anonymousToken = response.data.token
         localStorage.setItem(ANON_TOKEN_KEY, this.anonymousToken)
-        console.log('[NotificationCenter] Anonymous token registered')
+        this.log('[NotificationCenter] Anonymous token registered')
       } else {
         console.warn('[NotificationCenter] Failed to register anonymous token:', response.error)
       }

@@ -18,6 +18,9 @@ const profile = {
 }
 
 export class InvitationManagerPlugin extends Plugin {
+  /** Set to true to enable verbose console.log output for debugging */
+  private static DEBUG = false
+
   dispatch: React.Dispatch<any> = () => {}
   private state: InviteState = {
     show: false,
@@ -33,10 +36,15 @@ export class InvitationManagerPlugin extends Plugin {
     super(profile)
   }
 
+  /** Debug-gated logger – silent when DEBUG is false */
+  private log(...args: any[]) {
+    if (InvitationManagerPlugin.DEBUG) console.log(...args)
+  }
+
   async onActivation(): Promise<void> {
     // Listen for auth state changes
     this.on('auth', 'authStateChanged', async (isAuthenticated: boolean) => {
-      console.log('[InvitationManager] Auth state changed:', isAuthenticated)
+      this.log('[InvitationManager] Auth state changed:', isAuthenticated)
       if (this.state.show) {
         this.state = { ...this.state, isAuthenticated }
         this.renderComponent()
@@ -73,7 +81,7 @@ export class InvitationManagerPlugin extends Plugin {
       if (membershipActions.length > 0) {
         // Pick the first membership_request action to determine which form to show
         const action = membershipActions[0]
-        console.log(
+        this.log(
           '[InvitationManager] "request" invite detected – routing to membershipRequest for group:',
           action.feature_group_name
         )
@@ -168,7 +176,7 @@ export class InvitationManagerPlugin extends Plugin {
    */
   async startWalkthrough(slug: string): Promise<void> {
     try {
-      console.log('[InvitationManager] Starting walkthrough:', slug)
+      this.log('[InvitationManager] Starting walkthrough:', slug)
       await this.call('walkthrough' as any, 'start', slug)
     } catch (e) {
       console.error('[InvitationManager] Failed to start walkthrough:', e)
@@ -254,7 +262,7 @@ export class InvitationManagerPlugin extends Plugin {
     const queryToken = params.get('invite') || params.get('invite_token')
 
     if (queryToken) {
-      console.log('[InvitationManager] Found invite token in query params:', queryToken)
+      this.log('[InvitationManager] Found invite token in query params:', queryToken)
 
       // Clean URL — remove invite params from query string
       params.delete('invite')
@@ -274,7 +282,7 @@ export class InvitationManagerPlugin extends Plugin {
 
     if (match) {
       const token = match[1]
-      console.log('[InvitationManager] Found invite token in URL hash:', token)
+      this.log('[InvitationManager] Found invite token in URL hash:', token)
 
       // Clean URL
       this.cleanInviteFromUrl()
