@@ -144,7 +144,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
             ) : (
               <>
                 <i className="fas fa-comments fa-2x mb-2"></i>
-                <p>No conversations yet</p>
+                <p data-id="no-conversations-msg">No conversations yet</p>
                 <small>Start a new conversation to begin</small>
               </>
             )}

@@ -17,20 +17,12 @@ module.exports = {
       .waitForElementPresent({
         selector: "//*[@data-id='remix-ai-assistant-ready']",
         locateStrategy: 'xpath',
-        timeout: 120000
+        timeout: 60000
       })
-      // .waitForElementVisible('*[data-id="assistant-selector-btn"]')
-      // .click('*[data-id="assistant-selector-btn"]')
-      // .waitForElementVisible('*[data-id="composer-ai-assistant-openai"]')
-      // .click('*[data-id="composer-ai-assistant-openai"]', function () {
-      //   browser
-      //     .waitForElementVisible('*[data-id="ai-response-chat-bubble-section"]')
-      //     .assert.textContains('#remix-ai-chat-history > div.d-flex.flex-column.overflow-y-auto.border-box-sizing.preserve-wrap.overflow-x-hidden > div:nth-child(2) > div > div.chat-bubble.p-2.rounded.bubble-assistant.bg-light > div > p', 'AI Provider set')
-      // })
       .waitForElementVisible('*[data-id="toggle-history-btn"]')
       .click('*[data-id="toggle-history-btn"]')
       .assert.containsText('*[data-id="chat-history-sidebar-title"]', 'Chat history')
-      .assert.containsText('*[data-id="conversation-item-title"]', 'New Conversation')
+      .assert.containsText('*[data-id="no-conversations-msg"]', 'No conversations yet')
   },
 
   'Should create a new conversation #group1': function (browser: NightwatchBrowser) {
@@ -192,8 +184,9 @@ module.exports = {
         return items.length > 0 ? items[0].getAttribute('data-id')?.replace('conversation-item-', '') : null
       }, [], function (result) {
         const conversationId = result.value as string
-
+        console.log('Testing conversation deletion for conversation ID:', conversationId, result)
         browser
+          .pause(1000)
           .moveToElement(`*[data-id="conversation-item-${conversationId}"]`, 30, 20)
           .waitForElementVisible(`*[data-id="conversation-menu-${conversationId}"]`, 5000)
           .click(`*[data-id="conversation-menu-${conversationId}"]`)
@@ -233,15 +226,15 @@ module.exports = {
         return items.length
       }, [], function (result) {
         browser
-          .assert.equal(result.value, 9, 'All 9 conversations persisted after refresh')
+          .assert.equal(result.value, 6, 'All 6 conversations persisted after refresh')
       })
   },
   'Should search conversations by title, clear search and show all conversations #group1': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="search-conversations-input"]')
-      .setValue('*[data-id="search-conversations-input"]', 'New Conversation')
+      .setValue('*[data-id="search-conversations-input"]', 'Hello, this')
       .waitForElementVisible('*[data-id="conversation-item-title"]')
-      .assert.textContains('*[data-id="conversation-item-title"]', 'New Conversation')
+      .assert.textContains('*[data-id="conversation-item-title"]', 'Hello, this is my first message')
       .assert.not.textContains('*[data-id="conversation-item-title"]', 'This is a different conversation')
       .clearValue('*[data-id="search-conversations-input"]')
       .pause(500)
