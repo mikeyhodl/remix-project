@@ -65,14 +65,14 @@ const CreateInstance: React.FC<CreateInstanceProps> = ({ isAiLoading }) => {
               <div className="border rounded p-3 h-100">
                 <h5 className="text-primary mb-3">
                   <i className="fas fa-magic me-2"></i>
-                  Option 2: Sparkle Button
+                  Option 2: Create a dapp
                 </h5>
                 <p className="text-muted mb-3">
-                  Click the Sparkle button on your deployed contract instance.
+                  Click the "Create a dapp" on your deployed contract instance.
                 </p>
                 <img
-                  src='assets/img/sparkling.png'
-                  alt="Sparkle button guide"
+                  src='assets/img/create-a-dapp.png'
+                  alt="Create a dapp guide"
                   className="img-fluid rounded shadow-sm w-80"
                   style={{
                     border: '1px solid var(--secondary)',

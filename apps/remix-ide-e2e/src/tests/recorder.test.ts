@@ -50,7 +50,7 @@ module.exports = {
       .clickLaunchIcon('udapp')
       .createContract('12')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256 _p', values: '34' })
+      .clickFunction(0, 0, ['34'])
       .execute(function () {
         const saveScenarioBtn = document.querySelector('[data-id="save-transactions"]') as HTMLElement
         if (saveScenarioBtn) {
@@ -103,7 +103,7 @@ module.exports = {
       .click('[data-id="compile_group"]')
       .clickInstance(1)
       .pause(1000)
-      .clickFunction(1, 0, { types: 'uint256 _po', values: '10' })
+      .clickFunction(1, 0, ['10'])
       .testFunction('last', {
         status: '1 Transaction mined and execution succeed',
         'decoded input': { 'uint256 _po': '10' }

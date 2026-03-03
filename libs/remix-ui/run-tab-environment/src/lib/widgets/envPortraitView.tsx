@@ -347,7 +347,7 @@ function EnvironmentPortraitView() {
                     if (isOpen) setIsEnvironmentDropdownOpen(false)
                   }}
                 />}
-                style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}
+                style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', cursor: 'pointer' }}
               >
                 <div style={{ flexGrow: 1, overflow: 'hidden', display:'flex', justifyContent:'left' }}>
                   <div className="text-truncate text-secondary">

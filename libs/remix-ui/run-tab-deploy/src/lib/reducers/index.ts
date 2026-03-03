@@ -13,7 +13,8 @@ export const deployInitialState: DeployWidgetState = {
   maxFee: '',
   maxPriorityFee: '.0001',
   baseFeePerGas: '',
-  gasPrice: ''
+  gasPrice: '',
+  lastLoadedWorkspace: null
 }
 
 export const deployReducer = (state = deployInitialState, action: Actions): DeployWidgetState => {
@@ -84,6 +85,17 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     return {
       ...state,
       contracts: { ...state.contracts, contractList }
+    }
+  }
+
+  case 'CLEAR_ALL_CONTRACT_FILES': {
+    return {
+      ...state,
+      contracts: {
+        ...state.contracts,
+        contractList: []
+      },
+      selectedContractIndex: 0
     }
   }
 
@@ -174,6 +186,13 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     return {
       ...state,
       selectedContractIndex: action.payload
+    }
+  }
+
+  case 'SET_LAST_LOADED_WORKSPACE': {
+    return {
+      ...state,
+      lastLoadedWorkspace: action.payload
     }
   }
 

@@ -28,7 +28,6 @@ module.exports = {
       .clickLaunchIcon('solidity')
       .pause(2000)
       .click('[data-id="compilerContainerCompileBtn"]')
-      .clickLaunchIcon('solidity')
       .waitForElementPresent('select[id="compiledContracts"] option[value=MyToken]', 60000)
       .clickLaunchIcon('udapp')
       .selectContract('MyToken')
@@ -250,18 +249,18 @@ const sources = [
       content: `
       // SPDX-License-Identifier: MIT
       pragma solidity ^0.8.20;
-      
-      import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-      import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-      
+
+      import "@openzeppelin/contracts-upgradeable@5.0.0/token/ERC721/ERC721Upgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/proxy/utils/Initializable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/access/OwnableUpgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/proxy/utils/UUPSUpgradeable.sol";
+
       contract MyToken is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
           /// @custom:oz-upgrades-unsafe-allow constructor
           constructor() {
               _disableInitializers();
           }
-      
+
           function initialize(address initialOwner) initializer public {
               __ERC721_init("MyToken", "MTK");
               __Ownable_init(initialOwner);
@@ -295,18 +294,18 @@ const sources = [
       content: `
       // SPDX-License-Identifier: MIT
       pragma solidity ^0.8.20;
-      
-      import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-      import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-      
+
+      import "@openzeppelin/contracts-upgradeable@5.0.0/token/ERC721/ERC721Upgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/proxy/utils/Initializable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/access/OwnableUpgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@5.0.0/proxy/utils/UUPSUpgradeable.sol";
+
       contract MyInitializedToken is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
           /// @custom:oz-upgrades-unsafe-allow constructor
           constructor() {
               _disableInitializers();
           }
-      
+
           function initialize(string memory tokenName, string memory tokenSymbol, address initialOwner) initializer public {
               __ERC721_init(tokenName, tokenSymbol);
               __Ownable_init(initialOwner);
