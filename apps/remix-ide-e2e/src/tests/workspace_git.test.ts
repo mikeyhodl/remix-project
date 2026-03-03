@@ -396,6 +396,7 @@ module.exports = {
       .waitForElementVisible('[data-id="custom-dropdown-menu"]')
       .waitForElementContainsText('[data-id="custom-dropdown-items"]', 'origin/main')
       .waitForElementPresent('[data-id="workspaceGit-origin/main"]')
+      .modalFooterOKClick('switchBranch')
       .click('[data-id="workspaceGit-origin/main"]')
       .waitForElementVisible('[data-id="updatesubmodules"]')
       .click('[data-id="updatesubmodules"]')
