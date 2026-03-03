@@ -36,7 +36,7 @@ module.exports = {
       .clickLaunchIcon('udapp')
       .clickInstance(0)
       .clearConsole()
-      .clickFunction(0, 0, { types: 'string name, uint256 goal', values: '"toast", 999' })
+      .clickFunction(0, 0, ["toast", "999"])
       .debugTransaction(0)
       .pause(2000)
       .goToVMTraceStep(327)
@@ -184,7 +184,7 @@ module.exports = {
       // Step 3: Start a new debugging session
       .clickLaunchIcon('udapp')
       .clearConsole()
-      .clickFunction(0, 0, { types: 'string name, uint256 goal', values: '"test", 100' })
+      .clickFunction(0, 0, ["test", "100"])
       .pause(2000)
       .debugTransaction(0)
       .waitForElementVisible('*[data-id="callTraceHeader"]', 60000)
@@ -193,6 +193,9 @@ module.exports = {
       .waitForElementVisible('*[data-id="ask-remixai-action"]', 10000)
       .click('*[data-id="ask-remixai-action"]')
       .pause(2000) // Wait for the assistant to process and move to right side
+      // Verify the Ask RemixAI button is still visible and hasn't changed to compile button
+      .waitForElementVisible('*[data-id="ask-remixai-action"]', 5000)
+      .assert.textContains('*[data-id="ask-remixai-action"]', 'Ask RemixAI')
       // Step 5: Verify AI assistant is now on the right side panel
       .waitForElementVisible('#right-side-panel', 10000) // Right side panel should be visible
       .waitForElementVisible('*[data-id="movePluginToLeft"]', 10000) // Move to left button indicates it's on right side
@@ -254,7 +257,7 @@ module.exports = {
       .createContract('')
       .clearConsole()
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'bytes userData', values: '0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000015b38da6a701c568545dcfcb03fcb875f56beddc4' })
+      .clickFunction(0, 0, ['0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000015b38da6a701c568545dcfcb03fcb875f56beddc4'])
       .debugTransaction(0)
       .waitForElementVisible('*[data-id="callTraceHeader"]')
       .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 131')
@@ -346,7 +349,7 @@ module.exports = {
       .createContract('')
       .clearConsole()
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256[] ', values: '[]' })
+      .clickFunction(0, 0, ['[]'])
       .debugTransaction(0)
       .pause(2000)
       .click('*[id="debuggerTransactionStartButtonContainer"]') // stop debugging
@@ -466,6 +469,58 @@ module.exports = {
       .pause(500)
       // Verify we jumped to the revert step
       .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 205', 60000)
+  },
+
+  'Should update state during contract creation and function call #group6': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('solidity')
+      .testContracts('owner.sol', sources[7]['owner.sol'], ['Owner'])
+      .clickLaunchIcon('udapp')
+      .selectContract('Owner')
+      .pause(2000)
+      .clearConsole()
+      .createContract('')
+      .pause(2000)
+      // Debug the contract creation transaction (index 0)
+      .debugTransaction(0)
+      .waitForElementVisible('*[data-id="callTraceHeader"]', 60000)
+      .waitForElementVisible('*[data-id="solidityState"]')
+      .click('*[data-id="state-expand-icon"]')
+      .waitForElementVisible('*[data-id="owner-expand-icon"]')
+      .click('*[data-id="owner-expand-icon"]')
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="value-json-value"]', '0x0000000000000000000000000000000000000000', 10000)
+      .goToVMTraceStep(31)
+      .pause(1000)
+      .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 31', 10000)
+      .pause(1000)
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="value-json-value"]', '0x5B38DA6A701C568545DCFCB03FCB875F56BEDDC4', 10000)
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="type-json-value"]', 'address', 10000)
+      // Stop debugger
+      .click('*[id="debuggerTransactionStartButtonContainer"]')
+      .pause(1000)
+      // Now call changeOwner with a different account address
+      .clickLaunchIcon('udapp')
+      .clearConsole()
+      .clickInstance(0)
+      .clickFunction(0, 0, ['0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2'])
+      .pause(2000)
+      // Debug the changeOwner transaction (index 0 after clearing console)
+      .debugTransaction(0)
+      .waitForElementVisible('*[data-id="callTraceHeader"]', 60000)
+      // The state section should still be expanded, but click to expand if collapsed
+      .waitForElementVisible('*[data-id="solidityState"]')
+      .click('*[data-id="state-expand-icon"]')
+      .waitForElementVisible('*[data-id="owner-expand-icon"]')
+      .click('*[data-id="owner-expand-icon"]')
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="value-json-value"]', '0x5B38DA6A701C568545DCFCB03FCB875F56BEDDC4', 10000)
+      // Go to a later step where the owner has been updated
+      .goToVMTraceStep(170)
+      .pause(1000)
+      .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 170', 10000)
+      .pause(10000)
+      // Verify the owner has changed to the new address
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="value-json-value"]', '0xAB8483F64D9C6D1ECF9B849AE677DD3315835CB2', 10000)
+      .waitForElementContainsText('[data-id="owner-json-nested"] [data-id="type-json-value"]', 'address', 10000)
   },
 }
 
@@ -623,6 +678,25 @@ const sources = [
             p = 125;
         }
     }`
+    }
+  },
+  {
+    'owner.sol': {
+      content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Owner {
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function changeOwner(address newOwner) public {
+        require(msg.sender == owner, "Only owner can change owner");
+        owner = newOwner;
+    }
+}`
     }
   }
 ]

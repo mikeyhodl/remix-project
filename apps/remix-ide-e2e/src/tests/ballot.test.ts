@@ -29,7 +29,7 @@ module.exports = {
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c')
       .createContract('["0x48656c6c6f20576f726c64210000000000000000000000000000000000000000"]')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -92,7 +92,7 @@ module.exports = {
         selector: "//*[@id='instance0x692a70D2e424a56D2C6C27aA97D1a86395877b3A']"
       })
       .clickInstance(0)
-      .clickFunction(0, 1, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 1, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '0 Transaction mined but execution failed',
@@ -122,7 +122,7 @@ module.exports = {
       .pause(1000)
       .click('*[data-id="validateWorkspaceButton"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
-      .addFile('contracts/lib/storage/src/Storage.sol', { content: storageContract})
+      .addFile('contracts/lib/storage/src/Storage.sol', { content: storageContract })
       .addFile('remappings.txt', { content: 'storage=contracts/lib/storage/src' })
       .addFile('contracts/Retriever.sol', { content: retrieverContract })
       .verifyContracts(['Retriever', 'Storage'])
@@ -138,7 +138,7 @@ module.exports = {
       .createContract('["0x48656c6c6f20576f726c64210000000000000000000000000000000000000000"]')
       .clickInstance(0)
       .click('*[data-id="terminalClearConsole"]')
-      .clickFunction(0, 0, { types: 'address to', values: '0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c' })
+      .clickFunction(0, 0, ['0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c'])
       .journalLastChildIncludes('Ballot.delegate(address)')
       .journalLastChildIncludes('data: 0x5c1...a733c')
   },
