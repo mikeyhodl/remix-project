@@ -397,6 +397,7 @@ module.exports = {
       .waitForElementContainsText('[data-id="custom-dropdown-items"]', 'origin/main')
       .waitForElementPresent('[data-id="workspaceGit-origin/main"]')
       .click('[data-id="workspaceGit-origin/main"]')
+      .modalFooterOKClick('checkoutRemoteBranch')
       .waitForElementVisible('[data-id="updatesubmodules"]')
       .click('[data-id="updatesubmodules"]')
       .waitForElementPresent('.fa-spinner')
