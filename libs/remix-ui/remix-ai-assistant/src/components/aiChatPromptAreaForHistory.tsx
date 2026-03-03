@@ -130,7 +130,6 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       <PromptArea
         input={props.input}
-        maximizePanel={props.maximizePanel}
         setInput={props.setInput}
         isStreaming={props.isStreaming}
         handleSend={props.handleSend}
@@ -142,7 +141,6 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
-        isMaximized={props.isMaximized}
         assistantChoice={props.assistantChoice}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}

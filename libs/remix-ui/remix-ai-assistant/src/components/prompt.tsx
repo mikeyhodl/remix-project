@@ -31,15 +31,11 @@ export interface PromptAreaProps {
   modelBtnRef: React.RefObject<HTMLButtonElement>
   modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
   textareaRef?: React.RefObject<HTMLTextAreaElement>
-  maximizePanel: () => Promise<void>
-  isMaximized: boolean
   showModelSelector: boolean
   setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
   handleOllamaModelSelection: (modelId: string) => void
   ollamaModels: any[]
   themeTracker: any
-  setShowMenu?: React.Dispatch<React.SetStateAction<boolean>>
-  showMenu?: boolean
   stopRequest: () => void
 }
 
@@ -55,8 +51,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   isRecording,
   modelBtnRef,
   textareaRef,
-  maximizePanel,
-  isMaximized,
   themeTracker,
   ollamaModels,
   showModelSelector,
@@ -146,11 +140,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               data-id="remix-ai-prompt-input"
               value={input}
               disabled={isStreaming}
-              onFocus={() => {
-                if (!isMaximized) {
-                  maximizePanel()
-                }
-              }}
               onChange={e => {
                 setInput(e.target.value)
               }}

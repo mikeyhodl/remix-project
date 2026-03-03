@@ -133,7 +133,6 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
       )}
       <PromptArea
         input={props.input}
-        maximizePanel={props.maximizePanel}
         setInput={props.setInput}
         isStreaming={props.isStreaming}
         handleSend={props.handleSend}
@@ -145,7 +144,6 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
-        isMaximized={props.isMaximized}
         assistantChoice={props.assistantChoice}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}
