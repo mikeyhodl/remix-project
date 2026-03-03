@@ -42,12 +42,12 @@ import { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY, packGitDir, unpackGi
 import { cloudStore } from './cloud-store'
 import { LockHeartbeatManager, acquireLock, releaseLock, releaseLockBeacon } from './cloud-workspace-lock'
 
-const SYNC_INTERVAL_MS = 10_000   // flush pending changes every 10s
-const TOKEN_REFRESH_BUFFER_MS = 60_000  // refresh STS token 60s before expiry
+const SYNC_INTERVAL_MS = 10_000 // flush pending changes every 10s
+const TOKEN_REFRESH_BUFFER_MS = 60_000 // refresh STS token 60s before expiry
 const MANIFEST_FILENAME = '.sync-manifest.json'
-const SNAPSHOT_DEBOUNCE_MS = 30_000  // re-zip 30s after last push flush
-const GIT_SNAPSHOT_DEBOUNCE_MS = 60_000  // re-zip .git 60s after last .git write
-const PARALLEL_CONCURRENCY = 6      // max parallel S3 requests (browser limit per origin)
+const SNAPSHOT_DEBOUNCE_MS = 30_000 // re-zip 30s after last push flush
+const GIT_SNAPSHOT_DEBOUNCE_MS = 60_000 // re-zip .git 60s after last .git write
+const PARALLEL_CONCURRENCY = 6 // max parallel S3 requests (browser limit per origin)
 
 export class CloudSyncEngine {
   private s3: S3Client | null = null
@@ -397,14 +397,14 @@ export class CloudSyncEngine {
       const remoteObjects = await this.s3!.listObjects('')
       const extraDownloads: S3Object[] = []
       for (const obj of remoteObjects) {
-        if (obj.key.endsWith('/')) continue  // skip dir markers
-        if (obj.key === WORKSPACE_ZIP_KEY) continue  // skip the zip itself
+        if (obj.key.endsWith('/')) continue // skip dir markers
+        if (obj.key === WORKSPACE_ZIP_KEY) continue // skip the zip itself
         if (obj.key === GIT_ZIP_KEY) {
           const oldEtag = this._lastGitZipEtag
           this._lastGitZipEtag = obj.etag || null
           continue
         }
-        if (obj.key === '.git' || obj.key.startsWith('.git/')) continue  // skip .git internals
+        if (obj.key === '.git' || obj.key.startsWith('.git/')) continue // skip .git internals
         if (zipManifest.files[obj.key]) {
           // Overwrite with real S3 ETag so incremental diff works next time
           zipManifest.files[obj.key].etag = obj.etag || ''
@@ -716,9 +716,9 @@ export class CloudSyncEngine {
         if (stat.isDirectory()) return
 
         const content = await this.fs.readFile(localPath, 'utf8')
-        if (content == null) return  // guard against undefined readFile results
+        if (content == null) return // guard against undefined readFile results
         const etag = await this.s3.putObject(change.path, content)
-        if (!etag) return  // guard against missing ETag (shouldn't happen)
+        if (!etag) return // guard against missing ETag (shouldn't happen)
         // Capture the ETag from S3's response so the next pull recognises
         // this file as already-synced and skips the GET.
         // Guard: manifest may have been nulled by a concurrent deactivate

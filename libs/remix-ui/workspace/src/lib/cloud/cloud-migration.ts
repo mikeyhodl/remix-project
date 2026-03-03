@@ -41,21 +41,21 @@ export interface LocalWorkspaceInfo {
 
 export type MigrationStatus =
   | 'pending'
-  | 'creating'      // creating cloud workspace via API
-  | 'copying'       // copying files to /.cloud-workspaces/<uuid>
-  | 'uploading'     // uploading to S3
-  | 'verifying'     // LIST check
-  | 'cleaning'      // removing local copy
+  | 'creating' // creating cloud workspace via API
+  | 'copying' // copying files to /.cloud-workspaces/<uuid>
+  | 'uploading' // uploading to S3
+  | 'verifying' // LIST check
+  | 'cleaning' // removing local copy
   | 'done'
   | 'error'
-  | 'skipped'       // user chose not to migrate this one
+  | 'skipped' // user chose not to migrate this one
 
 export interface MigrationItem {
   localName: string
   /** Cloud name (may differ from localName if conflict resolved) */
   cloudName: string
   status: MigrationStatus
-  progress?: string     // human-readable progress text
+  progress?: string // human-readable progress text
   error?: string
   /** Set to true if a cloud workspace with the same name already exists */
   nameConflict: boolean

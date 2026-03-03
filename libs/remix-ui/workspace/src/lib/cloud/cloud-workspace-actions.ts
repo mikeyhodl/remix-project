@@ -45,8 +45,8 @@ import CloudWorkspaceFileProvider from '../../../../../../apps/remix-ide/src/app
 let _plugin: any = null
 let _dispatch: React.Dispatch<any> = null
 let _originalProvider: any = null // the original WorkspaceFileProvider
-let _fsObserverUnsub: (() => void) | null = null  // FS observer subscription
-let _fileOpenListenerActive = false  // whether we're listening to currentFileChanged
+let _fsObserverUnsub: (() => void) | null = null // FS observer subscription
+let _fileOpenListenerActive = false // whether we're listening to currentFileChanged
 
 /** Debounce timer for file explorer refresh triggered by raw FS writes */
 let _refreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -59,7 +59,7 @@ const REFRESH_DEBOUNCE_MS = 600
  * next flush cycle tries to push and gets a 409.
  */
 let _versionCheckTimer: ReturnType<typeof setTimeout> | null = null
-const VERSION_CHECK_DEBOUNCE_MS = 2_000  // 2s after first write activity
+const VERSION_CHECK_DEBOUNCE_MS = 2_000 // 2s after first write activity
 
 /**
  * Build a user-scoped localStorage key.
@@ -184,7 +184,7 @@ export function exitCloudProvider(): void {
  */
 export async function enableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (cloudStore.isCloudMode) return  // already on
+  if (cloudStore.isCloudMode) return // already on
 
   // Remember the current local workspace so we can restore it on disable
   const currentLocal = localStorage.getItem('currentWorkspace')
@@ -256,7 +256,7 @@ export async function enableCloud(): Promise<void> {
  */
 export async function disableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (!cloudStore.isCloudMode) return  // already off
+  if (!cloudStore.isCloudMode) return // already off
 
   // Remember the current cloud workspace for when the user re-enables
   const activeId = cloudStore.getState().activeWorkspaceId
@@ -288,7 +288,7 @@ export async function disableCloud(): Promise<void> {
         const wsPath = `/.workspaces/${targetLocal}`
         await (window as any).remixFileSystem.stat(wsPath)
       } catch {
-        targetLocal = null  // workspace doesn't exist anymore
+        targetLocal = null // workspace doesn't exist anymore
       }
     }
 
@@ -490,7 +490,7 @@ export async function switchToCloudWorkspace(
         return
       }
     } else {
-      throw err  // re-throw non-lock errors
+      throw err // re-throw non-lock errors
     }
   }
 
@@ -712,8 +712,8 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
   if (op.type !== 'mkdir' && op.type !== 'rmdir' && !cloudSyncEngine.isPulling) {
     const changeType = op.type === 'writeFile' ? 'change'
       : op.type === 'unlink' ? 'delete'
-      : op.type === 'rename' ? 'rename'
-      : 'change'
+        : op.type === 'rename' ? 'rename'
+          : 'change'
 
     // For renames:  op.path = old path,  op.newPath = new path
     // The tracked change should have path = new (what to upload) and oldPath = old (what to delete).
@@ -722,7 +722,7 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
       : relativePath
     const changeOldPath = op.type === 'rename' ? relativePath : undefined
 
-    if (!changePath) return  // safety — newPath outside cloud workspace
+    if (!changePath) return // safety — newPath outside cloud workspace
 
     cloudSyncEngine.trackChange({
       path: changePath,

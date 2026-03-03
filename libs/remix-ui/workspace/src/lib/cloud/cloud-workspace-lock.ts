@@ -13,8 +13,8 @@
 
 import { endpointUrls } from '@remix-endpoints-helper'
 
-const LOCK_TTL = 60          // seconds
-const HEARTBEAT_INTERVAL = 20_000  // 20s
+const LOCK_TTL = 60 // seconds
+const HEARTBEAT_INTERVAL = 20_000 // 20s
 
 const lockBase = () => endpointUrls.workspaceLock
 // e.g. "https://auth.api.remix.live:8443/workspace-lock"
@@ -62,7 +62,7 @@ export interface LockAcquireResult {
 
 export interface LockDeniedResult {
   acquired: false
-  holder: string      // device_id of current lock holder
+  holder: string // device_id of current lock holder
   ttlRemaining: number
 }
 

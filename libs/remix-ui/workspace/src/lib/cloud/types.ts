@@ -10,10 +10,10 @@ export interface STSToken {
   accessKeyId: string
   secretAccessKey: string
   sessionToken: string
-  expiration: string   // ISO 8601
+  expiration: string // ISO 8601
   durationSeconds: number
   bucket: string
-  prefix: string       // e.g. "users/42/" or "users/42/a1b2c3d4-.../"
+  prefix: string // e.g. "users/42/" or "users/42/a1b2c3d4-.../"
   region: string
 }
 
@@ -22,12 +22,12 @@ export interface CloudWorkspace {
   uuid: string
   user_id: number
   name: string
-  created_at: string   // ISO 8601
+  created_at: string // ISO 8601
   last_modified: string
   file_count: number
-  total_size: number   // bytes
+  total_size: number // bytes
   migrated_from_local: boolean
-  version: number      // optimistic concurrency counter
+  version: number // optimistic concurrency counter
 }
 
 // ── Version conflict from PATCH /api/workspaces/:uuid ──
@@ -42,11 +42,11 @@ export type FileSyncStatus = 'synced' | 'modified' | 'uploading' | 'error'
 
 // ── Per-file change record tracked by the change tracker ──
 export interface FileChangeRecord {
-  path: string            // workspace-relative path
+  path: string // workspace-relative path
   type: 'add' | 'change' | 'delete' | 'rename'
   timestamp: number
-  oldPath?: string        // only for renames
-  _retryCount?: number    // internal: number of times this change has been re-queued
+  oldPath?: string // only for renames
+  _retryCount?: number // internal: number of times this change has been re-queued
 }
 
 // ── Overall cloud state exposed via React context ──

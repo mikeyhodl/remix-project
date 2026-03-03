@@ -22,7 +22,7 @@ import {
 
 interface CloudProviderProps {
   children: React.ReactNode
-  plugin: any  // the filePanel plugin, needed to listen for auth events
+  plugin: any // the filePanel plugin, needed to listen for auth events
 }
 
 /**
@@ -56,7 +56,7 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
         } catch (err) {
           console.error('[CloudProvider] Failed to disable cloud on logout:', err)
         }
-        cloudStore.exitCloudMode()  // full reset including isAuthenticated
+        cloudStore.exitCloudMode() // full reset including isAuthenticated
       }
     }
 

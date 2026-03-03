@@ -112,18 +112,18 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
   // ── Refresh workspace list when cloud mode changes ──
   useEffect(() => {
     if (platform === appPlatformTypes.desktop) return
-      ; (async () => {
-        try {
-          const workspaces = await getWorkspaces()
-          const updated = (workspaces || []).map((workspace) => {
-            (workspace as any).submenu = subItems
-            return workspace as any
-          })
-          setMenuItems(updated)
-        } catch (error) {
-          console.info('[WorkspaceDropdown] Error fetching workspaces on cloud mode change:', error)
-        }
-      })()
+    ; (async () => {
+      try {
+        const workspaces = await getWorkspaces()
+        const updated = (workspaces || []).map((workspace) => {
+          (workspace as any).submenu = subItems
+          return workspace as any
+        })
+        setMenuItems(updated)
+      } catch (error) {
+        console.info('[WorkspaceDropdown] Error fetching workspaces on cloud mode change:', error)
+      }
+    })()
   }, [isCloudMode, cloudState.cloudWorkspaces.length, platform])
 
   const subItems = useMemo(() => {
@@ -358,7 +358,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                     container={document.body}
                     popperConfig={{
                       modifiers: [
-                        { name: "offset", options: { offset: [8, 22] } },
+                        { name: "offset", options: { offset: [8, 22]} },
                         { name: "preventOverflow", options: { boundary: "viewport", padding: 8 } },
                         { name: 'flip', options: { enabled: false } }
                       ],

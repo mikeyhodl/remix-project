@@ -6,7 +6,7 @@ import './login-modal.css'
 
 interface LoginModalProps {
   onClose: () => void
-  plugin?: any  // Remix plugin instance — needed to emit authStateChanged for cloud
+  plugin?: any // Remix plugin instance — needed to emit authStateChanged for cloud
 }
 
 interface ProviderConfig {

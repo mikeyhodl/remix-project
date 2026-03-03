@@ -107,7 +107,7 @@ export class S3Client {
       headers,
     })
 
-    if (res.status === 304) return null  // Not Modified
+    if (res.status === 304) return null // Not Modified
     if (res.status === 404 || res.status === 403) return null
     if (!res.ok) {
       const text = await res.text()
@@ -364,6 +364,7 @@ async function gzipCompress(data: Uint8Array): Promise<Uint8Array> {
     writer.close()
     const reader = cs.readable.getReader()
     const chunks: Uint8Array[] = []
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
@@ -396,6 +397,7 @@ async function gzipDecompress(data: Uint8Array): Promise<Uint8Array> {
   writer.close()
   const reader = ds.readable.getReader()
   const chunks: Uint8Array[] = []
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const { done, value } = await reader.read()
     if (done) break

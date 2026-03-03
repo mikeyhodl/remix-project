@@ -46,7 +46,7 @@ let _listeners: FSWriteListener[] = []
 let _debug = false
 
 /** Original (unpatched) method references, keyed by method name */
-const _originals: Record<string, Function> = {}
+const _originals: Record<string, (...args: unknown[]) => unknown> = {}
 
 /** The PromisifiedFS object we patched (for cleanup) */
 let _patchedPromises: any = null
@@ -104,7 +104,7 @@ export function enableCloudFSObserver(): void {
   if (promises.rename) {
     _originals['rename'] = promises.rename.bind(promises)
     promises.rename = async function (oldPath: string, newPath: string, ...rest: any[]) {
-      if (_debug) console.debug(`[CloudFSObserver] Intercepted rename with args:`, [oldPath, newPath, ...rest]) 
+      if (_debug) console.debug(`[CloudFSObserver] Intercepted rename with args:`, [oldPath, newPath, ...rest])
       const result = await _originals['rename'](oldPath, newPath, ...rest)
       // Emit for both old (delete-like) and new (add-like) paths
       notify({ type: 'rename', path: oldPath, newPath })

@@ -119,7 +119,7 @@ class CloudStore extends EventEmitter {
 
   /** Add a single newly-created workspace */
   addCloudWorkspace(workspace: CloudWorkspace) {
-    this.setState({ cloudWorkspaces: [...this.state.cloudWorkspaces, workspace] })
+    this.setState({ cloudWorkspaces: [...this.state.cloudWorkspaces, workspace]})
   }
 
   /** Remove a workspace by UUID */

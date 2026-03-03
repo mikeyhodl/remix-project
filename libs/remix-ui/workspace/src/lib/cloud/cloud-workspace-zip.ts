@@ -172,7 +172,7 @@ export async function unpackWorkspace(
         const data = await zipEntry.async('uint8array')
         await fs.writeFile(localPath, data)
         manifest.files[relativePath] = {
-          etag: '',  // will be updated from LIST response
+          etag: '', // will be updated from LIST response
           lastModified: new Date().toISOString(),
           size: data.byteLength,
         }
@@ -180,7 +180,7 @@ export async function unpackWorkspace(
         const text = await zipEntry.async('string')
         await fs.writeFile(localPath, text, 'utf8')
         manifest.files[relativePath] = {
-          etag: '',  // will be updated from LIST response
+          etag: '', // will be updated from LIST response
           lastModified: new Date().toISOString(),
           size: new TextEncoder().encode(text).byteLength,
         }

@@ -64,15 +64,15 @@ const STATUS_LABELS: Record<MigrationStatus, string> = {
 
 /** Icon + color per status */
 const STATUS_ICONS: Record<MigrationStatus, { icon: string; color: string }> = {
-  pending:   { icon: 'far fa-circle',                     color: 'var(--bs-secondary)' },
-  creating:  { icon: 'fas fa-spinner fa-spin',            color: 'var(--bs-info)' },
-  copying:   { icon: 'fas fa-copy fa-beat-fade',          color: 'var(--bs-info)' },
+  pending:   { icon: 'far fa-circle', color: 'var(--bs-secondary)' },
+  creating:  { icon: 'fas fa-spinner fa-spin', color: 'var(--bs-info)' },
+  copying:   { icon: 'fas fa-copy fa-beat-fade', color: 'var(--bs-info)' },
   uploading: { icon: 'fas fa-cloud-arrow-up fa-beat-fade', color: 'var(--bs-primary)' },
-  verifying: { icon: 'fas fa-shield-halved fa-spin',      color: 'var(--bs-info)' },
-  cleaning:  { icon: 'fas fa-broom',                      color: 'var(--bs-warning)' },
-  done:      { icon: 'fas fa-circle-check',               color: 'var(--bs-success)' },
-  error:     { icon: 'fas fa-circle-xmark',               color: 'var(--bs-danger)' },
-  skipped:   { icon: 'fas fa-minus-circle',               color: 'var(--bs-secondary)' },
+  verifying: { icon: 'fas fa-shield-halved fa-spin', color: 'var(--bs-info)' },
+  cleaning:  { icon: 'fas fa-broom', color: 'var(--bs-warning)' },
+  done:      { icon: 'fas fa-circle-check', color: 'var(--bs-success)' },
+  error:     { icon: 'fas fa-circle-xmark', color: 'var(--bs-danger)' },
+  skipped:   { icon: 'fas fa-minus-circle', color: 'var(--bs-secondary)' },
 }
 
 /** Steps in order, for the step indicator */
@@ -108,13 +108,13 @@ function getItemProgress(item: MigrationItem): number {
 
   // uploading: snapshot = 10%, files = 60%
   if (item.status === 'uploading') {
-    const snapshotPct = item.snapshotDone ? 10 : 5  // halfway through snapshot
+    const snapshotPct = item.snapshotDone ? 10 : 5 // halfway through snapshot
     const total = item.totalFiles || 1
     const uploaded = item.uploadedFiles || 0
     const filePct = Math.round((uploaded / total) * 60)
     return pct + snapshotPct + filePct
   }
-  pct += 70  // snapshot + files done
+  pct += 70 // snapshot + files done
 
   // verifying = 5%
   if (item.status === 'verifying') return pct + 2

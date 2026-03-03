@@ -24,73 +24,73 @@ export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
     title: string
     animate?: string
 } {
-    if (!status) {
-        // No status yet — initial/unknown
-        return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
-    }
-
-    if (status.status === 'loading') {
-        return {
-            icon: 'fas fa-cloud-arrow-down',
-            color: 'var(--bs-info)',
-            title: 'Loading workspace…',
-            animate: 'fa-beat-fade',
-        }
-    }
-
-    if (status.status === 'syncing') {
-        return {
-            icon: 'fas fa-cloud',
-            color: 'var(--bs-warning)',
-            title: 'Syncing…',
-            animate: 'fa-beat-fade',
-        }
-    }
-
-    if (status.status === 'pushing') {
-        return {
-            icon: 'fas fa-cloud-arrow-up',
-            color: 'var(--bs-info)',
-            title: 'Uploading changes…',
-            animate: 'fa-beat-fade',
-        }
-    }
-
-    if (status.status === 'error') {
-        return {
-            icon: 'fas fa-cloud-bolt',
-            color: 'var(--bs-danger)',
-            title: `Sync error${status.error ? ': ' + status.error : ''}`,
-        }
-    }
-
-    // idle
-    if (status.pendingChanges > 0) {
-        return {
-            icon: 'fas fa-cloud-arrow-up',
-            color: 'var(--bs-warning)',
-            title: `${status.pendingChanges} pending change${status.pendingChanges !== 1 ? 's' : ''}`,
-        }
-    }
-
-    if (status.lastSync) {
-        return {
-            icon: 'fas fa-cloud',
-            color: 'var(--bs-success)',
-            title: `Synced ${formatRelativeTime(status.lastSync)}`,
-        }
-    }
-
-    // idle, no pending, never synced
+  if (!status) {
+    // No status yet — initial/unknown
     return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+  }
+
+  if (status.status === 'loading') {
+    return {
+      icon: 'fas fa-cloud-arrow-down',
+      color: 'var(--bs-info)',
+      title: 'Loading workspace…',
+      animate: 'fa-beat-fade',
+    }
+  }
+
+  if (status.status === 'syncing') {
+    return {
+      icon: 'fas fa-cloud',
+      color: 'var(--bs-warning)',
+      title: 'Syncing…',
+      animate: 'fa-beat-fade',
+    }
+  }
+
+  if (status.status === 'pushing') {
+    return {
+      icon: 'fas fa-cloud-arrow-up',
+      color: 'var(--bs-info)',
+      title: 'Uploading changes…',
+      animate: 'fa-beat-fade',
+    }
+  }
+
+  if (status.status === 'error') {
+    return {
+      icon: 'fas fa-cloud-bolt',
+      color: 'var(--bs-danger)',
+      title: `Sync error${status.error ? ': ' + status.error : ''}`,
+    }
+  }
+
+  // idle
+  if (status.pendingChanges > 0) {
+    return {
+      icon: 'fas fa-cloud-arrow-up',
+      color: 'var(--bs-warning)',
+      title: `${status.pendingChanges} pending change${status.pendingChanges !== 1 ? 's' : ''}`,
+    }
+  }
+
+  if (status.lastSync) {
+    return {
+      icon: 'fas fa-cloud',
+      color: 'var(--bs-success)',
+      title: `Synced ${formatRelativeTime(status.lastSync)}`,
+    }
+  }
+
+  // idle, no pending, never synced
+  return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
 }
 
 function formatRelativeTime(ts: number): string {
-    const diff = Date.now() - ts
-    if (diff < 60_000) return 'just now'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-    return new Date(ts).toLocaleDateString()
+  const diff = Date.now() - ts
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return new Date(ts).toLocaleDateString()
 }
 
 // ── Inline icon for workspace dropdown items ──────────────────────────
@@ -110,21 +110,21 @@ interface CloudSyncStatusIconProps {
  * in the workspace dropdown.
  */
 export const CloudSyncStatusIcon: React.FC<CloudSyncStatusIconProps> = ({
-    remoteId,
-    className = 'ms-2',
-    fontSize = '0.8em',
+  remoteId,
+  className = 'ms-2',
+  fontSize = '0.8em',
 }) => {
-    const { syncStatus } = useCloudStore()
-    const ws = syncStatus[remoteId]
-    const { icon, color, title, animate } = getSyncIconProps(ws)
+  const { syncStatus } = useCloudStore()
+  const ws = syncStatus[remoteId]
+  const { icon, color, title, animate } = getSyncIconProps(ws)
 
-    return (
-        <i
-            className={`${icon}${animate ? ' ' + animate : ''} ${className}`}
-            style={{ color, fontSize }}
-            title={title}
-        />
-    )
+  return (
+    <i
+      className={`${icon}${animate ? ' ' + animate : ''} ${className}`}
+      style={{ color, fontSize }}
+      title={title}
+    />
+  )
 }
 
 // ── Cloud Toggle (with integrated sync status icon) ───────────────────
