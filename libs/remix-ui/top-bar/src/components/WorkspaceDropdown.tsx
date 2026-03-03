@@ -58,6 +58,7 @@ interface WorkspacesDropdownProps {
   setMenuItems: (menuItems: MenuItem[]) => void
   connectToLocalhost: () => void
   openTemplateExplorer: () => void
+  onMigrateToCloud?: () => void
 }
 
 function useClickOutside(refs: React.RefObject<HTMLElement>[], handler: () => void) {
@@ -81,7 +82,7 @@ const ITEM_LABELS = [
   "Fifth item",
 ]
 
-export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItems, NO_WORKSPACE, switchWorkspace, CustomToggle, createWorkspace, downloadCurrentWorkspace, restoreBackup, deleteAllWorkspaces, setCurrentMenuItemName, setMenuItems, renameCurrentWorkspace, deleteCurrentWorkspace, downloadWorkspaces, connectToLocalhost, openTemplateExplorer }) => {
+export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItems, NO_WORKSPACE, switchWorkspace, CustomToggle, createWorkspace, downloadCurrentWorkspace, restoreBackup, deleteAllWorkspaces, setCurrentMenuItemName, setMenuItems, renameCurrentWorkspace, deleteCurrentWorkspace, downloadWorkspaces, connectToLocalhost, openTemplateExplorer, onMigrateToCloud }) => {
   const [showMain, setShowMain] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [openSub, setOpenSub] = useState<number | null>(null)
@@ -492,6 +493,25 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
               </>
             )
           })()}
+
+          {/* ── Cloud mode: migrate local workspaces button ── */}
+          {isCloudMode && onMigrateToCloud && (
+            <>
+              <Dropdown.Divider className="border mb-0 mt-0 remixui_menuhr" style={{ pointerEvents: 'none' }} />
+              <Dropdown.Item
+                onClick={(e) => {
+                  onMigrateToCloud()
+                  setDropdownOpen(false)
+                }}
+                data-id="workspaceMigrateToCloud"
+              >
+                <span className="d-flex align-items-center">
+                  <i className="fas fa-cloud-upload-alt me-2" style={{ color: 'var(--bs-info)' }}></i>
+                  Migrate local workspaces to cloud
+                </span>
+              </Dropdown.Item>
+            </>
+          )}
 
           {/* ── Legacy mode only: Backup, Restore, Localhost, Delete All ── */}
           {!isCloudMode && (

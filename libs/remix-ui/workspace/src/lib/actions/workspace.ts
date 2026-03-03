@@ -659,7 +659,7 @@ export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, r
           _creatingDefaultCloudWorkspace = true
           try {
             plugin.call('notification', 'toast', 'Creating default cloud workspace…')
-            await createWorkspace('default_workspace', 'remixDefault')
+            await createWorkspace('cloud workspace', 'remixDefault')
           } finally {
             _creatingDefaultCloudWorkspace = false
           }
@@ -747,7 +747,7 @@ export const switchToWorkspace = async (name: string) => {
     if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true
     try {
       plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
-      await createWorkspace('default_workspace', 'remixDefault')
+      await createWorkspace('cloud workspace', 'remixDefault')
     } finally {
       if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = false
     }

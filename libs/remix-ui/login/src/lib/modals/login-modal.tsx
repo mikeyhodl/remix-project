@@ -123,6 +123,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const handleLogin = async (provider: AuthProvider) => {
     try {
       await login(provider)
+      // Close the modal after successful login
+      onClose()
     } catch (err) {
       console.error('[LoginModal] Login failed:', err)
     }
@@ -264,6 +266,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
         }
 
         console.log('[LoginModal] Email OTP login successful')
+        // Close the modal after successful login
+        onClose()
       } else {
         throw new Error('Invalid response from server')
       }

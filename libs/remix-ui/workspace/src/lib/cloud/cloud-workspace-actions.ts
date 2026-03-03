@@ -223,14 +223,11 @@ export async function enableCloud(): Promise<void> {
         console.error('[enableCloud] Failed to switch to cloud workspace:', err)
       }
     } else {
-      // No cloud workspaces yet — create a default one with template files.
-      // Uses the registered createWorkspace callback from workspace.ts which
-      // handles: API creation, template file population, sync engine setup,
-      // Redux dispatches, and file change tracking — all in the right order.
+      // No cloud workspaces yet — create a default one.
       cloudStore.setLoading(false)
       if (_createDefaultWorkspaceFn) {
         try {
-          await _createDefaultWorkspaceFn('default_workspace', 'remixDefault')
+          await _createDefaultWorkspaceFn('cloud workspace', 'remixDefault')
         } catch (err) {
           console.error('[enableCloud] Failed to create default cloud workspace:', err)
         }

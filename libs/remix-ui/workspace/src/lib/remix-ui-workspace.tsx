@@ -10,8 +10,8 @@ import './css/remix-ui-workspace.css'
 import { ROOT_PATH, TEMPLATE_NAMES } from './utils/constants'
 import { HamburgerMenu } from './components/workspace-hamburger'
 import { CloudMigrationDialog } from './cloud/cloud-migration-dialog'
-import { hasPendingMigrations } from './cloud/cloud-migration'
-import { useCloudStore } from './cloud/cloud-store'
+import { useCloudStore, cloudStore } from './cloud/cloud-store'
+import { switchToCloudWorkspace, startFileChangeTracking, cloudLocalKey } from './cloud/cloud-workspace-actions'
 import { CloudSyncStatusIcon } from './cloud/cloud-sync-status-icon'
 
 import { MenuItems, WorkSpaceState, WorkspaceMetadata } from './types'
@@ -60,6 +60,13 @@ export function Workspace() {
   const [canPaste, setCanPaste] = useState(false)
   const [showMigrationDialog, setShowMigrationDialog] = useState(false)
   const { isCloudMode, activeWorkspaceId, syncStatus } = useCloudStore()
+
+  // ── Listen for migration dialog trigger from the top-bar dropdown ──
+  useEffect(() => {
+    const handler = () => setShowMigrationDialog(true)
+    cloudStore.on('showMigrationDialog', handler)
+    return () => { cloudStore.off('showMigrationDialog', handler) }
+  }, [])
   const isCloudLoading = isCloudMode && activeWorkspaceId
     ? (syncStatus[activeWorkspaceId]?.status === 'loading' || syncStatus[activeWorkspaceId]?.status === 'syncing')
     : false
@@ -150,23 +157,6 @@ export function Workspace() {
       ])
     }
   }, [canPaste])
-
-  // ── Auto-show migration dialog on first cloud login ──
-  useEffect(() => {
-    if (!isCloudMode) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const pending = await hasPendingMigrations()
-        if (!cancelled && pending) {
-          setShowMigrationDialog(true)
-        }
-      } catch (e) {
-        console.warn('[Workspace] Failed to check pending migrations:', e)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [isCloudMode])
 
   const [modalState, setModalState] = useState<{
     searchInput: string
@@ -1511,10 +1501,31 @@ export function Workspace() {
 
       <CloudMigrationDialog
         visible={showMigrationDialog}
-        onHide={() => setShowMigrationDialog(false)}
-        onMigrationComplete={() => {
-          // Refresh workspace list after migration
-          global.dispatchFetchWorkspaceDirectory('/')
+        onHide={() => {
+          setShowMigrationDialog(false)
+        }}
+        onMigrationComplete={async () => {
+          setShowMigrationDialog(false)
+          // After migration, switch to the first available cloud workspace
+          try {
+            const freshWorkspaces = cloudStore.getState().cloudWorkspaces
+            if (freshWorkspaces.length > 0) {
+              const targetWs = freshWorkspaces[0]
+              cloudStore.setActiveCloudWorkspace(targetWs.uuid)
+              cloudStore.updateSyncStatus(targetWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+              await switchToCloudWorkspace(targetWs, (status) => {
+                cloudStore.updateSyncStatus(targetWs.uuid, status)
+              })
+              const workspaceProvider = global.plugin.fileProviders?.workspace
+              if (workspaceProvider) {
+                startFileChangeTracking(workspaceProvider, targetWs.uuid)
+              }
+              global.dispatchFetchWorkspaceDirectory('/')
+              localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), targetWs.name)
+            }
+          } catch (err) {
+            console.error('[Workspace] Failed to switch to migrated workspace:', err)
+          }
         }}
         plugin={global.plugin}
       />

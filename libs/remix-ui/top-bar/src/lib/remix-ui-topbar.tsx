@@ -7,6 +7,7 @@ import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/com
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
 import { CloudToggle } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
 import { enableCloud, disableCloud } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-workspace-actions'
+import { cloudStore } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-store'
 import { AppContext, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { useAuth } from 'libs/remix-ui/app/src/lib/remix-app/context/auth-context'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -602,6 +603,7 @@ export function RemixUiTopbar() {
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
             openTemplateExplorer={openTemplateExplorer}
+            onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
           />
           <div className="d-flex ms-4 gap-2 align-items-center" >
             <CustomTooltip placement="bottom-start" tooltipText={`Toggle Left Side Panel`}>
