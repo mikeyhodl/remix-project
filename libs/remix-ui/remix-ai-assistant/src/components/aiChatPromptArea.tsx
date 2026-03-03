@@ -1,4 +1,4 @@
-import React, { Dispatch } from 'react'
+import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { AiAssistantType } from '../types/componentTypes'
@@ -18,7 +18,6 @@ interface AiChatPromptAreaProps {
     setShowAssistantOptions: React.Dispatch<React.SetStateAction<boolean>>
     assistantChoice: any
     setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
-    aiAssistantGroupList: any[]
     mcpEnabled: boolean
     mcpEnhanced: boolean
     setMcpEnhanced: React.Dispatch<React.SetStateAction<boolean>>
