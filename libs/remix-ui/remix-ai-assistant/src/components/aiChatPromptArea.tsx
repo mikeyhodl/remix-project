@@ -1,4 +1,4 @@
-import React, { Dispatch } from 'react'
+import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { AiAssistantType } from '../types/componentTypes'
