@@ -26,6 +26,7 @@ import type { TxResult } from '@remix-project/remix-lib';
 import { BrowserProvider, formatEther } from "ethers"
 import { toNumber } from 'ethers'
 import { execution } from '@remix-project/remix-lib';
+import { CompilerAbstract } from '@remix-project/remix-solidity';
 const { txFormat, txHelper: { makeFullTypeDefinition } } = execution;
 
 /**
@@ -67,12 +68,8 @@ export class DeployContractHandler extends BaseToolHandler {
         type: 'string',
         description: 'Account to deploy from (address or index)'
       },
-      file: {
-        type: 'string',
-        description: 'The file containing the contract to deploy'
-      }
     },
-    required: ['contractName', 'file']
+    required: ['contractName']
   };
 
   getPermissions(): string[] {
@@ -102,11 +99,11 @@ export class DeployContractHandler extends BaseToolHandler {
   async execute(args: DeployContractArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       // Get compilation result to find contract
-      const compilerAbstract = await plugin.call('compilerArtefacts', 'getCompilerAbstract', args.file) as any;
-      const data = getContractData(args.contractName, compilerAbstract)
-      if (!data) {
+      const compilerArtefact = await plugin.call('compilerArtefacts', 'getCompilerAbstractByContractName', args.contractName) as CompilerAbstract;
+      if (!compilerArtefact) {
         return this.createErrorResult(`Could not retrieve contract data for '${args.contractName}'`);
       }
+      const data = getContractData(args.contractName, compilerArtefact)
       await plugin.call('sidePanel', 'showContent', 'udapp' )
       plugin.emit('setValueRequest', args.value || '0', 'wei')
       if (args.value && args.value !== '0') {
