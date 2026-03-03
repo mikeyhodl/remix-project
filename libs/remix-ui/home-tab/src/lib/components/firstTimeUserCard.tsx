@@ -53,7 +53,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
         {/* Welcome Header */}
         <div className="text-center mb-4">
           <h4 className="mb-2 fw-bold" style={{ color: isDark ? 'white' : 'black' }}>
-            <FormattedMessage id="homeTab.newToRemix" defaultMessage="New to Remix? here's what you can do" />
+            <FormattedMessage id="homeTab.newToRemix" defaultMessage="First time in Remix? here's what you can do" />
           </h4>
           <p className="mb-0 small" style={{ color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }}>
             Start your blockchain development journey with these interactive guides
@@ -96,7 +96,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                   Learn the Foundation
                 </h5>
                 <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
-                  Why Ethereum and decentralized applications are important
+                  Why buiding decentralized applications matter
                 </p>
               </div>
             </div>
@@ -148,7 +148,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                   Build Your First Contract
                 </h5>
                 <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
-                  Get started with a typical and well used smart contract on Ethereum
+                  Get started with a typical and well known smart contract on Ethereum
                 </p>
               </div>
             </div>

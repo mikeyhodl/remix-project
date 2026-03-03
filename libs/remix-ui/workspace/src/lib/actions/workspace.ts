@@ -347,7 +347,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
-
+  console.log('Loading workspace preset with template:', template, 'and URL params:', params)
   switch (template) {
   case 'code-template':
     // creates a new workspace code-sample and loads code from url params.
