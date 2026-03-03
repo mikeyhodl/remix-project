@@ -5,16 +5,13 @@ import '../css/remix-ai-assistant.css'
 import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, AIModel } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 import '../css/color.css'
-import { Plugin } from '@remixproject/engine'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, RemixAIAssistantEvent } from '@remix-api'
+import { MatomoEvent, AIEvent } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
-import { PromptArea } from './prompt'
 import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage, ConversationMetadata } from '../lib/types'
 import { groupListType } from '../types/componentTypes'
-import GroupListMenu from './contextOptMenu'
 import { useOnClickOutside } from './onClickOutsideHook'
 import { RemixAIAssistant } from 'apps/remix-ide/src/app/plugins/remix-ai-assistant'
 import { useAudioTranscription } from '../hooks/useAudioTranscription'
@@ -60,7 +57,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages || [])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [showAssistantOptions, setShowAssistantOptions] = useState(false)
   const [showModelOptions, setShowModelOptions] = useState(false)
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [assistantChoice, setAssistantChoice] = useState<'openai' | 'mistralai' | 'anthropic' | 'ollama'>(
@@ -80,8 +76,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     baseTrackEvent?.<T>(event)
   }
   const modelAccess = useModelAccess()
+  const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
+  const menuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
-  const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [themeTracker, setThemeTracker] = useState(null)
@@ -313,7 +310,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const stopRequest = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
-      abortControllerRef.current = null
       setIsStreaming(false)
 
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
@@ -336,6 +332,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         timestamp: Date.now()
       }
       setMessages(prev => [...prev, userMsg])
+
+      // If this is the first message in the conversation, optimistically show it in the sidebar
+      if (messages.length === 0 && props.currentConversationId) {
+        props.plugin.onFirstPromptSent(props.currentConversationId, trimmed)
+      }
 
       // Track tool execution timeout to clear it when content arrives
       let clearToolTimeout: NodeJS.Timeout | null = null
@@ -505,7 +506,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -520,7 +521,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -535,7 +536,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             }
@@ -559,7 +560,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             },
             reasoningCallback
@@ -575,7 +576,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
-              ChatHistory.pushHistory(trimmed, finalText)
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             }
           )
@@ -614,48 +615,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setInput('')
   }, [input, sendPrompt])
 
-  const handleCancel = useCallback(() => {
-    stopRequest()
-  }, [stopRequest])
-
-  const handleSetAssistant = useCallback(() => {
-    dispatchActivity('button', 'setAssistant')
-    setShowAssistantOptions(prev => !prev)
-  }, [])
-
-  // Only send the /setAssistant command when the choice actually changes
-  useEffect(() => {
-    const fetchAssistantChoice = async () => {
-      const choiceSetting = await props.plugin.call('remixAI', 'getAssistantProvider')
-      if (choiceSetting !== assistantChoice) {
-        // Don't send success messages if this is a fallback from Ollama failure
-        if (!isOllamaFailureFallback) {
-          dispatchActivity('button', 'setAssistant')
-          setMessages([])
-          sendPrompt(`/setAssistant ${assistantChoice}`)
-          trackMatomoEvent<AIEvent>({ category: 'ai', action: 'SetAIProvider', name: assistantChoice, isClick: true })
-          // Log specific Ollama selection
-          if (assistantChoice === 'ollama') {
-            trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_provider_selected', value: `from:${choiceSetting || 'unknown'}`, isClick: false })
-          }
-        } else {
-          // This is a fallback, just update the backend silently
-          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_fallback_to_provider', value: `${assistantChoice}|from:${choiceSetting}`, isClick: false })
-          await props.plugin.call('remixAI', 'setAssistantProvider', assistantChoice)
-        }
-        setAssistantChoice(assistantChoice || 'mistralai')
-
-        // Reset the fallback flag after handling
-        if (isOllamaFailureFallback) {
-          setIsOllamaFailureFallback(false)
-        }
-      }
-    }
-    fetchAssistantChoice()
-  }, [assistantChoice, isOllamaFailureFallback])
-
   useEffect(() => {
     const handleMCPToggle = async () => {
+      // Only toggle MCP if it's enabled via query parameter
+      if (!mcpEnabled) {
+        // Ensure MCP is disabled if query param is not set
+        try {
+          await props.plugin.call('remixAI', 'disableMCPEnhancement')
+        } catch (error) {
+          console.warn('Failed to disable MCP enhancement:', error)
+        }
+        return
+      }
+
       try {
         if (mcpEnhanced) {
           await props.plugin.call('remixAI', 'enableMCPEnhancement')
@@ -666,8 +638,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         console.warn('Failed to toggle MCP enhancement:', error)
       }
     }
-    handleMCPToggle()
-  }, [mcpEnhanced])
+    if (mcpEnhanced !== null) { // Only call when state is initialized
+      handleMCPToggle()
+    }
+  }, [mcpEnhanced, mcpEnabled])
 
   // Fetch available Ollama models when Ollama model is selected
   useEffect(() => {
@@ -896,9 +870,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     await props.plugin.call('layout', 'maximiseRightSidePanel')
   }
 
-  const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
-  const menuRef = useRef<any>()
-
   useEffect(() => {
     if (showModelSelector && modelBtnRef.current && menuRef.current) {
       // Use requestAnimationFrame to ensure menu is rendered and has dimensions
@@ -975,6 +946,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showButton={showButton}
               setShowButton={setShowButton}
               theme={themeTracker?.name}
+              chatTitle={messages.find(m => m.role === 'user')?.content}
             />
             <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
               <div data-id="remix-ai-assistant-ready"></div>
@@ -1015,7 +987,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 </button>
               </div>
               {/* Chat history content */}
-              <div className="flex-grow-1" style={{ overflow: 'hidden' }}>
+              <div className="flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
                 <ChatHistorySidebar
                   conversations={props.conversations}
                   currentConversationId={props.currentConversationId || null}
@@ -1049,6 +1021,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 showButton={showButton}
                 setShowButton={setShowButton}
                 theme={themeTracker?.name}
+                chatTitle={messages.find(m => m.role === 'user')?.content}
               />
               <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
                 <div data-id="remix-ai-assistant-ready"></div>
@@ -1080,10 +1053,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             themeTracker={themeTracker}
             showHistorySidebar={props.showHistorySidebar || false}
             isMaximized={false}
-            showAssistantOptions={showAssistantOptions}
             modelOpt={modelOpt}
             menuRef={menuRef}
-            setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
             mcpEnabled={mcpEnabled}
@@ -1099,7 +1070,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             stopRequest={stopRequest}
             showModelOptions={showModelOptions}
             setShowModelOptions={setShowModelOptions}
-            handleSetAssistant={handleSetAssistant}
             handleSetModel={handleSetModel}
             handleGenerateWorkspace={handleGenerateWorkspace}
             handleRecord={handleRecord}
@@ -1125,10 +1095,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             themeTracker={themeTracker}
             showHistorySidebar={props.showHistorySidebar || false}
             isMaximized={false}
-            showAssistantOptions={showAssistantOptions}
             modelOpt={modelOpt}
             menuRef={menuRef}
-            setShowAssistantOptions={setShowAssistantOptions}
             assistantChoice={assistantChoice}
             setAssistantChoice={setAssistantChoice}
             mcpEnabled={mcpEnabled}
@@ -1144,7 +1112,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             stopRequest={stopRequest}
             showModelOptions={showModelOptions}
             setShowModelOptions={setShowModelOptions}
-            handleSetAssistant={handleSetAssistant}
             handleSetModel={handleSetModel}
             handleGenerateWorkspace={handleGenerateWorkspace}
             handleRecord={handleRecord}

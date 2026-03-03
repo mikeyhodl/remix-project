@@ -11,10 +11,8 @@ interface AiChatPromptAreaForHistoryProps {
       themeTracker: any
       showHistorySidebar: boolean
       isMaximized: boolean
-      showAssistantOptions: boolean
       modelOpt: { top: number, left: number }
       menuRef: React.RefObject<HTMLDivElement>
-      setShowAssistantOptions: React.Dispatch<React.SetStateAction<boolean>>
       assistantChoice: any
       setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
       mcpEnabled: boolean
@@ -30,7 +28,6 @@ interface AiChatPromptAreaForHistoryProps {
       stopRequest: () => void
       showModelOptions: boolean
       setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
-      handleSetAssistant: () => void
       handleSetModel: () => void
       handleGenerateWorkspace: () => void
       handleRecord: () => void
@@ -133,7 +130,6 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       <PromptArea
         input={props.input}
-        maximizePanel={props.maximizePanel}
         setInput={props.setInput}
         isStreaming={props.isStreaming}
         handleSend={props.handleSend}
@@ -145,10 +141,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
-        isMaximized={props.isMaximized}
-        showAssistantOptions={props.showAssistantOptions}
         assistantChoice={props.assistantChoice}
-        handleSetAssistant={props.handleSetAssistant}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}
         showOllamaModelSelector={props.showOllamaModelSelector}

@@ -21,18 +21,21 @@ export function PromptActiveButtons(props: PromptActiveButtonsProps) {
         backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
       }}
     >
-      <button className="btn btn-sm small font-weight-light text-secondary rounded-3" style={{
-        backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#e4e8f1' : '#2a2c3f'
+      <button className="btn btn-sm small font-weight-light text-secondary d-flex justify-content-center align-items-center" style={{
+        backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#e4e8f1' : '#2a2c3f',
+        width: '2rem',
+        height: '2rem',
+        padding: 0
       }}
       onClick={props.handleRecordingStoppage}
       >
-        <i className="fas fa-stop me-2 text-danger"></i>
+        <i className="fas fa-stop text-danger"></i>
       </button>
       <div>
         <i className="fas fa-microphone me-3" style={{ color: props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : '#2de7f3' }}></i>
         <PromptRecordingCounter isRecording={props.isRecording} themeTracker={props.themeTracker} />
       </div>
-      <PromptStopButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} isStreaming={props.isStreaming} handleCancel={props.handleCancel}/>
+      <PromptStopButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} isStreaming={props.isStreaming} handleCancel={props.handleCancel} />
     </div>
   )
 }

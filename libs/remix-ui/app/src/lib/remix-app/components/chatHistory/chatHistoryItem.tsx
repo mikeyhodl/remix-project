@@ -93,7 +93,7 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
     >
       <div className="d-flex align-items-center gap-2 flex-nowrap">
         <div className={`conversation-title text-truncate flex-grow-1 mb-0 ${theme.toLowerCase() === 'dark' ? 'text-secondary' : 'text-dark'}`}>
-          {conversation.title || 'New Conversation'}
+          {conversation.title}
         </div>
         <div className={`conversation-meta text-nowrap ${theme.toLowerCase() === 'dark' ? 'text-secondary' : 'text-muted'} small`}>
           {formatDate(conversation.lastAccessedAt)} · {conversation.messageCount} message{conversation.messageCount !== 1 ? 's' : ''}

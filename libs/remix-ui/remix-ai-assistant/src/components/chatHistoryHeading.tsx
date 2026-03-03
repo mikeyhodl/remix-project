@@ -10,7 +10,10 @@ interface ChatHistoryHeadingProps {
   showButton: boolean
   setShowButton: (show: boolean) => void
   theme?: string
+  chatTitle?: string
 }
+
+const MAX_TITLE_LENGTH = 50
 
 export default function ChatHistoryHeading({
   onNewChat,
@@ -19,30 +22,52 @@ export default function ChatHistoryHeading({
   archiveChat,
   currentConversationId,
   showButton,
-  theme
+  theme,
+  chatTitle
 }: ChatHistoryHeadingProps) {
+  const truncatedTitle = chatTitle
+    ? chatTitle.length > MAX_TITLE_LENGTH
+      ? chatTitle.slice(0, MAX_TITLE_LENGTH) + '…'
+      : chatTitle
+    : null
 
   return (
     <section className={`d-flex flex-row justify-content-between align-items-center p-2 border-0`} data-theme={theme?.toLowerCase()}
       style={{ backgroundColor: theme && theme.toLowerCase() === 'dark' ? '#222336' : '#eff1f5' }}>
-      <div>
-        <CustomTooltip
-          tooltipText={'Start a new chat'}
-        >
-          <button
-            className="btn btn-sm btn-link text-decoration-none"
-            onClick={onNewChat}
-            data-id="new-chat-btn new-conversation-btn"
+      <div className="flex-grow-1 overflow-hidden me-2">
+        {truncatedTitle ? (
+          <span
+            className="fw-semibold text-truncate d-block"
+            style={{ fontSize: '0.85rem', maxWidth: '100%' }}
+            title={chatTitle}
           >
-            <i className="fas fa-plus me-1"></i>
-            New chat
-          </button>
-        </CustomTooltip>
+            {truncatedTitle}
+          </span>
+        ) : (
+          <CustomTooltip tooltipText={'Start a new chat'}>
+            <button
+              className="btn btn-sm btn-link text-decoration-none"
+              onClick={onNewChat}
+              data-id="new-chat-btn new-conversation-btn"
+            >
+              <i className="fas fa-plus me-1"></i>
+              New chat
+            </button>
+          </CustomTooltip>
+        )}
       </div>
-      <div></div>
-      <div></div>
-      <div></div>
-      <div className="d-flex flex-row gap-2 justify-content-end align-items-center">
+      <div className="d-flex flex-row gap-2 justify-content-end align-items-center flex-shrink-0">
+        {truncatedTitle && (
+          <CustomTooltip tooltipText={'Start a new chat'}>
+            <button
+              className="btn btn-sm btn-link text-decoration-none"
+              onClick={onNewChat}
+              data-id="new-chat-btn new-conversation-btn"
+            >
+              <i className="fas fa-plus"></i>
+            </button>
+          </CustomTooltip>
+        )}
         {showButton && <><CustomTooltip
           tooltipText={showHistorySidebar ? 'Hide chat history' : 'Show chat history'}
         >

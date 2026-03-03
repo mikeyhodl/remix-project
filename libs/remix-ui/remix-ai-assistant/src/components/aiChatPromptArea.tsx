@@ -12,10 +12,8 @@ interface AiChatPromptAreaProps {
     themeTracker: any
     showHistorySidebar: boolean
     isMaximized: boolean
-    showAssistantOptions: boolean
     modelOpt: { top: number, left: number }
     menuRef: React.RefObject<HTMLDivElement>
-    setShowAssistantOptions: React.Dispatch<React.SetStateAction<boolean>>
     assistantChoice: any
     setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
     mcpEnabled: boolean
@@ -31,7 +29,6 @@ interface AiChatPromptAreaProps {
     stopRequest: () => void
     showModelOptions: boolean
     setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
-    handleSetAssistant: () => void
     handleSetModel: () => void
     handleGenerateWorkspace: () => void
     handleRecord: () => void
@@ -50,8 +47,7 @@ interface AiChatPromptAreaProps {
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
-  const [showMenu, setShowMenu] = React.useState(false)
-  console.log('Rendering AiChatPromptAreaForHistory with messages:', props.messages)
+
   {/* Prompt area - fixed at bottom */}
   return (
     <section
@@ -137,7 +133,6 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
       )}
       <PromptArea
         input={props.input}
-        maximizePanel={props.maximizePanel}
         setInput={props.setInput}
         isStreaming={props.isStreaming}
         handleSend={props.handleSend}
@@ -149,10 +144,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
-        isMaximized={props.isMaximized}
-        showAssistantOptions={props.showAssistantOptions}
         assistantChoice={props.assistantChoice}
-        handleSetAssistant={props.handleSetAssistant}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}
         showOllamaModelSelector={props.showOllamaModelSelector}

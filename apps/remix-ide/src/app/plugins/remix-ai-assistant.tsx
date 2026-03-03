@@ -112,11 +112,10 @@ export class RemixAIAssistant extends ViewPlugin {
     if (!this.storageManager) return
 
     try {
-      // Load ALL conversations (both archived and non-archived)
-      // The sidebar will filter them based on showArchived toggle
+      // Load ALL conversations (both archived and non-archived).
+      // The sidebar filters them by the showArchived toggle.
       const allConversations = await this.storageManager.getConversations()
 
-      // Filter out empty "New Conversation" sessions, keeping only one
       const emptyNewConversations = allConversations.filter(
         conv => conv.title === 'New Conversation' && conv.messageCount === 0
       )
@@ -124,13 +123,25 @@ export class RemixAIAssistant extends ViewPlugin {
         conv => !(conv.title === 'New Conversation' && conv.messageCount === 0)
       )
 
-      // Keep only the most recent empty "New Conversation"
-      const filteredConversations = [
+      // Purge stale empty "New Conversation" duplicates that accumulate every
+      // time the page reloads before the user sends a message.  Prefer the
+      // currently active one; fall back to the most-recently accessed (index 0
+      // from the already-descending-sorted list).
+      if (emptyNewConversations.length > 1) {
+        const keepId = (emptyNewConversations.find(c => c.id === this.currentConversationId)
+          ?? emptyNewConversations[0]).id
+        for (const stale of emptyNewConversations.filter(c => c.id !== keepId)) {
+          await this.storageManager.deleteConversation(stale.id)
+        }
+        const kept = emptyNewConversations.find(c => c.id === keepId)
+        emptyNewConversations.length = 0
+        if (kept) emptyNewConversations.push(kept)
+      }
+
+      this.conversations = [
         ...otherConversations,
         ...(emptyNewConversations.length > 0 ? [emptyNewConversations[0]] : [])
       ]
-
-      this.conversations = filteredConversations
       this.renderComponent()
     } catch (error) {
       console.error('Failed to load conversations:', error)
@@ -141,15 +152,25 @@ export class RemixAIAssistant extends ViewPlugin {
     if (!this.storageManager) return
 
     try {
-      const workspace = 'default' // Can be enhanced to get actual workspace name
+      // Reuse an existing untitled empty conversation rather than creating a new
+      // DB record on every call.  Multiple page reloads without sending a message
+      // were the root cause of "different IDs, same title" in the sidebar.
+      const emptyExisting = this.conversations.find(
+        c => c.title === 'New Conversation' && c.messageCount === 0
+      )
+      if (emptyExisting) {
+        this.currentConversationId = emptyExisting.id
+        this.history = []
+        ChatHistory.setCurrentConversation(emptyExisting.id)
+        ChatHistory.clearHistory()
+        this.renderComponent()
+        return
+      }
+
+      const workspace = 'default'
       this.currentConversationId = await ChatHistory.startNewConversation(workspace)
-
-      // Clear current messages
       this.history = []
-
-      // Reload conversations list
       await this.loadConversations()
-
       this.renderComponent()
     } catch (error) {
       console.error('Failed to create new conversation:', error)
@@ -217,6 +238,35 @@ export class RemixAIAssistant extends ViewPlugin {
     }
   }
 
+  onFirstPromptSent(conversationId: string, prompt: string) {
+    if (!conversationId) return
+
+    const title = prompt.substring(0, 50)
+    const preview = prompt.substring(0, 100)
+
+    // Optimistic in-memory update so the sidebar shows the title immediately.
+    // messageCount stays at its current DB value (0) — the actual increment
+    // happens once saveBatch completes.  We set it to 1 here only to satisfy
+    // the sidebar's `messageCount > 0` visibility filter during streaming.
+    this.conversations = this.conversations.map(conv => {
+      if (conv.id !== conversationId || conv.messageCount > 0) return conv
+      return { ...conv, title, preview, messageCount: 1, updatedAt: Date.now() }
+    })
+    this.renderComponent()
+
+    // Persist the title to DB immediately so that any loadConversations() call
+    // during streaming (e.g. triggered by touchConversation) reads the correct
+    // title rather than 'New Conversation', which previously caused the
+    // conversation to be mis-classified in the emptyNewConversations filter.
+    if (this.storageManager) {
+      this.storageManager.updateConversation(conversationId, {
+        title,
+        preview,
+        updatedAt: Date.now()
+      }).catch(err => console.error('Failed to persist conversation title:', err))
+    }
+  }
+
   toggleHistorySidebar() {
     this.showHistorySidebar = !this.showHistorySidebar
     localStorage.setItem('remix-ai-history-sidebar-visible', this.showHistorySidebar.toString())
@@ -244,32 +294,14 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async searchConversations(query: string): Promise<ConversationMetadata[]> {
-    if (!this.storageManager || !query.trim()) return this.conversations
+    if (!query.trim()) return this.conversations
+    if (!this.storageManager) return this.conversations
 
-    const lowerQuery = query.toLowerCase()
-    const results: ConversationMetadata[] = []
-
-    for (const conv of this.conversations) {
-      if (
-        conv.title.toLowerCase().includes(lowerQuery) ||
-        conv.preview.toLowerCase().includes(lowerQuery)
-      ) {
-        results.push(conv)
-        continue
-      }
-
-      // Search full message content
-      try {
-        const messages = await this.storageManager.getMessages(conv.id)
-        if (messages.some(msg => msg.content.toLowerCase().includes(lowerQuery))) {
-          results.push(conv)
-        }
-      } catch {
-        // Skip conversation if messages can't be loaded
-      }
-    }
-
-    return results
+    // Delegate to the storage backend's indexed title+preview search.
+    // The previous implementation fell through to a full message-content scan
+    // (N sequential getMessages() calls for N conversations) which is O(N·M)
+    // and blocks the main thread noticeably with large histories.
+    return this.storageManager.searchConversations(query)
   }
 
   onDeactivation() {}
@@ -304,6 +336,13 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   chatPipe = (message: string) => {
+    // Navigate back to chat view if the history sidebar is open
+    if (this.showHistorySidebar) {
+      this.showHistorySidebar = false
+      localStorage.setItem('remix-ai-history-sidebar-visible', 'false')
+      this.renderComponent()
+    }
+
     // If the inner component is mounted, call it directly
     if (this.chatRef?.current) {
       this.chatRef.current.sendChat(message)
