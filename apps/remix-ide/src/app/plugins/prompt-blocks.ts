@@ -77,6 +77,11 @@ export const invariants = {
 4. **EXPLICIT EXTENSIONS:** Always include file extensions in local imports.
    - BAD: \`import Navbar from './components/Navbar'\`
    - GOOD: \`import Navbar from './components/Navbar.jsx'\`
+5. **RELATIVE PATHS ONLY:** Files inside \`src/\` must use relative paths WITHOUT repeating \`src/\`.
+   - BAD: \`import App from './src/App.jsx'\` (inside src/main.jsx — causes /src/src/App.jsx)
+   - GOOD: \`import App from './App.jsx'\` (correct relative path within same directory)
+   - BAD: \`import utils from './src/utils/helpers.jsx'\`
+   - GOOD: \`import utils from './utils/helpers.jsx'\`
 `,
 
   /** index.html template with import map */
@@ -303,6 +308,28 @@ const switchNetwork = async (targetChainHex) => {
 };
 \`\`\`
 Show a **"Switch to [Network Name]"** button when the user is on the wrong chain.
+
+**Event Listener Pattern (mandatory — handle account/chain changes):**
+Use the stored \`rawProviderRef.current\` (already resolved) — **NEVER call \`__qdapp_getProvider()\` inside useEffect** (it returns a Promise and useEffect cannot be async):
+\`\`\`javascript
+useEffect(() => {
+  const rp = rawProviderRef.current;
+  if (!rp?.on) return;
+  const handleAccountsChanged = (accounts) => {
+    if (accounts.length === 0) disconnectWallet();
+    else setAccount(accounts[0]);
+  };
+  const handleChainChanged = (chainIdHex) => {
+    setChainId(parseInt(chainIdHex, 16));
+  };
+  rp.on('accountsChanged', handleAccountsChanged);
+  rp.on('chainChanged', handleChainChanged);
+  return () => {
+    rp.removeListener('accountsChanged', handleAccountsChanged);
+    rp.removeListener('chainChanged', handleChainChanged);
+  };
+}, [account]);
+\`\`\`
 `
   },
 

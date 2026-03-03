@@ -12,7 +12,7 @@ module.exports = {
     return sources
   },
 
-  'Run Scenario using editor play button #group1': function (browser: NightwatchBrowser) {
+  'Run Scenario using editor play button #group1': ' ' + function (browser: NightwatchBrowser) {
     let addressRef
     browser
       .openFile('remix.config.json')
@@ -26,6 +26,7 @@ module.exports = {
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
       .waitForElementVisible('[data-id="compile_group"]')
       .click('[data-id="compile_group"]')
+      .pause(2000)
       .clickInstance(0)
       .clickInstance(1)
       .clickFunction(1, 0)
@@ -45,12 +46,12 @@ module.exports = {
       .clearDeployedContracts()
       .clearTransactionsRecorder()
   },
-  'Save scenario #group1': function (browser: NightwatchBrowser) {
+  'Save scenario #group1': ' ' + function (browser: NightwatchBrowser) {
     browser.testContracts('testRecorder.sol', sources[0]['testRecorder.sol'], ['testRecorder'])
       .clickLaunchIcon('udapp')
       .createContract('12')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256 _p', values: '34' })
+      .clickFunction(0, 0, ['34'])
       .execute(function () {
         const saveScenarioBtn = document.querySelector('[data-id="save-transactions"]') as HTMLElement
         if (saveScenarioBtn) {
@@ -76,7 +77,7 @@ module.exports = {
       })
   },
 
-  'Record more than one contract #group2': function (browser: NightwatchBrowser) {
+  'Record more than one contract #group2': ' ' + function (browser: NightwatchBrowser) {
     // deploy 2 contracts (2 different ABIs), save the record, reexecute and test one of the function.
     browser
       .testContracts('multipleContracts.sol', sources[1]['multipleContracts.sol'], ['t1est', 't2est'])
@@ -103,7 +104,7 @@ module.exports = {
       .click('[data-id="compile_group"]')
       .clickInstance(1)
       .pause(1000)
-      .clickFunction(1, 0, { types: 'uint256 _po', values: '10' })
+      .clickFunction(1, 0, ['10'])
       .testFunction('last', {
         status: '1 Transaction mined and execution succeed',
         'decoded input': { 'uint256 _po': '10' }

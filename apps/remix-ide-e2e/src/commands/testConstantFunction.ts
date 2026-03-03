@@ -1,6 +1,5 @@
 import {
-  NightwatchBrowser,
-  NightwatchTestConstantFunctionExpectedInput
+  NightwatchBrowser
 } from 'nightwatch'
 import EventEmitter from 'events'
 
@@ -9,32 +8,40 @@ class TestConstantFunction extends EventEmitter {
     this: NightwatchBrowser,
     instanceIndex: number,
     functionIndex: number,
-    expectedInput: NightwatchTestConstantFunctionExpectedInput | null,
+    expectedInput: string[] | null,
     expectedOutput: string
   ): NightwatchBrowser {
     this.api
       .execute(function (instanceIndex, functionIndex) {
-        // Use JavaScript to click the button, avoiding sticky header issues
-        const executeButton = document.querySelector(`[data-id="deployedContractItem-${instanceIndex}-button-${functionIndex}"]`) as HTMLElement
-        if (executeButton) {
-          executeButton.scrollIntoView({ behavior: 'auto', block: 'center' })
+      // Use JavaScript to click the button, avoiding sticky header issues
+        const contractFunction = document.querySelector(`[data-id="deployedContractItem-${instanceIndex}-function-${functionIndex}"]`) as HTMLElement
+        if (contractFunction) {
+          contractFunction.scrollIntoView({ behavior: 'auto', block: 'center' })
+          contractFunction.click()
         }
       }, [instanceIndex, functionIndex])
+      .waitForElementPresent(`[data-id="btnExecute-${instanceIndex}"]`)
+      .execute(function (instanceIndex) {
+        const executeBtn = document.querySelector(`[data-id="btnExecute-${instanceIndex}"]`) as HTMLElement
+        if (executeBtn) {
+          executeBtn.scrollIntoView({ behavior: 'auto', block: 'center' })
+        }
+      }, [instanceIndex])
       .perform(function (client, done) {
-        if (expectedInput) {
+        (expectedInput || []).forEach((input, index) => {
           client.setValue(
-            `[data-id="deployedContractItem-${instanceIndex}-input-${functionIndex}"]`,
-            expectedInput.values,
+            `[data-id="selectedFunction-${index}"]`,
+            input,
             (_) => _
           )
-        }
+        })
         done()
       })
-      .click(`[data-id="deployedContractItem-${instanceIndex}-button-${functionIndex}"]`)
+      .click(`[data-id="btnExecute-${instanceIndex}"]`)
       .pause(2000)
-      .waitForElementPresent(`[data-id="contractItem-${functionIndex}"] > [data-id="udapp_tree_value"]`)
+      .waitForElementPresent(`[data-id="udapp_tree_value"]`)
       .assert.containsText(
-        `[data-id="contractItem-${functionIndex}"] > [data-id="udapp_tree_value"]`,
+        `[data-id="udapp_tree_value"]`,
         expectedOutput
       )
       .perform(() => {
