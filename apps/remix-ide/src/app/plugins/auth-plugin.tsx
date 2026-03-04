@@ -8,7 +8,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'notifyEmailOtpLogin'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed']
 }
 
@@ -752,6 +752,26 @@ export class AuthPlugin extends Plugin {
   }
 
   /**
+   * Called by the email OTP flow in the LoginModal after it verifies the code
+   * and stores tokens in localStorage. The OTP flow bypasses `login()` and its
+   * popup-based message exchange, so we need a dedicated entry-point to:
+   *   1. Schedule proactive token refresh
+   *   2. Emit `authStateChanged` so CloudProvider (and others) react
+   *   3. Fetch credits
+   */
+  async notifyEmailOtpLogin(user: any, accessToken: string): Promise<void> {
+    this.scheduleRefresh(accessToken)
+
+    this.emit('authStateChanged', {
+      isAuthenticated: true,
+      user,
+      token: accessToken
+    })
+
+    this.refreshCredits().catch(console.error)
+  }
+
+  /**
    * Validate stored token with the API and restore session if valid
    * This ensures tokens can't be forged and catches expired/revoked tokens
    */
@@ -1160,11 +1180,17 @@ export class AuthPlugin extends Plugin {
 
       // Store tokens and user info
       localStorage.setItem('remix_access_token', result.token)
+      if (result.refreshToken) {
+        localStorage.setItem('remix_refresh_token', result.refreshToken)
+      }
       if (result.user) {
         localStorage.setItem('remix_user', JSON.stringify(result.user))
       }
 
       console.log('[SIWE] Login successful!')
+
+      // Schedule proactive token refresh
+      this.scheduleRefresh(result.token)
 
       // Emit auth state changed
       this.emit('authStateChanged', {

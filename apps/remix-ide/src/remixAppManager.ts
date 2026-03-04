@@ -101,7 +101,6 @@ let requiredModules = [
   'account',
   'transactionSimulator',
   'amp',
-  's3Storage',
   'resolutionIndex',
   'vega',
   'chartjs',
@@ -110,7 +109,6 @@ let requiredModules = [
   'notificationCenter',
   'invitationManager',
   'feedback',
-  'cloudWorkspaces',
   'udappEnv',
   'udappDeploy',
   'udappDeployedContracts',
@@ -481,9 +479,7 @@ class PluginLoader {
       'remixGuide',
       'doc-viewer',
       'UIScriptRunner',
-      'quick-dapp-v2',
-      'cloudWorkspaces',
-      's3Storage'
+      'quick-dapp-v2'
     ]
     this.loaders = {}
     this.loaders.localStorage = {

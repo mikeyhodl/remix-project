@@ -6,6 +6,7 @@ import './login-modal.css'
 
 interface LoginModalProps {
   onClose: () => void
+  plugin?: any // Remix plugin instance — needed to emit authStateChanged for cloud
 }
 
 interface ProviderConfig {
@@ -33,7 +34,7 @@ const formatTimer = (seconds: number): string => {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const { login, loading, error, dispatch } = useAuth()
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loadingProviders, setLoadingProviders] = useState(true)
@@ -124,6 +125,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
   const handleLogin = async (provider: AuthProvider) => {
     try {
       await login(provider)
+      // Close the modal after successful login
+      onClose()
     } catch (err) {
       console.error('[LoginModal] Login failed:', err)
     }
@@ -249,7 +252,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
           type: 'AUTH_SUCCESS',
           payload: { user: data.user, token: data.token }
         })
+
+        // Tell the auth plugin about this login so it can:
+        //  • schedule token refresh
+        //  • emit authStateChanged (picked up by CloudProvider, etc.)
+        //  • fetch credits
+        // OAuth flows do this inside AuthPlugin.login(), but the email
+        // OTP flow bypasses that method entirely.
+        if (plugin && typeof plugin.call === 'function') {
+          try {
+            await plugin.call('auth', 'notifyEmailOtpLogin', data.user, data.token)
+          } catch (e) {
+            console.warn('[LoginModal] Failed to notify auth plugin of email OTP login:', e)
+          }
+        }
+
         console.log('[LoginModal] Email OTP login successful')
+        // Close the modal after successful login
+        onClose()
       } else {
         throw new Error('Invalid response from server')
       }

@@ -3,6 +3,9 @@ import { bytesToHex } from '@ethereumjs/util'
 import { trackMatomoEventAsync } from '@remix-api'
 import { hash } from '@remix-project/remix-lib'
 import { createNonClashingNameAsync } from '@remix-ui/helper'
+import { cloudStore } from '../cloud/cloud-store'
+import { isCloudProvider, switchToCloudWorkspace, renameCloudWorkspaceAction, deleteCloudWorkspaceAction, startFileChangeTracking, cloudLocalKey } from '../cloud/cloud-workspace-actions'
+import { cloudSyncEngine } from '../cloud/cloud-sync-engine'
 import { TEMPLATE_METADATA, TEMPLATE_NAMES } from '../utils/constants'
 import { TemplateType } from '../types'
 import IpfsHttpClient from 'ipfs-http-client'
@@ -62,6 +65,9 @@ const NO_WORKSPACE = ' - none - '
 const ELECTRON = 'electron'
 const queryParams = new QueryParams()
 let plugin: any, dgitPlugin: Plugin<any, CustomRemixApi>,dispatch: React.Dispatch<any>
+
+/** Guard flag to prevent concurrent default-workspace creation in cloud mode */
+let _creatingDefaultCloudWorkspace = false
 
 export const setPlugin = (filePanelPlugin, reducerDispatch) => {
   plugin = filePanelPlugin
@@ -157,6 +163,23 @@ export const createWorkspace = async (
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
     await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
     await plugin.workspaceCreated(workspaceName)
+
+    // ── Cloud mode: the provider auto-called the API in createWorkspace.
+    //    Now wire up sync engine + file tracking.
+    try {
+      if (cloudStore.isCloudMode) {
+        const cloudProvider = plugin.fileProviders.workspace
+        const cloudWs = cloudProvider.getLastCreated?.()
+        if (cloudWs) {
+          cloudStore.addCloudWorkspace(cloudWs)
+          cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
+          startFileChangeTracking(cloudProvider, cloudWs.uuid)
+          await cloudSyncEngine.activate(cloudWs.uuid)
+        }
+      }
+    } catch (cloudErr) {
+      console.error('[createWorkspace] Cloud sync setup failed:', cloudErr)
+    }
 
     // Show left side panel if it's hidden after successful workspace creation
     try {
@@ -515,6 +538,13 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
 
 export const workspaceExists = async (name: string) => {
   const workspaceProvider = plugin.fileProviders.workspace
+
+  // Cloud mode: check the provider's name mapping instead of the filesystem
+  if (workspaceProvider.workspaceNameExists) {
+    return workspaceProvider.workspaceNameExists(name)
+  }
+
+  // Legacy mode: check filesystem
   const browserProvider = plugin.fileProviders.browser
   const workspacePath = 'browser/' + workspaceProvider.workspacesPath + '/' + name
 
@@ -522,7 +552,6 @@ export const workspaceExists = async (name: string) => {
 }
 
 export const fetchWorkspaceDirectory = async (path: string) => {
-
   if (!path) return
   const provider = plugin.fileManager.currentFileProvider()
   const promise: Promise<FileTree> = new Promise((resolve, reject) => {
@@ -546,6 +575,28 @@ export const fetchWorkspaceDirectory = async (path: string) => {
 }
 
 export const renameWorkspace = async (oldName: string, workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
+  // ── Cloud mode: only API rename + update mapping (no local FS rename, dir is UUID) ──
+  if (cloudStore.isCloudMode) {
+    try {
+      const cloudState = cloudStore.getState()
+      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === oldName)
+      if (cloudWs) {
+        const updated = await renameCloudWorkspaceAction(cloudWs, workspaceName)
+        cloudStore.updateCloudWorkspace(updated)
+      }
+      await dispatch(setRenameWorkspace(oldName, workspaceName))
+      await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
+      await plugin.workspaceRenamed(oldName, workspaceName)
+      await plugin.setWorkspaces(await getWorkspaces())
+      cb && cb(null, workspaceName)
+    } catch (cloudErr) {
+      console.error('[renameWorkspace] Cloud rename failed:', cloudErr)
+      cb && cb(cloudErr as Error)
+    }
+    return
+  }
+
+  // ── Legacy mode ──
   await renameWorkspaceFromProvider(oldName, workspaceName)
   await dispatch(setRenameWorkspace(oldName, workspaceName))
   await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
@@ -567,6 +618,64 @@ export const renameWorkspaceFromProvider = async (oldName: string, workspaceName
 }
 
 export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
+  // ── Cloud mode: delete via API + remove local UUID dir ──
+  if (cloudStore.isCloudMode) {
+    try {
+      const cloudState = cloudStore.getState()
+      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === workspaceName)
+      if (cloudWs) {
+        await deleteCloudWorkspaceAction(cloudWs)
+        cloudStore.removeCloudWorkspace(cloudWs.uuid)
+      }
+      await dispatch(setDeleteWorkspace(workspaceName))
+      plugin.workspaceDeleted(workspaceName)
+
+      // Check remaining cloud workspaces
+      const remaining = cloudStore.getState().cloudWorkspaces
+      if (remaining.length > 0) {
+        // Switch to the last remaining cloud workspace
+        const nextWs = remaining[remaining.length - 1]
+        try {
+          cloudStore.setActiveCloudWorkspace(nextWs.uuid)
+          cloudStore.updateSyncStatus(nextWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+          await switchToCloudWorkspace(nextWs, (status) => {
+            cloudStore.updateSyncStatus(nextWs.uuid, status)
+          })
+          const workspaceProvider = plugin.fileProviders.workspace
+          startFileChangeTracking(workspaceProvider, nextWs.uuid)
+          dispatch(setMode('browser'))
+          dispatch(setCurrentWorkspace({ name: nextWs.name, isGitRepo: false }))
+          dispatch(setReadOnlyMode(false))
+          localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), nextWs.name)
+        } catch (switchErr) {
+          console.error('[deleteWorkspace] Failed to switch to next cloud workspace:', switchErr)
+        }
+      } else {
+        // No cloud workspaces left — create a new default one with template
+        // Guard against double-creation: the React useEffect in workspace/topbar
+        // will also fire switchWorkspace(NO_WORKSPACE) when the workspace list empties.
+        if (_creatingDefaultCloudWorkspace) {
+        } else {
+          _creatingDefaultCloudWorkspace = true
+          try {
+            plugin.call('notification', 'toast', 'Creating default cloud workspace…')
+            await createWorkspace('cloud workspace', 'remixDefault')
+          } finally {
+            _creatingDefaultCloudWorkspace = false
+          }
+        }
+      }
+
+      await plugin.setWorkspaces(await getWorkspaces())
+      cb && cb(null, workspaceName)
+    } catch (cloudErr) {
+      console.error('[deleteWorkspace] Cloud deletion failed:', cloudErr)
+      cb && cb(cloudErr as Error)
+    }
+    return
+  }
+
+  // ── Legacy mode ──
   await deleteWorkspaceFromProvider(workspaceName)
   await dispatch(setDeleteWorkspace(workspaceName))
   plugin.workspaceDeleted(workspaceName)
@@ -592,6 +701,34 @@ const deleteWorkspaceFromProvider = async (workspaceName: string) => {
 }
 
 export const switchToWorkspace = async (name: string) => {
+  // ── Cloud mode: delegate to cloud workspace switch ──
+  if (cloudStore.isCloudMode) {
+    try {
+      const cloudState = cloudStore.getState()
+      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === name)
+      if (cloudWs) {
+        // Set active immediately so the UI can show loading state for this workspace
+        cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
+        cloudStore.updateSyncStatus(cloudWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+        await switchToCloudWorkspace(cloudWs, (status) => {
+          cloudStore.updateSyncStatus(cloudWs.uuid, status)
+        })
+        // Set up file change tracking
+        const workspaceProvider = plugin.fileProviders.workspace
+        startFileChangeTracking(workspaceProvider, cloudWs.uuid)
+        dispatch(setMode('browser'))
+        dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
+        dispatch(setReadOnlyMode(false))
+        localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), name)
+        return
+      }
+    } catch (e) {
+      console.error('[switchToWorkspace] Cloud workspace switch failed:', e)
+      return
+    }
+  }
+
+  // ── Legacy mode ──
   await plugin.fileManager.closeAllFiles()
   if (name === LOCALHOST) {
     const isActive = await plugin.call('manager', 'isActive', 'remixd')
@@ -600,9 +737,20 @@ export const switchToWorkspace = async (name: string) => {
     dispatch(setMode('localhost'))
     plugin.emit('setWorkspace', { name: null, isLocalhost: true })
   } else if (name === NO_WORKSPACE) {
-    // if there is no other workspace, create remix default workspace
-    plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
-    await createWorkspace('default_workspace', 'remixDefault')
+    // In both legacy and cloud mode, ensure at least one workspace exists.
+    // In cloud mode, createWorkspace() will call the cloud provider which
+    // registers the workspace on the API and sets up sync.
+    // Guard: if deleteWorkspace is already creating a default, skip.
+    if (cloudStore.isCloudMode && _creatingDefaultCloudWorkspace) {
+      return
+    }
+    if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true
+    try {
+      plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
+      await createWorkspace('cloud workspace', 'remixDefault')
+    } finally {
+      if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = false
+    }
   } else if (name === ELECTRON) {
     await plugin.fileProviders.workspace.setWorkspace(name)
     await plugin.setWorkspace({ name, isLocalhost: false })
@@ -726,9 +874,27 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
   }
 }
 
-export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string; remoteId?: string }
+export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string; remoteId?: string; cloudUuid?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
   try {
+    // ── Cloud mode: return cloud workspaces from the store ──
+    if (cloudStore.isCloudMode) {
+      const cloudState = cloudStore.getState()
+      const cloudWorkspaces: WorkspaceType[] = cloudState.cloudWorkspaces.map(cw => ({
+        name: cw.name,
+        isGitRepo: false,
+        hasGitSubmodules: false,
+        isGist: null,
+        remoteId: cw.uuid,
+        cloudUuid: cw.uuid,
+      }))
+      // Note: we intentionally do NOT call plugin.setWorkspaces() here to
+      // avoid a cascading re-render loop.  The callers already setWorkspaces
+      // explicitly when needed (e.g. after createWorkspace).
+      return cloudWorkspaces
+    }
+
+    // ── Legacy mode: scan local .workspaces/ directory ──
     const workspaces: WorkspaceType[] = await new Promise((resolve, reject) => {
       const workspacesPath = plugin.fileProviders.workspace.workspacesPath
       plugin.fileProviders.browser.resolveDirectory('/' + workspacesPath, (error, items) => {
@@ -822,10 +988,12 @@ export const cloneRepository = async (url: string) => {
           }
           await fetchWorkspaceDirectory(ROOT_PATH)
           const workspacesPath = plugin.fileProviders.workspace.workspacesPath
-          const branches = await getGitRepoBranches(workspacesPath + '/' + repoName)
+          // Use the provider's internal workspace dir (UUID in cloud mode, name in legacy)
+          const workspaceDir = plugin.fileProviders.workspace.workspace
+          const branches = await getGitRepoBranches(workspacesPath + '/' + workspaceDir)
 
           dispatch(setCurrentWorkspaceBranches(branches))
-          const currentBranch = await getGitRepoCurrentBranch(workspacesPath + '/' + repoName)
+          const currentBranch = await getGitRepoCurrentBranch(workspacesPath + '/' + workspaceDir)
 
           dispatch(setCurrentWorkspaceCurrentBranch(currentBranch))
           dispatch(cloneRepositorySuccess())
