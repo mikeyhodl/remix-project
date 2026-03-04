@@ -88,7 +88,7 @@ module.exports = {
             timeout: 60000
           })
         //.waitForElementContainsText(`#instance${instanceAddress} [data-id="instanceContractBal"]`, 'Balance: 0.000000000000000111 ETH', 60000)
-          .clickFunction(1, 0, { types: 'uint256 num', values: '2' })
+          .clickFunction(1, 0, ['2'])
           .pause(1000)
           .waitForElementVisible({
             locateStrategy: 'xpath',
@@ -101,8 +101,7 @@ module.exports = {
   'Should run low level interaction (fallback function) #group3': function (browser: NightwatchBrowser) {
     browser.waitForElementPresent('*[data-id="remixIdeSidePanel"]')
       .clickInstance(0)
-      .waitForElementPresent('[data-id="fallbackExecute-0"]')
-      .click('[data-id="fallbackExecute-0"]')
+      .sendLowLevelTx(0, null, null)
       .pause(5000)
       .testFunction('last', {
         status: '1 Transaction mined and execution succeed'
@@ -133,7 +132,7 @@ module.exports = {
       .createContract('')
       .waitForElementPresent('#instance0xd9145CCE52D386f254917e481eB44e9943F39138')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'uint256 num', values: '10' })
+      .clickFunction(0, 0, ['10'])
       .clickFunction(0, 1)
       .waitForElementContainsText('[data-id="treeViewLi0"]', 'uint256: 10')
       .clickLaunchIcon('filePanel')

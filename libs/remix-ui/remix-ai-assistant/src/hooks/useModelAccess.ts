@@ -64,9 +64,6 @@ export function useModelAccess(): ModelAccess {
           }
         })
 
-        console.log('Enabled providers:', Array.from(enabledProviders))
-        console.log('Allowed models:', allowedModelIds)
-
         setAllowedModels(allowedModelIds)
       } else {
         // Fallback to default model and ollama only
@@ -88,8 +85,6 @@ export function useModelAccess(): ModelAccess {
   }, [])
 
   const checkAccess = (modelId: string) => {
-    console.log('checking  model access', allowedModels)
-
     return allowedModels.includes(modelId)
   }
 

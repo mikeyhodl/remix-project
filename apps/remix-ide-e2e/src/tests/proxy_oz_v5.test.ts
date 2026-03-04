@@ -231,15 +231,10 @@ module.exports = {
   'Should debug the call': function(browser: NightwatchBrowser) {
     browser
       .debugTransaction(0)
-      .waitForElementVisible({
-        locateStrategy: 'xpath',
-        selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"5")]',
-        timeout: 60000
-      })
-    /* TODO test the nested calls component here
-    .goToVMTraceStep(129)
-    .waitForElementContainsText('*[data-id="functionPanel"]', 'version()', 60000)
-    */
+      .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 5', 60000)
+      .goToVMTraceStep(129)
+      .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 129', 60000)
+      .waitForElementContainsText('*[data-id="txFunction"]', '_delegate', 60000)
       .end()
   }
 }
@@ -265,7 +260,6 @@ const sources = [
           function initialize(address initialOwner) initializer public {
               __ERC721_init("MyToken", "MTK");
               __Ownable_init(initialOwner);
-              __UUPSUpgradeable_init();
           }
       
           function _authorizeUpgrade(address newImplementation)
@@ -310,7 +304,6 @@ const sources = [
           function initialize(string memory tokenName, string memory tokenSymbol, address initialOwner) initializer public {
               __ERC721_init(tokenName, tokenSymbol);
               __Ownable_init(initialOwner);
-              __UUPSUpgradeable_init();
           }
       
           function _authorizeUpgrade(address newImplementation)

@@ -27,6 +27,8 @@ export interface TabsUIProps {
   onReady: (api: any) => void
   themeQuality: string
   maximize: boolean
+  isDebugging?: boolean
+  canRunScenario: boolean
 }
 
 export interface Tab {
@@ -94,6 +96,7 @@ export const TabsUI = (props: TabsUIProps) => {
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
   const { trackMatomoEvent } = useContext(TrackingContext)
+  const canRunScenario = props.canRunScenario
 
   const compileSeq = useRef(0)
   const compileWatchdog = useRef<number | null>(null)
@@ -438,7 +441,29 @@ export const TabsUI = (props: TabsUIProps) => {
     props.plugin.on(compilerName, 'compilationFinished', onFinished)
   }
 
+  const handleRunScenario = async () => {
+    try {
+      const currentFile = await props.plugin.call('fileManager', 'getCurrentFile')
+      if (!currentFile) {
+        await props.plugin.call('notification', 'toast', 'No file selected.')
+        return
+      }
+      setCompileState('compiling')
+      await props.plugin.call('udappTransactions', 'runScenario', currentFile)
+      setCompileState('compiled')
+    } catch (error) {
+      console.error('Error running scenario:', error)
+      await props.plugin.call('notification', 'toast', `Error running scenario: ${error.message}`)
+      setCompileState('idle')
+    }
+  }
+
   const handleCompileClick = async () => {
+    if (canRunScenario) {
+      await handleRunScenario()
+      return
+    }
+
     setCompileState('compiling')
     trackMatomoEvent?.({
       category: 'editor',
@@ -584,13 +609,25 @@ export const TabsUI = (props: TabsUIProps) => {
     const currentFile = tabsState.name
 
     try {
-      const instances = await props.plugin.call('udapp', 'getAllDeployedInstances') || []
+      const instances = await props.plugin.call('udappDeployedContracts', 'getDeployedContracts') || []
 
       const currentFileName = currentFile.split('/').pop()
-      const matchingInstances = instances.filter((inst: any) => {
+
+      let matchingInstances = instances.filter((inst: any) => {
         const instFile = inst.contractData?.contract?.file || inst.filePath || ''
-        return instFile.endsWith(currentFileName)
+        return instFile && instFile.endsWith(currentFileName)
       })
+
+      if (matchingInstances.length === 0) {
+        const baseName = currentFileName.replace('.sol', '')
+        matchingInstances = instances.filter((inst: any) =>
+          baseName.toLowerCase().includes(inst.name?.toLowerCase())
+        )
+      }
+
+      if (matchingInstances.length === 0 && instances.length > 0) {
+        matchingInstances = instances
+      }
 
       if (matchingInstances.length === 0) {
         props.plugin.call('notification', 'modal', {
@@ -707,6 +744,7 @@ export const TabsUI = (props: TabsUIProps) => {
         chainId = network?.id?.toString() || providerName
       }
 
+      await props.plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
       await props.plugin.call('quick-dapp-v2', 'createDapp', {
         description: descriptionObj.text,
         contractName: instance.name,
@@ -721,7 +759,7 @@ export const TabsUI = (props: TabsUIProps) => {
         sourceFilePath: tabsState.name
       })
 
-      await props.plugin.call('menuicons', 'select', 'quick-dapp-v2')
+      await props.plugin.call('tabs', 'focus', 'quick-dapp-v2')
 
     } catch (error) {
       if (error.message !== 'Canceled' && error.message !== 'Hide') {
@@ -738,7 +776,9 @@ export const TabsUI = (props: TabsUIProps) => {
   const shouldShowQuickDappBanner = tabsState.currentExt === 'sol' && bannerVisible
 
   let mainLabel = ''
-  if (tabsState.currentExt === 'sql') {
+  if (canRunScenario) {
+    mainLabel = compileState === 'compiling' ? 'Running...' : 'Run'
+  } else if (tabsState.currentExt === 'sql') {
     mainLabel = 'Run SQL'
   } else if (isVegaVisualization) {
     mainLabel = 'Generate Visualization'
@@ -795,6 +835,51 @@ export const TabsUI = (props: TabsUIProps) => {
   if (isVegaVisualization) {
     btnDisabled = false
   }
+
+  const handleAskRemixAI = async () => {
+    try {
+      // When debugging is active, ensure AI assistant is always on the right side
+      if (props.isDebugging) {
+        // First, activate the AI assistant to ensure it's loaded
+        await props.plugin.call('manager', 'activatePlugin', 'remixaiassistant')
+
+        // Check if AI assistant is currently active in the left side panel
+        const leftPanelActive = await props.plugin.call('sidePanel', 'currentFocus')
+
+        // Check if AI assistant is currently active in the right side panel
+        const rightPanelActive = await props.plugin.call('rightSidePanel', 'currentFocus')
+
+        if (leftPanelActive === 'remixaiassistant') {
+          // AI is on the left side during debugging - move it to the right side
+          const profile = await props.plugin.call('remixaiassistant', 'getProfile')
+          await props.plugin.call('sidePanel', 'pinView', profile)
+        } else if (rightPanelActive !== 'remixaiassistant') {
+          // AI is not on either panel - pin it to the right side
+          const profile = await props.plugin.call('remixaiassistant', 'getProfile')
+          await props.plugin.call('sidePanel', 'pinView', profile)
+        }
+      }
+
+      // Show right side panel if it's hidden
+      const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+      if (isPanelHidden) {
+        await props.plugin.call('rightSidePanel', 'togglePanel')
+      }
+      await props.plugin.call('menuicons', 'select', 'remixaiassistant')
+
+      // Wait a bit for the panel to open and then send the debugging prompt
+      setTimeout(async () => {
+        const message = 'Give me more info about current debugging session'
+        await props.plugin.call('remixAI', 'chatPipe', 'code_explaining', '', '', message)
+      }, 500)
+    } catch (err) {
+      console.error('Failed to open RemixAI:', err)
+    }
+  }
+
+  if (canRunScenario) {
+    btnDisabled = compileState === 'compiling'
+  }
   return (
     <>
       <div
@@ -806,52 +891,81 @@ export const TabsUI = (props: TabsUIProps) => {
         <div className="d-flex flex-row" style={{ maxWidth: 'fit-content', width: '99%' }}>
           <div className="d-flex flex-row justify-content-center align-items-center m-1 mt-1">
             <div className="d-flex align-items-center m-1">
-              <div className="btn-group" role="group" data-id="compile_group" aria-label="compile group">
+              {props.isDebugging ? (
                 <CustomTooltip
                   placement="bottom"
-                  tooltipId="overlay-tooltip-run-script"
-                  tooltipText={
-                    <span>
-                      {tabsState.currentExt === 'js' || tabsState.currentExt === 'ts' ? (
-                        <FormattedMessage id="remixUiTabs.tooltipText1" />
-                      ) : tabsState.currentExt === 'sol' || tabsState.currentExt === 'yul' || tabsState.currentExt === 'circom' || tabsState.currentExt === 'vy' ? (
-                        <FormattedMessage id="remixUiTabs.tooltipText2" />
-                      ) : (
-                        <FormattedMessage id="remixUiTabs.tooltipText3" />
-                      )}
-                    </span>
-                  }
+                  tooltipId="overlay-tooltip-ask-remixai"
+                  tooltipText={<span>Ask RemixAI about debugging</span>}
                 >
                   <button
-                    className="btn btn-primary d-flex align-items-center justify-content-center"
-                    data-id="compile-action"
+                    className="btn btn-ai d-flex align-items-center justify-content-center border-0 px-3 py-1"
+                    data-id="ask-remixai-action"
                     style={{
-                      padding: "4px 8px",
-                      height: "28px",
                       fontFamily: "Nunito Sans, sans-serif",
                       fontSize: "11px",
                       fontWeight: 700,
                       lineHeight: "14px",
                       whiteSpace: "nowrap",
-                      borderRadius: "4px 0 0 4px"
+                      height: "28px"
                     }}
-                    disabled={btnDisabled}
-                    onClick={handleCompileClick}
+                    onClick={handleAskRemixAI}
                   >
-                    <i className={
-                      compileState === 'compiled' ? "fas fa-check"
-                        : "fas fa-play"
-                    }></i>
-                    <span className="ms-2" style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
-                      {mainLabel}
+                    <img src="assets/img/remixAI_small.svg" alt="Remix AI" style={{ width: "16px", height: "16px" }} />
+                    <span style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
+                      Ask RemixAI
                     </span>
                   </button>
                 </CustomTooltip>
-              </div>
-              {dropDown}
+              ) : (
+                <>
+                  <div className="btn-group" role="group" data-id="compile_group" aria-label="compile group">
+                    <CustomTooltip
+                      placement="bottom"
+                      tooltipId="overlay-tooltip-run-script"
+                      tooltipText={
+                        <span>
+                          {tabsState.currentExt === 'js' || tabsState.currentExt === 'ts' ? (
+                            <FormattedMessage id="remixUiTabs.tooltipText1" />
+                          ) : tabsState.currentExt === 'sol' || tabsState.currentExt === 'yul' || tabsState.currentExt === 'circom' || tabsState.currentExt === 'vy' ? (
+                            <FormattedMessage id="remixUiTabs.tooltipText2" />
+                          ) : (
+                            <FormattedMessage id="remixUiTabs.tooltipText3" />
+                          )}
+                        </span>
+                      }
+                    >
+                      <button
+                        className="btn btn-primary d-flex align-items-center justify-content-center"
+                        data-id="compile-action"
+                        style={{
+                          padding: "4px 8px",
+                          height: "28px",
+                          fontFamily: "Nunito Sans, sans-serif",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          lineHeight: "14px",
+                          whiteSpace: "nowrap",
+                          borderRadius: "4px 0 0 4px"
+                        }}
+                        disabled={btnDisabled}
+                        onClick={handleCompileClick}
+                      >
+                        <i className={
+                          compileState === 'compiled' ? "fas fa-check"
+                            : "fas fa-play"
+                        }></i>
+                        <span className="ms-2" style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
+                          {mainLabel}
+                        </span>
+                      </button>
+                    </CustomTooltip>
+                  </div>
+                  {dropDown}
+                </>
+              )}
             </div>
 
-            <div className="d-flex border-start ms-2 align-items-center" style={{ height: "3em" }}>
+            <div className="d-flex border-start ms-1 align-items-center" style={{ height: "3em" }}>
               <CustomTooltip placement="bottom" tooltipId="overlay-tooltip-zoom-out" tooltipText={<FormattedMessage id="remixUiTabs.zoomOut" />}>
                 <span data-id="tabProxyZoomOut" className="btn fas fa-search-minus text-dark ps-2 pe-0 py-0 d-flex" onClick={() => props.onZoomOut()}></span>
               </CustomTooltip>

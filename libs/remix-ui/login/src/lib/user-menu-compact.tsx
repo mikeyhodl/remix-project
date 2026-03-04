@@ -36,6 +36,7 @@ const getProviderIcon = (provider: AuthProvider | string) => {
   case 'github': return 'fab fa-github'
   case 'discord': return 'fab fa-discord'
   case 'siwe': return 'fab fa-ethereum'
+  case 'base': return 'base-icon' // Custom handling for Base icon
   default: return 'fas fa-sign-in-alt'
   }
 }
@@ -66,7 +67,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
   return (
     <div className={`position-relative ${className}`}>
       <button
-        className="btn btn-sm btn-success d-flex flex-nowrap align-items-center user-menu-compact-button"
+        className="btn btn-sm d-flex flex-nowrap align-items-center user-menu-compact-button"
         onClick={() => setShowDropdown(!showDropdown)}
         data-id="user-menu-compact"
         title={getUserDisplayName()}
@@ -78,9 +79,11 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
             className="user-menu-compact-avatar"
           />
         )}
-        <div className="user-menu-compact-info">
-          <span className="user-menu-compact-name">{getUserDisplayName()}</span>
-        </div>
+        {!user.picture && (
+          <div className="user-menu-compact-info">
+            <span className="user-menu-compact-name">{getUserDisplayName()}</span>
+          </div>
+        )}
       </button>
       {showDropdown && (
         <>

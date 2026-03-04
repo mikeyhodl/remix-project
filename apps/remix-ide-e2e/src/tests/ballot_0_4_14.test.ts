@@ -40,7 +40,7 @@ module.exports = {
       .click('*[data-id="deployButton"]')
       .waitForElementPresent('*[data-id="deployedContractItem-0"]', 60000)
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -51,13 +51,21 @@ module.exports = {
   'Debug Ballot / delegate #group1': function (browser: NightwatchBrowser) {
     browser.pause(500)
       .debugTransaction(1)
+      .waitForElementVisible('*[data-id="callTraceHeader"]', 60000)
       .pause(2000)
-      // .waitForElementVisible('*[data-id="buttonNavigatorJumpPreviousBreakpoint"]')
-      // .click('*[data-id="buttonNavigatorJumpPreviousBreakpoint"]') That button is disabled
-      .waitForElementVisible('#stepdetail')
       .goToVMTraceStep(20)
       .pause(1000)
-      .checkVariableDebug('callstackpanel', ['0x692a70D2e424a56D2C6C27aA97D1a86395877b3A'])
+      .waitForElementContainsText('*[data-id="callTraceHeader"]', 'Step: 20', 60000)
+      // Click on Stack & Memory tab to access call stack
+      .useXpath()
+      .waitForElementVisible('//button[contains(text(), "Stack & Memory")]', 10000)
+      .click('//button[contains(text(), "Stack & Memory")]')
+      .useCss()
+      // Expand callStack using the expand icon
+      .waitForElementVisible('*[data-id="callStack-expand-icon"]', 10000)
+      .click('*[data-id="callStack-expand-icon"]')
+      .waitForElementVisible('*[data-id="callStack-json-value"]', 10000)
+      .assert.containsText('*[data-id="callStack-json-value"]', '"0x692a70D2e424a56D2C6C27aA97D1a86395877b3A"')
   },
 
   'Access Ballot via at address #group1': function (browser: NightwatchBrowser) {
@@ -70,7 +78,7 @@ module.exports = {
       .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3A', true, true)
       .waitForElementVisible('[data-id="deployedContractItem-0"]')
       .clickInstance(0)
-      .clickFunction(0, 0, { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
+      .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -86,7 +94,7 @@ module.exports = {
       .createContract('2')
       .clickInstance(0)
       .click('*[data-id="terminalClearConsole"]')
-      .clickFunction(0, 0, { types: 'address to', values: '0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c' })
+      .clickFunction(0, 0, ['0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c'])
       .journalLastChildIncludes('Ballot.delegate(address)')
       .journalLastChildIncludes('data: 0x5c1...a733c')
   }
