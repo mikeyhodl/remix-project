@@ -33,7 +33,7 @@ export async function resetVmState (plugin: EnvironmentPlugin, widgetState: Widg
   // Reset environment blocks and account data
   await currentProvider.resetEnvironment()
   // Remove deployed and pinned contracts from UI
-  await plugin.call('udapp', 'clearAllInstances')
+  await plugin.call('udappDeployedContracts', 'clearDeployedContracts')
   // Delete environment state file
   await plugin.call('fileManager', 'remove', `.states/${context}/state.json`)
   // If there are pinned contracts, delete pinned contracts folder
