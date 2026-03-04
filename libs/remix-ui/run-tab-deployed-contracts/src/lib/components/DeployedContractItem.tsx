@@ -15,13 +15,15 @@ import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
 
 const txHelper = remixLib.execution.txHelper
+const highlightedContracts = new Set<string>()
 
 interface DeployedContractItemProps {
   contract: DeployedContract
   index: number
+  registerRef?: (ref: HTMLDivElement | null) => void
 }
 
-export function DeployedContractItem({ contract, index }: DeployedContractItemProps) {
+export function DeployedContractItem({ contract, index, registerRef }: DeployedContractItemProps) {
   const { dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const intl = useIntl()
   const [networkName, setNetworkName] = useState<string>('')
@@ -33,10 +35,10 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [llIError, setLlIError] = useState<string>('')
   const [showKebabMenu, setShowKebabMenu] = useState<boolean>(false)
+  const [shouldHighlight, setShouldHighlight] = useState<boolean>(false)
   const kebabIconRef = useRef<HTMLElement>(null)
+  const contractItemRef = useRef<HTMLDivElement>(null)
   const isGenerating = useRef<boolean>(false)
-
-  // New state for the improved design
   const [showHighLevel, setShowHighLevel] = useState<boolean>(true)
   const [showLowLevel, setShowLowLevel] = useState<boolean>(false)
   const [selectedFunctionIndex, setSelectedFunctionIndex] = useState<number | null>(null)
@@ -62,6 +64,39 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
       setContractABI(contract.abi)
     }
   }, [])
+
+  // Intersection Observer to detect when contract becomes visible
+  useEffect(() => {
+    const contractAddress = contract.address
+    if (highlightedContracts.has(contractAddress)) {
+      return
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && !highlightedContracts.has(contractAddress)) {
+          highlightedContracts.add(contractAddress)
+          setShouldHighlight(true)
+          setTimeout(() => {
+            setShouldHighlight(false)
+          }, 2000)
+
+          observer.disconnect()
+        }
+      })
+    }, {
+      threshold: 0.1, // Trigger when at least 10% of the element is visible
+      rootMargin: '0px'
+    })
+
+    if (contractItemRef.current) {
+      observer.observe(contractItemRef.current)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [contract.address])
 
   const functionABIs = useMemo(() => {
     return contractABI?.filter((item: FuncABI) => item.type === 'function') || []
@@ -444,9 +479,15 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
   }
 
   return (
-    <div className="mb-3">
+    <div
+      className="mb-3"
+      ref={(el) => {
+        contractItemRef.current = el
+        if (registerRef) registerRef(el)
+      }}
+    >
       <div
-        className="rounded"
+        className={`rounded ${shouldHighlight ? 'contract-highlight-animation' : ''}`}
         style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}
       >
         <div id={`instance${contract.address}`} data-id={contract?.isPinned ? `pinnedInstance${contract?.address}` : `unpinnedInstance${contract?.address}`} className="w-100" data-shared="universalDappUiInstance">
