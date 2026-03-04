@@ -369,7 +369,7 @@ const BetaProgramInviteModal: React.FC<{
             </div>
             <h3 className="invite-modal-hero-title">Remix Beta</h3>
             <p className="invite-modal-hero-subtitle">
-              You've been accepted to 
+              You've been accepted to
               <strong> Remix v2 Private Beta Testing Program</strong>! Get ready to explore powerful new features and help shape the future of Remix.
             </p>
           </div>

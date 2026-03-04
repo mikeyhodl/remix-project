@@ -50,7 +50,7 @@ export function RecorderUI(props: RecorderProps) {
               {props.count}
             </div>
           </CustomTooltip>
-          
+
         </div>
         <div className="w-100" onClick={toggleClass}></div>
         <div className="p-3">

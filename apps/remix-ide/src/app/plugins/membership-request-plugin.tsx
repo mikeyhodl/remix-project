@@ -285,9 +285,9 @@ export class MembershipRequestPlugin extends Plugin {
     const TEN_MIN = 10 * 60 * 1000
     const ONE_HOUR = 60 * 60 * 1000
 
-    if (elapsed < TEN_MIN) return 30000       // 30s
-    if (elapsed < ONE_HOUR) return 120000     // 2 min
-    return 600000                              // 10 min
+    if (elapsed < TEN_MIN) return 30000 // 30s
+    if (elapsed < ONE_HOUR) return 120000 // 2 min
+    return 600000 // 10 min
   }
 
   private schedulePoll(): void {

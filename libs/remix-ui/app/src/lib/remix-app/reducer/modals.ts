@@ -94,7 +94,7 @@ export const modalReducer = (state: ModalState = ModalInitialState, action: Moda
       timestamp: action.payload.timestamp || Date.now(),
       hide: false
     }
-    return { ...state, actionNotifications: [...state.actionNotifications, notification] }
+    return { ...state, actionNotifications: [...state.actionNotifications, notification]}
   }
 
   case modalActionTypes.hideActionNotification: {

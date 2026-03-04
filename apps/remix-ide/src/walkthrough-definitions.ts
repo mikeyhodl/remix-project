@@ -94,8 +94,8 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
         content: 'We\'ll create a fresh workspace with a sample contract for you. A new <b>"LearnDeploy"</b> workspace is being set up with the default Remix template.',
         placement: 'right',
         preAction: [
-          { plugin: 'filePanel', method: 'createWorkspace', args: ['LearnDeploy', 'remixDefault', false] },
-          { plugin: 'menuicons', method: 'select', args: ['filePanel'] },
+          { plugin: 'filePanel', method: 'createWorkspace', args: ['LearnDeploy', 'remixDefault', false]},
+          { plugin: 'menuicons', method: 'select', args: ['filePanel']},
         ],
       },
       {
@@ -254,4 +254,4 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
       },
     ],
   },
-  ]
+]

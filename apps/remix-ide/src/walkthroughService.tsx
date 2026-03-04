@@ -410,7 +410,7 @@ export class WalkthroughService extends ViewPlugin {
         if (originalStep?.preAction) {
           const actions = Array.isArray(originalStep.preAction) ? originalStep.preAction : [originalStep.preAction]
           for (const action of actions) {
-            const { plugin, method, args = [] } = action
+            const { plugin, method, args = []} = action
             console.log(`[walkthrough]   preAction: ${plugin}.${method}(${JSON.stringify(args)})`)
             try {
               await this.call(plugin as any, method as any, ...args)
@@ -421,7 +421,6 @@ export class WalkthroughService extends ViewPlugin {
             }
           }
         }
-
 
       },
 

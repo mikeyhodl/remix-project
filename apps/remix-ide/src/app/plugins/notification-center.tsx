@@ -12,8 +12,8 @@ const profile = {
   version: '0.0.1'
 }
 
-const POLL_INTERVAL_FOCUSED = 30000  // 30 seconds when tab is focused
-const POLL_INTERVAL_HIDDEN = 120000  // 2 minutes when tab is hidden/blurred
+const POLL_INTERVAL_FOCUSED = 30000 // 30 seconds when tab is focused
+const POLL_INTERVAL_HIDDEN = 120000 // 2 minutes when tab is hidden/blurred
 const LOCAL_NOTIFICATIONS_KEY = 'remix_local_notifications'
 const ANON_TOKEN_KEY = 'remix_anonymous_notification_token'
 

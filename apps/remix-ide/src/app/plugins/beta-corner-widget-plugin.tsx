@@ -148,7 +148,7 @@ export class BetaCornerWidgetPlugin extends Plugin {
     if (this.shown) return
     const elapsed = Date.now() - this.sessionStart
     if (this.score >= ACTIVITY_THRESHOLD && elapsed >= MIN_SESSION_MS) {
-        console.debug(`[BetaCornerWidget] Activity threshold met (score: ${this.score}, elapsed: ${elapsed}ms). Showing widget.`)
+      console.debug(`[BetaCornerWidget] Activity threshold met (score: ${this.score}, elapsed: ${elapsed}ms). Showing widget.`)
       this.showWidget()
     }
   }
@@ -227,7 +227,7 @@ export class BetaCornerWidgetPlugin extends Plugin {
   }
 
   render(): JSX.Element {
-    if(window['__IS_E2E_TEST__']) {
+    if (window['__IS_E2E_TEST__']) {
       return null // Don't render the widget at all during E2E tests to avoid flakiness
     }
     return (

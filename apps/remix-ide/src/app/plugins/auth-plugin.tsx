@@ -200,10 +200,10 @@ export class AuthPlugin extends Plugin {
       if (response.ok && response.data) {
         return response.data
       }
-      return { features: [] }
+      return { features: []}
     } catch (error) {
       console.error('[AuthPlugin] Get all permissions failed:', error)
-      return { features: [] }
+      return { features: []}
     }
   }
 

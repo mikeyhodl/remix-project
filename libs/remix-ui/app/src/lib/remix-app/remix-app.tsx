@@ -20,7 +20,6 @@ import { desktopConnectionType } from '@remix-api'
 import { FloatingChatHistory } from './components/chatHistory/floatingChatHistory'
 import { appActionTypes } from './actions/app'
 
-
 interface IRemixAppUi {
   app: any
 }

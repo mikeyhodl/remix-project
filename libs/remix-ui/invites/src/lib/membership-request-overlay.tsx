@@ -238,7 +238,7 @@ const RequestFormModal: React.FC<{
   const toggleFeature = (id: string) => {
     setSurvey(prev => {
       const arr = prev.subscriptionFeatures
-      return { ...prev, subscriptionFeatures: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id] }
+      return { ...prev, subscriptionFeatures: arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]}
     })
   }
 
