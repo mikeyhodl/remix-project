@@ -82,11 +82,10 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1">
               <div
-                className="rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-4 shadow-sm"
                 style={{
                   width: '60px',
-                  height: '60px',
-                  background: 'linear-gradient(45deg, var(--bs-info), var(--bs-cyan))'
+                  height: '60px'
                 }}
               >
                 <i className="fas fa-lightbulb text-white" style={{ fontSize: '1.5rem' }}></i>
@@ -109,8 +108,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 border: 'none'
               }}
             >
-              <i className="fas fa-play me-2"></i>
-              Explore
+             Explore
             </button>
           </div>
 
@@ -134,11 +132,10 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1">
               <div
-                className="rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-4 shadow-sm"
                 style={{
                   width: '60px',
-                  height: '60px',
-                  background: 'linear-gradient(45deg, var(--bs-success), var(--bs-teal))'
+                  height: '60px'
                 }}
               >
                 <i className="fas fa-code text-white" style={{ fontSize: '1.5rem' }}></i>
@@ -161,7 +158,6 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 border: 'none'
               }}
             >
-              <i className="fas fa-code me-2"></i>
               Build
             </button>
           </div>
