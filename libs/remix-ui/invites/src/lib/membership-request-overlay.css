@@ -237,6 +237,44 @@
   flex-shrink: 0;
 }
 
+/* Checkbox list (for multi-select questions) */
+
+.survey-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.survey-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--bs-body-color, #ccc);
+}
+
+.survey-checkbox-item:hover {
+  background: rgba(13, 148, 136, 0.06);
+}
+
+.survey-checkbox-item--selected {
+  background: rgba(13, 148, 136, 0.1);
+  border-color: rgba(13, 148, 136, 0.25);
+}
+
+.survey-checkbox-input {
+  accent-color: #0d9488;
+  margin: 0;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
 /* Consent box */
 
 .survey-consent-box {
@@ -279,5 +317,9 @@
 }
 
 [data-theme="light"] .survey-radio-item--selected {
+  background: rgba(13, 148, 136, 0.06);
+}
+
+[data-theme="light"] .survey-checkbox-item--selected {
   background: rgba(13, 148, 136, 0.06);
 }

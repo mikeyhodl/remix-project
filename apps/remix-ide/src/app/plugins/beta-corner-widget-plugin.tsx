@@ -227,6 +227,9 @@ export class BetaCornerWidgetPlugin extends Plugin {
   }
 
   render(): JSX.Element {
+    if(window['__IS_E2E_TEST__']) {
+      return null // Don't render the widget at all during E2E tests to avoid flakiness
+    }
     return (
       <div id="beta-corner-widget">
         <PluginViewWrapper plugin={this} />

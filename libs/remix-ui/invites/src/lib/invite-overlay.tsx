@@ -247,21 +247,21 @@ const SuccessModal: React.FC<{
             <div className={`invite-modal-left-gradient ${isBeta ? 'invite-modal-left-gradient--beta' : 'invite-modal-left-gradient--success'}`} />
             <div className="invite-modal-left-content">
               <div className="invite-modal-hero-icon invite-modal-hero-icon--success">
-                <i className={`fas ${isBeta ? 'fa-flask' : 'fa-check-circle'}`}></i>
+                <i className={`fas ${isBeta ? 'fa-trophy' : 'fa-check-circle'}`}></i>
               </div>
               <h3 className="invite-modal-hero-title">
-                {isBeta ? 'Welcome to Beta!' : 'You\'re In!'}
+                {isBeta ? 'You\'re Accepted!' : 'You\'re In!'}
               </h3>
               <p className="invite-modal-hero-subtitle">
                 {isBeta
-                  ? 'You\'re now part of the Remix Beta Program'
+                  ? 'Welcome to the Remix v2 Private Beta'
                   : `Successfully activated ${validation.name || 'your invite'}`}
               </p>
             </div>
           </div>
           <div className="invite-modal-right">
             <div className="invite-modal-right-header">
-              <h5>{isBeta ? 'Beta Program Activated' : 'Invite Activated!'}</h5>
+              <h5>{isBeta ? '🎉 Congratulations, Beta Tester!' : 'Invite Activated!'}</h5>
               <button className="invite-modal-close-btn" onClick={onClose}>
                 <i className="fas fa-times"></i>
               </button>
@@ -269,28 +269,38 @@ const SuccessModal: React.FC<{
             <div className="invite-modal-right-body">
               {isBeta ? (
                 <>
-                  <p className="invite-modal-success-message">
-                    You now have access to cutting-edge features and tools before anyone else.
+                  <p className="invite-modal-success-message" style={{ fontSize: '0.92rem', lineHeight: 1.6 }}>
+                    You've been selected to join the <strong>Remix v2 Private Beta Testing Program</strong>!
+                    You are now part of an exclusive group of developers who will shape the future of Remix.
                   </p>
                   <div className="invite-modal-section">
-                    <h6 className="invite-modal-section-label">WHAT'S UNLOCKED</h6>
+                    <h6 className="invite-modal-section-label">WHAT'S NOW UNLOCKED FOR YOU</h6>
                     <div className="invite-modal-perks-grid">
                       <div className="invite-modal-perk">
-                        <i className="fas fa-cloud invite-modal-perk-icon"></i>
-                        <span>Cloud Storage</span>
-                      </div>
-                      <div className="invite-modal-perk">
                         <i className="fas fa-robot invite-modal-perk-icon"></i>
-                        <span>AI Assistant</span>
+                        <span>Full Agentic RemixAI</span>
                       </div>
                       <div className="invite-modal-perk">
-                        <i className="fas fa-code-branch invite-modal-perk-icon"></i>
-                        <span>Remix MCP</span>
+                        <i className="fas fa-cloud invite-modal-perk-icon"></i>
+                        <span>Cloud Storage &amp; Chat History</span>
                       </div>
                       <div className="invite-modal-perk">
                         <i className="fas fa-palette invite-modal-perk-icon"></i>
-                        <span>Frontend Builder</span>
+                        <span>QuickDapp Builder</span>
                       </div>
+                      <div className="invite-modal-perk">
+                        <i className="fas fa-rocket invite-modal-perk-icon"></i>
+                        <span>New Deploy &amp; Run + AI Debugger</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="invite-modal-walkthrough-cta" style={{ background: 'rgba(13, 148, 136, 0.08)', border: '1px solid rgba(13, 148, 136, 0.2)', borderRadius: '10px', padding: '0.75rem 0.85rem' }}>
+                    <div className="invite-modal-walkthrough-icon">
+                      <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
+                    </div>
+                    <div className="invite-modal-walkthrough-text">
+                      <strong>You're special!</strong>
+                      <span>As a beta tester your feedback will directly influence the product. Thank you for helping us build the future of Remix!</span>
                     </div>
                   </div>
                 </>
@@ -359,7 +369,8 @@ const BetaProgramInviteModal: React.FC<{
             </div>
             <h3 className="invite-modal-hero-title">Remix Beta</h3>
             <p className="invite-modal-hero-subtitle">
-              You've been invited to shape the future of Web3 tooling
+              You've been accepted to 
+              <strong> Remix v2 Private Beta Testing Program</strong>! Get ready to explore powerful new features and help shape the future of Remix.
             </p>
           </div>
         </div>
@@ -379,32 +390,59 @@ const BetaProgramInviteModal: React.FC<{
           </div>
 
           <div className="invite-modal-right-body">
-            {/* Benefits */}
+            {/* What's New */}
             <div className="invite-modal-section">
-              <h6 className="invite-modal-section-label">WHY JOIN</h6>
+              <h6 className="invite-modal-section-label">WHAT'S NEW IN THE BETA?</h6>
+              <p className="invite-modal-muted" style={{ fontSize: '0.82rem', marginBottom: '0.6rem' }}>
+                As a beta tester, you'll be the first to experiment with:
+              </p>
               <ul className="invite-modal-benefits">
                 <li>
                   <div className="invite-modal-benefit-dot invite-modal-benefit-dot--teal"></div>
                   <div>
-                    <strong>First Access</strong>
-                    <span>Try new features before anyone else</span>
+                    <strong>Full Agentic RemixAI</strong>
+                    <span>New connected APIs and advanced AI capabilities</span>
                   </div>
                 </li>
                 <li>
                   <div className="invite-modal-benefit-dot invite-modal-benefit-dot--cyan"></div>
                   <div>
-                    <strong>Direct Feedback</strong>
-                    <span>Your input goes straight to the core team</span>
+                    <strong>User Accounts, Cloud Storage &amp; Chat History</strong>
+                    <span>Persistent workspace and conversation data across devices</span>
                   </div>
                 </li>
                 <li>
                   <div className="invite-modal-benefit-dot invite-modal-benefit-dot--blue"></div>
                   <div>
-                    <strong>Early Mastery</strong>
-                    <span>Master the new workflow before the crowd</span>
+                    <strong>QuickDapp</strong>
+                    <span>AI-assisted front-end builder with decentralized hosting for dApps and Base mini-apps</span>
+                  </div>
+                </li>
+                <li>
+                  <div className="invite-modal-benefit-dot invite-modal-benefit-dot--teal"></div>
+                  <div>
+                    <strong>Huge UI Updates</strong>
+                    <span>Deploy &amp; Run overhaul and the new AI-assisted Debugger</span>
                   </div>
                 </li>
               </ul>
+            </div>
+
+            {/* Why Join */}
+            <div className="invite-modal-section">
+              <h6 className="invite-modal-section-label">WHY JOIN?</h6>
+              <p className="invite-modal-muted" style={{ fontSize: '0.82rem', lineHeight: 1.55 }}>
+                You'll get early access to these powerful new tools and play a direct role in shaping the future of Remix.
+                Testing involves both using the tool as usual and trying out the new features.
+              </p>
+              <p className="invite-modal-muted" style={{ fontSize: '0.82rem', lineHeight: 1.55 }}>
+                You can share your comments and suggestions directly in the app, through a dedicated Discord channel,
+                and by completing a form provided at the end of the testing period.
+              </p>
+              <p className="invite-modal-muted" style={{ fontSize: '0.82rem', lineHeight: 1.55, marginBottom: 0 }}>
+                The program is expected to last about a month, and we will provide comprehensive documentation to support you.
+                You are free to leave the program at any time.
+              </p>
             </div>
 
             {/* Meta badges */}
