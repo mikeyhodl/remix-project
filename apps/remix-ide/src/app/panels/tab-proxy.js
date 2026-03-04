@@ -260,18 +260,23 @@ export default class TabProxy extends Plugin {
         this.renderComponent()
         return
       }
-      const configContent = await this.call('fileManager', 'readFile', 'remix.config.json')
-      const config = JSON.parse(configContent)
-      const lastSavedScenario = config?.scenarios?.lastSavedScenario
+      const fileContent = await this.call('fileManager', 'readFile', currentFile)
+      const parsedContent = JSON.parse(fileContent)
 
-      if (lastSavedScenario) {
-        const normalizedCurrentFile = currentFile.replace(/^.*?\//, '')
-        const normalizedScenarioPath = lastSavedScenario.replace(/^.*?\//, '')
+      // Check if it has the required structure of a scenario file
+      const isValidScenario =
+        parsedContent &&
+        typeof parsedContent === 'object' &&
+        'accounts' in parsedContent &&
+        typeof parsedContent.accounts === 'object' &&
+        'linkReferences' in parsedContent &&
+        typeof parsedContent.linkReferences === 'object' &&
+        'transactions' in parsedContent &&
+        Array.isArray(parsedContent.transactions) &&
+        'abis' in parsedContent &&
+        typeof parsedContent.abis === 'object'
 
-        this.canRunScenario = normalizedCurrentFile === normalizedScenarioPath
-      } else {
-        this.canRunScenario = false
-      }
+      this.canRunScenario = isValidScenario
       this.renderComponent()
     } catch (error) {
       this.canRunScenario = false
