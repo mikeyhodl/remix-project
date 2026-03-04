@@ -210,7 +210,10 @@ const BaseAppWizard: React.FC = () => {
         }
       } catch (e) { }
 
-      const response = await fetch(`${REMIX_ENDPOINT_IPFS}/upload`, { method: 'POST', body: formData });
+      const uploadHeaders: Record<string, string> = {};
+      const authToken = typeof localStorage !== 'undefined' ? localStorage.getItem('remix_access_token') : null;
+      if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
+      const response = await fetch(`${REMIX_ENDPOINT_IPFS}/upload`, { method: 'POST', body: formData, headers: uploadHeaders });
       if (!response.ok) throw new Error(await response.text());
 
       const data = await response.json();
@@ -258,9 +261,13 @@ const BaseAppWizard: React.FC = () => {
       const accounts = await provider.send('eth_requestAccounts', []);
       const ownerAddress = accounts[0];
 
+      const ensHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      const ensAuthToken = typeof localStorage !== 'undefined' ? localStorage.getItem('remix_access_token') : null;
+      if (ensAuthToken) ensHeaders['Authorization'] = `Bearer ${ensAuthToken}`;
+
       const response = await fetch(`${REMIX_ENDPOINT_ENS}/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: ensHeaders,
         body: JSON.stringify({
           label: savedWizardState.ensName.toLowerCase(),
           owner: ownerAddress,
