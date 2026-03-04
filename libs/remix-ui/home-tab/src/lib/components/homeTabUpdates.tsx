@@ -49,18 +49,18 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
         setIsLoading(true)
         const response = await axios.get(HOME_TAB_NEW_UPDATES)
         const updates = response.data
-        
+
         // Check if this is the first time visiting
         const hasVisitedHomeBefore = localStorage.getItem('remix-home-visited')
         const isFirstTime = !hasVisitedHomeBefore
-        
+
         if (isFirstTime) {
           localStorage.setItem('remix-home-visited', 'true')
         }
-        
+
         // Create array including first-time option and regular updates
         const allOptions = []
-        
+
         // Add first-time card option (higher weight for first-time users)
         if (isFirstTime) {
           // Add multiple entries to increase probability for first-time users
@@ -69,17 +69,17 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
           // Still include as option for returning users, but lower probability
           allOptions.push('first-time')
         }
-        
+
         // Add regular updates if available
         if (updates && updates.length > 0) {
           allOptions.push(...updates)
         }
-        
+
         // Randomly select from all options
         if (allOptions.length > 0) {
           const randomIndex = Math.floor(Math.random() * allOptions.length)
           const selected = allOptions[randomIndex]
-          
+
           if (selected === 'first-time') {
             setShowFirstTime(true)
             setSelectedUpdate(null)
@@ -88,7 +88,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
             setSelectedUpdate(selected)
           }
         }
-        
+
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching plugin list:', error)
@@ -111,7 +111,6 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
       plugin.call(updateInfo.action.pluginName, updateInfo.action.pluginMethod, updateInfo.action.pluginArgs)
     }
   }
-
 
   function UpdateCard(updateInfo: UpdateInfo) {
     return (
@@ -148,7 +147,6 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
       </div>
     )
   }
-
 
   return (
     <div className="">

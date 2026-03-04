@@ -41,9 +41,9 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
   }
 
   return (
-    <div 
-      className="card border-0 h-100 shadow-lg" 
-      style={{ 
+    <div
+      className="card border-0 h-100 shadow-lg"
+      style={{
         background: `linear-gradient(135deg, var(--bs-body-bg) 0%, ${isDark ? '#2a2a3e' : '#f8f9ff'} 100%)`,
         borderRadius: '20px',
         minHeight: '280px'
@@ -62,9 +62,9 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
 
         {/* Action Cards */}
         <div className="d-flex flex-column gap-3">
-          <div 
+          <div
             className="p-3 rounded-4 d-flex align-items-center justify-content-between shadow-sm position-relative overflow-hidden"
-            style={{ 
+            style={{
               background: `linear-gradient(45deg, var(--bs-body-bg), ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'})`,
               backdropFilter: 'blur(10px)',
               border: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
@@ -81,11 +81,11 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
             }}
           >
             <div className="d-flex align-items-center flex-grow-1">
-              <div 
+              <div
                 className="rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm"
-                style={{ 
-                  width: '60px', 
-                  height: '60px', 
+                style={{
+                  width: '60px',
+                  height: '60px',
                   background: 'linear-gradient(45deg, var(--bs-info), var(--bs-cyan))'
                 }}
               >
@@ -100,10 +100,10 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 </p>
               </div>
             </div>
-            <button 
-              className="btn btn-primary btn-lg px-4 py-3 fw-semibold shadow-sm" 
+            <button
+              className="btn btn-primary btn-lg px-4 py-3 fw-semibold shadow-sm"
               onClick={handleExplainEthereum}
-              style={{ 
+              style={{
                 borderRadius: '12px',
                 background: 'linear-gradient(45deg, var(--bs-primary), var(--bs-info))',
                 border: 'none'
@@ -114,9 +114,9 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
             </button>
           </div>
 
-          <div 
+          <div
             className="p-3 rounded-4 d-flex align-items-center justify-content-between shadow-sm position-relative overflow-hidden"
-            style={{ 
+            style={{
               background: `linear-gradient(45deg, var(--bs-body-bg), ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'})`,
               backdropFilter: 'blur(10px)',
               border: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
@@ -133,11 +133,11 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
             }}
           >
             <div className="d-flex align-items-center flex-grow-1">
-              <div 
+              <div
                 className="rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm"
-                style={{ 
-                  width: '60px', 
-                  height: '60px', 
+                style={{
+                  width: '60px',
+                  height: '60px',
                   background: 'linear-gradient(45deg, var(--bs-success), var(--bs-teal))'
                 }}
               >
@@ -152,10 +152,10 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 </p>
               </div>
             </div>
-            <button 
-              className="btn btn-success btn-lg px-4 py-3 fw-semibold shadow-sm" 
+            <button
+              className="btn btn-success btn-lg px-4 py-3 fw-semibold shadow-sm"
               onClick={handleGetStarted}
-              style={{ 
+              style={{
                 borderRadius: '12px',
                 background: 'linear-gradient(45deg, var(--bs-success), var(--bs-teal))',
                 border: 'none'
@@ -170,29 +170,29 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
         {/* Bottom decoration with animation */}
         <div className="text-center mt-3">
           <div className="d-flex justify-content-center align-items-center gap-2">
-            <div 
-              className="rounded-circle shadow-sm" 
-              style={{ 
-                width: '8px', 
-                height: '8px', 
+            <div
+              className="rounded-circle shadow-sm"
+              style={{
+                width: '8px',
+                height: '8px',
                 background: 'var(--bs-primary)',
                 animation: 'pulse 2s infinite'
               }}
             ></div>
-            <div 
-              className="rounded-circle shadow-sm" 
-              style={{ 
-                width: '8px', 
-                height: '8px', 
+            <div
+              className="rounded-circle shadow-sm"
+              style={{
+                width: '8px',
+                height: '8px',
                 background: 'var(--bs-info)',
                 animation: 'pulse 2s infinite 0.5s'
               }}
             ></div>
-            <div 
-              className="rounded-circle shadow-sm" 
-              style={{ 
-                width: '8px', 
-                height: '8px', 
+            <div
+              className="rounded-circle shadow-sm"
+              style={{
+                width: '8px',
+                height: '8px',
                 background: 'var(--bs-success)',
                 animation: 'pulse 2s infinite 1s'
               }}

@@ -516,26 +516,26 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       if (files) {
         for (const file in files) {
           try {
-              const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
-              if (file === 'remix.config.json') {
-                const remixConfig = JSON.parse(files[file])
+            const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
+            if (file === 'remix.config.json') {
+              const remixConfig = JSON.parse(files[file])
 
-                remixConfig.project = template
-                remixConfig.version = projectVersion
-                remixConfig.IDE = window.location.hostname
-                await workspaceProvider.set(uniqueFileName, JSON.stringify(remixConfig, null, 2))
-              } else {
-                await workspaceProvider.set(uniqueFileName, files[file])
-              }
-              if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
-                openPath = uniqueFileName
-              } else if (isReadme(uniqueFileName)) {
-                openPath = uniqueFileName
-              }
-            } catch (error) {
-              console.error(error)
+              remixConfig.project = template
+              remixConfig.version = projectVersion
+              remixConfig.IDE = window.location.hostname
+              await workspaceProvider.set(uniqueFileName, JSON.stringify(remixConfig, null, 2))
+            } else {
+              await workspaceProvider.set(uniqueFileName, files[file])
             }
+            if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
+              openPath = uniqueFileName
+            } else if (isReadme(uniqueFileName)) {
+              openPath = uniqueFileName
+            }
+          } catch (error) {
+            console.error(error)
           }
+        }
       }
       return openPath || (files && Object.keys(files)[0])
     } catch (e) {
