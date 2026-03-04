@@ -159,6 +159,13 @@ export default class TabProxy extends Plugin {
       }
     })
 
+    this.on('fileManager', 'fileSaved', async (file) => {
+      const currentFile = this.fileManager.currentFile()
+      if (currentFile && currentFile === file && file.endsWith('.json')) {
+        await this.checkIfCanRunScenario(file)
+      }
+    })
+
     this.on('fileManager', 'fileRenamed', (oldName, newName, isFolder) => {
       const workspace = this.fileManager.currentWorkspace()
 
