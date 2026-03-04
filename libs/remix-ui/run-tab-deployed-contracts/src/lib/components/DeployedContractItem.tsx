@@ -307,6 +307,17 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
         chainId = network?.id?.toString() || providerName
       }
 
+      let compilerFilePath = ''
+      if (compilerData?.fullyQualifiedName) {
+        const fqn = compilerData.fullyQualifiedName
+        compilerFilePath = fqn.includes(':') ? fqn.split(':')[0] : fqn
+      }
+
+      const resolvedFilePath = contract.filePath
+        || compilerFilePath
+        || contract.contractData?.contract?.file
+        || ''
+
       try {
         await plugin.call('quick-dapp-v2', 'createDapp', {
           description: descriptionObj.text,
@@ -319,7 +330,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
           image: descriptionObj.image,
           figmaUrl: descriptionObj.figmaUrl,
           figmaToken: descriptionObj.figmaToken,
-          sourceFilePath: contract.filePath || contract.contractData?.contract?.file || ''
+          sourceFilePath: resolvedFilePath
         })
 
         await plugin.call('tabs', 'focus', 'quick-dapp-v2')
