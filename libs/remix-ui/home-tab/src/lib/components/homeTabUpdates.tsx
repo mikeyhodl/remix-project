@@ -63,11 +63,12 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
 
         // Add first-time card option (higher weight for first-time users)
         if (isFirstTime) {
-          // Add multiple entries to increase probability for first-time users
-          allOptions.push('first-time', 'first-time', 'first-time')
+          setShowFirstTime(true)
+          setSelectedUpdate(null)
+          setIsLoading(false)
         } else {
-          // Still include as option for returning users, but lower probability
-          allOptions.push('first-time')
+          // Still include as option for returning users
+          allOptions.push('first-time', 'first-time')
         }
 
         // Add regular updates if available
