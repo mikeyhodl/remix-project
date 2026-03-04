@@ -4,6 +4,7 @@
  */
 
 import { AuthUser, AuthProvider } from './sso-api'
+import { NotificationItem } from './notification-center-api'
 
 // ==================== Credits ====================
 
@@ -79,11 +80,20 @@ export interface GitHubTokenResponse {
   scopes?: string[]
 }
 
+// ==================== Registration Mode ====================
+
+export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'
+
+export interface RegistrationModeResponse {
+  mode: RegistrationMode
+}
+
 // ==================== SIWE ====================
 
 export interface SiweVerifyRequest {
   message: string
   signature: string
+  invite_token?: string
 }
 
 export interface SiweVerifyResponse {
@@ -252,8 +262,27 @@ export interface Permission {
   category?: string
 }
 
+export interface FeatureGroup {
+  name: string
+  display_name: string
+  description: string
+  priority: number
+  source_type: string
+  starts_at: string
+  expires_at: string | null
+  is_recurring: boolean
+  grant_reason: string | null
+  created_at: string
+}
+
 export interface PermissionsResponse {
-  features: Permission[]
+  user_id?: number
+  group_id?: number
+  is_authenticated?: boolean
+  is_blocked?: boolean
+  is_admin?: boolean
+  feature_groups?: FeatureGroup[]
+  features: Permission[] | Record<string, any>
 }
 
 export interface FeatureCheckRequest {
@@ -566,9 +595,15 @@ export interface FeatureAccessCheckResponse {
  * Action that will be performed when a token is redeemed
  */
 export interface InviteTokenAction {
-  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag'
+  type: 'add_to_feature_group' | 'grant_credits' | 'grant_product' | 'add_tag' | 'walkthrough' | 'membership_request'
   description: string
   config?: Record<string, unknown>
+  walkthrough_slug?: string
+  auto_trigger?: boolean
+  /** membership_request action fields */
+  feature_group_id?: number
+  feature_group_name?: string
+  feature_group_display_name?: string
 }
 
 /**
@@ -586,13 +621,16 @@ export interface InviteTokenInfo {
  */
 export interface InviteValidateResponse {
   valid: boolean
+  token_id?: number
   name?: string
   description?: string
+  invite_type?: 'default' | 'beta_program' | 'request' | string
   expires_at?: string | null
   uses_remaining?: number | null
   already_redeemed?: boolean
   redeemed_at?: string | null
   actions?: InviteTokenAction[]
+  content?: any[]
   error?: string
   error_code?: 'NOT_FOUND' | 'INACTIVE' | 'EXPIRED' | 'NOT_STARTED' | 'EXHAUSTED' | 'MAX_USES_REACHED'
 }
@@ -662,5 +700,47 @@ export interface UserTag {
  */
 export interface UserTagsResponse {
   tags: UserTag[]
+}
+
+// ==================== Anonymous Membership Requests ====================
+
+export interface MembershipGroup {
+  id: number
+  name: string
+  display_name: string
+  description: string
+}
+
+export interface MembershipGroupsResponse {
+  groups: MembershipGroup[]
+}
+
+export interface MembershipSubmitRequest {
+  feature_group_id: number
+  nickname?: string
+  email?: string
+  comment?: string
+}
+
+export interface MembershipSubmitResponse {
+  claim_token: string
+  request_id: number
+}
+
+export interface MembershipStatusRequest {
+  id: number
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
+  nickname: string | null
+  comment: string | null
+  resolution_note: string | null
+  created_at: string
+  resolved_at: string | null
+  feature_group_name: string
+  feature_group_display_name: string
+}
+
+export interface MembershipStatusResponse {
+  request: MembershipStatusRequest
+  notifications: NotificationItem[]
 }
 

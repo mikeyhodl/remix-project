@@ -56,6 +56,8 @@ import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
 import { AuthPlugin } from './app/plugins/auth-plugin'
 import { InvitationManagerPlugin } from './app/plugins/invitation-manager-plugin'
+import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin'
+import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
 import { AccountPlugin } from './app/plugins/account-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
@@ -181,6 +183,8 @@ class AppComponent {
   settings: SettingsTab
   authPlugin: AuthPlugin
   invitationManager: InvitationManagerPlugin
+  membershipRequest: MembershipRequestPlugin
+  betaCornerWidget: BetaCornerWidgetPlugin
   accountPlugin: AccountPlugin
   params: any
   desktopClientMode: boolean
@@ -272,7 +276,7 @@ class AppComponent {
       this.track({ category: 'MatomoManager', action: 'showConsentDialog', isClick: false });
     }
 
-    this.walkthroughService = new WalkthroughService(appManager)
+    this.walkthroughService = new WalkthroughService()
 
     this.platform = isElectron() ? 'desktop' : 'web'
 
@@ -625,6 +629,8 @@ class AppComponent {
 
     this.authPlugin = new AuthPlugin()
     this.invitationManager = new InvitationManagerPlugin()
+    this.membershipRequest = new MembershipRequestPlugin()
+    this.betaCornerWidget = new BetaCornerWidgetPlugin()
     const feedbackPlugin = new FeedbackPlugin()
 
     this.engine.register([
@@ -640,6 +646,8 @@ class AppComponent {
       openZeppelinProxy,
       this.authPlugin,
       this.invitationManager,
+      this.membershipRequest,
+      this.betaCornerWidget,
       this.accountPlugin,
       feedbackPlugin
     ])
@@ -714,12 +722,14 @@ class AppComponent {
 
     await this.appManager.activatePlugin(['auth'])
     await this.appManager.activatePlugin(['invitationManager'])
+    await this.appManager.activatePlugin(['membershipRequest'])
+    await this.appManager.activatePlugin(['betaCornerWidget'])
     await this.appManager.activatePlugin(['account'])
     await this.appManager.activatePlugin(['notificationCenter'])
     await this.appManager.activatePlugin(['feedback'])
     await this.appManager.activatePlugin(['settings'])
 
-    await this.appManager.activatePlugin(['walkthrough', 'storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
+    await this.appManager.activatePlugin(['storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
     await this.appManager.activatePlugin(['solidity-script', 'remix-templates'])
 
     if (isElectron()) {
@@ -828,7 +838,7 @@ class AppComponent {
     // activate solidity plugin
     this.appManager.activatePlugin(['solidity', 'udapp', 'deploy-libraries', 'link-libraries', 'openzeppelin-proxy', 'scriptRunnerBridge', 'resolutionIndex'])
 
-    if (isElectron()){
+    if (isElectron()) {
       this.appManager.activatePlugin(['desktopHost'])
     }
     // await this.appManager.activatePlugin(['compilerArtefacts'])

@@ -31,7 +31,8 @@ export interface TopbarEvent extends MatomoEventBase {
     | 'terminalPanel'
     | 'rightSidePanel'
     | 'header'
-    | 'feedback';
+    | 'feedback'
+    | 'support';
 }
 
 export interface LayoutEvent extends MatomoEventBase {
