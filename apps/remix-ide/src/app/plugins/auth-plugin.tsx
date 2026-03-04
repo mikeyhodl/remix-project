@@ -324,7 +324,7 @@ export class AuthPlugin extends Plugin {
 
       // Base Account uses Base SDK for SIWE-based authentication
       if (provider === 'base') {
-        await this.loginWithBase()
+        await this.loginWithBase(inviteToken || undefined)
         return
       }
 
@@ -1340,7 +1340,7 @@ export class AuthPlugin extends Plugin {
    * Login with Base Account SDK
    * Uses Base's smart wallet and SIWE-based authentication
    */
-  private async loginWithBase(): Promise<void> {
+  private async loginWithBase(inviteToken?: string): Promise<void> {
     try {
       console.log('[Base] Starting Base Account authentication...')
 
@@ -1410,16 +1410,17 @@ export class AuthPlugin extends Plugin {
 
       // Verify with Base-specific endpoint
       console.log('[Base] Verifying signature with backend...')
+      const verifyBody: Record<string, string> = { message, signature }
+      if (inviteToken) {
+        verifyBody.invite_token = inviteToken
+      }
       const verifyResponse = await fetch(`${endpointUrls.sso}/base/verify`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          message,
-          signature
-        })
+        body: JSON.stringify(verifyBody)
       })
 
       if (!verifyResponse.ok) {
@@ -1449,6 +1450,11 @@ export class AuthPlugin extends Plugin {
 
       // Auto-refresh credits
       this.refreshCredits().catch(console.error)
+
+      // Auto-redeem pending invite token after successful Base login
+      this.autoRedeemPendingInvite().catch(err =>
+        console.warn('[Base] Auto-redeem invite failed:', err)
+      )
 
     } catch (error: any) {
       console.error('[Base] Login failed:', error)
