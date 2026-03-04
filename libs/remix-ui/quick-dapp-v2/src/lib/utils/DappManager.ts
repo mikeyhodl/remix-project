@@ -286,15 +286,16 @@ export class DappManager {
       }
     }
 
-    // Collect contract source files (with imports) before switching workspace
-    let contractSourceFiles: Map<string, string> = new Map();
-    if (contractData.sourceFilePath) {
-      try {
-        contractSourceFiles = await this.collectSolidityFiles(contractData.sourceFilePath);
-      } catch (e) {
-        console.warn('[DappManager] Failed to collect contract files (non-critical):', e);
-      }
-    }
+    // [DISABLED] Collect contract source files (with imports) before switching workspace
+    // Temporarily commented out per feedback — do not delete
+    // let contractSourceFiles: Map<string, string> = new Map();
+    // if (contractData.sourceFilePath) {
+    //   try {
+    //     contractSourceFiles = await this.collectSolidityFiles(contractData.sourceFilePath);
+    //   } catch (e) {
+    //     console.warn('[DappManager] Failed to collect contract files (non-critical):', e);
+    //   }
+    // }
 
     await this.plugin.call('filePanel', 'createWorkspace', workspaceName, true);
 
@@ -349,21 +350,22 @@ export class DappManager {
       });
     } catch (e) { /* non-critical */ }
 
-    // Copy contract source files to the dapp workspace, preserving folder structure
-    if (contractSourceFiles.size > 0) {
-      for (const [filePath, content] of contractSourceFiles) {
-        try {
-          const parts = filePath.split('/');
-          for (let i = 1; i < parts.length; i++) {
-            const dir = parts.slice(0, i).join('/');
-            try { await this.plugin.call('fileManager', 'mkdir', dir); } catch (_) {}
-          }
-          await this.plugin.call('fileManager', 'writeFile', filePath, content);
-        } catch (e) {
-          console.warn(`[DappManager] Failed to copy ${filePath}:`, e);
-        }
-      }
-    }
+    // [DISABLED] Copy contract source files to the dapp workspace, preserving folder structure
+    // Temporarily commented out per feedback — do not delete
+    // if (contractSourceFiles.size > 0) {
+    //   for (const [filePath, content] of contractSourceFiles) {
+    //     try {
+    //       const parts = filePath.split('/');
+    //       for (let i = 1; i < parts.length; i++) {
+    //         const dir = parts.slice(0, i).join('/');
+    //         try { await this.plugin.call('fileManager', 'mkdir', dir); } catch (_) {}
+    //       }
+    //       await this.plugin.call('fileManager', 'writeFile', filePath, content);
+    //     } catch (e) {
+    //       console.warn(`[DappManager] Failed to copy ${filePath}:`, e);
+    //     }
+    //   }
+    // }
 
     // Restore VM state in the new DApp workspace.
     if (vmStateSnapshot && vmProviderName) {
