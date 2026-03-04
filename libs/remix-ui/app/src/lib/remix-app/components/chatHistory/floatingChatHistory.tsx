@@ -1,5 +1,5 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ConversationMetadata } from '@remix/remix-ai-core'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ChatHistoryItem } from './chatHistoryItem'
@@ -40,7 +40,6 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredConversations, setFilteredConversations] = useState<ConversationMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(currentConversationId)
   const defaultPanelWidth = '350px'
   const resolvedPanelWidth = panelWidth !== undefined
     ? typeof panelWidth === 'number' ? `${panelWidth}px` : panelWidth
@@ -62,7 +61,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
         try {
           const results = await onSearch(searchQuery)
           if (!cancelled) {
-            setFilteredConversations(results.filter(conv => conv.archived === showArchived))
+            setFilteredConversations(results.filter(conv => conv.archived === showArchived && conv.messageCount > 0))
           }
         } finally {
           if (!cancelled) setIsSearching(false)
@@ -70,7 +69,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
         return
       }
 
-      let filtered = conversations.filter(conv => conv.archived === showArchived)
+      let filtered = conversations.filter(conv => conv.archived === showArchived && conv.messageCount > 0)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         filtered = filtered.filter(conv =>
@@ -85,11 +84,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
     return () => { cancelled = true }
   }, [conversations, showArchived, searchQuery, onSearch])
 
-  useEffect(() => {
-    setSelectedConversationId(currentConversationId)
-  }, [currentConversationId])
-
-  const archivedCount = conversations.filter(c => c.archived).length
+  const archivedCount = conversations.filter(c => c.archived && c.messageCount > 0).length
 
   return (
     <div
@@ -179,10 +174,9 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
             <ChatHistoryItem
               key={conv.id}
               conversation={conv}
-              active={conv.id === selectedConversationId}
+              active={conv.id === currentConversationId}
               theme={theme}
               onClick={() => {
-                setSelectedConversationId(conv.id)
                 // Automatically unarchive if the conversation is archived
                 if (conv.archived) {
                   onArchiveConversation(conv.id)

@@ -223,17 +223,25 @@ export class IndexedDBChatHistoryBackend implements IChatHistoryBackend {
         const msgStore = transaction.objectStore('messages')
         msgStore.put(message)
 
-        // Update conversation metadata
+        // Update conversation metadata using the real message count from the
+        // index rather than a blind increment.  IndexedDB's put() is an upsert,
+        // so incrementing unconditionally would double-count re-saves of the
+        // same message ID.
         const convStore = transaction.objectStore('conversations')
         const convRequest = convStore.get(message.conversationId)
 
         convRequest.onsuccess = () => {
           const conversation = convRequest.result as ConversationMetadata
           if (conversation) {
-            conversation.messageCount = (conversation.messageCount || 0) + 1
-            conversation.updatedAt = Date.now()
-            conversation.lastAccessedAt = Date.now()
-            convStore.put(conversation)
+            const countRequest = msgStore.index('conversationId').count(
+              IDBKeyRange.only(message.conversationId)
+            )
+            countRequest.onsuccess = () => {
+              conversation.messageCount = countRequest.result
+              conversation.updatedAt = Date.now()
+              conversation.lastAccessedAt = Date.now()
+              convStore.put(conversation)
+            }
           }
         }
 
@@ -271,17 +279,24 @@ export class IndexedDBChatHistoryBackend implements IChatHistoryBackend {
           msgStore.put(persistedMsg)
         })
 
-        // Update conversation metadata
+        // Update conversation metadata using the real message count from the
+        // index.  Incrementing by messages.length would over-count when any of
+        // the provided IDs already exist in the store (upsert behaviour).
         const convStore = transaction.objectStore('conversations')
         const convRequest = convStore.get(conversationId)
 
         convRequest.onsuccess = () => {
           const conversation = convRequest.result as ConversationMetadata
           if (conversation) {
-            conversation.messageCount = (conversation.messageCount || 0) + messages.length
-            conversation.updatedAt = Date.now()
-            conversation.lastAccessedAt = Date.now()
-            convStore.put(conversation)
+            const countRequest = msgStore.index('conversationId').count(
+              IDBKeyRange.only(conversationId)
+            )
+            countRequest.onsuccess = () => {
+              conversation.messageCount = countRequest.result
+              conversation.updatedAt = Date.now()
+              conversation.lastAccessedAt = Date.now()
+              convStore.put(conversation)
+            }
           }
         }
 

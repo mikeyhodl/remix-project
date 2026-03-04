@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 
 interface AiChatButtonsProps {
   theme: string
@@ -84,6 +84,12 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
     }
   }
 
+  const handleActionClick = useCallback(() => {
+    if (document.querySelector('[data-id="maximizeRightSidePanel"]')) {
+      plugin.call('rightSidePanel', 'maximizePanel')
+    }
+  }, [])
+
   const btnList: {
     label: string,
     icon: string,
@@ -107,8 +113,8 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-magic`,
       color: '',
       action: () => {
+        handleActionClick()
         sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
-        plugin.call('rightSidePanel', 'maximizePanel')
       }
     },
     {
@@ -116,8 +122,8 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-graduation-cap`,
       color: '',
       action: () => {
+        handleActionClick()
         sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
-        plugin.call('rightSidePanel', 'maximizePanel')
       }
     },
     {

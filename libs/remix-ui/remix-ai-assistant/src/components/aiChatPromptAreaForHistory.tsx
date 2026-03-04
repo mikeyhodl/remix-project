@@ -1,4 +1,4 @@
-import React, { Dispatch, useState } from 'react'
+import React, { Dispatch, useState, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { ChatMessage } from '@remix/remix-ai-core'
@@ -11,13 +11,10 @@ interface AiChatPromptAreaForHistoryProps {
       themeTracker: any
       showHistorySidebar: boolean
       isMaximized: boolean
-      showAssistantOptions: boolean
       modelOpt: { top: number, left: number }
       menuRef: React.RefObject<HTMLDivElement>
-      setShowAssistantOptions: React.Dispatch<React.SetStateAction<boolean>>
       assistantChoice: any
       setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
-      aiAssistantGroupList: any[]
       mcpEnabled: boolean
       mcpEnhanced: boolean
       setMcpEnhanced: React.Dispatch<React.SetStateAction<boolean>>
@@ -31,7 +28,6 @@ interface AiChatPromptAreaForHistoryProps {
       stopRequest: () => void
       showModelOptions: boolean
       setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
-      handleSetAssistant: () => void
       handleSetModel: () => void
       handleGenerateWorkspace: () => void
       handleRecord: () => void
@@ -50,7 +46,26 @@ interface AiChatPromptAreaForHistoryProps {
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
-  const [showMenu, setShowMenu] = useState(false)
+  // Memoize filtered model list to avoid repeated checkAccess calls
+  const filteredModelList = useMemo(() => {
+    const isLoggedIn = !!localStorage.getItem('remix_access_token')
+
+    return props.availableModels
+      .filter(model => {
+        if (!isLoggedIn) {
+          return !model.requiresAuth
+        }
+        return props.modelAccess.checkAccess(model.id)
+      })
+      .map(model => ({
+        label: model.name,
+        bodyText: model.description,
+        icon: 'fa-solid fa-check' as const,
+        stateValue: model.id,
+        dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`
+      }))
+  }, [props.availableModels, props.modelAccess.allowedModels])
+
   return (
     <section
       id="remix-ai-prompt-area"
@@ -58,7 +73,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       style={{ flexShrink: 0, minHeight: '140px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') }}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
-      {showMenu && (
+      {props.showModelSelector && (
         <div
           className="pt-2 mb-2 z-3 bg-light border border-text position-fixed"
           style={{ borderRadius: '8px', top: props.modelOpt.top, left: props.modelOpt.left, zIndex: 1000, minWidth: '300px', maxWidth: '400px' }}
@@ -69,27 +84,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
             choice={props.selectedModelId}
-            groupList={props.availableModels
-              .filter(model => {
-                // Check if user is logged in by checking for token
-                const isLoggedIn = !!localStorage.getItem('remix_access_token')
-
-                // If not logged in, only show models that don't require auth
-                if (!isLoggedIn) {
-                  return !model.requiresAuth
-                }
-
-                // If logged in, only show models the user has access to
-                return props.modelAccess.checkAccess(model.id)
-              })
-              .map(model => ({
-                label: model.name,
-                bodyText: model.description,
-                icon: 'fa-solid fa-check',
-                stateValue: model.id,
-                dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`
-              }))
-            }
+            groupList={filteredModelList}
           />
           {props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
@@ -135,7 +130,6 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       <PromptArea
         input={props.input}
-        maximizePanel={props.maximizePanel}
         setInput={props.setInput}
         isStreaming={props.isStreaming}
         handleSend={props.handleSend}
@@ -147,10 +141,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
-        isMaximized={props.isMaximized}
-        showAssistantOptions={props.showAssistantOptions}
         assistantChoice={props.assistantChoice}
-        handleSetAssistant={props.handleSetAssistant}
         themeTracker={props.themeTracker}
         setShowOllamaModelSelector={props.setShowOllamaModelSelector}
         showOllamaModelSelector={props.showOllamaModelSelector}

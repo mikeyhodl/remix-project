@@ -39,10 +39,8 @@ export function PromptDefault(props: PromptDefaultProps) {
         Audio Prompt
         </button>
       </CustomTooltip>
-      {
-        !props.isRecording && !props.isStreaming ? <PromptSubmitButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} handleSend={props.handleSend} isStreaming={props.isStreaming} /> :
-          <PromptStopButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} isStreaming={props.isStreaming} handleCancel={props.handleCancel}/>
-      }
+      {!props.isStreaming ? <PromptSubmitButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} handleSend={props.handleSend} isStreaming={props.isStreaming} /> :
+        <PromptStopButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} isStreaming={props.isStreaming} handleCancel={props.handleCancel} />}
     </div>
   )
 }

@@ -447,7 +447,7 @@ export class AIDappGenerator extends Plugin {
           messages,
           systemPrompt,
           hasImage
-        })
+        }),
       });
 
       if (!response.ok) {

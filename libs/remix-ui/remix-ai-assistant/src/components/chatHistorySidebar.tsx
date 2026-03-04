@@ -48,7 +48,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
         try {
           const results = await onSearch(searchQuery)
           if (!cancelled) {
-            setFilteredConversations(results.filter(conv => conv.archived === showArchived))
+            setFilteredConversations(results.filter(conv => conv.archived === showArchived && conv.messageCount > 0))
           }
         } finally {
           if (!cancelled) setIsSearching(false)
@@ -57,7 +57,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
       }
 
       // Local filter: archived status + title/preview
-      let filtered = conversations.filter(conv => conv.archived === showArchived)
+      let filtered = conversations.filter(conv => conv.archived === showArchived && conv.messageCount > 0)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         filtered = filtered.filter(conv =>
@@ -72,7 +72,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
     return () => { cancelled = true }
   }, [conversations, showArchived, searchQuery, onSearch])
 
-  const archivedCount = conversations.filter(c => c.archived).length
+  const archivedCount = conversations.filter(c => c.archived && c.messageCount > 0).length
 
   return (
     <div
@@ -144,7 +144,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
             ) : (
               <>
                 <i className="fas fa-comments fa-2x mb-2"></i>
-                <p>No conversations yet</p>
+                <p data-id="no-conversations-msg">No conversations yet</p>
                 <small>Start a new conversation to begin</small>
               </>
             )}
