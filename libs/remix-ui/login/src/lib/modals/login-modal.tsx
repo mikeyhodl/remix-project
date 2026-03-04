@@ -6,7 +6,7 @@ import './login-modal.css'
 
 interface LoginModalProps {
   onClose: () => void
-  plugin?: any
+  plugin?: any // Remix plugin instance — needed to emit authStateChanged for cloud
 }
 
 interface ProviderConfig {
@@ -178,6 +178,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           { id: 'email', label: 'Email', icon: <i className="fas fa-envelope"></i>, description: 'Sign in with your email address', enabled: data.providers?.includes('email') ?? false },
           { id: 'apple', label: 'Apple', icon: <i className="fab fa-apple"></i>, description: 'Sign in with your Apple ID', enabled: data.providers?.includes('apple') ?? false },
           { id: 'coinbase', label: 'Coinbase', icon: <i className="fas fa-coins"></i>, description: 'Sign in with your Coinbase account', enabled: data.providers?.includes('coinbase') ?? false },
+          { id: 'base', label: 'Base', icon: <svg width="18" height="18" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z" fill="currentColor"/></svg>, description: 'Sign in with Base smart wallet', enabled: data.providers?.includes('base') ?? true },
         ]
 
         setProviders(allProviders.filter(p => p.enabled))
@@ -189,6 +190,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           { id: 'github', label: 'GitHub', icon: <i className="fab fa-github"></i>, description: 'Sign in with your GitHub account', enabled: true },
           { id: 'discord', label: 'Discord', icon: <i className="fab fa-discord"></i>, description: 'Sign in with your Discord account', enabled: true },
           { id: 'siwe', label: 'Ethereum Wallet', icon: <i className="fab fa-ethereum"></i>, description: 'Sign in with MetaMask, Coinbase Wallet, or any Ethereum wallet', enabled: true },
+          { id: 'base', label: 'Base', icon: <svg width="18" height="18" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z" fill="currentColor"/></svg>, description: 'Sign in with Base smart wallet', enabled: true },
           { id: 'email', label: 'Email', icon: <i className="fas fa-envelope"></i>, description: 'Sign in with your email address', enabled: true },
         ])
         setLoadingProviders(false)
@@ -212,6 +214,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     trackEvent('loginStart', provider)
     try {
       await login(provider)
+      // Close the modal after successful login
+      onClose()
     } catch (err) {
       trackEvent('loginFailed', provider)
       console.error('[LoginModal] Login failed:', err)
@@ -343,7 +347,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           type: 'AUTH_SUCCESS',
           payload: { user: data.user, token: data.token }
         })
+
+        // Tell the auth plugin about this login so it can:
+        //  • schedule token refresh
+        //  • emit authStateChanged (picked up by CloudProvider, etc.)
+        //  • fetch credits
+        // OAuth flows do this inside AuthPlugin.login(), but the email
+        // OTP flow bypasses that method entirely.
+        if (plugin && typeof plugin.call === 'function') {
+          try {
+            await plugin.call('auth', 'notifyEmailOtpLogin', data.user, data.token)
+          } catch (e) {
+            console.warn('[LoginModal] Failed to notify auth plugin of email OTP login:', e)
+          }
+        }
+
         console.log('[LoginModal] Email OTP login successful')
+        // Close the modal after successful login
+        onClose()
       } else {
         throw new Error('Invalid response from server')
       }
@@ -429,7 +450,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   }
 
   // --- Providers excluding email (rendered as buttons) and SIWE (rendered separately) ---
-  const oauthProviders = providers.filter(p => p.id !== 'siwe' && p.id !== 'email')
+  const oauthProviders = providers.filter(p => p.id !== 'siwe' && p.id !== 'email' && p.id !== 'base')
   const siweProvider = providers.find(p => p.id === 'siwe')
 
   return (
@@ -737,6 +758,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                       )}
                     </button>
                   )}
+
+                  {/* Base Smart Wallet */}
+                  {providers.filter(p => p.id === 'base').map((provider) => (
+                    <button
+                      key={provider.id}
+                      className="btn w-100 d-flex align-items-center justify-content-center py-2 mb-3"
+                      style={{ backgroundColor: '#0052FF', color: 'white', border: 'none' }}
+                      onClick={() => handleLogin(provider.id)}
+                      disabled={loading || !provider.enabled}
+                    >
+                      <span className="me-2 login-modal-provider-icon fs-medium">
+                        {provider.icon}
+                      </span>
+                      <span className="fw-medium fs-medium">Continue with {provider.label}</span>
+                      {loading && (
+                        <div className="spinner-border spinner-border-sm text-white ms-2" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
 
                   {/* Divider */}
                   {oauthProviders.length > 0 && (

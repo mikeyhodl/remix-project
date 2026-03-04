@@ -55,8 +55,6 @@ import { TransactionSimulator } from './app/plugins/transaction-simulator'
 import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
 import { AuthPlugin } from './app/plugins/auth-plugin'
-import { S3StoragePlugin } from './app/plugins/storage/s3-storage-plugin'
-import { CloudWorkspacesPlugin } from './app/plugins/cloud-workspaces-plugin'
 import { InvitationManagerPlugin } from './app/plugins/invitation-manager-plugin'
 import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin'
 import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
@@ -184,8 +182,6 @@ class AppComponent {
   remixAiAssistant: RemixAIAssistant
   settings: SettingsTab
   authPlugin: AuthPlugin
-  s3StoragePlugin: S3StoragePlugin
-  cloudWorkspacesPlugin: CloudWorkspacesPlugin
   invitationManager: InvitationManagerPlugin
   membershipRequest: MembershipRequestPlugin
   betaCornerWidget: BetaCornerWidgetPlugin
@@ -632,8 +628,6 @@ class AppComponent {
     )
 
     this.authPlugin = new AuthPlugin()
-    this.s3StoragePlugin = new S3StoragePlugin()
-    this.cloudWorkspacesPlugin = new CloudWorkspacesPlugin()
     this.invitationManager = new InvitationManagerPlugin()
     this.membershipRequest = new MembershipRequestPlugin()
     this.betaCornerWidget = new BetaCornerWidgetPlugin()
@@ -651,8 +645,6 @@ class AppComponent {
       deployLibraries,
       openZeppelinProxy,
       this.authPlugin,
-      this.s3StoragePlugin,
-      this.cloudWorkspacesPlugin,
       this.invitationManager,
       this.membershipRequest,
       this.betaCornerWidget,
@@ -729,23 +721,6 @@ class AppComponent {
     ])
 
     await this.appManager.activatePlugin(['auth'])
-    // Activate/deactivate cloud plugins based on auth state
-    // disabled for this PR
-    /*     this.appManager.on('auth', 'authStateChanged', async (state: any) => {
-          if (state.isAuthenticated) {
-            await this.appManager.activatePlugin(['s3Storage'])
-            await this.appManager.activatePlugin(['cloudWorkspaces'])
-          } else {
-            await this.appManager.deactivatePlugin('cloudWorkspaces')
-            await this.appManager.deactivatePlugin('s3Storage')
-          }
-        }) 
-    // Also ensure cloud plugins stay active when a token is silently refreshed
-    this.appManager.on('auth', 'tokenRefreshed', async () => {
-      await this.appManager.activatePlugin(['s3Storage'])
-      await this.appManager.activatePlugin(['cloudWorkspaces'])
-    })
-      */
     await this.appManager.activatePlugin(['invitationManager'])
     await this.appManager.activatePlugin(['membershipRequest'])
     await this.appManager.activatePlugin(['betaCornerWidget'])

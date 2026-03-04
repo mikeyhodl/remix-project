@@ -9,11 +9,13 @@ export abstract class ChatHistory{
   private static currentConversationId: string | null = null
 
   /**
-   * Initialize the storage backend
+   * Initialize the storage backend.
+   * Callers are responsible for calling storage.init() before passing it here.
+   * Calling init() again here was causing a second IDBOpenDBRequest, leaking the
+   * first connection handle.
    */
   public static async init(storage: ChatHistoryStorageManager): Promise<void> {
     this.storage = storage
-    await this.storage.init()
   }
 
   /**
@@ -72,25 +74,28 @@ export abstract class ChatHistory{
     await this.storage.touchConversation(id)
   }
 
-  public static pushHistory(prompt, result){
+  public static pushHistory(prompt, result): Promise<void> | undefined {
     if (result === "" || !result) return // do not allow empty assistant message due to nested stream handles on toolcalls
 
     // Check if an entry with the same prompt already exists
     const existingEntryIndex = this.chatEntries.findIndex(entry => entry[0] === prompt)
 
     if (existingEntryIndex !== -1) {
+      // Only update the in-memory context — do NOT write to DB again.
+      // Calling persistMessages unconditionally here was the root cause of duplicate
+      // DB entries (different IDs, same title) when the same prompt was repeated.
       this.chatEntries[existingEntryIndex][1] = result
     } else {
       const chat:ChatEntry = [prompt, result]
       this.chatEntries.push(chat)
       if (this.chatEntries.length > this.queueSize){this.chatEntries.shift()}
-    }
 
-    // Persist to storage if enabled and conversation is active
-    if (this.storage && this.currentConversationId) {
-      this.persistMessages(prompt, result).catch(err => {
-        console.error('Failed to persist chat history:', err)
-      })
+      // Persist to storage only for new (non-duplicate) entries
+      if (this.storage && this.currentConversationId) {
+        return this.persistMessages(prompt, result).catch(err => {
+          console.error('Failed to persist chat history:', err)
+        })
+      }
     }
   }
 
@@ -139,9 +144,10 @@ export abstract class ChatHistory{
   }
 
   /**
-   * Generate a unique message ID
+   * Generate a unique message ID using the Web Crypto API, consistent with
+   * the rest of the codebase (e.g. crypto.randomUUID() in sendPrompt).
    */
   private static generateMessageId(): string {
-    return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    return crypto.randomUUID()
   }
 }

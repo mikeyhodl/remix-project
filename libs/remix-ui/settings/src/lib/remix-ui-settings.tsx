@@ -25,11 +25,6 @@ export interface RemixUiSettingsProps {
 }
 
 const settingsConfig = Registry.getInstance().get('settingsConfig').api
-
-// Check if MCP is enabled via query parameter
-const queryParams = new QueryParams()
-const mcpEnabled = queryParams.exists('experimental')
-
 const settingsSections: SettingsSection[] = [
   {
     key: 'general',
@@ -190,7 +185,7 @@ const settingsSections: SettingsSection[] = [
           }]
         }]
       },
-      ...(mcpEnabled ? [{
+      {
         title: 'MCP Servers',
         options: [{
           name: 'mcp/servers/enable' as keyof typeof initialState,
@@ -210,8 +205,7 @@ const settingsSections: SettingsSection[] = [
           type: 'custom' as const,
           customComponent: 'mcpServerManager'
         }]
-      }] : [])
-    ]
+      }]
   },
   {
     key: 'services', label: 'settings.services', description: 'settings.servicesDescription', subSections: [
@@ -280,17 +274,6 @@ const settingsSections: SettingsSection[] = [
             name: 'etherscan-access-token',
             type: 'password'
           }]
-        }]
-      }]
-  },
-  {
-    key: 'cloud-storage', label: 'settings.cloudStorage', description: 'settings.cloudStorageDescription', subSections: [
-      {
-        options: [{
-          name: 'cloud-storage/autosave',
-          label: 'settings.cloudAutosave',
-          description: 'settings.cloudAutosaveDescription',
-          type: 'toggle'
         }]
       }]
   }

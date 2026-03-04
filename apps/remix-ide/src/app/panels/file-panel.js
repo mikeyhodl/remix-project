@@ -187,7 +187,9 @@ export default class Filepanel extends ViewPlugin {
       if (!workspaceProvider || !workspaceProvider.workspacesPath) {
         throw new Error('Workspace provider not ready')
       }
-      const fullPath = `${workspaceProvider.workspacesPath}/${workspaceName}/${filePath}`.replace(/\/\//g, '/')
+      // Cloud mode: resolve display name to UUID for the path
+      const dirName = workspaceProvider.getWorkspaceDirName?.(workspaceName) || workspaceName
+      const fullPath = `${workspaceProvider.workspacesPath}/${dirName}/${filePath}`.replace(/\/\//g, '/')
       const exists = await window.remixFileSystem.exists(fullPath)
       if (!exists) throw new Error(`File not found: ${filePath} in workspace ${workspaceName}`)
       const content = await window.remixFileSystem.readFile(fullPath, 'utf8')
@@ -207,7 +209,9 @@ export default class Filepanel extends ViewPlugin {
       if (!workspaceProvider || !workspaceProvider.workspacesPath) {
         return false
       }
-      const fullPath = `${workspaceProvider.workspacesPath}/${workspaceName}/${filePath}`.replace(/\/\//g, '/')
+      // Cloud mode: resolve display name to UUID for the path
+      const dirName = workspaceProvider.getWorkspaceDirName?.(workspaceName) || workspaceName
+      const fullPath = `${workspaceProvider.workspacesPath}/${dirName}/${filePath}`.replace(/\/\//g, '/')
       return await window.remixFileSystem.exists(fullPath)
     } catch (e) {
       console.warn('[FilePanel] existsInWorkspace error:', e.message)
@@ -303,10 +307,12 @@ export default class Filepanel extends ViewPlugin {
   setWorkspace(workspace) {
     const workspaceProvider = this.fileProviders.workspace
     const current = this.currentWorkspaceMetadata
+    // Cloud mode: resolve display name → UUID for the actual directory path
+    const dirName = workspaceProvider.getWorkspaceDirName?.(workspace.name) || workspace.name
     this.currentWorkspaceMetadata = {
       name: workspace.name,
       isLocalhost: workspace.isLocalhost,
-      absolutePath: `${workspaceProvider.workspacesPath}/${workspace.name}`,
+      absolutePath: `${workspaceProvider.workspacesPath}/${dirName}`,
     }
     if (this.currentWorkspaceMetadata.name !== current) {
       this.saveRecent(workspace.name)

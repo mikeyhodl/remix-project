@@ -6,7 +6,8 @@ import { customAction } from '@remixproject/plugin-api'
 import { trackMatomoEventAsync } from '@remix-api'
 import { displayNotification, displayPopUp, fetchDirectoryError, fetchDirectoryRequest, fetchDirectorySuccess, focusElement, fsInitializationCompleted, hidePopUp, removeInputFieldSuccess, setCurrentLocalFilePath, setCurrentWorkspace, setExpandPath, setMode, setWorkspaces } from './payload'
 import { listenOnPluginEvents, listenOnProviderEvents } from './events'
-import { createWorkspaceTemplate, getWorkspaces, loadWorkspacePreset, setPlugin, workspaceExists } from './workspace'
+import { createWorkspaceTemplate, getWorkspaces, loadWorkspacePreset, setPlugin, workspaceExists, createWorkspace } from './workspace'
+import { setCloudPlugin, setCreateDefaultCloudWorkspaceFn } from '../cloud/cloud-workspace-actions'
 import { QueryParams, Registry } from '@remix-project/remix-lib'
 import { fetchContractFromEtherscan, fetchContractFromBlockscout } from '@remix-project/core-plugin' // eslint-disable-line
 import JSZip from 'jszip'
@@ -58,6 +59,10 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
     plugin = filePanelPlugin
     dispatch = reducerDispatch
     setPlugin(plugin, dispatch)
+    setCloudPlugin(plugin, dispatch)
+    // Register the createWorkspace function for cloud-workspace-actions to use
+    // when it needs to create a default workspace (avoids circular import).
+    setCreateDefaultCloudWorkspaceFn((name, template) => createWorkspace(name, template as any))
     const workspaceProvider = filePanelPlugin.fileProviders.workspace
     const localhostProvider = filePanelPlugin.fileProviders.localhost
     const electrOnProvider = filePanelPlugin.fileProviders.electron

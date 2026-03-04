@@ -261,7 +261,7 @@ const RemixApp = (props: IRemixAppUi) => {
     viewportSize.width * (viewportSize.width < 768 ? 0.86 : viewportSize.width < 1280 ? 0.3 : 0.24)
   )
   const minChatWidth = 260
-  const maxChatWidth = 360
+  const maxChatWidth = 320
   const rightViewportPadding = 10
   const preferredLeft = iconPanelWidth + sidePanelWidth + horizontalSpacing
   const availableChatWidth = Math.max(minChatWidth, viewportSize.width - preferredLeft - rightViewportPadding)
@@ -278,7 +278,8 @@ const RemixApp = (props: IRemixAppUi) => {
     overflow: 'hidden',
     top: floatingChatTop,
     left: floatingChatLeft,
-    width: `${floatingChatWidth}px`
+    width: `${floatingChatWidth}px`,
+    height: '90vh'
   }), [floatingChatTop, floatingChatLeft, floatingChatWidth])
   const [showArchived, setShowArchived] = useState(false);
 

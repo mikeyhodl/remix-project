@@ -26,6 +26,7 @@ type EndpointUrls = {
     invite: string;
     feedback: string;
     membershipRequests: string;
+    workspaceLock: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -56,6 +57,7 @@ const defaultUrls: EndpointUrls = {
   invite: 'https://auth.api.remix.live:8443/invite',
   feedback: 'https://auth.api.remix.live:8443/feedback',
   membershipRequests: 'https://auth.api.remix.live:8443/permissions/membership-requests/anonymous',
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -86,6 +88,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   invite: 'invite',
   feedback: 'feedback',
   membershipRequests: 'permissions/membership-requests/anonymous',
+  workspaceLock: 'workspace-lock',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -144,6 +147,8 @@ const localhostUrls: EndpointUrls = {
 
   // MEMBERSHIP REQUESTS (anonymous, no auth needed)
   membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
+  // WORKSPACE LOCK service (Redis-based, same auth gateway)
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const resolvedUrls: EndpointUrls = prefix
