@@ -21,9 +21,12 @@ type EndpointUrls = {
     audio: string;
     storage: string;
     permissions: string;
+    walkthroughs: string;
     notifications: string;
     invite: string;
     feedback: string;
+    membershipRequests: string;
+    workspaceLock: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -49,9 +52,12 @@ const defaultUrls: EndpointUrls = {
   audio: 'https://audio.api.remix.live',
   storage: 'https://auth.api.remix.live:8443/storage',
   permissions: 'https://auth.api.remix.live:8443/permissions',
+  walkthroughs: 'https://auth.api.remix.live:8443/walkthroughs',
   notifications: 'https://auth.api.remix.live:8443/notifications',
   invite: 'https://auth.api.remix.live:8443/invite',
   feedback: 'https://auth.api.remix.live:8443/feedback',
+  membershipRequests: 'https://auth.api.remix.live:8443/permissions/membership-requests/anonymous',
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -77,9 +83,12 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   audio: 'audio',
   storage: 'storage',
   permissions: 'permissions',
+  walkthroughs: 'walkthroughs',
   notifications: 'notifications',
   invite: 'invite',
   feedback: 'feedback',
+  membershipRequests: 'permissions/membership-requests/anonymous',
+  workspaceLock: 'workspace-lock',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -124,6 +133,9 @@ const localhostUrls: EndpointUrls = {
   storage: 'http://localhost:3002/storage',
   // PERMISSIONS service
   permissions: 'https://auth.api.remix.live:8443/permissions',
+
+  // NOTIFICATION service (port 3013) - walkthroughs
+  walkthroughs: 'http://localhost:3013/walkthroughs',
   
   // NOTIFICATIONS service (port 3013)
   notifications: 'http://localhost:3013/notifications',
@@ -132,6 +144,11 @@ const localhostUrls: EndpointUrls = {
 
   // FEEDBACK service
   feedback: 'https://auth.api.remix.live:8443/feedback',
+
+  // MEMBERSHIP REQUESTS (anonymous, no auth needed)
+  membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
+  // WORKSPACE LOCK service (Redis-based, same auth gateway)
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const resolvedUrls: EndpointUrls = prefix

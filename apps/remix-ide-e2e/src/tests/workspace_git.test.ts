@@ -90,8 +90,6 @@ module.exports = {
       .setValue('[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/remix-project-org/awesome-remix')
       .click('[data-id="topbarModal-modal-footer-ok-react"]')
       .waitForElementPresent('.fa-spinner')
-      .pause(5000)
-      .waitForElementNotPresent('.fa-spinner')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
       .waitForElementContainsText('[data-id="workspacesSelect"]', 'awesome-remix')
   },
@@ -179,8 +177,6 @@ module.exports = {
       .setValue('[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/ioedeveloper/test-branch-change')
       .click('[data-id="topbarModal-modal-footer-ok-react"]')
       .waitForElementPresent('.fa-spinner')
-      .pause(7000)
-      .waitForElementNotPresent('.fa-spinner')
       .waitForElementContainsText('[data-id="workspacesSelect"]', 'test-branch-change')
       .waitForElementVisible('[data-id="workspaceGitPanel"]')
       .waitForElementVisible('[data-id="workspaceGitBranchesDropdown"]')

@@ -5,6 +5,9 @@ import '../css/topbar.css'
 import { Button, Dropdown } from 'react-bootstrap'
 import { CustomToggle, CustomTopbarMenu } from 'libs/remix-ui/helper/src/lib/components/custom-dropdown'
 import { WorkspaceMetadata } from 'libs/remix-ui/workspace/src/lib/types'
+import { CloudToggle } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
+import { enableCloud, disableCloud } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-workspace-actions'
+import { cloudStore } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-store'
 import { AppContext, platformContext } from 'libs/remix-ui/app/src/lib/remix-app/context/context'
 import { useAuth } from 'libs/remix-ui/app/src/lib/remix-app/context/auth-context'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -20,9 +23,11 @@ import { useCloneRepositoryModal } from '../components/CloneRepositoryModal'
 import { TrackingContext } from '@remix-ide/tracking'
 import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
+import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { NotificationBell } from '../components/NotificationBell'
 import { FeedbackPanel } from '../components/FeedbackPanel'
+import { BetaPromoPill } from '../components/BetaPromoPill'
 
 export function RemixUiTopbar() {
   const intl = useIntl()
@@ -58,9 +63,10 @@ export function RemixUiTopbar() {
   const [enableLogin, setEnableLogin] = useState<boolean>(false);
   const [feedbackFormUrl, setFeedbackFormUrl] = useState<string | null>(null);
   const [feedbackPanelOpen, setFeedbackPanelOpen] = useState<boolean>(false);
+  const [showCloudLoginModal, setShowCloudLoginModal] = useState<boolean>(false);
 
-  // Auth state for cloud backup/restore
-  const { isAuthenticated } = useAuth()
+  // Auth state for cloud backup/restore and support link
+  const { isAuthenticated, token } = useAuth()
 
   // Use the clone repository modal hook
   const { showCloneModal } = useCloneRepositoryModal({
@@ -103,8 +109,16 @@ export function RemixUiTopbar() {
     plugin.on('feedback', 'feedbackFormChanged', (form: any) => {
       setFeedbackFormUrl(form?.url || null)
     })
+
+    plugin.on('feedback', 'openFeedbackForm', (url: string) => {
+      if (url) {
+        setFeedbackFormUrl(url)
+        setFeedbackPanelOpen(true)
+      }
+    })
     return () => {
       plugin.off('feedback', 'feedbackFormChanged')
+      plugin.off('feedback', 'openFeedbackForm')
     }
   }, [])
 
@@ -217,7 +231,7 @@ export function RemixUiTopbar() {
       fetchWorkspaceDirectory(ROOT_PATH)
       setCurrentWorkspace(LOCALHOST)
     }
-  }, [global.fs.browser.currentWorkspace, global.fs.localhost.sharedFolder, global.fs.mode, showDropdown])
+  }, [global.fs.browser.currentWorkspace, global.fs.browser.workspaceSwitchVersion, global.fs.localhost.sharedFolder, global.fs.mode, showDropdown])
 
   useEffect(() => {
     if (global.fs.browser.currentWorkspace && !global.fs.browser.workspaces.find(({ name }) => name === global.fs.browser.currentWorkspace)) {
@@ -567,6 +581,14 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
+          { enableLogin && (
+            <CloudToggle
+              className="ms-2"
+              onLogin={() => setShowCloudLoginModal(true)}
+              onEnableCloud={() => enableCloud()}
+              onDisableCloud={() => disableCloud()}
+            />)}
+          {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} plugin={plugin} />}
         </div>
         <div className="m-1 justify-content-center d-flex align-self-center " style={{ minWidth: '33%' }}>
           <WorkspacesDropdown
@@ -591,6 +613,7 @@ export function RemixUiTopbar() {
             setMenuItems={setMenuItems}
             connectToLocalhost={() => switchWorkspace(LOCALHOST)}
             openTemplateExplorer={openTemplateExplorer}
+            onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
           />
           <div className="d-flex ms-4 gap-2 align-items-center" >
             <CustomTooltip placement="bottom-start" tooltipText={`Toggle Left Side Panel`}>
@@ -655,7 +678,24 @@ export function RemixUiTopbar() {
               />
             )}
           </>
+          <BetaPromoPill plugin={plugin} />
           <NotificationBell className="ms-3" />
+          {isAuthenticated && token && (
+            <CustomTooltip placement="bottom" tooltipText="Premium Support">
+              <span
+                className="btn btn-sm d-flex align-items-center gap-1 ms-3"
+                style={{ cursor: 'pointer', padding: '0.25rem 0.6rem', color: 'var(--text)' }}
+                onClick={() => {
+                  window.open(`https://support.remix.live/login?token=${encodeURIComponent(token)}`, '_blank')
+                  trackMatomoEvent({ category: 'topbar', action: 'support', name: 'SupportOpened', isClick: true })
+                }}
+                data-id="topbar-supportBtn"
+              >
+                <i className="fas fa-headset"></i>
+                <span>Support</span>
+              </span>
+            </CustomTooltip>
+          )}
           {feedbackFormUrl && (
             <CustomTooltip placement="bottom" tooltipText="Send Feedback">
               <span
@@ -690,7 +730,10 @@ export function RemixUiTopbar() {
       {feedbackFormUrl && (
         <FeedbackPanel
           isOpen={feedbackPanelOpen}
-          onClose={() => setFeedbackPanelOpen(false)}
+          onClose={() => {
+            setFeedbackPanelOpen(false)
+            trackMatomoEvent({ category: 'topbar', action: 'feedback', name: 'FeedbackClosed', isClick: true })
+          }}
           formUrl={feedbackFormUrl}
         />
       )}

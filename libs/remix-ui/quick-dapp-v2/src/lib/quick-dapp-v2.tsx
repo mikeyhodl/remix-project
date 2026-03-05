@@ -357,7 +357,24 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
         dispatch({ type: 'SET_DAPPS', payload: refreshedDapps });
 
         if (refreshedDapps.length > 0) {
-          dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
+          // Check if current workspace matches a DApp workspace
+          let autoOpenedDapp = false;
+          try {
+            const currentWs = await plugin.call('filePanel', 'getCurrentWorkspace');
+            if (currentWs?.name) {
+              const matchingDapp = refreshedDapps.find((d: any) => d.workspaceName === currentWs.name);
+              if (matchingDapp) {
+                dispatch({ type: 'SET_ACTIVE_DAPP', payload: matchingDapp });
+                dispatch({ type: 'SET_VIEW', payload: 'editor' });
+                autoOpenedDapp = true;
+              }
+            }
+          } catch (e) {
+            console.warn('[QuickDapp] Could not detect current workspace for auto-open:', e);
+          }
+          if (!autoOpenedDapp) {
+            dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
+          }
         } else {
           dispatch({ type: 'SET_VIEW', payload: 'create' });
         }

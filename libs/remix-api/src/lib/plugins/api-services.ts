@@ -20,6 +20,7 @@ import {
   GenericSuccessResponse,
   CreditTransaction,
   RefreshTokenResponse,
+  RegistrationModeResponse,
   StorageHealthResponse,
   StorageConfig,
   PresignUploadRequest,
@@ -88,10 +89,11 @@ export class SSOApiService {
   }
   
   /**
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token.
+   * Uses skipTokenRefresh to prevent recursive auto-refresh on 401.
    */
   async refreshToken(refreshToken: string): Promise<ApiResponse<RefreshTokenResponse>> {
-    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken })
+    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken }, { skipTokenRefresh: true })
   }
   
   /**
@@ -99,6 +101,14 @@ export class SSOApiService {
    */
   async getProviders(): Promise<ApiResponse<ProvidersResponse>> {
     return this.apiClient.get<ProvidersResponse>('/providers')
+  }
+
+  /**
+   * Get current registration mode (no auth required)
+   * Returns 'open', 'existing_only', or 'invite_only'
+   */
+  async getRegistrationMode(): Promise<ApiResponse<RegistrationModeResponse>> {
+    return this.apiClient.get<RegistrationModeResponse>('/registration-mode')
   }
   
   // ==================== SIWE ====================

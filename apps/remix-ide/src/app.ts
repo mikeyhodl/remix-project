@@ -55,9 +55,9 @@ import { TransactionSimulator } from './app/plugins/transaction-simulator'
 import { CodeFormat } from './app/plugins/code-format'
 import { CompilationDetailsPlugin } from './app/plugins/compile-details'
 import { AuthPlugin } from './app/plugins/auth-plugin'
-import { S3StoragePlugin } from './app/plugins/storage/s3-storage-plugin'
-import { CloudWorkspacesPlugin } from './app/plugins/cloud-workspaces-plugin'
 import { InvitationManagerPlugin } from './app/plugins/invitation-manager-plugin'
+import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin'
+import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
 import { AccountPlugin } from './app/plugins/account-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
@@ -182,9 +182,9 @@ class AppComponent {
   remixAiAssistant: RemixAIAssistant
   settings: SettingsTab
   authPlugin: AuthPlugin
-  s3StoragePlugin: S3StoragePlugin
-  cloudWorkspacesPlugin: CloudWorkspacesPlugin
   invitationManager: InvitationManagerPlugin
+  membershipRequest: MembershipRequestPlugin
+  betaCornerWidget: BetaCornerWidgetPlugin
   accountPlugin: AccountPlugin
   params: any
   desktopClientMode: boolean
@@ -276,7 +276,7 @@ class AppComponent {
       this.track({ category: 'MatomoManager', action: 'showConsentDialog', isClick: false });
     }
 
-    this.walkthroughService = new WalkthroughService(appManager)
+    this.walkthroughService = new WalkthroughService()
 
     this.platform = isElectron() ? 'desktop' : 'web'
 
@@ -628,9 +628,9 @@ class AppComponent {
     )
 
     this.authPlugin = new AuthPlugin()
-    this.s3StoragePlugin = new S3StoragePlugin()
-    this.cloudWorkspacesPlugin = new CloudWorkspacesPlugin()
     this.invitationManager = new InvitationManagerPlugin()
+    this.membershipRequest = new MembershipRequestPlugin()
+    this.betaCornerWidget = new BetaCornerWidgetPlugin()
     const feedbackPlugin = new FeedbackPlugin()
 
     this.engine.register([
@@ -645,9 +645,9 @@ class AppComponent {
       deployLibraries,
       openZeppelinProxy,
       this.authPlugin,
-      this.s3StoragePlugin,
-      this.cloudWorkspacesPlugin,
       this.invitationManager,
+      this.membershipRequest,
+      this.betaCornerWidget,
       this.accountPlugin,
       feedbackPlugin
     ])
@@ -721,23 +721,15 @@ class AppComponent {
     ])
 
     await this.appManager.activatePlugin(['auth'])
-    // Activate/deactivate cloud plugins based on auth state
-    this.appManager.on('auth', 'authStateChanged', async (state: any) => {
-      if (state.isAuthenticated) {
-        await this.appManager.activatePlugin(['s3Storage'])
-        await this.appManager.activatePlugin(['cloudWorkspaces'])
-      } else {
-        await this.appManager.deactivatePlugin('cloudWorkspaces')
-        await this.appManager.deactivatePlugin('s3Storage')
-      }
-    })
     await this.appManager.activatePlugin(['invitationManager'])
+    await this.appManager.activatePlugin(['membershipRequest'])
+    await this.appManager.activatePlugin(['betaCornerWidget'])
     await this.appManager.activatePlugin(['account'])
     await this.appManager.activatePlugin(['notificationCenter'])
     await this.appManager.activatePlugin(['feedback'])
     await this.appManager.activatePlugin(['settings'])
 
-    await this.appManager.activatePlugin(['walkthrough', 'storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
+    await this.appManager.activatePlugin(['storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit'])
     await this.appManager.activatePlugin(['solidity-script', 'remix-templates'])
 
     if (isElectron()) {
@@ -846,7 +838,7 @@ class AppComponent {
     // activate solidity plugin
     this.appManager.activatePlugin(['solidity', 'udapp', 'deploy-libraries', 'link-libraries', 'openzeppelin-proxy', 'scriptRunnerBridge', 'resolutionIndex'])
 
-    if (isElectron()){
+    if (isElectron()) {
       this.appManager.activatePlugin(['desktopHost'])
     }
     // await this.appManager.activatePlugin(['compilerArtefacts'])
