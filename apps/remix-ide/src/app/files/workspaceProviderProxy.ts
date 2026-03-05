@@ -74,12 +74,12 @@ export function createWorkspaceProviderProxy(localProvider: any): any {
     get(_target, prop, _receiver) {
       // ── Control properties ──
       switch (prop) {
-        case WORKSPACE_PROXY_MARKER:  return true
-        case 'setCloudProvider':      return setCloudProvider
-        case 'clearCloudProvider':    return clearCloudProvider
-        case 'getLocalProvider':      return () => localProvider
-        case 'getCloudProvider':      return () => _cloudProvider
-        case 'isCloudActive':         return _cloudProvider !== null
+      case WORKSPACE_PROXY_MARKER: return true
+      case 'setCloudProvider': return setCloudProvider
+      case 'clearCloudProvider': return clearCloudProvider
+      case 'getLocalProvider': return () => localProvider
+      case 'getCloudProvider': return () => _cloudProvider
+      case 'isCloudActive': return _cloudProvider !== null
       }
 
       // ── Pinned event manager ──
