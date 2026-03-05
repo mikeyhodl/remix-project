@@ -66,6 +66,7 @@ function HomeTabUpdates({ plugin }: HomeTabUpdatesProps) {
           setShowFirstTime(true)
           setSelectedUpdate(null)
           setIsLoading(false)
+          return
         } else {
           // Still include as option for returning users
           allOptions.push('first-time', 'first-time')
