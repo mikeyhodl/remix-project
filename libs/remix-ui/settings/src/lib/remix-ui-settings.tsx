@@ -1,7 +1,8 @@
 import { ViewPlugin } from '@remixproject/engine-web'
-import React, { useState, useReducer, useEffect } from 'react' // eslint-disable-line
+import React, { useState, useReducer, useEffect, useRef } from 'react' // eslint-disable-line
 import Fuse from 'fuse.js'
 import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredentialsDescription } from '@remix-ui/helper'
+import { AppConfig } from '@remix-api'
 
 import { initialState, settingReducer } from './settingsReducer'
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
@@ -290,6 +291,55 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
   }>({
     themeQuality: themes.light
   })
+  // App config – determines which sections are visible
+  const appConfigRef = useRef<AppConfig>({})
+  const [visibleSections, setVisibleSections] = useState<SettingsSection[]>(settingsSections)
+
+  // Derive visible sections based on app config
+  const computeVisibleSections = (config: AppConfig): SettingsSection[] => {
+    return settingsSections.filter(section => {
+      if (section.key === 'account' && config['settings.account_management'] === false) {
+        return false
+      }
+      return true
+    })
+  }
+
+  // Fetch and listen for app config changes
+  useEffect(() => {
+    const fetchAppConfig = async () => {
+      try {
+        const config: AppConfig = await props.plugin.call('auth', 'getAppConfig')
+        appConfigRef.current = config || {}
+        const sections = computeVisibleSections(appConfigRef.current)
+        setVisibleSections(sections)
+        setFilteredSections(sections)
+        if (!sections.find(s => s.key === selected)) {
+          setSelected(sections[0]?.key)
+          setFilteredSection(sections[0])
+        }
+      } catch (e) {
+        console.warn('[Settings] Failed to fetch app config:', e)
+      }
+    }
+    fetchAppConfig()
+
+    const handleAppConfigChanged = (config: AppConfig) => {
+      appConfigRef.current = config || {}
+      const sections = computeVisibleSections(appConfigRef.current)
+      setVisibleSections(sections)
+      setFilteredSections(sections)
+    }
+    try {
+      props.plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
+    } catch { /* ignore */ }
+
+    return () => {
+      try {
+        props.plugin.off('auth', 'appConfigChanged')
+      } catch { /* ignore */ }
+    }
+  }, [])
 
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme').then((theme) => {
@@ -344,7 +394,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
 
   useEffect(() => {
     if (search.length > 0) {
-      const fuseTopLevel = new Fuse(settingsSections, {
+      const fuseTopLevel = new Fuse(visibleSections, {
         threshold: 0.1,
         keys: ['label', 'description', 'subSections.label', 'subSections.description', 'subSections.options.label', 'subSections.options.description', 'subSections.options.selectOptions.label', 'subSections.options.footnote.text']
       })
@@ -372,11 +422,11 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
         setFilteredSection({} as SettingsSection)
       }
     } else {
-      setFilteredSections(settingsSections)
-      setFilteredSection(settingsSections[0])
-      setSelected(settingsSections[0].key)
+      setFilteredSections(visibleSections)
+      setFilteredSection(visibleSections[0])
+      setSelected(visibleSections[0]?.key)
     }
-  }, [search])
+  }, [search, visibleSections])
 
   return (
     <ThemeContext.Provider value={state.themeQuality}>

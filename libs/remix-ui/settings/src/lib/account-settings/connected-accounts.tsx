@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { LoginMode } from '@remix-api'
+import { LoginMode, AppConfig } from '@remix-api'
 import { LinkedAccount, loadAccountsFromAPI, linkAccountProvider, getProviderIcon, getProviderColor } from './account-utils'
 
 interface ConnectedAccountsProps {
@@ -11,6 +11,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({ plugin }) 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [loginEnabled, setLoginEnabled] = useState<boolean>(false)
+  const [configEnabled, setConfigEnabled] = useState<boolean>(true)
 
   const loadAccounts = async () => {
     try {
@@ -51,9 +52,25 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({ plugin }) 
       }
     }
 
+    // Fetch app config for linked accounts flag
+    const fetchAppConfig = async () => {
+      try {
+        const config: AppConfig = await plugin.call('auth', 'getAppConfig')
+        if (config && config['auth.link_accounts_enabled'] === false) {
+          setConfigEnabled(false)
+        }
+      } catch { /* ignore */ }
+    }
+    fetchAppConfig()
+
+    const handleAppConfigChanged = (config: AppConfig) => {
+      setConfigEnabled(config?.['auth.link_accounts_enabled'] !== false)
+    }
+
     try {
       plugin.on('auth', 'authStateChanged', onAuthStateChanged)
       plugin.on('auth', 'loginModeChanged', handleLoginModeChanged)
+      plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
     } catch (e) {
       // noop
     }
@@ -62,6 +79,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({ plugin }) 
       try {
         plugin.off('auth', 'authStateChanged')
         plugin.off('auth', 'loginModeChanged')
+        plugin.off('auth', 'appConfigChanged')
       } catch (e) {
         // ignore
       }
@@ -83,7 +101,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({ plugin }) 
   const handleLinkDiscord = () => handleLinkProvider('discord')
   const handleLinkSIWE = () => handleLinkProvider('siwe')
 
-  if (!loginEnabled) {
+  if (!loginEnabled || !configEnabled) {
     return null
   }
 

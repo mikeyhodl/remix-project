@@ -80,6 +80,51 @@ export interface GitHubTokenResponse {
   scopes?: string[]
 }
 
+// ==================== App Configuration ====================
+
+/**
+ * Public app configuration fetched from the backend.
+ * Keys use dot-notation categories (e.g. 'cloud.enabled').
+ * Known keys are typed explicitly; unknown keys are also accessible.
+ */
+export interface AppConfig {
+  // Auth
+  'auth.login_mode'?: string
+  'auth.login_mode_message'?: string
+  'auth.registration_mode'?: string
+  'auth.link_accounts_enabled'?: boolean
+
+  // Billing
+  'billing.enable_subscriptions'?: boolean
+  'billing.credits_enabled'?: boolean
+
+  // Cloud
+  'cloud.enabled'?: boolean
+
+  // Features
+  'features.ai_enabled'?: boolean
+
+  // Limits
+  'limits.max_file_size_mb'?: number
+
+  // Settings
+  'settings.account_management'?: boolean
+
+  // Storage
+  'storage.max_backup_size_mb'?: number
+  'storage.max_workspaces'?: number
+
+  // UI flags
+  'show_beta_test_register_widget'?: boolean
+  'show_join_beta_top_button'?: boolean
+
+  // Allow unknown keys
+  [key: string]: string | number | boolean | undefined
+}
+
+/** Response from GET /sso/config (public, no auth required) */
+export type AppConfigResponse = AppConfig
+
 // ==================== Registration Mode ====================
 
 export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'

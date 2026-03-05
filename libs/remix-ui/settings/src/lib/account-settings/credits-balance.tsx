@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { LoginMode } from '@remix-api'
+import { LoginMode, AppConfig } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 
 interface Credits {
@@ -27,6 +27,7 @@ export const CreditsBalance: React.FC<CreditsBalanceProps> = ({ plugin }) => {
   const [loading, setLoading] = useState(true)
   const [showAllTransactions, setShowAllTransactions] = useState(false)
   const [loginEnabled, setLoginEnabled] = useState<boolean>(false)
+  const [configEnabled, setConfigEnabled] = useState<boolean>(true)
 
   const loadCredits = async () => {
     try {
@@ -119,9 +120,25 @@ export const CreditsBalance: React.FC<CreditsBalanceProps> = ({ plugin }) => {
       }
     }
 
+    // Fetch app config for credits flag
+    const fetchAppConfig = async () => {
+      try {
+        const config: AppConfig = await plugin.call('auth', 'getAppConfig')
+        if (config && config['billing.credits_enabled'] === false) {
+          setConfigEnabled(false)
+        }
+      } catch { /* ignore */ }
+    }
+    fetchAppConfig()
+
+    const handleAppConfigChanged = (config: AppConfig) => {
+      setConfigEnabled(config?.['billing.credits_enabled'] !== false)
+    }
+
     try {
       plugin.on('auth', 'authStateChanged', onAuthStateChanged)
       plugin.on('auth', 'loginModeChanged', handleLoginModeChanged)
+      plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
     } catch (e) {
       // noop
     }
@@ -130,13 +147,14 @@ export const CreditsBalance: React.FC<CreditsBalanceProps> = ({ plugin }) => {
       try {
         plugin.off('auth', 'authStateChanged')
         plugin.off('auth', 'loginModeChanged')
+        plugin.off('auth', 'appConfigChanged')
       } catch (e) {
         // ignore
       }
     }
   }, [])
 
-  if (!loginEnabled) {
+  if (!loginEnabled || !configEnabled) {
     return null
   }
 

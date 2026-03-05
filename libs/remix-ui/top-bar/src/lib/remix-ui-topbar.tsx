@@ -21,7 +21,7 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { useCloneRepositoryModal } from '../components/CloneRepositoryModal'
 import { TrackingContext } from '@remix-ide/tracking'
-import { MatomoEvent, TopbarEvent, WorkspaceEvent, LoginMode, LoginModeResponse } from '@remix-api'
+import { MatomoEvent, TopbarEvent, WorkspaceEvent, LoginMode, LoginModeResponse, AppConfig } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
 import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
@@ -63,6 +63,7 @@ export function RemixUiTopbar() {
   const [loginMode, setLoginMode] = useState<LoginMode | null>(null);
   const [loginModeMessage, setLoginModeMessage] = useState<string>('');
   const [adminOverride, setAdminOverride] = useState<boolean>(false);
+  const [cloudEnabled, setCloudEnabled] = useState<boolean>(true); // default true until config loaded
   const [feedbackFormUrl, setFeedbackFormUrl] = useState<string | null>(null);
   const [feedbackPanelOpen, setFeedbackPanelOpen] = useState<boolean>(false);
   const [showCloudLoginModal, setShowCloudLoginModal] = useState<boolean>(false);
@@ -117,6 +118,27 @@ export function RemixUiTopbar() {
     }
     plugin.on('auth', 'loginModeChanged', handleLoginModeChanged)
 
+    // Fetch app config for cloud.enabled
+    const fetchAppConfig = async () => {
+      try {
+        const config: AppConfig = await plugin.call('auth', 'getAppConfig')
+        if (config['cloud.enabled'] !== undefined) {
+          setCloudEnabled(config['cloud.enabled'] as boolean)
+        }
+      } catch (e) {
+        console.warn('[Topbar] Failed to fetch app config:', e)
+      }
+    }
+    fetchAppConfig()
+
+    // Listen for app config changes
+    const handleAppConfigChanged = (config: AppConfig) => {
+      if (config?.['cloud.enabled'] !== undefined) {
+        setCloudEnabled(config['cloud.enabled'] as boolean)
+      }
+    }
+    plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
+
     // Admin backdoor: Ctrl+Shift+Alt+L to toggle admin override
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'L') {
@@ -132,6 +154,7 @@ export function RemixUiTopbar() {
 
     return () => {
       plugin.off('auth', 'loginModeChanged')
+      plugin.off('auth', 'appConfigChanged')
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, []);
@@ -626,7 +649,7 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
-          { showLoginUI && (
+          { showLoginUI && cloudEnabled && (
             <CloudToggle
               className="ms-2"
               onLogin={() => setShowCloudLoginModal(true)}

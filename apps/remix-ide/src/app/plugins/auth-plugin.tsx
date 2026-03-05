@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, LoginMode, LoginModeResponse, LOGIN_ACL_ERROR_CODES } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, LoginMode, LoginModeResponse, LOGIN_ACL_ERROR_CODES, AppConfig } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
 import { SiweMessage } from 'siwe'
@@ -8,8 +8,8 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'getLoginMode', 'refreshLoginMode', 'notifyEmailOtpLogin'],
-  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged', 'loginModeChanged']
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'getLoginMode', 'refreshLoginMode', 'notifyEmailOtpLogin', 'getAppConfig', 'refreshAppConfig', 'getAppConfigValue'],
+  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged', 'loginModeChanged', 'appConfigChanged']
 }
 
 export class AuthPlugin extends Plugin {
@@ -27,6 +27,7 @@ export class AuthPlugin extends Plugin {
   private cachedRegistrationMode: RegistrationMode | null = null
   private cachedLoginMode: LoginMode | null = null
   private cachedLoginMessage: string = ''
+  private cachedAppConfig: AppConfig | null = null
 
   /** Debug-gated logger – silent when DEBUG is false */
   private log(...args: any[]) {
@@ -355,6 +356,57 @@ export class AuthPlugin extends Plugin {
       this.emit('loginModeChanged', result)
     }
     return result
+  }
+
+  /**
+   * Get the public app configuration from the server.
+   * Returns all public settings (cached after first fetch).
+   * No authentication required.
+   */
+  async getAppConfig(): Promise<AppConfig> {
+    try {
+      if (this.cachedAppConfig) {
+        return this.cachedAppConfig
+      }
+
+      // Config endpoint is at the auth server root: /config/public
+      const authBaseUrl = endpointUrls.sso.replace(/\/sso\/?$/, '')
+      const response = await fetch(`${authBaseUrl}/config/public`)
+      if (response.ok) {
+        const data: AppConfig = await response.json()
+        this.cachedAppConfig = data
+        this.log('[AuthPlugin] App config loaded:', Object.keys(data).length, 'keys')
+        return data
+      }
+
+      console.warn('[AuthPlugin] Failed to fetch app config, status:', response.status)
+      return {}
+    } catch (error) {
+      console.warn('[AuthPlugin] Error fetching app config:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Force re-fetch of app configuration from the server (cache-busting).
+   * Emits 'appConfigChanged' with the new config.
+   */
+  async refreshAppConfig(): Promise<AppConfig> {
+    this.cachedAppConfig = null
+    const config = await this.getAppConfig()
+    this.emit('appConfigChanged', config)
+    return config
+  }
+
+  /**
+   * Get a single config value with a typed default fallback.
+   * @param key - Config key (e.g. 'cloud.enabled')
+   * @param defaultValue - Value to return if key is missing
+   */
+  async getAppConfigValue<T extends string | number | boolean>(key: string, defaultValue: T): Promise<T> {
+    const config = await this.getAppConfig()
+    const val = config[key]
+    return (val !== undefined ? val : defaultValue) as T
   }
 
   async login(provider: AuthProviderType): Promise<void> {
@@ -889,9 +941,13 @@ export class AuthPlugin extends Plugin {
   async onActivation(): Promise<void> {
     this.log('[AuthPlugin] Activated - using popup + localStorage mode')
 
-    // Fetch login mode early (non-blocking) so UI can adapt immediately
+    // Fetch login mode and app config early (non-blocking) so UI can adapt immediately
     this.getLoginMode().then((loginMode) => {
       this.emit('loginModeChanged', loginMode)
+    }).catch(() => {})
+
+    this.getAppConfig().then((config) => {
+      this.emit('appConfigChanged', config)
     }).catch(() => {})
 
     // Validate existing token with the API on load
