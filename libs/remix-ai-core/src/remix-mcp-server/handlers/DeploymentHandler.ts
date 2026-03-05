@@ -253,15 +253,15 @@ export class CallContractHandler extends BaseToolHandler {
         }
         const params = funcABI.type !== 'fallback' ? (args.args? args.args.join(',') : ''): ''
         txReturn = await plugin.call('blockchain', 'runOrCallContractMethod',
-            args.contractName,
-            args.abi,
-            funcABI,
-            undefined,
-            args.args ? args.args : [],
-            args.address,
-            params,
-            isView)
-        
+          args.contractName,
+          args.abi,
+          funcABI,
+          undefined,
+          args.args ? args.args : [],
+          args.address,
+          params,
+          isView)
+
       } catch (e) {
         return this.createErrorResult(`Deployment error: ${e.message}`);
       }
