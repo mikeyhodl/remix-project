@@ -451,20 +451,14 @@ export class GetDeployedContractsHandler extends BaseToolHandler {
     return ['deploy:read'];
   }
 
-  async execute(args: {}, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const deployedContracts = await plugin.call('udappDeployedContracts', 'getDeployedContracts')
-      console.log('Deployed contracts', deployedContracts)
       deployedContracts.forEach((contract: any) => {
         if (!contract.abi) {
           contract.abi = contract.contractData?.abi
         }
         delete contract.contractData // take too much space for the context.
-      })
-      console.log('Deployed contracts', {
-        success: true,
-        contracts: deployedContracts,
-        count: deployedContracts.length
       })
       return this.createSuccessResult({
         success: true,
