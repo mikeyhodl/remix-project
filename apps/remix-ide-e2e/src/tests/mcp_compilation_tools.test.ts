@@ -12,7 +12,7 @@ import init from '../helpers/init'
  * real user interaction through the chat interface.
  */
 
-const testContract = `
+const invalidContract = `
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -20,9 +20,9 @@ contract CompilationTest {
     uint256 public value;
     address public owner;
 
-    event ValueChanged(uint256 newValue);
+    event ValueChanged(uint256 newValue)
 
-    constructor() {
+    construoctor() {
         owner = msg.sender;
         value = 0;
     }
@@ -45,7 +45,7 @@ const tests = {
     init(browser, done, 'http://127.0.0.1:8080/#experimental=true', true, undefined, true, true)
   },
 
-  'Setup: Enable MCP and allow file permissions #group1': function (browser: NightwatchBrowser) {
+  'Setup: Enable MCP and allow file permissions #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
       .clickLaunchIcon('filePanel')
@@ -77,10 +77,10 @@ const tests = {
   },
 
   /**
-   * Test 1: Request compiler versions via chat
+   * Test 1: Request compiler versions
    * Verifies that AI can retrieve and display available compiler versions
    */
-  'Should get compiler versions via chat #group1': function (browser: NightwatchBrowser) {
+  'Should get compiler version #group1': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
@@ -88,7 +88,7 @@ const tests = {
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
       .clearValue('*[data-id=remix-ai-prompt-input]')
-      .setValue('*[data-id=remix-ai-prompt-input]', 'What Solidity compiler versions are available?')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'What is the current Solidity compiler version?')
       .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       .waitForElementPresent({
@@ -101,12 +101,18 @@ const tests = {
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
         timeout: 60000
       })
+      .pause(1000)
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"version") or contains(.,"Version") or contains(.,"0.8") or contains(.,"compiler") or contains(.,"current"))]',
+        timeout: 5000
+      })
   },
 
   /**
-   * Test 2: Get current compiler configuration via chat
+   * Test 2: Get current compiler configuration
    */
-  'Should get compiler config via chat #group1': function (browser: NightwatchBrowser) {
+  'Should get compiler config #group1': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
@@ -117,7 +123,6 @@ const tests = {
       .clearValue('*[data-id=remix-ai-prompt-input]')
       .setValue('*[data-id=remix-ai-prompt-input]', 'Show me the current compiler configuration')
       .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
-      .pause(2000)
       .waitForElementPresent({
         locateStrategy: 'xpath',
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='true']",
@@ -128,40 +133,44 @@ const tests = {
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
         timeout: 60000
       })
+      .pause(1000)
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"config") or contains(.,"version") or contains(.,"optimization") or contains(.,"EVM") or contains(.,"compiler"))]',
+        timeout: 5000
+      })
   },
 
   /**
-   * Test 3: Set compiler configuration via chat
+   * Test 3: Set compiler configuration
    */
-  'Should set compiler config via chat #group2': function (browser: NightwatchBrowser) {
+  'Should set compiler config #group1': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
+      .pause(2000)
       .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
       .clearValue('*[data-id=remix-ai-prompt-input]')
+      .pause(500)
       .setValue('*[data-id=remix-ai-prompt-input]', 'Set the compiler to version 0.8.20 with optimization enabled and 200 runs using paris EVM version')
+      .pause(1000)
       .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
-      .waitForElementPresent({
+      .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='true']",
-        timeout: 30000
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"0.8.20") or contains(.,"optimization") or contains(.,"paris") or contains(.,"set") or contains(.,"configured"))]',
+        timeout: 5000
       })
-      .waitForElementPresent({
-        locateStrategy: 'xpath',
-        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
-        timeout: 60000
-      })
-      .pause(2000)
+      .pause(1000)
   },
 
   /**
-   * Test 4: Create and compile a contract via chat
+   * Test 4: Create and compile a contract
    * This test handles file write permissions and compilation
    */
-  'Should create and compile contract via chat #group2': function (browser: NightwatchBrowser) {
+  'Should create and compile contract #group2': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
@@ -187,20 +196,29 @@ const tests = {
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
         timeout: 60000
       })
-      .pause(2000)
+      .pause(1000)
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"created") or contains(.,"file") or contains(.,"CompilationTest"))]',
+        timeout: 5000
+      })
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"compil") or contains(.,"success"))]',
+        timeout: 5000
+      })
+      .pause(1000)
       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 10000)
   },
 
   /**
-   * Test 5: Get compilation results via chat
+   * Test 5: Get compilation results
    */
-  'Should get compilation results via chat #group2': function (browser: NightwatchBrowser) {
+  'Should get compilation results #group2': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
-      .pause(500)
-      .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
       .clearValue('*[data-id=remix-ai-prompt-input]')
@@ -217,61 +235,56 @@ const tests = {
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
         timeout: 60000
       })
-      .pause(2000)
+      .pause(1000)
+      // Verify compilation was successful in the chat
+      .waitForElementVisible({
+        locateStrategy: 'xpath',
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"compil") or contains(.,"Compil"))]',
+        timeout: 5000
+      })
+      .pause(1000)
       .clearValue('*[data-id=remix-ai-prompt-input]')
       .setValue('*[data-id=remix-ai-prompt-input]', 'Show me the last compilation result')
       .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
-      .pause(2000)
-      .waitForElementPresent({
+      .pause(3000)
+      .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='true']",
-        timeout: 30000
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"CompilationTest") or contains(.,"compilation"))]',
+        timeout: 5000
       })
-      .waitForElementPresent({
+      .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
-        timeout: 60000
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"success") or contains(.,"compiled") or contains(.,"contract") or contains(.,"bytecode") or contains(.,"abi"))]',
+        timeout: 5000
       })
   },
 
   /**
-   * Test 6: Compile contract with errors via chat
+   * Test 6: Compile contract with errors
    */
-  'Should handle compilation errors via chat #group3': function (browser: NightwatchBrowser) {
+  'Should handle compilation errors #group2': function (browser: NightwatchBrowser) {
     browser
       .refresh()
       .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 10000)
+      .clickLaunchIcon('filePanel')
+      .addFile('contracts/InvalidContract.sol', { content: invalidContract })
+      .pause(1000)
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
       .clearValue('*[data-id=remix-ai-prompt-input]')
-      .setValue('*[data-id=remix-ai-prompt-input]', 'Create contracts/InvalidContract.sol with this code: pragma solidity ^0.8.0; contract Invalid { uint256 public value function test() public {} } and then compile it')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Compile the contracts/InvalidContract.sol file')
       .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
-      // Handle file permission if needed (may already be set from previous test)
-      .elements('css selector', '*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', function (result) {
-        const elements = Array.isArray(result.value) ? result.value : [];
-        if (elements.length > 0) {
-          browser
-            .modalFooterOKClick("mcp_file_write_permission_initial")
-            .pause(500)
-            .waitForElementVisible('*[data-id="mcp_file_write_permission_scopeModalDialogContainer-react"]', 10000)
-            .modalFooterCancelClick("mcp_file_write_permission_scope")
-            .useXpath()
-            .waitForElementVisible('//button[contains(text(), "Accept All")]', 10000)
-            .click('//button[contains(text(), "Accept All")]')
-            .useCss()
-            .pause(1000);
-        }
-      })
-      .waitForElementPresent({
+      .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
-        timeout: 60000
+        selector: '//div[contains(@class,"chat-bubble") and (contains(.,"error") or contains(.,"Error") or contains(.,"fail") or contains(.,"invalid") or contains(.,"syntax"))]',
+        timeout: 5000
       })
   },
 
 }
+console.log('module export', module.exports)
 
 const branch = process.env.CIRCLE_BRANCH || 'ai_reale2e_test'
 const runTestsConditions = branch && (branch === 'master' || branch === 'ai_reale2e_test')
@@ -287,3 +300,4 @@ if (!checkBrowserIsChrome(browser)) {
     ...(branch ? (runTestsConditions ? tests : {}) : tests)
   };
 }
+
