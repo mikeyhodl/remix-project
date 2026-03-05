@@ -144,13 +144,16 @@ export const invariants = {
 2. When generating HTML/JSX, break attributes onto new lines if the tag becomes too long.
 3. **ALWAYS import React from 'react'** in any file using JSX (especially \`src/main.jsx\` and \`src/App.jsx\`).
    - Example: \`import React from 'react';\` must be at the top, even if you use \`createRoot\`.
-4. **ETHERS.JS PROVIDER RULES (CRITICAL):**
+4. **EVERY FILE that uses ethers.js MUST have its own import statement.** Do NOT assume ethers is available globally.
+   - BAD: A Navbar component uses \`new ethers.BrowserProvider(...)\` but has no \`import { ethers } from 'ethers'\` → crashes with "ethers is not defined".
+   - GOOD: Every .jsx/.tsx file that references \`ethers\` includes \`import { ethers } from 'ethers';\` at the top.
+5. **ETHERS.JS PROVIDER RULES (CRITICAL):**
    - **MUST USE:** Always use \`ethers.BrowserProvider\` with a wallet provider for both reading and writing.
    - **PROVIDER ACQUISITION:** Use \`window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum\` to get the provider. Store this raw provider in a ref/variable for reuse (e.g. network switching).
    - **FORBIDDEN:** NEVER use \`new ethers.JsonRpcProvider\`, \`InfuraProvider\`, or \`AlchemyProvider\`.
    - **FORBIDDEN:** NEVER generate code containing placeholders like 'YOUR_INFURA_KEY' or ask for API keys.
-4. Use React with JSX syntax (not "text/babel" scripts).
-5. Use ethers.js (v6) for all blockchain interactions.
+6. Use React with JSX syntax (not "text/babel" scripts).
+7. Use ethers.js (v6) for all blockchain interactions.
 `,
 
   /** Image placeholder URL rules */
@@ -350,6 +353,8 @@ useEffect(() => {
   \`\`\`
 - **NEVER** try to send a transaction with a Provider-only contract instance.
 - Use \`import { ethers } from "ethers";\` — always ES import, never \`window.ethers\`.
+- **CRITICAL:** EVERY component file that uses \`ethers\` MUST include its own \`import { ethers } from 'ethers';\` at the top.
+  Do NOT rely on another file's import. Common mistake: Navbar.jsx uses \`ethers.BrowserProvider\` but forgets to import ethers → "ethers is not defined" error.
 `,
 
   /** Network context — handles Remix VM local environment */
