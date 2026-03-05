@@ -500,7 +500,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
                   <div className="d-flex align-items-center">
                     <span className="fw-bold text-truncate">{item.localName}</span>
                     {item.nameConflict && (
-                      <span className="badge bg-warning text-dark ms-2 flex-shrink-0">name conflict</span>
+                      <span className="badge bg-warning ms-2 flex-shrink-0">name conflict</span>
                     )}
                   </div>
                   {localWs && (

@@ -258,40 +258,62 @@ const _createWorkspaceInternal = async (
       console.log('Could not check/update side panel visibility:', e)
     }
 
+    // ── Best-effort initial git commit ──
+    // The workspace is already created at this point.  If git init or the
+    // first commit fails (e.g. missing credentials) we must NOT let that
+    // error propagate – the workspace is perfectly usable without the
+    // commit and the UI should reflect a successful creation.
     if (isGitRepo && createCommit) {
-      const name = await plugin.call('settings', 'get', 'settings/github-user-name')
-      const email = await plugin.call('settings', 'get', 'settings/github-email')
-      const currentBranch: branch = await dgitPlugin.call('dgitApi', 'currentbranch')
+      try {
+        const name = await plugin.call('settings', 'get', 'settings/github-user-name')
+        const email = await plugin.call('settings', 'get', 'settings/github-email')
+        const currentBranch: branch = await dgitPlugin.call('dgitApi', 'currentbranch')
 
-      if (!currentBranch) {
-        // commit the template as first commit
-        plugin.call('notification', 'toast', 'Creating initial git commit ...')
+        if (!currentBranch) {
+          await dgitPlugin.call('dgit', 'init')
+          if (!isEmpty) {
+            const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+            if (openPath) await plugin.fileManager.openFile(openPath)
+          }
 
-        await dgitPlugin.call('dgit', 'init')
-        if (!isEmpty) {
-          const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-          if (openPath) await plugin.fileManager.openFile(openPath)
+          // Only attempt the commit if we have usable credentials.
+          if (name && email) {
+            plugin.call('notification', 'toast', 'Creating initial git commit ...')
+            const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
+
+            await Promise.all(
+              status.map(([filepath, , worktreeStatus]) =>
+                worktreeStatus
+                  ? dgitPlugin.call('dgitApi', 'add', {
+                    filepath: removeSlash(filepath),
+                  })
+                  : dgitPlugin.call('dgitApi', 'rm', {
+                    filepath: removeSlash(filepath),
+                  })
+              )
+            )
+            await dgitPlugin.call('dgitApi', 'commit', {
+              author: {
+                name,
+                email,
+              },
+              message: `Initial commit: remix template ${workspaceTemplateName}`,
+            })
+          } else {
+            plugin.call(
+              'notification',
+              'toast',
+              'Git credentials not set – skipping initial commit. You can set them in Settings → GitHub.'
+            )
+          }
         }
-        const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
-
-        await Promise.all(
-          status.map(([filepath, , worktreeStatus]) =>
-            worktreeStatus
-              ? dgitPlugin.call('dgitApi', 'add', {
-                filepath: removeSlash(filepath),
-              })
-              : dgitPlugin.call('dgitApi', 'rm', {
-                filepath: removeSlash(filepath),
-              })
-          )
+      } catch (gitErr) {
+        console.warn('[createWorkspace] Initial git commit failed (workspace is still usable):', gitErr)
+        plugin.call(
+          'notification',
+          'toast',
+          'Could not create initial git commit: ' + (gitErr.message || gitErr)
         )
-        await dgitPlugin.call('dgitApi', 'commit', {
-          author: {
-            name,
-            email,
-          },
-          message: `Initial commit: remix template ${workspaceTemplateName}`,
-        })
       }
     }
 
