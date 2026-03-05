@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { useIntl } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvAppContext } from '../contexts'
 import { resetVmState } from '../actions'
 import { Spinner } from 'react-bootstrap'
@@ -41,7 +41,7 @@ export function ResetUI() {
 
       <div>
         <div style={{ color: 'var(--bs-tertiary)', fontSize: '0.75rem' }} className="mb-2 fw-light">
-          <p className="mb-1">You are about to reset your environment state.</p>
+          <p className="mb-1"><FormattedMessage id="udapp.resetEnvironmentStateDescription" /></p>
           <p className="mb-1">
             {intl.formatMessage({ id: 'udapp.resetVmStateDesc1' })}
             {intl.formatMessage({ id: 'udapp.resetVmStateDesc2' })}

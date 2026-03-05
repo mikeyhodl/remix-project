@@ -299,7 +299,7 @@ export function Workspace() {
           toast(error.message || error)
         } else {
           try {
-            if (await workspace.exists(type + '/' + cleanUrl)) toast('File already exists in workspace')
+            if (await workspace.exists(type + '/' + cleanUrl)) toast(intl.formatMessage({ id: 'filePanel.fileAlreadyExists' }))
             else {
               workspace.addExternal(type + '/' + cleanUrl, content, url)
               global.plugin.call('menuicons', 'select', 'filePanel')
@@ -1141,7 +1141,7 @@ export function Workspace() {
                   {isCloudMode ? (
                     <>
                       <i className="fas fa-cloud-arrow-down fa-beat-fade fa-2x" style={{ color: 'var(--bs-info)' }}></i>
-                      <div className="small mt-2" style={{ color: 'var(--bs-secondary-color)' }}>Loading cloud workspace…</div>
+                      <div className="small mt-2" style={{ color: 'var(--bs-secondary-color)' }}><FormattedMessage id="filePanel.loadingCloudWorkspace" /></div>
                     </>
                   ) : (
                     <i className="fas fa-spinner fa-pulse fa-2x"></i>
@@ -1305,7 +1305,7 @@ export function Workspace() {
           flexShrink: 0
         }}>
           <div className="d-flex justify-content-between p-1 w-100 mb-2">
-            <div className="text-uppercase text-dark pt-1 px-1">GIT</div>
+            <div className="text-uppercase text-dark pt-1 px-1"><FormattedMessage id="filePanel.gitSectionLabel" /></div>
             { selectedWorkspace.hasGitSubmodules?
               <>
                 <div className="pe-1">
@@ -1314,11 +1314,11 @@ export function Workspace() {
                       placement="top"
                       tooltipId="updatingSubmodules"
                       tooltipClasses="text-nowrap"
-                      tooltipText={"Updating submodules"}
+                      tooltipText={intl.formatMessage({ id: 'filePanel.updatingSubmodulesTooltip' })}
                     >
                       <button style={{ height: 30, minWidth: "9rem" }} className='btn btn-sm border text-dark'>
                         <i className="fad fa-spinner fa-spin me-2"></i>
-                        Updating...
+                        <FormattedMessage id="filePanel.updatingSubmodules" />
                       </button>
                     </CustomTooltip> :
                     <CustomTooltip
@@ -1328,7 +1328,7 @@ export function Workspace() {
                       tooltipText={<FormattedMessage id="filePanel.updateSubmodules" />}
                     >
                       <button style={{ height: 30, minWidth: "9rem" }} onClick={updateSubModules} data-id='updatesubmodules' className={`btn btn-sm border  ${highlightUpdateSubmodules ? 'text-warning' : 'text-dark'}`}>
-                       Update submodules
+                       <FormattedMessage id="filePanel.updateSubmodulesButton" />
                       </button>
                     </CustomTooltip>
                   }
@@ -1340,7 +1340,7 @@ export function Workspace() {
               placement="right"
               tooltipId="branchesDropdown"
               tooltipClasses="text-nowrap"
-              tooltipText={'Current branch: ' + (currentBranch && currentBranch.name) || 'Branches'}
+              tooltipText={currentBranch && currentBranch.name ? intl.formatMessage({ id: 'filePanel.currentBranch' }, { branchName: currentBranch.name }) : intl.formatMessage({ id: 'filePanel.branches' })}
               hide={showBranches}
             >
               <div className="pt-0 me-2" data-id="workspaceGitBranchesDropdown">
@@ -1467,15 +1467,15 @@ export function Workspace() {
         />
       )}
 
-      <ModalDialog id="homeTab" title={'Import from ' + modalState.modalInfo.title}
-        okLabel="Import" hide={!modalState.showModalDialog} handleHide={() => hideFullMessage()}
+      <ModalDialog id="homeTab" title={intl.formatMessage({ id: 'filePanel.importFrom' }, { title: modalState.modalInfo.title })}
+        okLabel={intl.formatMessage({ id: 'filePanel.importButton' })} hide={!modalState.showModalDialog} handleHide={() => hideFullMessage()}
         okFn={() => processLoading(modalState.modalInfo.title)} validationFn={validateUrlForImport}
       >
         <div className="p-2 user-select-auto">
-          {modalState.modalInfo.loadItem !== '' && <span>Enter the {modalState.modalInfo.loadItem} you would like to load.</span>}
+          {modalState.modalInfo.loadItem !== '' && <span><FormattedMessage id="filePanel.enterLoadItem" values={{ loadItem: modalState.modalInfo.loadItem }} /></span>}
           {modalState.modalInfo.examples.length !== 0 && (
             <>
-              <div>e.g</div>
+              <div><FormattedMessage id="filePanel.exampleAbbreviation" /></div>
               <div>{examples}</div>
             </>
           )}

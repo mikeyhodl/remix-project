@@ -1,5 +1,6 @@
 import React from 'react'
 import { Overlay } from 'react-bootstrap'
+import { useIntl } from 'react-intl'
 import { DeployedContract } from '../types'
 
 interface ContractKebabMenuProps {
@@ -44,38 +45,39 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
   onOpenInExplorer,
   onClear
 }) => {
+  const intl = useIntl()
   const menuItems = [
     onCreateDapp && {
       id: 'createDapp',
-      label: 'Create a dapp',
+      label: intl.formatMessage({ id: 'udapp.createDappMenuItem' }),
       icon: 'fa-kit fa-remixai',
       color: 'var(--bs-body-color)',
       onClick: () => onCreateDapp(contract)
     },
     onCopyABI && {
       id: 'copyABI',
-      label: 'Copy ABI',
+      label: intl.formatMessage({ id: 'udapp.copyABIMenuItem' }),
       icon: 'far fa-copy',
       color: 'var(--bs-body-color)',
       onClick: () => onCopyABI(contract)
     },
     onCopyBytecode && {
       id: 'copyBytecode',
-      label: 'Copy Bytecode',
+      label: intl.formatMessage({ id: 'udapp.copyBytecodeMenuItem' }),
       icon: 'far fa-copy',
       color: 'var(--bs-body-color)',
       onClick: () => onCopyBytecode(contract)
     },
     onOpenInExplorer && {
       id: 'openInExplorer',
-      label: 'Open in explorer',
+      label: intl.formatMessage({ id: 'udapp.openInExplorerMenuItem' }),
       icon: 'fas fa-external-link-alt',
       color: 'var(--bs-body-color)',
       onClick: () => onOpenInExplorer(contract)
     },
     onClear && {
       id: 'clear',
-      label: 'Clear',
+      label: intl.formatMessage({ id: 'udapp.clearMenuItem' }),
       icon: 'far fa-trash-alt text-danger',
       color: 'var(--bs-danger)',
       onClick: () => onClear(contract)
