@@ -13,7 +13,6 @@ import { fetchContractFromEtherscan, fetchContractFromBlockscout } from '@remix-
 import JSZip from 'jszip'
 import { Actions, FileTree } from '../types'
 import IpfsHttpClient from 'ipfs-http-client'
-import { AppModal, ModalTypes } from '@remix-ui/app'
 import { Topbar } from 'apps/remix-ide/src/app/components/top-bar'
 
 export * from './events'
@@ -41,7 +40,8 @@ const basicWorkspaceInit = async (workspaces: { name: string; isGitRepo: boolean
     await createWorkspaceTemplate('default_workspace', 'remixDefault')
     plugin.setWorkspace({ name: 'default_workspace', isLocalhost: false })
     dispatch(setCurrentWorkspace({ name: 'default_workspace', isGitRepo: false }))
-    await loadWorkspacePreset('remixDefault')
+    const openPath = await loadWorkspacePreset('remixDefault')
+    if (openPath) plugin.call('fileManager', 'openFile', openPath)
   } else {
     if (workspaces.length > 0) {
       const workspace = workspaces[workspaces.length - 1]
@@ -88,20 +88,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       await createWorkspaceTemplate(name, 'gist-template')
       plugin.setWorkspace({ name, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-      await loadWorkspacePreset('gist-template')
+      const openPath = await loadWorkspacePreset('gist-template')
+      if (openPath) plugin.call('fileManager', 'openFile', openPath)
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
       await createWorkspaceTemplate('code-sample', 'code-template')
       plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
-      const filePath = await loadWorkspacePreset('code-template')
-      plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-        if (editorMounted){
-          setTimeout(async () => {
-            await plugin.fileManager.openFile(filePath)}, 1000)
-        } else {
-          filePathToOpen = filePath
-        }
-      })
+      const openPath = await loadWorkspacePreset('code-template')
+      if (openPath) plugin.call('fileManager', 'openFile', openPath)
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
         const contractAddress = params.address
@@ -255,20 +249,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       await createWorkspaceTemplate(name, 'gist-template')
       plugin.setWorkspace({ name, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-      await loadWorkspacePreset('gist-template')
+      const openPath = await loadWorkspacePreset('gist-template')
+      if (openPath) plugin.call('fileManager', 'openFile', openPath)
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
       await createWorkspaceTemplate('code-sample', 'code-template')
       plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
-      const filePath = await loadWorkspacePreset('code-template')
-      plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-        if (editorMounted){
-          setTimeout(async () => {
-            await plugin.fileManager.openFile(filePath)}, 1000)
-        } else {
-          filePathToOpen = filePath
-        }
-      })
+      const openPath = await loadWorkspacePreset('code-template')
+      if (openPath) plugin.call('fileManager', 'openFile', openPath)
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
         const contractAddress = params.address
@@ -364,7 +352,6 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       dispatch(fsInitializationCompleted())
       plugin.emit('workspaceInitializationCompleted')
       return
-
     } else if (localStorage.getItem("currentWorkspace")) {
       const index = workspaces.findIndex(element => element.name == localStorage.getItem("currentWorkspace"))
       if (index !== -1) {

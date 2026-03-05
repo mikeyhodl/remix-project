@@ -204,7 +204,10 @@ export const createWorkspace = async (
         plugin.call('notification', 'toast', 'Creating initial git commit ...')
 
         await dgitPlugin.call('dgit', 'init')
-        if (!isEmpty) await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+        if (!isEmpty) {
+          const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+          if (openPath) await plugin.fileManager.openFile(openPath)
+        }
         const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
 
         Promise.all(
@@ -280,7 +283,8 @@ export const populateWorkspace = async (
       })
     }, 5000)
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
-    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+    const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
+    if (openPath) await plugin.fileManager.openFile(openPath)
   }
   cb && cb(null)
   if (isGitRepo) {
@@ -335,11 +339,15 @@ export const decodeBase64 = (b64Payload: string) => {
   return new TextDecoder().decode(bytes);
 }
 
+const isReadme = (path: string) => {
+  return ['readme', 'readme.md', 'readme.txt'].includes(path.toLowerCase())
+}
+
 export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDefault', opts?, contractContent?: string, contractName?: string) => {
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
-
+  console.log('Loading workspace preset with template:', template, 'and URL params:', params)
   switch (template) {
   case 'code-template':
     // creates a new workspace code-sample and loads code from url params.
@@ -450,6 +458,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       }
       const obj = {}
 
+      let openPath = ''
       for (const [element] of Object.entries(data.files)) {
         const path = element.replace(/\.\.\./g, '/')
         let value
@@ -464,12 +473,15 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
           obj['/' + path] = { content: JSON.stringify(value.content, null, '\t') }
         } else
           obj['/' + path] = value
+
+        if (!openPath || isReadme(path)) openPath = path
       }
       plugin.fileManager.setBatchFiles(obj, 'workspace', true, (errorLoadingFile) => {
         if (errorLoadingFile) {
           dispatch(displayNotification('', errorLoadingFile.message || errorLoadingFile, 'OK', null, () => {}, null))
         }
       })
+      return openPath
     } catch (e) {
       dispatch(
         displayNotification(
@@ -489,6 +501,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
 
   default:
     try {
+      let openPath = ''
       const templateList = Object.keys(templateWithContent)
       if (!templateList.includes(template)) break
 
@@ -500,23 +513,31 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       } else {
         files = await templateWithContent[template](opts, plugin)
       }
-      for (const file in files) {
-        try {
-          const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
-          if (file === 'remix.config.json') {
-            const remixConfig = JSON.parse(files[file])
+      if (files) {
+        for (const file in files) {
+          try {
+            const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
+            if (file === 'remix.config.json') {
+              const remixConfig = JSON.parse(files[file])
 
-            remixConfig.project = template
-            remixConfig.version = projectVersion
-            remixConfig.IDE = window.location.hostname
-            await workspaceProvider.set(uniqueFileName, JSON.stringify(remixConfig, null, 2))
-          } else {
-            await workspaceProvider.set(uniqueFileName, files[file])
+              remixConfig.project = template
+              remixConfig.version = projectVersion
+              remixConfig.IDE = window.location.hostname
+              await workspaceProvider.set(uniqueFileName, JSON.stringify(remixConfig, null, 2))
+            } else {
+              await workspaceProvider.set(uniqueFileName, files[file])
+            }
+            if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
+              openPath = uniqueFileName
+            } else if (isReadme(uniqueFileName)) {
+              openPath = uniqueFileName
+            }
+          } catch (error) {
+            console.error(error)
           }
-        } catch (error) {
-          console.error(error)
         }
       }
+      return openPath || (files && Object.keys(files)[0])
     } catch (e) {
       dispatch(
         displayNotification(
