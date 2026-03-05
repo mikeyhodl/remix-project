@@ -1024,112 +1024,115 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
 
 export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string; remoteId?: string; cloudUuid?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
-  try {
-    // ── Cloud mode: return cloud workspaces from the store ──
-    if (cloudStore.isCloudMode) {
-      const cloudState = cloudStore.getState()
-      const cloudWorkspaces: WorkspaceType[] = cloudState.cloudWorkspaces.map(cw => ({
-        name: cw.name,
-        isGitRepo: false,
-        hasGitSubmodules: false,
-        isGist: null,
-        remoteId: cw.uuid,
-        cloudUuid: cw.uuid,
-      }))
-      // Note: we intentionally do NOT call plugin.setWorkspaces() here to
-      // avoid a cascading re-render loop.  The callers already setWorkspaces
-      // explicitly when needed (e.g. after createWorkspace).
-      return cloudWorkspaces
-    }
+  return workspaceOperationQueue.run(async () => {
+    try {
+      // ── Cloud mode: return cloud workspaces from the store ──
+      if (cloudStore.isCloudMode) {
+        const cloudState = cloudStore.getState()
+        const cloudWorkspaces: WorkspaceType[] = cloudState.cloudWorkspaces.map(cw => ({
+          name: cw.name,
+          isGitRepo: false,
+          hasGitSubmodules: false,
+          isGist: null,
+          remoteId: cw.uuid,
+          cloudUuid: cw.uuid,
+        }))
+        // Note: we intentionally do NOT call plugin.setWorkspaces() here to
+        // avoid a cascading re-render loop.  The callers already setWorkspaces
+        // explicitly when needed (e.g. after createWorkspace).
+        return cloudWorkspaces
+      }
 
-    // ── Legacy mode: scan local .workspaces/ directory ──
-    const workspaces: WorkspaceType[] = await new Promise((resolve, reject) => {
-      const workspacesPath = plugin.fileProviders.workspace.workspacesPath
-      plugin.fileProviders.browser.resolveDirectory('/' + workspacesPath, (error, items) => {
+      // ── Legacy mode: scan local .workspaces/ directory ──
+      const workspaces: WorkspaceType[] = await new Promise((resolve, reject) => {
+        const workspacesPath = plugin.fileProviders.workspace.workspacesPath
+        plugin.fileProviders.browser.resolveDirectory('/' + workspacesPath, (error, items) => {
 
-        if (error) {
-          return reject(error)
-        }
-        Promise.all(
-          Object.keys(items)
-            .filter((item) => items[item].isDirectory)
-            .map(async (folder) => {
-              const name = folder.replace(workspacesPath + '/', '')
-              const isGitRepo: boolean = await plugin.fileProviders.browser.exists('/' + folder + '/.git')
-              const hasGitSubmodules: boolean = await plugin.fileProviders.browser.exists('/' + folder + '/.gitmodules')
+          if (error) {
+            return reject(error)
+          }
+          Promise.all(
+            Object.keys(items)
+              .filter((item) => items[item].isDirectory)
+              .map(async (folder) => {
+                const name = folder.replace(workspacesPath + '/', '')
+                const isGitRepo: boolean = await plugin.fileProviders.browser.exists('/' + folder + '/.git')
+                const hasGitSubmodules: boolean = await plugin.fileProviders.browser.exists('/' + folder + '/.gitmodules')
 
-              // Read remoteId from remix.config.json if it exists
-              let remoteId: string | undefined
-              try {
-                const configPath = '/' + folder + '/remix.config.json'
-                const configExists = await plugin.fileProviders.browser.exists(configPath)
-                if (configExists) {
-                  const configContent = await plugin.fileProviders.browser.get(configPath)
-                  const config = JSON.parse(configContent)
-                  remoteId = config?.['remote-workspace']?.remoteId
+                // Read remoteId from remix.config.json if it exists
+                let remoteId: string | undefined
+                try {
+                  const configPath = '/' + folder + '/remix.config.json'
+                  const configExists = await plugin.fileProviders.browser.exists(configPath)
+                  if (configExists) {
+                    const configContent = await plugin.fileProviders.browser.get(configPath)
+                    const config = JSON.parse(configContent)
+                    remoteId = config?.['remote-workspace']?.remoteId
+                  }
+                } catch (e) {
+                  // ignore config read errors
                 }
-              } catch (e) {
-                // ignore config read errors
-              }
 
-              if (isGitRepo) {
-                let branches = []
-                let currentBranch = null
+                if (isGitRepo) {
+                  let branches = []
+                  let currentBranch = null
 
-                branches = await getGitRepoBranches(folder)
-                currentBranch = await getGitRepoCurrentBranch(folder)
-                return {
-                  name,
-                  isGitRepo,
-                  branches,
-                  currentBranch,
-                  hasGitSubmodules,
-                  isGist: null,
-                  remoteId
+                  branches = await getGitRepoBranches(folder)
+                  currentBranch = await getGitRepoCurrentBranch(folder)
+                  return {
+                    name,
+                    isGitRepo,
+                    branches,
+                    currentBranch,
+                    hasGitSubmodules,
+                    isGist: null,
+                    remoteId
+                  }
+                } else {
+                  return {
+                    name,
+                    isGitRepo,
+                    hasGitSubmodules,
+                    isGist: plugin.isGist(name), // plugin is filePanel
+                    remoteId
+                  }
                 }
-              } else {
-                return {
-                  name,
-                  isGitRepo,
-                  hasGitSubmodules,
-                  isGist: plugin.isGist(name), // plugin is filePanel
-                  remoteId
-                }
-              }
-            })
-        ).then((workspacesList) => resolve(workspacesList))
+              })
+          ).then((workspacesList) => resolve(workspacesList))
+        })
       })
-    })
-    await plugin.setWorkspaces(workspaces)
-    return workspaces
-  } catch (e) {}
+      await plugin.setWorkspaces(workspaces)
+      return workspaces
+    } catch (e) {}
+  })
 }
 
 export const cloneRepository = async (url: string) => {
-  const config = plugin.registry.get('config').api
-  const token = config.get('settings/gist-access-token')
-  const repoConfig: cloneInputType = { url, token, depth: 10 }
+  return workspaceOperationQueue.run(async () => {
+    const config = plugin.registry.get('config').api
+    const token = config.get('settings/gist-access-token')
+    const repoConfig: cloneInputType = { url, token, depth: 10 }
 
-  if (plugin.registry.get('platform').api.isDesktop()) {
-    try {
-      await dgitPlugin.call('dgitApi', 'clone', repoConfig)
-    } catch (e) {
-      console.log(e)
-      plugin.call('notification', 'alert', {
-        id: 'cloneGitRepository',
-        message: e
-      })
-    }
-  } else {
-    try {
-      const repoName = await getRepositoryTitle(url)
+    if (plugin.registry.get('platform').api.isDesktop()) {
+      try {
+        await dgitPlugin.call('dgitApi', 'clone', repoConfig)
+      } catch (e) {
+        console.log(e)
+        plugin.call('notification', 'alert', {
+          id: 'cloneGitRepository',
+          message: e
+        })
+      }
+    } else {
+      try {
+        const repoName = await getRepositoryTitle(url)
 
-      await createWorkspace(repoName, 'blank', null, true, null, true, false)
-      const promise = dgitPlugin.call('dgitApi', 'clone', { ...repoConfig, workspaceExists: true, workspaceName: repoName, depth:10 })
+        await _createWorkspaceInternal(repoName, 'blank', null, true, null, true, false)
 
-      dispatch(cloneRepositoryRequest())
-      promise
-        .then(async () => {
+        dispatch(cloneRepositoryRequest())
+        try {
+          await dgitPlugin.call('dgitApi', 'clone', { ...repoConfig, workspaceExists: true, workspaceName: repoName, depth: 10 })
+
           if (!plugin.registry.get('platform').api.isDesktop()) {
             const isActive = await plugin.call('manager', 'isActive', 'dgit')
             if (!isActive) await plugin.call('manager', 'activatePlugin', 'dgit')
@@ -1145,14 +1148,14 @@ export const cloneRepository = async (url: string) => {
 
           dispatch(setCurrentWorkspaceCurrentBranch(currentBranch))
           dispatch(cloneRepositorySuccess())
-        }).catch(() => {
+        } catch {
           const cloneModal = {
             id: 'cloneGitRepository',
             title: 'Clone Git Repository',
             message:
             'An error occurred: Please check that you have the correct URL for the repo. If the repo is private, you need to add your github credentials (with the valid token permissions) in the Git plugin',
             modalType: 'modal',
-            okLabel: plugin.registry.get('platform').api.isDesktop() ? 'Select or create folder':'OK',
+            okLabel: plugin.registry.get('platform').api.isDesktop() ? 'Select or create folder' : 'OK',
             okFn: async () => {
               await deleteWorkspace(repoName)
               dispatch(cloneRepositoryFailed())
@@ -1163,11 +1166,12 @@ export const cloneRepository = async (url: string) => {
             }
           }
           plugin.call('notification', 'modal', cloneModal)
-        })
-    } catch (e) {
-      dispatch(displayPopUp('An error occurred: ' + e))
+        }
+      } catch (e) {
+        dispatch(displayPopUp('An error occurred: ' + e))
+      }
     }
-  }
+  })
 }
 
 export const checkGit = async () => {
