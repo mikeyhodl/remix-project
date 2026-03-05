@@ -42,7 +42,7 @@ contract CompilationTest {
 const tests = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
-    init(browser, done, 'http://127.0.0.1:8080/#experimental=true', true, undefined, true, true)
+    init(browser, done)
   },
 
   'Setup: Enable MCP and allow file permissions #group1 #group2': function (browser: NightwatchBrowser) {
@@ -286,8 +286,8 @@ const tests = {
 }
 console.log('module export', module.exports)
 
-const branch = process.env.CIRCLE_BRANCH || 'ai_reale2e_test'
-const runTestsConditions = branch && (branch === 'master' || branch === 'ai_reale2e_test')
+const branch = process.env.CIRCLE_BRANCH
+const runTestsConditions = branch && (branch === 'master' || branch === 'remix_live' || branch.includes('remix_beta') || branch.includes('metamask'))
 
 const checkBrowserIsChrome = function (browser: NightwatchBrowser) {
   return browser.browserName.indexOf('chrome') > -1
