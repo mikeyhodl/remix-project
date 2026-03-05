@@ -424,7 +424,7 @@ export const createWorkspaceTemplate = async (workspaceName: string, template: W
       dispatch(cloneRepositorySuccess())
     } catch (e) {
       dispatch(cloneRepositoryFailed())
-      throw e  // re-throw so _createWorkspaceInternal's catch handles it
+      throw e // re-throw so _createWorkspaceInternal's catch handles it
     }
   } else {
     const workspaceProvider = plugin.fileProviders.workspace
