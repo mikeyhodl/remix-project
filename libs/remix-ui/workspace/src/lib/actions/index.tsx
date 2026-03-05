@@ -665,7 +665,6 @@ export const runScript = async (path: string) => {
 export const signTypedData = async (path: string) => {
   const typedData = await plugin.call('fileManager', 'readFile', path)
   const web3 = await plugin.call('blockchain', 'web3')
-  const settings = await plugin.call('udapp', 'getSettings')
   let parsed
   try {
     parsed = JSON.parse(typedData)
@@ -675,8 +674,9 @@ export const signTypedData = async (path: string) => {
   }
 
   try {
-    const result = await web3.send('eth_signTypedData_v4', [settings.selectedAccount, parsed])
-    plugin.call('terminal', 'log', { type: 'log', value: `${path} signature using ${settings.selectedAccount} : ${result}` })
+    const selectedAccount = await plugin.call('udappEnv', 'getSelectedAccount')
+    const result = await web3.send('eth_signTypedData_v4', [selectedAccount, parsed])
+    plugin.call('terminal', 'log', { type: 'log', value: `${path} signature using ${selectedAccount} : ${result}` })
   } catch (e) {
     console.error(e)
     plugin.call('terminal', 'log', { type: 'error', value: `error while signing ${path}: ${e.message || e}` })
