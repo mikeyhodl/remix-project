@@ -373,14 +373,15 @@ export const populateWorkspace = async (
   if (metadata && metadata.type === 'plugin') {
     plugin.call('notification', 'toast', 'Please wait while the Workspace is being populated with the template.')
     dispatch(cloneRepositoryRequest())
-    setTimeout(() => {
-      plugin.call(metadata.name, metadata.endpoint, ...metadata.params).then(() => {
-        dispatch(cloneRepositorySuccess())
-      }).catch((e) => {
-        dispatch(cloneRepositorySuccess())
-        plugin.call('notification', 'toast', 'error adding template ' + (e.message || e))
-      })
-    }, 5000)
+    try {
+      // Give the workspace UI a moment to settle before calling the plugin.
+      await new Promise((r) => setTimeout(r, 5000))
+      await plugin.call(metadata.name, metadata.endpoint, ...metadata.params)
+      dispatch(cloneRepositorySuccess())
+    } catch (e) {
+      dispatch(cloneRepositoryFailed())
+      plugin.call('notification', 'toast', 'Error adding template: ' + (e.message || e))
+    }
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
     const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
     if (openPath) await plugin.fileManager.openFile(openPath)
@@ -418,8 +419,13 @@ export const createWorkspaceTemplate = async (workspaceName: string, template: W
     // workspace's absolutePath instead of the previous one.
     await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
     dispatch(cloneRepositoryRequest())
-    await dgitPlugin.call('dgitApi', 'clone', { url: metadata.url, branch: metadata.branch, workspaceName: workspaceName, workspaceExists: true, depth: 10 })
-    dispatch(cloneRepositorySuccess())
+    try {
+      await dgitPlugin.call('dgitApi', 'clone', { url: metadata.url, branch: metadata.branch, workspaceName: workspaceName, workspaceExists: true, depth: 10 })
+      dispatch(cloneRepositorySuccess())
+    } catch (e) {
+      dispatch(cloneRepositoryFailed())
+      throw e  // re-throw so _createWorkspaceInternal's catch handles it
+    }
   } else {
     const workspaceProvider = plugin.fileProviders.workspace
     await workspaceProvider.createWorkspace(workspaceName)
@@ -851,13 +857,12 @@ export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, r
 }
 
 export const deleteAllWorkspaces = async () => {
-  await (
-    await getWorkspaces()
-  ).map(async (workspace) => {
+  const workspaces = await getWorkspaces()
+  for (const workspace of workspaces) {
     await deleteWorkspaceFromProvider(workspace.name)
     await dispatch(setDeleteWorkspace(workspace.name))
     plugin.workspaceDeleted(workspace.name)
-  })
+  }
 }
 
 const deleteWorkspaceFromProvider = async (workspaceName: string) => {
@@ -1125,7 +1130,10 @@ export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
       })
       await plugin.setWorkspaces(workspaces)
       return workspaces
-    } catch (e) {}
+    } catch (e) {
+      console.error('[getWorkspaces] Failed to retrieve workspaces:', e)
+      return []
+    }
   })
 }
 
@@ -1343,11 +1351,16 @@ export const createNewBranch = async (branch: string) => {
 
 export const updateGitSubmodules = async () => {
   dispatch(cloneRepositoryRequest())
-  const config = plugin.registry.get('config').api
-  const token = config.get('settings/gist-access-token')
-  const repoConfig = { token }
-  await dgitPlugin.call('dgitApi', 'updateSubmodules', repoConfig)
-  dispatch(cloneRepositorySuccess())
+  try {
+    const config = plugin.registry.get('config').api
+    const token = config.get('settings/gist-access-token')
+    const repoConfig = { token }
+    await dgitPlugin.call('dgitApi', 'updateSubmodules', repoConfig)
+    dispatch(cloneRepositorySuccess())
+  } catch (e) {
+    dispatch(cloneRepositoryFailed())
+    plugin.call('notification', 'toast', 'Failed to update git submodules: ' + (e.message || e))
+  }
 }
 
 export const checkoutRemoteBranch = async (branch: branch) => {
