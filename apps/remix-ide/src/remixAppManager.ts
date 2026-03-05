@@ -108,12 +108,14 @@ let requiredModules = [
   'indexedDbCache',
   'notificationCenter',
   'invitationManager',
+  'membershipRequest',
   'feedback',
   'udappEnv',
   'udappDeploy',
   'udappDeployedContracts',
   'udappTransactions',
-  'txRunner'
+  'txRunner',
+  'betaCornerWidget'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)

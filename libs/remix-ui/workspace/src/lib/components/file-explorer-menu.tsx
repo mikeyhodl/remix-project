@@ -620,6 +620,22 @@ export const FileExplorerMenu = (props: FileExplorerMenuProps) => {
                   </>
                 )}
               </Button>
+              <Button
+                variant="primary"
+                className="w-100 mb-1 d-flex flex-row align-items-center justify-content-center"
+                data-id="fileExplorerViewDappButton"
+                onClick={async () => {
+                  try {
+                    await global.plugin.call('tabs', 'focus', 'quick-dapp-v2')
+                    await global.plugin.call('quick-dapp-v2', 'openDapp', global.fs.browser.currentWorkspace)
+                  } catch (e) {
+                    console.warn('[FileExplorerMenu] Could not open DApp detail:', e)
+                  }
+                }}
+              >
+                <i className="fas fa-eye me-2"></i>
+                <span>View DApp</span>
+              </Button>
             </span>
           )}
 

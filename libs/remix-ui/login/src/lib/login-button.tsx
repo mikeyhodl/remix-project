@@ -49,12 +49,16 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
 
   const handleLogout = async () => {
     await logout()
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'auth', 'logout', 'Sign Out', undefined).catch(() => {})
+    }
   }
 
   const handleManageAccounts = () => {
     // Open Account overlay
     if (plugin && typeof plugin.call === 'function') {
-      (async () => {
+      plugin.call('matomo', 'trackEvent', 'userMenu', 'manageAccounts', 'Manage Accounts', undefined).catch(() => {})
+      ;(async () => {
         try {
           await plugin.call('account', 'open')
         } catch (err) {
@@ -115,7 +119,12 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
       <>
         <button
           className={`btn btn-sm btn-primary ${className}`}
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setShowModal(true)
+            if (plugin && typeof plugin.call === 'function') {
+              plugin.call('matomo', 'trackEvent', 'auth', 'openLoginModal', 'Sign In', undefined).catch(() => {})
+            }
+          }}
           data-id="login-button"
         >
           Sign In

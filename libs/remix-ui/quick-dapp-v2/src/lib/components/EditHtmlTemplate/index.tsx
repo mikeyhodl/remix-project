@@ -509,43 +509,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
     let cancelled = false;
 
-    const tryCallContract = async (): Promise<boolean> => {
-      const abi = activeDapp.contract.abi;
-      if (!abi || !Array.isArray(abi)) return false;
-
-      const viewFn = abi.find((item: any) =>
-        item.type === 'function' &&
-        (item.stateMutability === 'view' || item.stateMutability === 'pure') &&
-        (!item.inputs || item.inputs.length === 0)
-      );
-      if (!viewFn) return false;
-
-      const inputTypes = (viewFn.inputs || []).map((i: any) => i.type).join(',');
-      const sig = `${viewFn.name}(${inputTypes})`;
-      const hexSig = '0x' + Array.from(new TextEncoder().encode(sig))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-      const selectorHex = await plugin.call('blockchain', 'sendRpc', 'web3_sha3', [hexSig]);
-      const selector = typeof selectorHex === 'string' ? selectorHex.substring(0, 10) : '0x';
-
-      const callResult = await plugin.call('blockchain', 'sendRpc', 'eth_call', [{
-        to: activeDapp.contract.address,
-        data: selector
-      }, 'latest']);
-
-      return typeof callResult === 'string' && callResult.length > 2;
-    };
-
     const checkWithRetry = async () => {
-      // Log getCode for reference — Remix VM returns 0x even when contract is functional
-      try {
-        const code = await plugin.call('blockchain', 'getCode', activeDapp.contract.address);
-        console.log(`[QuickDapp] getCode(${activeDapp.contract.address}):`, code);
-      } catch (_) {}
-
-      // getCode is unreliable in Remix VM, so we use eth_call with a view function instead.
-      // The VM also needs time to load state after workspace switch, so we retry.
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY_MS = 2000;
+      const MAX_RETRIES = 5;
+      const RETRY_DELAY_MS = 3000;
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         if (cancelled) return;
@@ -555,16 +521,16 @@ window.addEventListener('unhandledrejection', function(e) {
         }
 
         try {
-          if (await tryCallContract()) {
+          const code = await plugin.call('blockchain', 'sendRpc', 'eth_getCode', [
+            activeDapp.contract.address, 'latest'
+          ]);
+          console.log(`[QuickDapp] getCode attempt ${attempt + 1}/${MAX_RETRIES}:`, code?.substring(0, 20));
+          if (code && code !== '0x' && code !== '0x0' && code.length > 2) {
             setVmContractStatus('deployed');
             return;
           }
         } catch (e) {
-          const errStr = String(e);
-          if (errStr.includes('revert') || errStr.includes('execution reverted')) {
-            setVmContractStatus('deployed');
-            return;
-          }
+          console.warn(`[QuickDapp] getCode attempt ${attempt + 1} failed:`, e);
         }
       }
 
@@ -595,6 +561,15 @@ window.addEventListener('unhandledrejection', function(e) {
           const result = await plugin.call('blockchain', 'sendRpc', method, params || []);
 
           if (!isMounted) return;
+
+          if (method === 'eth_sendTransaction') {
+            try {
+              await plugin.call('blockchain', 'dumpState');
+            } catch (e) {
+              console.warn('[VM-Bridge] dumpState after TX failed:', e);
+            }
+          }
+
           return result;
         } catch (error: any) {
           if (!isMounted) return;
