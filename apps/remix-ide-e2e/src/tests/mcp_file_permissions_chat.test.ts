@@ -29,8 +29,8 @@ const tests = {
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
       // Click the model selector button to open the model menu
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       // Enable MCP Enhancement checkbox
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
@@ -62,8 +62,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -73,10 +73,10 @@ const tests = {
         }
       })
       .pause(500)
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create a file called hello.txt with content "Hello World"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create a file called hello.txt with content "Hello World"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       .waitForElementPresent({
         locateStrategy: 'xpath',
@@ -104,8 +104,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -115,10 +115,10 @@ const tests = {
         }
       })
       .pause(500)
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create a file named specific.txt with the content "Specific test"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create a file named specific.txt with the content "Specific test"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       // Wait for permission modal
       .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 60000)
@@ -154,8 +154,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -164,10 +164,10 @@ const tests = {
           checkbox.click();
         }
       })
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create file1.txt with content "Test 1"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create file1.txt with content "Test 1"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 60000)
       .pause(500)
@@ -187,10 +187,10 @@ const tests = {
         timeout: 60000
       })
       .pause(1000)
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create file2.txt with content "Test 2"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create file2.txt with content "Test 2"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .waitForElementPresent({
         locateStrategy: 'xpath',
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='true']",
@@ -216,8 +216,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -227,10 +227,10 @@ const tests = {
         }
       })
       .pause(500)
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create denied.txt with content "Should not be created"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create denied.txt with content "Should not be created"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 60000)
       .modalFooterCancelClick("mcp_file_write_permission_initial") // Click "Deny"
@@ -259,8 +259,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(1000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(500)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -269,10 +269,10 @@ const tests = {
           checkbox.click();
         }
       })
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create file1.txt with content "Test 1"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create file1.txt with content "Test 1"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(2000)
       .waitForElementVisible('*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', 60000)
       .pause(500)
@@ -310,8 +310,8 @@ const tests = {
       .clickLaunchIcon('remixaiassistant')
       .waitForElementPresent('*[data-id="remix-ai-assistant-ready"]', 60000)
       .pause(2000)
-      .waitForElementVisible('*[data-id="remix-ai-setModel"]', 5000)
-      .click('*[data-id="remix-ai-setModel"]')
+      .waitForElementVisible('*[data-assist-btn="assistant-selector-btn"]', 5000)
+      .click('*[data-assist-btn="assistant-selector-btn"]')
       .pause(1000)
       .waitForElementVisible('#mcpEnhancementToggle', 5000)
       .execute(function () {
@@ -331,12 +331,12 @@ const tests = {
       .pause(500)
       .click('*[data-id="remixIdeSidePanel"]')
       .pause(500)
-      .waitForElementVisible('*[data-id="ai-chat-input"]', 5000)
-      .click('*[data-id="ai-chat-input"]')
+      .waitForElementVisible('*[data-id=remix-ai-prompt-input]', 5000)
+      .click('*[data-id=remix-ai-prompt-input]')
       .pause(500)
-      .clearValue('*[data-id="ai-chat-input"]')
-      .setValue('*[data-id="ai-chat-input"]', 'Create persistent.txt with content "Persistent test"')
-      .sendKeys('*[data-id="ai-chat-input"]', browser.Keys.ENTER)
+      .clearValue('*[data-id=remix-ai-prompt-input]')
+      .setValue('*[data-id=remix-ai-prompt-input]', 'Create persistent.txt with content "Persistent test"')
+      .sendKeys('*[data-id=remix-ai-prompt-input]', browser.Keys.ENTER)
       .pause(3000)
       .elements('css selector', '*[data-id="mcp_file_write_permission_initialModalDialogContainer-react"]', function (result) {
         const elements = Array.isArray(result.value) ? result.value : [];
