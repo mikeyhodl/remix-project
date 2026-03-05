@@ -22,5 +22,20 @@
   "debugger.stepOverForward": "Step over forward",
   "debugger.jumpPreviousBreakpoint": "Jump to the previous breakpoint",
   "debugger.jumpOut": "Jump out",
-  "debugger.jumpNextBreakpoint": "Jump to the next breakpoint"
+  "debugger.jumpNextBreakpoint": "Jump to the next breakpoint",
+  "debugger.contractCall": "Contract call",
+  "debugger.debug": "Debug",
+  "debugger.newestFirst": "Newest first",
+  "debugger.noCallTrace": "No call trace available",
+  "debugger.noExternalCalls": "No external calls found.",
+  "debugger.noTransactions": "No transactions yet",
+  "debugger.oldestFirst": "Oldest first",
+  "debugger.searchPlaceholder": "Search transaction hash...",
+  "debugger.stackMemory": "Stack & Memory",
+  "debugger.stateLocals": "State & Locals",
+  "debugger.transactionDetails": "Transaction Details",
+  "debugger.transactionList": "Transaction list",
+  "debugger.transactionRecorder": "Transaction recorder",
+  "debugger.txHash": "Hash:",
+  "debugger.unknownMethod": "Unknown method"
 }

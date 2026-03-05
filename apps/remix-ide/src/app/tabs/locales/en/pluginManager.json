@@ -41,5 +41,7 @@
   "pluginManager.activatePlugin": "Activate {pluginName}",
   "pluginManager.search": "Search",
   "pluginManager.managePluginsPermissions": "Manage plugins Permissions",
-  "pluginManager.UnavailableOffline": "Unavailable Offline"
+  "pluginManager.UnavailableOffline": "Unavailable Offline",
+  "pluginManager.connectExternal": "Connect to an external plugin",
+  "pluginManager.openDocumentation": "Open documentation"
 }

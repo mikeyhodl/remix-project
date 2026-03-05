@@ -76,6 +76,8 @@
   "home.createNewWorkspace": "Create a new Workspace",
   "home.startLearning": "Start Learning",
   "home.exploreAllPlugins": "Explore all plugins",
-  "home.maintainedByRemix": "Maintained by Remix"
+  "home.maintainedByRemix": "Maintained by Remix",
+  "homeTab.newToRemix": "First time in Remix? here's what you can do"
 }
+
 

@@ -22,6 +22,7 @@
     "noir.exportVerificationKey": "Export verification key",
     "noir.exportVerifierCalldata": "Export verifier calldata",
     "noir.exportWtnsJson": "Export witness as JSON",
-    "noir.runSetup": "Run setup"
+    "noir.runSetup": "Run setup",
+    "noir.compilationArtifacts": "Compilation Artifacts",
+    "noir.proofArtifacts": "Proof Artifacts"
   }
-  

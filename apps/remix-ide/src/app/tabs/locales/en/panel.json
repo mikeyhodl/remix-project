@@ -9,5 +9,6 @@
   "panel.maintainedExternally": "Not maintained by Remix",
   "panel.pluginInfo": "Plugin info",
   "panel.linkToDoc": "Link to documentation",
-  "panel.makeAnissue": "Make an issue"
+  "panel.makeAnissue": "Make an issue",
+  "panel.pluginDetails": "Plugin details"
 }

@@ -194,5 +194,15 @@
   "udapp.createDelegationAuthorization": "Connect EOA to contract code (EIP 7702)",
   "udapp.createDelegationTitle": "Connect EOA to contract code (EIP 7702)",
   "udapp.removeDelegationTitle": "Remove contract delegation (EIP 7702)",
-  "udapp.createDelegationDescription": "Authorize a delegation between the current EOA and the contract code at the provided address. The contract must be deployed in the current chain."
+  "udapp.createDelegationDescription": "Authorize a delegation between the current EOA and the contract code at the provided address. The contract must be deployed in the current chain.",
+
+  "udapp.deployAndVerify": "Deploy & Verify",
+  "udapp.noABIAvailable": "No ABI available",
+  "udapp.noBytecodeAvailable": "No bytecode available",
+  "udapp.transactionRecorderTitle": "Transactions recorder",
+  "udapp.yesClearAll": "Yes clear all",
+  "udapp.yesClearAllTransactions": "Yes clear all",
+  "udapp.viewSourceCode": "View Source Code",
+  "udapp.themes": "Themes",
+  "udapp.verifyContract": "Verify Contract on Explorers"
 }

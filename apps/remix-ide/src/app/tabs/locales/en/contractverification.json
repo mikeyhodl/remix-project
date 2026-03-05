@@ -24,7 +24,12 @@
   "contract-verification.constructorArgumentsToggleRawInput": "Enter raw ABI-encoded constructor arguments",
   "contract-verification.constructorArgumentsRawAbiEncodingResult": "ABI-encoded constructor arguments",
   "contract-verification.contractDropdownLabel": "{label}",
-  "contract-verification.contractDropDownDefaultText": "Compiled contract required"
+  "contract-verification.contractDropDownDefaultText": "Compiled contract required",
+  "contract-verification.selectedContractError": "Please select the contract.",
+  "contract-verification.constructorArgumentsError": "Must provide constructor arguments if verifying on Etherscan",
+  "contract-verification.generalVerifyError": "Please provide all necessary data to verify",
+  "contract-verification.verifyButtonTooltip": "Verify the contract on the selected chains with the selected verifiers.",
+  "contract-verification.searchableChainDropdown": "Chain"
 }
 
 
