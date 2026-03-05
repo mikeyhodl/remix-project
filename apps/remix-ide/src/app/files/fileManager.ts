@@ -854,12 +854,10 @@ export default class FileManager extends Plugin {
 
   async saveCurrentFile() {
     const currentFile = this._deps.config.get('currentFile')
-    console.log('saving file', currentFile)
     if (currentFile && this.editor.current()) {
       const input = this.editor.get(currentFile)
       if ((input !== null) && (input !== undefined)) {
         const provider = this.fileProviderOf(currentFile)
-        console.log('provider of current file', provider)
         if (provider) {
           // use old content as default if save operation fails.
           provider.get(currentFile, (error, oldContent) => {
