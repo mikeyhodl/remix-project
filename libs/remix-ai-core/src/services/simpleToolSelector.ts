@@ -114,7 +114,7 @@ export class SimpleToolSelector {
         st.score += 1.0 // Bonus for core tools
       }
       if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
-        st.score += 1.5 // Bonus for get_skill, list_skills tool
+        st.score += 5 // Bonus for get_skill, list_skills tool
       }
     })
 

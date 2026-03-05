@@ -132,7 +132,7 @@ export class WeightedToolSelector extends SimpleToolSelector {
         st.score += 1.0;
       }
       if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
-        st.score += 1.5;
+        st.score += 5;
       }
     });
 
