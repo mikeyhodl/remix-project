@@ -69,6 +69,68 @@ let plugin: any, dgitPlugin: Plugin<any, CustomRemixApi>,dispatch: React.Dispatc
 /** Guard flag to prevent concurrent default-workspace creation in cloud mode */
 let _creatingDefaultCloudWorkspace = false
 
+/**
+ * Async mutex that serializes workspace-mutating operations.
+ *
+ * The root cause of many race conditions in Remix is that
+ * `WorkspaceFileProvider.workspace` is a mutable singleton property read
+ * lazily by every I/O call (via `removePrefix()`).  If a workspace
+ * switch/create fires while another operation is still writing files the
+ * provider silently redirects writes to the wrong directory.
+ *
+ * By funneling createWorkspace, switchToWorkspace, deleteWorkspace and
+ * renameWorkspace through this queue we guarantee that only one of these
+ * operations runs at a time – eliminating the interleaving.
+ */
+class WorkspaceOperationQueue {
+  private _queue: Promise<void> = Promise.resolve()
+  private _depth = 0
+
+  /**
+   * Enqueue `fn` so it runs only after every previously-enqueued operation
+   * has settled (resolved **or** rejected).
+   *
+   * **Re-entrant**: if we are already inside a queued operation (depth > 0)
+   * the call is allowed through immediately.  This is critical because the
+   * plugin architecture can create call cascades where operation A triggers
+   * an event that calls operation B which tries to enter the queue – if we
+   * blocked we'd deadlock.  JavaScript is single-threaded, so any call that
+   * arrives while `_depth > 0` was necessarily spawned from the currently-
+   * executing operation and can safely proceed.
+   */
+  run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this._depth > 0) {
+      // Re-entrant call – bypass the queue to avoid deadlock.
+      this._depth++
+      return fn().finally(() => { this._depth-- })
+    }
+
+    let resolve!: (v: T) => void
+    let reject!: (e: any) => void
+    const p = new Promise<T>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    // Chain onto the queue.  We use `.then(…, …)` with both branches so
+    // that a rejection in an earlier operation doesn't skip later ones.
+    const execute = async () => {
+      this._depth++
+      try {
+        const result = await fn()
+        resolve(result)
+      } catch (e) {
+        reject(e)
+      } finally {
+        this._depth--
+      }
+    }
+    this._queue = this._queue.then(execute, execute)
+    return p
+  }
+}
+
+const workspaceOperationQueue = new WorkspaceOperationQueue()
+
 export const setPlugin = (filePanelPlugin, reducerDispatch) => {
   plugin = filePanelPlugin
   dgitPlugin = filePanelPlugin
@@ -138,7 +200,12 @@ const removeSlash = (s: string) => {
   return s.replace(/^\/+/, '')
 }
 
-export const createWorkspace = async (
+/**
+ * Internal implementation of workspace creation.  Callers that already hold
+ * the workspace operation queue lock (e.g. deleteWorkspace, switchToWorkspace)
+ * must call this directly to avoid deadlocking on the queue.
+ */
+const _createWorkspaceInternal = async (
   workspaceName: string,
   workspaceTemplateName: WorkspaceTemplate,
   opts = null,
@@ -157,9 +224,9 @@ export const createWorkspace = async (
   }
   await plugin.fileManager.closeAllFiles()
   const metadata = TEMPLATE_METADATA[workspaceTemplateName]
-  const promise = createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
+  await createWorkspaceTemplate(workspaceName, workspaceTemplateName, metadata, contractContent, contractName)
   dispatch(createWorkspaceRequest())
-  promise.then(async () => {
+  try {
     dispatch(createWorkspaceSuccess({ name: workspaceName, isGitRepo }))
     await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
     await plugin.workspaceCreated(workspaceName)
@@ -197,9 +264,6 @@ export const createWorkspace = async (
       const currentBranch: branch = await dgitPlugin.call('dgitApi', 'currentbranch')
 
       if (!currentBranch) {
-        // if (!name || !email) {
-        //   await plugin.call('notification', 'toast', 'To use Git features, add username and email to the Github section of the Git plugin.')
-        // } else {
         // commit the template as first commit
         plugin.call('notification', 'toast', 'Creating initial git commit ...')
 
@@ -210,7 +274,7 @@ export const createWorkspace = async (
         }
         const status = await dgitPlugin.call('dgitApi', 'status', { ref: 'HEAD' })
 
-        Promise.all(
+        await Promise.all(
           status.map(([filepath, , worktreeStatus]) =>
             worktreeStatus
               ? dgitPlugin.call('dgitApi', 'add', {
@@ -220,27 +284,40 @@ export const createWorkspace = async (
                 filepath: removeSlash(filepath),
               })
           )
-        ).then(async () => {
-          await dgitPlugin.call('dgitApi', 'commit', {
-            author: {
-              name,
-              email,
-            },
-            message: `Initial commit: remix template ${workspaceTemplateName}`,
-          })
+        )
+        await dgitPlugin.call('dgitApi', 'commit', {
+          author: {
+            name,
+            email,
+          },
+          message: `Initial commit: remix template ${workspaceTemplateName}`,
         })
       }
-      // }
     }
 
     await populateWorkspace(workspaceTemplateName, opts, isEmpty, (err: Error) => { cb && cb(err, workspaceName) }, isGitRepo, createCommit, contractContent, contractName)
     // this call needs to be here after the callback because it calls dGitProvider which also calls this function and that would cause an infinite loop
     await plugin.setWorkspaces(await getWorkspaces())
-  }).catch((error) => {
+  } catch (error) {
     dispatch(createWorkspaceError(error.message))
     cb && cb(error)
-  })
-  return promise
+  }
+}
+
+export const createWorkspace = async (
+  workspaceName: string,
+  workspaceTemplateName: WorkspaceTemplate,
+  opts = null,
+  isEmpty = false,
+  cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void,
+  isGitRepo: boolean = false,
+  createCommit: boolean = true,
+  contractContent?: string,
+  contractName?: string,
+) => {
+  return workspaceOperationQueue.run(() =>
+    _createWorkspaceInternal(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
+  )
 }
 
 export const generateWorkspace = async () => {
@@ -309,8 +386,17 @@ export const createWorkspaceTemplate = async (workspaceName: string, template: W
   if (checkSpecialChars(workspaceName) || checkSlash(workspaceName)) throw new Error('special characters are not allowed')
   if ((await workspaceExists(workspaceName)) && template === 'remixDefault') throw new Error('Workspace already exists')
   else if (metadata && metadata.type === 'git') {
+    // Create the workspace directory first, then clone into it with
+    // workspaceExists: true.  This prevents dgit from calling back into
+    // filePanel.createWorkspace (which would re-enter the queue).
+    const workspaceProvider = plugin.fileProviders.workspace
+    await workspaceProvider.createWorkspace(workspaceName)
+    // Set workspace metadata on file-panel BEFORE cloning so that dgit's
+    // addIsomorphicGitConfigFS() → getCurrentWorkspace() returns the new
+    // workspace's absolutePath instead of the previous one.
+    await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
     dispatch(cloneRepositoryRequest())
-    await dgitPlugin.call('dgitApi', 'clone', { url: metadata.url, branch: metadata.branch, workspaceName: workspaceName, depth: 10 })
+    await dgitPlugin.call('dgitApi', 'clone', { url: metadata.url, branch: metadata.branch, workspaceName: workspaceName, workspaceExists: true, depth: 10 })
     dispatch(cloneRepositorySuccess())
   } else {
     const workspaceProvider = plugin.fileProviders.workspace
@@ -347,6 +433,41 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
   const workspaceProvider = plugin.fileProviders.workspace
   const electronProvider = plugin.fileProviders.electron
   const params = queryParams.get() as UrlParametersType
+
+  // ── Workspace snapshot (defense in depth) ──
+  // Capture the current workspace at the start of this function so that all
+  // file writes target the intended workspace even if `this.workspace` is
+  // mutated by a concurrent operation that slips past the queue (e.g. init
+  // code paths or external plugin calls).
+  const _targetWorkspace = workspaceProvider.workspace
+
+  /**
+   * Write a file to the workspace that was active when loadWorkspacePreset
+   * was called, regardless of what `workspaceProvider.workspace` points to
+   * now.  Temporarily swaps the provider's workspace field, writes, and
+   * restores it.
+   */
+  const writeToTargetWorkspace = async (path: string, content: string) => {
+    const current = workspaceProvider.workspace
+    if (current !== _targetWorkspace) {
+      console.warn(
+        `[loadWorkspacePreset] workspace drifted: expected "${_targetWorkspace}" but provider has "${current}". ` +
+        `Forcing write to target workspace.`
+      )
+    }
+    workspaceProvider.workspace = _targetWorkspace
+    try {
+      await workspaceProvider.set(path, content)
+    } finally {
+      // Only restore if nobody else changed it while we were writing.
+      // If it was changed to something other than our target, that means
+      // a legitimate switch happened and we shouldn't undo it.
+      if (workspaceProvider.workspace === _targetWorkspace) {
+        workspaceProvider.workspace = current
+      }
+    }
+  }
+
   console.log('Loading workspace preset with template:', template, 'and URL params:', params)
   switch (template) {
   case 'code-template':
@@ -364,9 +485,9 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
         if (params.remaps) {
           await trackMatomoEventAsync(plugin, { category: 'workspace', action: 'template', name: 'code-template-remaps-param', isClick: false })
           const remapsContent = decodeBase64(params.remaps)
-          await workspaceProvider.set('remappings.txt', remapsContent)
+          await writeToTargetWorkspace('remappings.txt', remapsContent)
         }
-        await workspaceProvider.set(path, content)
+        await writeToTargetWorkspace(path, content)
       }
       if (params.shareCode) {
         await trackMatomoEventAsync(plugin, { category: 'workspace', action: 'template', name: 'code-template-shareCode-param', isClick: false })
@@ -391,7 +512,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
           for await (const chunk of file.content) fileContent.push(chunk)
           content = Buffer.concat(fileContent).toString()
         }
-        await workspaceProvider.set(path, content)
+        await writeToTargetWorkspace(path, content)
       }
       if (params.url) {
         await trackMatomoEventAsync(plugin, { category: 'workspace', action: 'template', name: 'code-template-url-param', isClick: false })
@@ -403,17 +524,17 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
           if (content.language && content.language === 'Solidity' && content.sources) {
             const standardInput: JSONStandardInput = content as JSONStandardInput
             for (const [fname, source] of Object.entries(standardInput.sources)) {
-              await workspaceProvider.set(fname, source.content)
+              await writeToTargetWorkspace(fname, source.content)
             }
             return Object.keys(standardInput.sources)[0]
           } else {
             // preserve JSON whitespace if this isn't a Solidity compiler JSON-input-output file
             content = data.content
-            await workspaceProvider.set(path, content)
+            await writeToTargetWorkspace(path, content)
           }
         } catch (e) {
           console.log(e)
-          await workspaceProvider.set(path, content)
+          await writeToTargetWorkspace(path, content)
         }
       }
       if (params.ghfolder) {
@@ -421,7 +542,7 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
           await trackMatomoEventAsync(plugin, { category: 'workspace', action: 'template', name: 'code-template-ghfolder-param', isClick: false })
           const files = await plugin.call('contentImport', 'resolveGithubFolder', params.ghfolder)
           for (const [path, content] of Object.entries(files)) {
-            await workspaceProvider.set(path, content)
+            await writeToTargetWorkspace(path, content as string)
           }
         } catch (e) {
           console.log(e)
@@ -523,9 +644,9 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
               remixConfig.project = template
               remixConfig.version = projectVersion
               remixConfig.IDE = window.location.hostname
-              await workspaceProvider.set(uniqueFileName, JSON.stringify(remixConfig, null, 2))
+              await writeToTargetWorkspace(uniqueFileName, JSON.stringify(remixConfig, null, 2))
             } else {
-              await workspaceProvider.set(uniqueFileName, files[file])
+              await writeToTargetWorkspace(uniqueFileName, files[file])
             }
             if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
               openPath = uniqueFileName
@@ -596,34 +717,36 @@ export const fetchWorkspaceDirectory = async (path: string) => {
 }
 
 export const renameWorkspace = async (oldName: string, workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
-  // ── Cloud mode: only API rename + update mapping (no local FS rename, dir is UUID) ──
-  if (cloudStore.isCloudMode) {
-    try {
-      const cloudState = cloudStore.getState()
-      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === oldName)
-      if (cloudWs) {
-        const updated = await renameCloudWorkspaceAction(cloudWs, workspaceName)
-        cloudStore.updateCloudWorkspace(updated)
+  return workspaceOperationQueue.run(async () => {
+    // ── Cloud mode: only API rename + update mapping (no local FS rename, dir is UUID) ──
+    if (cloudStore.isCloudMode) {
+      try {
+        const cloudState = cloudStore.getState()
+        const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === oldName)
+        if (cloudWs) {
+          const updated = await renameCloudWorkspaceAction(cloudWs, workspaceName)
+          cloudStore.updateCloudWorkspace(updated)
+        }
+        await dispatch(setRenameWorkspace(oldName, workspaceName))
+        await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
+        await plugin.workspaceRenamed(oldName, workspaceName)
+        await plugin.setWorkspaces(await getWorkspaces())
+        cb && cb(null, workspaceName)
+      } catch (cloudErr) {
+        console.error('[renameWorkspace] Cloud rename failed:', cloudErr)
+        cb && cb(cloudErr as Error)
       }
-      await dispatch(setRenameWorkspace(oldName, workspaceName))
-      await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
-      await plugin.workspaceRenamed(oldName, workspaceName)
-      await plugin.setWorkspaces(await getWorkspaces())
-      cb && cb(null, workspaceName)
-    } catch (cloudErr) {
-      console.error('[renameWorkspace] Cloud rename failed:', cloudErr)
-      cb && cb(cloudErr as Error)
+      return
     }
-    return
-  }
 
-  // ── Legacy mode ──
-  await renameWorkspaceFromProvider(oldName, workspaceName)
-  await dispatch(setRenameWorkspace(oldName, workspaceName))
-  await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
-  await plugin.deleteWorkspace(oldName)
-  await plugin.workspaceRenamed(oldName, workspaceName)
-  cb && cb(null, workspaceName)
+    // ── Legacy mode ──
+    await renameWorkspaceFromProvider(oldName, workspaceName)
+    await dispatch(setRenameWorkspace(oldName, workspaceName))
+    await plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
+    await plugin.deleteWorkspace(oldName)
+    await plugin.workspaceRenamed(oldName, workspaceName)
+    cb && cb(null, workspaceName)
+  })
 }
 
 export const renameWorkspaceFromProvider = async (oldName: string, workspaceName: string) => {
@@ -639,68 +762,70 @@ export const renameWorkspaceFromProvider = async (oldName: string, workspaceName
 }
 
 export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
-  // ── Cloud mode: delete via API + remove local UUID dir ──
-  if (cloudStore.isCloudMode) {
-    try {
-      const cloudState = cloudStore.getState()
-      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === workspaceName)
-      if (cloudWs) {
-        await deleteCloudWorkspaceAction(cloudWs)
-        cloudStore.removeCloudWorkspace(cloudWs.uuid)
-      }
-      await dispatch(setDeleteWorkspace(workspaceName))
-      plugin.workspaceDeleted(workspaceName)
-
-      // Check remaining cloud workspaces
-      const remaining = cloudStore.getState().cloudWorkspaces
-      if (remaining.length > 0) {
-        // Switch to the last remaining cloud workspace
-        const nextWs = remaining[remaining.length - 1]
-        try {
-          cloudStore.setActiveCloudWorkspace(nextWs.uuid)
-          cloudStore.updateSyncStatus(nextWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
-          await switchToCloudWorkspace(nextWs, (status) => {
-            cloudStore.updateSyncStatus(nextWs.uuid, status)
-          })
-          const workspaceProvider = plugin.fileProviders.workspace
-          startFileChangeTracking(workspaceProvider, nextWs.uuid)
-          dispatch(setMode('browser'))
-          dispatch(setCurrentWorkspace({ name: nextWs.name, isGitRepo: false }))
-          dispatch(setReadOnlyMode(false))
-          localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), nextWs.name)
-        } catch (switchErr) {
-          console.error('[deleteWorkspace] Failed to switch to next cloud workspace:', switchErr)
+  return workspaceOperationQueue.run(async () => {
+    // ── Cloud mode: delete via API + remove local UUID dir ──
+    if (cloudStore.isCloudMode) {
+      try {
+        const cloudState = cloudStore.getState()
+        const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === workspaceName)
+        if (cloudWs) {
+          await deleteCloudWorkspaceAction(cloudWs)
+          cloudStore.removeCloudWorkspace(cloudWs.uuid)
         }
-      } else {
-        // No cloud workspaces left — create a new default one with template
-        // Guard against double-creation: the React useEffect in workspace/topbar
-        // will also fire switchWorkspace(NO_WORKSPACE) when the workspace list empties.
-        if (_creatingDefaultCloudWorkspace) {
-        } else {
-          _creatingDefaultCloudWorkspace = true
+        await dispatch(setDeleteWorkspace(workspaceName))
+        plugin.workspaceDeleted(workspaceName)
+
+        // Check remaining cloud workspaces
+        const remaining = cloudStore.getState().cloudWorkspaces
+        if (remaining.length > 0) {
+          // Switch to the last remaining cloud workspace
+          const nextWs = remaining[remaining.length - 1]
           try {
-            plugin.call('notification', 'toast', 'Creating default cloud workspace…')
-            await createWorkspace('cloud workspace', 'remixDefault')
-          } finally {
-            _creatingDefaultCloudWorkspace = false
+            cloudStore.setActiveCloudWorkspace(nextWs.uuid)
+            cloudStore.updateSyncStatus(nextWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+            await switchToCloudWorkspace(nextWs, (status) => {
+              cloudStore.updateSyncStatus(nextWs.uuid, status)
+            })
+            const workspaceProvider = plugin.fileProviders.workspace
+            startFileChangeTracking(workspaceProvider, nextWs.uuid)
+            dispatch(setMode('browser'))
+            dispatch(setCurrentWorkspace({ name: nextWs.name, isGitRepo: false }))
+            dispatch(setReadOnlyMode(false))
+            localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), nextWs.name)
+          } catch (switchErr) {
+            console.error('[deleteWorkspace] Failed to switch to next cloud workspace:', switchErr)
+          }
+        } else {
+          // No cloud workspaces left — create a new default one with template
+          // Guard against double-creation: the React useEffect in workspace/topbar
+          // will also fire switchWorkspace(NO_WORKSPACE) when the workspace list empties.
+          if (_creatingDefaultCloudWorkspace) {
+          } else {
+            _creatingDefaultCloudWorkspace = true
+            try {
+              plugin.call('notification', 'toast', 'Creating default cloud workspace…')
+              await _createWorkspaceInternal('cloud workspace', 'remixDefault')
+            } finally {
+              _creatingDefaultCloudWorkspace = false
+            }
           }
         }
+
+        await plugin.setWorkspaces(await getWorkspaces())
+        cb && cb(null, workspaceName)
+      } catch (cloudErr) {
+        console.error('[deleteWorkspace] Cloud deletion failed:', cloudErr)
+        cb && cb(cloudErr as Error)
       }
-
-      await plugin.setWorkspaces(await getWorkspaces())
-      cb && cb(null, workspaceName)
-    } catch (cloudErr) {
-      console.error('[deleteWorkspace] Cloud deletion failed:', cloudErr)
-      cb && cb(cloudErr as Error)
+      return
     }
-    return
-  }
 
-  // ── Legacy mode ──
-  await deleteWorkspaceFromProvider(workspaceName)
-  await dispatch(setDeleteWorkspace(workspaceName))
-  plugin.workspaceDeleted(workspaceName)
-  cb && cb(null, workspaceName)
+    // ── Legacy mode ──
+    await deleteWorkspaceFromProvider(workspaceName)
+    await dispatch(setDeleteWorkspace(workspaceName))
+    plugin.workspaceDeleted(workspaceName)
+    cb && cb(null, workspaceName)
+  })
 }
 
 export const deleteAllWorkspaces = async () => {
@@ -722,73 +847,75 @@ const deleteWorkspaceFromProvider = async (workspaceName: string) => {
 }
 
 export const switchToWorkspace = async (name: string) => {
-  // ── Cloud mode: delegate to cloud workspace switch ──
-  if (cloudStore.isCloudMode) {
-    try {
-      const cloudState = cloudStore.getState()
-      const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === name)
-      if (cloudWs) {
-        // Set active immediately so the UI can show loading state for this workspace
-        cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
-        cloudStore.updateSyncStatus(cloudWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
-        await switchToCloudWorkspace(cloudWs, (status) => {
-          cloudStore.updateSyncStatus(cloudWs.uuid, status)
-        })
-        // Set up file change tracking
-        const workspaceProvider = plugin.fileProviders.workspace
-        startFileChangeTracking(workspaceProvider, cloudWs.uuid)
-        dispatch(setMode('browser'))
-        dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-        dispatch(setReadOnlyMode(false))
-        localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), name)
+  return workspaceOperationQueue.run(async () => {
+    // ── Cloud mode: delegate to cloud workspace switch ──
+    if (cloudStore.isCloudMode) {
+      try {
+        const cloudState = cloudStore.getState()
+        const cloudWs = cloudState.cloudWorkspaces.find(w => w.name === name)
+        if (cloudWs) {
+          // Set active immediately so the UI can show loading state for this workspace
+          cloudStore.setActiveCloudWorkspace(cloudWs.uuid)
+          cloudStore.updateSyncStatus(cloudWs.uuid, { status: 'loading', lastSync: null, pendingChanges: 0 })
+          await switchToCloudWorkspace(cloudWs, (status) => {
+            cloudStore.updateSyncStatus(cloudWs.uuid, status)
+          })
+          // Set up file change tracking
+          const workspaceProvider = plugin.fileProviders.workspace
+          startFileChangeTracking(workspaceProvider, cloudWs.uuid)
+          dispatch(setMode('browser'))
+          dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
+          dispatch(setReadOnlyMode(false))
+          localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), name)
+          return
+        }
+      } catch (e) {
+        console.error('[switchToWorkspace] Cloud workspace switch failed:', e)
         return
       }
-    } catch (e) {
-      console.error('[switchToWorkspace] Cloud workspace switch failed:', e)
-      return
     }
-  }
 
-  // ── Legacy mode ──
-  await plugin.fileManager.closeAllFiles()
-  if (name === LOCALHOST) {
-    const isActive = await plugin.call('manager', 'isActive', 'remixd')
+    // ── Legacy mode ──
+    await plugin.fileManager.closeAllFiles()
+    if (name === LOCALHOST) {
+      const isActive = await plugin.call('manager', 'isActive', 'remixd')
 
-    if (!isActive) await plugin.call('manager', 'activatePlugin', 'remixd')
-    dispatch(setMode('localhost'))
-    plugin.emit('setWorkspace', { name: null, isLocalhost: true })
-  } else if (name === NO_WORKSPACE) {
-    // In both legacy and cloud mode, ensure at least one workspace exists.
-    // In cloud mode, createWorkspace() will call the cloud provider which
-    // registers the workspace on the API and sets up sync.
-    // Guard: if deleteWorkspace is already creating a default, skip.
-    if (cloudStore.isCloudMode && _creatingDefaultCloudWorkspace) {
-      return
+      if (!isActive) await plugin.call('manager', 'activatePlugin', 'remixd')
+      dispatch(setMode('localhost'))
+      plugin.emit('setWorkspace', { name: null, isLocalhost: true })
+    } else if (name === NO_WORKSPACE) {
+      // In both legacy and cloud mode, ensure at least one workspace exists.
+      // In cloud mode, createWorkspace() will call the cloud provider which
+      // registers the workspace on the API and sets up sync.
+      // Guard: if deleteWorkspace is already creating a default, skip.
+      if (cloudStore.isCloudMode && _creatingDefaultCloudWorkspace) {
+        return
+      }
+      if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true
+      try {
+        plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
+        await _createWorkspaceInternal('cloud workspace', 'remixDefault')
+      } finally {
+        if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = false
+      }
+    } else if (name === ELECTRON) {
+      await plugin.fileProviders.workspace.setWorkspace(name)
+      await plugin.setWorkspace({ name, isLocalhost: false })
+      dispatch(setMode('browser'))
+      dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
+
+    } else {
+      const isActive = await plugin.call('manager', 'isActive', 'remixd')
+
+      if (isActive) await plugin.call('manager', 'deactivatePlugin', 'remixd')
+      await plugin.fileProviders.workspace.setWorkspace(name)
+      await plugin.setWorkspace({ name, isLocalhost: false })
+      const isGitRepo = await plugin.fileManager.isGitRepo()
+      dispatch(setMode('browser'))
+      dispatch(setCurrentWorkspace({ name, isGitRepo }))
+      dispatch(setReadOnlyMode(false))
     }
-    if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = true
-    try {
-      plugin.call('notification', 'toast', `No workspace found! Creating default workspace ....`)
-      await createWorkspace('cloud workspace', 'remixDefault')
-    } finally {
-      if (cloudStore.isCloudMode) _creatingDefaultCloudWorkspace = false
-    }
-  } else if (name === ELECTRON) {
-    await plugin.fileProviders.workspace.setWorkspace(name)
-    await plugin.setWorkspace({ name, isLocalhost: false })
-    dispatch(setMode('browser'))
-    dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-
-  } else {
-    const isActive = await plugin.call('manager', 'isActive', 'remixd')
-
-    if (isActive) await plugin.call('manager', 'deactivatePlugin', 'remixd')
-    await plugin.fileProviders.workspace.setWorkspace(name)
-    await plugin.setWorkspace({ name, isLocalhost: false })
-    const isGitRepo = await plugin.fileManager.isGitRepo()
-    dispatch(setMode('browser'))
-    dispatch(setCurrentWorkspace({ name, isGitRepo }))
-    dispatch(setReadOnlyMode(false))
-  }
+  })
 }
 
 const loadFile = (name, file, provider, cb?): void => {
