@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { AuthProvider, RegistrationMode, InviteValidateResponse } from '@remix-api'
+import { AuthProvider, RegistrationMode, InviteValidateResponse, LoginMode, LOGIN_ACL_ERROR_CODES } from '@remix-api'
 import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
 import { endpointUrls } from '@remix-endpoints-helper'
 import './login-modal.css'
@@ -41,6 +41,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
 
   // Registration mode
   const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('open')
+
+  // Login ACL mode
+  const [loginMode, setLoginMode] = useState<LoginMode>('open')
+  const [loginModeMessage, setLoginModeMessage] = useState('')
+  const [loginModeLoading, setLoginModeLoading] = useState(true)
 
   // Invite token handling
   const [inviteToken, setInviteToken] = useState<string | undefined>(() => {
@@ -84,25 +89,58 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     return () => clearTimeout(timer)
   }, [codeExpiresIn])
 
-  // --- Fetch registration mode ---
+  // --- Fetch registration mode and login ACL mode ---
   useEffect(() => {
-    const fetchRegistrationMode = async () => {
+    const fetchModes = async () => {
       try {
-        const response = await fetch(`${endpointUrls.sso}/registration-mode`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        })
-        if (response.ok) {
-          const data = await response.json()
+        const [regRes, loginRes] = await Promise.all([
+          fetch(`${endpointUrls.sso}/registration-mode`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          }),
+          fetch(`${endpointUrls.sso}/login-mode`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          })
+        ])
+
+        if (regRes.ok) {
+          const data = await regRes.json()
           setRegistrationMode(data.mode || 'open')
           console.log('[LoginModal] Registration mode:', data.mode)
         }
+
+        if (loginRes.ok) {
+          const data = await loginRes.json()
+          setLoginMode(data.mode || 'open')
+          setLoginModeMessage(data.message || '')
+          console.log('[LoginModal] Login mode:', data.mode, data.message)
+        }
       } catch (err) {
-        console.warn('[LoginModal] Failed to fetch registration mode, defaulting to open:', err)
+        console.warn('[LoginModal] Failed to fetch modes, defaulting to open:', err)
+      } finally {
+        setLoginModeLoading(false)
       }
     }
-    fetchRegistrationMode()
-  }, [])
+    fetchModes()
+
+    // Also listen for login mode changes from the auth plugin
+    const handleLoginModeChanged = (response: { mode: LoginMode; message: string }) => {
+      if (response?.mode) {
+        setLoginMode(response.mode)
+        setLoginModeMessage(response.message || '')
+      }
+    }
+    try {
+      plugin?.on('auth', 'loginModeChanged', handleLoginModeChanged)
+    } catch { /* ignore */ }
+
+    return () => {
+      try {
+        plugin?.off('auth', 'loginModeChanged')
+      } catch { /* ignore */ }
+    }
+  }, [plugin])
 
   // --- Validate invite token ---
   const validateInvite = useCallback(async (token: string) => {
@@ -260,6 +298,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
         return
       }
 
+      if (response.status === 403 && LOGIN_ACL_ERROR_CODES.includes(data.error)) {
+        const msg = loginModeMessage || (data.error === 'LOGIN_CLOSED'
+          ? 'Login is currently unavailable. Please try again later.'
+          : data.error === 'LOGIN_ADMINS_ONLY'
+            ? 'Login is restricted to administrators at this time.'
+            : 'Login is currently restricted to beta testers.')
+        setEmailError(msg)
+        return
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to send verification code')
       }
@@ -314,6 +362,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           setEmailError('Registration is currently closed. Only existing users can sign in.')
         } else if (data.error === 'ACCOUNT_BLOCKED') {
           setEmailError('Your account has been blocked.')
+        } else if (LOGIN_ACL_ERROR_CODES.includes(data.error)) {
+          const msg = loginModeMessage || (data.error === 'LOGIN_CLOSED'
+            ? 'Login is currently unavailable. Please try again later.'
+            : data.error === 'LOGIN_ADMINS_ONLY'
+              ? 'Login is restricted to administrators at this time.'
+              : 'Login is currently restricted to beta testers.')
+          setEmailError(msg)
         } else {
           setEmailError(data.message || data.error || 'Access denied')
         }
@@ -468,20 +523,105 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           <div className="d-flex flex-column justify-content-center align-items-center position-relative login-modal-left-section">
             <div className="position-absolute top-0 start-0 end-0 bottom-0 login-modal-gradient-overlay" />
             <div className="text-start w-100 position-relative login-modal-content-wrapper">
-              <ul className="list-unstyled p-0 m-0">
-                <li className="mb-4 d-flex align-items-center">
-                  <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
-                  <span className="login-modal-list-text">Save progress</span>
-                </li>
-                <li className="mb-4 d-flex align-items-center">
-                  <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
-                  <span className="login-modal-list-text">Unlock additional features</span>
-                </li>
-                <li className="mb-4 d-flex align-items-center">
-                  <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
-                  <span className="login-modal-list-text">Securely recover ETH address</span>
-                </li>
-              </ul>
+              {loginMode === 'closed' ? (
+                /* ── Closed / Maintenance ── */
+                <div className="text-center">
+                  <i className="fas fa-tools mb-3" style={{ fontSize: '2.5rem', opacity: 0.85 }}></i>
+                  <h6 className="fw-semibold mb-3 login-modal-list-text">Maintenance in Progress</h6>
+                  <p className="login-modal-list-text mb-0" style={{ opacity: 0.85, fontSize: '0.9rem' }}>
+                    {loginModeMessage || 'Login is temporarily unavailable. Please check back soon.'}
+                  </p>
+                </div>
+              ) : loginMode === 'admins_only' ? (
+                /* ── Admins Only ── */
+                <ul className="list-unstyled p-0 m-0">
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-shield-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Admin access only</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-lock me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Login restricted to administrators</span>
+                  </li>
+                  {loginModeMessage && (
+                    <li className="mb-4 d-flex align-items-center">
+                      <i className="fas fa-info-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                      <span className="login-modal-list-text">{loginModeMessage}</span>
+                    </li>
+                  )}
+                </ul>
+              ) : loginMode === 'feature_group' ? (
+                /* ── Beta / Feature Group ── */
+                <ul className="list-unstyled p-0 m-0">
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-flask me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Beta access</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-users me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Available to beta testers</span>
+                  </li>
+                  {loginModeMessage ? (
+                    <li className="mb-4 d-flex align-items-center">
+                      <i className="fas fa-info-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                      <span className="login-modal-list-text">{loginModeMessage}</span>
+                    </li>
+                  ) : (
+                    <li className="mb-4 d-flex align-items-center">
+                      <i className="fas fa-sign-in-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
+                      <span className="login-modal-list-text">Existing beta users can sign in</span>
+                    </li>
+                  )}
+                </ul>
+              ) : registrationMode === 'existing_only' ? (
+                /* ── Existing Users Only (registration closed) ── */
+                <ul className="list-unstyled p-0 m-0">
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-sign-in-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Sign in with your account</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-user-lock me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Registration is currently closed</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-user-check me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Existing users can access all features</span>
+                  </li>
+                </ul>
+              ) : registrationMode === 'invite_only' ? (
+                /* ── Invite Only ── */
+                <ul className="list-unstyled p-0 m-0">
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-ticket-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Invite required for new accounts</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-sign-in-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Existing users can sign in directly</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-gift me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Got an invite? Enter it to get started</span>
+                  </li>
+                </ul>
+              ) : (
+                /* ── Open (default benefits) ── */
+                <ul className="list-unstyled p-0 m-0">
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Full agentic RemixAI and new connected APIs</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">Cloud Storage, and Chat History</span>
+                  </li>
+                  <li className="mb-4 d-flex align-items-center">
+                    <i className="fas fa-check-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                    <span className="login-modal-list-text">QuickDapp — AI-assisted front-end builder with decentralized hosting</span>
+                  </li>
+                </ul>
+              )}
             </div>
           </div>
 
@@ -506,13 +646,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
               <p className="text-muted mb-0 fs-small-medium">
                 {otpStep === 'code'
                   ? 'Enter the verification code we sent to your email'
-                  : registrationMode === 'existing_only'
-                    ? 'Sign in with your existing account'
-                    : registrationMode === 'invite_only' && inviteToken && inviteValidation?.valid
-                      ? 'You\'ve been invited! Sign in to claim your access.'
-                      : registrationMode === 'invite_only'
-                        ? 'Sign in with your existing account or enter an invite code'
-                        : 'Log in or register to unlock our wide range of features'
+                  : loginMode === 'closed'
+                    ? 'Login is temporarily unavailable'
+                    : loginMode === 'admins_only'
+                      ? 'Restricted access'
+                      : registrationMode === 'existing_only'
+                        ? 'Sign in with your existing account'
+                        : registrationMode === 'invite_only' && inviteToken && inviteValidation?.valid
+                          ? 'You\'ve been invited! Sign in to claim your access.'
+                          : registrationMode === 'invite_only'
+                            ? 'Sign in with your existing account or enter an invite code'
+                            : 'Log in or register to unlock our wide range of features'
                 }
               </p>
             </div>
@@ -634,27 +778,49 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                   </div>
                 </div>
 
+              ) : loginMode === 'closed' ? (
+                /* ──────────────── Closed / Maintenance View ──────────────── */
+                <div className="d-flex flex-column align-items-center py-4">
+                  <div className="mb-3" style={{ fontSize: '3rem' }}>
+                    <i className="fas fa-tools text-muted"></i>
+                  </div>
+                  <h6 className="fw-semibold mb-2">Login Unavailable</h6>
+                  <p className="text-muted text-center fs-small-medium mb-4">
+                    {loginModeMessage || 'Login is temporarily unavailable while we perform maintenance. Please try again later.'}
+                  </p>
+                  <button
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={async () => {
+                      setLoginModeLoading(true)
+                      try {
+                        const res = await fetch(`${endpointUrls.sso}/login-mode`, {
+                          method: 'GET',
+                          headers: { 'Accept': 'application/json' }
+                        })
+                        if (res.ok) {
+                          const data = await res.json()
+                          setLoginMode(data.mode || 'open')
+                          setLoginModeMessage(data.message || '')
+                        }
+                      } catch { /* ignore */ }
+                      finally { setLoginModeLoading(false) }
+                    }}
+                    disabled={loginModeLoading}
+                  >
+                    {loginModeLoading ? (
+                      <><div className="spinner-border spinner-border-sm me-1" role="status"><span className="visually-hidden">Checking...</span></div> Checking...</>
+                    ) : (
+                      <><i className="fas fa-sync-alt me-1"></i> Check Again</>
+                    )}
+                  </button>
+                </div>
+
               ) : (
                 /* ──────────────── Providers View ──────────────── */
                 <div>
                   {error && (
                     <div className="alert alert-danger" role="alert">
                       <strong>Error:</strong> {error}
-                    </div>
-                  )}
-
-                  {/* Registration mode notices */}
-                  {registrationMode === 'existing_only' && (
-                    <div className="alert alert-info py-2 px-3 fs-small-medium mb-3" role="alert">
-                      <i className="fas fa-info-circle me-2"></i>
-                      Registration is currently closed. Only existing users can sign in.
-                    </div>
-                  )}
-
-                  {registrationMode === 'invite_only' && !inviteToken && !showInviteInput && (
-                    <div className="alert alert-info py-2 px-3 fs-small-medium mb-3" role="alert">
-                      <i className="fas fa-info-circle me-2"></i>
-                      New accounts require an invite. Existing users can sign in below.
                     </div>
                   )}
 

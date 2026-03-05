@@ -21,7 +21,7 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { useCloneRepositoryModal } from '../components/CloneRepositoryModal'
 import { TrackingContext } from '@remix-ide/tracking'
-import { MatomoEvent, TopbarEvent, WorkspaceEvent } from '@remix-api'
+import { MatomoEvent, TopbarEvent, WorkspaceEvent, LoginMode, LoginModeResponse } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
 import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
@@ -60,7 +60,9 @@ export function RemixUiTopbar() {
 
   const [user, setUser] = useState<GitHubUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [enableLogin, setEnableLogin] = useState<boolean>(false);
+  const [loginMode, setLoginMode] = useState<LoginMode | null>(null);
+  const [loginModeMessage, setLoginModeMessage] = useState<string>('');
+  const [adminOverride, setAdminOverride] = useState<boolean>(false);
   const [feedbackFormUrl, setFeedbackFormUrl] = useState<string | null>(null);
   const [feedbackPanelOpen, setFeedbackPanelOpen] = useState<boolean>(false);
   const [showCloudLoginModal, setShowCloudLoginModal] = useState<boolean>(false);
@@ -80,15 +82,58 @@ export function RemixUiTopbar() {
     return <GitHubCallback />;
   }
 
+  // Derive whether login UI should be shown based on ACL login mode
+  // 'open' or 'feature_group' => show normally
+  // 'admins_only' => hidden unless admin override
+  // 'closed' => hidden entirely
+  // null (not yet fetched) => hidden (safe default)
+  const showLoginUI = (() => {
+    if (!loginMode) return false
+    if (loginMode === 'closed') return false
+    if (loginMode === 'admins_only') return adminOverride
+    return true // 'open' or 'feature_group'
+  })()
+
   useEffect(() => {
-    const checkLoginEnabled = () => {
-      const enabled = localStorage.getItem('enableLogin') === 'true';
-      setEnableLogin(enabled);
-    };
-    checkLoginEnabled();
-    // Listen for storage changes
-    window.addEventListener('storage', checkLoginEnabled);
-    return () => window.removeEventListener('storage', checkLoginEnabled);
+    // Fetch login mode from auth plugin
+    const fetchLoginMode = async () => {
+      try {
+        const result: LoginModeResponse = await plugin.call('auth', 'getLoginMode')
+        setLoginMode(result.mode)
+        setLoginModeMessage(result.message || '')
+      } catch (e) {
+        console.warn('[Topbar] Failed to fetch login mode:', e)
+        // Fallback: check legacy localStorage flag
+        const legacyEnabled = localStorage.getItem('enableLogin') === 'true'
+        setLoginMode(legacyEnabled ? 'open' : null)
+      }
+    }
+    fetchLoginMode()
+
+    // Listen for login mode changes
+    const handleLoginModeChanged = (result: LoginModeResponse) => {
+      setLoginMode(result.mode)
+      setLoginModeMessage(result.message || '')
+    }
+    plugin.on('auth', 'loginModeChanged', handleLoginModeChanged)
+
+    // Admin backdoor: Ctrl+Shift+Alt+L to toggle admin override
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'L') {
+        e.preventDefault()
+        setAdminOverride(prev => {
+          const next = !prev
+          console.log(`[Topbar] Admin login override ${next ? 'enabled' : 'disabled'}`)
+          return next
+        })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      plugin.off('auth', 'loginModeChanged')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, []);
 
   // Listen to feedback plugin for form URL
@@ -581,7 +626,7 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
-          { enableLogin && (
+          { showLoginUI && (
             <CloudToggle
               className="ms-2"
               onLogin={() => setShowCloudLoginModal(true)}
@@ -659,7 +704,7 @@ export function RemixUiTopbar() {
           style={{ minWidth: '33%' }}
         >
           <>
-            {!enableLogin && (
+            {!showLoginUI && (
               <GitHubLogin
                 cloneGitRepository={showCloneModal}
                 logOutOfGithub={logOutOfGithub}
@@ -667,7 +712,7 @@ export function RemixUiTopbar() {
                 loginWithGitHub={loginWithGitHub}
               />
             )}
-            {enableLogin && (
+            {showLoginUI && (
               <LoginButton
                 plugin={plugin}
                 variant="compact"

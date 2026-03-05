@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { LoginMode } from '@remix-api'
 import { BillingManager } from '@remix-ui/billing'
 
 interface BillingSectionProps {
@@ -8,12 +9,31 @@ interface BillingSectionProps {
 export const BillingSection: React.FC<BillingSectionProps> = ({ plugin }) => {
   const [paddleConfig, setPaddleConfig] = useState<{ clientToken: string | null; environment: 'sandbox' | 'production' } | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [enableLogin, setEnableLogin] = useState(false)
+  const [loginEnabled, setLoginEnabled] = useState(false)
 
   useEffect(() => {
-    // Check if login is enabled
-    const enabled = localStorage.getItem('enableLogin') === 'true'
-    setEnableLogin(enabled)
+    // Fetch login mode from auth plugin
+    const fetchLoginMode = async () => {
+      try {
+        const response = await plugin?.call('auth', 'getLoginMode')
+        const mode: LoginMode = response?.mode || 'open'
+        setLoginEnabled(mode !== 'closed')
+      } catch {
+        // Fallback to localStorage for backwards compatibility
+        setLoginEnabled(localStorage.getItem('enableLogin') === 'true')
+      }
+    }
+    fetchLoginMode()
+
+    // Listen for login mode changes
+    const handleLoginModeChanged = (response: { mode: LoginMode; message: string }) => {
+      if (response?.mode) {
+        setLoginEnabled(response.mode !== 'closed')
+      }
+    }
+    try {
+      plugin?.on('auth', 'loginModeChanged', handleLoginModeChanged)
+    } catch { /* ignore */ }
 
     // Get Paddle configuration
     const loadPaddleConfig = async () => {
@@ -51,13 +71,14 @@ export const BillingSection: React.FC<BillingSectionProps> = ({ plugin }) => {
     return () => {
       try {
         plugin?.off('auth', 'authStateChanged')
+        plugin?.off('auth', 'loginModeChanged')
       } catch {
         // Ignore
       }
     }
   }, [plugin])
 
-  if (!enableLogin) {
+  if (!loginEnabled) {
     return null
   }
 

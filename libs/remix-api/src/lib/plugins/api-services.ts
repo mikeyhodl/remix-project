@@ -21,6 +21,7 @@ import {
   CreditTransaction,
   RefreshTokenResponse,
   RegistrationModeResponse,
+  LoginModeResponse,
   StorageHealthResponse,
   StorageConfig,
   PresignUploadRequest,
@@ -109,6 +110,15 @@ export class SSOApiService {
    */
   async getRegistrationMode(): Promise<ApiResponse<RegistrationModeResponse>> {
     return this.apiClient.get<RegistrationModeResponse>('/registration-mode')
+  }
+
+  /**
+   * Get current login access control mode (no auth required).
+   * Returns 'open', 'feature_group', 'admins_only', or 'closed'.
+   * The `message` field contains an admin-customisable denial message.
+   */
+  async getLoginMode(): Promise<ApiResponse<LoginModeResponse>> {
+    return this.apiClient.get<LoginModeResponse>('/login-mode')
   }
   
   // ==================== SIWE ====================

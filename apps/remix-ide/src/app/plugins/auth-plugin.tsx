@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, LoginMode, LoginModeResponse, LOGIN_ACL_ERROR_CODES } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
 import { SiweMessage } from 'siwe'
@@ -8,8 +8,8 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'notifyEmailOtpLogin'],
-  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged']
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'getLoginMode', 'refreshLoginMode', 'notifyEmailOtpLogin'],
+  events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged', 'loginModeChanged']
 }
 
 export class AuthPlugin extends Plugin {
@@ -25,6 +25,8 @@ export class AuthPlugin extends Plugin {
   private refreshTimer: number | null = null
   private pendingInviteToken: string | null = null
   private cachedRegistrationMode: RegistrationMode | null = null
+  private cachedLoginMode: LoginMode | null = null
+  private cachedLoginMessage: string = ''
 
   /** Debug-gated logger – silent when DEBUG is false */
   private log(...args: any[]) {
@@ -309,6 +311,52 @@ export class AuthPlugin extends Plugin {
     }
   }
 
+  /**
+   * Get the current login access control mode from the server.
+   * Returns { mode, message } where mode is 'open', 'feature_group', 'admins_only', or 'closed'.
+   * No authentication required.
+   */
+  async getLoginMode(): Promise<LoginModeResponse> {
+    try {
+      // Return cached value if available
+      if (this.cachedLoginMode) {
+        return { mode: this.cachedLoginMode, message: this.cachedLoginMessage }
+      }
+
+      const response = await this.ssoApi.getLoginMode()
+      if (response.ok && response.data) {
+        this.cachedLoginMode = response.data.mode
+        this.cachedLoginMessage = response.data.message || ''
+        this.log('[AuthPlugin] Login mode:', this.cachedLoginMode, 'message:', this.cachedLoginMessage)
+        return { mode: this.cachedLoginMode, message: this.cachedLoginMessage }
+      }
+
+      // Default to 'open' if endpoint not available
+      console.warn('[AuthPlugin] Failed to fetch login mode, defaulting to open')
+      return { mode: 'open', message: '' }
+    } catch (error) {
+      console.warn('[AuthPlugin] Error fetching login mode:', error)
+      return { mode: 'open', message: '' }
+    }
+  }
+
+  /**
+   * Force re-fetch of login mode from the server (cache-busting).
+   * Emits 'loginModeChanged' if the mode or message changed.
+   */
+  async refreshLoginMode(): Promise<LoginModeResponse> {
+    const oldMode = this.cachedLoginMode
+    const oldMessage = this.cachedLoginMessage
+    this.cachedLoginMode = null
+    this.cachedLoginMessage = ''
+
+    const result = await this.getLoginMode()
+    if (result.mode !== oldMode || result.message !== oldMessage) {
+      this.emit('loginModeChanged', result)
+    }
+    return result
+  }
+
   async login(provider: AuthProviderType): Promise<void> {
     try {
       this.log('[AuthPlugin] Starting popup-based login for:', provider)
@@ -380,10 +428,35 @@ export class AuthPlugin extends Plugin {
             })
           } else if (event.data.type === 'sso-auth-error') {
             cleanup()
-            // Map REGISTRATION_CLOSED to a user-friendly error
-            const errorMsg = event.data.error === 'REGISTRATION_CLOSED'
-              ? 'Registration is currently closed. Only existing users can sign in.'
-              : (event.data.error || 'Login failed')
+            const errorCode = event.data.error || ''
+            let errorMsg: string
+
+            // Map known error codes to user-friendly messages
+            if (LOGIN_ACL_ERROR_CODES.includes(errorCode)) {
+              // Use the cached admin message if available, otherwise map the code
+              const adminMsg = this.cachedLoginMessage
+              switch (errorCode) {
+                case 'LOGIN_CLOSED':
+                  errorMsg = adminMsg || 'Login is currently disabled. Please try again later.'
+                  break
+                case 'LOGIN_ADMINS_ONLY':
+                  errorMsg = adminMsg || 'Login is restricted to administrators.'
+                  break
+                case 'LOGIN_FEATURE_GROUP_REQUIRED':
+                  errorMsg = adminMsg || 'Your account does not have login access. Contact an administrator.'
+                  break
+                default:
+                  errorMsg = adminMsg || 'Login is currently restricted.'
+              }
+              // Refresh login mode since the server just told us access is restricted
+              this.refreshLoginMode().catch(() => {})
+            } else if (errorCode === 'REGISTRATION_CLOSED') {
+              errorMsg = 'Registration is currently closed. Only existing users can sign in.'
+            } else if (errorCode === 'ACCOUNT_BLOCKED') {
+              errorMsg = 'Your account has been blocked.'
+            } else {
+              errorMsg = errorCode || 'Login failed'
+            }
             reject(new Error(errorMsg))
           }
         }
@@ -815,6 +888,11 @@ export class AuthPlugin extends Plugin {
 
   async onActivation(): Promise<void> {
     this.log('[AuthPlugin] Activated - using popup + localStorage mode')
+
+    // Fetch login mode early (non-blocking) so UI can adapt immediately
+    this.getLoginMode().then((loginMode) => {
+      this.emit('loginModeChanged', loginMode)
+    }).catch(() => {})
 
     // Validate existing token with the API on load
     // Awaited so that plugin activation only completes after validation.
@@ -1267,8 +1345,18 @@ export class AuthPlugin extends Plugin {
 
       if (!verifyResponse.ok) {
         const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
-        if (verifyResponse.status === 403 && error.error === 'REGISTRATION_CLOSED') {
-          throw new Error('Registration is currently closed. Only existing users can sign in.')
+        if (verifyResponse.status === 403) {
+          const errCode = error.error || ''
+          if (LOGIN_ACL_ERROR_CODES.includes(errCode)) {
+            this.refreshLoginMode().catch(() => {})
+            throw new Error(error.message || this.cachedLoginMessage || 'Login is currently restricted.')
+          }
+          if (errCode === 'REGISTRATION_CLOSED') {
+            throw new Error('Registration is currently closed. Only existing users can sign in.')
+          }
+          if (errCode === 'ACCOUNT_BLOCKED') {
+            throw new Error('Your account has been blocked.')
+          }
         }
         throw new Error(error.error || error.message || 'SIWE verification failed')
       }
@@ -1425,6 +1513,19 @@ export class AuthPlugin extends Plugin {
 
       if (!verifyResponse.ok) {
         const error = await verifyResponse.json().catch(() => ({ error: 'Verification failed' }))
+        if (verifyResponse.status === 403) {
+          const errCode = error.error || ''
+          if (LOGIN_ACL_ERROR_CODES.includes(errCode)) {
+            this.refreshLoginMode().catch(() => {})
+            throw new Error(error.message || this.cachedLoginMessage || 'Login is currently restricted.')
+          }
+          if (errCode === 'REGISTRATION_CLOSED') {
+            throw new Error('Registration is currently closed. Only existing users can sign in.')
+          }
+          if (errCode === 'ACCOUNT_BLOCKED') {
+            throw new Error('Your account has been blocked.')
+          }
+        }
         throw new Error(error.error || error.message || 'Base account verification failed')
       }
 

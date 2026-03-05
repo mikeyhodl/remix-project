@@ -88,6 +88,30 @@ export interface RegistrationModeResponse {
   mode: RegistrationMode
 }
 
+// ==================== Login Access Control (ACL) ====================
+
+/** Login mode values — controls who can log in (independent of registration mode) */
+export type LoginMode = 'open' | 'feature_group' | 'admins_only' | 'closed'
+
+/** Response from GET /sso/login-mode */
+export interface LoginModeResponse {
+  mode: LoginMode
+  message: string  // empty string when mode is 'open'
+}
+
+/** Login ACL denial codes (subset of postMessage error codes) */
+export type LoginDenialCode =
+  | 'LOGIN_CLOSED'
+  | 'LOGIN_ADMINS_ONLY'
+  | 'LOGIN_FEATURE_GROUP_REQUIRED'
+
+/** All login-related error codes that can come from the server */
+export const LOGIN_ACL_ERROR_CODES: string[] = [
+  'LOGIN_CLOSED',
+  'LOGIN_ADMINS_ONLY',
+  'LOGIN_FEATURE_GROUP_REQUIRED'
+]
+
 // ==================== SIWE ====================
 
 export interface SiweVerifyRequest {
