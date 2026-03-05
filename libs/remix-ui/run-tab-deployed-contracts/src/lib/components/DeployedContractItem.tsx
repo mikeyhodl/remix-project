@@ -29,7 +29,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   const [networkName, setNetworkName] = useState<string>('')
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
   const [contractABI, setContractABI] = useState(null)
-  const [value, setValue] = useState<number>(0)
+  const [value, setValue] = useState<string>('0')
   const [valueUnit, setValueUnit] = useState<string>('wei')
   const [gasLimit, setGasLimit] = useState<number>(0) // 0 means auto
   const [calldataValue, setCalldataValue] = useState<string>('')
@@ -210,8 +210,11 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
         { value: sendValue, gasLimit: gasLimitValue }
       )
     } catch (error) {
-      console.error('Error executing transaction:', error)
-      await plugin.call('notification', 'toast', `Error: ${error.message}`)
+      const functionName =
+      funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
+      const logMsg = `${lookupOnly ? "call" : "transact"} to ${contract.name}.${functionName} errored: ${error.message}`
+
+      await plugin.call('terminal', 'logHtml', logBuilder(logMsg))
     }
   }
 
@@ -273,8 +276,11 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
         { value: sendValue, gasLimit: gasLimitValue }
       )
     } catch (error) {
-      console.error('Error executing low level transaction:', error)
-      await plugin.call('terminal', 'logHtml', logBuilder(error.message))
+      const functionName =
+      funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
+      const logMsg = `transact to ${contract.name}.${functionName} errored: ${error.message}`
+
+      await plugin.call('terminal', 'logHtml', logBuilder(logMsg))
     }
   }
 
@@ -793,10 +799,13 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                         min="0"
                         className="form-control form-control-sm border-0"
                         placeholder="3000000"
-                        value={value || ''}
+                        value={value}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                          setValue(isNaN(val) ? 0 : Math.max(0, val))
+                          const val = e.target.value
+                          // Only allow empty string or valid numeric strings
+                          if (val === '' || /^\d+$/.test(val)) {
+                            setValue(val === '' ? '0' : val)
+                          }
                         }}
                         style={{
                           backgroundColor: 'var(--custom-onsurface-background, #222336)',

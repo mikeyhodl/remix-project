@@ -693,10 +693,13 @@ function DeployPortraitView() {
                     min="0"
                     className="form-control form-control-sm border-0"
                     placeholder="0"
-                    value={widgetState.value || ''}
+                    value={widgetState.value}
                     onChange={(e) => {
-                      const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                      dispatch({ type: 'SET_VALUE', payload: isNaN(value) ? 0 : Math.max(0, value) })
+                      const val = e.target.value
+                      // Only allow empty string or valid numeric strings
+                      if (val === '' || /^\d+$/.test(val)) {
+                        dispatch({ type: 'SET_VALUE', payload: val === '' ? '0' : val })
+                      }
                     }}
                     style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', flex: 1, paddingRight: '4rem' }}
                   />

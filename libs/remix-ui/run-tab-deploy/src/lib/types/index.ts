@@ -23,7 +23,7 @@ export interface DeployWidgetState {
     })[]
   }
   selectedContractIndex: number | null
-  value: number
+  value: string
   valueUnit: 'wei' | 'gwei' | 'finney' | 'ether'
   gasLimit: number
   gasPriceStatus: boolean
@@ -41,7 +41,7 @@ export interface ActionPayloadTypes {
   REMOVE_CONTRACT_FILE: FilePath,
   CLEAR_ALL_CONTRACT_FILES: void,
   SET_SELECTED_CONTRACT_INDEX: number | null,
-  SET_VALUE: number,
+  SET_VALUE: string,
   SET_VALUE_UNIT: 'wei' | 'gwei' | 'finney' | 'ether',
   SET_GAS_LIMIT: number,
   SET_COMPILING: FilePath,

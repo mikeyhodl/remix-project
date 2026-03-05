@@ -103,7 +103,7 @@ export class DeployPlugin extends Plugin {
   }
 
   setValue(value: string) {
-    this.getDispatch()({ type: 'SET_VALUE', payload: parseInt(value) })
+    this.getDispatch()({ type: 'SET_VALUE', payload: value })
   }
 
   setValueUnit(unit: 'wei' | 'gwei' | 'finney' | 'ether') {

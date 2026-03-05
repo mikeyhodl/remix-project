@@ -5,7 +5,7 @@ export const deployInitialState: DeployWidgetState = {
     contractList: []
   },
   selectedContractIndex: 0,
-  value: 0,
+  value: '0',
   valueUnit: 'wei',
   gasLimit: 0,
   gasPriceStatus: false,
