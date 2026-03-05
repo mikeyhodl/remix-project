@@ -1328,7 +1328,7 @@ export function Workspace() {
                       tooltipText={<FormattedMessage id="filePanel.updateSubmodules" />}
                     >
                       <button style={{ height: 30, minWidth: "9rem" }} onClick={updateSubModules} data-id='updatesubmodules' className={`btn btn-sm border  ${highlightUpdateSubmodules ? 'text-warning' : 'text-dark'}`}>
-                       <FormattedMessage id="filePanel.updateSubmodulesButton" />
+                        <FormattedMessage id="filePanel.updateSubmodulesButton" />
                       </button>
                     </CustomTooltip>
                   }
