@@ -502,5 +502,5 @@ module.exports = {
       .pause(500)
       .waitForElementVisible('.sidebar-title', 5000)
       .assert.containsText('.sidebar-title', '2')
-  }
+  },
 }
