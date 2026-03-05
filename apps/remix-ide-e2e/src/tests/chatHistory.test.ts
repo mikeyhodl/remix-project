@@ -445,7 +445,7 @@ module.exports = {
       .pause(500)
       .setValue(
         '*[data-id="remix-ai-prompt-input"]',
-        'This is a very very very very very very very very very very very very very very very very very very very long conversation title that should be truncated in the sidebar but show full text on hover or in the detail view'
+        'This is a very very skjflskdjflskdfsldkfjlskdjfssdfjlskdflsdkflsdkfjlsdjflksdflsdflsjdflskdfjlsdjflskdfjlsdfjlskdfjlsdfjlsjd long conversation title that should be truncated in the sidebar but show full text on hover or in the detail view'
       )
       .click('*[data-id="remix-ai-composer-send-btn"]')
       .waitForElementPresent({
