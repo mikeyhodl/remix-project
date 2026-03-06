@@ -7,7 +7,7 @@ export interface AuthUser {
   picture?: string
   address?: string
   chainId?: number
-  provider?: 'google' | 'github' | 'apple' | 'discord' | 'coinbase' | 'siwe' | 'email' | 'base'
+  provider?: 'google' | 'github' | 'apple' | 'discord' | 'coinbase' | 'siwe' | 'email' | 'test' | 'base'
 }
 
 export interface AuthState {

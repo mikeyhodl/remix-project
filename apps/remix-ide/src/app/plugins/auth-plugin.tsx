@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, TestPoolApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, PoolCheckoutResponse, PoolReleaseResponse, PoolStatusResponse } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { getAddress } from 'ethers'
 import { SiweMessage } from 'siwe'
@@ -8,7 +8,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'notifyEmailOtpLogin', 'isTestAccountsAvailable'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'notifyEmailOtpLogin', 'poolCheckout', 'poolRelease', 'poolStatus', 'poolReleaseAll', 'isPoolAvailable'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged']
 }
 
@@ -22,6 +22,8 @@ export class AuthPlugin extends Plugin {
   private permissionsApi: PermissionsApiService
   private billingApi: BillingApiService
   private inviteApi: InviteApiService
+  private testPoolApi: TestPoolApiService | null = null
+  private activePoolSession: { sessionId: string; accountId: string } | null = null
   private refreshTimer: number | null = null
   private pendingInviteToken: string | null = null
   private cachedRegistrationMode: RegistrationMode | null = null
@@ -283,27 +285,43 @@ export class AuthPlugin extends Plugin {
   }
 
   /**
-   * Check if test accounts login is available (for protected origins)
-   * @returns Object with available status and optional reason
+   * Check if the E2E test account pool is available.
+   * Returns true if a pool API key is configured (via URL param or env).
    */
-  async isTestAccountsAvailable(): Promise<{ available: boolean; reason?: string }> {
+  async isPoolAvailable(): Promise<{ available: boolean; reason?: string }> {
     try {
-      const response = await fetch(`${endpointUrls.sso}/test/available`, {
-        credentials: 'include'
-      })
+      // Check for API key in URL params first, then check pool endpoint
+      const params = new URLSearchParams(window.location.search)
+      const apiKey = params.get('e2e_pool_key')
 
-      if (response.ok) {
-        const data = await response.json()
-        return {
-          available: data.available === true,
-          reason: data.reason
+      if (!apiKey) {
+        // Fall back to checking the old test/available endpoint
+        const response = await fetch(`${endpointUrls.sso}/test/available`, {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          return { available: data.available === true, reason: data.reason }
         }
+        return { available: false, reason: 'No pool API key provided' }
       }
 
-      return { available: false, reason: 'Request failed' }
-    } catch (error) {
-      console.log('[AuthPlugin] Test accounts check failed:', error)
-      return { available: false, reason: 'Network error' }
+      // Verify the key works by checking pool status
+      const poolApi = new TestPoolApiService(endpointUrls.sso, apiKey)
+      const statusRes = await poolApi.status()
+      if (statusRes.ok && statusRes.data) {
+        this.testPoolApi = poolApi
+        return {
+          available: statusRes.data.available > 0,
+          reason: statusRes.data.available > 0
+            ? `${statusRes.data.available} of ${statusRes.data.total} accounts available`
+            : 'All pool accounts are currently in use'
+        }
+      }
+      return { available: false, reason: statusRes.error || 'Pool status check failed' }
+    } catch (error: any) {
+      console.log('[AuthPlugin] Pool availability check failed:', error)
+      return { available: false, reason: error.message || 'Network error' }
     }
   }
 
@@ -353,10 +371,14 @@ export class AuthPlugin extends Plugin {
         return
       }
 
-      // Build login URL - test accounts use different endpoint
-      let loginUrl = provider === 'test'
-        ? `${endpointUrls.sso}/test/login?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
-        : `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
+      // Build login URL - test provider uses pool checkout (no popup needed)
+      if (provider === 'test') {
+        await this.loginWithPool(inviteToken || undefined)
+        return
+      }
+
+      // Build popup URL with invite_token if present
+      let loginUrl = `${endpointUrls.sso}/login/${provider}?mode=popup&origin=${encodeURIComponent(window.location.origin)}`
       if (inviteToken) {
         loginUrl += `&invite_token=${encodeURIComponent(inviteToken)}`
       }
@@ -1590,5 +1612,173 @@ export class AuthPlugin extends Plugin {
     this.pendingInviteToken = null
     sessionStorage.removeItem('remix_pending_invite')
     sessionStorage.removeItem('remix_pending_invite_validation')
+  }
+
+  // ==================== E2E Test Account Pool ====================
+
+  /**
+   * Ensure the TestPoolApiService is initialized.
+   * Looks for the API key in URL params (?e2e_pool_key=...) or
+   * falls back to a previously initialized instance.
+   */
+  private ensurePoolApi(): TestPoolApiService {
+    if (this.testPoolApi) return this.testPoolApi
+
+    const params = new URLSearchParams(window.location.search)
+    const apiKey = params.get('e2e_pool_key')
+    if (!apiKey) {
+      throw new Error('No pool API key. Pass ?e2e_pool_key=rmx_... in the URL or call poolCheckout from the test runner.')
+    }
+
+    this.testPoolApi = new TestPoolApiService(endpointUrls.sso, apiKey)
+    return this.testPoolApi
+  }
+
+  /**
+   * Login using the E2E test account pool.
+   * Checks out an exclusive account and logs in with the returned JWT tokens.
+   * No popup required — tokens come directly from the pool API.
+   */
+  private async loginWithPool(inviteToken?: string): Promise<void> {
+    this.log('[AuthPlugin] Starting pool-based test login')
+
+    const poolApi = this.ensurePoolApi()
+    const result = await poolApi.checkout()
+
+    if (!result.ok || !result.data) {
+      throw new Error(`Pool checkout failed: ${result.error || 'Unknown error'}`)
+    }
+
+    const { sessionId, accountId, userId, access_token, refresh_token, user } = result.data
+
+    // Track the active session so we can release it later
+    this.activePoolSession = { sessionId, accountId }
+
+    // Build AuthUser from pool user data
+    const authUser: AuthUser = {
+      sub: String(userId),
+      email: user.email,
+      name: user.name,
+      provider: 'test'
+    }
+
+    // Store tokens in localStorage (same as OAuth flow)
+    localStorage.setItem('remix_access_token', access_token)
+    localStorage.setItem('remix_refresh_token', refresh_token)
+    localStorage.setItem('remix_user', JSON.stringify(authUser))
+
+    // Store pool session info so release can happen even after page reload
+    sessionStorage.setItem('remix_pool_session', JSON.stringify(this.activePoolSession))
+
+    // Schedule proactive refresh
+    this.scheduleRefresh(access_token)
+
+    // Emit auth state change
+    this.emit('authStateChanged', {
+      isAuthenticated: true,
+      user: authUser,
+      token: access_token
+    })
+
+    // Fetch credits after login
+    this.refreshCredits().catch(console.error)
+
+    this.log(`[AuthPlugin] Pool login successful: ${accountId} (session: ${sessionId})`)
+  }
+
+  /**
+   * Checkout an exclusive test account from the pool.
+   * Returns the full checkout response including JWT tokens.
+   *
+   * Prefer using `login('test')` from the UI, or call this directly
+   * from E2E test scripts that need the raw session data.
+   */
+  async poolCheckout(): Promise<PoolCheckoutResponse> {
+    const poolApi = this.ensurePoolApi()
+    const result = await poolApi.checkout()
+
+    if (!result.ok || !result.data) {
+      throw new Error(`Pool checkout failed: ${result.error || 'Unknown error'}`)
+    }
+
+    this.activePoolSession = {
+      sessionId: result.data.sessionId,
+      accountId: result.data.accountId
+    }
+    sessionStorage.setItem('remix_pool_session', JSON.stringify(this.activePoolSession))
+
+    return result.data
+  }
+
+  /**
+   * Release the current (or specified) pool session and wipe all data.
+   * **Must be called after every test run.**
+   *
+   * @param sessionId - Optional. Uses active session if not provided.
+   */
+  async poolRelease(sessionId?: string): Promise<PoolReleaseResponse> {
+    const sid = sessionId
+      || this.activePoolSession?.sessionId
+      || (() => {
+        const stored = sessionStorage.getItem('remix_pool_session')
+        return stored ? JSON.parse(stored).sessionId : null
+      })()
+
+    if (!sid) {
+      throw new Error('No active pool session to release')
+    }
+
+    const poolApi = this.ensurePoolApi()
+    const result = await poolApi.release(sid)
+
+    if (!result.ok || !result.data) {
+      throw new Error(`Pool release failed: ${result.error || 'Unknown error'}`)
+    }
+
+    // Clean up local state
+    this.activePoolSession = null
+    sessionStorage.removeItem('remix_pool_session')
+
+    // Also clear auth state
+    this.clearStoredAuth()
+    this.emit('authStateChanged', {
+      isAuthenticated: false,
+      user: null,
+      token: null
+    })
+
+    this.log(`[AuthPlugin] Pool session released: ${sid}`)
+    return result.data
+  }
+
+  /**
+   * Get current pool status (available accounts, locks, etc.)
+   */
+  async poolStatus(): Promise<PoolStatusResponse> {
+    const poolApi = this.ensurePoolApi()
+    const result = await poolApi.status()
+
+    if (!result.ok || !result.data) {
+      throw new Error(`Pool status failed: ${result.error || 'Unknown error'}`)
+    }
+
+    return result.data
+  }
+
+  /**
+   * Emergency: force-release all pool accounts and wipe all test data.
+   */
+  async poolReleaseAll(): Promise<void> {
+    const poolApi = this.ensurePoolApi()
+    const result = await poolApi.releaseAll()
+
+    if (!result.ok) {
+      throw new Error(`Pool release-all failed: ${result.error || 'Unknown error'}`)
+    }
+
+    this.activePoolSession = null
+    sessionStorage.removeItem('remix_pool_session')
+
+    this.log(`[AuthPlugin] All pool sessions released`)
   }
 }

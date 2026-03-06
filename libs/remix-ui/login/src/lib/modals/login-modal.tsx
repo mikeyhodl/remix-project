@@ -39,6 +39,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loadingProviders, setLoadingProviders] = useState(true)
   const [testAccountsAvailable, setTestAccountsAvailable] = useState(false)
+  const [poolStatusText, setPoolStatusText] = useState<string>('')
 
   // Registration mode
   const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('open')
@@ -162,20 +163,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
       try {
         const baseUrl = endpointUrls.sso
 
-        // Check if test accounts are available (for protected origins)
-        try {
-          const testResponse = await fetch(`${baseUrl}/test/available`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            credentials: 'include'
-          })
-          if (testResponse.ok) {
-            const testData = await testResponse.json()
-            setTestAccountsAvailable(testData.available === true)
-            console.log('[LoginModal] Test accounts available:', testData.available)
+        // Check if the E2E test account pool is available
+        if (plugin && typeof plugin.call === 'function') {
+          try {
+            const poolResult = await plugin.call('auth', 'isPoolAvailable')
+            setTestAccountsAvailable(poolResult.available === true)
+            if (poolResult.reason) setPoolStatusText(poolResult.reason)
+            console.log('[LoginModal] Test account pool:', poolResult)
+          } catch (testErr) {
+            console.log('[LoginModal] Pool check failed (this is normal for production):', testErr)
           }
-        } catch (testErr) {
-          console.log('[LoginModal] Test accounts check failed (this is normal for production):', testErr)
         }
 
         const response = await fetch(`${baseUrl}/providers`, {
@@ -828,7 +825,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                       </button>
                     ))}
 
-                    {/* Test Accounts button - only shown for protected origins */}
+                    {/* Test Account Pool button - only shown when pool is available */}
                     {testAccountsAvailable && (
                       <button
                         className="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center py-2 no-hover-effect"
@@ -838,7 +835,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                         <span className="me-2 login-modal-provider-icon fs-medium">
                           <i className="fas fa-flask"></i>
                         </span>
-                        <span className="fs-medium">Test Accounts</span>
+                        <span className="fs-medium">
+                          E2E Test Pool
+                          {poolStatusText && <span className="ms-1 text-muted fs-small">({poolStatusText})</span>}
+                        </span>
                         {loading && (
                           <div className="spinner-border spinner-border-sm text-warning ms-2" role="status">
                             <span className="visually-hidden">Loading...</span>
