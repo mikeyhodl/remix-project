@@ -778,7 +778,7 @@ function DeployPortraitView() {
                   onClick={handleDeployClick}
                   data-id="deployButton"
                   className="btn btn-primary w-100 py-2"
-                  style={{ fontSize: '1rem', fontWeight: '500' }}
+                  style={{ fontSize: '1rem', fontWeight: '500', cursor: selectedContract?.contractData === null ? 'not-allowed' : 'pointer' }}
                   disabled={selectedContract?.contractData === null}
                 >
                   <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
