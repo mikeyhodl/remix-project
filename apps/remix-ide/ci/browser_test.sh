@@ -12,37 +12,6 @@ npx http-server -p 9090 --cors='*' ./node_modules > /dev/null 2>&1 &
 yarn run serve:production > /dev/null 2>&1 &
 sleep 5
 
-# ─── E2E Test Account Pool ──────────────────────────────────────────────────
-# If E2E_POOL_API_KEY is set, checkout an exclusive test account for this shard.
-# The access & refresh tokens are exported so `init.ts` can inject them into
-# the browser's localStorage before each test.
-POOL_SESSION_ID=""
-if [ -n "${E2E_POOL_API_KEY:-}" ]; then
-  E2E_FEATURE_GROUPS=${E2E_FEATURE_GROUPS:-beta}
-  echo "==> Checking out test account from pool (groups: $E2E_FEATURE_GROUPS)..."
-  POOL_JSON=$(node dist/apps/remix-ide-e2e/src/helpers/pool.js checkout "$E2E_FEATURE_GROUPS")
-  if [ $? -ne 0 ] || [ -z "$POOL_JSON" ]; then
-    echo "❌ Pool checkout failed"
-    exit 1
-  fi
-  export POOL_SESSION_ID=$(echo "$POOL_JSON" | jq -r '.sessionId')
-  export E2E_ACCESS_TOKEN=$(echo "$POOL_JSON" | jq -r '.accessToken')
-  export E2E_REFRESH_TOKEN=$(echo "$POOL_JSON" | jq -r '.refreshToken')
-  export E2E_USER_ID=$(echo "$POOL_JSON" | jq -r '.userId')
-  export E2E_ACCOUNT_ID=$(echo "$POOL_JSON" | jq -r '.accountId')
-  export E2E_USER_JSON=$(echo "$POOL_JSON" | jq -c '.user')
-  echo "==> Pool account: $E2E_ACCOUNT_ID (session: $POOL_SESSION_ID, userId: $E2E_USER_ID)"
-fi
-
-# Ensure we always release the pool account, even on failure/interrupt
-cleanup_pool() {
-  if [ -n "$POOL_SESSION_ID" ] && [ -n "${E2E_POOL_API_KEY:-}" ]; then
-    echo "==> Releasing pool account: $E2E_ACCOUNT_ID (session: $POOL_SESSION_ID)"
-    node dist/apps/remix-ide-e2e/src/helpers/pool.js release "$POOL_SESSION_ID" || true
-  fi
-}
-trap cleanup_pool EXIT
-
 PARALLEL_TOTAL=${CIRCLE_NODE_TOTAL:-1}
 PARALLEL_INDEX=${CIRCLE_NODE_INDEX:-0}
 SELF_SPLIT=${SELF_SPLIT:-0}
