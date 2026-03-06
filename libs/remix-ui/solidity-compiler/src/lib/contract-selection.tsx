@@ -278,7 +278,7 @@ export const ContractSelection = (props: ContractSelectionProps) => {
           <a href={'https://solidityscan.com/?utm_campaign=remix&utm_source=remix'}
             target="_blank"
             onClick={() => trackMatomoEvent({ category: 'solidityCompiler', action: 'solidityScan', name: 'learnMore', isClick: true })}>
-          <FormattedMessage id="solidity.learnMore" />
+            <FormattedMessage id="solidity.learnMore" />
           </a>
         </span>
         <br/>
