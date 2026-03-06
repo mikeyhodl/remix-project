@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import { ActionNotification, ActionNotificationAction } from '../../interface'
 import { useDialogDispatchers } from '../../context/provider'
+import { useIntl } from 'react-intl'
 
 interface ActionNotificationBarProps {
   notification: ActionNotification
@@ -14,6 +15,7 @@ interface ActionNotificationBarProps {
 const ActionNotificationBar = ({ notification, onActionClick }: ActionNotificationBarProps) => {
   const { hideActionNotification } = useDialogDispatchers()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intl = useIntl()
 
   useEffect(() => {
     if (notification.timeout && notification.timeout > 0) {
@@ -48,7 +50,7 @@ const ActionNotificationBar = ({ notification, onActionClick }: ActionNotificati
         <button
           type="button"
           className="btn-close ms-2"
-          aria-label="Close"
+          aria-label={intl.formatMessage({ id: 'remixApp.closeNotification' })}
           style={{ fontSize: '0.65rem' }}
           onClick={handleDismiss}
         />

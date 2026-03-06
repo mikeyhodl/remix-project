@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef, useMemo } from 'react'
-import { useIntl } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { CustomToggle, CustomTooltip, getTimeAgo, shortenAddress, isNumeric, is0XPrefixed, isHexadecimal, logBuilder, extractDataDefault } from '@remix-ui/helper'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import * as remixLib from '@remix-project/remix-lib'
@@ -265,11 +265,11 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
 
         const modalContent = {
           id: 'generate-website-ai',
-          title: 'Generate a Dapp UI with AI',
+          title: intl.formatMessage({ id: 'udapp.generateDappModalTitle' }),
           message: <AIRequestForm onMount={(fn) => { getFormData = fn }} />,
           modalType: 'custom',
-          okLabel: 'Generate',
-          cancelLabel: 'Cancel',
+          okLabel: intl.formatMessage({ id: 'udapp.generateDappOkLabel' }),
+          cancelLabel: intl.formatMessage({ id: 'udapp.cancel' }),
           okFn: async () => {
             if (getFormData) {
               const formData = await getFormData()
@@ -287,7 +287,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
       })
 
       if (isGenerating.current) {
-        await plugin.call('notification', 'toast', 'AI generation is already in progress.')
+        await plugin.call('notification', 'toast', intl.formatMessage({ id: 'udapp.aiGenerationInProgress' }))
         return
       }
 
@@ -456,7 +456,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                 placement="top"
                 tooltipClasses="text-nowrap"
                 tooltipId="udapp_deployedContractPinTooltip"
-                tooltipText={contract.isPinned ? `Pinned at: ${new Date(contract.pinnedAt).toLocaleString()}` : 'Pin contract'}
+                tooltipText={contract.isPinned ? `Pinned at: ${new Date(contract.pinnedAt).toLocaleString()}` : intl.formatMessage({ id: 'udapp.pinContractTooltip' })}
               >
                 <i
                   data-id="pinDeployedContract"
@@ -471,7 +471,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                 </div>
                 <div className="d-flex align-items-center gap-1 font-sm" style={{ color: 'var(--bs-tertiary-color)' }}>
                   <span>{shortenAddress(contract.address)}</span>
-                  <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => contract?.address}>
+                  <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyAddressTooltip' })} icon="fa-copy" direction="top" getContent={() => contract?.address}>
                     <i className="fa-solid fa-copy small ms-1" style={{ cursor: 'pointer' }}></i>
                   </CopyToClipboard>
                 </div>
@@ -510,7 +510,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
               {/* High level interaction section */}
               <div className="mb-3">
                 <div className="d-flex align-items-center justify-content-between mb-2" style={{ cursor: 'pointer' }} onClick={toggleHighLevel}>
-                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>High level interaction</p>
+                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}><FormattedMessage id="udapp.highLevelInteraction" /></p>
                   <div
                     className="d-flex align-items-center justify-center rounded"
                     style={{
@@ -592,7 +592,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                         })}
                       </div>
                     ) : (
-                      <div className="text-muted pt-3 text-center">No ABI available for this contract</div>
+                      <div className="text-muted pt-3 text-center"><FormattedMessage id="udapp.noABIAvailableForContract" /></div>
                     )}
                   </>
                 )}
@@ -608,7 +608,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                   style={{ cursor: 'pointer' }}
                   onClick={toggleLowLevel}
                 >
-                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}>Low level interaction</p>
+                  <p className='mb-0' style={{ color: 'var(--text-quaternary, #959bad)' }}><FormattedMessage id="udapp.lowLevelInteraction" /></p>
                   <div
                     data-id={`btnLowLevel-${index}`}
                     className="d-flex align-items-center justify-center rounded"
@@ -743,7 +743,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                 <div className="mb-3">
                   <div className="d-flex align-items-center gap-1 mb-3">
                     <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
-                      Value
+                      <FormattedMessage id="udapp.valueLabel" />
                     </label>
                     <div className="position-relative flex-fill">
                       <input
@@ -790,7 +790,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                   </div>
                   <div className="d-flex align-items-center gap-1 mb-3">
                     <label className="mb-0" style={{ fontSize: '12px', fontWeight: 700, minWidth: '75px', color: themeQuality === 'dark' ? 'white' : 'black' }}>
-                      Gas limit
+                      <FormattedMessage id="udapp.gasLimitLabel" />
                     </label>
                     <div className="position-relative flex-fill">
                       <span
@@ -842,7 +842,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
               {/* Divider */}
               <div className="border-top mb-3"></div>
               <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
-                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}>Balance</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.balanceLabel" /></div>
                 <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
                   {contract.balance || 0} ETH
                 </div>
@@ -869,10 +869,10 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                   }}
                 >
                   {showLowLevel
-                    ? 'Transact'
+                    ? intl.formatMessage({ id: 'udapp.transactButton' })
                     : (functionABIs[selectedFunctionIndex].stateMutability === 'view' || functionABIs[selectedFunctionIndex].stateMutability === 'pure')
-                      ? 'Call'
-                      : 'Transact'}
+                      ? intl.formatMessage({ id: 'udapp.callButton' })
+                      : intl.formatMessage({ id: 'udapp.transactButton' })}
                 </button>
               )}
             </div>
