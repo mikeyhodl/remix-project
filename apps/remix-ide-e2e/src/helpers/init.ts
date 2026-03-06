@@ -14,36 +14,6 @@ export default function (browser: NightwatchBrowser, callback: VoidFunction, url
     .url(url || 'http://127.0.0.1:8080')
     .pause(5000)
     .switchBrowserTab(0)
-    // ─── Inject E2E pool auth tokens into localStorage ───
-    .perform((done) => {
-      const accessToken = process.env.E2E_ACCESS_TOKEN
-      const refreshToken = process.env.E2E_REFRESH_TOKEN
-      const userJson = process.env.E2E_USER_JSON
-
-      if (!accessToken) return done()
-
-      browser.execute(function (at: string, rt: string, uj: string) {
-        // Enable login UI (required for sign-in button to appear)
-        localStorage.setItem('enableLogin', 'true')
-        localStorage.setItem('remix_access_token', at)
-        if (rt) localStorage.setItem('remix_refresh_token', rt)
-        if (uj) {
-          try {
-            // Build a user object compatible with the auth plugin
-            const poolUser = JSON.parse(uj)
-            const authUser = {
-              sub: String(poolUser.id),
-              email: poolUser.email,
-              name: poolUser.name,
-              provider: 'test'
-            }
-            localStorage.setItem('remix_user', JSON.stringify(authUser))
-          } catch (e) { /* ignore parse errors */ }
-        }
-      }, [accessToken, refreshToken || '', userJson || ''], () => {
-        browser.refreshPage().pause(3000).perform(done)
-      })
-    })
     .perform((done) => {
       if (!loadPlugin) return done()
       browser
