@@ -85,10 +85,23 @@ let _creatingDefaultCloudWorkspace = false
 class WorkspaceOperationQueue {
   private _queue: Promise<void> = Promise.resolve()
   private _depth = 0
+  private _nextOpId = 0
+  private _queuedCount = 0
+
+  private _log(tag: string, opId: number, label: string, extra?: string) {
+    console.log(
+      `%c[WorkspaceQueue]%c %c${tag}%c %c${label}%c #${opId} depth=${this._depth} queued=${this._queuedCount}${extra ? ' ' + extra : ''}`,
+      'color:#e57a00;font-weight:bold', '',
+      tag.includes('ERR') ? 'color:red;font-weight:bold' : tag.includes('OK') ? 'color:green' : 'color:#2196F3;font-weight:bold', '',
+      'color:#9c27b0;font-weight:bold', ''
+    )
+  }
 
   /**
    * Enqueue `fn` so it runs only after every previously-enqueued operation
    * has settled (resolved **or** rejected).
+   *
+   * @param label  Human-readable name for this operation (e.g. "createWorkspace")
    *
    * **Re-entrant**: if we are already inside a queued operation (depth > 0)
    * the call is allowed through immediately.  This is critical because the
@@ -98,12 +111,23 @@ class WorkspaceOperationQueue {
    * arrives while `_depth > 0` was necessarily spawned from the currently-
    * executing operation and can safely proceed.
    */
-  run<T>(fn: () => Promise<T>): Promise<T> {
+  run<T>(fn: () => Promise<T>, label?: string): Promise<T> {
+    const opId = ++this._nextOpId
+    const opLabel = label || fn.name || 'anonymous'
+
     if (this._depth > 0) {
       // Re-entrant call – bypass the queue to avoid deadlock.
+      this._log('REENTRANT', opId, opLabel)
       this._depth++
-      return fn().finally(() => { this._depth-- })
+      const t0 = performance.now()
+      return fn().then(
+        (v) => { this._depth--; this._log('REENTRANT-OK', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms`); return v },
+        (e) => { this._depth--; this._log('REENTRANT-ERR', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms ${e?.message || e}`); throw e }
+      )
     }
+
+    this._queuedCount++
+    this._log('ENQUEUE', opId, opLabel)
 
     let resolve!: (v: T) => void
     let reject!: (e: any) => void
@@ -114,11 +138,16 @@ class WorkspaceOperationQueue {
     // Chain onto the queue.  We use `.then(…, …)` with both branches so
     // that a rejection in an earlier operation doesn't skip later ones.
     const execute = async () => {
+      this._queuedCount--
       this._depth++
+      const t0 = performance.now()
+      this._log('START', opId, opLabel)
       try {
         const result = await fn()
+        this._log('OK', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms`)
         resolve(result)
-      } catch (e) {
+      } catch (e: any) {
+        this._log('ERROR', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms ${e?.message || e}`)
         reject(e)
       } finally {
         this._depth--
@@ -339,7 +368,7 @@ export const createWorkspace = async (
 ) => {
   return workspaceOperationQueue.run(() =>
     _createWorkspaceInternal(workspaceName, workspaceTemplateName, opts, isEmpty, cb, isGitRepo, createCommit, contractContent, contractName)
-  )
+  , `createWorkspace(${workspaceName})`)
 }
 
 export const generateWorkspace = async () => {
@@ -745,7 +774,7 @@ export const fetchWorkspaceDirectory = async (path: string) => {
 }
 
 export const renameWorkspace = async (oldName: string, workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
-  return workspaceOperationQueue.run(async () => {
+  return workspaceOperationQueue.run(async function renameWorkspace() {
     // ── Cloud mode: only API rename + update mapping (no local FS rename, dir is UUID) ──
     if (cloudStore.isCloudMode) {
       try {
@@ -790,7 +819,7 @@ export const renameWorkspaceFromProvider = async (oldName: string, workspaceName
 }
 
 export const deleteWorkspace = async (workspaceName: string, cb?: (err: Error, result?: string | number | boolean | Record<string, any>) => void) => {
-  return workspaceOperationQueue.run(async () => {
+  return workspaceOperationQueue.run(async function deleteWorkspace() {
     // ── Cloud mode: delete via API + remove local UUID dir ──
     if (cloudStore.isCloudMode) {
       try {
@@ -874,7 +903,7 @@ const deleteWorkspaceFromProvider = async (workspaceName: string) => {
 }
 
 export const switchToWorkspace = async (name: string) => {
-  return workspaceOperationQueue.run(async () => {
+  return workspaceOperationQueue.run(async function switchToWorkspace() {
     // ── Cloud mode: delegate to cloud workspace switch ──
     if (cloudStore.isCloudMode) {
       try {
@@ -1051,7 +1080,7 @@ export const uploadFolder = async (target, targetFolder: string, cb?: (err: Erro
 
 export type WorkspaceType = { name: string; isGitRepo: boolean; hasGitSubmodules: boolean; branches?: { remote: any; name: string }[]; currentBranch?: string; remoteId?: string; cloudUuid?: string }
 export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
-  return workspaceOperationQueue.run(async () => {
+  return workspaceOperationQueue.run(async function getWorkspaces() {
     try {
       // ── Cloud mode: return cloud workspaces from the store ──
       if (cloudStore.isCloudMode) {
@@ -1138,7 +1167,7 @@ export const getWorkspaces = async (): Promise<WorkspaceType[]> | undefined => {
 }
 
 export const cloneRepository = async (url: string) => {
-  return workspaceOperationQueue.run(async () => {
+  return workspaceOperationQueue.run(async function cloneRepository() {
     const config = plugin.registry.get('config').api
     const token = config.get('settings/gist-access-token')
     const repoConfig: cloneInputType = { url, token, depth: 10 }
