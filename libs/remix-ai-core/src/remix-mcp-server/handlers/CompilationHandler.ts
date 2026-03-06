@@ -2,6 +2,7 @@
  * Compilation Tool Handlers for Remix MCP Server
  */
 
+import { CompilerAbstract } from '@remix-project/remix-solidity';
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
 import {
@@ -12,6 +13,7 @@ import {
   CompilationResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
+import isElectron from 'is-electron';
 
 /**
  * Solidity Compile Tool Handler
@@ -91,13 +93,6 @@ export class SolidityCompileHandler extends BaseToolHandler {
         };
       }
 
-      // if (args.version) compilerConfig.version = args.version;
-      // if (args.optimize !== undefined) compilerConfig.optimize = args.optimize;
-      // if (args.runs) compilerConfig.runs = args.runs;
-      // if (args.evmVersion) compilerConfig.evmVersion = args.evmVersion;
-
-      // await plugin.call('solidity' as any, 'setCompilerConfig', JSON.stringify(compilerConfig));
-
       let compilationResult: any;
       if (args.file) {
         // Compile specific file - need to use plugin API or direct compilation
@@ -105,8 +100,13 @@ export class SolidityCompileHandler extends BaseToolHandler {
         const contract = {}
         contract[args.file] = { content: content }
 
-        const compilerPayload = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
+        const compilerPayload: CompilerAbstract = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
         await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
+        const errors = compilerPayload.getErrors(false)
+        console.log('Compilation errors:', errors)
+        if (errors && errors.length > 0) {
+          return this.createErrorResult(`Compilation failed with errors: ${errors.map((e) => e.formattedMessage).join('; ')}`);
+        }
         compilationResult = compilerPayload
       } else {
         return this.createErrorResult(`Compilation failed: Workspace compilation not yet implemented. The argument file is not provided`);
@@ -118,7 +118,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         errors: compilationResult.data.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source.sources[args.file] || {}
+        // sources: compilationResult?.source.sources[args.file] || {}
       };
 
       // Emit compilationFinished event with correct parameters to trigger UI effects
@@ -184,7 +184,7 @@ export class GetCompilationResultHandler extends BaseToolHandler {
         errors: compilationResult?.data?.errors || [],
         errorFiles: compilationResult?.errFiles || [],
         warnings: [], //compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source || {}
+        // sources: compilationResult?.source || {}
       };
 
       if (compilationResult.data?.contracts) {
@@ -203,6 +203,49 @@ export class GetCompilationResultHandler extends BaseToolHandler {
       }
 
       return this.createSuccessResult(result);
+    } catch (error) {
+      return this.createErrorResult(`Failed to get compilation result: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Get Compilation Result Tool Handler
+ */
+export class GetCompilationResultByFilePathHandler extends BaseToolHandler {
+  name = 'get_compilation_result_sources_by_file_path';
+  description = 'Get the compilation result sources for a specific file path';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      filePath: {
+        type: 'string',
+        description: 'File Path of the contract to get compilation result from'
+      }
+    },
+    required: ['filePath']
+  };
+
+  getPermissions(): string[] {
+    return ['compile:read'];
+  }
+
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const compilationResult: any = await plugin.call('compilerArtefacts' as any, 'getCompilerAbstract', args.filePath)
+      if (!compilationResult) {
+        return this.createErrorResult('No compilation result available for the specified file path');
+      }
+      if (!compilationResult.source) {
+        return this.createErrorResult('No compilation result available for the specified file path');
+      }
+      if (!compilationResult.source.sources) {
+        return this.createErrorResult('No compilation result available for the specified file path');
+      }
+
+      console.log('get_compilation_result_sources_by_file_path', compilationResult.source.sources)
+
+      return this.createSuccessResult(compilationResult.source.sources);
     } catch (error) {
       return this.createErrorResult(`Failed to get compilation result: ${error.message}`);
     }
@@ -232,7 +275,7 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
       },
       evmVersion: {
         type: 'string',
-        description: 'EVM version target'
+        description: 'EVM version target. Default Osaka'
       },
       language: {
         type: 'string',
@@ -265,20 +308,51 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
 
   async execute(args: CompilerConfigArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
+      // Resolve version to full compiler path (e.g., "0.8.20" -> "0.8.20+commit.a1b79de6.js")
+      let resolvedVersion = args.version;
+
+      try {
+        const solJsonBinData = await plugin.call('compilerloader' as any, 'getJsonBinData');
+        if (solJsonBinData) {
+          // Check selectorList, wasmList, and binList for the version
+          const lists = [
+            ...(solJsonBinData.selectorList || []),
+            ...(solJsonBinData.wasmList || []),
+            ...(solJsonBinData.binList || [])
+          ];
+
+          // Try to find exact version match
+          const versionEntry = lists.find((entry: any) => {
+            if (!entry) return false;
+            if (entry.version === args.version) return true;
+            if (entry.longVersion === args.version) return true;
+            if (entry.path === args.version) return true;
+            return false;
+          });
+
+          if (versionEntry) {
+            resolvedVersion = versionEntry.longVersion || args.version;
+          }
+        }
+      } catch (resolveError) {
+        console.warn('Could not resolve compiler version:', resolveError.message);
+      }
+
       const config = {
-        version: args.version,
+        version: resolvedVersion,
         optimize: args.optimize !== undefined ? args.optimize : true,
         runs: args.runs || 200,
-        evmVersion: args.evmVersion || 'london',
+        evmVersion: args.evmVersion || 'osaka',
         language: args.language || 'Solidity'
       };
 
-      await plugin.call('solidity' as any, 'setCompilerConfig', JSON.stringify(config));
+      await plugin.call('solidity' as any, 'setCompilerConfig', config);
 
       return this.createSuccessResult({
         success: true,
         message: 'Compiler configuration updated',
-        config: config
+        config: config,
+        resolvedVersion: resolvedVersion
       });
     } catch (error) {
       return this.createErrorResult(`Failed to set compiler config: ${error.message}`);
@@ -514,7 +588,7 @@ export class GetCompilerVersionsHandler extends BaseToolHandler {
  * Create compilation tool definitions
  */
 export function createCompilationTools(): RemixToolDefinition[] {
-  return [
+  const tools = [
     {
       name: 'solidity_compile',
       description: 'Compile Solidity smart contracts',
@@ -530,6 +604,14 @@ export function createCompilationTools(): RemixToolDefinition[] {
       category: ToolCategory.COMPILATION,
       permissions: ['compile:read'],
       handler: new GetCompilationResultHandler()
+    },
+    {
+      name: 'get_compilation_result_sources_by_file_path',
+      description: 'Get the compilation result for a specific file path',
+      inputSchema: new GetCompilationResultByFilePathHandler().inputSchema,
+      category: ToolCategory.COMPILATION,
+      permissions: ['compile:read'],
+      handler: new GetCompilationResultByFilePathHandler()
     },
     {
       name: 'set_compiler_config',
@@ -548,30 +630,6 @@ export function createCompilationTools(): RemixToolDefinition[] {
       handler: new GetCompilerConfigHandler()
     },
     {
-      name: 'compile_with_hardhat',
-      description: 'Compile using Hardhat framework',
-      inputSchema: new CompileWithHardhatHandler().inputSchema,
-      category: ToolCategory.COMPILATION,
-      permissions: ['compile:hardhat'],
-      handler: new CompileWithHardhatHandler()
-    },
-    {
-      name: 'compile_with_foundry',
-      description: 'Compile using Foundry framework',
-      inputSchema: new CompileWithFoundryHandler().inputSchema,
-      category: ToolCategory.COMPILATION,
-      permissions: ['compile:foundry'],
-      handler: new CompileWithFoundryHandler()
-    },
-    {
-      name: 'compile_with_truffle',
-      description: 'Compile using Truffle framework',
-      inputSchema: new CompileWithTruffleHandler().inputSchema,
-      category: ToolCategory.COMPILATION,
-      permissions: ['compile:truffle'],
-      handler: new CompileWithTruffleHandler()
-    },
-    {
       name: 'get_compiler_versions',
       description: 'Get list of available Solidity compiler versions',
       inputSchema: new GetCompilerVersionsHandler().inputSchema,
@@ -579,5 +637,32 @@ export function createCompilationTools(): RemixToolDefinition[] {
       permissions: ['compile:read'],
       handler: new GetCompilerVersionsHandler()
     }
-  ];
+  ]
+  if (isElectron()) {
+    tools.push({
+      name: 'compile_with_hardhat',
+      description: 'Compile using Hardhat framework',
+      inputSchema: new CompileWithHardhatHandler().inputSchema,
+      category: ToolCategory.COMPILATION,
+      permissions: ['compile:hardhat'],
+      handler: new CompileWithHardhatHandler()
+    })
+    tools.push({
+      name: 'compile_with_foundry',
+      description: 'Compile using Foundry framework',
+      inputSchema: new CompileWithFoundryHandler().inputSchema,
+      category: ToolCategory.COMPILATION,
+      permissions: ['compile:foundry'],
+      handler: new CompileWithFoundryHandler()
+    })
+    tools.push({
+      name: 'compile_with_truffle',
+      description: 'Compile using Truffle framework',
+      inputSchema: new CompileWithTruffleHandler().inputSchema,
+      category: ToolCategory.COMPILATION,
+      permissions: ['compile:truffle'],
+      handler: new CompileWithTruffleHandler()
+    })
+  }
+  return tools
 }

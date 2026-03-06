@@ -31,7 +31,9 @@ export class Debugger {
       web3: options.web3,
       debugWithGeneratedSources: options.debugWithGeneratedSources,
       compilationResult: this.compilationResult,
-      offsetToLineColumnConverter: this.offsetToLineColumnConverter
+      offsetToLineColumnConverter: this.offsetToLineColumnConverter,
+      getCache: options.getCache,
+      setCache: options.setCache
     })
 
     const { traceManager, callTree, solidityProxy } = this.debugger
@@ -97,11 +99,11 @@ export class Debugger {
 
           let lineGasCostObj = null
           try {
-            lineGasCostObj = await this.debugger.callTree.getGasCostPerLine(rawLocation.file, lineColumnPos.start.line)
+            lineGasCostObj = await this.debugger.callTree.getGasCostPerLine(rawLocation.file, lineColumnPos.start.line, rawLocationAndOpcode.scopeId)
           } catch (e) {
             console.log(e)
           }
-          this.event.trigger('newSourceLocation', [lineColumnPos, rawLocation, generatedSources, address, stepDetail, (lineGasCostObj && lineGasCostObj.gasCost) || -1])
+          this.event.trigger('newSourceLocation', [lineColumnPos, rawLocation, generatedSources, address, stepDetail, (lineGasCostObj && lineGasCostObj.gasCost) || -1, compilationResultForAddress])
           this.vmDebuggerLogic.event.trigger('sourceLocationChanged', [rawLocation])
           if (this.currentFile !== rawLocation.file || this.currentLine !== lineColumnPos.start.line) {
             const instructionIndexes = lineGasCostObj.indexes.map((index) => { // translate from vmtrace index to instruction index

@@ -16,7 +16,7 @@ export interface IDebuggerApi {
     onEditorContentChanged: (listener: onEditorContentChanged) => void
     onEnvChanged: (listener: onEnvChangedListener) => void
     discardHighlight: () => Promise<void>
-    highlight: (lineColumnPos: LineColumnLocation, path: string, rawLocation: any, stepDetail: any, highlight: any, source: string) => Promise<void>
+    highlight: (lineColumnPos: LineColumnLocation, path: string, rawLocation: any, stepDetail: any, highlight: any, source: string, executionStep: any) => Promise<void>
     fetchContractAndCompile: (address: string, currentReceipt: TransactionReceipt) => Promise<CompilerAbstract>
     getFile: (path: string) => Promise<string>
     setFile: (path: string, content: string) => Promise<void>
@@ -25,6 +25,11 @@ export interface IDebuggerApi {
     showMessage (title: string, message: string): void
     onStartDebugging (debuggerBackend: any): Promise<void> // called when debug starts
     onStopDebugging (): Promise<void> // called when debug stops
+    call?: (plugin: string, method: string, ...args: any[]) => Promise<any> // call method from other plugins
+    on?: (plugin: string, event: string, listener: (...args: any[]) => void) => void // listen to events from other plugins
+    getCache: (key: string) => Promise<any>
+    setCache(key: string, value: any): Promise<void>
+    emit?: (event: string, ...args: any[]) => void // emit events from the plugin
 }
 
 type globalContextFunction = () => { block, tx, receipt }

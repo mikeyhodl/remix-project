@@ -95,6 +95,7 @@ export default class FileProvider {
     cb = cb || function () { /* do nothing. */ }
     path = this.getPathFromUrl(path) || path // ensure we actually use the normalized path from here
     const unprefixedpath = this.removePrefix(path)
+
     try {
       const content = await (window as any).remixFileSystem.readFile(unprefixedpath, options)
       if (cb) cb(null, content)
@@ -311,4 +312,3 @@ export default class FileProvider {
     return !!relative && relative.split(pathModule.sep)[0] !== '..'
   }
 }
-

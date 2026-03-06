@@ -18,8 +18,15 @@ type EndpointUrls = {
     sso: string;
     billing: string;
     credits: string;
-    audio;
+    audio: string;
+    storage: string;
     permissions: string;
+    walkthroughs: string;
+    notifications: string;
+    invite: string;
+    feedback: string;
+    membershipRequests: string;
+    workspaceLock: string;
 };
 
 const defaultUrls: EndpointUrls = {
@@ -40,10 +47,17 @@ const defaultUrls: EndpointUrls = {
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   sso: 'https://auth.api.remix.live:8443/sso',
-  billing: 'https://auth.api.remix.live:8443//billing',
+  billing: 'https://auth.api.remix.live:8443/billing',
   credits: 'https://auth.api.remix.live:8443/credits',
   audio: 'https://audio.api.remix.live',
+  storage: 'https://auth.api.remix.live:8443/storage',
   permissions: 'https://auth.api.remix.live:8443/permissions',
+  walkthroughs: 'https://auth.api.remix.live:8443/walkthroughs',
+  notifications: 'https://auth.api.remix.live:8443/notifications',
+  invite: 'https://auth.api.remix.live:8443/invite',
+  feedback: 'https://auth.api.remix.live:8443/feedback',
+  membershipRequests: 'https://auth.api.remix.live:8443/permissions/membership-requests/anonymous',
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -67,7 +81,14 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   billing: 'billing',
   credits: 'credits',
   audio: 'audio',
+  storage: 'storage',
   permissions: 'permissions',
+  walkthroughs: 'walkthroughs',
+  notifications: 'notifications',
+  invite: 'invite',
+  feedback: 'feedback',
+  membershipRequests: 'permissions/membership-requests/anonymous',
+  workspaceLock: 'workspace-lock',
 };
 
 const prefix = process.env.NX_ENDPOINTS_URL;
@@ -82,45 +103,63 @@ const localhostUrls: EndpointUrls = {
   github: 'http://localhost:3005/github',
   ghfolderpull: 'http://localhost:3005/ghfolderpull',
   gitHubLoginProxy: 'http://localhost:3005/github-login-proxy',
-  
+
   // UTILITIES service (port 3007)
   solidityScan: 'http://localhost:3007/solidityscan',
   solidityScanWebSocket: 'ws://localhost:3007/solidityscan',
-  
+
   // PLUGINS service (port 3006)
   ipfsGateway: 'http://localhost:3006/jqgt',
   embedly: 'http://localhost:3006/embedly',
   vyper2: 'http://localhost:3006/vyper2',
-  
+
   // AI service (port 3003)
   solcoder: 'http://localhost:4000/solcoder',
   completion: 'http://localhost:3003/completion',
   gptChat: 'http://localhost:3003/gpt-chat',
   rag: 'http://localhost:3003/rag',
-  
+
   // AUTH service (port 3001)
   sso: 'https://auth.api.remix.live:8443/sso',
   
   // BILLING service (port 3002)
-  billing: 'https://auth.api.remix.live:8443//billing',
+  billing: 'https://auth.api.remix.live:8443/billing',
   credits: 'https://auth.api.remix.live:8443/credits',
   
   // AUDIO service (port 3004)
   audio: 'http://localhost:3004/audio',
   
+  // STORAGE service (port 3002 - same as billing)
+  storage: 'http://localhost:3002/storage',
   // PERMISSIONS service
   permissions: 'https://auth.api.remix.live:8443/permissions',
+
+  // NOTIFICATION service (port 3013) - walkthroughs
+  walkthroughs: 'http://localhost:3013/walkthroughs',
+  
+  // NOTIFICATIONS service (port 3013)
+  notifications: 'http://localhost:3013/notifications',
+  // INVITE service
+  invite: 'https://auth.api.remix.live:8443/invite',
+
+  // FEEDBACK service
+  feedback: 'https://auth.api.remix.live:8443/feedback',
+
+  // MEMBERSHIP REQUESTS (anonymous, no auth needed)
+  membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
+  // WORKSPACE LOCK service (Redis-based, same auth gateway)
+  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
 };
 
 const resolvedUrls: EndpointUrls = prefix
   ? (prefix.includes('localhost')
-      ? localhostUrls  // Use direct service ports for localhost
-      : Object.fromEntries(  // Use prefix paths for production/ngrok
-          Object.entries(defaultUrls).map(([key, _]) => [
-            key,
-            `${prefix}/${endpointPathMap[key as keyof EndpointUrls]}`,
-          ])
-        ) as EndpointUrls)
+    ? localhostUrls // Use direct service ports for localhost
+    : Object.fromEntries( // Use prefix paths for production/ngrok
+      Object.entries(defaultUrls).map(([key, _]) => [
+        key,
+        `${prefix}/${endpointPathMap[key as keyof EndpointUrls]}`,
+      ])
+    ) as EndpointUrls)
   : defaultUrls;
 
 if (resolvedUrls.solidityScan.startsWith('https://')) {

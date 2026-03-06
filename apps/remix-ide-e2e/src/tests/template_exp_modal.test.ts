@@ -335,6 +335,7 @@ module.exports = {
       .click('*[data-id="template-card-remixDefault-0"]')
       .click('*[data-id="validateWorkspaceButton"]')
       .pause(1000)
+      .click('*[data-id="home"]')
       .waitForElementVisible('*[data-id="landingPageImportFromTemplate"]')
       .click('*[data-id="landingPageImportFromTemplate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')

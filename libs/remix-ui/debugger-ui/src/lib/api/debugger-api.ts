@@ -52,9 +52,20 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     return this.currentSourceLocation
   }
 
-  async highlight (lineColumnPos, path, rawLocation, stepDetail, lineGasCost, origin?) {
+  getStackAt (vmtraceIndex: number) {
+    return this.debuggerBackend.debugger.traceManager.getStackAt(vmtraceIndex)
+  }
+
+  async highlight (lineColumnPos, path, rawLocation, stepDetail, lineGasCost, origin?, step?) {
     // Pass the main contract being debugged as the origin for proper resolution
     await this.call('editor', 'highlight', lineColumnPos, path, '', { focus: true, origin })
+
+    // Get current step index from debugger backend if not provided
+    let currentStep = step
+    if (currentStep === undefined && this.debuggerBackend && this.debuggerBackend.step_manager) {
+      currentStep = this.debuggerBackend.step_manager.currentStepIndex
+    }
+
     const label = `${stepDetail.op} costs ${stepDetail.gasCost} gas - this line costs ${lineGasCost} gas - ${stepDetail.gas} gas left`
     const linetext: lineText = {
       content: label,
@@ -69,7 +80,14 @@ export const DebuggerApiMixin = (Base) => class extends Base {
       ],
     }
     await this.call('editor', 'addLineText' as any, linetext, path)
-    this.currentSourceLocation = { line: lineColumnPos.start.line + 1, path, stepDetail, lineGasCost, origin }
+    this.currentSourceLocation = {
+      line: lineColumnPos.start.line + 1,
+      path,
+      stepDetail,
+      lineGasCost,
+      origin,
+      step: currentStep
+    }
   }
 
   async getFile (path) {
@@ -104,13 +122,22 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     this.onRemoveHighlightsListener = listener
   }
 
+  setCache (key: string, value: any) {
+    const ttlMs = 1 * 24 * 60 * 60 * 1000 // 1 day
+    return this.call('indexedDbCache', 'setWithTTL', key, value, ttlMs, 'debugger')
+  }
+
+  getCache (key: string) {
+    return this.call('indexedDbCache', 'get', key, 'debugger')
+  }
+
   async fetchContractAndCompile (address, receipt) {
     const target = (address && traceHelper.isContractCreation(address)) ? receipt.contractAddress : address
     const targetAddress = target || receipt.contractAddress || receipt.to
     const codeAtAddress = await this._web3.getCode(targetAddress)
     const output = await this.call('fetchAndCompile', 'resolve', targetAddress, codeAtAddress, '.debug')
     if (output) {
-      return new CompilerAbstract(output.languageversion, output.data, output.source)
+      return new CompilerAbstract(output.languageversion, output.data, output.source, null, this as any)
     }
     return null
   }

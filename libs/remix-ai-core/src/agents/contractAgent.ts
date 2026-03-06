@@ -19,7 +19,6 @@ export class ContractAgent {
 
   private constructor(props) {
     this.plugin = props;
-    AssistantParams.provider = this.plugin.assistantProvider
   }
 
   public static getInstance(props) {
@@ -37,7 +36,6 @@ export class ContractAgent {
   async writeContracts(payload, userPrompt, statusCallback?: (status: string) => Promise<void>) {
     const prev_statusCallback = statusCallback
     statusCallback = async (status: string) => {
-      console.log('Generation status:', status)
       if (prev_statusCallback) {
         await prev_statusCallback(status)
       }

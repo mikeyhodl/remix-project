@@ -33,5 +33,6 @@
   "editor.executeFreeFunction2": "Run the free function \"{name}\"",
   "editor.toastText1": "This can only execute free function",
   "editor.toastText2": "Please go to Remix settings and activate the code editor features or wait that the current editor context is loaded.",
-  "editor.text": "The file is opened in <b>read-only</b> mode."
+  "editor.text": "The file is opened in <b>read-only</b> mode.",
+  "editor.doNotShowAgain": "Do not show this warning again"
 }

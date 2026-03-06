@@ -12,6 +12,7 @@ import {
   LinkAccountResponse,
   GitHubLinkRequest,
   GitHubLinkResponse,
+  GitHubTokenResponse,
   SiweVerifyRequest,
   SiweVerifyResponse,
   VerifyResponse,
@@ -19,10 +20,43 @@ import {
   GenericSuccessResponse,
   CreditTransaction,
   RefreshTokenResponse,
+  RegistrationModeResponse,
+  StorageHealthResponse,
+  StorageConfig,
+  PresignUploadRequest,
+  PresignUploadResponse,
+  PresignDownloadRequest,
+  PresignDownloadResponse,
+  StorageFile,
+  StorageFilesResponse,
+  StorageListOptions,
+  WorkspacesResponse,
   PermissionsResponse,
   FeatureCheckResponse,
   MultiFeatureCheckResponse,
-  CategoryFeaturesResponse
+  CategoryFeaturesResponse,
+  CreditPackage,
+  SubscriptionPlan,
+  ProductProvider,
+  CreditPackagesResponse,
+  SubscriptionPlansResponse,
+  UserSubscriptionResponse,
+  PurchaseCreditsRequest,
+  PurchaseCreditsResponse,
+  SubscribeRequest,
+  SubscribeResponse,
+  BillingConfigResponse,
+  FeatureAccessProduct,
+  FeatureAccessProductsResponse,
+  FeatureAccessPurchaseRequest,
+  FeatureAccessPurchaseResponse,
+  UserMembershipsResponse,
+  FeatureAccessCheckResponse,
+  InviteValidateResponse,
+  InviteRedeemRequest,
+  InviteRedeemResponse,
+  InviteRedemptionsResponse,
+  UserTagsResponse
 } from './api-types'
 
 /**
@@ -55,10 +89,11 @@ export class SSOApiService {
   }
   
   /**
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token.
+   * Uses skipTokenRefresh to prevent recursive auto-refresh on 401.
    */
   async refreshToken(refreshToken: string): Promise<ApiResponse<RefreshTokenResponse>> {
-    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken })
+    return this.apiClient.post<RefreshTokenResponse>('/refresh', { refresh_token: refreshToken }, { skipTokenRefresh: true })
   }
   
   /**
@@ -66,6 +101,14 @@ export class SSOApiService {
    */
   async getProviders(): Promise<ApiResponse<ProvidersResponse>> {
     return this.apiClient.get<ProvidersResponse>('/providers')
+  }
+
+  /**
+   * Get current registration mode (no auth required)
+   * Returns 'open', 'existing_only', or 'invite_only'
+   */
+  async getRegistrationMode(): Promise<ApiResponse<RegistrationModeResponse>> {
+    return this.apiClient.get<RegistrationModeResponse>('/registration-mode')
   }
   
   // ==================== SIWE ====================
@@ -115,6 +158,13 @@ export class SSOApiService {
   }
   
   /**
+   * Get stored GitHub OAuth token for authenticated user
+   */
+  async getGitHubToken(): Promise<ApiResponse<GitHubTokenResponse>> {
+    return this.apiClient.get<GitHubTokenResponse>('/accounts/github/token')
+  }
+  
+  /**
    * Link SIWE account (special endpoint)
    */
   async linkSiwe(request: SiweVerifyRequest): Promise<ApiResponse<SiweVerifyResponse>> {
@@ -152,6 +202,96 @@ export class CreditsApiService {
     
     const query = params.toString()
     return this.apiClient.get(`/transactions${query ? '?' + query : ''}`)
+  }
+}
+
+/**
+ * Storage API Service - All storage-related endpoints with full TypeScript typing
+ * Provides an abstraction layer for cloud storage operations (S3, etc.)
+ */
+export class StorageApiService {
+  constructor(private apiClient: IApiClient) {}
+  
+  /**
+   * Get the underlying API client
+   */
+  getApiClient(): IApiClient {
+    return this.apiClient
+  }
+  
+  // ==================== Health & Config ====================
+  
+  /**
+   * Check storage service health
+   */
+  async health(): Promise<ApiResponse<StorageHealthResponse>> {
+    return this.apiClient.get<StorageHealthResponse>('/health')
+  }
+  
+  /**
+   * Get storage configuration (limits, allowed types)
+   */
+  async getConfig(): Promise<ApiResponse<StorageConfig>> {
+    return this.apiClient.get<StorageConfig>('/config')
+  }
+  
+  // ==================== Presigned URLs ====================
+  
+  /**
+   * Get a presigned URL for uploading a file
+   * @param request - Upload request with filename, folder, and content type
+   * @returns Presigned URL and headers to use for direct S3 upload
+   */
+  async getUploadUrl(request: PresignUploadRequest): Promise<ApiResponse<PresignUploadResponse>> {
+    return this.apiClient.post<PresignUploadResponse>('/presign/upload', request)
+  }
+  
+  /**
+   * Get a presigned URL for downloading a file
+   * @param request - Download request with filename and optional folder
+   * @returns Presigned URL for direct S3 download
+   */
+  async getDownloadUrl(request: PresignDownloadRequest): Promise<ApiResponse<PresignDownloadResponse>> {
+    return this.apiClient.post<PresignDownloadResponse>('/presign/download', request)
+  }
+  
+  // ==================== File Management ====================
+  
+  /**
+   * List user's files
+   * @param options - Optional filtering and pagination
+   */
+  async listFiles(options?: StorageListOptions): Promise<ApiResponse<StorageFilesResponse>> {
+    const params = new URLSearchParams()
+    if (options?.folder) params.set('folder', options.folder)
+    if (options?.limit !== undefined) params.set('limit', options.limit.toString())
+    if (options?.cursor) params.set('cursor', options.cursor)
+    
+    const query = params.toString()
+    return this.apiClient.get<StorageFilesResponse>(`/files${query ? '?' + query : ''}`)
+  }
+  
+  /**
+   * Get metadata for a specific file
+   * @param filename - The filename (can include folder path)
+   */
+  async getFileMetadata(filename: string): Promise<ApiResponse<StorageFile>> {
+    return this.apiClient.get<StorageFile>(`/files/${encodeURIComponent(filename)}`)
+  }
+  
+  /**
+   * Delete a file
+   * @param filename - The filename to delete (can include folder path)
+   */
+  async deleteFile(filename: string): Promise<ApiResponse<GenericSuccessResponse>> {
+    return this.apiClient.delete<GenericSuccessResponse>(`/files/${encodeURIComponent(filename)}`)
+  }
+
+  /**
+   * Get list of user's remote workspaces with backup info
+   */
+  async getWorkspaces(): Promise<ApiResponse<WorkspacesResponse>> {
+    return this.apiClient.get<WorkspacesResponse>('/workspaces')
   }
 }
 
@@ -235,6 +375,336 @@ export class PermissionsApiService {
       return { limit: undefined, unit: undefined }
     } catch {
       return { limit: undefined, unit: undefined }
+    }
+  }
+}
+
+/**
+ * Billing API Service - Credit packages, subscription plans, and purchases
+ */
+export class BillingApiService {
+  constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
+
+  // ==================== Public Endpoints (No Auth Required) ====================
+
+  /**
+   * Get available credit packages for purchase
+   */
+  async getCreditPackages(): Promise<ApiResponse<CreditPackagesResponse>> {
+    return this.apiClient.get<CreditPackagesResponse>('/credit-packages')
+  }
+
+  /**
+   * Get available subscription plans
+   */
+  async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlansResponse>> {
+    return this.apiClient.get<SubscriptionPlansResponse>('/subscription-plans')
+  }
+
+  // ==================== Authenticated Endpoints ====================
+
+  /**
+   * Get billing configuration (Paddle token, environment, etc.)
+   * Requires authentication
+   */
+  async getConfig(): Promise<ApiResponse<BillingConfigResponse>> {
+    return this.apiClient.get<BillingConfigResponse>('/config')
+  }
+
+  /**
+   * Get user's current credit balance
+   */
+  async getCredits(): Promise<ApiResponse<Credits>> {
+    return this.apiClient.get<Credits>('/credits')
+  }
+
+  /**
+   * Get user's credit transaction history
+   */
+  async getCreditHistory(limit?: number, offset?: number): Promise<ApiResponse<{ transactions: CreditTransaction[], total: number }>> {
+    const params = new URLSearchParams()
+    if (limit !== undefined) params.set('limit', limit.toString())
+    if (offset !== undefined) params.set('offset', offset.toString())
+    
+    const query = params.toString()
+    return this.apiClient.get(`/credits/history${query ? '?' + query : ''}`)
+  }
+
+  /**
+   * Get user's active subscription
+   */
+  async getSubscription(): Promise<ApiResponse<UserSubscriptionResponse>> {
+    return this.apiClient.get<UserSubscriptionResponse>('/subscription')
+  }
+
+  /**
+   * Purchase a credit package - returns checkout URL for the specified provider
+   * @param packageId - Package slug (e.g., "starter", "pro")
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
+   */
+  async purchaseCredits(packageId: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<PurchaseCreditsResponse>> {
+    const body: { packageId: string; provider: string; returnUrl?: string } = { packageId, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<PurchaseCreditsResponse>('/purchase-credits', body)
+  }
+
+  /**
+   * Subscribe to a plan - returns checkout URL for the specified provider
+   * @param planId - Plan slug (e.g., "pro", "team")
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
+   */
+  async subscribe(planId: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<SubscribeResponse>> {
+    const body: { planId: string; provider: string; returnUrl?: string } = { planId, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<SubscribeResponse>('/subscribe', body)
+  }
+
+  // ==================== Helper Methods ====================
+
+  /**
+   * Format price from cents to display string
+   */
+  static formatPrice(cents: number): string {
+    return `$${(cents / 100).toFixed(2)}`
+  }
+
+  /**
+   * Check if a package has an active provider
+   * @param pkg - Credit package to check
+   * @param providerSlug - Provider to check for (default: "paddle")
+   */
+  static hasActiveProvider(pkg: CreditPackage | SubscriptionPlan, providerSlug: string = 'paddle'): boolean {
+    return pkg.providers?.some(p => p.slug === providerSlug && p.isActive && p.syncStatus === 'synced') ?? false
+  }
+
+  /**
+   * Get the active provider for a package/plan
+   * @param pkg - Credit package or subscription plan
+   * @param providerSlug - Provider to get (default: "paddle")
+   */
+  static getActiveProvider(pkg: CreditPackage | SubscriptionPlan, providerSlug: string = 'paddle'): ProductProvider | undefined {
+    return pkg.providers?.find(p => p.slug === providerSlug && p.isActive && p.syncStatus === 'synced')
+  }
+
+  /**
+   * Filter packages to only those with an active provider
+   * @param packages - Array of credit packages
+   * @param providerSlug - Provider to filter by (default: "paddle")
+   */
+  static filterByActiveProvider<T extends CreditPackage | SubscriptionPlan>(items: T[], providerSlug: string = 'paddle'): T[] {
+    return items.filter(item => BillingApiService.hasActiveProvider(item, providerSlug))
+  }
+
+  /**
+   * Check if user has enough credits for an operation
+   */
+  async hasEnoughCredits(requiredCredits: number): Promise<boolean> {
+    try {
+      const response = await this.getCredits()
+      if (response.ok && response.data) {
+        return response.data.balance >= requiredCredits
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  // ==================== Feature Access Products ====================
+
+  /**
+   * Get available feature access products (passes and subscriptions)
+   * @param recurring - Optional filter: true = subscriptions only, false = one-time passes only
+   */
+  async getFeatureAccessProducts(recurring?: boolean): Promise<ApiResponse<FeatureAccessProductsResponse>> {
+    const params = new URLSearchParams()
+    if (recurring !== undefined) params.set('recurring', recurring.toString())
+    const query = params.toString()
+    return this.apiClient.get<FeatureAccessProductsResponse>(`/feature-access/products${query ? '?' + query : ''}`)
+  }
+
+  /**
+   * Get a single feature access product by slug
+   * @param slug - Product slug
+   */
+  async getFeatureAccessProduct(slug: string): Promise<ApiResponse<FeatureAccessProduct>> {
+    return this.apiClient.get<FeatureAccessProduct>(`/feature-access/products/${slug}`)
+  }
+
+  /**
+   * Purchase a feature access product - returns checkout URL
+   * @param productSlug - Product slug to purchase
+   * @param provider - Provider slug (default: "paddle")
+   * @param returnUrl - URL to redirect after checkout
+   */
+  async purchaseFeatureAccess(productSlug: string, provider: string = 'paddle', returnUrl?: string): Promise<ApiResponse<FeatureAccessPurchaseResponse>> {
+    const body: FeatureAccessPurchaseRequest = { productSlug, provider }
+    if (returnUrl) body.returnUrl = returnUrl
+    return this.apiClient.post<FeatureAccessPurchaseResponse>('/feature-access/purchase', body)
+  }
+
+  /**
+   * Get user's active feature group memberships
+   * @param includeExpired - Include expired memberships
+   */
+  async getFeatureMemberships(includeExpired: boolean = false): Promise<ApiResponse<UserMembershipsResponse>> {
+    const params = includeExpired ? '?includeExpired=true' : ''
+    return this.apiClient.get<UserMembershipsResponse>(`/feature-access/memberships${params}`)
+  }
+
+  /**
+   * Check if user has access to a specific feature group
+   * @param featureGroup - Feature group slug (e.g., "ai-pro")
+   */
+  async checkFeatureAccess(featureGroup: string): Promise<ApiResponse<FeatureAccessCheckResponse>> {
+    return this.apiClient.get<FeatureAccessCheckResponse>(`/feature-access/check/${featureGroup}`)
+  }
+
+  /**
+   * Helper: Check if user has access to a feature group (returns boolean)
+   * @param featureGroup - Feature group slug
+   */
+  async hasFeatureAccess(featureGroup: string): Promise<boolean> {
+    try {
+      const response = await this.checkFeatureAccess(featureGroup)
+      return response.ok && response.data?.hasAccess === true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Helper: Format duration for display
+   */
+  static formatDuration(durationType: string, durationValue: number): string {
+    if (durationType === 'unlimited') return 'Unlimited'
+    const unit = durationValue === 1 ? durationType.slice(0, -1) : durationType
+    return `${durationValue} ${unit}`
+  }
+
+  /**
+   * Helper: Format billing interval for display
+   */
+  static formatBillingInterval(interval: string | null): string {
+    if (!interval) return ''
+    return `/${interval}`
+  }
+
+  /**
+   * Filter feature access products by recurring status
+   */
+  static filterFeatureProducts(products: FeatureAccessProduct[], recurring: boolean): FeatureAccessProduct[] {
+    return products.filter(p => p.isRecurring === recurring)
+  }
+}
+
+/**
+ * Invite API Service - Invite token endpoints with full TypeScript typing
+ */
+export class InviteApiService {
+  constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
+
+  // ==================== Token Validation ====================
+
+  /**
+   * Validate an invite token (no auth required)
+   * @param token - The invite token string
+   */
+  async validateToken(token: string): Promise<ApiResponse<InviteValidateResponse>> {
+    return this.apiClient.get<InviteValidateResponse>(`/validate/${token}`)
+  }
+
+  /**
+   * Helper: Check if a token is valid
+   */
+  async isTokenValid(token: string): Promise<boolean> {
+    try {
+      const response = await this.validateToken(token)
+      return response.ok && response.data?.valid === true
+    } catch {
+      return false
+    }
+  }
+
+  // ==================== Token Redemption ====================
+
+  /**
+   * Redeem an invite token (auth required)
+   * @param token - The invite token string
+   */
+  async redeemToken(token: string): Promise<ApiResponse<InviteRedeemResponse>> {
+    return this.apiClient.post<InviteRedeemResponse>('/redeem', { token })
+  }
+
+  // ==================== User Redemptions ====================
+
+  /**
+   * Get all tokens redeemed by the current user (auth required)
+   */
+  async getMyRedemptions(): Promise<ApiResponse<InviteRedemptionsResponse>> {
+    return this.apiClient.get<InviteRedemptionsResponse>('/my-redemptions')
+  }
+
+  // ==================== User Tags ====================
+
+  /**
+   * Get all tags for the current user (auth required)
+   */
+  async getMyTags(): Promise<ApiResponse<UserTagsResponse>> {
+    return this.apiClient.get<UserTagsResponse>('/my-tags')
+  }
+
+  // ==================== Helpers ====================
+
+  /**
+   * Format token action for display
+   */
+  static formatActionType(type: string): string {
+    switch (type) {
+      case 'add_to_feature_group':
+        return 'Feature Access'
+      case 'grant_credits':
+        return 'Credits'
+      case 'grant_product':
+        return 'Product'
+      case 'add_tag':
+        return 'Badge/Tag'
+      default:
+        return type
+    }
+  }
+
+  /**
+   * Get icon for action type
+   */
+  static getActionIcon(type: string): string {
+    switch (type) {
+      case 'add_to_feature_group':
+        return 'fa-star'
+      case 'grant_credits':
+        return 'fa-coins'
+      case 'grant_product':
+        return 'fa-gift'
+      case 'add_tag':
+        return 'fa-tag'
+      default:
+        return 'fa-check'
     }
   }
 }

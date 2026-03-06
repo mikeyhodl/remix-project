@@ -10,6 +10,12 @@ import { ResourceCategory, DeployedContractInstance, DeployedContractsByNetwork 
 export class DeploymentResourceProvider extends BaseResourceProvider {
   name = 'deployment';
   description = 'Provides access to deployment history, contract instances, and transaction records';
+  private _plugin: Plugin;
+
+  constructor(plugin: Plugin) {
+    super();
+    this._plugin = plugin;
+  }
 
   async getResources(plugin: Plugin): Promise<IMCPResource[]> {
     const resources: IMCPResource[] = [];
@@ -129,7 +135,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
 
   private async addContractInstances(plugin: Plugin, resources: IMCPResource[]): Promise<void> {
     try {
-      const deployedContracts:DeployedContractsByNetwork = await plugin.call('udapp' as any, 'getDeployedContracts');
+      const deployedContracts:DeployedContractsByNetwork = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts');
       for (const [networkKey, contracts] of Object.entries(deployedContracts)) {
         if (contracts && typeof contracts === 'object') {
           for (const [address, contractInfo] of Object.entries(contracts)) {
@@ -163,7 +169,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
 
   private async getDeploymentHistory(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      const deployedContracts:DeployedContractsByNetwork = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts:DeployedContractsByNetwork = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
 
       // Get compilation results for contract names
       const compilationResult = await plugin.call('solidity' as any, 'getCompilationResult').catch(() => null);
@@ -225,7 +231,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
   private async getActiveDeployments(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // Get deployed contracts
-      const deployedContracts = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
 
       // Get current environment info
       const provider = await plugin.call('blockchain' as any, 'getCurrentProvider').catch(() => ({ displayName: 'unknown' }));
@@ -325,34 +331,25 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
       const chainId = await plugin.call('blockchain' as any, 'getChainId').catch(() => 'unknown');
 
       // Get account information
-      const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI').catch(() => ({ accounts: {} }));
+      const loadedAccounts = await plugin.call('udappEnv' as any, 'getLoadedAccounts').catch(() => ({ accounts: {} }));
+      const selectedAccount = await plugin.call('udappEnv' as any, 'getSelectedAccount').catch(() => null);
       const accounts = [];
 
-      if (runTabApi.accounts?.loadedAccounts) {
-        for (const [address, displayName] of Object.entries(runTabApi.accounts.loadedAccounts)) {
+      if (loadedAccounts) {
+        for (const loadedAccount of loadedAccounts) {
+          loadedAccount.isSmartAccount = await plugin.call('udappEnv' as any, 'isSmartAccount', loadedAccount.account) || false
           try {
-            const balance = await plugin.call('blockchain' as any, 'getBalanceInEther', address);
-            accounts.push({
-              address: address,
-              balance: `${balance} ETH`,
-              displayName: displayName as string,
-              isSelected: address === runTabApi.accounts.selectedAccount,
-              isSmartAccount: (displayName as string)?.includes('[SMART]') || false
-            });
+            loadedAccount.balance = await plugin.call('blockchain' as any, 'getBalanceInEther', loadedAccount.address) + ' ETH'
           } catch (e) {
-            accounts.push({
-              address: address,
-              balance: 'unknown',
-              displayName: displayName as string,
-              isSelected: address === runTabApi.accounts.selectedAccount,
-              isSmartAccount: (displayName as string)?.includes('[SMART]') || false
-            });
+            loadedAccount.balance = 'unknown';
           }
+          loadedAccount.isSelected = loadedAccount.account === selectedAccount
+          accounts.push(loadedAccount);
         }
       }
 
       // Get deployed contracts count
-      const deployedContracts = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
       let totalDeployments = 0;
 
       for (const [, contracts] of Object.entries(deployedContracts)) {
@@ -370,7 +367,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
         status: 'connected',
         deployments: totalDeployments,
         accounts: accounts.length,
-        selectedAccount: runTabApi.accounts?.selectedAccount || null
+        selectedAccount: selectedAccount || null
       };
 
       // Get available providers list
@@ -439,7 +436,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
   private async getDeploymentTransactions(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
       // Get deployed contracts to extract transaction history
-      const deployedContracts = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
 
       // Get current network info
       const provider = await plugin.call('blockchain' as any, 'getCurrentProvider').catch(() => ({ displayName: 'unknown' }));
@@ -530,29 +527,20 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
       const availableProviders = await plugin.call('blockchain' as any, 'getProviders').catch(() => []);
 
       // Get account information
-      const runTabApi = await plugin.call('udapp' as any, 'getRunTabAPI').catch(() => ({ accounts: {} }));
+      const loadedAccounts = await plugin.call('udappEnv' as any, 'getLoadedAccounts').catch(() => ({ accounts: {} }));
+      const selectedAccount = await plugin.call('udappEnv' as any, 'getSelectedAccount').catch(() => null);
       const accounts = [];
 
-      if (runTabApi.accounts?.loadedAccounts) {
-        for (const [address, displayName] of Object.entries(runTabApi.accounts.loadedAccounts)) {
+      if (loadedAccounts) {
+        for (const loadedAccount of loadedAccounts) {
+          loadedAccount.isSmartAccount = await plugin.call('udappEnv' as any, 'isSmartAccount', loadedAccount.account) || false
           try {
-            const balance = await plugin.call('blockchain' as any, 'getBalanceInEther', address);
-            accounts.push({
-              address: address,
-              balance: `${balance} ETH`,
-              displayName: displayName as string,
-              isSelected: address === runTabApi.accounts.selectedAccount,
-              isSmartAccount: (displayName as string)?.includes('[SMART]') || false
-            });
+            loadedAccount.balance = await plugin.call('blockchain' as any, 'getBalanceInEther', loadedAccount.address) + ' ETH'
           } catch (e) {
-            accounts.push({
-              address: address,
-              balance: 'unknown',
-              displayName: displayName as string,
-              isSelected: address === runTabApi.accounts.selectedAccount,
-              isSmartAccount: (displayName as string)?.includes('[SMART]') || false
-            });
+            loadedAccount.balance = 'unknown';
           }
+          loadedAccount.isSelected = loadedAccount.account === selectedAccount
+          accounts.push(loadedAccount);
         }
       }
 
@@ -560,7 +548,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
       const compilerConfig = await plugin.call('solidity' as any, 'getCurrentCompilerConfig').catch(() => ({}));
 
       // Get gas settings (approximate from recent transactions)
-      const deployedContracts = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
       let avgGasPrice = '20000000000'; // default
       let avgGasUsed = 0;
       let contractCount = 0;
@@ -590,7 +578,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
           available: availableProviders.map((p: any) => p.displayName || p.name)
         },
         accounts: accounts,
-        selectedAccount: runTabApi.accounts?.selectedAccount || null,
+        selectedAccount: selectedAccount || null,
         totalAccounts: accounts.length,
         gas: {
           averagePrice: avgGasPrice,
@@ -634,7 +622,7 @@ export class DeploymentResourceProvider extends BaseResourceProvider {
 
     try {
       // Get deployed contracts to find this specific instance
-      const deployedContracts = await plugin.call('udapp' as any, 'getDeployedContracts').catch(() => ({}));
+      const deployedContracts = await plugin.call('udappDeployedContracts' as any, 'getDeployedContracts').catch(() => ({}));
 
       let contractInfo = null;
       let networkKey = null;

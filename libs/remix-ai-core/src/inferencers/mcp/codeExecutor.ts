@@ -57,9 +57,7 @@ export class CodeExecutor {
 
       // CRITICAL: race condition - Wait for all pending tool calls to complete before returning
       if (this.pendingToolCalls.length > 0) {
-        console.log(`[MCP Code mode] - Waiting for ${this.pendingToolCalls.length} pending tool call(s) to complete...`);
         await Promise.allSettled(this.pendingToolCalls);
-        console.log(`[MCP Code mode] - All tool calls completed`);
       }
 
       const executionTime = Date.now() - startTime;
@@ -122,6 +120,28 @@ export class CodeExecutor {
         const toolPromise = (async () => {
           const result = await self.executeToolCallback({ name, arguments: args });
           const toolExecutionTime = Date.now() - toolStartTime;
+
+          // Check if result content looks like double-escaped JSON and parse it once
+          try {
+            if (result?.content) {
+              for (const contentItem of result.content) {
+                if (contentItem?.text && typeof contentItem.text === 'string') {
+                  // Check if text looks like double-escaped JSON (starts and ends with quotes, contains escaped quotes)
+                  const text = contentItem.text.trim();
+                  if (text.startsWith('"') && text.endsWith('"') && text.includes('\\"')) {
+                    try {
+                      // Parse once to remove one layer of escaping
+                      contentItem.text = JSON.parse(text);
+                    } catch (e) {
+                      // If parsing fails, leave the text as is
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`[MCP Code mode] - Failed to parse tool output content for tool "${name}":`, e)
+          }
 
           self.toolCallRecords.push({
             name,

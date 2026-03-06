@@ -169,6 +169,9 @@
             "@remix-ui/statusbar": [
               "libs/remix-ui/statusbar/src/index.ts"
             ],
+            "@remix-ui/walkthrough": [
+              "libs/remix-ui/walkthrough/src/index.ts"
+            ],
             "@remix-project/ghaction-helper": [
               "libs/ghaction-helper/src/index.ts"
             ],
@@ -206,6 +209,9 @@
             "@remix-ui/remix-ai-assistant": [
               "libs/remix-ui/remix-ai-assistant/src/index.ts"
             ],
+            "@remix-ui/quick-dapp-v2": [
+              "libs/remix-ui/quick-dapp-v2/src/index.ts"
+            ],
             "@remix-ui/top-bar": [
               "libs/remix-ui/top-bar/src/index.ts"
             ],
@@ -215,12 +221,32 @@
             "@remix-ui/login": [
               "libs/remix-ui/login/src/index.ts"
             ],
+            "@remix-ui/billing": [
+              "libs/remix-ui/billing/src/index.ts"
+            ],
+            "@remix-ui/account-overlay": [
+              "libs/remix-ui/account-overlay/src/index.ts"
+            ],
             "@remix-ui/template-explorer-modal": [
               "libs/remix-ui/template-explorer-modal/src/index.ts"
-            ]
-            ,
+            ],
+            "@remix-ui/invites": [
+              "libs/remix-ui/invites/src/index.ts"
+            ],
+            "@remix-ui/run-tab-environment": [
+              "libs/remix-ui/run-tab-environment/src/index.ts"
+            ],
+            "@remix-ui/run-tab-deploy": [
+              "libs/remix-ui/run-tab-deploy/src/index.ts"
+            ],
+            "@remix-ui/run-tab-deployed-contracts": [
+              "libs/remix-ui/run-tab-deployed-contracts/src/index.ts"
+            ],
             "@remix-project/import-resolver": [
               "libs/remix-import-resolver/src/index.ts"
+            ],
+            "@remix-ui/run-tab-transactions": [
+              "libs/remix-ui/run-tab-transactions/src/index.ts"
             ]
         }
     }

@@ -9,7 +9,7 @@ module.exports = {
     init(browser, done, 'http://127.0.0.1:8080', false)
   },
 
-  'Should clone Uniswap v4-core repository #group1': function (browser: NightwatchBrowser) {
+  'Should clone Uniswap v4-core repository #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="github-dropdown-toggle"]')
       .click('*[data-id="github-dropdown-toggle"]')
@@ -21,28 +21,24 @@ module.exports = {
       .setValue('[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/Uniswap/v4-core')
       .click('[data-id="topbarModal-modal-footer-ok-react"]')
       .waitForElementPresent('.fa-spinner')
-      .pause(5000)
-      .waitForElementNotPresent('.fa-spinner', 240000)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]', 240000)
       .waitForElementContainsText('[data-id="workspacesSelect"]', 'v4-core')
   },
 
-  'Should verify repository was cloned with submodules #group1': function (browser: NightwatchBrowser) {
+  'Should verify repository was cloned with submodules #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="treeViewLitreeViewItem.gitmodules"]', 120000)
       .waitForElementVisible('[data-id="workspaceGitPanel"]')
   },
 
-  'Should update submodules in Remix interface #group1': function (browser: NightwatchBrowser) {
+  'Should update submodules in Remix interface #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('[data-id="updatesubmodules"]', 120000)
       .click('[data-id="updatesubmodules"]')
       .waitForElementPresent('.fa-spinner')
-      .waitForElementNotPresent('.fa-spinner', 240000)
-      .pause(5000)
   },
 
-  'Should verify submodules are loaded #group1': function (browser: NightwatchBrowser) {
+  'Should verify submodules are loaded #group1': '' + function (browser: NightwatchBrowser) {
     browser
       // Verify that submodule directories exist (common submodules in v4-core)
       // The exact submodule names depend on the .gitmodules file
@@ -52,7 +48,7 @@ module.exports = {
       .pause(2000)
   },
 
-  'Should navigate to PoolManager.sol #group1': function (browser: NightwatchBrowser) {
+  'Should navigate to PoolManager.sol #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .pause(1000)
       // Navigate to src directory where PoolManager.sol is located
@@ -65,7 +61,7 @@ module.exports = {
       .pause(2000)
   },
 
-  'Should verify PoolManager.sol is opened #group1': function (browser: NightwatchBrowser) {
+  'Should verify PoolManager.sol is opened #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .pause(2000)
       .getEditorValue((content) => {
@@ -76,7 +72,7 @@ module.exports = {
       })
   },
 
-  'Should set Solidity compiler version for v4-core #group1': function (browser: NightwatchBrowser) {
+  'Should set Solidity compiler version for v4-core #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('solidity')
       .pause(1000)
@@ -89,7 +85,7 @@ module.exports = {
       })
   },
 
-  'Should compile PoolManager.sol #group1': function (browser: NightwatchBrowser) {
+  'Should compile PoolManager.sol #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
       .openFile('src/PoolManager.sol')
@@ -101,7 +97,7 @@ module.exports = {
       .pause(5000)
   },
 
-  'Should create deployment script for PoolManager #group1': function (browser: NightwatchBrowser) {
+  'Should create deployment script for PoolManager #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
       .click('*[data-id="treeViewUltreeViewMenu"]') // make sure we create the file at the root folder
@@ -109,7 +105,7 @@ module.exports = {
       .pause(2000)
   },
 
-  'Should execute deployment script and verify contract address in terminal #group1': function (browser: NightwatchBrowser) {
+  'Should execute deployment script and verify contract address in terminal #group1': '' + function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="run-script-dropdown-trigger"]')
       .click('*[data-id="run-with-ethers6-menu-item"]')

@@ -11,13 +11,17 @@ interface LoginButtonProps {
   showCredits?: boolean
   variant?: 'button' | 'badge' | 'compact'
   plugin?: any
+  cloneGitRepository?: () => void
+  publishToGist?: () => void
 }
 
 export const LoginButton: React.FC<LoginButtonProps> = ({
   className = '',
   showCredits = true,
   variant = 'button',
-  plugin
+  plugin,
+  cloneGitRepository,
+  publishToGist
 }) => {
   const { isAuthenticated, user, credits, logout, login } = useAuth()
   const [showModal, setShowModal] = useState(false)
@@ -45,22 +49,29 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
 
   const handleLogout = async () => {
     await logout()
+    if (plugin && typeof plugin.call === 'function') {
+      plugin.call('matomo', 'trackEvent', 'auth', 'logout', 'Sign Out', undefined).catch(() => {})
+    }
   }
 
   const handleManageAccounts = () => {
-    // Open Settings plugin via plugin manager (no window events)
+    // Open Account overlay
     if (plugin && typeof plugin.call === 'function') {
-      (async () => {
+      plugin.call('matomo', 'trackEvent', 'userMenu', 'manageAccounts', 'Manage Accounts', undefined).catch(() => {})
+      ;(async () => {
         try {
-          const isActive = await plugin.call('manager', 'isActive', 'settings')
-          if (!isActive) await plugin.call('manager', 'activatePlugin', 'settings')
-          await plugin.call('tabs', 'focus', 'settings')
-          // Focus the Account section of settings via plugin API
-          await plugin.call('settings', 'showSection', 'account')
-          // TODO: If settings plugin exposes API to select a specific section,
-          // call it here to navigate to 'account-authentication'.
+          await plugin.call('account', 'open')
         } catch (err) {
-          console.error('[LoginButton] Failed to open Settings via plugin:', err)
+          console.error('[LoginButton] Failed to open Account overlay:', err)
+          // Fallback to settings if account plugin is not available
+          try {
+            //const isActive = await plugin.call('manager', 'isActive', 'settings')
+            //if (!isActive) await plugin.call('manager', 'activatePlugin', 'settings')
+            //await plugin.call('tabs', 'focus', 'settings')
+            //await plugin.call('settings', 'showSection', 'account')
+          } catch (settingsErr) {
+            //console.error('[LoginButton] Failed to open Settings:', settingsErr)
+          }
         }
       })()
     }
@@ -78,7 +89,8 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
       'apple': 'Apple',
       'discord': 'Discord',
       'coinbase': 'Coinbase Wallet',
-      'siwe': 'Ethereum'
+      'siwe': 'Ethereum',
+      'base': 'Base'
     }
     return providerNames[provider] || provider
   }
@@ -107,12 +119,17 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
       <>
         <button
           className={`btn btn-sm btn-primary ${className}`}
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setShowModal(true)
+            if (plugin && typeof plugin.call === 'function') {
+              plugin.call('matomo', 'trackEvent', 'auth', 'openLoginModal', 'Sign In', undefined).catch(() => {})
+            }
+          }}
           data-id="login-button"
         >
           Sign In
         </button>
-        {showModal && <LoginModal onClose={() => setShowModal(false)} />}
+        {showModal && <LoginModal onClose={() => setShowModal(false)} plugin={plugin} />}
       </>
     )
   }
@@ -146,6 +163,9 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
         themes={themes}
         currentTheme={currentTheme}
         onThemeChange={handleThemeChange}
+        plugin={plugin}
+        cloneGitRepository={cloneGitRepository}
+        publishToGist={publishToGist}
       />
     )
   }

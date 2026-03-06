@@ -47,7 +47,9 @@ const profile = {
     'clone',
     'isExpanded',
     'isGist',
-    'workspaceExists'
+    'workspaceExists',
+    'readFileFromWorkspace',
+    'existsInWorkspace'
   ],
   events: ['setWorkspace', 'workspaceRenamed', 'workspaceDeleted', 'workspaceCreated'],
   icon: 'assets/img/fileManager.webp',
@@ -166,13 +168,55 @@ export default class Filepanel extends ViewPlugin {
         name: ws.name,
         isGitRepo: ws.isGitRepo || false,
         hasGitSubmodules: ws.hasGitSubmodules || false,
-        isGist: typeof ws.isGist === 'string' ? ws.isGist : null
+        isGist: typeof ws.isGist === 'string' ? ws.isGist : null,
+        remoteId: ws.remoteId || null
       }))
   }
 
   workspaceExists(name) {
     if (!this.workspaces) return false
     return this.workspaces.find((workspace) => workspace.name === name)
+  }
+
+  async readFileFromWorkspace(workspaceName, filePath) {
+    try {
+      if (!window.remixFileSystem) {
+        throw new Error('File system not ready')
+      }
+      const workspaceProvider = this.fileProviders.workspace
+      if (!workspaceProvider || !workspaceProvider.workspacesPath) {
+        throw new Error('Workspace provider not ready')
+      }
+      // Cloud mode: resolve display name to UUID for the path
+      const dirName = workspaceProvider.getWorkspaceDirName?.(workspaceName) || workspaceName
+      const fullPath = `${workspaceProvider.workspacesPath}/${dirName}/${filePath}`.replace(/\/\//g, '/')
+      const exists = await window.remixFileSystem.exists(fullPath)
+      if (!exists) throw new Error(`File not found: ${filePath} in workspace ${workspaceName}`)
+      const content = await window.remixFileSystem.readFile(fullPath, 'utf8')
+      return content
+    } catch (e) {
+      console.warn('[FilePanel] readFileFromWorkspace error:', e.message)
+      throw e
+    }
+  }
+
+  async existsInWorkspace(workspaceName, filePath) {
+    try {
+      if (!window.remixFileSystem) {
+        return false
+      }
+      const workspaceProvider = this.fileProviders.workspace
+      if (!workspaceProvider || !workspaceProvider.workspacesPath) {
+        return false
+      }
+      // Cloud mode: resolve display name to UUID for the path
+      const dirName = workspaceProvider.getWorkspaceDirName?.(workspaceName) || workspaceName
+      const fullPath = `${workspaceProvider.workspacesPath}/${dirName}/${filePath}`.replace(/\/\//g, '/')
+      return await window.remixFileSystem.exists(fullPath)
+    } catch (e) {
+      console.warn('[FilePanel] existsInWorkspace error:', e.message)
+      return false
+    }
   }
 
   getAvailableWorkspaceName(name) {
@@ -263,10 +307,12 @@ export default class Filepanel extends ViewPlugin {
   setWorkspace(workspace) {
     const workspaceProvider = this.fileProviders.workspace
     const current = this.currentWorkspaceMetadata
+    // Cloud mode: resolve display name → UUID for the actual directory path
+    const dirName = workspaceProvider.getWorkspaceDirName?.(workspace.name) || workspace.name
     this.currentWorkspaceMetadata = {
       name: workspace.name,
       isLocalhost: workspace.isLocalhost,
-      absolutePath: `${workspaceProvider.workspacesPath}/${workspace.name}`,
+      absolutePath: `${workspaceProvider.workspacesPath}/${dirName}`,
     }
     if (this.currentWorkspaceMetadata.name !== current) {
       this.saveRecent(workspace.name)
@@ -274,6 +320,7 @@ export default class Filepanel extends ViewPlugin {
     if (workspace.name !== ' - connect to localhost - ') {
       localStorage.setItem('currentWorkspace', workspace.name)
     }
+    console.log('setting workspace', workspace)
     this.emit('setWorkspace', workspace)
   }
 

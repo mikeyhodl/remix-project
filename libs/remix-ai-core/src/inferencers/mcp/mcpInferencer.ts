@@ -18,10 +18,11 @@ import { ResourceScoring } from "../../services/resourceScoring";
 import { CodeExecutor } from "./codeExecutor";
 import { ToolApiGenerator } from "./toolApiGenerator";
 import { MCPClient } from "./mcpClient";
-import { SimpleToolSelector } from "../../services/simpleToolSelector";
+import { WeightedToolSelector, IChatMessage } from "../../services/weightedToolSelector";
+import { buildChatPrompt } from "../../prompts/promptBuilder";
 
 // Helper function to track events using MatomoManager instance
-function trackMatomoEvent(category: string, action: string, name?: string) {
+function trackMatomoEvent(category: string, action: string, name: string) {
   try {
     if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
       const matomoInstance = (window as any)._matomoManagerInstance;
@@ -43,12 +44,14 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   private mcpClients: Map<string, MCPClient> = new Map();
   private connectionStatuses: Map<string, IMCPConnectionStatus> = new Map();
   private resourceCache: Map<string, IMCPResourceContent> = new Map();
+  private toolsCache: Map<string, IMCPTool[]> = new Map();
   private intentAnalyzer: IntentAnalyzer = new IntentAnalyzer();
   private resourceScoring: ResourceScoring = new ResourceScoring();
   private remixMCPServer?: any; // Internal RemixMCPServer instance
   private MAX_TOOL_EXECUTIONS = 10;
   private baseInferencer: RemoteInferencer; // The actual inferencer to use (could be Ollama or Remote)
-  private toolSelector: SimpleToolSelector = new SimpleToolSelector();
+  private toolSelector: WeightedToolSelector = new WeightedToolSelector();
+  MAXTOOLS = 25
 
   constructor(servers: IMCPServer[] = [], apiUrl?: string, completionUrl?: string, remixMCPServer?: any, baseInferencer?: RemoteInferencer) {
     super(apiUrl, completionUrl);
@@ -71,12 +74,19 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         });
 
         // Set up event listeners
-        client.on('connected', (serverName: string, result: IMCPInitializeResult) => {
+        client.on('connected', async (serverName: string, result: IMCPInitializeResult) => {
           this.connectionStatuses.set(serverName, {
             status: 'connected',
             serverName,
             capabilities: result.capabilities
           });
+          // Populate tools cache on connect
+          try {
+            const tools = await client.listTools();
+            this.toolsCache.set(serverName, tools);
+          } catch (error) {
+            this.toolsCache.set(serverName, []);
+          }
           this.event.emit('mcpServerConnected', serverName, result);
         });
 
@@ -87,6 +97,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             error: error.message,
             lastAttempt: Date.now()
           });
+          this.toolsCache.delete(serverName);
           this.event.emit('mcpServerError', serverName, error);
         });
 
@@ -95,6 +106,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
             status: 'disconnected',
             serverName
           });
+          this.toolsCache.delete(serverName);
           this.event.emit('mcpServerDisconnected', serverName);
         });
       }
@@ -102,7 +114,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   }
 
   async connectAllServers(): Promise<void> {
-    trackMatomoEvent('ai', 'mcp_connect_all_servers', `count:${this.mcpClients.size}`);
     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
       try {
         await client.connect();
@@ -112,8 +123,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     });
 
     await Promise.allSettled(promises);
-    const connectedCount = this.getConnectedServers().length;
-    trackMatomoEvent('ai', 'mcp_connect_all_complete', `connected:${connectedCount}|total:${this.mcpClients.size}`);
   }
 
   async disconnectAllServers(): Promise<void> {
@@ -131,7 +140,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       throw new Error(`MCP server ${server.name} already exists`);
     }
 
-    trackMatomoEvent('ai', 'mcp_server_add', `${server.name}|${server.transport}`);
+    trackMatomoEvent('ai', 'remixAI', `mcp_server_add_${server.name}`);
 
     const client = new MCPClient(
       server,
@@ -183,7 +192,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
   async removeMCPServer(serverName: string): Promise<void> {
     const client = this.mcpClients.get(serverName);
     if (client) {
-      trackMatomoEvent('ai', 'mcp_server_remove', serverName);
+      trackMatomoEvent('ai', 'remixAI', `mcp_server_remove_${serverName}`);
       await client.disconnect();
       this.mcpClients.delete(serverName);
       this.connectionStatuses.delete(serverName);
@@ -270,10 +279,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
         }))
       });
 
-      const workspaceResource: IMCPResource = {
-        uri: 'project://structure',
-        name: 'Project Structure',
-        description: 'Hierarchical view of project files and folders',
+      const contextResource: IMCPResource = {
+        uri: 'context://workspace',
+        name: 'Workspace Context',
+        description: 'Complete IDE context including files, editor state, git status, and diagnostics',
         mimeType: 'application/json',
       };
 
@@ -281,14 +290,14 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
       const hasInternalServer = this.mcpClients.has('Remix IDE Server')
 
       if (hasInternalServer) {
-        const existingProjectStructure = selectedResources.find(r => r.resource.uri === 'project://structure');
+        const existingProjectStructure = selectedResources.find(r => r.resource.uri === 'context://workspace');
         if (existingProjectStructure === undefined) {
           selectedResources.push({
-            resource: workspaceResource,
+            resource: contextResource,
             serverName: 'Remix IDE Server',
             score: 1.0, // High score to ensure it's included
             components: { keywordMatch: 1.0, domainRelevance: 1.0, typeRelevance:1, priority:1, freshness:1 },
-            reasoning: 'Project structure always included for internal remix MCP server'
+            reasoning: 'IDE context always included for internal remix MCP server'
           });
         }
       }
@@ -374,7 +383,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt;
 
     // Add available tools to the request in LLM format (with prompt for tool selection)
-    const llmFormattedTools = await this.getToolsForLLMRequest(options.provider, prompt);
+    const llmFormattedTools = await this.getToolsForLLMRequest(options.provider, prompt, buildChatPrompt());
     const enhancedOptions = {
       ...options,
       tools: llmFormattedTools.length > 0 ? llmFormattedTools : undefined,
@@ -382,7 +391,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     };
 
     if (llmFormattedTools.length > 0) {
-      trackMatomoEvent('ai', 'mcp_answer_with_tools', `provider:${options.provider}|tools:${llmFormattedTools.length}`);
+      trackMatomoEvent('ai', 'remixAI', `mcp_answer_with_tools`);
     }
 
     try {
@@ -399,7 +408,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
         toolExecutionCount++;
         if (tool_calls && tool_calls.length > 0) {
-          trackMatomoEvent('ai', 'mcp_llm_tool_execution', `provider:${options.provider}|count:${tool_calls.length}|iteration:${toolExecutionCount}`);
           const toolMessages = [];
 
           // Execute all tools and collect results
@@ -409,7 +417,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall, uiCallback);
               console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
-              console.log("[MCP] Tool result", result);
 
               // Extract full text content from MCP result
               const extractContent = (mcpResult: any): string => {
@@ -652,15 +659,34 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
     for (const [serverName, client] of this.mcpClients) {
       if (client.isConnected()) {
-        try {
-          result[serverName] = await client.listTools();
-        } catch (error) {
-          result[serverName] = [];
-        }
+        result[serverName] = this.toolsCache.get(serverName) || [];
       }
     }
 
     return result;
+  }
+
+  async refreshToolsCache(serverName?: string): Promise<void> {
+    if (serverName) {
+      const client = this.mcpClients.get(serverName);
+      if (client?.isConnected()) {
+        try {
+          this.toolsCache.set(serverName, await client.listTools());
+        } catch (error) {
+          this.toolsCache.set(serverName, []);
+        }
+      }
+    } else {
+      for (const [name, client] of this.mcpClients) {
+        if (client.isConnected()) {
+          try {
+            this.toolsCache.set(name, await client.listTools());
+          } catch (error) {
+            this.toolsCache.set(name, []);
+          }
+        }
+      }
+    }
   }
 
   async executeTool(serverName: string, toolCall: IMCPToolCall): Promise<IMCPToolResult> {
@@ -672,13 +698,9 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     if (!client.isConnected()) {
       throw new Error(`MCP server ${serverName} is not connected`);
     }
-
     return client.callTool(toolCall);
   }
 
-  /**
-   * Infer tool category from tool name (simple heuristic)
-   */
   private inferToolCategory(toolName: string): string {
     const name = toolName.toLowerCase()
     if (name.includes('compile')) return 'compilation'
@@ -714,28 +736,27 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     return allTools;
   }
 
-  async getToolsForLLMRequest(provider?: string, prompt?: string): Promise<any[]> {
+  async getToolsForLLMRequest(provider?: string, prompt?: string, chatHistory?: IChatMessage[]): Promise<any[]> {
     const mcpTools = await this.getAvailableToolsForLLM();
-    console.log('[MCPInferencer] Total available tools:', mcpTools.length)
-
     if (mcpTools.length === 0) return [];
 
-    // Use keyword-based tool selection if prompt provided and more than 15 tools
+    // Use weighted tool selection if prompt provided and more than threshold tools
     let selectedTools = mcpTools;
-    if (prompt && mcpTools.length > 15) {
+    if (prompt && mcpTools.length > this.MAXTOOLS) {
       try {
-        selectedTools = this.toolSelector.selectTools(mcpTools, prompt, 15);
+        // Use weighted selector with chat history for improved tool selection
+        selectedTools = this.toolSelector.selectTools(mcpTools, prompt, this.MAXTOOLS, chatHistory);
 
         // Emit selection event for debugging/analytics
         this.event.emit('mcpToolSelection', {
           totalTools: mcpTools.length,
           selectedTools: selectedTools.map(t => t.name),
           categories: this.toolSelector.detectCategories(prompt),
-          method: 'keyword'
+          method: chatHistory && chatHistory.length > 0 ? 'weighted_with_history' : 'keyword',
+          historyLength: chatHistory?.length || 0
         });
 
         console.log(`[MCPInferencer] Tool selection: ${mcpTools.length} → ${selectedTools.length} tools (${Math.round((1 - selectedTools.length / mcpTools.length) * 100)}% reduction)`)
-        console.log('[MCPInferencer] Selected tools:', selectedTools.map(t => t.name).join(', '))
       } catch (error) {
         console.warn('[MCPInferencer] Tool selection failed, using all tools:', error)
         selectedTools = mcpTools
@@ -747,14 +768,18 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     const apiDescription = apiGenerator.generateAPIDescription();
     const toolsList = apiGenerator.generateToolsList(selectedTools);
 
-    // Create single execute_tool with TypeScript API definitions
+    // Create tool names list for get_tool_schema description
+    const toolNamesList = mcpTools.map(t => `- ${t.name}`).join('\n');
+
     const executeToolDef = {
       name: "execute_tool",
       description: `Execute TypeScript code to interact with the Remix IDE API.
 
 ${apiDescription}
 
-${toolsList}`,
+${toolsList}
+
+Note: For detailed schema information about any tool, use the get_tool_schema tool.`,
       input_schema: {
         type: "object",
         properties: {
@@ -767,19 +792,53 @@ ${toolsList}`,
       }
     };
 
+    const getToolSchemaDef = {
+      name: "get_tool_schema",
+      description: `Get the full JSON schema for a specific MCP tool. This allows you to retrieve detailed parameter information, types, and requirements for any available tool.
+
+Available tools that you can query:
+${toolNamesList}
+
+Use this tool when you need:
+- Detailed parameter specifications for a tool
+- Required vs optional parameters
+- Parameter types and constraints
+- Full input schema validation rules`,
+      input_schema: {
+        type: "object",
+        properties: {
+          tool_name: {
+            type: "string",
+            description: "The name of the tool to get schema for (e.g., 'file_read', 'solidity_compile')"
+          }
+        },
+        required: ["tool_name"]
+      }
+    };
+
     // Format based on provider
     if (provider === 'anthropic') {
-      return [executeToolDef];
+      return [executeToolDef, getToolSchemaDef];
     } else {
       // OpenAI and other providers format
-      return [{
-        type: "function",
-        function: {
-          name: executeToolDef.name,
-          description: executeToolDef.description,
-          parameters: executeToolDef.input_schema
+      return [
+        {
+          type: "function",
+          function: {
+            name: executeToolDef.name,
+            description: executeToolDef.description,
+            parameters: executeToolDef.input_schema
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: getToolSchemaDef.name,
+            description: getToolSchemaDef.description,
+            parameters: getToolSchemaDef.input_schema
+          }
         }
-      }];
+      ];
     }
   }
 
@@ -809,6 +868,40 @@ ${toolsList}`,
    * Execute a tool call from the LLM
    */
   async executeToolForLLM(toolCall: IMCPToolCall, uiCallback?: any): Promise<IMCPToolResult> {
+    const toolName = toolCall.arguments?.tool_name;
+    if (toolCall.name === 'get_tool_schema') {
+      if (!toolName || typeof toolName !== 'string') {
+        return {
+          content: [{
+            type: 'text',
+            text: 'Error: get_tool_schema requires a tool_name parameter (string)'
+          }],
+          isError: true
+        };
+      }
+
+      const allTools = await this.getAvailableToolsForLLM()
+      const tool = allTools.find(t => t.name === toolName);
+      if (!tool) {
+        const availableNames = allTools.map(t => t.name).join(', ');
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: Tool '${toolName}' not found. Available tools: ${availableNames}`
+          }],
+          isError: true
+        };
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(tool, null, 2)
+        }],
+        isError: false
+      };
+    }
+
     // Handle code execution mode
     if (toolCall.name === 'execute_tool') {
       const code = toolCall.arguments?.code;
@@ -865,7 +958,7 @@ ${toolsList}`,
             const toolResult = record.result.content
               .map((c: any) => c.text || JSON.stringify(c))
               .join('\n');
-            isError = record.result?.isError
+            isError = record.result?.isError || false
 
             content.push({
               type: 'text' as const,
@@ -957,7 +1050,6 @@ ${toolsList}`,
     if (!targetServer) {
       throw new Error(`Tool '${toolCall.name}' not found in any connected MCP server`);
     }
-    console.log(`[MCP Legacy Mode] Executing tool ${toolCall.name} from server ${targetServer}`)
     return this.executeTool(targetServer, toolCall);
   }
 

@@ -35,6 +35,13 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
     }
   }
 
+  case appActionTypes.setShowOverlayPanel: {
+    return {
+      ...state,
+      showOverlayPanel: action.payload
+    }
+  }
+
   case appActionTypes.setConnectedToDesktop: {
     console.log('setConnectedToDesktop', action.payload)
     return {
@@ -47,6 +54,27 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
     return {
       ...state,
       genericModalState: { ...state.genericModalState, showModal: action.payload }
+    }
+  }
+
+  case appActionTypes.showAiChatHistorySidebar: {
+    return {
+      ...state,
+      aiChatHistoryState: { ...state.aiChatHistoryState, showAiChatHistory: action.payload }
+    }
+  }
+
+  case appActionTypes.toggleIsAiChatMaximized: {
+    return {
+      ...state,
+      aiChatHistoryState: { ...state.aiChatHistoryState, toggleIsAiChatMaximized: action.payload }
+    }
+  }
+
+  case appActionTypes.closeAiChatHistorySidebar: {
+    return {
+      ...state,
+      aiChatHistoryState: { ...state.aiChatHistoryState, closeAiChatHistory: action.payload }
     }
   }
   }
