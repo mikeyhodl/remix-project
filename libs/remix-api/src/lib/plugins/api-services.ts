@@ -774,12 +774,18 @@ export class TestPoolApiService {
    * Acquire an exclusive test account from the pool.
    * Returns JWT tokens ready for use in tests.
    *
+   * @param featureGroups - Feature groups to assign (must include one with login:allowed, e.g. 'beta')
    * @returns Session info with tokens, userId, accountId
    * @throws 503 POOL_EXHAUSTED when all 20 accounts are locked
    * @throws 403 API_KEY_FORBIDDEN when API key is invalid
+   * @throws 403 LOGIN_FEATURE_GROUP_REQUIRED when no group with login:allowed is included
+   * @throws 400 INVALID_FEATURE_GROUPS when group names don't exist
    */
-  async checkout(): Promise<ApiResponse<PoolCheckoutResponse>> {
-    return this.request<PoolCheckoutResponse>('/checkout', { method: 'POST' })
+  async checkout(featureGroups: string[] = ['beta']): Promise<ApiResponse<PoolCheckoutResponse>> {
+    return this.request<PoolCheckoutResponse>('/checkout', {
+      method: 'POST',
+      body: { featureGroups },
+    })
   }
 
   /**

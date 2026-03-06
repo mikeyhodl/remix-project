@@ -18,8 +18,9 @@ sleep 5
 # the browser's localStorage before each test.
 POOL_SESSION_ID=""
 if [ -n "${E2E_POOL_API_KEY:-}" ]; then
-  echo "==> Checking out test account from pool..."
-  POOL_JSON=$(node dist/apps/remix-ide-e2e/src/helpers/pool.js checkout)
+  E2E_FEATURE_GROUPS=${E2E_FEATURE_GROUPS:-beta}
+  echo "==> Checking out test account from pool (groups: $E2E_FEATURE_GROUPS)..."
+  POOL_JSON=$(node dist/apps/remix-ide-e2e/src/helpers/pool.js checkout "$E2E_FEATURE_GROUPS")
   if [ $? -ne 0 ] || [ -z "$POOL_JSON" ]; then
     echo "❌ Pool checkout failed"
     exit 1

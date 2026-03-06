@@ -57,8 +57,10 @@ function getHeaders(withBody = false): Record<string, string> {
 /**
  * Checkout an exclusive test account from the pool.
  * Stores the session in module state for later release.
+ *
+ * @param featureGroups - Feature groups to assign. Must include one with login:allowed (e.g. 'beta').
  */
-export async function checkoutAccount(): Promise<PoolSession> {
+export async function checkoutAccount(featureGroups: string[] = ['beta']): Promise<PoolSession> {
   if (!API_KEY) {
     throw new Error(
       'E2E_POOL_API_KEY is not set. ' +
@@ -68,7 +70,8 @@ export async function checkoutAccount(): Promise<PoolSession> {
 
   const response = await fetch(`${POOL_BASE}/checkout`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: getHeaders(true),
+    body: JSON.stringify({ featureGroups }),
   })
 
   if (!response.ok) {
@@ -192,7 +195,9 @@ if (require.main === module) {
     try {
       switch (command) {
         case 'checkout': {
-          const session = await checkoutAccount()
+          // Optional: pass feature groups as comma-separated arg, e.g. `checkout beta,storage`
+          const groups = args[0] ? args[0].split(',') : ['beta']
+          const session = await checkoutAccount(groups)
           // Output JSON to stdout for shell capture
           process.stdout.write(JSON.stringify(session))
           break

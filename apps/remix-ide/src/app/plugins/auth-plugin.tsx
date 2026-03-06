@@ -1,6 +1,7 @@
 import { Plugin } from '@remixproject/engine'
 import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, TestPoolApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, PoolCheckoutResponse, PoolReleaseResponse, PoolStatusResponse } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
+import { QueryParams } from '@remix-project/remix-lib'
 import { getAddress } from 'ethers'
 import { SiweMessage } from 'siwe'
 
@@ -290,9 +291,10 @@ export class AuthPlugin extends Plugin {
    */
   async isPoolAvailable(): Promise<{ available: boolean; reason?: string }> {
     try {
-      // Check for API key in URL params first, then check pool endpoint
-      const params = new URLSearchParams(window.location.search)
-      const apiKey = params.get('e2e_pool_key')
+      // Check for API key in URL params (hash-based) first, then check pool endpoint
+      const queryParams = new QueryParams()
+      const allParams = queryParams.get() as Record<string, string>
+      const apiKey = allParams.e2e_pool_key
 
       if (!apiKey) {
         // Fall back to checking the old test/available endpoint
@@ -1624,10 +1626,11 @@ export class AuthPlugin extends Plugin {
   private ensurePoolApi(): TestPoolApiService {
     if (this.testPoolApi) return this.testPoolApi
 
-    const params = new URLSearchParams(window.location.search)
-    const apiKey = params.get('e2e_pool_key')
+    const queryParams = new QueryParams()
+    const allParams = queryParams.get() as Record<string, string>
+    const apiKey = allParams.e2e_pool_key
     if (!apiKey) {
-      throw new Error('No pool API key. Pass ?e2e_pool_key=rmx_... in the URL or call poolCheckout from the test runner.')
+      throw new Error('No pool API key. Pass #e2e_pool_key=rmx_... in the URL or call poolCheckout from the test runner.')
     }
 
     this.testPoolApi = new TestPoolApiService(endpointUrls.sso, apiKey)
@@ -1643,7 +1646,9 @@ export class AuthPlugin extends Plugin {
     this.log('[AuthPlugin] Starting pool-based test login')
 
     const poolApi = this.ensurePoolApi()
-    const result = await poolApi.checkout()
+    const allParams = new QueryParams().get() as Record<string, string>
+    const groups = allParams.e2e_feature_groups ? allParams.e2e_feature_groups.split(',') : ['beta']
+    const result = await poolApi.checkout(groups)
 
     if (!result.ok || !result.data) {
       throw new Error(`Pool checkout failed: ${result.error || 'Unknown error'}`)
@@ -1693,9 +1698,9 @@ export class AuthPlugin extends Plugin {
    * Prefer using `login('test')` from the UI, or call this directly
    * from E2E test scripts that need the raw session data.
    */
-  async poolCheckout(): Promise<PoolCheckoutResponse> {
+  async poolCheckout(featureGroups: string[] = ['beta']): Promise<PoolCheckoutResponse> {
     const poolApi = this.ensurePoolApi()
-    const result = await poolApi.checkout()
+    const result = await poolApi.checkout(featureGroups)
 
     if (!result.ok || !result.data) {
       throw new Error(`Pool checkout failed: ${result.error || 'Unknown error'}`)

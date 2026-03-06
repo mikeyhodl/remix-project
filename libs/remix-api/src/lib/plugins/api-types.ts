@@ -758,6 +758,13 @@ export interface PoolUser {
 }
 
 /**
+ * Request body for POST /sso/test/pool/checkout
+ */
+export interface PoolCheckoutRequest {
+  featureGroups: string[]
+}
+
+/**
  * Response from POST /sso/test/pool/checkout
  */
 export interface PoolCheckoutResponse {
@@ -765,6 +772,7 @@ export interface PoolCheckoutResponse {
   accountId: string
   userId: number
   groupId: number
+  featureGroups: string[]
   access_token: string
   refresh_token: string
   user: PoolUser

@@ -23,6 +23,8 @@ export default function (browser: NightwatchBrowser, callback: VoidFunction, url
       if (!accessToken) return done()
 
       browser.execute(function (at: string, rt: string, uj: string) {
+        // Enable login UI (required for sign-in button to appear)
+        localStorage.setItem('enableLogin', 'true')
         localStorage.setItem('remix_access_token', at)
         if (rt) localStorage.setItem('remix_refresh_token', rt)
         if (uj) {
