@@ -161,6 +161,24 @@ export class CloudSyncEngine {
   /** Public name so external code (change tracking) can filter it out */
   static readonly MANIFEST_FILENAME = MANIFEST_FILENAME
 
+  /**
+   * Return a deep copy of the current in-memory manifest.
+   * Used by E2E tests to post to the verify-manifest endpoint.
+   * Returns null if the engine is not active.
+   */
+  getManifest(): SyncManifest | null {
+    if (!this.manifest) return null
+    return JSON.parse(JSON.stringify(this.manifest))
+  }
+
+  /**
+   * Return the workspace UUID the engine is currently bound to.
+   * Used by E2E tests alongside getManifest() for the verify call.
+   */
+  getWorkspaceUuid(): string | null {
+    return this.workspaceUuid
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────
 
   /**
@@ -1243,3 +1261,8 @@ async function parallelMap<T>(
 
 // Singleton
 export const cloudSyncEngine = new CloudSyncEngine()
+
+// Expose on window for E2E tests (verify-manifest, debugging)
+if (typeof window !== 'undefined') {
+  ;(window as any).cloudSyncEngine = cloudSyncEngine
+}

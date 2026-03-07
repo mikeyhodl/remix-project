@@ -13,7 +13,7 @@
  */
 
 import { endpointUrls } from '@remix-endpoints-helper'
-import { STSToken, CloudWorkspace } from './types'
+import { STSToken, CloudWorkspace, SyncManifest, ManifestVerifyResponse } from './types'
 
 const storageBase = () => endpointUrls.storage // e.g. "https://auth.api.remix.live:8443/storage"
 
@@ -167,6 +167,29 @@ export class VersionConflictException extends Error {
     this.name = 'VersionConflictException'
     this.currentVersion = currentVersion
   }
+}
+
+/**
+ * Verify a sync manifest against actual S3 state.
+ *
+ * Sends the browser's manifest to the backend which LISTs the real S3
+ * objects and diffs them. Returns phantoms (in manifest, not on S3),
+ * missing (on S3, not in manifest), and mismatched (ETag differs).
+ *
+ * Intended for E2E tests and debugging — not called in production.
+ */
+export async function verifyManifest(uuid: string, manifest: SyncManifest): Promise<ManifestVerifyResponse> {
+  const res = await fetch(`${storageBase()}/api/workspaces/${uuid}/verify-manifest`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: authHeaders(),
+    body: JSON.stringify({ manifest }),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Verify manifest failed (${res.status}): ${body}`)
+  }
+  return res.json()
 }
 
 /**
