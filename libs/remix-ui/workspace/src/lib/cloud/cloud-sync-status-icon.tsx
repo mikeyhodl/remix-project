@@ -130,8 +130,6 @@ export const CloudSyncStatusIcon: React.FC<CloudSyncStatusIconProps> = ({
 // ── Cloud Toggle (with integrated sync status icon) ───────────────────
 
 interface CloudToggleProps {
-  /** Called when the user clicks while NOT authenticated — should trigger login */
-  onLogin: () => void
   /** Called when the user toggles cloud ON while authenticated */
   onEnableCloud: () => void
   /** Called when the user toggles cloud OFF */
@@ -142,12 +140,11 @@ interface CloudToggleProps {
 /**
  * Single topbar widget: toggle switch + reactive cloud/sync icon.
  *
- * - Not logged in       → cloud-slash (muted) + off toggle → click logs in
- * - Logged in, cloud OFF → cloud-slash (muted) + off toggle → click enables
+ * - Not logged in       → cloud-slash (disabled, muted) + off toggle
+ * - Logged in, cloud OFF → cloud-slash + off toggle → click enables
  * - Logged in, cloud ON  → live sync icon (green/orange/red) + on toggle
  */
 export const CloudToggle: React.FC<CloudToggleProps> = ({
-  onLogin,
   onEnableCloud,
   onDisableCloud,
   className = '',
@@ -155,6 +152,7 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
   const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus } = useCloudStore()
 
   const isOn = isCloudMode
+  const isDisabled = loading || !isAuthenticated
 
   // Derive the icon: when cloud is on, reflect live sync status; when off, show cloud-slash
   const syncProps = isOn
@@ -170,22 +168,18 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
     : 'var(--bs-white)'
 
   const handleClick = useCallback(() => {
-    if (loading) return
-    if (!isAuthenticated) {
-      onLogin()
-      return
-    }
+    if (isDisabled) return
     if (isOn) {
       onDisableCloud()
     } else {
       onEnableCloud()
     }
-  }, [isAuthenticated, isOn, loading, onLogin, onEnableCloud, onDisableCloud])
+  }, [isDisabled, isOn, onEnableCloud, onDisableCloud])
 
   const tooltipText = loading
     ? 'Connecting…'
     : !isAuthenticated
-      ? 'Log in to enable cloud storage'
+      ? 'Sign in to use cloud storage'
       : isOn
         ? (syncProps!.title + ' — click to disable cloud')
         : 'Cloud storage is OFF — click to enable'
@@ -197,12 +191,13 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
         className={`d-inline-flex align-items-center border-0 p-0 ${className}`}
         style={{
           background: 'transparent',
-          cursor: loading ? 'wait' : 'pointer',
-          opacity: loading ? 0.5 : 1,
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          opacity: isDisabled ? 0.4 : 1,
           outline: 'none',
           gap: '6px',
         }}
         onClick={handleClick}
+        disabled={isDisabled}
         aria-label={tooltipText}
       >
         {/* Cloud / sync-status icon */}

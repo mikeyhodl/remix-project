@@ -904,6 +904,7 @@ const deleteWorkspaceFromProvider = async (workspaceName: string) => {
 
 export const switchToWorkspace = async (name: string) => {
   return workspaceOperationQueue.run(async function switchToWorkspace() {
+    console.log('[switchToWorkspace] called with name=', name, 'isCloudMode=', cloudStore.isCloudMode, 'stack=', new Error().stack?.split('\\n').slice(1, 4).join(' | '))
     // ── Cloud mode: delegate to cloud workspace switch ──
     if (cloudStore.isCloudMode) {
       try {

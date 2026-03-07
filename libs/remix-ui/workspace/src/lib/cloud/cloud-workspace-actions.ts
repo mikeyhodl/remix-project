@@ -179,8 +179,9 @@ export function exitCloudProvider(): void {
  * and switches to the last-active (or first) cloud workspace.
  */
 export async function enableCloud(): Promise<void> {
+  console.log('[enableCloud] called, isCloudMode=', cloudStore.isCloudMode, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (cloudStore.isCloudMode) return // already on
+  if (cloudStore.isCloudMode) { console.log('[enableCloud] already in cloud mode — returning early'); return }
 
   // Remember the current local workspace so we can restore it on disable
   const currentLocal = localStorage.getItem('currentWorkspace')
@@ -206,6 +207,7 @@ export async function enableCloud(): Promise<void> {
     if (workspaces.length > 0) {
       const lastCloudName = localStorage.getItem(cloudLocalKey('lastCloudWorkspace'))
       const targetWs = workspaces.find(w => w.name === lastCloudName) || workspaces[0]
+      console.log('[enableCloud] switching to cloud workspace:', targetWs.name, 'uuid=', targetWs.uuid)
       try {
         await switchToCloudWorkspace(targetWs, (status) => {
           cloudStore.updateSyncStatus(targetWs.uuid, status)
@@ -355,6 +357,7 @@ export async function switchToCloudWorkspace(
   cloudWorkspace: CloudWorkspace,
   onSyncStatus?: (status: WorkspaceSyncStatus) => void,
 ): Promise<void> {
+  console.log('[switchToCloudWorkspace] called for', cloudWorkspace.name, 'uuid=', cloudWorkspace.uuid, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
   const provider = _plugin.fileProviders.workspace
@@ -435,7 +438,7 @@ export async function switchToCloudWorkspace(
   } catch (err) {
     if (err instanceof WorkspaceLockedError) {
       // Workspace is locked by another device — offer to take over
-      console.warn(`[CloudSync:lock] Workspace locked by ${err.holder} (ttl=${err.ttlRemaining}s) — asking user`)
+      console.warn(`[CloudSync:lock] Workspace locked by ${err.holder} (ttl=${err.ttlRemaining}s) — asking user`, 'stack=', new Error().stack?.split('\n').slice(1, 6).join(' | '))
       onSyncStatus?.({ status: 'error', lastSync: null, pendingChanges: 0, error: 'Workspace is in use on another device' })
       const takeOver = await _plugin.call('notification', 'modal', {
         id: 'cloud-workspace-locked',

@@ -118,6 +118,7 @@ export class LockExpiredError extends Error {
 export async function acquireLock(workspaceUuid: string, opts?: { force?: boolean }): Promise<LockAcquireResult> {
   const deviceId = getDeviceId()
   const force = opts?.force ?? false
+  console.log(`[CloudLock:acquireLock] workspace=${workspaceUuid} deviceId=${deviceId} force=${force}`)
 
   const res = await fetch(`${lockBase()}/api/workspaces/${workspaceUuid}/lock`, {
     method: 'POST',

@@ -211,7 +211,9 @@ export class CloudSyncEngine {
     // Throws WorkspaceLockedError if another device holds the lock.
     // Must be before STS / S3 — no point setting up sync if locked out.
     // If forceLock is true, we steal the lock from the current holder.
+    console.log(`[CloudSync:activate] Acquiring lock for workspace ${workspaceUuid}, forceLock=${forceLock}`)
     await acquireLock(workspaceUuid, { force: forceLock })
+    console.log(`[CloudSync:activate] Lock acquired for workspace ${workspaceUuid}`)
 
     // Start heartbeat to keep the lock alive (20s interval, 60s TTL)
     this._lockHeartbeat.start(workspaceUuid, (reason) => {
