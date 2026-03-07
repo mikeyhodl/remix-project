@@ -375,17 +375,15 @@ module.exports = {
     await waitForSyncIdle(browser, 60_000)
   },
 
-  'Should verify ws-alpha restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
+  'Should verify ws-alpha restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 20000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
-
-    // Wait for sync engine to activate and pull workspace from S3
-    await waitForSyncIdle(browser)
-
-    browser
+      .pause(10000)
+      .clickLaunchIcon('filePanel')
+      .pause(3000)
       .currentWorkspaceIs('ws-alpha')
       // Verify the file exists in the tree
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemalpha-contract.sol"]', 20000)
@@ -404,17 +402,13 @@ module.exports = {
       })
   },
 
-  'Should verify ws-beta restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
+  'Should verify ws-beta restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-beta"]', 20000)
       .click('*[data-id="dropdown-item-ws-beta"]')
-
-    // Wait for sync engine to activate and pull workspace from S3
-    await waitForSyncIdle(browser)
-
-    browser
+      .pause(10000)
       .currentWorkspaceIs('ws-beta')
       // Verify both files exist
       .waitForElementVisible('*[data-id="treeViewLitreeViewItembeta-contract.sol"]', 20000)
@@ -443,17 +437,13 @@ module.exports = {
       })
   },
 
-  'Should verify ws-gamma restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
+  'Should verify ws-gamma restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-gamma"]', 20000)
       .click('*[data-id="dropdown-item-ws-gamma"]')
-
-    // Wait for sync engine to activate and pull workspace from S3
-    await waitForSyncIdle(browser)
-
-    browser
+      .pause(10000)
       .currentWorkspaceIs('ws-gamma')
       // Verify the file exists
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemgamma-main.sol"]', 20000)
@@ -795,7 +785,7 @@ module.exports = {
     await waitForSyncIdle(browser, 120_000)
   },
 
-  'Should verify workspace files restored from S3 after wipe #group5': async function (browser: NightwatchBrowser) {
+  'Should verify workspace files restored from S3 after wipe #group5': function (browser: NightwatchBrowser) {
     // The restored workspace should be listed — switch to it
     browser
       .click('*[data-id="workspacesSelect"]')
@@ -809,16 +799,13 @@ module.exports = {
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Basic")]',
         locateStrategy: 'xpath',
       })
-
-    await waitForSyncIdle(browser, 60_000)
-
-    // Verify the workspace files are restored
-    browser
+      .pause(10000)
+      .clickLaunchIcon('filePanel')
+      .pause(3000)
+      // Verify the workspace files are restored
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 20000)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemgit-test.sol"]', 20000)
-
-    // Open the test file and verify content
-    browser
+      // Open the test file and verify content
       .openFile('git-test.sol')
       .pause(2000)
       .getEditorValue((content) => {
@@ -1571,6 +1558,192 @@ module.exports = {
         browser.assert.ok(
           content.indexOf('KeeperContract') !== -1,
           'keep-me: keeper-file.sol contains contract KeeperContract'
+        )
+      })
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  //  Group 9 — File edit + file delete persistence across S3 restore
+  // ══════════════════════════════════════════════════════════════
+
+  'Should login and enable cloud for file ops test #group9': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () { localStorage.setItem('enableLogin', 'true') })
+      .refreshPage()
+      .pause(5000)
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+  },
+
+  'Should create a workspace with three files #group9': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-blank-input"]', 10000)
+      .click('*[data-id="workspace-name-blank-input"]')
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'file-ops-ws')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .currentWorkspaceIs('file-ops-ws')
+
+    // Add three files: edit-me.sol, delete-me.sol, untouched.sol
+    browser
+      .addFile('edit-me.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract EditMe {\n    string public version = "v1";\n}\n',
+      }, 'remix.config.json')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemedit-me.sol"]', 10000)
+    browser
+      .addFile('delete-me.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract DeleteMe {\n    string public msg = "soon gone";\n}\n',
+      }, 'edit-me.sol')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemdelete-me.sol"]', 10000)
+    browser
+      .addFile('untouched.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract Untouched {\n    string public msg = "never changed";\n}\n',
+      }, 'delete-me.sol')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemuntouched.sol"]', 10000)
+
+    await waitForSyncIdle(browser)
+  },
+
+  'Should edit edit-me.sol with new content #group9': async function (browser: NightwatchBrowser) {
+    browser
+      .openFile('edit-me.sol')
+      .pause(2000)
+      .setEditorValue('// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract EditMe {\n    string public version = "v2-updated";\n    uint256 public counter = 42;\n}\n')
+      .pause(1000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('v2-updated') !== -1, 'Editor contains v2-updated after edit')
+        browser.assert.ok(content.indexOf('counter = 42') !== -1, 'Editor contains counter = 42 after edit')
+      })
+
+    await waitForSyncIdle(browser)
+  },
+
+  'Should delete delete-me.sol #group9': async function (browser: NightwatchBrowser) {
+    browser
+      .removeFile('delete-me.sol', 'file-ops-ws')
+
+    await waitForSyncIdle(browser)
+  },
+
+  'Should verify state before wipe #group9': function (browser: NightwatchBrowser) {
+    // edit-me.sol should exist with v2 content
+    browser
+      .openFile('edit-me.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('v2-updated') !== -1, 'Pre-wipe: edit-me.sol has v2-updated')
+      })
+    // delete-me.sol should be gone
+    browser
+      .assert.not.elementPresent('*[data-id="treeViewLitreeViewItemdelete-me.sol"]')
+    // untouched.sol should still be there
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemuntouched.sol"]', 10000)
+  },
+
+  'Should wipe local data and reload #group9': async function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () {
+        // Clear workspace names from localStorage BEFORE wipe/reload
+        // so that after reload, enableCloud triggers a fresh workspace switch
+        // (otherwise Redux may see the same name and skip re-rendering the tree)
+        localStorage.removeItem('currentWorkspace')
+        localStorage.removeItem('lastCloudWorkspace')
+        // Also try cloud-scoped keys
+        for (var i = 0; i < localStorage.length; i++) {
+          var key = localStorage.key(i) || ''
+          if (key.indexOf('lastCloudWorkspace') >= 0) {
+            localStorage.removeItem(key)
+          }
+        }
+        return (window as any).remixFileSystem.unlink('.cloud-workspaces')
+      }, [], function () {
+        console.log('[group9] Wiped .cloud-workspaces + localStorage from local FS')
+      })
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(15000)
+    await waitForSyncIdle(browser, 60_000)
+    // Extra pause to ensure the S3 pull and file tree are fully loaded
+    browser.pause(5000)
+  },
+
+  'Should verify edit-me.sol has v2 content after S3 restore #group9': async function (browser: NightwatchBrowser) {
+    // The first enableCloud restored data from S3 but the tree may not render.
+    // Do a second refresh → enableCloud cycle to ensure proper tree rendering.
+    browser
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+
+    await waitForSyncIdle(browser, 60_000)
+
+    // Click file panel to ensure it's active and renders the tree
+    await browser
+      .clickLaunchIcon('filePanel')
+      .pause(3000)
+      .currentWorkspaceIs('file-ops-ws')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemedit-me.sol"]', 30000)
+      .openFile('edit-me.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(
+          content.indexOf('v2-updated') !== -1,
+          'After restore: edit-me.sol contains v2-updated'
+        )
+        browser.assert.ok(
+          content.indexOf('counter = 42') !== -1,
+          'After restore: edit-me.sol contains counter = 42'
+        )
+        browser.assert.ok(
+          content.indexOf('version = "v1"') === -1,
+          'After restore: edit-me.sol no longer contains old v1 content'
+        )
+      })
+  },
+
+  'Should verify delete-me.sol is still gone after S3 restore #group9': function (browser: NightwatchBrowser) {
+    browser
+      .assert.not.elementPresent('*[data-id="treeViewLitreeViewItemdelete-me.sol"]')
+  },
+
+  'Should verify untouched.sol is unchanged after S3 restore #group9': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemuntouched.sol"]', 30000)
+      .openFile('untouched.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(
+          content.indexOf('never changed') !== -1,
+          'After restore: untouched.sol still contains "never changed"'
         )
       })
   }
