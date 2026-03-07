@@ -1210,4 +1210,148 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileA.sol"]', 20000)
   },
 
+  // ───── Group 7: logout / login isolation — cloud workspaces are per-account ─────
+
+  'Should login and create a cloud workspace with data #group7': async function (browser: NightwatchBrowser) {
+    // Standard pool login flow
+    browser
+      .execute(function () {
+        localStorage.setItem('enableLogin', 'true')
+      })
+      .refreshPage()
+      .pause(5000)
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+
+    // Dismiss migration dialog if it auto-appears
+    browser
+      .execute(function () {
+        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
+        if (skip && skip.offsetParent !== null) skip.click()
+      })
+      .pause(2000)
+
+    // Create a cloud workspace from the Blank template
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-blank-input"]', 10000)
+      .click('*[data-id="workspace-name-blank-input"]')
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'user1-cloud-ws')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .currentWorkspaceIs('user1-cloud-ws')
+
+    // Wait for cloud sync to finish
+    await waitForSyncIdle(browser)
+  },
+
+  'Should add a file to the cloud workspace #group7': async function (browser: NightwatchBrowser) {
+    browser
+      .addFile('isolation-test.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract IsolationTest {\n    string public owner = "user1";\n}\n',
+      }, 'remix.config.json')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemisolation-test.sol"]', 10000)
+
+    await waitForSyncIdle(browser)
+  },
+
+  'Should verify workspace content before logout #group7': function (browser: NightwatchBrowser) {
+    browser
+      .openFile('isolation-test.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('IsolationTest') !== -1, 'Cloud workspace has IsolationTest contract')
+      })
+  },
+
+  'Should log out and see only local default workspace #group7': function (browser: NightwatchBrowser) {
+    // Open user menu and click Sign Out
+    browser
+      .click('*[data-id="user-menu-compact"]')
+      .pause(1000)
+      .waitForElementVisible('*[data-id="user-menu-sign-out"]', 5000)
+      .click('*[data-id="user-menu-sign-out"]')
+      .pause(5000)
+
+    // After logout, should see the Sign In button again
+    browser
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+
+    // Cloud workspace should NOT be in the dropdown — only the local default_workspace
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .assert.not.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "user1-cloud-ws")]',
+        locateStrategy: 'xpath',
+      })
+      // There should be a default workspace
+      .assert.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "default_workspace")]',
+        locateStrategy: 'xpath',
+      })
+      // Close the dropdown
+      .click('*[data-id="workspacesSelect"]')
+      .pause(500)
+  },
+
+  'Should login with a new pool account #group7': function (browser: NightwatchBrowser) {
+    // Log in again — the pool should give us a DIFFERENT account
+    browser
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+
+    // Dismiss migration dialog if it auto-appears
+    browser
+      .execute(function () {
+        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
+        if (skip && skip.offsetParent !== null) skip.click()
+      })
+      .pause(3000)
+  },
+
+  'Should NOT see the first user cloud workspace #group7': function (browser: NightwatchBrowser) {
+    // The new user should not have user1-cloud-ws in their workspace list
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .assert.not.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "user1-cloud-ws")]',
+        locateStrategy: 'xpath',
+      })
+      // Close dropdown
+      .click('*[data-id="workspacesSelect"]')
+      .pause(500)
+  },
+
 }

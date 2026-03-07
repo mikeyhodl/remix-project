@@ -334,6 +334,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
 
               {/* Sign Out */}
               <button
+                data-id="user-menu-sign-out"
                 className="dropdown-item user-menu-item-danger"
                 onClick={() => { trackEvent('signOut'); onLogout() }}
               >
