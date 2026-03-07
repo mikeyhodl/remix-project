@@ -78,15 +78,15 @@ export function MainnetPrompt({ udappDeploy, tx, network, amount, gasEstimation,
       </div>
       <div className="mt-3">
         <div>
-          <span className="text-dark me-2">From:</span>
+          <span className="text-dark me-2"><FormattedMessage id="udapp.fromLabel" /></span>
           <span>{tx.from}</span>
         </div>
         <div>
-          <span className="text-dark me-2">To:</span>
+          <span className="text-dark me-2"><FormattedMessage id="udapp.toLabel" /></span>
           <span>{tx.to ? tx.to : `(${intl.formatMessage({ id: 'udapp.contractCreation' })})`}</span>
         </div>
         <div className="d-flex align-items-center">
-          <span className="text-dark me-2">Data:</span>
+          <span className="text-dark me-2"><FormattedMessage id="udapp.dataLabel" /></span>
           <pre className="udapp_wrapword mb-0">
             {tx.data && tx.data.length > 50 ? tx.data.substring(0, 49) + '...' : tx.data}
             <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copy' })} content={tx.data} />
@@ -124,7 +124,7 @@ export function MainnetPrompt({ udappDeploy, tx, network, amount, gasEstimation,
                   onInput={(e: any) => onMaxPriorityFeeChange(e.target.value)}
                   defaultValue={maxPriorityFee}
                 />
-                <span title="visit https://ethgasstation.info for current gas price info.">Gwei</span>
+                <span title={intl.formatMessage({ id: 'udapp.gweiGasPriceInfo' })}>Gwei</span>
               </div>
             </div>
             <div className="align-items-center my-1" title={intl.formatMessage({ id: 'udapp.title2' })}>

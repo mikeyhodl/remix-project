@@ -1,5 +1,5 @@
 import React, { useMemo, useContext } from 'react'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import { CustomToggle } from '@remix-ui/helper'
 import { TransactionsAppContext } from '../contexts'
@@ -8,6 +8,7 @@ import { TransactionRecordCard } from '../components/TransactionRecordCard'
 import { TransactionItem } from '../components/TransactionItem'
 
 function TransactionsPortraitView() {
+  const intl = useIntl()
   const { plugin, widgetState, dispatch, themeQuality } = useContext(TransactionsAppContext)
 
   const { activeTab, sortOrder, showClearAllDialog, showSaveDialog, scenarioInput } = widgetState
@@ -30,7 +31,7 @@ function TransactionsPortraitView() {
 
   const handleSaveClick = async () => {
     if (widgetState.recorderData.journal.length === 0) {
-      await plugin.call('notification', 'toast', 'There are no transactions to save')
+      await plugin.call('notification', 'toast', intl.formatMessage({ id: 'udapp.noTransactionsToSave' }))
       return
     }
     dispatch({ type: 'SHOW_SAVE_DIALOG', payload: true })
@@ -126,7 +127,7 @@ function TransactionsPortraitView() {
         { !showClearAllDialog && !showSaveDialog &&
           <div>
             <button data-id="save-transactions" className='btn btn-primary btn-sm small p-1' style={{ fontSize: '0.6rem' }} onClick={handleSaveClick}>
-              <i className='fa-solid fa-floppy-disk'></i> Save
+              <i className='fa-solid fa-floppy-disk'></i> <FormattedMessage id="udapp.saveButton" />
             </button>
             <button
               className="btn btn-outline-danger btn-sm pe-0"
@@ -145,7 +146,7 @@ function TransactionsPortraitView() {
         <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
           <div className="d-flex justify-content-between align-items-center mb-2">
             <p className="mb-0" style={{ color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.9rem' }}>
-              Save transactions
+              <FormattedMessage id="udapp.saveTransactionsHeader" />
             </p>
             <button
               className="btn btn-sm"
@@ -168,7 +169,7 @@ function TransactionsPortraitView() {
           </p>
           <div className="d-flex align-items-center mb-2">
             <label className="mb-0 me-2" style={{ color: 'var(--bs-tertiary)' }}>
-                Scenario name
+              <FormattedMessage id="udapp.scenarioNameLabel" />
             </label>
           </div>
           <div className="position-relative flex-fill">
@@ -186,7 +187,7 @@ function TransactionsPortraitView() {
               onClick={handleSaveScenario}
               style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', zIndex: 2, fontSize: '0.65rem', fontWeight: 'bold' }}
             >
-                Save
+              <FormattedMessage id="udapp.saveButton" />
             </button>
           </div>
         </div>
@@ -220,7 +221,7 @@ function TransactionsPortraitView() {
               defaultMessage="You are about to delete the list of your recorded transactions."
             />
           </p>
-          <p style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>Do you want to proceed?</p>
+          <p style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.doYouWantToProceed" /></p>
           <div className="d-flex justify-content-between align-items-center gap-3">
             <button
               className="btn btn-sm btn-secondary flex-fill"
@@ -278,11 +279,11 @@ function TransactionsPortraitView() {
                   icon="fas fa-caret-down ms-2"
                   useDefaultIcon={false}
                 >
-                  {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+                  {sortOrder === 'newest' ? intl.formatMessage({ id: 'udapp.newestSortLabel' }) : intl.formatMessage({ id: 'udapp.oldestSortLabel' })}
                 </Dropdown.Toggle>
                 <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', padding: 0, '--bs-dropdown-min-width' : '5rem' } as React.CSSProperties}>
-                  <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'newest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>Newest</Dropdown.Item>
-                  <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'oldest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>Oldest</Dropdown.Item>
+                  <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'newest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.newestSortLabel" /></Dropdown.Item>
+                  <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'oldest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.oldestSortLabel" /></Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             </div>
