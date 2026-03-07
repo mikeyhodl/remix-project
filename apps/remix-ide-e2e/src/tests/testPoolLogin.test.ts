@@ -2,7 +2,7 @@
 import { NightwatchBrowser } from 'nightwatch'
 import init from '../helpers/init'
 import { releaseAccount } from '../helpers/pool'
-import { waitAndVerifySync } from '../helpers/cloud-sync-verify'
+import { waitAndVerifySync, waitForSyncIdle } from '../helpers/cloud-sync-verify'
 
 require('dotenv').config()
 
@@ -120,7 +120,7 @@ module.exports = {
 
   // ── Cloud workspace + sync verification ────────────────
 
-  'Should create a cloud workspace #group2': function (browser: NightwatchBrowser) {
+  'Should create a cloud workspace #group2': async function (browser: NightwatchBrowser) {
     // group2 needs login first — repeat the login flow
     browser
       .execute(function () {
@@ -158,9 +158,10 @@ module.exports = {
       .setValue('*[data-id="workspace-name-blank-input"]', 'e2e-sync-test')
       .pause(500)
       .click('*[data-id="validate-blankworkspace-button"]')
-      // Wait for workspace to initialize and cloud sync engine to activate
       .currentWorkspaceIs('e2e-sync-test')
-      .pause(15000)
+
+    // Wait for cloud sync engine to activate and complete initial sync
+    await waitForSyncIdle(browser)
   },
 
   'Should create a test file in the cloud workspace #group2': function (browser: NightwatchBrowser) {
@@ -173,10 +174,7 @@ module.exports = {
   },
 
   'Should flush pending changes and verify sync integrity #group2': async function (browser: NightwatchBrowser) {
-    // Wait for the automatic sync timer (10s interval) to pick up changes
-    browser.pause(15000)
-
-    // Now verify the manifest matches S3 reality
+    // waitAndVerifySync polls until the engine is idle with 0 pending changes
     const result = await waitAndVerifySync(browser, 30_000, {
       allowPhantoms: 0,
       allowMissing: 0,
@@ -196,10 +194,7 @@ module.exports = {
         browser.assert.ok(content.indexOf('setName') !== -1, 'Editor contains the new setName function')
       })
 
-    // Wait for auto-sync to push the edit
-    browser.pause(15000)
-
-    // Verify again — the updated ETag should match
+    // waitAndVerifySync polls until the engine is idle — no manual pause needed
     const result = await waitAndVerifySync(browser, 30_000)
     console.log(`[TestPoolLogin:SyncVerify] After edit: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
@@ -209,17 +204,14 @@ module.exports = {
     browser
       .removeFile('test-sync.sol', 'e2e-sync-test')
 
-    // Wait for auto-sync to propagate the deletion
-    browser.pause(15000)
-
-    // Verify — the deleted file should not appear as phantom or missing
+    // waitAndVerifySync polls until the engine is idle — no manual pause needed
     const result = await waitAndVerifySync(browser, 30_000)
     console.log(`[TestPoolLogin:SyncVerify] After delete: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
   // ── S3 Restore: wipe local, reload, verify restore ────────
 
-  'Should login and create first cloud workspace ws-alpha #group3': function (browser: NightwatchBrowser) {
+  'Should login and create first cloud workspace ws-alpha #group3': async function (browser: NightwatchBrowser) {
     // Login (each group is isolated)
     browser
       .execute(function () {
@@ -257,16 +249,17 @@ module.exports = {
       .pause(500)
       .click('*[data-id="validate-blankworkspace-button"]')
       .currentWorkspaceIs('ws-alpha')
-      .pause(10000) // wait for cloud engine to activate
       // Add a unique file
       .addFile('alpha-contract.sol', {
         content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract AlphaTest {\n    string public name = "alpha";\n\n    function greet() public pure returns (string memory) {\n        return "Hello from Alpha";\n    }\n}\n'
       }, 'remix.config.json')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemalpha-contract.sol"]', 10000)
-      .pause(15000) // wait for auto-sync to push
+
+    // Wait for cloud sync engine to push all changes to S3
+    await waitForSyncIdle(browser)
   },
 
-  'Should create second cloud workspace ws-beta #group3': function (browser: NightwatchBrowser) {
+  'Should create second cloud workspace ws-beta #group3': async function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -284,7 +277,6 @@ module.exports = {
       .pause(500)
       .click('*[data-id="validate-blankworkspace-button"]')
       .currentWorkspaceIs('ws-beta')
-      .pause(10000)
       // Add unique files
       .addFile('beta-contract.sol', {
         content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract BetaTest {\n    uint256 public counter;\n\n    function increment() public {\n        counter += 1;\n    }\n\n    function getCounter() public view returns (uint256) {\n        return counter;\n    }\n}\n'
@@ -294,10 +286,12 @@ module.exports = {
         content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nlibrary BetaLib {\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\n        return a + b;\n    }\n}\n'
       }, 'remix.config.json')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItembeta-lib.sol"]', 10000)
-      .pause(15000) // wait for auto-sync
+
+    // Wait for cloud sync engine to push all changes to S3
+    await waitForSyncIdle(browser)
   },
 
-  'Should create third cloud workspace ws-gamma #group3': function (browser: NightwatchBrowser) {
+  'Should create third cloud workspace ws-gamma #group3': async function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -315,13 +309,14 @@ module.exports = {
       .pause(500)
       .click('*[data-id="validate-blankworkspace-button"]')
       .currentWorkspaceIs('ws-gamma')
-      .pause(10000)
       // Add a unique file
       .addFile('gamma-main.sol', {
         content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract GammaMain {\n    address public owner;\n\n    constructor() {\n        owner = msg.sender;\n    }\n\n    function getOwner() public view returns (address) {\n        return owner;\n    }\n}\n'
       }, 'remix.config.json')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemgamma-main.sol"]', 10000)
-      .pause(15000) // wait for auto-sync
+
+    // Wait for cloud sync engine to push all changes to S3
+    await waitForSyncIdle(browser)
   },
 
   'Should verify sync integrity for all three workspaces #group3': async function (browser: NightwatchBrowser) {
@@ -335,8 +330,8 @@ module.exports = {
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-beta"]', 10000)
       .click('*[data-id="dropdown-item-ws-beta"]')
-      .pause(10000) // wait for sync engine to activate + pull
 
+    // waitAndVerifySync polls until engine is idle — covers activate + pull
     const betaResult = await waitAndVerifySync(browser, 30_000)
     console.log(`[group3] ws-beta: manifest=${betaResult.manifestFileCount}, remote=${betaResult.remoteFileCount}, ok=${betaResult.ok}`)
 
@@ -346,13 +341,13 @@ module.exports = {
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 10000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
-      .pause(10000)
 
+    // waitAndVerifySync polls until engine is idle — covers activate + pull
     const alphaResult = await waitAndVerifySync(browser, 30_000)
     console.log(`[group3] ws-alpha: manifest=${alphaResult.manifestFileCount}, remote=${alphaResult.remoteFileCount}, ok=${alphaResult.ok}`)
   },
 
-  'Should wipe local cloud data and reload the page #group3': function (browser: NightwatchBrowser) {
+  'Should wipe local cloud data and reload the page #group3': async function (browser: NightwatchBrowser) {
     browser
       // Wipe the local .cloud-workspaces directory from IndexedDB
       .execute(function () {
@@ -360,23 +355,25 @@ module.exports = {
       }, [], function (result: any) {
         console.log('[group3] Wiped .cloud-workspaces from local FS')
       })
-      .pause(2000)
       // Reload the page — tokens stay in localStorage, so user is still logged in
       .refresh()
-      .pause(3000)
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
-      // The cloud system should detect the login and re-pull workspaces from API + S3
-      // Give enough time for all workspaces to be discovered and the initial one to load
-      .pause(20000)
+
+    // Wait for cloud system to discover workspaces and complete initial pull from S3
+    await waitForSyncIdle(browser, 60_000)
   },
 
-  'Should verify ws-alpha restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-alpha restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 20000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
-      .pause(15000) // wait for sync engine to pull from S3
+
+    // Wait for sync engine to activate and pull workspace from S3
+    await waitForSyncIdle(browser)
+
+    browser
       .currentWorkspaceIs('ws-alpha')
       // Verify the file exists in the tree
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemalpha-contract.sol"]', 20000)
@@ -395,13 +392,17 @@ module.exports = {
       })
   },
 
-  'Should verify ws-beta restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-beta restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-beta"]', 20000)
       .click('*[data-id="dropdown-item-ws-beta"]')
-      .pause(15000) // wait for sync engine to pull from S3
+
+    // Wait for sync engine to activate and pull workspace from S3
+    await waitForSyncIdle(browser)
+
+    browser
       .currentWorkspaceIs('ws-beta')
       // Verify both files exist
       .waitForElementVisible('*[data-id="treeViewLitreeViewItembeta-contract.sol"]', 20000)
@@ -430,13 +431,17 @@ module.exports = {
       })
   },
 
-  'Should verify ws-gamma restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-gamma restored from S3 with correct files #group3': async function (browser: NightwatchBrowser) {
     browser
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-gamma"]', 20000)
       .click('*[data-id="dropdown-item-ws-gamma"]')
-      .pause(15000) // wait for sync engine to pull from S3
+
+    // Wait for sync engine to activate and pull workspace from S3
+    await waitForSyncIdle(browser)
+
+    browser
       .currentWorkspaceIs('ws-gamma')
       // Verify the file exists
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemgamma-main.sol"]', 20000)

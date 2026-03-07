@@ -196,6 +196,65 @@ export async function assertCloudSyncIntegrity(
 
   return result
 }
+ 
+/**
+ * Wait until the cloud sync engine is active, idle, and has zero pending changes.
+ *
+ * Use this instead of arbitrary `pause()` calls after file operations or
+ * workspace creation.  Polls every 500ms and resolves once the engine
+ * reports `{ status: 'idle', pendingChanges: 0 }`.
+ *
+ * After a workspace switch the engine is briefly still "active + idle" for
+ * the *old* workspace before it deactivates and reactivates for the new one.
+ * To handle this, we wait to see the engine go through a non-idle or inactive
+ * state (a "transition") before accepting an idle result.  If no transition
+ * is observed within 3 seconds the idle state is accepted as genuine.
+ *
+ * @param browser   Nightwatch browser instance
+ * @param timeoutMs Max time to wait (default 30 000 ms)
+ */
+export async function waitForSyncIdle(
+  browser: NightwatchBrowser,
+  timeoutMs = 30_000,
+): Promise<void> {
+  const start = Date.now()
+  const transitionGrace = 3_000 // max time to wait for a transition before accepting idle
+  let sawTransition = false
+  let ready = false
+
+  while (Date.now() - start < timeoutMs && !ready) {
+    const state = await new Promise<{ isActive: boolean; isIdle: boolean }>((resolve) => {
+      browser.execute(
+        function () {
+          const engine = (window as any).cloudSyncEngine
+          if (!engine || !engine.isActive) return { isActive: false, isIdle: false }
+          const s = engine.status
+          return { isActive: true, isIdle: s.status === 'idle' && s.pendingChanges === 0 }
+        },
+        [],
+        (result: any) => resolve(result?.value || { isActive: false, isIdle: false }),
+      )
+    })
+
+    if (!state.isActive || !state.isIdle) {
+      sawTransition = true
+    }
+
+    if (state.isActive && state.isIdle) {
+      if (sawTransition || Date.now() - start >= transitionGrace) {
+        ready = true
+      }
+    }
+
+    if (!ready) {
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  }
+
+  if (!ready) {
+    console.warn(`[waitForSyncIdle] Timed out after ${timeoutMs}ms`)
+  }
+}
 
 /**
  * Convenience: wait for sync engine to be idle (pendingChanges === 0),
@@ -210,34 +269,6 @@ export async function waitAndVerifySync(
   waitMs = 30_000,
   options: SyncVerifyOptions = {},
 ): Promise<SyncVerifyResult> {
-  // Poll until pendingChanges === 0 and status === 'idle'
-  const start = Date.now()
-  let ready = false
-
-  while (Date.now() - start < waitMs && !ready) {
-    ready = await new Promise<boolean>((resolve) => {
-      browser.execute(
-        function () {
-          const engine = (window as any).cloudSyncEngine
-          if (!engine || !engine.isActive) return false
-          const status = engine.status
-          return status.status === 'idle' && status.pendingChanges === 0
-        },
-        [],
-        (result: any) => {
-          resolve(result?.value === true)
-        },
-      )
-    })
-
-    if (!ready) {
-      await new Promise((r) => setTimeout(r, 2000))
-    }
-  }
-
-  if (!ready) {
-    console.warn(`[SyncVerify] Sync engine not idle after ${waitMs}ms — verifying anyway`)
-  }
-
+  await waitForSyncIdle(browser, waitMs)
   return assertCloudSyncIntegrity(browser, options)
 }
