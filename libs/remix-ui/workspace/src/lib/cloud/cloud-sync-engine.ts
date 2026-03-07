@@ -426,6 +426,7 @@ export class CloudSyncEngine {
       for (const obj of remoteObjects) {
         if (obj.key.endsWith('/')) continue // skip dir markers
         if (obj.key === WORKSPACE_ZIP_KEY) continue // skip the zip itself
+        if (obj.key.startsWith('_workspace_backup_')) continue // skip snapshot backups
         if (obj.key === GIT_ZIP_KEY) {
           const oldEtag = this._lastGitZipEtag
           this._lastGitZipEtag = obj.etag || null
@@ -498,6 +499,7 @@ export class CloudSyncEngine {
         continue
       }
       if (!obj.key.endsWith('/') && obj.key !== WORKSPACE_ZIP_KEY
+        && !obj.key.startsWith('_workspace_backup_')
         && obj.key !== '.git' && !obj.key.startsWith('.git/')) {
         remoteMap.set(obj.key, obj)
       }
@@ -1026,7 +1028,19 @@ export class CloudSyncEngine {
    */
   private async pushSnapshot(): Promise<void> {
     if (!this.s3 || !this.localWorkspacePath) return
-    const startTime = Date.now()
+
+    // Back up the current _workspace.zip before overwriting (copy-on-write).
+    // The backup key includes a timestamp so multiple versions accumulate.
+    // Failure is non-fatal — we still push the new snapshot.
+    try {
+      const backupKey = `_workspace_backup_${Date.now()}.zip`
+      const copied = await this.s3.copyObject(WORKSPACE_ZIP_KEY, backupKey)
+      if (copied) {
+        console.log(`[CloudSync:snapshot] Backed up ${WORKSPACE_ZIP_KEY} → ${backupKey}`)
+      }
+    } catch (err) {
+      console.warn('[CloudSync:snapshot] Backup copy failed (non-fatal):', err.message || err)
+    }
 
     const zipData = await packWorkspace(this.localWorkspacePath, this.fs)
 
