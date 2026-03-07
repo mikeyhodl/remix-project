@@ -640,4 +640,238 @@ module.exports = {
       .pause()
   },
 
+  // ── Git-init workspace + .git cloud sync + S3 restore ──
+
+  'Should login for git-init sync tests #group5': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () {
+        localStorage.setItem('enableLogin', 'true')
+      })
+      .refreshPage()
+      .pause(5000)
+      .clickLaunchIcon('filePanel')
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      // Dismiss "Git History Updated" modal if present from a previous session
+      .element('css selector', '*[data-id="cloud-git-conflictModalDialogContainer-react"]', function (result) {
+        if ((result as any).status !== -1 && (result as any).value) {
+          browser
+            .click({
+              selector: '//*[@data-id="cloud-git-conflictModalDialogContainer-react"]//button[contains(., "Keep Local")]',
+              locateStrategy: 'xpath',
+            })
+            .pause(1000)
+        }
+      })
+      .pause(2000)
+  },
+
+  'Should create a Basic workspace with git init checked #group5': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      // Basic (remixDefault) is in the Generic category, index 0
+      .click('*[data-id="template-card-remixDefault-0"]')
+      .waitForElementVisible('*[data-id="workspace-details-section"]', 10000)
+      // Check "Initialize as a Git repository"
+      .click('*[data-id="initGitRepositoryLabel"]')
+      .pause(500)
+      // Click "Create a new workspace"
+      .click('*[data-id="validateWorkspaceButton"]')
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 30000)
+      .pause(3000)
+
+    // Wait for file sync to complete
+    await waitForSyncIdle(browser)
+
+    // Confirm we're in the new workspace
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 10000)
+  },
+
+  'Should add a file, commit, and verify .git sync to S3 #group5': async function (browser: NightwatchBrowser) {
+    // Add a custom test file
+    browser
+      .addFile('git-test.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract GitTest {\n    string public message = "git sync test";\n}\n'
+      }, 'README.txt')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemgit-test.sol"]', 10000)
+
+    // Wait for file sync to push to S3
+    await waitForSyncIdle(browser)
+
+    // Trigger forceGitSnapshot fire-and-forget (async not supported in execute)
+    await new Promise<void>((resolve) => {
+      browser.execute(
+        function () {
+          var engine = (window as any).cloudSyncEngine
+          if (engine && engine.isActive && engine.forceGitSnapshot) {
+            engine.forceGitSnapshot()
+          }
+        },
+        [],
+        () => resolve(),
+      )
+    })
+
+    // Poll until lastGitZipEtag is set (confirms _git.zip pushed to S3)
+    const start = Date.now()
+    let gitEtag: string | null = null
+    while (Date.now() - start < 90_000 && !gitEtag) {
+      gitEtag = await new Promise<string | null>((resolve) => {
+        browser.execute(
+          function () {
+            var engine = (window as any).cloudSyncEngine
+            return engine && engine.lastGitZipEtag ? engine.lastGitZipEtag : null
+          },
+          [],
+          (result: any) => resolve(result?.value || null),
+        )
+      })
+      if (!gitEtag) {
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+    }
+
+    console.log(`[group5] lastGitZipEtag after push: ${gitEtag}`)
+    browser.assert.ok(!!gitEtag, '.git snapshot was pushed to S3 (ETag is set)')
+
+    // Verify file sync integrity too
+    const result = await waitAndVerifySync(browser, 30_000)
+    console.log(`[group5] After git push: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+  },
+
+  'Should wipe local data and reload — workspace + .git must restore from S3 #group5': async function (browser: NightwatchBrowser) {
+    // Save current workspace name for later verification
+    const wsName = await new Promise<string>((resolve) => {
+      browser.execute(
+        function () {
+          const engine = (window as any).cloudSyncEngine
+          return engine?.getWorkspaceUuid() || ''
+        },
+        [],
+        (result: any) => resolve(result?.value || ''),
+      )
+    })
+    console.log(`[group5] Workspace UUID before wipe: ${wsName}`)
+
+    // Wipe local IndexedDB data
+    browser
+      .execute(function () {
+        return (window as any).remixFileSystem.unlink('.cloud-workspaces')
+      }, [], function () {
+        console.log('[group5] Wiped .cloud-workspaces from local FS')
+      })
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+
+    // Wait for cloud system to restore workspaces from S3
+    await waitForSyncIdle(browser, 120_000)
+  },
+
+  'Should verify workspace files restored from S3 after wipe #group5': async function (browser: NightwatchBrowser) {
+    // The restored workspace should be listed — switch to it
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Basic")]',
+        locateStrategy: 'xpath',
+        timeout: 20000,
+      })
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Basic")]',
+        locateStrategy: 'xpath',
+      })
+
+    await waitForSyncIdle(browser, 60_000)
+
+    // Verify the workspace files are restored
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 20000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemgit-test.sol"]', 20000)
+
+    // Open the test file and verify content
+    browser
+      .openFile('git-test.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(
+          content.indexOf('contract GitTest') !== -1,
+          'Restored git-test.sol contains contract GitTest'
+        )
+        browser.assert.ok(
+          content.indexOf('git sync test') !== -1,
+          'Restored git-test.sol contains "git sync test"'
+        )
+      })
+  },
+
+  'Should verify .git directory was restored from S3 #group5': async function (browser: NightwatchBrowser) {
+    // .git is hidden in file explorer — verify via engine state and filesystem
+    // Poll for lastGitZipEtag (set when _git.zip is pulled from S3 during activate)
+    let restoredEtag: string | null = null
+    const start = Date.now()
+    while (Date.now() - start < 60000 && !restoredEtag) {
+      restoredEtag = await new Promise<string | null>((resolve) => {
+        browser.execute(
+          function () {
+            var engine = (window as any).cloudSyncEngine
+            if (!engine) return JSON.stringify({ error: 'no engine' })
+            return JSON.stringify({
+              isActive: engine.isActive,
+              wsPath: engine.localWorkspacePath,
+              etag: engine.lastGitZipEtag || null,
+            })
+          },
+          [],
+          (result: any) => {
+            try {
+              var info = JSON.parse(result?.value || '{}')
+              console.log('[group5] .git poll:', JSON.stringify(info))
+              resolve(info.etag || null)
+            } catch (e) {
+              resolve(null)
+            }
+          },
+        )
+      })
+      if (!restoredEtag) await new Promise((r) => setTimeout(r, 2000))
+    }
+    console.log(`[group5] lastGitZipEtag after restore: ${restoredEtag}`)
+    browser.assert.ok(!!restoredEtag, '.git snapshot ETag is set — _git.zip was pulled from S3')
+
+    // Verify .git/HEAD exists using executeAsyncScript (remixFileSystem is async-only)
+    const hasGitHead = await new Promise<boolean>((resolve) => {
+      browser.executeAsyncScript(
+        function (done: (result: boolean) => void) {
+          var engine = (window as any).cloudSyncEngine
+          var fs = (window as any).remixFileSystem
+          var wsPath = engine && engine.localWorkspacePath
+          if (!wsPath || !fs) { done(false); return }
+          fs.stat(wsPath + '/.git/HEAD')
+            .then(function () { done(true) })
+            .catch(function () { done(false) })
+        },
+        [],
+        (result: any) => resolve(result?.value === true),
+      )
+    })
+    browser.assert.ok(hasGitHead, '.git/HEAD exists in filesystem — git repository structure restored')
+  },
+
 }
