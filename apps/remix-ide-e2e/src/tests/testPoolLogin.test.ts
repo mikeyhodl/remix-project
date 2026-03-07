@@ -460,4 +460,184 @@ module.exports = {
       })
   },
 
+  // ── Git-clone workspace templates ──────────────────────
+
+  'Should login for git clone tests #group4': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () {
+        localStorage.setItem('enableLogin', 'true')
+      })
+      .refreshPage()
+      .pause(5000)
+      .clickLaunchIcon('filePanel')
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+  },
+
+  'Should clone Account Abstraction repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      // accountAbstraction is in the Generic category, index 3
+      .click('*[data-id="template-card-accountAbstraction-3"]')
+      .waitForElementVisible('*[data-id="generic-template-section-accountAbstraction"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-accountAbstraction-input"]', 10000)
+      // Click Finish to start cloning
+      .click('*[data-id="validate-accountAbstractionworkspace-button"]')
+      // Wait for modal to disappear — clone is complete once modal closes
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 120000)
+      .pause(3000)
+
+    // Wait for sync engine to activate and push to S3
+    await waitForSyncIdle(browser, 120_000)
+
+    // Verify key files from the account-abstraction repo exist
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemtest"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItempackage.json"]', 10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemLICENSE"]', 10000)
+
+    // Verify sync integrity
+    const result = await waitAndVerifySync(browser, 60_000)
+    console.log(`[group4] accountAbstraction: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+  },
+
+  'Should clone Uniswap v4 Template repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      // uniswapV4Template is in the Uniswap V4 category, index 0
+      .click('*[data-id="template-card-uniswapV4Template-0"]')
+      .waitForElementVisible('*[data-id="generic-template-section-uniswapV4Template"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-uniswapV4Template-input"]', 10000)
+      // Click Finish to start cloning
+      .click('*[data-id="validate-uniswapV4Templateworkspace-button"]')
+      // Wait for modal to disappear — clone completes when modal closes
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 120000)
+      .pause(3000)
+
+    // Wait for sync engine to activate and push to S3
+    await waitForSyncIdle(browser, 120_000)
+
+    // Verify key files from the v4-template repo exist
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemsrc"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemlib"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemscript"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemtest"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfoundry.toml"]', 10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 10000)
+
+    // Verify sync integrity
+    const result = await waitAndVerifySync(browser, 60_000)
+    console.log(`[group4] uniswapV4Template: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+  },
+
+  'Should clone Breakthrough-Labs Hooks repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      // breakthroughLabsUniswapv4Hooks is in the Uniswap V4 category, index 1
+      .click('*[data-id="template-card-breakthroughLabsUniswapv4Hooks-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-breakthroughLabsUniswapv4Hooks"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-breakthroughLabsUniswapv4Hooks-input"]', 10000)
+      // Click Finish to start cloning
+      .click('*[data-id="validate-breakthroughLabsUniswapv4Hooksworkspace-button"]')
+      // Wait for modal to disappear — clone completes when modal closes
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 120000)
+      .pause(3000)
+
+    // Wait for sync engine to activate and push to S3
+    await waitForSyncIdle(browser, 120_000)
+
+    // Verify key files from the Uniswapv4Hooks repo exist
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemsrc"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemlib"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemtest"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfoundry.toml"]', 10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItem.gitmodules"]', 10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 10000)
+
+    // Verify sync integrity
+    const result = await waitAndVerifySync(browser, 60_000)
+    console.log(`[group4] breakthroughLabsUniswapv4Hooks: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+  },
+
+  'Should verify all cloned workspaces are listed and switchable #group4': async function (browser: NightwatchBrowser) {
+    // Open workspace dropdown and verify all three cloned workspaces are listed
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+
+    // Verify the workspace items exist in the dropdown (names may have suffix like "- 1")
+    browser
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Account Abstraction")]',
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Uniswap v4 Template")]',
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Breakthrough-Labs Hooks")]',
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+
+    // Switch to Account Abstraction and verify it loads
+    browser
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Account Abstraction")]',
+        locateStrategy: 'xpath',
+      })
+
+    await waitForSyncIdle(browser, 60_000)
+
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItempackage.json"]', 10000)
+
+    // Switch to Uniswap v4 Template
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Uniswap v4 Template")]',
+        locateStrategy: 'xpath',
+      })
+
+    await waitForSyncIdle(browser, 60_000)
+
+    browser
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemsrc"]', 30000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfoundry.toml"]', 10000)
+      .pause()
+  },
+
 }
