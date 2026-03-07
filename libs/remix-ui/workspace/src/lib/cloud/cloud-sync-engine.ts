@@ -368,13 +368,16 @@ export class CloudSyncEngine {
    */
   async pullWorkspace(): Promise<{ downloaded: number; skipped: number; deleted: number }> {
     if (!this.s3 || !this.workspaceUuid || !this.localWorkspacePath) {
+      console.log('[CloudSync:pull] Skipped — engine not active (s3/uuid/path missing)')
       return { downloaded: 0, skipped: 0, deleted: 0 }
     }
+    console.log(`[CloudSync:pull] Starting pull for workspace ${this.workspaceUuid}, S3 prefix: ${this.s3.prefix}`)
     this.updateStatus({ ...this._status, status: 'syncing' })
 
     try {
       const manifest = this.manifest!
       const isFreshLoad = Object.keys(manifest.files).length === 0
+      console.log(`[CloudSync:pull] Strategy: ${isFreshLoad ? 'A (ZIP bulk load — fresh manifest)' : `B (incremental — manifest has ${Object.keys(manifest.files).length} files)`}`)
 
       // ── Suppress change tracking for all writes during pull ──
       this._isPulling = true
@@ -383,11 +386,13 @@ export class CloudSyncEngine {
         // ── Strategy A: ZIP-based bulk load ──────────────────
         const stats = await this.pullViaZip(manifest)
         this._isPulling = false
+        console.log(`[CloudSync:pull] ZIP strategy result: ${JSON.stringify(stats)}`)
         return stats
       } else {
         // ── Strategy B: Incremental ETag-based diff ──────────
         const stats = await this.pullIncremental(manifest)
         this._isPulling = false
+        console.log(`[CloudSync:pull] Incremental strategy result: ${JSON.stringify(stats)}`)
         return stats
       }
     } catch (error) {
@@ -403,7 +408,9 @@ export class CloudSyncEngine {
    * to populate manifest ETags for future incremental syncs.
    */
   private async pullViaZip(manifest: SyncManifest): Promise<{ downloaded: number; skipped: number; deleted: number }> {
+    console.log(`[CloudSync:pullViaZip] Fetching ${WORKSPACE_ZIP_KEY} from S3...`)
     const zipData = await this.s3!.getObjectBinary(WORKSPACE_ZIP_KEY)
+    console.log(`[CloudSync:pullViaZip] ZIP result: ${zipData ? `${zipData.byteLength} bytes` : 'null (404/403 — no ZIP exists)'}`)
 
     if (zipData) {
       // ── 1. Extract ZIP into local FS ──
@@ -460,10 +467,12 @@ export class CloudSyncEngine {
       await this.saveManifest(manifest)
 
       const downloaded = fileCount
+      console.log(`[CloudSync:pullViaZip] ZIP extracted: ${downloaded} files, ${extraDownloads.length} extra downloads from S3`)
       this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
       return { downloaded, skipped: 0, deleted: 0 }
     } else {
       // No ZIP exists yet — fall back to incremental (downloads every file one by one)
+      console.log(`[CloudSync:pullViaZip] No ZIP on S3 — falling back to incremental pull`)
       return this.pullIncremental(manifest)
     }
   }
@@ -473,8 +482,14 @@ export class CloudSyncEngine {
    * This is the original smart-pull logic.
    */
   private async pullIncremental(manifest: SyncManifest): Promise<{ downloaded: number; skipped: number; deleted: number }> {
+    const manifestFileCount = Object.keys(manifest.files).length
+    console.log(`[CloudSync:pullIncremental] Starting incremental pull for workspace ${this.workspaceUuid}`)
+    console.log(`[CloudSync:pullIncremental] Local manifest has ${manifestFileCount} files, S3 prefix: ${this.s3!.prefix}`)
+
     // ── 1. LIST request to get all remote objects + their ETags ──
     const remoteObjects = await this.s3!.listObjects('')
+    console.log(`[CloudSync:pullIncremental] S3 LIST returned ${remoteObjects.length} raw objects`)
+
     const remoteMap = new Map<string, S3Object>()
     let remoteGitZipEtag: string | null = null
     for (const obj of remoteObjects) {
@@ -487,6 +502,8 @@ export class CloudSyncEngine {
         remoteMap.set(obj.key, obj)
       }
     }
+    console.log(`[CloudSync:pullIncremental] After filtering: ${remoteMap.size} remote files (excluded dirs, ZIP, .git)`)
+
     // Store the latest _git.zip ETag we saw on S3
     const oldGitEtag = this._lastGitZipEtag
     if (remoteGitZipEtag !== null) this._lastGitZipEtag = remoteGitZipEtag
@@ -502,6 +519,7 @@ export class CloudSyncEngine {
         skipped++
       } else {
         toDownload.push(obj)
+        console.log(`[CloudSync:pullIncremental] Will download: ${obj.key} (etag changed: ${manifest.files[obj.key]?.etag || 'none'} → ${obj.etag})`)
       }
     }
 
@@ -511,8 +529,32 @@ export class CloudSyncEngine {
       }
     }
 
+    console.log(`[CloudSync:pullIncremental] Diff result: ${toDownload.length} to download, ${skipped} skipped (unchanged), ${toDelete.length} to delete`)
+
+    // ── SAFETY CHECK: refuse to delete all local files when remote is empty ──
+    // If the remote has ZERO files but the local manifest has files, something
+    // is wrong (e.g. wrong S3 prefix, transient S3 issue, workspace not yet
+    // populated). Deleting everything would cause data loss.
+    if (remoteMap.size === 0 && manifestFileCount > 0) {
+      console.error(
+        `[CloudSync:pullIncremental] ⚠️ SAFETY BLOCK: Remote S3 is empty (0 files) but local manifest has ${manifestFileCount} files. ` +
+        `Refusing to delete all local files. This could indicate a wrong S3 prefix, a transient S3 issue, or a new workspace. ` +
+        `S3 prefix: ${this.s3!.prefix}, workspace: ${this.workspaceUuid}`
+      )
+      this.updateStatus({ status: 'idle', lastSync: this._status.lastSync, pendingChanges: this._status.pendingChanges })
+      return { downloaded: 0, skipped: 0, deleted: 0 }
+    }
+
+    if (toDelete.length > 0) {
+      console.warn(`[CloudSync:pullIncremental] About to delete ${toDelete.length} local files not found on remote:`)
+      for (const key of toDelete) {
+        console.warn(`[CloudSync:pullIncremental]   DELETE: ${key}`)
+      }
+    }
+
     // ── 3. Short-circuit if nothing to do ──
     if (toDownload.length === 0 && toDelete.length === 0) {
+      console.log(`[CloudSync:pullIncremental] Nothing to do, manifest up to date`)
       manifest.lastSyncTimestamp = Date.now()
       await this.saveManifest(manifest)
       this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
@@ -533,12 +575,15 @@ export class CloudSyncEngine {
       const localEtag = manifest.files[obj.key]?.etag
       const content = await this.s3!.getObject(obj.key, localEtag || undefined)
       if (content !== null) {
+        console.log(`[CloudSync:pullIncremental] Downloaded: ${obj.key} (${content.length} bytes)`)
         await this.fs.writeFile(localPath, content, 'utf8')
         manifest.files[obj.key] = {
           etag: obj.etag || '',
           lastModified: obj.lastModified.toISOString(),
           size: obj.size,
         }
+      } else {
+        console.log(`[CloudSync:pullIncremental] Skipped download (304 Not Modified): ${obj.key}`)
       }
     }, PARALLEL_CONCURRENCY)
 
@@ -547,8 +592,9 @@ export class CloudSyncEngine {
       const localPath = `${this.localWorkspacePath}/${key}`
       try {
         await this.fs.unlink(localPath)
-      } catch {
-        // file may already be gone locally
+        console.log(`[CloudSync:pullIncremental] Deleted local file: ${key}`)
+      } catch (err) {
+        console.log(`[CloudSync:pullIncremental] Delete skipped (already gone): ${key}`)
       }
       delete manifest.files[key]
     }, PARALLEL_CONCURRENCY)
@@ -557,6 +603,7 @@ export class CloudSyncEngine {
     manifest.lastSyncTimestamp = Date.now()
     await this.saveManifest(manifest)
 
+    console.log(`[CloudSync:pullIncremental] Pull complete: ${toDownload.length} downloaded, ${skipped} unchanged, ${toDelete.length} deleted`)
     this.updateStatus({ status: 'idle', lastSync: Date.now(), pendingChanges: this._status.pendingChanges })
     return { downloaded: toDownload.length, skipped, deleted: toDelete.length }
   }
