@@ -193,6 +193,7 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
   return (
     <CustomTooltip placement="bottom" tooltipText={tooltipText}>
       <button
+        data-id="cloud-toggle"
         className={`d-inline-flex align-items-center border-0 p-0 ${className}`}
         style={{
           background: 'transparent',

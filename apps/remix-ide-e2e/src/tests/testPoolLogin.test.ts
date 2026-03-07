@@ -874,4 +874,340 @@ module.exports = {
     browser.assert.ok(hasGitHead, '.git/HEAD exists in filesystem — git repository structure restored')
   },
 
+  // ══════════════════════════════════════════════════════════════
+  //  Group 6 — Migration: local workspaces → cloud
+  // ══════════════════════════════════════════════════════════════
+
+  'Should login and disable cloud for local workspace creation #group6': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () { localStorage.setItem('enableLogin', 'true') })
+      .refreshPage()
+      .pause(5000)
+      .clickLaunchIcon('filePanel')
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(8000)
+      // Dismiss any modals that appear after login via JS
+      .execute(function () {
+        // migration dialog
+        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
+        if (skip && skip.offsetParent !== null) skip.click()
+        // git-conflict dialog
+        var conflict = document.querySelector('[data-id="cloud-git-conflictModalDialogContainer-react"]') as HTMLElement
+        if (conflict && conflict.offsetParent !== null) {
+          var btns = conflict.querySelectorAll('button')
+          for (var i = 0; i < btns.length; i++) {
+            if (btns[i].textContent && btns[i].textContent.indexOf('Keep Local') !== -1) { btns[i].click(); break }
+          }
+        }
+      })
+      .pause(3000)
+      // Disable cloud via toggle to enter local mode
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(5000)
+  },
+
+  'Should create local workspace migrate-ws-A with files #group6': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'migrate-ws-A')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 30000)
+      .currentWorkspaceIs('migrate-ws-A')
+      .pause(1000)
+      // Create file in blank workspace via right-click context menu
+      .rightClickCustom('[data-id="treeViewUltreeViewMenu"]')
+      .click('*[data-id="contextMenuItemnewFile"]')
+      .waitForElementContainsText('*[data-id$="fileExplorerTreeItemInput"]', '', 60000)
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', 'fileA.sol')
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
+      .waitForElementVisible({
+        selector: `//*[@data-id='tab-active' and contains(@data-path, "fileA.sol")]`,
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .setEditorValue('// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MigrateA {\n    string public name = "workspace A";\n}\n')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileA.sol"]', 10000)
+  },
+
+  'Should create local workspace migrate-ws-B with files #group6': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'migrate-ws-B')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 30000)
+      .currentWorkspaceIs('migrate-ws-B')
+      .pause(1000)
+      .rightClickCustom('[data-id="treeViewUltreeViewMenu"]')
+      .click('*[data-id="contextMenuItemnewFile"]')
+      .waitForElementContainsText('*[data-id$="fileExplorerTreeItemInput"]', '', 60000)
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', 'fileB.sol')
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
+      .waitForElementVisible({
+        selector: `//*[@data-id='tab-active' and contains(@data-path, "fileB.sol")]`,
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .setEditorValue('// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MigrateB {\n    uint256 public count = 42;\n}\n')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileB.sol"]', 10000)
+  },
+
+  'Should create local workspace migrate-ws-C (will NOT be migrated) #group6': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'migrate-ws-C')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 30000)
+      .currentWorkspaceIs('migrate-ws-C')
+      .pause(1000)
+      .rightClickCustom('[data-id="treeViewUltreeViewMenu"]')
+      .click('*[data-id="contextMenuItemnewFile"]')
+      .waitForElementContainsText('*[data-id$="fileExplorerTreeItemInput"]', '', 60000)
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', 'fileC.sol')
+      .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
+      .waitForElementVisible({
+        selector: `//*[@data-id='tab-active' and contains(@data-path, "fileC.sol")]`,
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .setEditorValue('// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MigrateC {\n    bool public flag = true;\n}\n')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileC.sol"]', 10000)
+  },
+
+  'Should enable cloud and open migration via dropdown #group6': function (browser: NightwatchBrowser) {
+    // Re-enable cloud via toggle
+    browser
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+      // Dismiss any auto-appearing migration dialog via JS
+      .execute(function () {
+        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
+        if (skip && skip.offsetParent !== null) skip.click()
+      })
+      .pause(3000)
+      // Clear the migration dismissal flag so "Migrate" still shows in dropdown
+      .execute(function () {
+        var keys = Object.keys(localStorage)
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i].indexOf('migrationDismissed') !== -1) localStorage.removeItem(keys[i])
+        }
+      })
+      .pause(1000)
+      // Open workspace dropdown and click "Migrate local workspaces to cloud"
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="workspaceMigrateToCloud"]', 15000)
+      .click('*[data-id="workspaceMigrateToCloud"]')
+      .pause(3000)
+      // Wait for the dialog to appear and finish loading
+      .waitForElementVisible('*[data-id="cloud-migration-dialogModalDialogContainer-react"]', 15000)
+  },
+
+  'Should deselect migrate-ws-C and migrate only A and B #group6': async function (browser: NightwatchBrowser) {
+    // Wait for workspace rows to load (select phase)
+    browser
+      .waitForElementVisible('*[data-id="migration-ws-migrate-ws-A"]', 10000)
+      .waitForElementVisible('*[data-id="migration-ws-migrate-ws-B"]', 10000)
+      .waitForElementVisible('*[data-id="migration-ws-migrate-ws-C"]', 10000)
+
+    // Uncheck migrate-ws-C by clicking its checkbox
+    browser
+      .click('*[data-id="migration-ws-checkbox-migrate-ws-C"]')
+      .pause(500)
+
+    // Click the Migrate button
+    browser
+      .click('*[data-id="cloud-migration-dialog-modal-footer-ok-react"]')
+      .pause(3000)
+
+    // Wait for migration to complete — poll for "migration-phase-done" data-id
+    let migrationDone = false
+    const start = Date.now()
+    while (Date.now() - start < 120_000 && !migrationDone) {
+      migrationDone = await new Promise<boolean>((resolve) => {
+        browser.execute(
+          function () {
+            return !!document.querySelector('[data-id="migration-phase-done"]')
+          },
+          [],
+          (result: any) => resolve(result?.value === true),
+        )
+      })
+      if (!migrationDone) await new Promise((r) => setTimeout(r, 2000))
+    }
+    console.log(`[group6] Migration completed in ${Date.now() - start}ms`)
+    browser.assert.ok(migrationDone, 'Migration dialog reached "done" phase')
+
+    // Click Done to close the dialog
+    browser
+      .click('*[data-id="cloud-migration-dialog-modal-footer-ok-react"]')
+      .pause(3000)
+  },
+
+  'Should verify migrated workspaces in cloud dropdown #group6': function (browser: NightwatchBrowser) {
+    browser
+      .pause(5000)
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      // Verify migrate-ws-A and migrate-ws-B are listed in cloud
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .assert.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-B")]',
+        locateStrategy: 'xpath',
+      })
+      // Switch to migrate-ws-A
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileA.sol"]', 20000)
+      .openFile('fileA.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('contract MigrateA') !== -1, 'fileA.sol contains contract MigrateA')
+        browser.assert.ok(content.indexOf('workspace A') !== -1, 'fileA.sol contains "workspace A"')
+      })
+  },
+
+  'Should verify migrate-ws-B content in cloud #group6': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-B")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileB.sol"]', 20000)
+      .openFile('fileB.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('contract MigrateB') !== -1, 'fileB.sol contains contract MigrateB')
+      })
+  },
+
+  'Should verify migrate-ws-C is still local and A/B are gone locally #group6': function (browser: NightwatchBrowser) {
+    // Disable cloud to switch to local mode
+    browser
+      .click('*[data-id="cloud-toggle"]')
+      .pause(5000)
+      // Open dropdown
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      // migrate-ws-C should still exist locally (it was NOT migrated)
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-C")]',
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      // migrate-ws-A and B should be GONE from local (they were migrated → local deleted)
+      .assert.not.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
+        locateStrategy: 'xpath',
+      })
+      .assert.not.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-B")]',
+        locateStrategy: 'xpath',
+      })
+      // Switch to migrate-ws-C and verify content
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-C")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileC.sol"]', 20000)
+      .openFile('fileC.sol')
+      .waitForElementVisible({
+        selector: `//*[@data-id='tab-active' and contains(@data-path, "fileC.sol")]`,
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .pause(5000)
+      .getEditorValue((content) => {
+        browser.assert.ok(content.indexOf('MigrateC') !== -1, 'Local fileC.sol still has MigrateC')
+      })
+  },
+
+  'Should re-enable cloud and verify migrated workspaces persist #group6': function (browser: NightwatchBrowser) {
+    // Re-enable cloud
+    browser
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+      // Dismiss migration dialog if it auto-appears
+      .execute(function () {
+        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
+        if (skip && skip.offsetParent !== null) skip.click()
+      })
+      .pause(3000)
+      // Cloud workspace dropdown should still have migrate-ws-A and migrate-ws-B
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .assert.elementPresent({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-B")]',
+        locateStrategy: 'xpath',
+      })
+      // Switch to migrate-ws-A to confirm it's still accessible
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(10000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileA.sol"]', 20000)
+  },
+
 }

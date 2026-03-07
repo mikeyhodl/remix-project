@@ -467,6 +467,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
             <input
               type="checkbox"
               id="migration-select-all"
+              data-id="migration-select-all"
               checked={selected.size === items.length}
               onChange={toggleSelectAll}
               className="form-check-input me-2 mt-0"
@@ -483,6 +484,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
             return (
               <div
                 key={item.localName}
+                data-id={`migration-ws-${item.localName}`}
                 className={`d-flex align-items-start p-2 mb-1 rounded ${
                   isSelected ? 'border border-primary' : 'border'
                 }`}
@@ -491,6 +493,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
               >
                 <input
                   type="checkbox"
+                  data-id={`migration-ws-checkbox-${item.localName}`}
                   checked={isSelected}
                   onChange={() => toggleSelect(item.localName)}
                   className="form-check-input me-2 mt-1 flex-shrink-0"
@@ -529,7 +532,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
 
     // ── Migrating / Done phase ──
     return (
-      <div className="d-flex flex-column">
+      <div className="d-flex flex-column" data-id={`migration-phase-${phase}`}>
         {/* Overall progress header */}
         <div className="mb-3 p-3 rounded border" style={{ backgroundColor: 'rgba(var(--bs-info-rgb, 13,202,240), 0.06)' }}>
           <div className="d-flex justify-content-between align-items-center mb-2">
