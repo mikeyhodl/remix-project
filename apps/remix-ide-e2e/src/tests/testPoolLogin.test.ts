@@ -141,6 +141,10 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
+      // Enable cloud mode via toggle (cloud is OFF by default after login)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
       // Open the workspace dropdown → template explorer → Blank template
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -232,6 +236,10 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
+      // Enable cloud mode via toggle (cloud is OFF by default after login)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
       // Create ws-alpha via template explorer
       .click('*[data-id="workspacesSelect"]')
       .pause(2000)
@@ -358,6 +366,10 @@ module.exports = {
       // Reload the page — tokens stay in localStorage, so user is still logged in
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      // Re-enable cloud (OFF by default after reload)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
 
     // Wait for cloud system to discover workspaces and complete initial pull from S3
     await waitForSyncIdle(browser, 60_000)
@@ -483,6 +495,10 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
+      // Enable cloud mode via toggle (cloud is OFF by default after login)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
   },
 
   'Should clone Account Abstraction repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
@@ -663,18 +679,10 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
-      // Dismiss "Git History Updated" modal if present from a previous session
-      .element('css selector', '*[data-id="cloud-git-conflictModalDialogContainer-react"]', function (result) {
-        if ((result as any).status !== -1 && (result as any).value) {
-          browser
-            .click({
-              selector: '//*[@data-id="cloud-git-conflictModalDialogContainer-react"]//button[contains(., "Keep Local")]',
-              locateStrategy: 'xpath',
-            })
-            .pause(1000)
-        }
-      })
-      .pause(2000)
+      // Enable cloud mode via toggle (cloud is OFF by default after login)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
   },
 
   'Should create a Basic workspace with git init checked #group5': async function (browser: NightwatchBrowser) {
@@ -778,6 +786,10 @@ module.exports = {
       })
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      // Re-enable cloud (OFF by default after reload)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
 
     // Wait for cloud system to restore workspaces from S3
     await waitForSyncIdle(browser, 120_000)
@@ -878,7 +890,8 @@ module.exports = {
   //  Group 6 — Migration: local workspaces → cloud
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and disable cloud for local workspace creation #group6': function (browser: NightwatchBrowser) {
+  'Should login for local workspace creation #group6': function (browser: NightwatchBrowser) {
+    // Login only — cloud is OFF by default, no need to toggle
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -896,25 +909,6 @@ module.exports = {
         selector: '//button[contains(., "E2E Test Pool")]',
         locateStrategy: 'xpath',
       })
-      .pause(8000)
-      // Dismiss any modals that appear after login via JS
-      .execute(function () {
-        // migration dialog
-        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
-        if (skip && skip.offsetParent !== null) skip.click()
-        // git-conflict dialog
-        var conflict = document.querySelector('[data-id="cloud-git-conflictModalDialogContainer-react"]') as HTMLElement
-        if (conflict && conflict.offsetParent !== null) {
-          var btns = conflict.querySelectorAll('button')
-          for (var i = 0; i < btns.length; i++) {
-            if (btns[i].textContent && btns[i].textContent.indexOf('Keep Local') !== -1) { btns[i].click(); break }
-          }
-        }
-      })
-      .pause(3000)
-      // Disable cloud via toggle to enter local mode
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
       .pause(5000)
   },
 
@@ -1233,14 +1227,10 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
-
-    // Dismiss migration dialog if it auto-appears
-    browser
-      .execute(function () {
-        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
-        if (skip && skip.offsetParent !== null) skip.click()
-      })
-      .pause(2000)
+      // Enable cloud mode via toggle (cloud is OFF by default after login)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
 
     // Create a cloud workspace from the Blank template
     browser
@@ -1317,6 +1307,7 @@ module.exports = {
 
   'Should login with a new pool account #group7': function (browser: NightwatchBrowser) {
     // Log in again — the pool should give us a DIFFERENT account
+    // Cloud stays OFF — we just verify the workspace list is empty for this user
     browser
       .click('*[data-id="login-button"]')
       .pause(3000)
@@ -1330,14 +1321,6 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
-
-    // Dismiss migration dialog if it auto-appears
-    browser
-      .execute(function () {
-        var skip = document.querySelector('[data-id="cloud-migration-dialog-modal-footer-cancel-react"]') as HTMLElement
-        if (skip && skip.offsetParent !== null) skip.click()
-      })
-      .pause(3000)
   },
 
   'Should NOT see the first user cloud workspace #group7': function (browser: NightwatchBrowser) {
