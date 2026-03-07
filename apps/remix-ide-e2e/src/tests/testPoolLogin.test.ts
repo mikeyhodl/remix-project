@@ -1337,4 +1337,242 @@ module.exports = {
       .pause(500)
   },
 
+  // ══════════════════════════════════════════════════════════════
+  //  Group 8 — Rename & delete cloud workspaces + S3 persistence
+  // ══════════════════════════════════════════════════════════════
+
+  'Should login and enable cloud #group8': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () { localStorage.setItem('enableLogin', 'true') })
+      .refreshPage()
+      .pause(5000)
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+  },
+
+  'Should create three cloud workspaces #group8': async function (browser: NightwatchBrowser) {
+    // ─── Create rename-me ───
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-blank-input"]', 10000)
+      .click('*[data-id="workspace-name-blank-input"]')
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'rename-me')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .currentWorkspaceIs('rename-me')
+    browser
+      .addFile('rename-file.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract RenameTest {\n    string public msg = "I was renamed";\n}\n',
+      }, 'remix.config.json')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemrename-file.sol"]', 10000)
+    await waitForSyncIdle(browser)
+
+    // ─── Create delete-me ───
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-blank-input"]', 10000)
+      .click('*[data-id="workspace-name-blank-input"]')
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'delete-me')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .currentWorkspaceIs('delete-me')
+    browser
+      .addFile('doomed-file.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract DoomedContract {\n    string public msg = "goodbye";\n}\n',
+      }, 'remix.config.json')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemdoomed-file.sol"]', 10000)
+    await waitForSyncIdle(browser)
+
+    // ─── Create keep-me ───
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]', 10000)
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementVisible('*[data-id="template-card-blank-1"]', 10000)
+      .click('*[data-id="template-card-blank-1"]')
+      .waitForElementVisible('*[data-id="generic-template-section-blank"]', 10000)
+      .waitForElementVisible('*[data-id="workspace-name-blank-input"]', 10000)
+      .click('*[data-id="workspace-name-blank-input"]')
+      .clearValue('*[data-id="workspace-name-blank-input"]')
+      .setValue('*[data-id="workspace-name-blank-input"]', 'keep-me')
+      .pause(500)
+      .click('*[data-id="validate-blankworkspace-button"]')
+      .currentWorkspaceIs('keep-me')
+    browser
+      .addFile('keeper-file.sol', {
+        content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract KeeperContract {\n    string public msg = "still here";\n}\n',
+      }, 'remix.config.json')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemkeeper-file.sol"]', 10000)
+    await waitForSyncIdle(browser)
+  },
+
+  'Should rename rename-me to renamed-ws #group8': async function (browser: NightwatchBrowser) {
+    // Open dropdown and click the sub-menu icon for rename-me
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="dropdown-item-rename-me"]', 10000)
+    // Click the three-dot icon next to rename-me
+    const subMenuSelector = 'a[data-id="dropdown-item-rename-me"] + div [data-id="workspacesubMenuIcon"]'
+    browser
+      .waitForElementVisible(subMenuSelector, 10000)
+      .click(subMenuSelector)
+      .waitForElementVisible('*[data-id="workspacesubMenuRename"]', 5000)
+      .click('*[data-id="workspacesubMenuRename"]')
+      .pause(500)
+      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextRename"]', 10000)
+      .click('*[data-id="modalDialogCustomPromptTextRename"]')
+      .clearValue('*[data-id="modalDialogCustomPromptTextRename"]')
+      .setValue('*[data-id="modalDialogCustomPromptTextRename"]', 'renamed-ws')
+      .waitForElementPresent('[data-id="topbarModalStaticModalDialogModalFooter-react"] .modal-ok')
+      .click('[data-id="topbarModalStaticModalDialogModalFooter-react"] > .modal-ok')
+      .pause(3000)
+    // Verify the rename took effect
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 10000)
+      .assert.not.elementPresent('*[data-id="dropdown-item-rename-me"]')
+      .click('*[data-id="dropdown-item-renamed-ws"]')
+    await waitForSyncIdle(browser)
+    browser
+      .currentWorkspaceIs('renamed-ws')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemrename-file.sol"]', 20000)
+  },
+
+  'Should delete delete-me workspace #group8': function (browser: NightwatchBrowser) {
+    // Open dropdown and click the sub-menu icon for delete-me
+    browser
+      .waitForElementVisible('*[data-id="workspacesSelect"]', 10000)
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="dropdown-item-delete-me"]', 10000)
+      // Click the three-dot icon next to delete-me
+      .waitForElementVisible({
+        selector: '//a[@data-id="dropdown-item-delete-me"]/following-sibling::div//*[@data-id="workspacesubMenuIcon"]',
+        locateStrategy: 'xpath',
+        timeout: 10000,
+      })
+      .click({
+        selector: '//a[@data-id="dropdown-item-delete-me"]/following-sibling::div//*[@data-id="workspacesubMenuIcon"]',
+        locateStrategy: 'xpath',
+      })
+      .pause(500)
+      .waitForElementVisible('*[data-id="workspacesubMenuDelete"]', 5000)
+      .click('*[data-id="workspacesubMenuDelete"]')
+      .waitForElementVisible('*[data-id="topbarModalStaticModalDialogModalFooter-react"]')
+      .click('*[data-id="topbarModalStaticModalDialogModalFooter-react"] .modal-ok')
+      .pause(5000)
+    // Verify delete-me is gone from the dropdown
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .assert.not.elementPresent('*[data-id="dropdown-item-delete-me"]')
+      // renamed-ws and keep-me should still be there
+      .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 10000)
+      .waitForElementVisible('*[data-id="dropdown-item-keep-me"]', 10000)
+      .click('*[data-id="workspacesSelect"]')
+      .pause(500)
+  },
+
+  'Should wipe local data and reload #group8': async function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () {
+        return (window as any).remixFileSystem.unlink('.cloud-workspaces')
+      }, [], function () {
+        console.log('[group8] Wiped .cloud-workspaces from local FS')
+      })
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      // Re-enable cloud (OFF by default after reload)
+      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
+      .click('*[data-id="cloud-toggle"]')
+      .pause(10000)
+    await waitForSyncIdle(browser, 60_000)
+  },
+
+  'Should verify renamed-ws survived S3 restore #group8': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 20000)
+      .click('*[data-id="dropdown-item-renamed-ws"]')
+    await waitForSyncIdle(browser)
+    browser
+      .currentWorkspaceIs('renamed-ws')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemrename-file.sol"]', 20000)
+      .openFile('rename-file.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(
+          content.indexOf('RenameTest') !== -1,
+          'renamed-ws: rename-file.sol contains contract RenameTest'
+        )
+      })
+  },
+
+  'Should verify delete-me is still gone after S3 restore #group8': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .assert.not.elementPresent('*[data-id="dropdown-item-delete-me"]')
+      .click('*[data-id="workspacesSelect"]')
+      .pause(500)
+  },
+
+  'Should verify keep-me survived S3 restore #group8': async function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .waitForElementVisible('*[data-id="dropdown-item-keep-me"]', 20000)
+      .click('*[data-id="dropdown-item-keep-me"]')
+    await waitForSyncIdle(browser)
+    browser
+      .currentWorkspaceIs('keep-me')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemkeeper-file.sol"]', 20000)
+      .openFile('keeper-file.sol')
+      .pause(2000)
+      .getEditorValue((content) => {
+        browser.assert.ok(
+          content.indexOf('KeeperContract') !== -1,
+          'keep-me: keeper-file.sol contains contract KeeperContract'
+        )
+      })
+  }
+
 }
