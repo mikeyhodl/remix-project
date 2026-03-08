@@ -103,7 +103,7 @@ module.exports = {
   'Compile with remappings set in remappings.txt file #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')

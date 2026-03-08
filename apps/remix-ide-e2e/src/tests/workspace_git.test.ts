@@ -12,7 +12,7 @@ module.exports = {
   'Should be able to create GIT without credentials #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
@@ -42,7 +42,7 @@ module.exports = {
   'Should create and initialize a GIT repository #group1': function (browser: NightwatchBrowser) {
     browser
       // .waitForElementNotVisible('[data-id="workspaceGitPanel"]')
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
@@ -374,14 +374,14 @@ module.exports = {
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemlibdeep"]')
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemtest-branch-submodule-recursive"]')
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemtest-branch-submodule-2"]')
-      .click('[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .waitForElementVisible('*[data-id="dropdown-item-test-branch-submodule"]')
       .waitForElementVisible('*[data-id="dropdown-item-default_workspace"]')
       .click('*[data-id="dropdown-item-default_workspace"]')
   },
   'When switching to main update the modules #group4': function (browser: NightwatchBrowser) {
     browser
-      .click('[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .waitForElementVisible('*[data-id="dropdown-item-test-branch-submodule"]')
       .click('[data-id="dropdown-item-test-branch-submodule"]')
       .refreshPage()
@@ -447,7 +447,7 @@ module.exports = {
 
   'Should create a git workspace (uniswapV4Template) #group4': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
@@ -473,7 +473,7 @@ module.exports = {
 
   'Should create Remix default workspace with files #group5': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
@@ -544,7 +544,7 @@ module.exports = {
   },
   'Should create a git workspace (uniswapV4Template) #group5': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')

@@ -813,3 +813,100 @@ export interface MembershipStatusResponse {
   notifications: NotificationItem[]
 }
 
+// ==================== E2E Test Account Pool ====================
+
+/**
+ * User info returned from pool checkout
+ */
+export interface PoolUser {
+  id: number
+  name: string
+  email: string
+  is_admin: boolean
+  group_id: number
+}
+
+/**
+ * Request body for POST /sso/test/pool/checkout
+ */
+export interface PoolCheckoutRequest {
+  featureGroups: string[]
+}
+
+/**
+ * Response from POST /sso/test/pool/checkout
+ */
+export interface PoolCheckoutResponse {
+  sessionId: string
+  accountId: string
+  userId: number
+  groupId: number
+  featureGroups: string[]
+  access_token: string
+  refresh_token: string
+  user: PoolUser
+}
+
+/**
+ * Cleanup details returned on pool release
+ */
+export interface PoolCleanupDetails {
+  db: { nonCascadeDeleted: number; accountGroupDeleted: boolean }
+  s3: { workspaceObjects: number; avatarObjects: number; walletObjects: number }
+  redis: { keysDeleted: number }
+}
+
+/**
+ * Response from POST /sso/test/pool/release
+ */
+export interface PoolReleaseResponse {
+  ok: boolean
+  accountId: string
+  cleaned: PoolCleanupDetails
+}
+
+/**
+ * A single account lock entry in pool status
+ */
+export interface PoolAccountStatus {
+  accountId: string
+  locked: boolean
+  sessionId?: string
+  lockedAt?: string
+  expiresAt?: string
+}
+
+/**
+ * Response from GET /sso/test/pool/status
+ */
+export interface PoolStatusResponse {
+  total: number
+  available: number
+  locked: number
+  accounts: PoolAccountStatus[]
+}
+
+/**
+ * A pool account definition
+ */
+export interface PoolAccountDefinition {
+  id: string
+  name: string
+  email: string
+}
+
+/**
+ * Response from GET /sso/test/pool/accounts
+ */
+export interface PoolAccountsResponse {
+  accounts: PoolAccountDefinition[]
+}
+
+/**
+ * Response from POST /sso/test/pool/release-all
+ */
+export interface PoolReleaseAllResponse {
+  ok: boolean
+  released: number
+}
+

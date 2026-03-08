@@ -1,5 +1,5 @@
 import React, { useState, useContext, useMemo } from 'react'
-import { useIntl } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvAppContext } from '../contexts'
 import { forkState } from '../actions'
 import { Spinner } from 'react-bootstrap'
@@ -69,12 +69,12 @@ export function ForkUI() {
         > × </button>
       </div>
       <p style={{ color: 'var(--bs-tertiary)' }} className="mb-2 fw-light small">
-          Forking state will create a new environment with same state as selected environment.
+        <FormattedMessage id="udapp.forkingStateDescription" />
       </p>
       <div className="mb-3">
         <div className="d-flex align-items-center mb-2">
           <label className="mb-0 me-2" style={{ color: 'var(--bs-tertiary)' }}>
-              Fork name
+            <FormattedMessage id="udapp.forkNameLabel" />
           </label>
         </div>
         <div className="position-relative flex-fill">

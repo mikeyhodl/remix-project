@@ -77,7 +77,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       setTransactionRecorderUI(
         <div className="alert alert-info m-3">
           <i className="fas fa-info-circle mr-2"></i>
-          Transaction recorder is available in the Deploy & Run Transactions tab.
+          <FormattedMessage id="debugger.transactionRecorderAvailable" />
         </div>
       )
     })
@@ -406,7 +406,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       setState((prevState) => {
         return {
           ...prevState,
-          validationError: 'Invalid transaction hash.'
+          validationError: intl.formatMessage({ id: 'debugger.invalidTxHash' })
         }
       })
       return
@@ -610,7 +610,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
             </h6>
             <div className="mt-2">
               <span>
-                Select a past transaction in your transaction history below OR directly paste a transaction hash in the search field to start debugging a transaction. This will automatically import the targetted contracts.
+                <FormattedMessage id="debugger.startDebuggingDescription" />
               </span>
             </div>
           </div>
@@ -655,7 +655,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       )}
 
       {state.debugging && state.sourceLocationStatus && (
-        <div className="text-warning mt-3">
+        <div className="text-warning mt-1 ms-3">
           <i className="fas fa-exclamation-triangle" aria-hidden="true"></i> {state.sourceLocationStatus}
         </div>
       )}

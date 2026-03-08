@@ -202,7 +202,7 @@ module.exports = {
       .waitForElementNotVisible('#side-panel')
       // Open the workspace dropdown
       .waitForElementVisible('*[data-id="workspacesSelect"]')
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       // Click on "Create Workspace" menu item
       .waitForElementVisible('*[data-id="workspacecreate"]')

@@ -8,7 +8,7 @@ import { initialState, settingReducer } from './settingsReducer'
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
 import { ThemeModule } from '@remix-ui/theme-module'
 import { ThemeContext, themes } from '@remix-ui/home-tab'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { Registry, QueryParams } from '@remix-project/remix-lib'
 import { SettingsSectionUI } from './settings-section'
 import { SettingsSection } from '../types'
@@ -33,7 +33,7 @@ const settingsSections: SettingsSection[] = [
     description: 'settings.generalSettingsDescription',
     subSections: [
       {
-        title: 'Appearance',
+        title: 'settings.appearanceSection',
         options: [{
           name: 'theme',
           label: 'settings.theme',
@@ -45,7 +45,7 @@ const settingsSections: SettingsSection[] = [
         }]
       },
       {
-        title: 'Code editor',
+        title: 'settings.codeEditorSection',
         options: [{
           name: 'generate-contract-metadata',
           label: 'settings.generateContractMetadataText',
@@ -88,7 +88,7 @@ const settingsSections: SettingsSection[] = [
     requiresAuth: true, // Special flag for auth-required sections
     subSections: [
       {
-        title: 'Profile',
+        title: 'settings.profileSection',
         options: [{
           name: 'profile-section',
           label: '',
@@ -97,7 +97,7 @@ const settingsSections: SettingsSection[] = [
         }]
       },
       {
-        title: 'Credits Balance',
+        title: 'settings.creditsBalanceSection',
         options: [{
           name: 'credits-balance',
           label: '',
@@ -106,8 +106,8 @@ const settingsSections: SettingsSection[] = [
         }]
       },
       {
-        title: 'Connected Accounts',
-        description: 'Link multiple authentication providers to access your account from anywhere. All linked accounts share the same credits and subscriptions.',
+        title: 'settings.connectedAccountsSection',
+        description: 'settings.connectedAccountsDescription',
         options: [{
           name: 'connected-accounts',
           label: '',
@@ -116,8 +116,8 @@ const settingsSections: SettingsSection[] = [
         }]
       },
       {
-        title: 'Billing & Subscriptions',
-        description: 'Purchase credit packages or subscribe to get more AI credits.',
+        title: 'settings.billingSubscriptionsSection',
+        description: 'settings.billingSubscriptionsDescription',
         options: [{
           name: 'billing-section',
           label: '',
@@ -142,7 +142,7 @@ const settingsSections: SettingsSection[] = [
           type: 'toggle',
           description: 'settings.matomoAnalyticsWithCookiesDescription',
           footnote: {
-            text: 'Manage Cookie Preferences',
+            text: 'settings.manageCookiePreferences',
             link: 'https://matomo.org/',
             styleClass: 'text-primary'
           }
@@ -159,7 +159,7 @@ const settingsSections: SettingsSection[] = [
           description: 'settings.aiCopilotDescription',
           type: 'toggle',
           footnote: {
-            text: 'Learn more about AI Copilot',
+            text: 'settings.learnMoreAiCopilot',
             link: 'https://remix-ide.readthedocs.io/en/latest/ai.html',
             styleClass: 'text-primary'
           }
@@ -187,14 +187,14 @@ const settingsSections: SettingsSection[] = [
         }]
       },
       {
-        title: 'MCP Servers',
+        title: 'settings.mcpServersSection',
         options: [{
           name: 'mcp/servers/enable' as keyof typeof initialState,
           label: 'settings.enableMCPEnhancement',
           description: 'settings.enableMCPEnhancementDescription',
           type: 'toggle' as const,
           footnote: {
-            text: 'Learn more about MCP',
+            text: 'settings.learnMoreMcp',
             link: 'https://modelcontextprotocol.io/',
             styleClass: 'text-primary'
           }
@@ -281,6 +281,7 @@ const settingsSections: SettingsSection[] = [
 ]
 
 export const RemixUiSettings = (props: RemixUiSettingsProps) => {
+  const intl = useIntl()
   const [settingsState, dispatch] = useReducer(settingReducer, initialState)
   const [selected, setSelected] = useState(settingsSections[0].key)
   const [search, setSearch] = useState('')
@@ -439,10 +440,10 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
           </div>
           <div className='d-flex flex-grow-1 remix-settings-search' style={{ maxWidth: '53.5em', minHeight: '4em' }}>
             <span className="input-group-text rounded-0 border-end-0 pe-0" style={{ backgroundColor: state.themeQuality.name === 'dark' ? 'var(--custom-onsurface-layer-4)' : 'var(--bs-body-bg)' }}><i className="fa fa-search"></i></span>
-            <input type="text" className="form-control shadow-none h-100 rounded-0 border-start-0 no-outline w-100" placeholder="Search settings" style={{ minWidth: '21.5em' }} value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input type="text" className="form-control shadow-none h-100 rounded-0 border-start-0 no-outline w-100" placeholder={intl.formatMessage({ id: 'settings.searchSettings' })} style={{ minWidth: '21.5em' }} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
-        {filteredSections.length === 0 ? <div className="text-info text-center cursor-pointer">No match found</div> :
+        {filteredSections.length === 0 ? <div className="text-info text-center cursor-pointer"><FormattedMessage id="settings.noMatchFound" /></div> :
           <div className="d-flex flex-wrap align-items-stretch flex-fill gap-4" style={{ minHeight: 0, overflow: 'hidden' }}>
             {/* Sidebar */}
             <div

@@ -26,7 +26,7 @@ export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
 } {
   if (!status) {
     // No status yet — initial/unknown
-    return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+    return { icon: 'fas fa-cloud', color: 'var(--bs-success)', title: 'Connected to cloud' }
   }
 
   if (status.status === 'loading') {
@@ -130,8 +130,6 @@ export const CloudSyncStatusIcon: React.FC<CloudSyncStatusIconProps> = ({
 // ── Cloud Toggle (with integrated sync status icon) ───────────────────
 
 interface CloudToggleProps {
-  /** Called when the user clicks while NOT authenticated — should trigger login */
-  onLogin: () => void
   /** Called when the user toggles cloud ON while authenticated */
   onEnableCloud: () => void
   /** Called when the user toggles cloud OFF */
@@ -142,19 +140,19 @@ interface CloudToggleProps {
 /**
  * Single topbar widget: toggle switch + reactive cloud/sync icon.
  *
- * - Not logged in       → cloud-slash (muted) + off toggle → click logs in
- * - Logged in, cloud OFF → cloud-slash (muted) + off toggle → click enables
+ * - Not logged in       → cloud-slash (disabled, muted) + off toggle
+ * - Logged in, cloud OFF → cloud-slash + off toggle → click enables
  * - Logged in, cloud ON  → live sync icon (green/orange/red) + on toggle
  */
 export const CloudToggle: React.FC<CloudToggleProps> = ({
-  onLogin,
   onEnableCloud,
   onDisableCloud,
   className = '',
 }) => {
-  const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus } = useCloudStore()
+  const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus, workspaceQueueBusy } = useCloudStore()
 
   const isOn = isCloudMode
+  const isDisabled = loading || !isAuthenticated || workspaceQueueBusy
 
   // Derive the icon: when cloud is on, reflect live sync status; when off, show cloud-slash
   const syncProps = isOn
@@ -170,38 +168,38 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
     : 'var(--bs-white)'
 
   const handleClick = useCallback(() => {
-    if (loading) return
-    if (!isAuthenticated) {
-      onLogin()
-      return
-    }
+    if (isDisabled) return
     if (isOn) {
       onDisableCloud()
     } else {
       onEnableCloud()
     }
-  }, [isAuthenticated, isOn, loading, onLogin, onEnableCloud, onDisableCloud])
+  }, [isDisabled, isOn, onEnableCloud, onDisableCloud])
 
-  const tooltipText = loading
-    ? 'Connecting…'
-    : !isAuthenticated
-      ? 'Log in to enable cloud storage'
-      : isOn
-        ? (syncProps!.title + ' — click to disable cloud')
-        : 'Cloud storage is OFF — click to enable'
+  const tooltipText = workspaceQueueBusy
+    ? 'Workspace operation in progress…'
+    : loading
+      ? 'Connecting…'
+      : !isAuthenticated
+        ? 'Sign in to use cloud storage'
+        : isOn
+          ? (syncProps!.title + ' — click to disable cloud')
+          : 'Cloud storage is OFF — click to enable'
 
   return (
     <CustomTooltip placement="bottom" tooltipText={tooltipText}>
       <button
+        data-id="cloud-toggle"
         className={`d-inline-flex align-items-center border-0 p-0 ${className}`}
         style={{
           background: 'transparent',
-          cursor: loading ? 'wait' : 'pointer',
-          opacity: loading ? 0.5 : 1,
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          opacity: isDisabled ? 0.4 : 1,
           outline: 'none',
           gap: '6px',
         }}
         onClick={handleClick}
+        disabled={isDisabled}
         aria-label={tooltipText}
       >
         {/* Cloud / sync-status icon */}

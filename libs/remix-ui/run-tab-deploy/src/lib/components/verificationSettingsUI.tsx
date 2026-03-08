@@ -1,5 +1,5 @@
 import React from 'react'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ToggleSwitch } from '@remix-ui/toggle'
 
@@ -10,11 +10,12 @@ interface VerificationSettingsProps {
 
 export function VerificationSettingsUI(props: VerificationSettingsProps) {
   const { isVerifyChecked, onVerifyCheckedChange } = props
+  const intl = useIntl()
 
   return (
     <div className="d-flex align-items-center justify-content-between pb-2">
       <div className='d-flex align-items-center'>
-        <span className="fw-light">Verify Contract on Explorers</span>
+        <span className="fw-light"><FormattedMessage id="udapp.verifyContractOnExplorers" /></span>
       </div>
       <div className="toggle-container">
         <CustomTooltip
@@ -32,7 +33,7 @@ export function VerificationSettingsUI(props: VerificationSettingsProps) {
         >
           <div
             data-id={`verifyContractToggle`}
-            aria-label={`Verify Contract on Explorers`}
+            aria-label={intl.formatMessage({ id: 'udapp.verifyContractOnExplorers' })}
           >
             <ToggleSwitch
               id="deployAndRunVerifyContract"

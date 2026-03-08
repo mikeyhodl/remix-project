@@ -3,8 +3,11 @@
  *
  * Wraps the module-level `cloudStore` singleton so that:
  *  1. The workspace React tree wires auth plugin events to cloud state.
- *  2. On login: swaps the workspace file provider to CloudWorkspaceFileProvider.
- *  3. On logout: restores the original WorkspaceFileProvider.
+ *  2. On login: marks the user as authenticated (enables cloud toggle).
+ *  3. On logout: disables cloud and restores the original WorkspaceFileProvider.
+ *
+ * Cloud mode is NOT auto-enabled on login or page load.  The user must
+ * explicitly click the cloud toggle to enter cloud mode.
  *
  * IMPORTANT: The `cloudStore` singleton is the source of truth. Components
  * in other React trees (e.g. the topbar) can use `useCloudStore()` directly
@@ -14,7 +17,6 @@
 import React, { useEffect, useRef } from 'react'
 import { cloudStore, useCloudStore } from './cloud-store'
 import {
-  enableCloud,
   disableCloud,
 } from './cloud-workspace-actions'
 
@@ -39,18 +41,13 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
     if (!pluginRef.current) return
 
     const handleAuthStateChanged = async (authState: { isAuthenticated: boolean; user: any; token: string }) => {
+      console.log('[CloudProvider:handleAuthStateChanged] isAuthenticated=', authState.isAuthenticated, 'isCloudMode=', cloudStore.isCloudMode)
       if (authState.isAuthenticated) {
-        // Delegate to enableCloud which handles everything:
-        // provider swap, store update, workspace switch, Redux dispatches
+        // Mark as authenticated so the cloud toggle becomes enabled.
+        // Cloud mode is NOT activated here — the user must click the toggle.
         cloudStore.setAuthenticated(true)
-        try {
-          await enableCloud()
-        } catch (err) {
-          console.error('[CloudProvider] Failed to enable cloud on login:', err)
-        }
       } else {
-        // Logout: disable cloud (restores provider, switches to local workspace)
-        // then fully reset auth state
+        // Logout: disable cloud if it was on, then fully reset auth state
         try {
           await disableCloud()
         } catch (err) {
@@ -62,13 +59,13 @@ export const CloudProvider: React.FC<CloudProviderProps> = ({ children, plugin }
 
     pluginRef.current.on('auth', 'authStateChanged', handleAuthStateChanged)
 
-    // Check initial auth state
+    // Check initial auth state — just sets the authenticated flag
     ;(async () => {
       try {
         const isAuth = await pluginRef.current.call('auth', 'isAuthenticated')
+        console.log('[CloudProvider] Initial isAuthenticated =', isAuth)
         if (isAuth) {
-          const token = await pluginRef.current.call('auth', 'getToken')
-          handleAuthStateChanged({ isAuthenticated: true, user: null, token })
+          cloudStore.setAuthenticated(true)
         }
       } catch (e) {
         // auth plugin may not be activated yet — that's fine

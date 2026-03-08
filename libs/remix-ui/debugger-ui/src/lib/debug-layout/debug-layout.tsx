@@ -1,5 +1,5 @@
 import React, { useState } from 'react' // eslint-disable-line
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import SearchBar from '../search-bar/search-bar' // eslint-disable-line
 import { CustomTooltip } from '@remix-ui/helper'
 import './debug-layout.css'
@@ -53,10 +53,11 @@ export const DebugLayout = ({
   showOpcodes = false,
   registerEvent
 }: DebugLayoutProps) => {
+  const intl = useIntl()
   const [activeObjectTab, setActiveObjectTab] = useState<'stateLocals' | 'stackMemory'>('stateLocals')
   const [copyTooltips, setCopyTooltips] = useState<{ [key: string]: string }>({
-    from: 'Copy address',
-    to: 'Copy address'
+    from: intl.formatMessage({ id: 'debugger.copyAddress' }),
+    to: intl.formatMessage({ id: 'debugger.copyAddress' })
   })
   const [expandedScopes, setExpandedScopes] = useState<Set<string>>(new Set())
   const [selectedScope, setSelectedScope] = useState<any>(null)
@@ -136,12 +137,12 @@ export const DebugLayout = ({
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text)
-    setCopyTooltips(prev => ({ ...prev, [fieldName]: 'Copied!' }))
+    setCopyTooltips(prev => ({ ...prev, [fieldName]: intl.formatMessage({ id: 'debugger.copied' }) }))
   }
 
   const resetTooltip = (fieldName: string) => {
     setTimeout(() => {
-      setCopyTooltips(prev => ({ ...prev, [fieldName]: 'Copy address' }))
+      setCopyTooltips(prev => ({ ...prev, [fieldName]: intl.formatMessage({ id: 'debugger.copyAddress' }) }))
     }, 500)
   }
 
@@ -199,45 +200,45 @@ export const DebugLayout = ({
       <div className="global-variables-grid" data-id="txDetails">
         {/* Row 1: Status | Tx Fee */}
         <div className="global-var-item">
-          <span className="global-var-key">Status:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txStatus" /></span>
           <span className={`global-var-value tx-status ${status}`} data-id="txStatus">
-            {status === 'success' ? 'Success' : 'Failed'}
+            {status === 'success' ? <FormattedMessage id="debugger.txStatusSuccess" /> : <FormattedMessage id="debugger.txStatusFailed" />}
           </span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Tx Fee:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txFee" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txFee">{txFee}</span>
         </div>
 
         {/* Row 2: Block | Tx Type */}
         <div className="global-var-item">
-          <span className="global-var-key">Block:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txBlock" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txBlock">{block?.number || 'N/A'}</span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Tx Type:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txType" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txType">{txType}</span>
         </div>
 
         {/* Row 3: Timestamp | Gas Price */}
         <div className="global-var-item">
-          <span className="global-var-key">Timestamp:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txTimestamp" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txTimestamp">{timestamp}</span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Gas Price:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txGasPrice" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txGasPrice">{gasPrice}</span>
         </div>
 
         {/* Row 4: From | Gas Used */}
         <div className="global-var-item">
-          <span className="global-var-key">From:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txFrom" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txFrom">
             {tx?.from ? formatAddress(tx.from) : 'N/A'}
             {tx?.from && (
               <CustomTooltip tooltipText={copyTooltips.from} tooltipId="from-address-tooltip" placement="top">
                 <i
-                  className={`far ${copyTooltips.from === 'Copied!' ? 'fa-check' : 'fa-copy'} ms-2`}
+                  className={`far ${copyTooltips.from === intl.formatMessage({ id: 'debugger.copied' }) ? 'fa-check' : 'fa-copy'} ms-2`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => copyToClipboard(tx.from, 'from')}
                   onMouseLeave={() => resetTooltip('from')}
@@ -247,19 +248,19 @@ export const DebugLayout = ({
           </span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Gas Used:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txGasUsed" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txGasUsed">{gasUsed}</span>
         </div>
 
         {/* Row 5: To | Tx Index */}
         <div className="global-var-item">
-          <span className="global-var-key">To:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txTo" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txTo">
             {formatAddress(tx?.to || receipt?.contractAddress || '') || 'N/A'}
             {(tx?.to || receipt?.contractAddress) && (
               <CustomTooltip tooltipText={copyTooltips.to} tooltipId="to-address-tooltip" placement="top">
                 <i
-                  className={`far ${copyTooltips.to === 'Copied!' ? 'fa-check' : 'fa-copy'} ms-2`}
+                  className={`far ${copyTooltips.to === intl.formatMessage({ id: 'debugger.copied' }) ? 'fa-check' : 'fa-copy'} ms-2`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => copyToClipboard(tx?.to || receipt?.contractAddress || '', 'to')}
                   onMouseLeave={() => resetTooltip('to')}
@@ -269,7 +270,7 @@ export const DebugLayout = ({
           </span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Tx Index:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txIndex" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txIndex">
             {receipt?.transactionIndex !== undefined ? receipt.transactionIndex : (tx?.transactionIndex !== undefined ? tx.transactionIndex : 0)}
           </span>
@@ -277,17 +278,17 @@ export const DebugLayout = ({
 
         {/* Row 6: Function | Tx Nonce */}
         <div className="global-var-item">
-          <span className="global-var-key">Function:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txFunction" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txFunction">{functionName}</span>
         </div>
         <div className="global-var-item">
-          <span className="global-var-key">Tx Nonce:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txNonce" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txNonce">{tx?.nonce !== undefined ? tx.nonce : 'N/A'}</span>
         </div>
 
         {/* Row 7: Value | (empty) */}
         <div className="global-var-item">
-          <span className="global-var-key">Value:</span>
+          <span className="global-var-key"><FormattedMessage id="debugger.txValue" /></span>
           <span className="global-var-value text-theme-contrast" data-id="txValue">{txValue}</span>
         </div>
       </div>
@@ -334,7 +335,7 @@ export const DebugLayout = ({
 
   const renderJsonValue = (value: any, key: string, path: string, depth: number = 0): JSX.Element => {
     const isExpanded = expandedObjectPaths.has(path)
-    const indent = depth * 12
+    const indent = depth * 8
 
     if (Array.isArray(value)) {
       const hasItems = value.length > 0
@@ -364,7 +365,7 @@ export const DebugLayout = ({
                   return renderJsonValue(item, String(index), itemPath, depth + 1)
                 }
                 return (
-                  <div key={itemPath} className="json-line" style={{ marginLeft: `${(depth + 1) * 12}px` }}>
+                  <div key={itemPath} className="json-line" style={{ marginLeft: `${(depth + 1) * 8}px` }}>
                     <span className="json-expand-icon-placeholder"></span>
                     <span data-id={`${key}-json-value`} className="json-value">{JSON.stringify(item)}</span>
                     {index < value.length - 1 && <span className="json-comma">,</span>}
@@ -410,7 +411,7 @@ export const DebugLayout = ({
                   return renderJsonValue(value[objKey], objKey, objPath, depth + 1)
                 }
                 return (
-                  <div key={objPath} className="json-line" style={{ marginLeft: `${(depth + 1) * 12}px` }}>
+                  <div key={objPath} className="json-line" style={{ marginLeft: `${(depth + 1) * 8}px` }}>
                     <span className="json-expand-icon-placeholder"></span>
                     <span className="json-key">{objKey}</span>
                     <span className="json-separator">: </span>
@@ -659,7 +660,7 @@ export const DebugLayout = ({
               {!scope.isSenderNode && (scope.firstStep !== undefined || scope.lastStep !== undefined) && (
                 <div className="call-trace-actions">
                   {scope.firstStep !== undefined && (
-                    <CustomTooltip tooltipText="Jump Into" tooltipId={`jump-into-${scope.scopeId}`} placement="top">
+                    <CustomTooltip tooltipText={intl.formatMessage({ id: 'debugger.jumpInto' })} tooltipId={`jump-into-${scope.scopeId}`} placement="top">
                       <button
                         className="jump-debug-btn"
                         onClick={(e) => {
@@ -677,7 +678,7 @@ export const DebugLayout = ({
                   )}
                   {scope.lastStep !== undefined && (
                     <>
-                      <CustomTooltip tooltipText="Jump End" tooltipId={`jump-end-${scope.scopeId}`} placement="top">
+                      <CustomTooltip tooltipText={intl.formatMessage({ id: 'debugger.jumpEnd' })} tooltipId={`jump-end-${scope.scopeId}`} placement="top">
                         <button
                           className="jump-debug-btn"
                           onClick={(e) => {
@@ -690,7 +691,7 @@ export const DebugLayout = ({
                           <i className="fas fa-step-forward"></i>
                         </button>
                       </CustomTooltip>
-                      <CustomTooltip tooltipText="Jump Over" tooltipId={`jump-over-${scope.scopeId}`} placement="top">
+                      <CustomTooltip tooltipText={intl.formatMessage({ id: 'debugger.jumpOver' })} tooltipId={`jump-over-${scope.scopeId}`} placement="top">
                         <button
                           className="jump-debug-btn"
                           onClick={(e) => {
@@ -706,7 +707,7 @@ export const DebugLayout = ({
                     </>
                   )}
                   {isSelected && stepManager && stepManager.jumpOut && (
-                    <CustomTooltip tooltipText="Jump Out" tooltipId={`jump-out-${scope.scopeId}`} placement="top">
+                    <CustomTooltip tooltipText={intl.formatMessage({ id: 'debugger.jumpOutTooltip' })} tooltipId={`jump-out-${scope.scopeId}`} placement="top">
                       <button
                         className="jump-debug-btn"
                         onClick={(e) => {
@@ -824,7 +825,7 @@ export const DebugLayout = ({
 
   const renderOpcodes = () => {
     if (!opcodeData || !opcodeData.code || opcodeData.code.length === 0) {
-      return <div className="text-muted p-2">No opcode data at current step</div>
+      return <div className="text-muted p-2"><FormattedMessage id="debugger.noOpcodeData" /></div>
     }
 
     const { code, index, nextIndexes } = opcodeData
@@ -890,7 +891,7 @@ export const DebugLayout = ({
               return <div key={path} data-id={dataId}>{renderJsonValue(value, key, path, 1)}</div>
             }
             return (
-              <div key={path} className="json-line" style={{ marginLeft: '12px' }} data-id={dataId}>
+              <div key={path} className="json-line" style={{ marginLeft: '8px' }} data-id={dataId}>
                 <span className="json-expand-icon-placeholder"></span>
                 <span className="json-key">{key}</span>
                 <span className="json-separator">: </span>
@@ -913,7 +914,7 @@ export const DebugLayout = ({
           </div>
 
           {/* Opcode - Custom Renderer */}
-          <div style={{ marginLeft: '12px' }}>
+          <div style={{ marginLeft: '8px' }}>
             <div className="json-line" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <i
                 className={`fas ${expandedObjectPaths.has('root.opcode') ? 'fa-minus-square' : 'fa-plus-square'} json-expand-icon`}
@@ -952,7 +953,7 @@ export const DebugLayout = ({
               return renderJsonValue(value, 'callStack', path, 1)
             }
             return (
-              <div key={path} className="json-line" style={{ marginLeft: '12px' }}>
+              <div key={path} className="json-line" style={{ marginLeft: '8px' }}>
                 <span className="json-expand-icon-placeholder"></span>
                 <span className="json-key">callStack</span>
                 <span className="json-separator">: </span>
@@ -970,7 +971,7 @@ export const DebugLayout = ({
               return renderJsonValue(value, 'stack', path, 1)
             }
             return (
-              <div key={path} className="json-line" style={{ marginLeft: '12px' }}>
+              <div key={path} className="json-line" style={{ marginLeft: '8px' }}>
                 <span className="json-expand-icon-placeholder"></span>
                 <span className="json-key">stack</span>
                 <span className="json-separator">: </span>
@@ -988,7 +989,7 @@ export const DebugLayout = ({
               return renderJsonValue(value, 'memory', path, 1)
             }
             return (
-              <div key={path} className="json-line" style={{ marginLeft: '12px' }}>
+              <div key={path} className="json-line" style={{ marginLeft: '8px' }}>
                 <span className="json-expand-icon-placeholder"></span>
                 <span className="json-key">memory</span>
                 <span className="json-separator">: </span>
@@ -1053,7 +1054,7 @@ export const DebugLayout = ({
           <i className={`fas ${expandedSections.transactionDetails ? 'fa-chevron-down' : 'fa-chevron-right'}`} style={{ fontSize: '0.75rem', marginRight: '1rem', color: 'var(--bs-body-color)' }}></i>
         </div>
         {expandedSections.transactionDetails && (
-          <div className="debug-section-content ms-3">
+          <div className="debug-section-content debug-section-scrollable ms-3">
             {renderGlobalVariables()}
           </div>
         )}
@@ -1067,12 +1068,14 @@ export const DebugLayout = ({
           style={{ cursor: 'pointer' }}
         >
           <h6 className="debug-section-title" data-id="callTraceHeader">
-            Call Trace (Step: {(() => {
-              const maxStep = (traceData && (traceData.traceLength - 1)) || 0
-              const currentStep = stepManager?.currentStepIndex ?? 0
-              // Clamp currentStepIndex to valid range [0, maxStep]
-              return Math.max(0, Math.min(currentStep, maxStep))
-            })()} / {(traceData && (traceData.traceLength - 1)) || 0})
+            {intl.formatMessage({ id: 'debugger.callTraceHeader' }, {
+              currentStep: (() => {
+                const maxStep = (traceData && (traceData.traceLength - 1)) || 0
+                const currentStep = stepManager?.currentStepIndex ?? 0
+                return Math.max(0, Math.min(currentStep, maxStep))
+              })(),
+              maxStep: (traceData && (traceData.traceLength - 1)) || 0
+            })}
           </h6>
           <i className={`fas ${expandedSections.callTrace ? 'fa-chevron-down' : 'fa-chevron-right'}`} style={{ fontSize: '0.75rem', marginRight: '1rem', color: 'var(--bs-body-color)' }}></i>
         </div>

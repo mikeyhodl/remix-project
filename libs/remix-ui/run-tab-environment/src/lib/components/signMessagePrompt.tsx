@@ -57,7 +57,7 @@ export function SignMessagePrompt ({
     setTimeout(() => {
       plugin.call('notification', 'modal', {
         id: 'eip712MessageSigning',
-        title: 'Message signing with EIP-712',
+        title: intl.formatMessage({ id: 'udapp.eip712ModalTitle' }),
         message: (
           <div>
             <div>{intl.formatMessage({ id: 'udapp.EIP712-2' }, {
@@ -94,13 +94,13 @@ export function SignMessagePrompt ({
         defaultValue={message}
       ></textarea>
       <div className='mt-2'>
-        <span>otherwise</span>
+        <span><FormattedMessage id="udapp.otherwiseLabel" /></span>
         <button
           className='ms-2 modal-ok btn btn-sm border-primary'
           data-id="sign-eip-712"
           onClick={handleEIP712Click}
         >
-          Sign with EIP 712
+          <FormattedMessage id="udapp.signWithEip712Button" />
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Overlay } from 'react-bootstrap'
+import { useIntl } from 'react-intl'
 import { Account } from '../types'
 
 interface AccountKebabMenuProps {
@@ -48,45 +49,46 @@ export const AccountKebabMenu: React.FC<AccountKebabMenuProps> = ({
   onSignUsingAccount,
   onDeleteAccount
 }) => {
+  const intl = useIntl()
   const menuItems = [
     onRenameAccount && {
       id: 'renameAccount',
-      label: 'Rename',
+      label: intl.formatMessage({ id: 'udapp.renameAccountMenuItem' }),
       icon: 'fas fa-pen',
       color: 'var(--bs-body-color)',
       onClick: () => onRenameAccount(account)
     },
     onNewAccount && {
       id: 'newAccount',
-      label: 'New account',
+      label: intl.formatMessage({ id: 'udapp.newAccountMenuItem' }),
       icon: 'fas fa-plus',
       color: 'var(--bs-body-color)',
       onClick: () => onNewAccount()
     },
     onCreateSmartAccount && {
       id: 'createSmartAccount',
-      label: 'Create smart account',
+      label: intl.formatMessage({ id: 'udapp.createSmartAccountMenuItem' }),
       icon: 'fas fa-plus',
       color: 'var(--bs-body-color)',
       onClick: () => onCreateSmartAccount(account)
     },
     onAuthorizeDelegation && {
       id: 'authorizeDelegation',
-      label: 'Authorize delegation',
+      label: intl.formatMessage({ id: 'udapp.authorizeDelegationMenuItem' }),
       icon: 'fas fa-check',
       color: 'var(--bs-body-color)',
       onClick: () => onAuthorizeDelegation(account)
     },
     onSignUsingAccount && {
       id: 'signUsingAccount',
-      label: 'Sign using this account',
+      label: intl.formatMessage({ id: 'udapp.signUsingAccountMenuItem' }),
       icon: 'fa-regular fa-pen-to-square',
       color: 'var(--bs-body-color)',
       onClick: () => onSignUsingAccount(account)
     },
     onDeleteAccount && {
       id: 'deleteAccount',
-      label: 'Delete account',
+      label: intl.formatMessage({ id: 'udapp.deleteAccountMenuItem' }),
       icon: 'fas fa-trash',
       color: 'var(--bs-danger)',
       onClick: () => onDeleteAccount(account)

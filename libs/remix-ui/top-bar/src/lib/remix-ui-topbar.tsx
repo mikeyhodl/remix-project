@@ -652,7 +652,6 @@ export function RemixUiTopbar() {
           { showLoginUI && cloudEnabled && (
             <CloudToggle
               className="ms-2"
-              onLogin={() => setShowCloudLoginModal(true)}
               onEnableCloud={() => enableCloud()}
               onDisableCloud={() => disableCloud()}
             />)}

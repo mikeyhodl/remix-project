@@ -131,11 +131,14 @@ export class WeightedToolSelector extends SimpleToolSelector {
       if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0;
       }
+      if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
+        st.score += 5;
+      }
     });
 
     scoredTools.sort((a, b) => b.score - a.score);
 
-    const topTools = scoredTools.slice(0, 5);
+    const topTools = scoredTools.slice(0, maxTools);
     console.log('[WeightedToolSelector] Top weighted matches:');
     topTools.forEach(st => {
       const d = st.matchDetails;

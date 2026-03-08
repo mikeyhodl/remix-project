@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useReducer, useRef, SyntheticEvent, useContext } from 'react' // eslint-disable-line
-import { useIntl } from 'react-intl'
+import { useIntl, FormattedMessage } from 'react-intl'
 import {
   registerCommandAction,
   registerLogScriptRunnerAction,
@@ -693,7 +693,7 @@ export const RemixUiTerminal = (props: RemixUiTerminalProps) => {
                     <div className={classNameBlock} data-id="block" key={index}>
                       <span className="remix_ui_terminal_tx">
                         <div className="remix_ui_terminal_txItem">
-                          [<span className="remix_ui_terminal_txItemTitle">block:{x.message} - </span> 0 {'transactions'} ]
+                          [<span className="remix_ui_terminal_txItemTitle">block:{x.message} - </span> 0 <FormattedMessage id="terminal.transactions" /> ]
                         </div>
                       </span>
                     </div>
