@@ -1527,7 +1527,6 @@ module.exports = {
       .clickWorkspaceDropdown()
       .pause(2000)
       .assert.not.elementPresent('*[data-id="dropdown-item-delete-me"]')
-      .clickWorkspaceDropdown()
       .pause(500)
   },
 
