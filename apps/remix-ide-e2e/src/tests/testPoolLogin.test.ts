@@ -142,11 +142,10 @@ module.exports = {
       })
       .pause(5000)
       // Enable cloud mode via toggle (cloud is OFF by default after login)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
       // Open the workspace dropdown → template explorer → Blank template
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -237,11 +236,10 @@ module.exports = {
       })
       .pause(5000)
       // Enable cloud mode via toggle (cloud is OFF by default after login)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
       // Create ws-alpha via template explorer
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -269,7 +267,7 @@ module.exports = {
 
   'Should create second cloud workspace ws-beta #group3': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -301,7 +299,7 @@ module.exports = {
 
   'Should create third cloud workspace ws-gamma #group3': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -334,7 +332,7 @@ module.exports = {
 
     // Switch to ws-beta and verify
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-beta"]', 10000)
       .click('*[data-id="dropdown-item-ws-beta"]')
@@ -345,7 +343,7 @@ module.exports = {
 
     // Switch to ws-alpha and verify
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 10000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
@@ -367,8 +365,7 @@ module.exports = {
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
       // Re-enable cloud (OFF by default after reload)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
 
     // Wait for cloud system to discover workspaces and complete initial pull from S3
@@ -377,7 +374,7 @@ module.exports = {
 
   'Should verify ws-alpha restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 20000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
@@ -404,7 +401,7 @@ module.exports = {
 
   'Should verify ws-beta restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-beta"]', 20000)
       .click('*[data-id="dropdown-item-ws-beta"]')
@@ -439,7 +436,7 @@ module.exports = {
 
   'Should verify ws-gamma restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-ws-gamma"]', 20000)
       .click('*[data-id="dropdown-item-ws-gamma"]')
@@ -486,14 +483,13 @@ module.exports = {
       })
       .pause(5000)
       // Enable cloud mode via toggle (cloud is OFF by default after login)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
   },
 
   'Should clone Account Abstraction repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -526,7 +522,7 @@ module.exports = {
 
   'Should clone Uniswap v4 Template repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -560,7 +556,7 @@ module.exports = {
 
   'Should clone Breakthrough-Labs Hooks repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -595,7 +591,7 @@ module.exports = {
   'Should verify all cloned workspaces are listed and switchable #group4': async function (browser: NightwatchBrowser) {
     // Open workspace dropdown and verify all three cloned workspaces are listed
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
 
     // Verify the workspace items exist in the dropdown (names may have suffix like "- 1")
@@ -631,7 +627,7 @@ module.exports = {
 
     // Switch to Uniswap v4 Template
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Uniswap v4 Template")]',
@@ -670,14 +666,13 @@ module.exports = {
       })
       .pause(5000)
       // Enable cloud mode via toggle (cloud is OFF by default after login)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
   },
 
   'Should create a Basic workspace with git init checked #group5': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -777,8 +772,7 @@ module.exports = {
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
       // Re-enable cloud (OFF by default after reload)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
 
     // Wait for cloud system to restore workspaces from S3
@@ -788,7 +782,7 @@ module.exports = {
   'Should verify workspace files restored from S3 after wipe #group5': function (browser: NightwatchBrowser) {
     // The restored workspace should be listed — switch to it
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "Basic")]',
@@ -901,7 +895,7 @@ module.exports = {
 
   'Should create local workspace migrate-ws-A with files #group6': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -935,7 +929,7 @@ module.exports = {
 
   'Should create local workspace migrate-ws-B with files #group6': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -968,7 +962,7 @@ module.exports = {
 
   'Should create local workspace migrate-ws-C (will NOT be migrated) #group6': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1002,8 +996,7 @@ module.exports = {
   'Should enable cloud and open migration via dropdown #group6': function (browser: NightwatchBrowser) {
     // Re-enable cloud via toggle
     browser
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
       // Dismiss any auto-appearing migration dialog via JS
       .execute(function () {
@@ -1020,7 +1013,7 @@ module.exports = {
       })
       .pause(1000)
       // Open workspace dropdown and click "Migrate local workspaces to cloud"
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="workspaceMigrateToCloud"]', 15000)
       .click('*[data-id="workspaceMigrateToCloud"]')
@@ -1073,7 +1066,7 @@ module.exports = {
   'Should verify migrated workspaces in cloud dropdown #group6': function (browser: NightwatchBrowser) {
     browser
       .pause(5000)
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       // Verify migrate-ws-A and migrate-ws-B are listed in cloud
       .waitForElementVisible({
@@ -1102,7 +1095,7 @@ module.exports = {
 
   'Should verify migrate-ws-B content in cloud #group6': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-B")]',
@@ -1120,10 +1113,10 @@ module.exports = {
   'Should verify migrate-ws-C is still local and A/B are gone locally #group6': function (browser: NightwatchBrowser) {
     // Disable cloud to switch to local mode
     browser
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(5000)
       // Open dropdown
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       // migrate-ws-C should still exist locally (it was NOT migrated)
       .waitForElementVisible({
@@ -1162,7 +1155,7 @@ module.exports = {
   'Should re-enable cloud and verify migrated workspaces persist #group6': function (browser: NightwatchBrowser) {
     // Re-enable cloud
     browser
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
       // Dismiss migration dialog if it auto-appears
       .execute(function () {
@@ -1171,7 +1164,7 @@ module.exports = {
       })
       .pause(3000)
       // Cloud workspace dropdown should still have migrate-ws-A and migrate-ws-B
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "migrate-ws-A")]',
@@ -1215,13 +1208,12 @@ module.exports = {
       })
       .pause(5000)
       // Enable cloud mode via toggle (cloud is OFF by default after login)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
 
     // Create a cloud workspace from the Blank template
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1276,7 +1268,7 @@ module.exports = {
 
     // Cloud workspace should NOT be in the dropdown — only the local default_workspace
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .assert.not.elementPresent({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "user1-cloud-ws")]',
@@ -1288,7 +1280,7 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       // Close the dropdown
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(500)
   },
 
@@ -1313,14 +1305,14 @@ module.exports = {
   'Should NOT see the first user cloud workspace #group7': function (browser: NightwatchBrowser) {
     // The new user should not have user1-cloud-ws in their workspace list
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .assert.not.elementPresent({
         selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "user1-cloud-ws")]',
         locateStrategy: 'xpath',
       })
       // Close dropdown
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(500)
   },
 
@@ -1346,15 +1338,14 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
   },
 
   'Should create three cloud workspaces #group8': async function (browser: NightwatchBrowser) {
     // ─── Create rename-me ───
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1379,7 +1370,7 @@ module.exports = {
 
     // ─── Create delete-me ───
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1404,7 +1395,7 @@ module.exports = {
 
     // ─── Create keep-me ───
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1431,7 +1422,7 @@ module.exports = {
   'Should rename rename-me to renamed-ws #group8': async function (browser: NightwatchBrowser) {
     // Open dropdown and click the sub-menu icon for rename-me
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-rename-me"]', 10000)
     // Click the three-dot icon next to rename-me
@@ -1451,7 +1442,7 @@ module.exports = {
       .pause(3000)
     // Verify the rename took effect
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 10000)
       .assert.not.elementPresent('*[data-id="dropdown-item-rename-me"]')
@@ -1465,8 +1456,7 @@ module.exports = {
   'Should delete delete-me workspace #group8': function (browser: NightwatchBrowser) {
     // Open dropdown and click the sub-menu icon for delete-me
     browser
-      .waitForElementVisible('*[data-id="workspacesSelect"]', 10000)
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-delete-me"]', 10000)
       // Click the three-dot icon next to delete-me
@@ -1487,13 +1477,13 @@ module.exports = {
       .pause(5000)
     // Verify delete-me is gone from the dropdown
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .assert.not.elementPresent('*[data-id="dropdown-item-delete-me"]')
       // renamed-ws and keep-me should still be there
       .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 10000)
       .waitForElementVisible('*[data-id="dropdown-item-keep-me"]', 10000)
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(500)
   },
 
@@ -1507,15 +1497,14 @@ module.exports = {
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
       // Re-enable cloud (OFF by default after reload)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
     await waitForSyncIdle(browser, 60_000)
   },
 
   'Should verify renamed-ws survived S3 restore #group8': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-renamed-ws"]', 20000)
       .click('*[data-id="dropdown-item-renamed-ws"]')
@@ -1535,10 +1524,10 @@ module.exports = {
 
   'Should verify delete-me is still gone after S3 restore #group8': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .assert.not.elementPresent('*[data-id="dropdown-item-delete-me"]')
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(500)
   },
 
@@ -1583,14 +1572,13 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(5000)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
   },
 
   'Should create a workspace with three files #group9': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
@@ -1685,8 +1673,7 @@ module.exports = {
       })
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(15000)
     await waitForSyncIdle(browser, 60_000)
     // Extra pause to ensure the S3 pull and file tree are fully loaded
@@ -1699,8 +1686,7 @@ module.exports = {
     browser
       .refresh()
       .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
-      .waitForElementVisible('*[data-id="cloud-toggle"]', 10000)
-      .click('*[data-id="cloud-toggle"]')
+      .clickCloudToggle()
       .pause(10000)
 
     await waitForSyncIdle(browser, 60_000)

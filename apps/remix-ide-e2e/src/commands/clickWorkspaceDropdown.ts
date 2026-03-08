@@ -1,19 +1,21 @@
 import { NightwatchBrowser } from 'nightwatch'
 import EventEmitter from 'events'
 
-class switchWorkspace extends EventEmitter {
-  command (this: NightwatchBrowser, workspaceName: string): NightwatchBrowser {
+/**
+ * Waits for the workspace dropdown to be visible AND enabled
+ * (i.e. `data-disabled` is not "true"), then clicks it.
+ */
+class clickWorkspaceDropdown extends EventEmitter {
+  command (this: NightwatchBrowser): NightwatchBrowser {
     this.api
-      .waitForElementVisible('[data-id="workspacesSelect"]')
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
       .waitForElementPresent({
         locateStrategy: 'xpath',
         selector: '//*[@data-id="workspacesSelect" and not(@data-disabled="true")]',
         timeout: 30000,
       })
       .click('[data-id="workspacesSelect"]')
-      .waitForElementVisible(`[data-id="dropdown-item-${workspaceName}"]`)
-      .click(`[data-id="dropdown-item-${workspaceName}"]`)
-      .pause(7000)
+      .pause(500)
       .perform((done) => {
         done()
         this.emit('complete')
@@ -22,4 +24,4 @@ class switchWorkspace extends EventEmitter {
   }
 }
 
-module.exports = switchWorkspace
+module.exports = clickWorkspaceDropdown

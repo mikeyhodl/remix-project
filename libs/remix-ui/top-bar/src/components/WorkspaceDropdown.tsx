@@ -274,6 +274,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
       className="d-flex rounded-md"
       id="workspacesSelect"
       data-id="workspacesSelect"
+      data-disabled={isDropdownLocked ? 'true' : undefined}
     >
       <Dropdown.Toggle
         as={CustomToggle}
