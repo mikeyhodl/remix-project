@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react'
-import { LoginMode, AppConfig } from '@remix-api'
+import React, { useState, useEffect, useContext } from 'react'
+import { LoginMode } from '@remix-api'
 import { BillingManager } from '@remix-ui/billing'
+import { AppContext } from '@remix-ui/app'
 
 interface BillingSectionProps {
   plugin: any
 }
 
 export const BillingSection: React.FC<BillingSectionProps> = ({ plugin }) => {
+  const appContext = useContext(AppContext)
   const [paddleConfig, setPaddleConfig] = useState<{ clientToken: string | null; environment: 'sandbox' | 'production' } | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loginEnabled, setLoginEnabled] = useState(false)
-  const [configEnabled, setConfigEnabled] = useState(true)
+  const configEnabled = appContext?.appConfig?.['billing.enable_subscriptions'] !== false
 
   useEffect(() => {
     // Fetch login mode from auth plugin
@@ -34,24 +36,6 @@ export const BillingSection: React.FC<BillingSectionProps> = ({ plugin }) => {
     }
     try {
       plugin?.on('auth', 'loginModeChanged', handleLoginModeChanged)
-    } catch { /* ignore */ }
-
-    // Fetch app config for billing flag
-    const fetchAppConfig = async () => {
-      try {
-        const config: AppConfig = await plugin?.call('auth', 'getAppConfig')
-        if (config && config['billing.enable_subscriptions'] === false) {
-          setConfigEnabled(false)
-        }
-      } catch { /* ignore */ }
-    }
-    fetchAppConfig()
-
-    const handleAppConfigChanged = (config: AppConfig) => {
-      setConfigEnabled(config?.['billing.enable_subscriptions'] !== false)
-    }
-    try {
-      plugin?.on('auth', 'appConfigChanged', handleAppConfigChanged)
     } catch { /* ignore */ }
 
     // Get Paddle configuration
@@ -91,7 +75,6 @@ export const BillingSection: React.FC<BillingSectionProps> = ({ plugin }) => {
       try {
         plugin?.off('auth', 'authStateChanged')
         plugin?.off('auth', 'loginModeChanged')
-        plugin?.off('auth', 'appConfigChanged')
       } catch {
         // Ignore
       }

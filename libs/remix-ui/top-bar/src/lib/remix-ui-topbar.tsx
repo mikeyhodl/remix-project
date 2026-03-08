@@ -21,7 +21,7 @@ import { GitHubLogin } from '../components/gitLogin'
 import { CustomTooltip } from 'libs/remix-ui/helper/src/lib/components/custom-tooltip'
 import { useCloneRepositoryModal } from '../components/CloneRepositoryModal'
 import { TrackingContext } from '@remix-ide/tracking'
-import { MatomoEvent, TopbarEvent, WorkspaceEvent, LoginMode, LoginModeResponse, AppConfig } from '@remix-api'
+import { MatomoEvent, TopbarEvent, WorkspaceEvent, LoginMode, LoginModeResponse } from '@remix-api'
 import { LoginButton } from '@remix-ui/login'
 import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
@@ -95,6 +95,21 @@ export function RemixUiTopbar() {
     return true // 'open' or 'feature_group'
   })()
 
+  const cloudEnabledByConfig = appContext?.appConfig?.['cloud.enabled'] !== false
+  const cloudVisibilityMode = appContext?.appConfig?.['cloud.button_visibility'] || 'authenticated_users'
+  const notificationMode = appContext?.appConfig?.['notifications.mode'] || 'all_users'
+  const supportEnabled = appContext?.appConfig?.['app.supportenabled'] !== false
+  const showJoinBetaTopButton = appContext?.appConfig?.['show_join_beta_top_button'] !== false
+
+  const isVisibleByAudience = (mode: 'off' | 'authenticated_users' | 'all_users', authenticated: boolean): boolean => {
+    if (mode === 'off') return false
+    if (mode === 'authenticated_users') return authenticated
+    return true
+  }
+
+  const showCloudToggle = showLoginUI && cloudEnabledByConfig && cloudEnabled && isVisibleByAudience(cloudVisibilityMode, isAuthenticated)
+  const showNotificationBell = isVisibleByAudience(notificationMode, isAuthenticated)
+
   useEffect(() => {
     // Fetch login mode from auth plugin
     const fetchLoginMode = async () => {
@@ -118,27 +133,6 @@ export function RemixUiTopbar() {
     }
     plugin.on('auth', 'loginModeChanged', handleLoginModeChanged)
 
-    // Fetch app config for cloud.enabled
-    const fetchAppConfig = async () => {
-      try {
-        const config: AppConfig = await plugin.call('auth', 'getAppConfig')
-        if (config['cloud.enabled'] !== undefined) {
-          setCloudEnabled(config['cloud.enabled'] as boolean)
-        }
-      } catch (e) {
-        console.warn('[Topbar] Failed to fetch app config:', e)
-      }
-    }
-    fetchAppConfig()
-
-    // Listen for app config changes
-    const handleAppConfigChanged = (config: AppConfig) => {
-      if (config?.['cloud.enabled'] !== undefined) {
-        setCloudEnabled(config['cloud.enabled'] as boolean)
-      }
-    }
-    plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
-
     // Admin backdoor: Ctrl+Shift+Alt+L to toggle admin override
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'L') {
@@ -154,10 +148,16 @@ export function RemixUiTopbar() {
 
     return () => {
       plugin.off('auth', 'loginModeChanged')
-      plugin.off('auth', 'appConfigChanged')
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, []);
+
+  useEffect(() => {
+    const enabled = appContext?.appConfig?.['cloud.enabled']
+    if (enabled !== undefined) {
+      setCloudEnabled(enabled as boolean)
+    }
+  }, [appContext?.appConfig])
 
   // Listen to feedback plugin for form URL
   useEffect(() => {
@@ -649,7 +649,7 @@ export function RemixUiTopbar() {
           >
             {currentReleaseVersion}
           </span>
-          { showLoginUI && cloudEnabled && (
+          {showCloudToggle && (
             <CloudToggle
               className="ms-2"
               onEnableCloud={() => enableCloud()}
@@ -745,9 +745,9 @@ export function RemixUiTopbar() {
               />
             )}
           </>
-          <BetaPromoPill plugin={plugin} />
-          <NotificationBell className="ms-3" />
-          {isAuthenticated && token && (
+          {showJoinBetaTopButton && <BetaPromoPill plugin={plugin} />}
+          {showNotificationBell && <NotificationBell className="ms-3" />}
+          {supportEnabled && isAuthenticated && token && (
             <CustomTooltip placement="bottom" tooltipText="Premium Support">
               <span
                 className="btn btn-sm d-flex align-items-center gap-1 ms-3"

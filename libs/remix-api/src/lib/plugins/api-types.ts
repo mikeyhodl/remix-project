@@ -88,18 +88,27 @@ export interface GitHubTokenResponse {
  * Known keys are typed explicitly; unknown keys are also accessible.
  */
 export interface AppConfig {
+  // App
+  'app.supportenabled'?: boolean
+
   // Auth
   'auth.login_mode'?: string
   'auth.login_mode_message'?: string
   'auth.registration_mode'?: string
   'auth.link_accounts_enabled'?: boolean
-
+  'auth.email_sign_in_enabled'?: boolean
+  'auth.sign_in_button_mode'?: 'default' | 'beta' | 'hidden'
+  
   // Billing
   'billing.enable_subscriptions'?: boolean
   'billing.credits_enabled'?: boolean
 
   // Cloud
   'cloud.enabled'?: boolean
+  'cloud.button_visibility'?: 'off' | 'authenticated_users' | 'all_users'
+
+  // Notifications
+  'notifications.mode'?: 'off' | 'authenticated_users' | 'all_users'
 
   // Features
   'features.ai_enabled'?: boolean

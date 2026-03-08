@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback, useContext } from 'react'
 import { AuthProvider, RegistrationMode, InviteValidateResponse, LoginMode, LOGIN_ACL_ERROR_CODES } from '@remix-api'
 import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
+import { AppContext } from '../../../../app/src/lib/remix-app/context/context'
 import { endpointUrls } from '@remix-endpoints-helper'
 import './login-modal.css'
 
@@ -35,6 +36,7 @@ const formatTimer = (seconds: number): string => {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
+  const appContext = useContext(AppContext)
   const { login, loading, error, dispatch } = useAuth()
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loadingProviders, setLoadingProviders] = useState(true)
@@ -75,8 +77,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const emailInputRef = useRef<HTMLInputElement>(null)
   const verifyingRef = useRef(false)
 
-  // Is email provider enabled?
-  const emailEnabled = providers.some(p => p.id === 'email' && p.enabled)
+  // Is email sign-in enabled by backend + app config?
+  const emailEnabledByConfig = appContext?.appConfig?.['auth.email_sign_in_enabled'] !== false
+  const emailEnabled = providers.some(p => p.id === 'email' && p.enabled) && emailEnabledByConfig
 
   // --- Countdown timers ---
   useEffect(() => {

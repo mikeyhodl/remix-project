@@ -1,8 +1,9 @@
 import { ViewPlugin } from '@remixproject/engine-web'
-import React, { useState, useReducer, useEffect, useRef } from 'react' // eslint-disable-line
+import React, { useState, useReducer, useEffect, useContext } from 'react' // eslint-disable-line
 import Fuse from 'fuse.js'
 import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredentialsDescription } from '@remix-ui/helper'
 import { AppConfig } from '@remix-api'
+import { AppContext } from '@remix-ui/app'
 
 import { initialState, settingReducer } from './settingsReducer'
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
@@ -281,6 +282,8 @@ const settingsSections: SettingsSection[] = [
 ]
 
 export const RemixUiSettings = (props: RemixUiSettingsProps) => {
+  const appContext = useContext(AppContext)
+  const appConfig = appContext?.appConfig || {}
   const intl = useIntl()
   const [settingsState, dispatch] = useReducer(settingReducer, initialState)
   const [selected, setSelected] = useState(settingsSections[0].key)
@@ -292,8 +295,6 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
   }>({
     themeQuality: themes.light
   })
-  // App config – determines which sections are visible
-  const appConfigRef = useRef<AppConfig>({})
   const [visibleSections, setVisibleSections] = useState<SettingsSection[]>(settingsSections)
 
   // Derive visible sections based on app config
@@ -306,41 +307,16 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
     })
   }
 
-  // Fetch and listen for app config changes
+  // Recompute visible sections when shared app config changes
   useEffect(() => {
-    const fetchAppConfig = async () => {
-      try {
-        const config: AppConfig = await props.plugin.call('auth', 'getAppConfig')
-        appConfigRef.current = config || {}
-        const sections = computeVisibleSections(appConfigRef.current)
-        setVisibleSections(sections)
-        setFilteredSections(sections)
-        if (!sections.find(s => s.key === selected)) {
-          setSelected(sections[0]?.key)
-          setFilteredSection(sections[0])
-        }
-      } catch (e) {
-        console.warn('[Settings] Failed to fetch app config:', e)
-      }
+    const sections = computeVisibleSections(appConfig)
+    setVisibleSections(sections)
+    setFilteredSections(sections)
+    if (!sections.find(s => s.key === selected)) {
+      setSelected(sections[0]?.key)
+      setFilteredSection(sections[0])
     }
-    fetchAppConfig()
-
-    const handleAppConfigChanged = (config: AppConfig) => {
-      appConfigRef.current = config || {}
-      const sections = computeVisibleSections(appConfigRef.current)
-      setVisibleSections(sections)
-      setFilteredSections(sections)
-    }
-    try {
-      props.plugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
-    } catch { /* ignore */ }
-
-    return () => {
-      try {
-        props.plugin.off('auth', 'appConfigChanged')
-      } catch { /* ignore */ }
-    }
-  }, [])
+  }, [appConfig, selected])
 
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme').then((theme) => {

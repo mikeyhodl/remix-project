@@ -211,6 +211,7 @@ const SUBSCRIPTION_FEATURES_OPTIONS = [
   { id: 'ai_frontend_builder', label: 'An AI-assisted front-end builder with hosting for dApps and mini-apps' },
   { id: 'security_audits', label: 'AI-powered security audits' },
   { id: 'gas_optimization', label: 'Gas optimization suggestions' },
+  { id: 'none', label: 'None of the above' },
 ]
 
 interface SurveyData {
