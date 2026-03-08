@@ -36,6 +36,7 @@ const initialState: CloudState = {
   stsToken: null,
   syncStatus: {},
   error: null,
+  workspaceQueueBusy: false,
 }
 
 class CloudStore extends EventEmitter {
@@ -56,11 +57,16 @@ class CloudStore extends EventEmitter {
     this.emit('change', this.state)
   }
 
-  /** Extract user ID from STS token prefix (e.g. "users/42/" → "42") */
-  private extractUserId(stsToken: STSToken): string | null {
-    if (!stsToken?.prefix) return null
-    const match = stsToken.prefix.match(/^users\/(\d+)\//)
-    return match ? match[1] : null
+  /** Get the user ID from localStorage (AuthUser.sub) */
+  private extractUserId(): string | null {
+    try {
+      const userStr = localStorage.getItem('remix_user')
+      if (!userStr) return null
+      const user = JSON.parse(userStr)
+      return user?.sub ? String(user.sub) : null
+    } catch {
+      return null
+    }
   }
 
   /** Get the current user ID (null when not authenticated) */
@@ -70,7 +76,7 @@ class CloudStore extends EventEmitter {
 
   /** Activate cloud mode after successful auth + workspace fetch */
   enterCloudMode(workspaces: CloudWorkspace[], stsToken: STSToken) {
-    const userId = this.extractUserId(stsToken)
+    const userId = this.extractUserId()
     // Restore persisted sync status so workspaces show last-known state
     // instead of all turning blue after a page reload.
     const restored = this._restoreSyncStatus(userId, workspaces)
@@ -204,6 +210,11 @@ class CloudStore extends EventEmitter {
   /** Set an error */
   setError(error: string | null) {
     this.setState({ error })
+  }
+
+  /** Signal whether the workspace operation queue is busy */
+  setWorkspaceQueueBusy(busy: boolean) {
+    this.setState({ workspaceQueueBusy: busy })
   }
 
   /** Reset to initial state */

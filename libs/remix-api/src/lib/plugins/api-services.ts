@@ -56,7 +56,12 @@ import {
   InviteRedeemRequest,
   InviteRedeemResponse,
   InviteRedemptionsResponse,
-  UserTagsResponse
+  UserTagsResponse,
+  PoolCheckoutResponse,
+  PoolReleaseResponse,
+  PoolStatusResponse,
+  PoolAccountsResponse,
+  PoolReleaseAllResponse
 } from './api-types'
 
 /**
@@ -706,5 +711,116 @@ export class InviteApiService {
       default:
         return 'fa-check'
     }
+  }
+}
+
+/**
+ * E2E Test Account Pool API Service
+ *
+ * Manages a pool of 20 rotating test accounts for E2E tests.
+ * Each test run checks out an exclusive account, receives JWT tokens,
+ * runs tests, then releases the account (wiping all data).
+ *
+ * All endpoints require an API key via `Authorization: Bearer rmx_<key>`.
+ * Base URL: `{ssoBaseUrl}/test/pool/*`
+ */
+export class TestPoolApiService {
+  private baseUrl: string
+  private apiKey: string
+
+  /**
+   * @param ssoBaseUrl - The SSO base URL (e.g. https://auth.api.remix.live:8443/sso)
+   * @param apiKey - The test-account-access API key (e.g. rmx_abc123...)
+   */
+  constructor(ssoBaseUrl: string, apiKey: string) {
+    this.baseUrl = `${ssoBaseUrl}/test/pool`
+    this.apiKey = apiKey
+  }
+
+  private async request<T>(endpoint: string, options: { method?: string; body?: unknown } = {}): Promise<ApiResponse<T>> {
+    const { method = 'GET', body } = options
+    try {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Accept': 'application/json',
+      }
+      if (body) {
+        headers['Content-Type'] = 'application/json'
+      }
+
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        return {
+          ok: false,
+          status: response.status,
+          error: data?.error || data?.message || `Pool request failed: ${response.status}`,
+        }
+      }
+
+      return { ok: true, status: response.status, data: data as T }
+    } catch (error: any) {
+      return { ok: false, status: 0, error: error.message || 'Network error' }
+    }
+  }
+
+  /**
+   * Acquire an exclusive test account from the pool.
+   * Returns JWT tokens ready for use in tests.
+   *
+   * @param featureGroups - Feature groups to assign (must include one with login:allowed, e.g. 'beta')
+   * @returns Session info with tokens, userId, accountId
+   * @throws 503 POOL_EXHAUSTED when all 20 accounts are locked
+   * @throws 403 API_KEY_FORBIDDEN when API key is invalid
+   * @throws 403 LOGIN_FEATURE_GROUP_REQUIRED when no group with login:allowed is included
+   * @throws 400 INVALID_FEATURE_GROUPS when group names don't exist
+   */
+  async checkout(featureGroups: string[] = ['beta']): Promise<ApiResponse<PoolCheckoutResponse>> {
+    return this.request<PoolCheckoutResponse>('/checkout', {
+      method: 'POST',
+      body: { featureGroups },
+    })
+  }
+
+  /**
+   * Release a test account and wipe all data (DB, S3, Redis).
+   * **Must be called after every test run.**
+   *
+   * @param sessionId - The sessionId from checkout
+   * @throws 404 SESSION_NOT_FOUND when sessionId is unknown or lock expired
+   */
+  async release(sessionId: string): Promise<ApiResponse<PoolReleaseResponse>> {
+    return this.request<PoolReleaseResponse>('/release', {
+      method: 'POST',
+      body: { sessionId },
+    })
+  }
+
+  /**
+   * Get current pool state. Useful for debugging CI hangs.
+   */
+  async status(): Promise<ApiResponse<PoolStatusResponse>> {
+    return this.request<PoolStatusResponse>('/status')
+  }
+
+  /**
+   * List all 20 pool account definitions (id, name, email).
+   */
+  async accounts(): Promise<ApiResponse<PoolAccountsResponse>> {
+    return this.request<PoolAccountsResponse>('/accounts')
+  }
+
+  /**
+   * Emergency: force-release every account and wipe all test data.
+   * Use when CI is stuck with stale locks.
+   */
+  async releaseAll(): Promise<ApiResponse<PoolReleaseAllResponse>> {
+    return this.request<PoolReleaseAllResponse>('/release-all', { method: 'POST' })
   }
 }

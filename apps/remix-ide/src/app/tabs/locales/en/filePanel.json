@@ -31,6 +31,8 @@
   "filePanel.workspace.restore": "Restore Workspaces from the Backup",
   "filePanel.workspace.migrateToCloud": "Migrate Workspaces to Cloud",
   "filePanel.migrateToCloud": "Migrate to Cloud",
+  "filePanel.downloadCloudSnapshots": "Download Cloud Snapshots",
+  "filePanel.workspace.downloadCloudSnapshots": "Download periodic cloud snapshots for this workspace",
   "filePanel.workspace.localFileSystem": "Connect to Local Filesystem using Remixd",
   "filePanel.workspace.clone": "Clone Git Repository",
   "filePanel.workspace.cloneMessage": "Please provide a valid git repository url.",
