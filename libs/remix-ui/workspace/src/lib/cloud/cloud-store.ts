@@ -36,6 +36,7 @@ const initialState: CloudState = {
   stsToken: null,
   syncStatus: {},
   error: null,
+  workspaceQueueBusy: false,
 }
 
 class CloudStore extends EventEmitter {
@@ -209,6 +210,11 @@ class CloudStore extends EventEmitter {
   /** Set an error */
   setError(error: string | null) {
     this.setState({ error })
+  }
+
+  /** Signal whether the workspace operation queue is busy */
+  setWorkspaceQueueBusy(busy: boolean) {
+    this.setState({ workspaceQueueBusy: busy })
   }
 
   /** Reset to initial state */

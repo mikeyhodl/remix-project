@@ -111,6 +111,13 @@ class WorkspaceOperationQueue {
    * arrives while `_depth > 0` was necessarily spawned from the currently-
    * executing operation and can safely proceed.
    */
+  /** Clear the busy flag when no operations are in-flight or waiting */
+  private _drainCheck() {
+    if (this._depth === 0 && this._queuedCount === 0) {
+      cloudStore.setWorkspaceQueueBusy(false)
+    }
+  }
+
   run<T>(fn: () => Promise<T>, label?: string): Promise<T> {
     const opId = ++this._nextOpId
     const opLabel = label || fn.name || 'anonymous'
@@ -121,8 +128,8 @@ class WorkspaceOperationQueue {
       this._depth++
       const t0 = performance.now()
       return fn().then(
-        (v) => { this._depth--; this._log('REENTRANT-OK', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms`); return v },
-        (e) => { this._depth--; this._log('REENTRANT-ERR', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms ${e?.message || e}`); throw e }
+        (v) => { this._depth--; this._log('REENTRANT-OK', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms`); this._drainCheck(); return v },
+        (e) => { this._depth--; this._log('REENTRANT-ERR', opId, opLabel, `${(performance.now() - t0).toFixed(0)}ms ${e?.message || e}`); this._drainCheck(); throw e }
       )
     }
 
@@ -140,6 +147,7 @@ class WorkspaceOperationQueue {
     const execute = async () => {
       this._queuedCount--
       this._depth++
+      cloudStore.setWorkspaceQueueBusy(true)
       const t0 = performance.now()
       this._log('START', opId, opLabel)
       try {
@@ -151,6 +159,7 @@ class WorkspaceOperationQueue {
         reject(e)
       } finally {
         this._depth--
+        this._drainCheck()
       }
     }
     this._queue = this._queue.then(execute, execute)

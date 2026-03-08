@@ -71,6 +71,8 @@ export interface CloudState {
   syncStatus: Record<string, WorkspaceSyncStatus>
   /** Error message if something went wrong */
   error: string | null
+  /** True while the workspace operation queue is processing (blocks UI interactions) */
+  workspaceQueueBusy: boolean
 }
 
 export interface WorkspaceSyncStatus {

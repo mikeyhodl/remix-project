@@ -149,10 +149,10 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
   onDisableCloud,
   className = '',
 }) => {
-  const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus } = useCloudStore()
+  const { isCloudMode, isAuthenticated, loading, activeWorkspaceId, syncStatus, workspaceQueueBusy } = useCloudStore()
 
   const isOn = isCloudMode
-  const isDisabled = loading || !isAuthenticated
+  const isDisabled = loading || !isAuthenticated || workspaceQueueBusy
 
   // Derive the icon: when cloud is on, reflect live sync status; when off, show cloud-slash
   const syncProps = isOn
@@ -176,13 +176,15 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
     }
   }, [isDisabled, isOn, onEnableCloud, onDisableCloud])
 
-  const tooltipText = loading
-    ? 'Connecting…'
-    : !isAuthenticated
-      ? 'Sign in to use cloud storage'
-      : isOn
-        ? (syncProps!.title + ' — click to disable cloud')
-        : 'Cloud storage is OFF — click to enable'
+  const tooltipText = workspaceQueueBusy
+    ? 'Workspace operation in progress…'
+    : loading
+      ? 'Connecting…'
+      : !isAuthenticated
+        ? 'Sign in to use cloud storage'
+        : isOn
+          ? (syncProps!.title + ' — click to disable cloud')
+          : 'Cloud storage is OFF — click to enable'
 
   return (
     <CustomTooltip placement="bottom" tooltipText={tooltipText}>
