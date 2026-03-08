@@ -10,7 +10,7 @@ class switchWorkspace extends EventEmitter {
         selector: '//*[@data-id="workspacesSelect" and not(@data-disabled="true")]',
         timeout: 30000,
       })
-      .click('[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .waitForElementVisible(`[data-id="dropdown-item-${workspaceName}"]`)
       .click(`[data-id="dropdown-item-${workspaceName}"]`)
       .pause(7000)

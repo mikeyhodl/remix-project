@@ -374,14 +374,14 @@ module.exports = {
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemlibdeep"]')
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemtest-branch-submodule-recursive"]')
       .waitForElementNotPresent('[data-id="treeViewDivtreeViewItemtest-branch-submodule-2"]')
-      .click('[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .waitForElementVisible('*[data-id="dropdown-item-test-branch-submodule"]')
       .waitForElementVisible('*[data-id="dropdown-item-default_workspace"]')
       .click('*[data-id="dropdown-item-default_workspace"]')
   },
   'When switching to main update the modules #group4': function (browser: NightwatchBrowser) {
     browser
-      .click('[data-id="workspacesSelect"]')
+      .clickWorkspaceDropdown()
       .waitForElementVisible('*[data-id="dropdown-item-test-branch-submodule"]')
       .click('[data-id="dropdown-item-test-branch-submodule"]')
       .refreshPage()
