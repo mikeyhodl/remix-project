@@ -1034,7 +1034,7 @@ export class CloudSyncEngine {
     // Failure is non-fatal — we still push the new snapshot.
     try {
       const backupKey = `_workspace_backup_${Date.now()}.zip`
-      const copied = await this.s3.copyObject(WORKSPACE_ZIP_KEY, backupKey)
+      const copied = await this.s3.copyObject(WORKSPACE_ZIP_KEY, backupKey, 'lifecycle=expire-7d')
       if (copied) {
         console.log(`[CloudSync:snapshot] Backed up ${WORKSPACE_ZIP_KEY} → ${backupKey}`)
       }

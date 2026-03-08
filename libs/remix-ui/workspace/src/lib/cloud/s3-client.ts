@@ -154,20 +154,27 @@ export class S3Client {
    * Uses S3 PUT with x-amz-copy-source header — no data is downloaded.
    * @param srcKey  Source key relative to prefix
    * @param dstKey  Destination key relative to prefix
+   * @param tagging Optional URL-encoded tagging string (e.g. "lifecycle=expire-7d")
    * @returns true if the copy succeeded, false if source didn't exist
    */
-  async copyObject(srcKey: string, dstKey: string): Promise<boolean> {
+  async copyObject(srcKey: string, dstKey: string, tagging?: string): Promise<boolean> {
     const fullSrc = `${this.token.prefix}${srcKey}`
     const fullDst = `${this.token.prefix}${dstKey}`
     const url = `${this.baseUrl}/${encodeS3Key(fullDst)}`
 
+    const headers: Record<string, string> = {
+      'x-amz-security-token': this.token.sessionToken,
+      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+      'x-amz-copy-source': `/${this.token.bucket}/${encodeS3Key(fullSrc)}`,
+    }
+    if (tagging) {
+      headers['x-amz-tagging'] = tagging
+      headers['x-amz-tagging-directive'] = 'REPLACE'
+    }
+
     const res = await this.signedFetch(url, {
       method: 'PUT',
-      headers: {
-        'x-amz-security-token': this.token.sessionToken,
-        'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
-        'x-amz-copy-source': `/${this.token.bucket}/${encodeS3Key(fullSrc)}`,
-      },
+      headers,
     })
 
     if (res.status === 404 || res.status === 403) return false
