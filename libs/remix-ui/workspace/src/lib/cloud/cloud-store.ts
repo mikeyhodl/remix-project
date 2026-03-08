@@ -57,7 +57,7 @@ class CloudStore extends EventEmitter {
     this.emit('change', this.state)
   }
 
-/** Get the user ID from localStorage (AuthUser.sub) */
+  /** Get the user ID from localStorage (AuthUser.sub) */
   private extractUserId(): string | null {
     try {
       const userStr = localStorage.getItem('remix_user')
