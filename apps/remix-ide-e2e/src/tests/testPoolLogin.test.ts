@@ -19,7 +19,7 @@ module.exports = {
 
     // Pass the pool key + enableLogin in the hash so the auth plugin can use it.
     // No fake token injection — the real login flow will do the checkout.
-    const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&activate=udapp`
+    const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}`
     init(browser, done, url, true)
   },
 
@@ -379,7 +379,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="dropdown-item-ws-alpha"]', 20000)
       .click('*[data-id="dropdown-item-ws-alpha"]')
       .pause(10000)
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .pause(3000)
       .currentWorkspaceIs('ws-alpha')
       // Verify the file exists in the tree
@@ -468,7 +468,7 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="login-button"]', 15000)
       .click('*[data-id="login-button"]')
       .pause(3000)
@@ -651,7 +651,7 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="login-button"]', 15000)
       .click('*[data-id="login-button"]')
       .pause(3000)
@@ -794,7 +794,7 @@ module.exports = {
         locateStrategy: 'xpath',
       })
       .pause(10000)
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .pause(3000)
       // Verify the workspace files are restored
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 20000)
@@ -877,7 +877,7 @@ module.exports = {
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
       .pause(5000)
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="login-button"]', 15000)
       .click('*[data-id="login-button"]')
       .pause(3000)
@@ -1692,7 +1692,7 @@ module.exports = {
 
     // Click file panel to ensure it's active and renders the tree
     await browser
-      .clickLaunchIcon('filePanel')
+//       .clickLaunchIcon('filePanel')
       .pause(3000)
       .currentWorkspaceIs('file-ops-ws')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemedit-me.sol"]', 30000)
@@ -1730,6 +1730,243 @@ module.exports = {
           'After restore: untouched.sol still contains "never changed"'
         )
       })
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  //  Group 10 — Git Clone via template explorer in cloud mode
+  // ══════════════════════════════════════════════════════════════
+
+  'Should login and enable cloud for git clone test #group10': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () { localStorage.setItem('enableLogin', 'true') })
+      .refreshPage()
+      .pause(5000)
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      .clickCloudToggle()
+      .pause(10000)
+  },
+
+  'Should open template explorer and clone awesome-remix via Git Clone #group10': async function (browser: NightwatchBrowser) {
+    browser
+      .clickWorkspaceDropdown()
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      // Click "Git Clone" top card
+      .waitForElementVisible('*[data-id="create-git-clone"]', 10000)
+      .click('*[data-id="create-git-clone"]')
+      // Wait for the git clone screen to appear
+      .waitForElementVisible('*[data-id="git-clone-screen-url-input"]', 10000)
+      .click('*[data-id="git-clone-screen-url-input"]')
+      .clearValue('*[data-id="git-clone-screen-url-input"]')
+      .setValue('*[data-id="git-clone-screen-url-input"]', 'https://github.com/remix-project-org/awesome-remix')
+      .pause(500)
+      // Click Clone button
+      .waitForElementVisible('*[data-id="git-clone-screen-clone-btn"]', 5000)
+      .click('*[data-id="git-clone-screen-clone-btn"]')
+      // Wait for modal to disappear — clone is complete once modal closes
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 120000)
+      .pause(5000)
+
+    // Wait for sync engine to push to S3
+    await waitForSyncIdle(browser, 120_000)
+
+    // Verify the awesome-remix workspace was created with expected files
+    browser
+      .currentWorkspaceIs('awesome-remix')
+//       .clickLaunchIcon('filePanel')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 30000)
+  },
+
+  'Should verify awesome-remix sync integrity #group10': async function (browser: NightwatchBrowser) {
+    const result = await waitAndVerifySync(browser, 60_000)
+    console.log(`[group10] awesome-remix clone: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+  },
+
+  'Should wipe local data and restore cloned workspace from S3 #group10': async function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () {
+        return (window as any).remixFileSystem.unlink('.cloud-workspaces')
+      }, [], function () {
+        console.log('[group10] Wiped .cloud-workspaces from local FS')
+      })
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      .clickCloudToggle()
+      .pause(10000)
+
+    await waitForSyncIdle(browser, 120_000)
+  },
+
+  'Should verify cloned workspace restored from S3 #group10': function (browser: NightwatchBrowser) {
+    browser
+      .clickWorkspaceDropdown()
+      .pause(2000)
+      .waitForElementVisible({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "awesome-remix")]',
+        locateStrategy: 'xpath',
+        timeout: 20000,
+      })
+      .click({
+        selector: '//*[contains(@data-id, "dropdown-item-") and contains(., "awesome-remix")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(10000)
+      .currentWorkspaceIs('awesome-remix')
+//       .clickLaunchIcon('filePanel')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 30000)
+      .openFile('README.md')
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  //  Group 11 — AI workspace generation in cloud mode
+  // ══════════════════════════════════════════════════════════════
+
+  'Should login and enable cloud for AI workspace test #group11': function (browser: NightwatchBrowser) {
+    browser
+      .execute(function () { localStorage.setItem('enableLogin', 'true') })
+      .refreshPage()
+      .pause(5000)
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .click('*[data-id="login-button"]')
+      .pause(3000)
+      .waitForElementVisible({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+        timeout: 15000,
+      })
+      .click({
+        selector: '//button[contains(., "E2E Test Pool")]',
+        locateStrategy: 'xpath',
+      })
+      .pause(5000)
+      .clickCloudToggle()
+      .pause(10000)
+  },
+
+  'Should open template explorer and generate workspace with AI #group11': function (browser: NightwatchBrowser) {
+    browser
+      .clickWorkspaceDropdown()
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]', 10000)
+      // Click "Create with AI" top card
+      .waitForElementVisible('*[data-id="create-with-ai-topcard"]', 10000)
+      .click('*[data-id="create-with-ai-topcard"]')
+      // Wait for the AI prompt textarea to appear
+      .waitForElementVisible('*[data-id="ai-workspace-prompt-input"]', 10000)
+      .click('*[data-id="ai-workspace-prompt-input"]')
+      .setValue('*[data-id="ai-workspace-prompt-input"]', 'Create a simple ERC20 token contract called TestToken with a mint function')
+      .pause(500)
+      // Click "Generate my Workspace" button
+      .waitForElementVisible('*[data-id="validateWorkspaceButton"]', 5000)
+      .click('*[data-id="validateWorkspaceButton"]')
+      // Modal should close after clicking generate
+      .waitForElementNotPresent('*[data-id="template-explorer-modal-react"]', 15000)
+      .pause(3000)
+  },
+
+  'Should wait for AI workspace generation to complete #group11': async function (browser: NightwatchBrowser) {
+    // The AI generates files asynchronously — poll until the workspace has at least one .sol file
+    let hasSolFile = false
+    const start = Date.now()
+    const timeout = 180_000 // 3 minutes max for AI generation
+
+    while (Date.now() - start < timeout && !hasSolFile) {
+      hasSolFile = await new Promise<boolean>((resolve) => {
+        browser.execute(
+          function () {
+            // Check if any .sol file is visible in the file tree
+            var solFiles = document.querySelectorAll('[data-id*="treeViewLitreeViewItem"][data-id$=".sol"]')
+            return solFiles.length > 0
+          },
+          [],
+          (result: any) => resolve(result?.value === true),
+        )
+      })
+      if (!hasSolFile) {
+        await new Promise((r) => setTimeout(r, 5000))
+      }
+    }
+
+    console.log(`[group11] AI workspace: has .sol file=${hasSolFile}, elapsed=${Date.now() - start}ms`)
+    browser.assert.ok(hasSolFile, 'AI generated at least one .sol file in the workspace')
+  },
+
+  'Should verify AI workspace has files and sync to S3 #group11': async function (browser: NightwatchBrowser) {
+    // Wait for sync to push the AI-generated files to S3
+    await waitForSyncIdle(browser, 60_000)
+
+    // Verify sync integrity — AI workspace should have files synced
+    const result = await waitAndVerifySync(browser, 60_000)
+    console.log(`[group11] AI workspace: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
+    browser.assert.ok(result.manifestFileCount > 0, 'AI workspace has files in manifest')
+  },
+
+  'Should wipe local data and restore AI workspace from S3 #group11': async function (browser: NightwatchBrowser) {
+    // Save workspace name before wipe
+    const wsName = await new Promise<string>((resolve) => {
+      browser.execute(
+        function () {
+          var el = document.querySelector('[data-id="workspacesSelect-togglerText"]')
+          return el ? el.textContent.trim() : ''
+        },
+        [],
+        (result: any) => resolve(result?.value || ''),
+      )
+    })
+    console.log(`[group11] AI workspace name before wipe: "${wsName}"`)
+
+    browser
+      .execute(function () {
+        return (window as any).remixFileSystem.unlink('.cloud-workspaces')
+      }, [], function () {
+        console.log('[group11] Wiped .cloud-workspaces from local FS')
+      })
+      .refresh()
+      .waitForElementVisible('[data-id="workspacesSelect"]', 30000)
+      .clickCloudToggle()
+      .pause(10000)
+
+    await waitForSyncIdle(browser, 120_000)
+  },
+
+  'Should verify AI workspace restored from S3 with .sol files #group11': async function (browser: NightwatchBrowser) {
+    // After restore, check that at least one .sol file exists in the file tree
+    // The AI workspace should be auto-selected or available in the dropdown
+    browser.clickLaunchIcon('filePanel').expandAllFolders()
+    let hasSolFile = false
+    const start = Date.now()
+    while (Date.now() - start < 60_000 && !hasSolFile) {
+      hasSolFile = await new Promise<boolean>((resolve) => {
+        browser.execute(
+          function () {
+            var solFiles = document.querySelectorAll('[data-id*="treeViewLitreeViewItem"][data-id$=".sol"]')
+            return solFiles.length > 0
+          },
+          [],
+          (result: any) => resolve(result?.value === true),
+        )
+      })
+      if (!hasSolFile) {
+        await new Promise((r) => setTimeout(r, 3000))
+      }
+    }
+
+    console.log(`[group11] After S3 restore: has .sol file=${hasSolFile}`)
+    browser.assert.ok(hasSolFile, 'AI workspace restored from S3 still has .sol files')
   }
 
 }
