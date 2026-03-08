@@ -19,9 +19,12 @@ import {
   deleteCloudWorkspace as apiDelete,
   listCloudWorkspaces as apiList,
   fetchSTSToken,
+  fetchWorkspaceSTS,
 } from './cloud-workspace-api'
 import { WorkspaceLockedError } from './cloud-workspace-lock'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
+import { S3Client } from './s3-client'
+import JSZip from 'jszip'
 import {
   setCurrentWorkspace,
   setMode,
@@ -765,6 +768,66 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
       }
     }, REFRESH_DEBOUNCE_MS)
   }
+}
+
+/**
+ * Download all backup snapshots for the active cloud workspace.
+ *
+ * Lists `_workspace_backup_*.zip` objects on S3, downloads each one,
+ * bundles them into a single zip, and triggers a browser download.
+ *
+ * @returns The number of snapshots downloaded, or 0 if none found.
+ */
+export async function downloadBackupSnapshots(): Promise<number> {
+  const state = cloudStore.getState()
+  const uuid = state.activeWorkspaceId
+  if (!uuid) throw new Error('No active cloud workspace')
+
+  // Get a workspace-scoped STS token and create an S3 client
+  const token = await fetchWorkspaceSTS(uuid)
+  const s3 = new S3Client(token)
+
+  // List all objects and filter for backup zips
+  const allObjects = await s3.listObjects()
+  const backups = allObjects.filter(obj => {
+    const key = obj.key
+    // key is relative to prefix, e.g. "_workspace_backup_1709912345678.zip"
+    return key.startsWith('_workspace_backup_') && key.endsWith('.zip')
+  })
+
+  if (backups.length === 0) return 0
+
+  // Sort by key (timestamp is embedded) — newest first
+  backups.sort((a, b) => b.key.localeCompare(a.key))
+
+  const bundle = new JSZip()
+
+  // Download each backup and add to the bundle
+  for (const backup of backups) {
+    const data = await s3.getObjectBinary(backup.key)
+    if (data) {
+      // Extract timestamp from key for a friendly name
+      const match = backup.key.match(/_workspace_backup_(\d+)\.zip/)
+      const ts = match ? new Date(Number(match[1])) : new Date()
+      const label = ts.toISOString().replace(/[:.]/g, '-')
+      bundle.file(`snapshot_${label}.zip`, data)
+    }
+  }
+
+  // Find workspace name for the download filename
+  const ws = state.cloudWorkspaces.find(w => w.uuid === uuid)
+  const wsName = ws?.name || uuid
+
+  const blob = await bundle.generateAsync({ type: 'blob' })
+  // Trigger browser download
+  const a = document.createElement('a')
+  a.download = `${wsName}-cloud-snapshots.zip`
+  a.rel = 'noopener'
+  a.href = URL.createObjectURL(blob)
+  setTimeout(() => URL.revokeObjectURL(a.href), 40_000)
+  a.dispatchEvent(new MouseEvent('click'))
+
+  return backups.length
 }
 
 /**

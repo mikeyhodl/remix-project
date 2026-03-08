@@ -13,6 +13,7 @@ import { DesktopDownload } from 'libs/remix-ui/desktop-download'
 import { ElectronWorkspaceMenu } from './ElectronWorkspaceMenu'
 import { useCloudStore } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-store'
 import { CloudSyncStatusIcon, getSyncIconProps } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
+import { downloadBackupSnapshots } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-workspace-actions'
 
 interface Branch {
   name: string
@@ -512,6 +513,57 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                 <span className="d-flex align-items-center">
                   <i className="fas fa-cloud-upload-alt me-2" style={{ color: 'var(--bs-info)' }}></i>
                   Migrate local workspaces to cloud
+                </span>
+              </Dropdown.Item>
+            </>
+          )}
+
+          {/* ── Cloud mode: download backup snapshots ── */}
+          {isCloudMode && (
+            <>
+              <Dropdown.Item
+                onClick={(e) => {
+                  setDropdownOpen(false)
+                  global.modal(
+                    'Download Cloud Snapshots',
+                    <div>
+                      <p className="mb-2">
+                        <i className="fas fa-history me-2" style={{ color: 'var(--bs-warning)' }}></i>
+                        <strong>What are these?</strong>
+                      </p>
+                      <p className="small mb-2">
+                        Periodic snapshots are taken automatically while you work. They are <strong>not</strong> complete
+                        backups — each one captures the workspace state at a single point in time, potentially
+                        seconds to minutes behind your actual files.
+                      </p>
+                      <p className="small mb-2">
+                        Snapshots expire after 7 days. This will download all available snapshots
+                        as a single zip file you can inspect locally.
+                      </p>
+                      <p className="small text-muted mb-0">
+                        <i className="fas fa-info-circle me-1"></i>
+                        No changes will be made to your current workspace.
+                      </p>
+                    </div>,
+                    'Download',
+                    async () => {
+                      try {
+                        const count = await downloadBackupSnapshots()
+                        if (count === 0) {
+                          global.modal('No Snapshots', 'No backup snapshots were found for this workspace. Snapshots are created automatically after file changes and expire after 7 days.', 'OK', () => {})
+                        }
+                      } catch (err) {
+                        global.modal('Download Failed', `Could not download snapshots: ${err.message || err}`, 'OK', () => {})
+                      }
+                    },
+                    'Cancel'
+                  )
+                }}
+                data-id="workspaceDownloadCloudSnapshots"
+              >
+                <span className="d-flex align-items-center">
+                  <i className="fas fa-history me-2" style={{ color: 'var(--bs-warning)' }}></i>
+                  Download cloud snapshots
                 </span>
               </Dropdown.Item>
             </>
