@@ -1544,7 +1544,6 @@ module.exports = {
 
   'Should verify keep-me survived S3 restore #group8': async function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="workspacesSelect"]')
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-keep-me"]', 20000)
       .click('*[data-id="dropdown-item-keep-me"]')
