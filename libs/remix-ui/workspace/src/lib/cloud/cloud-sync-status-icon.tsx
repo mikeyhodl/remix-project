@@ -26,7 +26,7 @@ export function getSyncIconProps(status: WorkspaceSyncStatus | undefined): {
 } {
   if (!status) {
     // No status yet — initial/unknown
-    return { icon: 'fas fa-cloud', color: 'var(--bs-info)', title: 'Connected to cloud' }
+    return { icon: 'fas fa-cloud', color: 'var(--bs-success)', title: 'Connected to cloud' }
   }
 
   if (status.status === 'loading') {
