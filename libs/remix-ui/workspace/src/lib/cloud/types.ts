@@ -71,6 +71,8 @@ export interface CloudState {
   syncStatus: Record<string, WorkspaceSyncStatus>
   /** Error message if something went wrong */
   error: string | null
+  /** True while the workspace operation queue is processing (blocks UI interactions) */
+  workspaceQueueBusy: boolean
 }
 
 export interface WorkspaceSyncStatus {
@@ -112,6 +114,34 @@ export interface SyncManifestEntry {
   lastModified: string
   /** Size in bytes */
   size: number
+}
+
+// ── Manifest verification (E2E / debugging) ──
+// POST /storage/api/workspaces/:uuid/verify-manifest
+export interface ManifestVerifyRequest {
+  manifest: SyncManifest
+}
+
+export interface ManifestFileDiff {
+  key: string
+  localEtag?: string
+  remoteEtag?: string
+  localSize?: number
+  remoteSize?: number
+}
+
+export interface ManifestVerifyResponse {
+  ok: boolean
+  /** Number of files the browser claims to have synced */
+  manifestFileCount: number
+  /** Number of real objects on S3 (excluding _workspace.zip, _git.zip, dirs) */
+  remoteFileCount: number
+  /** Files in manifest but not on S3 */
+  phantoms: ManifestFileDiff[]
+  /** Files on S3 but not in manifest */
+  missing: ManifestFileDiff[]
+  /** Files in both but ETags differ */
+  mismatched: ManifestFileDiff[]
 }
 
 // ── Mapping between local workspace name and cloud UUID ──

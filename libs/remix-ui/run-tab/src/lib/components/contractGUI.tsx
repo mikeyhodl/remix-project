@@ -206,26 +206,26 @@ export function ContractGUI(props: ContractGUIProps) {
           } else {
             if (upgradeReport.warning) {
               props.modal(
-                'Proxy Upgrade Warning',
+                intl.formatMessage({ id: 'udapp.proxyUpgradeWarningTitle' }),
                 unavailableProxyLayoutMsg(),
-                'Proceed',
+                intl.formatMessage({ id: 'udapp.proceed' }),
                 () => {
                   !proxyAddressError && props.clickCallBack(props.funcABI.inputs, proxyAddress, ['Upgrade with Proxy'])
                 },
-                'Cancel',
+                intl.formatMessage({ id: 'udapp.cancel' }),
                 () => {},
                 'btn-warning',
                 'btn-secondary'
               )
             } else {
               props.modal(
-                'Proxy Upgrade Error',
+                intl.formatMessage({ id: 'udapp.proxyUpgradeErrorTitle' }),
                 upgradeReportMsg(upgradeReport),
-                'Continue anyway ',
+                intl.formatMessage({ id: 'udapp.continueAnywaySuffix' }),
                 () => {
                   !proxyAddressError && props.clickCallBack(props.funcABI.inputs, proxyAddress, ['Upgrade with Proxy'])
                 },
-                'Cancel',
+                intl.formatMessage({ id: 'udapp.cancel' }),
                 () => {},
                 'btn-warning',
                 'btn-secondary'

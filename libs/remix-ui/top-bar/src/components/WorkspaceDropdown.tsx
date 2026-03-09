@@ -13,6 +13,7 @@ import { DesktopDownload } from 'libs/remix-ui/desktop-download'
 import { ElectronWorkspaceMenu } from './ElectronWorkspaceMenu'
 import { useCloudStore } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-store'
 import { CloudSyncStatusIcon, getSyncIconProps } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-sync-status-icon'
+import { downloadBackupSnapshots } from 'libs/remix-ui/workspace/src/lib/cloud/cloud-workspace-actions'
 
 interface Branch {
   name: string
@@ -94,9 +95,10 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
 
   // ── Cloud state (from singleton store — works across React trees) ──
   const cloudState = useCloudStore()
-  const { isCloudMode, loading: cloudLoading, syncStatus, activeWorkspaceId } = cloudState
+  const { isCloudMode, loading: cloudLoading, syncStatus, activeWorkspaceId, workspaceQueueBusy } = cloudState
   const activeSyncStatus = activeWorkspaceId ? syncStatus[activeWorkspaceId] : null
   const isWorkspaceLoading = activeSyncStatus?.status === 'loading' || activeSyncStatus?.status === 'syncing'
+  const isDropdownLocked = isWorkspaceLoading || workspaceQueueBusy
 
   const toggleSubmenu = (id) => {
     setOpenSubmenuId((current) => (current === id ? null : id));
@@ -267,11 +269,12 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
     <Dropdown
       as={ButtonGroup}
       show={dropdownOpen}
-      onToggle={(open) => setDropdownOpen(open)}
+      onToggle={(open) => { if (isDropdownLocked && open) return; setDropdownOpen(open) }}
       style={{ minWidth: '70%' }}
       className="d-flex rounded-md"
       id="workspacesSelect"
       data-id="workspacesSelect"
+      data-disabled={isDropdownLocked ? 'true' : undefined}
     >
       <Dropdown.Toggle
         as={CustomToggle}
@@ -307,7 +310,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
         show={showMain}
         as={"div"}
       >
-        <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px', opacity: isWorkspaceLoading ? 0.5 : 1, pointerEvents: isWorkspaceLoading ? 'none' : 'auto' }}>
+        <div id="scrollable-section" className="overflow-y-scroll" style={{ maxHeight: '160px', opacity: isDropdownLocked ? 0.5 : 1, pointerEvents: isDropdownLocked ? 'none' : 'auto' }}>
           {/* Deduplicate by name — multiple async refresh paths can race and
               produce duplicates during workspace creation (especially git-based
               templates that trigger clone → checkGit → setWorkspaces cascades). */}
@@ -320,7 +323,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                   key={id}
                   className="dropdown-item d-flex align-items-center position-relative"
                   onMouseDown={(e) => {
-                    if (isWorkspaceLoading) { e.preventDefault(); return }
+                    if (isDropdownLocked) { e.preventDefault(); return }
                     setDropdownOpen(false)
                     switchWorkspace(item.name)
                     e.preventDefault()
@@ -511,6 +514,57 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                 <span className="d-flex align-items-center">
                   <i className="fas fa-cloud-upload-alt me-2" style={{ color: 'var(--bs-info)' }}></i>
                   Migrate local workspaces to cloud
+                </span>
+              </Dropdown.Item>
+            </>
+          )}
+
+          {/* ── Cloud mode: download backup snapshots ── */}
+          {isCloudMode && (
+            <>
+              <Dropdown.Item
+                onClick={(e) => {
+                  setDropdownOpen(false)
+                  global.modal(
+                    'Download Cloud Snapshots',
+                    <div>
+                      <p className="mb-2">
+                        <i className="fas fa-history me-2" style={{ color: 'var(--bs-warning)' }}></i>
+                        <strong>What are these?</strong>
+                      </p>
+                      <p className="small mb-2">
+                        Periodic snapshots are taken automatically while you work. They are <strong>not</strong> complete
+                        backups — each one captures the workspace state at a single point in time, potentially
+                        seconds to minutes behind your actual files.
+                      </p>
+                      <p className="small mb-2">
+                        Snapshots expire after 7 days. This will download all available snapshots
+                        as a single zip file you can inspect locally.
+                      </p>
+                      <p className="small text-muted mb-0">
+                        <i className="fas fa-info-circle me-1"></i>
+                        No changes will be made to your current workspace.
+                      </p>
+                    </div>,
+                    'Download',
+                    async () => {
+                      try {
+                        const count = await downloadBackupSnapshots()
+                        if (count === 0) {
+                          global.modal('No Snapshots', 'No backup snapshots were found for this workspace. Snapshots are created automatically after file changes and expire after 7 days.', 'OK', () => {})
+                        }
+                      } catch (err) {
+                        global.modal('Download Failed', `Could not download snapshots: ${err.message || err}`, 'OK', () => {})
+                      }
+                    },
+                    'Cancel'
+                  )
+                }}
+                data-id="workspaceDownloadCloudSnapshots"
+              >
+                <span className="d-flex align-items-center">
+                  <i className="fas fa-history me-2" style={{ color: 'var(--bs-warning)' }}></i>
+                  Download cloud snapshots
                 </span>
               </Dropdown.Item>
             </>

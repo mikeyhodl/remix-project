@@ -320,11 +320,11 @@ export function UniversalDappUI(props: UdappProps) {
 
                           const modalContent = {
                             id: 'generate-website-ai',
-                            title: 'Generate a Dapp UI with AI',
+                            title: intl.formatMessage({ id: 'udapp.generateDappModalTitle' }),
                             message: <AIRequestForm onMount={(fn) => { getFormData = fn; }} />,
                             modalType: 'custom',
-                            okLabel: 'Generate',
-                            cancelLabel: 'Cancel',
+                            okLabel: intl.formatMessage({ id: 'udapp.generateDappOkLabel' }),
+                            cancelLabel: intl.formatMessage({ id: 'udapp.cancel' }),
 
                             okFn: async () => {
                               if (getFormData) {
@@ -343,7 +343,7 @@ export function UniversalDappUI(props: UdappProps) {
                         })
 
                         if (isGenerating.current) {
-                          await props.plugin.call('notification', 'toast', 'AI generation is already in progress.')
+                          await props.plugin.call('notification', 'toast', intl.formatMessage({ id: 'udapp.aiGenerationInProgress' }))
                           return
                         }
                         // @ts-ignore
@@ -351,11 +351,11 @@ export function UniversalDappUI(props: UdappProps) {
                           const confirmed = await new Promise<boolean>((resolve) => {
                             props.plugin.call('notification', 'modal', {
                               id: 'remix-vm-warning',
-                              title: 'Warning: Non-Injected Provider',
-                              message: 'You are using Remix VM or a non-browser wallet environment. The generated DApp is designed to work with browser extension wallets like MetaMask. It may not function correctly with the current environment. Do you want to continue anyway?',
+                              title: intl.formatMessage({ id: 'udapp.nonInjectedProviderWarningTitle' }),
+                              message: intl.formatMessage({ id: 'udapp.nonInjectedProviderWarningMessage' }),
                               modalType: 'confirm',
-                              okLabel: 'Continue Anyway',
-                              cancelLabel: 'Cancel',
+                              okLabel: intl.formatMessage({ id: 'udapp.continueAnyway' }),
+                              cancelLabel: intl.formatMessage({ id: 'udapp.cancel' }),
                               okFn: () => resolve(true),
                               cancelFn: () => resolve(false),
                             })
@@ -501,7 +501,7 @@ export function UniversalDappUI(props: UdappProps) {
             </CustomTooltip>
           </div>
           <div className="d-flex flex-column align-items-start">
-            <label className="">CALLDATA</label>
+            <label className=""><FormattedMessage id="udapp.calldataLabel" /></label>
             <div className="d-flex justify-content-end w-100 align-items-center">
               <CustomTooltip
                 placement="bottom"
@@ -518,7 +518,7 @@ export function UniversalDappUI(props: UdappProps) {
                   className="btn udapp_instanceButton p-0 w-50 border-warning text-warning"
                   onClick={sendData}
                 >
-                  Transact
+                  <FormattedMessage id="udapp.transactButton" />
                 </button>
               </CustomTooltip>
             </div>

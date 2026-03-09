@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useIntl } from "react-intl"
+import { FormattedMessage, useIntl } from "react-intl"
 
 export function DelegationAuthorizationPrompt ({
   onAddressChange
@@ -24,7 +24,7 @@ export function DelegationAuthorizationPrompt ({
           </a>
         )
       })}</span>
-      <label className="mt-3">Authorization Address</label>
+      <label className="mt-3"><FormattedMessage id="udapp.authorizationAddressLabel" /></label>
       <input
         className='border form-control'
         data-id="create-delegation-authorization-input"

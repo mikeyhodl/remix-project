@@ -22,7 +22,7 @@ export function InstanceContainerUI(props: InstanceContainerProps) {
             <FormattedMessage id="udapp.deployedContracts" />
           </label>
         </CustomTooltip>
-        <CustomTooltip placement="top-start" tooltipClasses="text-nowrap" tooltipId="numOfDeployedInstancesTooltip" tooltipText="Number of deployed contracts">
+        <CustomTooltip placement="top-start" tooltipClasses="text-nowrap" tooltipId="numOfDeployedInstancesTooltip" tooltipText={<FormattedMessage id="udapp.numberOfDeployedContractsTooltip" />}>
           <div className="badge rounded-pill text-bg-primary text-center ms-2" data-id="deployedContractsBadge">{instanceList.length}</div>
         </CustomTooltip>
         <div className="w-100"></div>
