@@ -422,7 +422,7 @@ export const populateWorkspace = async (
     }
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
     const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-    if (openPath) await plugin.fileManager.open(openPath)
+    if (openPath) await plugin.fileManager.openFile(openPath)
   }
   cb && cb(null)
   if (isGitRepo) {
