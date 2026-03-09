@@ -17,7 +17,7 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
   const [provider, setProvider] = useState<Provider | null>(null)
 
   const handleCategorySelection = async (provider: Provider) => {
-    await setExecutionContext(provider, plugin, widgetState, dispatch)
+    await setExecutionContext(provider, plugin, dispatch)
   }
 
   useEffect(() => {

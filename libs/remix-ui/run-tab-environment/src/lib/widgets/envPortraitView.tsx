@@ -55,7 +55,7 @@ function EnvironmentPortraitView() {
       // select category to show sub-categories
       dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
     } else {
-      setExecutionContext(provider, plugin, widgetState, dispatch)
+      setExecutionContext(provider, plugin, dispatch)
     }
   }
 

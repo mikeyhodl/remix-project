@@ -94,7 +94,7 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
   trackMatomoEvent(plugin, { category: 'udapp', action: 'forkState', name: `forked from ${context}`, isClick: false })
 }
 
-export async function setExecutionContext (provider: Provider, plugin: EnvironmentPlugin, widgetState: WidgetState, dispatch: React.Dispatch<Actions>) {
+export async function setExecutionContext (provider: Provider, plugin: EnvironmentPlugin, dispatch: React.Dispatch<Actions>) {
   if (provider.name === 'walletconnect') {
     await plugin.call('walletconnect', 'openModal')
     plugin.on('walletconnect', 'connectionSuccessful', async () => {
