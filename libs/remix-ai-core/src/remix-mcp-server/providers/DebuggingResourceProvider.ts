@@ -118,6 +118,12 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
     try {
 
       const result = await plugin.call('debugger', 'getCurrentSourceLocation')
+      if (!result) {
+        return this.createTextContent(
+          'debug://current-debugging-step',
+          'current source location is not available. There is no debug session going on.'
+        );
+      }
       const stack = await plugin.call('debugger', 'getStackAt', result.step)
       if (!result) {
         return this.createTextContent(
