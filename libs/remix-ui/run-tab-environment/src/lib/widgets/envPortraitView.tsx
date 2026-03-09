@@ -321,7 +321,7 @@ function EnvironmentPortraitView() {
               </button>
             )}
             {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
-              <button className='btn btn-outline-danger btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleResetClick}>
+              <button data-id="delete-state-icon" className='btn btn-outline-danger btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleResetClick}>
                 <i className='fas fa-redo'></i> {intl.formatMessage({ id: 'udapp.reset' })}
               </button>
             )}

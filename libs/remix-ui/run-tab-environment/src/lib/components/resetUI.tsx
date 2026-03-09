@@ -58,6 +58,7 @@ export function ResetUI() {
             {intl.formatMessage({ id: 'udapp.cancelReset' })}
           </button>
           <button
+            data-id="btnResetState"
             className="btn btn-sm btn-danger rounded text-light"
             onClick={handleSubmit}
             disabled={widgetState.fork.isRequesting}
