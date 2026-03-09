@@ -20,8 +20,8 @@ interface IScoredTool {
 
 export class SimpleToolSelector {
   // Core tools ALWAYS included (essential utilities)
-  coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result', 'get_skill', 'list_skills']
-
+  coreTools = ['file_read', 'file_write', 'directory_list', 'get_skill', 'list_skills', 'solidity_compile', 'get_compilation_result', 'wei_to_ether', 'ether_to_wei', 'decimal_to_hex', 'hex_to_decimal']
+  systemTools = ['file_read', 'file_write', 'directory_list', 'get_skill', 'list_skills', 'wei_to_ether', 'ether_to_wei', 'decimal_to_hex', 'hex_to_decimal']
   // Keyword → Category mappings (for category-based scoring)
   private keywordMap: Record<string, string[]> = {
     // Compilation keywords
@@ -113,8 +113,8 @@ export class SimpleToolSelector {
       if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0 // Bonus for core tools
       }
-      if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
-        st.score += 5 // Bonus for get_skill, list_skills tool
+      if (this.systemTools.includes(st.tool.name)) {
+        st.score += 5.0
       }
     })
 

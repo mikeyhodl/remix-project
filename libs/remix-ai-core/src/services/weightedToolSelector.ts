@@ -131,8 +131,8 @@ export class WeightedToolSelector extends SimpleToolSelector {
       if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0;
       }
-      if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
-        st.score += 5;
+      if (this.systemTools.includes(st.tool.name)) {
+        st.score += 5.0
       }
     });
 
