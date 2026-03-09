@@ -14,6 +14,7 @@ import { VerificationSettingsUI } from '../components/verificationSettingsUI'
 
 const txFormat = remixLib.execution.txFormat
 const txHelper = remixLib.execution.txHelper
+const queryParams = new remixLib.QueryParams()
 
 function DeployPortraitView() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(DeployAppContext)
@@ -42,6 +43,13 @@ function DeployPortraitView() {
 
       setDefaultProvider(defaultProvider)
     })()
+    const params: { deployProxy: boolean, upgradeProxy: boolean } = queryParams.get() as any
+
+    if (params.deployProxy) {
+      setDeployWithProxy(true)
+    } else if (params.upgradeProxy) {
+      setUpgradeWithProxy(true)
+    }
 
     plugin.on('udappEnv', 'providersChanged', (provider: Provider) => {
       setSelectedProvider(provider)

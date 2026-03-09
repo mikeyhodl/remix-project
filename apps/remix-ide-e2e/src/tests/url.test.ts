@@ -10,25 +10,25 @@ const sources = [
     'myTokenV1.sol': {
       content: `
       // SPDX-License-Identifier: MIT
-      pragma solidity ^0.8.20;
-
-      import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-      import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-      import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-
+      pragma solidity ^0.8.4;
+      
+      import "@openzeppelin/contracts-upgradeable@4.8.3/token/ERC721/ERC721Upgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@4.8.3/access/OwnableUpgradeable.sol";
+      import "@openzeppelin/contracts-upgradeable@4.8.3/proxy/utils/Initializable.sol";
+      import "@openzeppelin/contracts-upgradeable@4.8.3/proxy/utils/UUPSUpgradeable.sol";
+      
       contract MyToken is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
           /// @custom:oz-upgrades-unsafe-allow constructor
           constructor() {
               _disableInitializers();
           }
-
-          function initialize(address initialOwner) initializer public {
+      
+          function initialize() initializer public {
               __ERC721_init("MyToken", "MTK");
-              __Ownable_init(initialOwner);
+              __Ownable_init();
               __UUPSUpgradeable_init();
           }
-
+      
           function _authorizeUpgrade(address newImplementation)
               internal
               onlyOwner
@@ -297,10 +297,9 @@ module.exports = {
       .click('[data-id="compilerContainerCompileBtn"]')
       .waitForElementPresent('select[id="compiledContracts"] option[value=MyToken]', 60000)
       .clickLaunchIcon('udapp')
-      .click('select.udapp_contractNames')
-      .click('select.udapp_contractNames option[value=MyToken]')
+      .selectContract('MyToken')
       .waitForElementPresent('[data-id="contractGUIDeployWithProxyLabel"]')
-      .expect.element('[data-id="contractGUIDeployWithProxy"]').to.be.selected
+      .waitForElementPresent('[data-id="contractGUIDeployWithProxy"] button i.fa-toggle-on')
   },
 
   'Should select upgrade with proxy option from URL params #group2': function (browser: NightwatchBrowser) {
@@ -318,10 +317,9 @@ module.exports = {
       .click('[data-id="compilerContainerCompileBtn"]')
       .waitForElementPresent('select[id="compiledContracts"] option[value=MyToken]', 60000)
       .clickLaunchIcon('udapp')
-      .click('select.udapp_contractNames')
-      .click('select.udapp_contractNames option[value=MyToken]')
+      .selectContract('MyToken')
       .waitForElementPresent('[data-id="contractGUIUpgradeImplementationLabel"]')
-      .expect.element('[data-id="contractGUIUpgradeImplementation"]').to.be.selected
+      .waitForElementPresent('[data-id="contractGUIUpgradeImplementation"] button i.fa-toggle-on')
   },
 
   'Should load using various URL compiler params #group2': function (browser: NightwatchBrowser) {
