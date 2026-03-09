@@ -131,9 +131,6 @@ export class WeightedToolSelector extends SimpleToolSelector {
       if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0;
       }
-      if (this.systemTools.includes(st.tool.name)) {
-        st.score += 5.0
-      }
     });
 
     scoredTools.sort((a, b) => b.score - a.score);
