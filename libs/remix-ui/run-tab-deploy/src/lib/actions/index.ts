@@ -184,12 +184,7 @@ export async function deployContract(selectedContract: ContractData, args: strin
 }
 
 async function createInstance(selectedContract: ContractData, args, deployMode: OZDeployMode, isVerifyChecked: boolean, plugin: DeployPlugin) {
-  let contractMetadata
-  try {
-    contractMetadata = await plugin.call('compilerMetadata', 'deployMetadataOf', selectedContract.name, selectedContract.contract.file)
-  } catch (error) {
-    // return statusCb(`creation of ${selectedContract.name} errored: ${error.message ? error.message : error}`)
-  }
+  const contractMetadata = await plugin.call('compilerMetadata', 'deployMetadataOf', selectedContract.name, selectedContract.contract.file)
   const compilerContracts = await plugin.call('compilerArtefacts', 'getLastCompilationResult')
   const currentParams = !deployMode.deployWithProxy && !deployMode.upgradeWithProxy ? args : ''
   let overSize

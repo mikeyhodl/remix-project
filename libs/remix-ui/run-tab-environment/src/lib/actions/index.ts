@@ -79,7 +79,6 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
   const name = `vm-fs-${currentStateDb.stateName}`
 
   // trackMatomoEvent(plugin, { category: 'blockchain', action: 'providerPinned', name: name, isClick: false })
-  // this.emit('providersChanged')
   await plugin.call('blockchain', 'changeExecutionContext', { context: name })
   plugin.call('notification', 'toast', `New environment '${currentStateDb.stateName}' created with forked state.`)
 
@@ -90,6 +89,8 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
       await plugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${provider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + currentStateDb.stateName)
     }
   }
+  dispatch({ type: 'SET_CURRENT_PROVIDER', payload: name })
+  plugin.emit('providersChanged', { name })
   trackMatomoEvent(plugin, { category: 'udapp', action: 'forkState', name: `forked from ${context}`, isClick: false })
 }
 

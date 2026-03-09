@@ -42,7 +42,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   const [showHighLevel, setShowHighLevel] = useState<boolean>(true)
   const [showLowLevel, setShowLowLevel] = useState<boolean>(false)
   const [selectedFunctionIndex, setSelectedFunctionIndex] = useState<number | null>(null)
-  const [funcInputs, setFuncInputs] = useState<{[key: number]: string}>({})
+  const [funcInputs, setFuncInputs] = useState<{[funcIndex: number]: {[paramIndex: number]: string}}>({})
   const [expandPath, setExpandPath] = useState<string[]>([])
 
   useEffect(() => {
@@ -182,16 +182,20 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
     }
   }
 
-  const handleFunctionInputChange = (funcIndex: number, value: string) => {
+  const handleFunctionInputChange = (funcIndex: number, paramIndex: number, value: string) => {
     setFuncInputs(prev => ({
       ...prev,
-      [funcIndex]: value
+      [funcIndex]: {
+        ...(prev[funcIndex] || {}),
+        [paramIndex]: value
+      }
     }))
   }
 
   const handleExecuteTransaction = async (funcIndex: number) => {
     const funcABI = functionABIs[funcIndex]
-    const inputsValues = funcInputs[funcIndex] || ''
+    const funcParams = funcInputs[funcIndex] || {}
+    const inputsValues = funcABI.inputs.map((input: any, idx: number) => funcParams[idx] || '').join(',')
     const sendValue = parseUnits(value.toString() || '0', valueUnit || 'wei')
     const gasLimitValue = '0x' + new BN(gasLimit, 10).toString(16)
     const isConstant = funcABI.constant !== undefined ? funcABI.constant : false
@@ -506,7 +510,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                 tooltipText={contract.isPinned ? `Pinned at: ${new Date(contract.pinnedAt).toLocaleString()}` : intl.formatMessage({ id: 'udapp.pinContractTooltip' })}
               >
                 <i
-                  data-id="pinDeployedContract"
+                  data-id={`pinDeployedContract-${index}`}
                   className={`${contract.isPinned ? 'fa-solid' : 'fa-regular'} fa-thumbtack`}
                   style={{ cursor: 'pointer' }}
                   onClick={handlePinContract}
@@ -744,16 +748,9 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                         type="text"
                         placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
                         className="form-control form-control-sm"
-                        value={(() => {
-                          const inputValue = funcInputs[selectedFunctionIndex] || ''
-                          const values = inputValue.split(',').map((v: string) => v.trim())
-                          return values[inputIdx] || ''
-                        })()}
+                        value={(funcInputs[selectedFunctionIndex]?.[inputIdx] || '')}
                         onChange={(e) => {
-                          const inputValue = funcInputs[selectedFunctionIndex] || ''
-                          const values = inputValue.split(',').map((v: string) => v.trim())
-                          values[inputIdx] = e.target.value
-                          handleFunctionInputChange(selectedFunctionIndex, values.join(', '))
+                          handleFunctionInputChange(selectedFunctionIndex, inputIdx, e.target.value)
                         }}
                         style={{
                           backgroundColor: 'var(--custom-onsurface-background, #222336)',
