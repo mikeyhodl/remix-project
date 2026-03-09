@@ -695,10 +695,10 @@ function DeployPortraitView() {
                     placeholder="0"
                     value={widgetState.value}
                     onChange={(e) => {
-                      const val = e.target.value
+                      const val = e.target.value === '0' ? '' : e.target.value
                       // Only allow empty string or valid numeric strings
                       if (val === '' || /^\d+$/.test(val)) {
-                        dispatch({ type: 'SET_VALUE', payload: val === '' ? '0' : val })
+                        dispatch({ type: 'SET_VALUE', payload: val })
                       }
                     }}
                     style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', flex: 1, paddingRight: '4rem' }}
