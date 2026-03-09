@@ -20,8 +20,7 @@ interface IScoredTool {
 
 export class SimpleToolSelector {
   // Core tools ALWAYS included (essential utilities)
-  coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result', 'get_skill', 'list_skills']
-
+  coreTools = ['file_read', 'file_write', 'directory_list', 'solidity_compile', 'get_compilation_result']
   // Keyword → Category mappings (for category-based scoring)
   private keywordMap: Record<string, string[]> = {
     // Compilation keywords
@@ -112,9 +111,6 @@ export class SimpleToolSelector {
     scoredTools.forEach(st => {
       if (this.coreTools.includes(st.tool.name)) {
         st.score += 1.0 // Bonus for core tools
-      }
-      if (st.tool.name === 'get_skill' || st.tool.name === 'list_skills') {
-        st.score += 1.5 // Bonus for get_skill, list_skills tool
       }
     })
 

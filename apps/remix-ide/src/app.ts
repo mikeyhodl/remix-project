@@ -116,6 +116,7 @@ import { MatomoEvent } from '@remix-api'
 
 import DGitProvider from './app/files/dgitProvider'
 import WorkspaceFileProvider from './app/files/workspaceFileProvider'
+import { createWorkspaceProviderProxy } from './app/files/workspaceProviderProxy'
 
 import { PluginManagerComponent } from './app/components/plugin-manager-component'
 
@@ -230,7 +231,12 @@ class AppComponent {
       api: this._components.filesProviders.localhost,
       name: 'fileproviders/localhost'
     })
-    this._components.filesProviders.workspace = new WorkspaceFileProvider()
+    // Wrap the workspace provider in a transparent proxy so the object
+    // reference in this slot NEVER changes.  Cloud mode toggles the
+    // proxy's internal delegate instead of swapping the object.
+    this._components.filesProviders.workspace = createWorkspaceProviderProxy(
+      new WorkspaceFileProvider()
+    )
     Registry.getInstance().put({
       api: this._components.filesProviders.workspace,
       name: 'fileproviders/workspace'

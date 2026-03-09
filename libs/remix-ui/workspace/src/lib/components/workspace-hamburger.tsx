@@ -17,6 +17,7 @@ export interface HamburgerMenuProps {
   downloadWorkspaces: () => void
   restoreBackup: () => void
   migrateToCloud?: () => void
+  downloadCloudSnapshots?: () => void
   hideIconsMenu: (showMenu: boolean) => void
   handleRemixdWorkspace: () => void
   showIconsMenu: boolean
@@ -162,6 +163,16 @@ export function HamburgerMenu(props: HamburgerMenuProps) {
             hideOption={hideWorkspaceOptions}
             actionOnClick={() => {
               props.migrateToCloud?.()
+              props.hideIconsMenu(!showIconsMenu)
+            }}
+            platforms={[appPlatformTypes.web]}
+          ></HamburgerMenuItem>
+          <HamburgerMenuItem
+            kind="downloadCloudSnapshots"
+            fa="fas fa-history"
+            hideOption={hideWorkspaceOptions}
+            actionOnClick={() => {
+              props.downloadCloudSnapshots?.()
               props.hideIconsMenu(!showIconsMenu)
             }}
             platforms={[appPlatformTypes.web]}

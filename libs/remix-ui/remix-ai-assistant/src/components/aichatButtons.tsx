@@ -118,6 +118,14 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       }
     },
     {
+      label: 'Load skills',
+      icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
+      color: '',
+      action: async () => {
+        sendPrompt('List all the skills available and their functionalities (using the list_skills). Then, propose a few prompts to use those skills effectively. Ask the user to specify which skill they want to load, and load those skills accordingly.')
+      }
+    },
+    {
       label: 'Start Learning',
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-graduation-cap`,
       color: '',
@@ -133,6 +141,30 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       action: async () => {
         await plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
         plugin.call('tabs', 'focus', 'quick-dapp-v2')
+      }
+    },
+    {
+      label: 'Etherscan',
+      icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
+      color: '',
+      action: async () => {
+        sendPrompt('Give me a little introduction about insights about Etherscan and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Etherscan with other mcp tools (like TheGraph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
+      }
+    },
+    {
+      label: 'TheGraph',
+      icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
+      color: '',
+      action: async () => {
+        sendPrompt('Give me a little introduction about insights about TheGraph and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage TheGraph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
+      }
+    },
+    {
+      label: 'Alchemy',
+      icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
+      color: '',
+      action: async () => {
+        sendPrompt('Give me a little introduction about insights about Alchemy and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Alchemy with other mcp tools (like TheGraph, Etherscan, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
       }
     },
     ...dynamicButtons

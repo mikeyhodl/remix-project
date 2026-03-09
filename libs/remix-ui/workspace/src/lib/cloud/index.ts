@@ -39,6 +39,7 @@ export {
   getCloudWorkspace,
   updateCloudWorkspace,
   deleteCloudWorkspace,
+  verifyManifest,
   VersionConflictException,
 } from './cloud-workspace-api'
 export { packWorkspace, unpackWorkspace, WORKSPACE_ZIP_KEY } from './cloud-workspace-zip'
@@ -69,4 +70,9 @@ export type {
   WorkspaceMapping,
   FileSyncStatus,
   VersionConflictError,
+  SyncManifest,
+  SyncManifestEntry,
+  ManifestVerifyRequest,
+  ManifestVerifyResponse,
+  ManifestFileDiff,
 } from './types'

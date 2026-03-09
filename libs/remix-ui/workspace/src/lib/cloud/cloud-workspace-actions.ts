@@ -19,15 +19,19 @@ import {
   deleteCloudWorkspace as apiDelete,
   listCloudWorkspaces as apiList,
   fetchSTSToken,
+  fetchWorkspaceSTS,
 } from './cloud-workspace-api'
 import { WorkspaceLockedError } from './cloud-workspace-lock'
 import { CloudWorkspace, WorkspaceSyncStatus } from './types'
+import { S3Client } from './s3-client'
+import JSZip from 'jszip'
 import {
   setCurrentWorkspace,
   setMode,
   setReadOnlyMode,
+  setWorkspaces,
 } from '../actions/payload'
-import { createWorkspace } from '../actions/workspace'
+import { createWorkspace, getWorkspaces, fetchWorkspaceDirectory } from '../actions/workspace'
 import {
   enableCloudFSObserver,
   disableCloudFSObserver,
@@ -44,7 +48,6 @@ import CloudWorkspaceFileProvider from '../../../../../../apps/remix-ide/src/app
 
 let _plugin: any = null
 let _dispatch: React.Dispatch<any> = null
-let _originalProvider: any = null // the original WorkspaceFileProvider
 let _fsObserverUnsub: (() => void) | null = null // FS observer subscription
 let _fileOpenListenerActive = false // whether we're listening to currentFileChanged
 
@@ -90,22 +93,23 @@ export function setCloudPlugin(plugin: any, dispatch: React.Dispatch<any>) {
 // ── Provider Swap ────────────────────────────────────────────
 
 /**
- * Enter cloud mode: create a CloudWorkspaceFileProvider, populate its
- * name↔UUID mappings, and swap it in as the active workspace provider.
+ * Enter cloud mode: create a CloudWorkspaceFileProvider and activate it
+ * on the workspace provider proxy.
+ *
+ * The proxy (installed once at app boot) never changes identity — only its
+ * internal delegate switches.  This means every consumer that already holds
+ * a reference to `fileProviders.workspace` automatically gets the new
+ * behaviour without any race conditions.
  *
  * @returns The CloudWorkspaceFileProvider instance
  */
 export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspaceFileProvider {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
-  // Save original provider for restore on logout
-  _originalProvider = _plugin.fileProviders.workspace
+  const proxy = _plugin.fileProviders.workspace
 
   // Create cloud provider
   const cloudProvider = new CloudWorkspaceFileProvider()
-
-  // Share the event manager so fileManager event subscriptions keep working
-  ;(cloudProvider as any).event = _originalProvider.event
 
   // Populate name↔UUID mappings
   cloudProvider.setWorkspaceMappings(workspaces)
@@ -113,25 +117,17 @@ export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspace
   // Inject the API create function so createWorkspace can auto-register
   cloudProvider.setApiCreate(apiCreate)
 
-  // Swap the provider on the fileProviders object.
-  // fileManager.fileProviderOf() returns filesProviders.workspace dynamically,
-  // so it will immediately pick up the new provider.
-  _plugin.fileProviders.workspace = cloudProvider
+  // Activate on the proxy — atomically routes all I/O to the cloud provider.
+  // The proxy also pins the EventManager so fileManager subscriptions survive.
+  proxy.setCloudProvider(cloudProvider)
 
   // ── Enable FS observer for raw write detection ──────────
-  // This patches LightningFS to intercept write operations that bypass the
-  // provider (e.g. isomorphic-git writes, or any tool using remixFileSystem
-  // directly).  When such a write targets a cloud workspace path, we:
-  //   1. Debounce a file explorer refresh (provider emits 'refresh')
-  //   2. Feed the change into the sync engine for S3 push
   enableCloudFSObserver()
   _fsObserverUnsub = onCloudFSWrite((op: FSWriteOperation) => {
     handleRawFSWrite(op, cloudProvider)
   })
 
   // ── Listen to file open events for proactive version checks ──
-  // When the user opens a file (e.g. coming back to device A), immediately
-  // check if the remote version advanced while we were away.
   if (!_fileOpenListenerActive) {
     _plugin.on('fileManager', 'currentFileChanged', _onCurrentFileChanged)
     _fileOpenListenerActive = true
@@ -141,10 +137,12 @@ export function enterCloudProvider(workspaces: CloudWorkspace[]): CloudWorkspace
 }
 
 /**
- * Exit cloud mode: restore the original WorkspaceFileProvider.
+ * Exit cloud mode: tell the proxy to route I/O back to the local provider.
+ *
+ * No object references are swapped — the proxy's identity stays the same.
  */
 export function exitCloudProvider(): void {
-  if (!_plugin || !_originalProvider) return
+  if (!_plugin) return
 
   // Disable FS observer and clean up subscription
   if (_fsObserverUnsub) {
@@ -170,8 +168,9 @@ export function exitCloudProvider(): void {
     _fileOpenListenerActive = false
   }
 
-  _plugin.fileProviders.workspace = _originalProvider
-  _originalProvider = null
+  // Deactivate cloud — atomically routes all I/O back to the local provider.
+  const proxy = _plugin.fileProviders.workspace
+  proxy.clearCloudProvider()
 }
 
 // ── Cloud Toggle ─────────────────────────────────────────────
@@ -183,8 +182,9 @@ export function exitCloudProvider(): void {
  * and switches to the last-active (or first) cloud workspace.
  */
 export async function enableCloud(): Promise<void> {
+  console.log('[enableCloud] called, isCloudMode=', cloudStore.isCloudMode, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (cloudStore.isCloudMode) return // already on
+  if (cloudStore.isCloudMode) { console.log('[enableCloud] already in cloud mode — returning early'); return }
 
   // Remember the current local workspace so we can restore it on disable
   const currentLocal = localStorage.getItem('currentWorkspace')
@@ -210,6 +210,7 @@ export async function enableCloud(): Promise<void> {
     if (workspaces.length > 0) {
       const lastCloudName = localStorage.getItem(cloudLocalKey('lastCloudWorkspace'))
       const targetWs = workspaces.find(w => w.name === lastCloudName) || workspaces[0]
+      console.log('[enableCloud] switching to cloud workspace:', targetWs.name, 'uuid=', targetWs.uuid)
       try {
         await switchToCloudWorkspace(targetWs, (status) => {
           cloudStore.updateSyncStatus(targetWs.uuid, status)
@@ -256,73 +257,79 @@ export async function enableCloud(): Promise<void> {
  */
 export async function disableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (!cloudStore.isCloudMode) return // already off
+  if (!cloudStore.isCloudMode) { console.log('[disableCloud] already off, skipping'); return }
+
+  console.log('[disableCloud] starting...')
 
   // Remember the current cloud workspace for when the user re-enables
   const activeId = cloudStore.getState().activeWorkspaceId
   const activeWs = cloudStore.getState().cloudWorkspaces.find(w => w.uuid === activeId)
   if (activeWs) localStorage.setItem(cloudLocalKey('lastCloudWorkspace'), activeWs.name)
 
-  // 1. Close all files BEFORE swapping the provider — tab-proxy builds tab
-  // names from the current workspace, so files opened under the cloud
-  // workspace name must be closed while the cloud provider is still active.
+  const proxy = _plugin.fileProviders.workspace
+
+  // 1. Close all files BEFORE switching the provider delegate — tab names
+  //    are resolved via the current workspace, so close while cloud is active.
   await _plugin.fileManager.closeAllFiles()
 
-  // 2. Deactivate sync engine (await so flush completes before tearing down)
+  // 2. Deactivate sync engine (flush completes before tearing down)
   await cloudSyncEngine.deactivate()
 
-  // 3. Restore original file provider
+  // 3. Switch the proxy's delegate back to the local provider.
+  //    From this point, ALL I/O routes through the local WorkspaceFileProvider.
+  //    The proxy's identity is unchanged — no stale references anywhere.
   exitCloudProvider()
 
   // 4. Update store — keeps isAuthenticated = true
   cloudStore.disableCloud()
 
-  // 5. Switch to the last used legacy workspace
+  // 5. Switch to the last used local workspace
   try {
     const lastLocal = localStorage.getItem('lastLocalWorkspace') || localStorage.getItem('currentWorkspace')
 
-    // Check if the legacy workspace actually exists
     let targetLocal = lastLocal
     if (targetLocal) {
       try {
-        const wsPath = `/.workspaces/${targetLocal}`
-        await (window as any).remixFileSystem.stat(wsPath)
+        await (window as any).remixFileSystem.stat(`/.workspaces/${targetLocal}`)
       } catch {
-        targetLocal = null // workspace doesn't exist anymore
+        targetLocal = null
       }
     }
 
-    // If no valid legacy workspace, check if any exist at all
+    // Scan for any existing workspace if the saved one is gone
     if (!targetLocal) {
       try {
         const entries = await (window as any).remixFileSystem.readdir('/.workspaces')
-        const dirs = []
         for (const e of entries) {
           try {
             const s = await (window as any).remixFileSystem.stat(`/.workspaces/${e}`)
-            if (s.isDirectory()) dirs.push(e)
+            if (s.isDirectory()) { targetLocal = e; break }
           } catch { /* skip */ }
-        }
-        if (dirs.length > 0) {
-          targetLocal = dirs[0]
         }
       } catch { /* /.workspaces may not exist */ }
     }
 
     if (targetLocal) {
-      await _plugin.fileProviders.workspace.setWorkspace(targetLocal)
+      proxy.setWorkspace(targetLocal)
       await _plugin.setWorkspace({ name: targetLocal, isLocalhost: false })
       _dispatch(setMode('browser'))
       _dispatch(setCurrentWorkspace({ name: targetLocal, isGitRepo: false }))
       _dispatch(setReadOnlyMode(false))
     } else {
       // No local workspaces at all — create a default one
-      // This mirrors the standard Remix behavior (switchToWorkspace(NO_WORKSPACE))
       _plugin.call('notification', 'toast', 'No local workspace found — creating default workspace…')
       await createWorkspace('default_workspace', 'remixDefault')
     }
+
+    // 6. Refresh workspace list and file tree with local data
+    const localWorkspaces = await getWorkspaces()
+    if (localWorkspaces) {
+      await _plugin.setWorkspaces(localWorkspaces)
+      _dispatch(setWorkspaces(localWorkspaces))
+    }
+    await fetchWorkspaceDirectory('/')
   } catch (err) {
-    console.warn('[disableCloud] Failed to switch to legacy workspace:', err)
+    console.error('[disableCloud] Failed to switch to local workspace:', err)
   }
 }
 
@@ -334,10 +341,10 @@ export function getWorkspaceProvider(): any {
 }
 
 /**
- * Check if the current workspace provider is a CloudWorkspaceFileProvider.
+ * Check if the workspace provider proxy is currently in cloud mode.
  */
 export function isCloudProvider(): boolean {
-  return _plugin?.fileProviders?.workspace instanceof CloudWorkspaceFileProvider
+  return _plugin?.fileProviders?.workspace?.isCloudActive === true
 }
 
 // ── Cloud Workspace Operations ───────────────────────────────
@@ -353,6 +360,7 @@ export async function switchToCloudWorkspace(
   cloudWorkspace: CloudWorkspace,
   onSyncStatus?: (status: WorkspaceSyncStatus) => void,
 ): Promise<void> {
+  console.log('[switchToCloudWorkspace] called for', cloudWorkspace.name, 'uuid=', cloudWorkspace.uuid, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
   const provider = _plugin.fileProviders.workspace
@@ -433,7 +441,7 @@ export async function switchToCloudWorkspace(
   } catch (err) {
     if (err instanceof WorkspaceLockedError) {
       // Workspace is locked by another device — offer to take over
-      console.warn(`[CloudSync:lock] Workspace locked by ${err.holder} (ttl=${err.ttlRemaining}s) — asking user`)
+      console.warn(`[CloudSync:lock] Workspace locked by ${err.holder} (ttl=${err.ttlRemaining}s) — asking user`, 'stack=', new Error().stack?.split('\n').slice(1, 6).join(' | '))
       onSyncStatus?.({ status: 'error', lastSync: null, pendingChanges: 0, error: 'Workspace is in use on another device' })
       const takeOver = await _plugin.call('notification', 'modal', {
         id: 'cloud-workspace-locked',
@@ -760,6 +768,66 @@ function handleRawFSWrite(op: FSWriteOperation, provider: any): void {
       }
     }, REFRESH_DEBOUNCE_MS)
   }
+}
+
+/**
+ * Download all backup snapshots for the active cloud workspace.
+ *
+ * Lists `_workspace_backup_*.zip` objects on S3, downloads each one,
+ * bundles them into a single zip, and triggers a browser download.
+ *
+ * @returns The number of snapshots downloaded, or 0 if none found.
+ */
+export async function downloadBackupSnapshots(): Promise<number> {
+  const state = cloudStore.getState()
+  const uuid = state.activeWorkspaceId
+  if (!uuid) throw new Error('No active cloud workspace')
+
+  // Get a workspace-scoped STS token and create an S3 client
+  const token = await fetchWorkspaceSTS(uuid)
+  const s3 = new S3Client(token)
+
+  // List all objects and filter for backup zips
+  const allObjects = await s3.listObjects()
+  const backups = allObjects.filter(obj => {
+    const key = obj.key
+    // key is relative to prefix, e.g. "_workspace_backup_1709912345678.zip"
+    return key.startsWith('_workspace_backup_') && key.endsWith('.zip')
+  })
+
+  if (backups.length === 0) return 0
+
+  // Sort by key (timestamp is embedded) — newest first
+  backups.sort((a, b) => b.key.localeCompare(a.key))
+
+  const bundle = new JSZip()
+
+  // Download each backup and add to the bundle
+  for (const backup of backups) {
+    const data = await s3.getObjectBinary(backup.key)
+    if (data) {
+      // Extract timestamp from key for a friendly name
+      const match = backup.key.match(/_workspace_backup_(\d+)\.zip/)
+      const ts = match ? new Date(Number(match[1])) : new Date()
+      const label = ts.toISOString().replace(/[:.]/g, '-')
+      bundle.file(`snapshot_${label}.zip`, data)
+    }
+  }
+
+  // Find workspace name for the download filename
+  const ws = state.cloudWorkspaces.find(w => w.uuid === uuid)
+  const wsName = ws?.name || uuid
+
+  const blob = await bundle.generateAsync({ type: 'blob' })
+  // Trigger browser download
+  const a = document.createElement('a')
+  a.download = `${wsName}-cloud-snapshots.zip`
+  a.rel = 'noopener'
+  a.href = URL.createObjectURL(blob)
+  setTimeout(() => URL.revokeObjectURL(a.href), 40_000)
+  a.dispatchEvent(new MouseEvent('click'))
+
+  return backups.length
 }
 
 /**
