@@ -22,7 +22,7 @@ const OriginWarning = () => {
     ) {
       setMessageId('remixApp.originWarningMoved')
     }
-  }, [])
+  }, [intl])
 
   if (!messageId || dismissed) return null
 

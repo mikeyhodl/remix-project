@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { FormattedMessage, useIntl } from 'react-intl'
 
 interface AiChatButtonsProps {
   theme: string
@@ -8,6 +9,7 @@ interface AiChatButtonsProps {
 }
 
 export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspace }: AiChatButtonsProps) {
+  const intl = useIntl()
   const [currentFile, setCurrentFile] = useState<string | null>(null)
   const [latestCompiledContracts, setLatestCompiledContracts] = useState<string[] | null>(null)
 
@@ -52,12 +54,12 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
   const handleReviewFile = () => {
     if (currentFile) {
       const fileName = currentFile.split('/').pop() || currentFile
-      sendPrompt(`Review the file ${fileName}`)
+      sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.reviewFile' }, { fileName }))
     }
   }
 
   const dynamicButtons: {
-    label: string,
+    label: React.ReactElement,
     icon: string,
     color: string,
     action: () => void
@@ -66,7 +68,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
   if (currentFile) {
     const fileName = currentFile.split('/').pop() || currentFile
     dynamicButtons.push({
-      label: `Review ${fileName}`,
+      label: <FormattedMessage id="remixApp.aiChatButton.reviewFile" values={{ fileName }} />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-search`,
       color: '',
       action: handleReviewFile
@@ -76,10 +78,10 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
   if (latestCompiledContracts && latestCompiledContracts.length > 0) {
     for (const contract of latestCompiledContracts) {
       dynamicButtons.push({
-        label: `Deploy ${contract}`,
+        label: <FormattedMessage id="remixApp.aiChatButton.deployContract" values={{ contractName: contract }} />,
         icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-rocket`,
         color: '',
-        action: () => sendPrompt(`Deploy the ${contract} contract`)
+        action: () => sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.deployContract' }, { contractName: contract }))
       })
     }
   }
@@ -91,51 +93,51 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
   }, [])
 
   const btnList: {
-    label: string,
+    label: React.ReactElement,
     icon: string,
     color: string,
     action: () => void
   }[] = [
     {
-      label: 'File',
+      label: <FormattedMessage id="remixApp.aiChatButton.file" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} far fa-copy`,
       color: '',
-      action: () => sendPrompt('Create a new file')
+      action: () => sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.createFile' }))
     },
     {
-      label: 'New workspace',
+      label: <FormattedMessage id="remixApp.aiChatButton.newWorkspace" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-plus`,
       color: '',
       action: handleGenerateWorkspace
     },
     {
-      label: 'Explore RemixAI capabilities',
+      label: <FormattedMessage id="remixApp.aiChatButton.exploreCapabilities" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-magic`,
       color: '',
       action: () => {
         handleActionClick()
-        sendPrompt('Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.exploreCapabilities' }))
       }
     },
     {
-      label: 'Load skills',
+      label: <FormattedMessage id="remixApp.aiChatButton.loadSkills" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
       color: '',
       action: async () => {
-        sendPrompt('List all the skills available and their functionalities (using the list_skills). Then, propose a few prompts to use those skills effectively. Ask the user to specify which skill they want to load, and load those skills accordingly.')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.loadSkills' }))
       }
     },
     {
-      label: 'Start Learning',
+      label: <FormattedMessage id="remixApp.aiChatButton.startLearning" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-graduation-cap`,
       color: '',
       action: () => {
         handleActionClick()
-        sendPrompt('I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.startLearning' }))
       }
     },
     {
-      label: 'Create a Dapp',
+      label: <FormattedMessage id="remixApp.aiChatButton.createDapp" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
       color: '',
       action: async () => {
@@ -144,27 +146,27 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       }
     },
     {
-      label: 'Etherscan',
+      label: <FormattedMessage id="remixApp.aiChatButton.etherscan" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
       color: '',
       action: async () => {
-        sendPrompt('Give me a little introduction about insights about Etherscan and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Etherscan with other mcp tools (like TheGraph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.etherscan' }))
       }
     },
     {
-      label: 'TheGraph',
+      label: <FormattedMessage id="remixApp.aiChatButton.thegraph" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
       color: '',
       action: async () => {
-        sendPrompt('Give me a little introduction about insights about TheGraph and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage TheGraph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.thegraph' }))
       }
     },
     {
-      label: 'Alchemy',
+      label: <FormattedMessage id="remixApp.aiChatButton.alchemy" />,
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-cube`,
       color: '',
       action: async () => {
-        sendPrompt('Give me a little introduction about insights about Alchemy and how I may use it with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Alchemy with other mcp tools (like TheGraph, Etherscan, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.')
+        sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.alchemy' }))
       }
     },
     ...dynamicButtons

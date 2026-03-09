@@ -34,5 +34,27 @@
   "remixApp.originWarningAlpha": "Welcome to the Remix alpha instance. Please use it to try out latest features. But use preferably https://remix.ethereum.org for any production work.",
   "remixApp.originWarningMoved": "The Remix IDE has moved to http://remix.ethereum.org. This instance of Remix you are visiting WILL NOT BE UPDATED. Please make a backup of your contracts and start using http://remix.ethereum.org",
   "remixApp.aiWorkspaceGenerating": "Your workspace is being generated. Please wait while I generate the workspace for you. It won't be long.",
-  "remixApp.closeNotification": "Close"
+  "remixApp.closeNotification": "Close",
+
+  "remixApp.aiChatButton.file": "File",
+  "remixApp.aiChatButton.newWorkspace": "New workspace",
+  "remixApp.aiChatButton.exploreCapabilities": "Explore RemixAI capabilities",
+  "remixApp.aiChatButton.startLearning": "Start Learning",
+  "remixApp.aiChatButton.createDapp": "Create a Dapp",
+  "remixApp.aiChatButton.thegraph": "The Graph",
+  "remixApp.aiChatButton.alchemy": "Alchemy",
+  "remixApp.aiChatButton.etherscan": "Etherscan",
+  "remixApp.aiChatButton.loadSkills": "Load skills",
+  "remixApp.aiChatButton.reviewFile": "Review {fileName}",
+  "remixApp.aiChatButton.deployContract": "Deploy {contractName}",
+
+  "remixApp.aiChatPrompt.createFile": "Create a new file",
+  "remixApp.aiChatPrompt.reviewFile": "Review the file {fileName}",
+  "remixApp.aiChatPrompt.deployContract": "Deploy the {contractName} contract",
+  "remixApp.aiChatPrompt.exploreCapabilities": "Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.",
+  "remixApp.aiChatPrompt.startLearning": "I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?",
+  "remixApp.aiChatPrompt.loadSkills": "List all the skills available and their functionalities. Then, propose a few prompts to use those skills effectively. Ask the user to specify which skill they want to load, and load those skills accordingly.",
+  "remixApp.aiChatPrompt.etherscan": "Give me a little introduction about Etherscan and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Etherscan with other mcp tools (like TheGraph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
+  "remixApp.aiChatPrompt.thegraph": "Give me a little introduction about TheGraph and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage TheGraph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
+  "remixApp.aiChatPrompt.alchemy": "Give me a little introduction about Alchemy and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Alchemy with other mcp tools (like TheGraph, Etherscan, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward."
 }
