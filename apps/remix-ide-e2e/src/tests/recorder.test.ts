@@ -39,6 +39,7 @@ module.exports = {
     browser.testContracts('testRecorder.sol', sources[0]['testRecorder.sol'], ['testRecorder'])
       .clickLaunchIcon('udapp')
       .createContract('12')
+      .closeBetaPopUp()
       .clickInstance(0)
       .clickFunction(0, 0, ['34'])
       .execute(function () {
