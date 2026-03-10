@@ -77,18 +77,17 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'
             }}
           >
-            <div className="d-flex align-items-center flex-grow-1">
+            <div className="d-flex align-items-center flex-grow-1" onClick={handleExplainEthereum}>
               <div
-                className="d-flex justify-content-center align-items-center me-4 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
-                  width: '60px',
-                  height: '60px'
+                  width: '60px'
                 }}
               >
                 <i className="fas fa-lightbulb text-white" style={{ fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
-                <h5 className="mb-2 fw-semibold" style={{ color: isDark ? 'white' : 'black' }}>
+                <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
                   <FormattedMessage id="home.learnFoundationTitle" />
                 </h5>
                 <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
@@ -96,17 +95,6 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 </p>
               </div>
             </div>
-            <button
-              className="btn btn-primary btn-lg px-4 py-3 fw-semibold shadow-sm"
-              onClick={handleExplainEthereum}
-              style={{
-                borderRadius: '12px',
-                background: 'linear-gradient(45deg, var(--bs-primary), var(--bs-info))',
-                border: 'none'
-              }}
-            >
-              <FormattedMessage id="home.exploreButton" />
-            </button>
           </div>
 
           <div
@@ -127,18 +115,17 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'
             }}
           >
-            <div className="d-flex align-items-center flex-grow-1">
+            <div className="d-flex align-items-center flex-grow-1" onClick={handleGetStarted}>
               <div
-                className="d-flex justify-content-center align-items-center me-4 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
-                  width: '60px',
-                  height: '60px'
+                  width: '60px'
                 }}
               >
                 <i className="fas fa-code text-white" style={{ fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
-                <h5 className="mb-2 fw-semibold" style={{ color: isDark ? 'white' : 'black' }}>
+                <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
                   <FormattedMessage id="home.buildFirstContractTitle" />
                 </h5>
                 <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
@@ -146,60 +133,9 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                 </p>
               </div>
             </div>
-            <button
-              className="btn btn-success btn-lg px-4 py-3 fw-semibold shadow-sm"
-              onClick={handleGetStarted}
-              style={{
-                borderRadius: '12px',
-                background: 'linear-gradient(45deg, var(--bs-success), var(--bs-teal))',
-                border: 'none'
-              }}
-            >
-              <FormattedMessage id="home.buildButton" />
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom decoration with animation */}
-        <div className="text-center mt-3">
-          <div className="d-flex justify-content-center align-items-center gap-2">
-            <div
-              className="rounded-circle shadow-sm"
-              style={{
-                width: '8px',
-                height: '8px',
-                background: 'var(--bs-primary)',
-                animation: 'pulse 2s infinite'
-              }}
-            ></div>
-            <div
-              className="rounded-circle shadow-sm"
-              style={{
-                width: '8px',
-                height: '8px',
-                background: 'var(--bs-info)',
-                animation: 'pulse 2s infinite 0.5s'
-              }}
-            ></div>
-            <div
-              className="rounded-circle shadow-sm"
-              style={{
-                width: '8px',
-                height: '8px',
-                background: 'var(--bs-success)',
-                animation: 'pulse 2s infinite 1s'
-              }}
-            ></div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.1); }
-        }
-      `}</style>
     </div>
   )
 }
