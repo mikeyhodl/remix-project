@@ -84,7 +84,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                   width: '60px'
                 }}
               >
-                <i className="fas fa-lightbulb text-white" style={{ fontSize: '1.5rem' }}></i>
+                <i className="fas fa-lightbulb text-primary" style={{ fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
@@ -122,7 +122,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
                   width: '60px'
                 }}
               >
-                <i className="fas fa-code text-white" style={{ fontSize: '1.5rem' }}></i>
+                <i className="fas fa-code text-primary" style={{ fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
