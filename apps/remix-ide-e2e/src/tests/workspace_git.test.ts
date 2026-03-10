@@ -26,7 +26,8 @@ module.exports = {
       .waitForElementVisible('[data-id="initGitRepositoryLabel"]')
       .click('[data-id="initGitRepositoryLabel"]')
       .click('*[data-id="validateWorkspaceButton"]')
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .frameParent()
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 60000)
       .waitForElementPresent('*[data-id="treeViewLitreeViewItem.git"]')
       .waitForElementVisible('[data-id="treeViewDivtreeViewItemREADME.txt"]')
   },

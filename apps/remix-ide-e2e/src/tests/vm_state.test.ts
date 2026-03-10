@@ -169,6 +169,7 @@ const tests = {
       .click('[data-id="settingsSelectEnvOptions"] button')
       .waitForElementVisible(`[data-id="dropdown-item-vm-fs-forkedState_2"]`)
       .click('[data-id="settingsSelectEnvOptions"] button')
+      .pause(2000)
       .createContract('')
       .closeBetaPopUp()
       .clickInstance(0)
