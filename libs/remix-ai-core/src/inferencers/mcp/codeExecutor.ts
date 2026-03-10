@@ -57,7 +57,7 @@ export class CodeExecutor {
 
       // CRITICAL: race condition - Wait for all pending tool calls to complete before returning
       if (this.pendingToolCalls.length > 0) {
-        await Promise.allSettled(this.pendingToolCalls);
+        await Promise.all(this.pendingToolCalls);
       }
 
       const executionTime = Date.now() - startTime;
@@ -66,20 +66,23 @@ export class CodeExecutor {
         success: true,
         output: this.consoleOutput.join('\n'),
         executionTime,
-        toolsCalled: this.toolsCalled,
-        toolCallRecords: this.toolCallRecords,
+        toolsCalled: [...this.toolsCalled],
+        toolCallRecords: [...this.toolCallRecords],
         returnValue: result
       };
 
     } catch (error) {
+      if (this.pendingToolCalls.length > 0) {
+        await Promise.all(this.pendingToolCalls);
+      }
       const executionTime = Date.now() - startTime;
       return {
         success: false,
         output: this.consoleOutput.join('\n'),
         error: error.message || String(error),
         executionTime,
-        toolsCalled: this.toolsCalled,
-        toolCallRecords: this.toolCallRecords
+        toolsCalled: [...this.toolsCalled],
+        toolCallRecords: [...this.toolCallRecords]
       };
     }
   }
