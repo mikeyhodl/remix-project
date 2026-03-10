@@ -27,8 +27,8 @@ module.exports = {
       .click('[data-id="initGitRepositoryLabel"]')
       .click('*[data-id="validateWorkspaceButton"]')
       .frameParent()
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 60000)
-      .waitForElementPresent('*[data-id="treeViewLitreeViewItem.git"]')
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .waitForElementPresent('*[data-id="treeViewLitreeViewItem.git"]', 60000)
       .waitForElementVisible('[data-id="treeViewDivtreeViewItemREADME.txt"]')
   },
   'Should add credentials #group1 #group2 #group3': function (browser: NightwatchBrowser) {
