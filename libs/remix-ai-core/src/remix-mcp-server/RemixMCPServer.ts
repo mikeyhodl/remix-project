@@ -389,7 +389,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       }
 
       // STEP 3: File Permision Check (for file operations)
-      const fileOperations = ['file_write', 'file_create', 'file_delete', 'file_move', 'file_copy'];
+      const fileOperations = ['file_write', 'file_create', 'file_delete', 'file_move', 'file_copy', 'file_replace'];
       if (fileOperations.includes(call.name)) {
         const filePath = call.arguments?.path || call.arguments?.filePath || call.arguments?.from || call.arguments?.source;
 
@@ -401,7 +401,7 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
 
           if (!permissionResult.allowed) {
             console.log(`[RemixMCPServer] File operation permission DENIED for '${filePath}': ${permissionResult.reason}`);
-            throw new Error(`File operation permission denied: ${permissionResult.reason || 'User denied the operation'}`);
+            throw new Error(`File operation permission denied: ${permissionResult.reason || 'User denied the operation'}. See file remix.config.json`);
           }
           console.log(`[RemixMCPServer] File operation permission GRANTED for '${filePath}'`);
         }
