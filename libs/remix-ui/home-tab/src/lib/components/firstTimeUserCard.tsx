@@ -79,18 +79,18 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleExplainEthereum}>
               <div
-                className="d-flex justify-content-center align-items-center me-1 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-2 shadow-sm"
                 style={{
-                  width: '60px'
+                  width: '20px'
                 }}
               >
-                <i className="fas fa-lightbulb text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.5rem' }}></i>
+                <i className="fas fa-lightbulb text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.2rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
                   <FormattedMessage id="home.learnFoundationTitle" />
                 </h5>
-                <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
+                <p className="mb-0" style={{ fontSize: '0.875rem', color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
                   <FormattedMessage id="home.learnFoundationDesc" />
                 </p>
               </div>
@@ -117,18 +117,18 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleGetStarted}>
               <div
-                className="d-flex justify-content-center align-items-center me-1 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-2 shadow-sm"
                 style={{
-                  width: '60px'
+                  width: '20px'
                 }}
               >
-                <i className="fas fa-code text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.5rem' }}></i>
+                <i className="fas fa-code text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.2rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
                   <FormattedMessage id="home.buildFirstContractTitle" />
                 </h5>
-                <p className="mb-0" style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
+                <p className="mb-0" style={{ fontSize: '0.875rem', color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
                   <FormattedMessage id="home.buildFirstContractDesc" />
                 </p>
               </div>
