@@ -403,11 +403,17 @@ module.exports = {
   },
   'Should update lastAccessedAt on conversation load #group2': function (browser: NightwatchBrowser) {
     browser
+      .click('*[data-id="maximizeRightSidePanel"]')
+      .pause(500)
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(500)
       .execute(function () {
-        const items = document.querySelectorAll('[data-id^="conversation-item-"]')
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        const items = Array.from(document.querySelectorAll('[data-id^="conversation-item-"]'))
+          .filter(el => uuidRegex.test((el.getAttribute('data-id') || '').replace('conversation-item-', '')))
         return items.length > 1 ? [
-          items[0].getAttribute('data-id')?.replace('conversation-item-', ''),
-          items[items.length - 1].getAttribute('data-id')?.replace('conversation-item-', '')
+          (items[0].getAttribute('data-id') || '').replace('conversation-item-', ''),
+          (items[items.length - 1].getAttribute('data-id') || '').replace('conversation-item-', '')
         ] : null
       }, [], function (result) {
         const ids = result.value as string[]
@@ -422,8 +428,10 @@ module.exports = {
           .pause(1000)
           // Verify it moved to top
           .execute(function () {
-            const firstItem = document.querySelector('[data-id^="conversation-item-"]')
-            return firstItem ? firstItem.getAttribute('data-id')?.replace('conversation-item-', '') : null
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+            const firstItem = Array.from(document.querySelectorAll('[data-id^="conversation-item-"]'))
+              .find(el => uuidRegex.test((el.getAttribute('data-id') || '').replace('conversation-item-', '')))
+            return firstItem ? (firstItem.getAttribute('data-id') || '').replace('conversation-item-', '') : null
           }, [], function (topResult) {
             browser.assert.equal(
               topResult.value,
