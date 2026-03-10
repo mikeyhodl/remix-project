@@ -24,7 +24,7 @@
   "filePanel.workspace.downloadConfirm": "This will download the current Workspace in a zip file. Do you want to continue?",
   "filePanel.workspace.deleteAll": "Delete All Workspaces",
   "filePanel.workspace.deleteAllConfirm1": "Are you absolutely sure you want to delete all your workspaces?",
-  "filePanel.workspace.deleteAllConfirm2": "Deleted workspaces cannot be restored in any manner.",
+  "filePanel.workspace.deleteAllConfirm2": "Deleted Workspaces are erased and cannot be restored.",
   "filePanel.workspace.name": "Workspace name",
   "filePanel.workspace.chooseTemplate": "Choose a template",
   "filePanel.workspace.backup": "Backup All Workspaces",
