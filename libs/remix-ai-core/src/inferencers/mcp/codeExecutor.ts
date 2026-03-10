@@ -73,7 +73,7 @@ export class CodeExecutor {
 
     } catch (error) {
       if (this.pendingToolCalls.length > 0) {
-        await Promise.allSettled(this.pendingToolCalls);
+        await Promise.all(this.pendingToolCalls);
       }
       const executionTime = Date.now() - startTime;
       return {
