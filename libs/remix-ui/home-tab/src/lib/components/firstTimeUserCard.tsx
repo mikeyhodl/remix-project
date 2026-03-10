@@ -79,12 +79,12 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleExplainEthereum}>
               <div
-                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-1 shadow-sm"
                 style={{
                   width: '60px'
                 }}
               >
-                <i className="fas fa-lightbulb text-primary" style={{ fontSize: '1.5rem' }}></i>
+                <i className="fas fa-lightbulb text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
@@ -117,12 +117,12 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleGetStarted}>
               <div
-                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-1 shadow-sm"
                 style={{
                   width: '60px'
                 }}
               >
-                <i className="fas fa-code text-primary" style={{ fontSize: '1.5rem' }}></i>
+                <i className="fas fa-code text-primary" style={{ color: isDark ? '#64c4ff' : 'var(--bs-primary)', fontSize: '1.5rem' }}></i>
               </div>
               <div className="flex-grow-1 pe-3">
                 <h5 className="mb-2" style={{ color: isDark ? 'white' : 'black' }}>
