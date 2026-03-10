@@ -79,7 +79,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleExplainEthereum}>
               <div
-                className="d-flex justify-content-center align-items-center me-2 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
                   width: '20px'
                 }}
@@ -117,7 +117,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           >
             <div className="d-flex align-items-center flex-grow-1" onClick={handleGetStarted}>
               <div
-                className="d-flex justify-content-center align-items-center me-2 shadow-sm"
+                className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
                   width: '20px'
                 }}
