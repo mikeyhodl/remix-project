@@ -726,14 +726,14 @@ export function RemixUiTopbar() {
           style={{ minWidth: '33%' }}
         >
           <>
-            {!showLoginUI && (
-              <GitHubLogin
-                cloneGitRepository={showCloneModal}
-                logOutOfGithub={logOutOfGithub}
-                publishToGist={publishToGist}
-                loginWithGitHub={loginWithGitHub}
-              />
-            )}
+
+            <GitHubLogin
+              cloneGitRepository={showCloneModal}
+              logOutOfGithub={logOutOfGithub}
+              publishToGist={publishToGist}
+              loginWithGitHub={loginWithGitHub}
+            />
+
             {showLoginUI && (
               <LoginButton
                 plugin={plugin}
