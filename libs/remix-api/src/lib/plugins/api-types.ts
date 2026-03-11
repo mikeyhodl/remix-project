@@ -163,7 +163,33 @@ export type LoginDenialCode =
 export const LOGIN_ACL_ERROR_CODES: string[] = [
   'LOGIN_CLOSED',
   'LOGIN_ADMINS_ONLY',
-  'LOGIN_FEATURE_GROUP_REQUIRED'
+  'LOGIN_FEATURE_GROUP_REQUIRED',
+  'LOGIN_LOCKED',
+  'LOGIN_MEMBERS_ONLY'
+]
+
+// ==================== Unified Access Policy ====================
+
+/** Access policy values — single axis replacing login_mode + registration_mode */
+export type AccessPolicy = 'open' | 'invite_only' | 'members_only' | 'admins_only' | 'locked'
+
+/** Response from GET /sso/access-policy */
+export interface AccessPolicyResponse {
+  policy: AccessPolicy
+  message: string
+  allows_registration: boolean
+  requires_invite: boolean
+}
+
+/** All access-policy denial codes from the server */
+export const ACCESS_POLICY_ERROR_CODES: string[] = [
+  'LOGIN_LOCKED',
+  'LOGIN_ADMINS_ONLY',
+  'LOGIN_MEMBERS_ONLY',
+  'INVITE_REQUIRED',
+  'INVITE_INVALID',
+  'REGISTRATION_CLOSED',
+  'ACCOUNT_BLOCKED'
 ]
 
 // ==================== SIWE ====================

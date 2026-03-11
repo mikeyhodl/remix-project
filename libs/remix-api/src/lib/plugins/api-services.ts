@@ -22,6 +22,7 @@ import {
   RefreshTokenResponse,
   RegistrationModeResponse,
   LoginModeResponse,
+  AccessPolicyResponse,
   StorageHealthResponse,
   StorageConfig,
   PresignUploadRequest,
@@ -124,6 +125,15 @@ export class SSOApiService {
    */
   async getLoginMode(): Promise<ApiResponse<LoginModeResponse>> {
     return this.apiClient.get<LoginModeResponse>('/login-mode')
+  }
+
+  /**
+   * Get the unified access policy (no auth required).
+   * Replaces the separate login-mode + registration-mode endpoints.
+   * Returns policy, message, allows_registration, requires_invite.
+   */
+  async getAccessPolicy(): Promise<ApiResponse<AccessPolicyResponse>> {
+    return this.apiClient.get<AccessPolicyResponse>('/access-policy')
   }
   
   // ==================== SIWE ====================
@@ -791,10 +801,11 @@ export class TestPoolApiService {
    * @throws 403 LOGIN_FEATURE_GROUP_REQUIRED when no group with login:allowed is included
    * @throws 400 INVALID_FEATURE_GROUPS when group names don't exist
    */
-  async checkout(featureGroups: string[] = ['beta']): Promise<ApiResponse<PoolCheckoutResponse>> {
+  async checkout(featureGroups: string[] = ['beta'], inviteToken?: string): Promise<ApiResponse<PoolCheckoutResponse>> {
+    console.log(`[TestPoolLogin] Checking out test account with feature groups: ${featureGroups.join(', ')}${inviteToken ? ' and invite token' : ''}`)
     return this.request<PoolCheckoutResponse>('/checkout', {
       method: 'POST',
-      body: { featureGroups },
+      body: { featureGroups, ...(inviteToken && { invite_token: inviteToken }) },
     })
   }
 

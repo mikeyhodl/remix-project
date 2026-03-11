@@ -18,6 +18,7 @@ interface InviteOverlayProps {
   onRedeem: (token: string) => Promise<InviteRedeemResponse>
   onClose: () => void
   onStartWalkthrough?: (slug: string) => void
+  plugin?: any
 }
 
 /**
@@ -28,7 +29,8 @@ export const InviteOverlay: React.FC<InviteOverlayProps> = ({
   state,
   onRedeem,
   onClose,
-  onStartWalkthrough
+  onStartWalkthrough,
+  plugin
 }) => {
   if (!state.show || !state.token || !state.validation) {
     return null
@@ -94,6 +96,7 @@ export const InviteOverlay: React.FC<InviteOverlayProps> = ({
         error={error}
         onRedeem={onRedeem}
         onClose={onClose}
+        plugin={plugin}
       />
     )
   }
@@ -107,6 +110,7 @@ export const InviteOverlay: React.FC<InviteOverlayProps> = ({
       error={error}
       onRedeem={onRedeem}
       onClose={onClose}
+      plugin={plugin}
     />
   )
 }
@@ -129,14 +133,14 @@ function formatExpiry(expiresAt: string | null | undefined): string | null {
 
 function getErrorMessage(errorCode?: string): string {
   switch (errorCode) {
-  case 'NOT_FOUND': return 'This invite code does not exist or is no longer valid.'
-  case 'INACTIVE': return 'This invite code has been deactivated.'
-  case 'EXPIRED': return 'This invite code has expired.'
-  case 'NOT_STARTED': return 'This invite code is not yet active.'
-  case 'EXHAUSTED':
-  case 'MAX_USES_REACHED': return 'This invite code has reached its maximum number of uses.'
-  case 'ALREADY_REDEEMED': return 'You have already used this invite code.'
-  default: return 'This invitation is no longer valid.'
+    case 'NOT_FOUND': return 'This invite code does not exist or is no longer valid.'
+    case 'INACTIVE': return 'This invite code has been deactivated.'
+    case 'EXPIRED': return 'This invite code has expired.'
+    case 'NOT_STARTED': return 'This invite code is not yet active.'
+    case 'EXHAUSTED':
+    case 'MAX_USES_REACHED': return 'This invite code has reached its maximum number of uses.'
+    case 'ALREADY_REDEEMED': return 'You have already used this invite code.'
+    default: return 'This invitation is no longer valid.'
   }
 }
 
@@ -328,13 +332,13 @@ const SuccessModal: React.FC<{
                   <button className="btn invite-modal-btn-secondary" onClick={onClose}>
                     Skip for now
                   </button>
-                  <button className="btn invite-modal-btn-primary invite-modal-btn--glow" onClick={handleStartWalkthrough}>
+                  <button className="btn invite-modal-btn-primary invite-modal-btn--glow" data-id="invite-lets-start-btn" onClick={handleStartWalkthrough}>
                     <i className="fas fa-play me-2"></i>
                     Let's Start!
                   </button>
                 </div>
               ) : (
-                <button className="btn invite-modal-btn-primary w-100" onClick={onClose}>
+                <button className="btn invite-modal-btn-primary w-100" data-id="invite-get-started-btn" onClick={onClose}>
                   Get Started
                 </button>
               )}
@@ -356,7 +360,8 @@ const BetaProgramInviteModal: React.FC<{
   error: string | null
   onRedeem: (token: string) => Promise<InviteRedeemResponse>
   onClose: () => void
-}> = ({ token, validation, isAuthenticated, redeeming, error, onRedeem, onClose }) => (
+  plugin?: any
+}> = ({ token, validation, isAuthenticated, redeeming, error, onRedeem, onClose, plugin }) => (
   <div className="invite-overlay" onClick={onClose}>
     <div className="invite-modal-dialog invite-modal-dialog--wide" onClick={e => e.stopPropagation()}>
       <div className="invite-modal-card">
@@ -473,6 +478,7 @@ const BetaProgramInviteModal: React.FC<{
             {isAuthenticated ? (
               <button
                 className="btn invite-modal-btn-primary invite-modal-btn--glow w-100"
+                data-id="invite-join-beta-btn"
                 onClick={() => onRedeem(token)}
                 disabled={redeeming}
               >
@@ -488,7 +494,7 @@ const BetaProgramInviteModal: React.FC<{
                   <i className="fas fa-lock me-1"></i>
                   Sign in to activate this invite
                 </p>
-                <LoginButton className="btn-lg w-100" />
+                <LoginButton className="btn-lg w-100" plugin={plugin} />
               </div>
             )}
           </div>
@@ -508,7 +514,8 @@ const DefaultInviteModal: React.FC<{
   error: string | null
   onRedeem: (token: string) => Promise<InviteRedeemResponse>
   onClose: () => void
-}> = ({ token, validation, isAuthenticated, redeeming, error, onRedeem, onClose }) => (
+  plugin?: any
+}> = ({ token, validation, isAuthenticated, redeeming, error, onRedeem, onClose, plugin }) => (
   <div className="invite-overlay" onClick={onClose}>
     <div className="invite-modal-dialog" onClick={e => e.stopPropagation()}>
       <div className="invite-modal-card">
@@ -566,6 +573,7 @@ const DefaultInviteModal: React.FC<{
             {isAuthenticated ? (
               <button
                 className="btn invite-modal-btn-primary w-100"
+                data-id="invite-activate-btn"
                 onClick={() => onRedeem(token)}
                 disabled={redeeming}
               >
@@ -581,7 +589,7 @@ const DefaultInviteModal: React.FC<{
                   <i className="fas fa-lock me-1"></i>
                   Sign in to activate this invite
                 </p>
-                <LoginButton className="btn-lg w-100" />
+                <LoginButton className="btn-lg w-100" plugin={plugin} />
               </div>
             )}
           </div>

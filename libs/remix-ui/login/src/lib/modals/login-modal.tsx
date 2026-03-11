@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useContext } from 'react'
-import { AuthProvider, RegistrationMode, InviteValidateResponse, LoginMode, LOGIN_ACL_ERROR_CODES } from '@remix-api'
+import { AuthProvider, InviteValidateResponse, AccessPolicyResponse, ACCESS_POLICY_ERROR_CODES } from '@remix-api'
 import { useAuth } from '../../../../app/src/lib/remix-app/context/auth-context'
 import { AppContext } from '../../../../app/src/lib/remix-app/context/context'
 import { endpointUrls } from '@remix-endpoints-helper'
@@ -43,13 +43,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
   const [testAccountsAvailable, setTestAccountsAvailable] = useState(false)
   const [poolStatusText, setPoolStatusText] = useState<string>('')
 
-  // Registration mode
-  const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('open')
-
-  // Login ACL mode
-  const [loginMode, setLoginMode] = useState<LoginMode>('open')
-  const [loginModeMessage, setLoginModeMessage] = useState('')
-  const [loginModeLoading, setLoginModeLoading] = useState(true)
+  // Unified access policy
+  const [accessPolicy, setAccessPolicy] = useState<AccessPolicyResponse>({
+    policy: 'open',
+    message: '',
+    allows_registration: true,
+    requires_invite: false
+  })
+  const [accessPolicyLoading, setAccessPolicyLoading] = useState(true)
 
   // Invite token handling
   const [inviteToken, setInviteToken] = useState<string | undefined>(() => {
@@ -94,55 +95,49 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     return () => clearTimeout(timer)
   }, [codeExpiresIn])
 
-  // --- Fetch registration mode and login ACL mode ---
+  // --- Fetch unified access policy ---
   useEffect(() => {
-    const fetchModes = async () => {
+    const fetchPolicy = async () => {
       try {
-        const [regRes, loginRes] = await Promise.all([
-          fetch(`${endpointUrls.sso}/registration-mode`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-          }),
-          fetch(`${endpointUrls.sso}/login-mode`, {
+        if (plugin && typeof plugin.call === 'function') {
+          const result: AccessPolicyResponse = await plugin.call('auth', 'getAccessPolicy')
+          if (result) {
+            setAccessPolicy(result)
+            console.log('[LoginModal] Access policy:', result.policy, result.message)
+          }
+        } else {
+          // Fallback: fetch directly from endpoint
+          const res = await fetch(`${endpointUrls.sso}/access-policy`, {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
           })
-        ])
-
-        if (regRes.ok) {
-          const data = await regRes.json()
-          setRegistrationMode(data.mode || 'open')
-          console.log('[LoginModal] Registration mode:', data.mode)
-        }
-
-        if (loginRes.ok) {
-          const data = await loginRes.json()
-          setLoginMode(data.mode || 'open')
-          setLoginModeMessage(data.message || '')
-          console.log('[LoginModal] Login mode:', data.mode, data.message)
+          if (res.ok) {
+            const data: AccessPolicyResponse = await res.json()
+            setAccessPolicy(data)
+            console.log('[LoginModal] Access policy (direct):', data.policy, data.message)
+          }
         }
       } catch (err) {
-        console.warn('[LoginModal] Failed to fetch modes, defaulting to open:', err)
+        console.warn('[LoginModal] Failed to fetch access policy, defaulting to open:', err)
       } finally {
-        setLoginModeLoading(false)
+        setAccessPolicyLoading(false)
       }
     }
-    fetchModes()
+    fetchPolicy()
 
-    // Also listen for login mode changes from the auth plugin
-    const handleLoginModeChanged = (response: { mode: LoginMode; message: string }) => {
-      if (response?.mode) {
-        setLoginMode(response.mode)
-        setLoginModeMessage(response.message || '')
+    // Listen for access policy changes from the auth plugin
+    const handleAccessPolicyChanged = (response: AccessPolicyResponse) => {
+      if (response?.policy) {
+        setAccessPolicy(response)
       }
     }
     try {
-      plugin?.on('auth', 'loginModeChanged', handleLoginModeChanged)
+      plugin?.on('auth', 'accessPolicyChanged', handleAccessPolicyChanged)
     } catch { /* ignore */ }
 
     return () => {
       try {
-        plugin?.off('auth', 'loginModeChanged')
+        plugin?.off('auth', 'accessPolicyChanged')
       } catch { /* ignore */ }
     }
   }, [plugin])
@@ -257,7 +252,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     return () => {
       dispatch({ type: 'CLEAR_ERROR' })
     }
-  }, [dispatch])
+  }, [dispatch, plugin])
 
   const trackEvent = (action: string, name?: string) => {
     if (plugin && typeof plugin.call === 'function') {
@@ -316,13 +311,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
         return
       }
 
-      if (response.status === 403 && LOGIN_ACL_ERROR_CODES.includes(data.error)) {
-        const msg = loginModeMessage || (data.error === 'LOGIN_CLOSED'
+      if (response.status === 403 && ACCESS_POLICY_ERROR_CODES.includes(data.error)) {
+        const msg = data.message || accessPolicy.message || (data.error === 'LOGIN_LOCKED'
           ? 'Login is currently unavailable. Please try again later.'
           : data.error === 'LOGIN_ADMINS_ONLY'
             ? 'Login is restricted to administrators at this time.'
-            : 'Login is currently restricted to beta testers.')
+            : data.error === 'LOGIN_MEMBERS_ONLY'
+              ? 'Only existing members can sign in at this time.'
+              : data.error === 'INVITE_REQUIRED'
+                ? 'An invite code is required to register.'
+                : data.error === 'INVITE_INVALID'
+                  ? 'Your invite code is invalid or expired.'
+                  : 'Login is currently restricted.')
         setEmailError(msg)
+        // Refresh the access policy in case it changed
+        if (plugin && typeof plugin.call === 'function') {
+          plugin.call('auth', 'refreshAccessPolicy').catch(() => {})
+        }
         return
       }
 
@@ -380,13 +385,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           setEmailError('Registration is currently closed. Only existing users can sign in.')
         } else if (data.error === 'ACCOUNT_BLOCKED') {
           setEmailError('Your account has been blocked.')
-        } else if (LOGIN_ACL_ERROR_CODES.includes(data.error)) {
-          const msg = loginModeMessage || (data.error === 'LOGIN_CLOSED'
+        } else if (ACCESS_POLICY_ERROR_CODES.includes(data.error)) {
+          const msg = data.message || accessPolicy.message || (data.error === 'LOGIN_LOCKED'
             ? 'Login is currently unavailable. Please try again later.'
             : data.error === 'LOGIN_ADMINS_ONLY'
               ? 'Login is restricted to administrators at this time.'
-              : 'Login is currently restricted to beta testers.')
+              : data.error === 'LOGIN_MEMBERS_ONLY'
+                ? 'Only existing members can sign in at this time.'
+                : data.error === 'INVITE_REQUIRED'
+                  ? 'An invite code is required to register.'
+                  : data.error === 'INVITE_INVALID'
+                    ? 'Your invite code is invalid or expired.'
+                    : 'Login is currently restricted.')
           setEmailError(msg)
+          // Refresh the access policy in case it changed
+          if (plugin && typeof plugin.call === 'function') {
+            plugin.call('auth', 'refreshAccessPolicy').catch(() => {})
+          }
         } else {
           setEmailError(data.message || data.error || 'Access denied')
         }
@@ -541,16 +556,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           <div className="d-flex flex-column justify-content-center align-items-center position-relative login-modal-left-section">
             <div className="position-absolute top-0 start-0 end-0 bottom-0 login-modal-gradient-overlay" />
             <div className="text-start w-100 position-relative login-modal-content-wrapper">
-              {loginMode === 'closed' ? (
-                /* ── Closed / Maintenance ── */
+              {accessPolicy.policy === 'locked' ? (
+                /* ── Locked / Maintenance ── */
                 <div className="text-center">
                   <i className="fas fa-tools mb-3" style={{ fontSize: '2.5rem', opacity: 0.85 }}></i>
                   <h6 className="fw-semibold mb-3 login-modal-list-text">Maintenance in Progress</h6>
                   <p className="login-modal-list-text mb-0" style={{ opacity: 0.85, fontSize: '0.9rem' }}>
-                    {loginModeMessage || 'Login is temporarily unavailable. Please check back soon.'}
+                    {accessPolicy.message || 'Login is temporarily unavailable. Please check back soon.'}
                   </p>
                 </div>
-              ) : loginMode === 'admins_only' ? (
+              ) : accessPolicy.policy === 'admins_only' ? (
                 /* ── Admins Only ── */
                 <ul className="list-unstyled p-0 m-0">
                   <li className="mb-4 d-flex align-items-center">
@@ -561,38 +576,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                     <i className="fas fa-lock me-3 flex-shrink-0 login-modal-list-icon"></i>
                     <span className="login-modal-list-text">Login restricted to administrators</span>
                   </li>
-                  {loginModeMessage && (
+                  {accessPolicy.message && (
                     <li className="mb-4 d-flex align-items-center">
                       <i className="fas fa-info-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
-                      <span className="login-modal-list-text">{loginModeMessage}</span>
+                      <span className="login-modal-list-text">{accessPolicy.message}</span>
                     </li>
                   )}
                 </ul>
-              ) : loginMode === 'feature_group' ? (
-                /* ── Beta / Feature Group ── */
-                <ul className="list-unstyled p-0 m-0">
-                  <li className="mb-4 d-flex align-items-center">
-                    <i className="fas fa-flask me-3 flex-shrink-0 login-modal-list-icon"></i>
-                    <span className="login-modal-list-text">Beta access</span>
-                  </li>
-                  <li className="mb-4 d-flex align-items-center">
-                    <i className="fas fa-users me-3 flex-shrink-0 login-modal-list-icon"></i>
-                    <span className="login-modal-list-text">Available to beta testers</span>
-                  </li>
-                  {loginModeMessage ? (
-                    <li className="mb-4 d-flex align-items-center">
-                      <i className="fas fa-info-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
-                      <span className="login-modal-list-text">{loginModeMessage}</span>
-                    </li>
-                  ) : (
-                    <li className="mb-4 d-flex align-items-center">
-                      <i className="fas fa-sign-in-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
-                      <span className="login-modal-list-text">Existing beta users can sign in</span>
-                    </li>
-                  )}
-                </ul>
-              ) : registrationMode === 'existing_only' ? (
-                /* ── Existing Users Only (registration closed) ── */
+              ) : accessPolicy.policy === 'members_only' ? (
+                /* ── Members Only (existing users) ── */
                 <ul className="list-unstyled p-0 m-0">
                   <li className="mb-4 d-flex align-items-center">
                     <i className="fas fa-sign-in-alt me-3 flex-shrink-0 login-modal-list-icon"></i>
@@ -606,8 +598,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                     <i className="fas fa-user-check me-3 flex-shrink-0 login-modal-list-icon"></i>
                     <span className="login-modal-list-text">Existing users can access all features</span>
                   </li>
+                  {accessPolicy.message && (
+                    <li className="mb-4 d-flex align-items-center">
+                      <i className="fas fa-info-circle me-3 flex-shrink-0 login-modal-list-icon"></i>
+                      <span className="login-modal-list-text">{accessPolicy.message}</span>
+                    </li>
+                  )}
                 </ul>
-              ) : registrationMode === 'invite_only' ? (
+              ) : accessPolicy.policy === 'invite_only' ? (
                 /* ── Invite Only ── */
                 <ul className="list-unstyled p-0 m-0">
                   <li className="mb-4 d-flex align-items-center">
@@ -664,15 +662,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
               <p className="text-muted mb-0 fs-small-medium">
                 {otpStep === 'code'
                   ? 'Enter the verification code we sent to your email'
-                  : loginMode === 'closed'
+                  : accessPolicy.policy === 'locked'
                     ? 'Login is temporarily unavailable'
-                    : loginMode === 'admins_only'
+                    : accessPolicy.policy === 'admins_only'
                       ? 'Restricted access'
-                      : registrationMode === 'existing_only'
+                      : accessPolicy.policy === 'members_only'
                         ? 'Sign in with your existing account'
-                        : registrationMode === 'invite_only' && inviteToken && inviteValidation?.valid
+                        : accessPolicy.requires_invite && inviteToken && inviteValidation?.valid
                           ? 'You\'ve been invited! Sign in to claim your access.'
-                          : registrationMode === 'invite_only'
+                          : accessPolicy.requires_invite
                             ? 'Sign in with your existing account or enter an invite code'
                             : 'Log in or register to unlock our wide range of features'
                 }
@@ -796,36 +794,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                   </div>
                 </div>
 
-              ) : loginMode === 'closed' ? (
-                /* ──────────────── Closed / Maintenance View ──────────────── */
+              ) : accessPolicy.policy === 'locked' ? (
+                /* ──────────────── Locked / Maintenance View ──────────────── */
                 <div className="d-flex flex-column align-items-center py-4">
                   <div className="mb-3" style={{ fontSize: '3rem' }}>
                     <i className="fas fa-tools text-muted"></i>
                   </div>
                   <h6 className="fw-semibold mb-2">Login Unavailable</h6>
                   <p className="text-muted text-center fs-small-medium mb-4">
-                    {loginModeMessage || 'Login is temporarily unavailable while we perform maintenance. Please try again later.'}
+                    {accessPolicy.message || 'Login is temporarily unavailable while we perform maintenance. Please try again later.'}
                   </p>
                   <button
                     className="btn btn-outline-primary btn-sm"
                     onClick={async () => {
-                      setLoginModeLoading(true)
+                      setAccessPolicyLoading(true)
                       try {
-                        const res = await fetch(`${endpointUrls.sso}/login-mode`, {
-                          method: 'GET',
-                          headers: { 'Accept': 'application/json' }
-                        })
-                        if (res.ok) {
-                          const data = await res.json()
-                          setLoginMode(data.mode || 'open')
-                          setLoginModeMessage(data.message || '')
+                        if (plugin && typeof plugin.call === 'function') {
+                          const result: AccessPolicyResponse = await plugin.call('auth', 'refreshAccessPolicy')
+                          if (result) setAccessPolicy(result)
+                        } else {
+                          const res = await fetch(`${endpointUrls.sso}/access-policy`, {
+                            method: 'GET',
+                            headers: { 'Accept': 'application/json' }
+                          })
+                          if (res.ok) {
+                            const data: AccessPolicyResponse = await res.json()
+                            setAccessPolicy(data)
+                          }
                         }
                       } catch { /* ignore */ }
-                      finally { setLoginModeLoading(false) }
+                      finally { setAccessPolicyLoading(false) }
                     }}
-                    disabled={loginModeLoading}
+                    disabled={accessPolicyLoading}
                   >
-                    {loginModeLoading ? (
+                    {accessPolicyLoading ? (
                       <><div className="spinner-border spinner-border-sm me-1" role="status"><span className="visually-hidden">Checking...</span></div> Checking...</>
                     ) : (
                       <><i className="fas fa-sync-alt me-1"></i> Check Again</>
@@ -880,7 +882,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                   )}
 
                   {/* Invite code input for invite_only mode */}
-                  {registrationMode === 'invite_only' && !inviteToken && showInviteInput && (
+                  {accessPolicy.requires_invite && !inviteToken && showInviteInput && (
                     <div className="mb-3">
                       <label className="form-label fs-small-medium fw-medium">Enter your invite code</label>
                       <div className="d-flex gap-2">
@@ -914,7 +916,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                   )}
 
                   {/* "I have an invite" button for invite_only mode */}
-                  {registrationMode === 'invite_only' && !inviteToken && !showInviteInput && (
+                  {accessPolicy.requires_invite && !inviteToken && !showInviteInput && (
                     <button
                       className="btn btn-outline-primary btn-sm w-100 mb-3"
                       onClick={() => setShowInviteInput(true)}
