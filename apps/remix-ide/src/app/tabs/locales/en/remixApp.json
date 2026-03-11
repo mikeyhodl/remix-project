@@ -56,5 +56,13 @@
   "remixApp.aiChatPrompt.loadSkills": "List all the skills available and their functionalities. Then, propose a few prompts to use those skills effectively. Ask the user to specify which skill they want to load, and load those skills accordingly.",
   "remixApp.aiChatPrompt.etherscan": "Give me a brief introduction to Etherscan and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like The Graph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
   "remixApp.aiChatPrompt.thegraph": "Give me a brief introduction to The Graph and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
-  "remixApp.aiChatPrompt.alchemy": "Give me a brief introduction to Alchemy and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like Etherscan, The Graph, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward."
+  "remixApp.aiChatPrompt.alchemy": "Give me a brief introduction to Alchemy and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like Etherscan, The Graph, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
+
+  "remixApp.ai.status.performingWorkspaceRequest": "Performing workspace request...",
+  "remixApp.ai.status.fetchingRAGContext": "Fetching RAG context...",
+  "remixApp.ai.status.loadingWorkspaceContext": "Loading workspace context...",
+  "remixApp.ai.status.generatingWorkspaceUpdates": "Generating workspace updates with AI...",
+  "remixApp.ai.status.applyingChanges": "Applying changes to workspace...",
+  "remixApp.ai.status.generatingNewWorkspace": "Generating new workspace with AI.\nThis might take a few minutes. Please be patient...",
+  "remixApp.ai.status.creatingContracts": "Creating contracts and files..."
 }

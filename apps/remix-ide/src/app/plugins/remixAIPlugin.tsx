@@ -63,6 +63,16 @@ export class RemixAIPlugin extends Plugin {
     super(profile)
   }
 
+  private async getLocalizedMessage(key: string): Promise<string> {
+    try {
+      const locale = await this.call('locale', 'currentLocale')
+      return locale.messages[key] || key
+    } catch (error) {
+      console.warn('Failed to get localized message for key:', key, error)
+      return key
+    }
+  }
+
   async onActivation(): Promise<void> {
     // IMPORTANT: Must await initialize() before loading MCP servers
     // to ensure remixMCPServer is created first (race condition fix)
@@ -214,7 +224,7 @@ export class RemixAIPlugin extends Plugin {
     let userPrompt = ''
 
     if (useRag) {
-      statusCallback?.('Fetching RAG context...')
+      statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.fetchingRAGContext'))
       try {
         let ragContext = ""
         const options = { headers: { 'Content-Type': 'application/json', } }
@@ -231,10 +241,10 @@ export class RemixAIPlugin extends Plugin {
     } else {
       userPrompt = prompt
     }
-    await statusCallback?.('Generating new workspace with AI.\nThis might take a few minutes. Please be patient...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.generatingNewWorkspace'))
     const result = await this.remoteInferencer.generate(userPrompt, params)
 
-    await statusCallback?.('Creating contracts and files...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.creatingContracts'))
     const genResult = await this.contractor.writeContracts(result, userPrompt, statusCallback)
 
     // revert provider
@@ -256,9 +266,9 @@ export class RemixAIPlugin extends Plugin {
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
 
-    await statusCallback?.('Performing workspace request...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.performingWorkspaceRequest'))
     if (useRag) {
-      await statusCallback?.('Fetching RAG context...')
+      await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.fetchingRAGContext'))
       try {
         let ragContext = ""
         const options = { headers: { 'Content-Type': 'application/json', } }
@@ -274,14 +284,14 @@ export class RemixAIPlugin extends Plugin {
         console.log('RAG context error:', error)
       }
     }
-    await statusCallback?.('Loading workspace context...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.loadingWorkspaceContext'))
     const files = !this.workspaceAgent.ctxFiles ? await this.workspaceAgent.getCurrentWorkspaceFiles() : this.workspaceAgent.ctxFiles
     userPrompt = "Using the following workspace context: ```\n" + files + "```\n\n" + userPrompt
 
-    await statusCallback?.('Generating workspace updates with AI...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.generatingWorkspaceUpdates'))
     const result = await this.remoteInferencer.generateWorkspace(userPrompt, params)
 
-    await statusCallback?.('Applying changes to workspace...')
+    await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.applyingChanges'))
     return (result !== undefined) ? this.workspaceAgent.writeGenerationResults(result, statusCallback) : "### No Changes applied!"
   }
 
