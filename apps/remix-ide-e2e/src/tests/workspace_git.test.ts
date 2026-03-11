@@ -9,7 +9,7 @@ module.exports = {
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
   },
-  'Should be able to create GIT without credentials #group1': function (browser: NightwatchBrowser) {
+  'Should be able to create GIT without credentials #group1 #flaky': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('filePanel')
       .clickWorkspaceDropdown()
