@@ -95,10 +95,8 @@ export class Layout extends Plugin {
     this.on('sidePanel', 'focusChanged', async (name) => {
       const current = await this.call('sidePanel', 'currentFocus')
       const isMaxed = await this.call('rightSidePanel', 'isRightSidePanelMaximized')
-      if (current === 'dgit') {
-        if (isMaxed) this.enhanced[current] = false
-        else this.enhanced[current] = true
-        this.event.emit('enhancesidepanel')
+      if (isMaxed) {
+        this.enhanced[current] = false
       } else {
         if (this.enhanced[current]) {
           this.event.emit('enhancesidepanel')
