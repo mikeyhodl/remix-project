@@ -85,7 +85,7 @@ module.exports = {
       .clickFunction(0, 0, ['35'])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { "uint256 num": "35" }
         })
       .clickFunction(0, 1)
@@ -116,7 +116,7 @@ module.exports = {
       .clickFunction(0, 0, ['55'])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { "uint256 num": "55" }
         })
       .clickFunction(0, 1)

@@ -40,7 +40,7 @@
   "debugger.unknownMethod": "Unknown method",
   "debugger.invalidTxHash": "Invalid transaction hash.",
   "debugger.transactionRecorderAvailable": "Transaction recorder is available in the Deploy & Run Transactions tab.",
-  "debugger.startDebuggingDescription": "Select a past transaction in your transaction history below OR directly paste a transaction hash in the search field to start debugging a transaction. This will automatically import the targetted contracts.",
+  "debugger.startDebuggingDescription": "Select a past transaction in your transaction history below OR directly paste a transaction hash in the search field to start debugging a transaction. This will automatically import the targeted contracts.",
   "debugger.copyAddress": "Copy address",
   "debugger.copied": "Copied!",
   "debugger.copyHash": "Copy Hash",

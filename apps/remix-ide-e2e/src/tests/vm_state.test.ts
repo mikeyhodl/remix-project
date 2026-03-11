@@ -57,7 +57,7 @@ const tests = {
       .clickFunction(0, 0, ["55"])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { 'uint256 num': '55' }
         })
       .clickFunction(0, 1)
@@ -114,7 +114,7 @@ const tests = {
       .clickFunction(0, 1, ["57"])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { 'uint256 num': '57' }
         })
       .clearConsole()
@@ -176,7 +176,7 @@ const tests = {
       .clickFunction(0, 0, ["555"])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'block number': '5',
           'decoded input': { 'uint256 num': '555' }
         })

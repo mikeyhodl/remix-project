@@ -179,7 +179,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               data-id="remix-ai-workspace-generate"
               onClick={handleGenerateWorkspace}>
               <i className="fas fa-plus me-1"></i>
-              <span className="text-nowrap">New workspace</span>
+              <span className="text-nowrap">New Workspace</span>
             </button>
           </div>
         </div>
