@@ -978,9 +978,7 @@ Use this tool when you need:
       const result = await codeExecutor.execute(code);
       console.log('code execution output', result)
 
-      // Use returnValue as the primary payload
       if (result.success) {
-        // returnValue contains the clean payload
         return {
           content: [{
             type: 'text',
@@ -991,7 +989,7 @@ Use this tool when you need:
           isError: false
         };
       } else {
-        // returnValue contains error message
+        // returnValue contains error message processed in code_executor
         return {
           content: [{
             type: 'text',
