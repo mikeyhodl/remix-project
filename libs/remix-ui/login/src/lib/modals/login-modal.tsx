@@ -185,12 +185,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     }
   }, [inviteToken, validateInvite])
 
-  // Handler for manual invite code submission
+  // Handler for manual invite code submission — close modal and delegate to invitationManager
   const handleInviteSubmit = async () => {
     const token = inviteInputValue.trim()
     if (!token) return
-    setInviteToken(token)
-    // Store and validate — the useEffect above will trigger validation
+    onClose()
+    try {
+      await plugin.call('invitationManager', 'showInvite', token)
+    } catch (err) {
+      console.error('[LoginModal] Failed to show invite:', err)
+    }
   }
 
   // --- Fetch providers ---
@@ -890,12 +894,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                           type="text"
                           className="form-control form-control-sm"
                           placeholder="Paste your invite code"
+                          data-id="invite-code-input"
                           value={inviteInputValue}
                           onChange={(e) => setInviteInputValue(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleInviteSubmit()}
                         />
                         <button
                           className="btn btn-primary btn-sm"
+                          data-id="invite-code-apply-btn"
                           onClick={handleInviteSubmit}
                           disabled={!inviteInputValue.trim() || inviteValidating}
                         >
@@ -919,6 +925,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
                   {accessPolicy.requires_invite && !inviteToken && !showInviteInput && (
                     <button
                       className="btn btn-outline-primary btn-sm w-100 mb-3"
+                      data-id="invite-code-toggle-btn"
                       onClick={() => setShowInviteInput(true)}
                     >
                       <i className="fas fa-ticket-alt me-2"></i>

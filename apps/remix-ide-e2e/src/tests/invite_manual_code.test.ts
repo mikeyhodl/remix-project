@@ -13,18 +13,16 @@ module.exports = {
 
     before: function (browser: NightwatchBrowser, done: VoidFunction) {
         if (!poolApiKey) {
-            console.error('[TestPoolLogin] E2E_POOL_API_KEY not set — cannot run pool test')
+            console.error('[InviteManualCode] E2E_POOL_API_KEY not set — cannot run pool test')
             return done()
         }
 
-        // Pass the pool key + enableLogin in the hash so the auth plugin can use it.
-        // No fake token injection — the real login flow will do the checkout.
-        const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&e2e_feature_groups=ai-pro&invite=${INVITE_CODE}`
+        // No invite= in the URL — this test enters the code manually via the login modal
+        const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&e2e_feature_groups=ai-pro`
         init(browser, done, url, false, null, true, false)
     },
 
     after: async function (browser: NightwatchBrowser, done: VoidFunction) {
-        // Read the pool session that the auth plugin stored in sessionStorage
         try {
             const result: any = await new Promise((resolve) => {
                 browser.execute(function () {
@@ -34,18 +32,46 @@ module.exports = {
 
             if (result && result.value) {
                 const session = JSON.parse(result.value)
-                console.log(`[TestPoolLogin] Releasing pool session: ${session.sessionId}`)
+                console.log(`[InviteManualCode] Releasing pool session: ${session.sessionId}`)
                 await releaseAccount(session.sessionId)
             }
         } catch (err: any) {
-            console.error(`[TestPoolLogin] Release failed: ${err.message}`)
+            console.error(`[InviteManualCode] Release failed: ${err.message}`)
         }
         browser.end()
         done()
     },
-    'look at the beta invite system #group1': function (browser: NightwatchBrowser) {
+
+    'Should click Sign In to open login modal #group1': function (browser: NightwatchBrowser) {
         browser
-            // Wait for the invite modal's "Sign In" button and click it
+            // No invite in URL, so no invite overlay — just the normal IDE with a Sign In button
+            .waitForElementVisible('*[data-id="login-button"]', 30000)
+            .click('*[data-id="login-button"]')
+            .pause(2000)
+    },
+
+    'Should show login modal with "I have an invite code" button #group1': function (browser: NightwatchBrowser) {
+        browser
+            // The login modal should now be open with the invite code toggle
+            .waitForElementVisible('*[data-id="invite-code-toggle-btn"]', 15000)
+    },
+
+    'Should enter invite code and submit #group1': function (browser: NightwatchBrowser) {
+        browser
+            // Click the "I have an invite code" button to reveal the input
+            .click('*[data-id="invite-code-toggle-btn"]')
+            .waitForElementVisible('*[data-id="invite-code-input"]', 5000)
+            // Type the invite code
+            .setValue('*[data-id="invite-code-input"]', INVITE_CODE)
+            .pause(500)
+            // Click Apply — this closes the login modal and triggers invitationManager.showInvite
+            .click('*[data-id="invite-code-apply-btn"]')
+            .pause(2000)
+    },
+
+    'Should show invite overlay and click Sign In #group1': function (browser: NightwatchBrowser) {
+        browser
+            // The invite overlay should now be visible with a Sign In / login button
             .waitForElementVisible({
                 selector: '//div[contains(@class, "invite-modal-right-footer")]//button[@data-id="login-button"]',
                 locateStrategy: 'xpath',
@@ -58,31 +84,25 @@ module.exports = {
             .pause(2000)
     },
 
-
-    'Should login via the test pool through the real UI flow #group1': function (browser: NightwatchBrowser) {
+    'Should login via the test pool #group1': function (browser: NightwatchBrowser) {
         browser
             .pause(3000)
-            // The modal should detect the e2e_pool_key and show the "E2E Test Pool" button
             .waitForElementVisible({
                 selector: '//button[contains(., "E2E Test Pool")]',
                 locateStrategy: 'xpath',
                 timeout: 15000
             })
-            // Click the test pool login button — this triggers a real pool checkout
             .click({
                 selector: '//button[contains(., "E2E Test Pool")]',
                 locateStrategy: 'xpath'
             })
-            // Wait for the login to complete (modal closes, tokens get stored)
             .pause(5000)
     },
 
     'Should click Join Beta on the invite modal #group1': function (browser: NightwatchBrowser) {
         browser
-            // Wait for the "Join the Beta" button in the invite modal footer
             .waitForElementVisible('*[data-id="invite-join-beta-btn"]', 15000)
             .click('*[data-id="invite-join-beta-btn"]')
-            // After redeem succeeds, the success modal shows — click "Let's Start!"
             .waitForElementVisible('*[data-id="invite-get-started-btn"]', 15000)
             .click('*[data-id="invite-get-started-btn"]')
     },
@@ -106,7 +126,7 @@ module.exports = {
                     .assert.ok(user !== null, 'User data is parseable')
                     .assert.ok(user.email && user.email.includes('@'), 'User has a valid email')
                     .assert.equal(user.provider, 'test', 'Provider is "test"')
-                console.log(`[TestPoolLogin] Logged in as: ${user.name} (${user.email})`)
+                console.log(`[InviteManualCode] Logged in as: ${user.name} (${user.email})`)
             })
     },
 

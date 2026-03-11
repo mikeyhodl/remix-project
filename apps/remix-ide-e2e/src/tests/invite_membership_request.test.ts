@@ -6,6 +6,7 @@ import { releaseAccount } from '../helpers/pool'
 require('dotenv').config()
 
 const poolApiKey = process.env.E2E_POOL_API_KEY || ''
+const INVITE_CODE_MEMBERSHIP = process.env.E2E_INVITE_CODE_MEMBERSHIP || ''
 
 module.exports = {
     '@disabled': true,
@@ -18,7 +19,7 @@ module.exports = {
 
         // Pass the pool key + enableLogin in the hash so the auth plugin can use it.
         // No fake token injection — the real login flow will do the checkout.
-        const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&e2e_feature_groups=ai-pro&invite=6MRRKMD6`
+        const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&e2e_feature_groups=ai-pro&invite=${INVITE_CODE_MEMBERSHIP}`
         init(browser, done, url, false, null, true, false)
     },
 

@@ -659,13 +659,6 @@ export class AuthPlugin extends Plugin {
       // Fetch credits after successful login
       this.refreshCredits().catch(console.error)
 
-      // NOTE: autoRedeemPendingInvite disabled — the backend already redeems
-      // the invite_token during login (passed via URL param / verify body).
-      // Calling it here caused a race condition (double /redeem call).
-      // this.autoRedeemPendingInvite().catch(err =>
-      //   console.warn('[AuthPlugin] Auto-redeem invite failed:', err)
-      // )
-
       this.log('[AuthPlugin] Login successful')
     } catch (error) {
       console.error('[AuthPlugin] Login failed:', error)
@@ -1556,45 +1549,9 @@ export class AuthPlugin extends Plugin {
       // Auto-refresh credits
       this.refreshCredits().catch(console.error)
 
-      // NOTE: autoRedeemPendingInvite disabled — backend redeems during SIWE verify.
-      // this.autoRedeemPendingInvite().catch(err =>
-      //   console.warn('[SIWE] Auto-redeem invite failed:', err)
-      // )
-
     } catch (error: any) {
       console.error('[SIWE] Login failed:', error)
       throw error
-    }
-  }
-
-  /**
-   * Automatically redeem a pending invite token after successful login.
-   * Safe to call even if no invite is pending or already redeemed.
-   */
-  private async autoRedeemPendingInvite(): Promise<void> {
-    const token = this.getPendingInviteToken()
-    if (!token) return
-
-    this.log('[AuthPlugin] Auto-redeeming pending invite token...')
-    try {
-      const result = await this.redeemInviteToken(token)
-      if (result.success) {
-        this.log('[AuthPlugin] Invite token redeemed successfully')
-        this.clearPendingInviteToken()
-      } else if (result.error_code === 'ALREADY_REDEEMED') {
-        // Token was already redeemed during the login/registration flow on the backend.
-        // Emit the same event so the invite modal transitions to the success state
-        // instead of showing a stale "Redeem" button.
-        this.log('[AuthPlugin] Invite token was already redeemed (handled during login)')
-        this.clearPendingInviteToken()
-        this.emit('inviteTokenRedeemed', { token, actions: result.actions_applied || [] })
-        this.refreshPermissions().catch(console.error)
-        this.refreshCredits().catch(console.error)
-      } else {
-        console.warn('[AuthPlugin] Invite redemption failed:', result.error)
-      }
-    } catch (err) {
-      console.warn('[AuthPlugin] Auto-redeem error:', err)
     }
   }
 
@@ -1725,11 +1682,6 @@ export class AuthPlugin extends Plugin {
 
       // Auto-refresh credits
       this.refreshCredits().catch(console.error)
-
-      // NOTE: autoRedeemPendingInvite disabled — backend redeems during Base verify.
-      // this.autoRedeemPendingInvite().catch(err =>
-      //   console.warn('[Base] Auto-redeem invite failed:', err)
-      // )
 
     } catch (error: any) {
       console.error('[Base] Login failed:', error)
