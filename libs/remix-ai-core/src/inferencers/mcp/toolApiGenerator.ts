@@ -36,13 +36,14 @@ Examples:
 // Multiple tasks 1
 const compiled = await callMCPTool('solidity_compile', { file: 'contract.sol' });
 const deployed = await callMCPTool('deploy_contract', { contractName: 'MyToken' });
-
+return deployed
 
 // With loops for batch operations
 const files = ['contracts/Token.sol', 'contracts/NFT.sol', 'contracts/DAO.sol'];
 for (const file of files) {
   await callMCPTool('solidity_compile', { file: 'contracts/' + file });
 }
+return "All Files compiled"
 
 Do not use remix.call(..) or any other method to interact with Remix, only use callMCPTool as described above.
 `;

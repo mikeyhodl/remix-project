@@ -703,21 +703,42 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       if (files) {
         for (const file in files) {
           try {
-            const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
+            // Special handling for remix.config.json - merge with existing config instead of creating numbered duplicates
             if (file === 'remix.config.json') {
+              const exists = await plugin.fileManager.exists(file)
               const remixConfig = JSON.parse(files[file])
 
               remixConfig.project = template
               remixConfig.version = projectVersion
               remixConfig.IDE = window.location.hostname
-              await writeToTargetWorkspace(uniqueFileName, JSON.stringify(remixConfig, null, 2))
+
+              if (exists) {
+                // mcp merge
+                try {
+                  const existingContent = await plugin.fileManager.readFile(file)
+                  const existingConfig = JSON.parse(existingContent)
+                  const mergedConfig = { ...existingConfig, ...remixConfig }
+                  await writeToTargetWorkspace(file, JSON.stringify(mergedConfig, null, 2))
+                } catch (parseError) {
+                  console.warn('Existing remix.config.json is invalid, overwriting it:', parseError)
+                  await writeToTargetWorkspace(file, JSON.stringify(remixConfig, null, 2))
+                }
+              } else {
+                await writeToTargetWorkspace(file, JSON.stringify(remixConfig, null, 2))
+              }
+
+              if (isReadme(file)) {
+                openPath = file
+              }
             } else {
+              const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
               await writeToTargetWorkspace(uniqueFileName, files[file])
-            }
-            if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
-              openPath = uniqueFileName
-            } else if (isReadme(uniqueFileName)) {
-              openPath = uniqueFileName
+
+              if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
+                openPath = uniqueFileName
+              } else if (isReadme(uniqueFileName)) {
+                openPath = uniqueFileName
+              }
             }
           } catch (error) {
             console.error(error)
