@@ -79,19 +79,19 @@ export const BetaInfoModal: React.FC<BetaInfoModalProps> = ({ onClose, plugin })
                 <div className="beta-modal-features-grid">
                   <div className="beta-modal-feature-item">
                     <i className="fas fa-cloud beta-modal-feature-icon"></i>
-                    <span>Cloud Storage</span>
+                    <span>Advanced AI Models</span>
                   </div>
                   <div className="beta-modal-feature-item">
                     <i className="fas fa-robot beta-modal-feature-icon"></i>
-                    <span>AI Assistant</span>
+                    <span>AI MCP</span>
                   </div>
                   <div className="beta-modal-feature-item">
                     <i className="fas fa-code-branch beta-modal-feature-icon"></i>
-                    <span>New Remix MCP</span>
+                    <span>Quick Dapp Frontend Builder</span>
                   </div>
                   <div className="beta-modal-feature-item">
                     <i className="fas fa-palette beta-modal-feature-icon"></i>
-                    <span>Frontend Builder</span>
+                    <span>Cloud Workspaces</span>
                   </div>
                 </div>
               </div>

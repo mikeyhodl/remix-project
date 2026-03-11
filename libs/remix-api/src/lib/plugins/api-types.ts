@@ -80,6 +80,60 @@ export interface GitHubTokenResponse {
   scopes?: string[]
 }
 
+// ==================== App Configuration ====================
+
+/**
+ * Public app configuration fetched from the backend.
+ * Keys use dot-notation categories (e.g. 'cloud.enabled').
+ * Known keys are typed explicitly; unknown keys are also accessible.
+ */
+export interface AppConfig {
+  // App
+  'app.supportenabled'?: boolean
+
+  // Auth
+  'auth.login_mode'?: string
+  'auth.login_mode_message'?: string
+  'auth.registration_mode'?: string
+  'auth.link_accounts_enabled'?: boolean
+  'auth.email_sign_in_enabled'?: boolean
+  'auth.sign_in_button_mode'?: 'default' | 'beta' | 'hidden'
+  
+  // Billing
+  'billing.enable_subscriptions'?: boolean
+  'billing.credits_enabled'?: boolean
+
+  // Cloud
+  'cloud.enabled'?: boolean
+  'cloud.button_visibility'?: 'off' | 'authenticated_users' | 'all_users'
+
+  // Notifications
+  'notifications.mode'?: 'off' | 'authenticated_users' | 'all_users'
+
+  // Features
+  'features.ai_enabled'?: boolean
+
+  // Limits
+  'limits.max_file_size_mb'?: number
+
+  // Settings
+  'settings.account_management'?: boolean
+
+  // Storage
+  'storage.max_backup_size_mb'?: number
+  'storage.max_workspaces'?: number
+
+  // UI flags
+  'show_beta_test_register_widget'?: boolean
+  'show_join_beta_top_button'?: boolean
+
+  // Allow unknown keys
+  [key: string]: string | number | boolean | undefined
+}
+
+/** Response from GET /sso/config (public, no auth required) */
+export type AppConfigResponse = AppConfig
+
 // ==================== Registration Mode ====================
 
 export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'
@@ -87,6 +141,56 @@ export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'
 export interface RegistrationModeResponse {
   mode: RegistrationMode
 }
+
+// ==================== Login Access Control (ACL) ====================
+
+/** Login mode values — controls who can log in (independent of registration mode) */
+export type LoginMode = 'open' | 'feature_group' | 'admins_only' | 'closed'
+
+/** Response from GET /sso/login-mode */
+export interface LoginModeResponse {
+  mode: LoginMode
+  message: string  // empty string when mode is 'open'
+}
+
+/** Login ACL denial codes (subset of postMessage error codes) */
+export type LoginDenialCode =
+  | 'LOGIN_CLOSED'
+  | 'LOGIN_ADMINS_ONLY'
+  | 'LOGIN_FEATURE_GROUP_REQUIRED'
+
+/** All login-related error codes that can come from the server */
+export const LOGIN_ACL_ERROR_CODES: string[] = [
+  'LOGIN_CLOSED',
+  'LOGIN_ADMINS_ONLY',
+  'LOGIN_FEATURE_GROUP_REQUIRED',
+  'LOGIN_LOCKED',
+  'LOGIN_MEMBERS_ONLY'
+]
+
+// ==================== Unified Access Policy ====================
+
+/** Access policy values — single axis replacing login_mode + registration_mode */
+export type AccessPolicy = 'open' | 'invite_only' | 'members_only' | 'admins_only' | 'locked'
+
+/** Response from GET /sso/access-policy */
+export interface AccessPolicyResponse {
+  policy: AccessPolicy
+  message: string
+  allows_registration: boolean
+  requires_invite: boolean
+}
+
+/** All access-policy denial codes from the server */
+export const ACCESS_POLICY_ERROR_CODES: string[] = [
+  'LOGIN_LOCKED',
+  'LOGIN_ADMINS_ONLY',
+  'LOGIN_MEMBERS_ONLY',
+  'INVITE_REQUIRED',
+  'INVITE_INVALID',
+  'REGISTRATION_CLOSED',
+  'ACCOUNT_BLOCKED'
+]
 
 // ==================== SIWE ====================
 
