@@ -340,20 +340,9 @@ const RemixApp = (props: IRemixAppUi) => {
   const preferredChatWidth = Math.round(
     viewportSize.width * (viewportSize.width < 768 ? 0.86 : viewportSize.width < 1280 ? 0.3 : 0.24)
   )
-  const minChatWidth = 260
-  const maxChatWidth = 320
-  const rightViewportPadding = 10
-  const preferredLeft = iconPanelWidth + sidePanelWidth + horizontalSpacing
-  const availableChatWidth = Math.max(minChatWidth, viewportSize.width - preferredLeft - rightViewportPadding)
-  const floatingChatWidth = Math.min(
-    Math.max(preferredChatWidth, minChatWidth),
-    Math.min(maxChatWidth, availableChatWidth)
-  )
-  const maxLeft = Math.max(12, viewportSize.width - floatingChatWidth - rightViewportPadding)
-  const floatingChatLeft = Math.min(preferredLeft, maxLeft)
-  const preferredTop = verticalSpacing
-  const maxTop = Math.max(12, viewportSize.height - 220)
-  const floatingChatTop = Math.min(preferredTop, maxTop)
+
+  const chatWidthFraction = viewportSize.width < 768 ? 0.86 : viewportSize.width < 1920 ? 0.22 : 0.18
+  const floatingChatWidth = Math.max(260, Math.round(viewportSize.width * chatWidthFraction))
   const floatingChatStyle = useMemo<React.CSSProperties>(() => ({
     position: 'fixed',
     overflow: 'hidden',
