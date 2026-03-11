@@ -252,34 +252,17 @@ const RemixApp = (props: IRemixAppUi) => {
     setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated
   }
 
-  const iconPanelWidth = iconPanelRef.current?.offsetWidth ?? 50
-  const sidePanelWidth = hideSidePanel ? 0 : ((sidePanelRef.current as HTMLDivElement | null)?.offsetWidth ?? 320)
-  const verticalSpacing = Math.max(8, Math.round(viewportSize.height * 0.015))
-  const horizontalSpacing = Math.max(8, Math.round(viewportSize.width * 0.01))
-  const preferredChatWidth = Math.round(
-    viewportSize.width * (viewportSize.width < 768 ? 0.86 : viewportSize.width < 1280 ? 0.3 : 0.24)
-  )
-  const minChatWidth = 260
-  const maxChatWidth = 320
-  const rightViewportPadding = 10
-  const preferredLeft = iconPanelWidth + sidePanelWidth + horizontalSpacing
-  const availableChatWidth = Math.max(minChatWidth, viewportSize.width - preferredLeft - rightViewportPadding)
-  const floatingChatWidth = Math.min(
-    Math.max(preferredChatWidth, minChatWidth),
-    Math.min(maxChatWidth, availableChatWidth)
-  )
-  const maxLeft = Math.max(12, viewportSize.width - floatingChatWidth - rightViewportPadding)
-  const floatingChatLeft = Math.min(preferredLeft, maxLeft)
-  const preferredTop = verticalSpacing
-  const maxTop = Math.max(12, viewportSize.height - 220)
-  const floatingChatTop = Math.min(preferredTop, maxTop)
+  const chatWidthFraction = viewportSize.width < 768 ? 0.86 : viewportSize.width < 1920 ? 0.22 : 0.18
+  const floatingChatWidth = Math.max(260, Math.round(viewportSize.width * chatWidthFraction))
   const floatingChatStyle = useMemo<React.CSSProperties>(() => ({
+    position: 'fixed',
     overflow: 'hidden',
-    top: floatingChatTop,
-    left: floatingChatLeft,
+    top: '3rem',
+    right: '0.8rem',
     width: `${floatingChatWidth}px`,
-    height: '90vh'
-  }), [floatingChatTop, floatingChatLeft, floatingChatWidth])
+    height: '92vh',
+    zIndex: 1050
+  }), [floatingChatWidth])
   const [showArchived, setShowArchived] = useState(false);
 
   // Memoize callbacks to prevent unnecessary re-renders
@@ -316,8 +299,8 @@ const RemixApp = (props: IRemixAppUi) => {
                     {props.app.topBar.render()}
                   </div>
                 )}
-                <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
-                  {showAiChatHistory ? <div className={`position-absolute z-3 ${themeTracker.name.toLowerCase() === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'} rounded-3 p-1`} style={floatingChatStyle}>
+                <div className={`remixIDE ${appReady ? '' : 'd-none'} ${showAiChatHistory ? 'chat-history-open' : ''}`} data-id="remixIDE">
+                  {showAiChatHistory ? <div className={`${themeTracker.name.toLowerCase() === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'} rounded-3 p-1`} style={floatingChatStyle}>
                     <FloatingChatHistory
                       conversations={props.app.remixAiAssistant.conversations}
                       currentConversationId={props.app.remixAiAssistant.currentConversationId}

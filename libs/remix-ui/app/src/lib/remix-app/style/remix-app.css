@@ -47,12 +47,33 @@ pre {
   transition         : width 0.25s;
 }
 .right-panel-maximized {
+  position           : absolute !important;
+  left               : 25% !important;
+  top                : 0;
+  bottom             : 0;
   width              : 50% !important;
   max-width          : 50%;
-  margin             : 0 auto;
+  margin             : 0 !important;
   flex               : none;
+  z-index            : 100;
   border-left        : none !important;
   border-right       : none !important;
+}
+
+/* Reserve space for the fixed FloatingChatHistory panel so pinnedpanel
+   and right-panel-maximized don't tuck underneath it */
+.remixIDE.chat-history-open {
+  padding-right      : calc(22vw + 4rem);
+}
+@media (max-width: 767px) {
+  .remixIDE.chat-history-open {
+    padding-right    : calc(86vw + 4rem);
+  }
+}
+@media (min-width: 1920px) {
+  .remixIDE.chat-history-open {
+    padding-right    : calc(18vw + 4rem);
+  }
 }
 .highlightcode       {
   position           : absolute;
