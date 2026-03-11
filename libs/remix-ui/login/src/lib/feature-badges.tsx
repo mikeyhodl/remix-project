@@ -52,7 +52,7 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
                 tabIndex={isClickable ? 0 : undefined}
               >
                 <i className={`${config.icon} feature-badge-icon`}></i>
-                <span className="feature-badge-name">{group.display_name}</span>
+                <span data-id={`feature-badge-name-${group.name}`} className="feature-badge-name">{group.display_name}</span>
                 {isClickable && <i className="fas fa-chevron-right feature-badge-arrow"></i>}
               </div>
             )

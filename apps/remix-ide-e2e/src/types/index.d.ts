@@ -93,6 +93,7 @@ declare module 'nightwatch' {
     waitForCompilerLoaded: () => NightwatchBrowser
     expandAllFolders: (targetDirectory?: string) => NightwatchBrowser
     verifyArtifactsBuildInfo: (versionChecks: Array<{packagePath: string; versionComment: string; description: string}>) => NightwatchBrowser
+    closeBetaPopUp: () => NightwatchBrowser
   }
 
   export interface NightwatchBrowser {

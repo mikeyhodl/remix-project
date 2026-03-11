@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect, useRef } from 'react'
 import { FormattedMessage } from 'react-intl'
 import * as ethJSUtil from '@ethereumjs/util'
 import { DeployedContractsAppContext } from '../contexts'
@@ -10,6 +10,73 @@ export default function DeployedContractsPortraitView() {
   const { widgetState, dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const { deployedContracts, showAddDialog, addressInput, showClearAllDialog, loadType, currentFile } = widgetState
   const [enableAtAddress, setEnableAtAddress] = useState(false)
+  const [latestContractAddress, setLatestContractAddress] = useState<string | null>(null)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [newInstancesCount, setNewInstancesCount] = useState(0)
+  const contractRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
+  const previousContractsLength = useRef(deployedContracts.length)
+  const currentObserverRef = useRef<IntersectionObserver | null>(null)
+
+  useEffect(() => {
+    if (deployedContracts.length > previousContractsLength.current) {
+      if (currentObserverRef.current) {
+        currentObserverRef.current.disconnect()
+        currentObserverRef.current = null
+      }
+
+      const latestContract = deployedContracts[deployedContracts.length - 1]
+
+      setLatestContractAddress(latestContract.address)
+
+      // Wait for DOM to be ready
+      setTimeout(() => {
+        const element = contractRefsMap.current.get(latestContract.address)
+        if (element) {
+          const observer = new IntersectionObserver(
+            (entries) => {
+              const entry = entries[0]
+              if (!entry.isIntersecting) {
+                setShowScrollButton(true)
+                setNewInstancesCount(prev => prev + 1)
+              } else {
+                setShowScrollButton(false)
+                setNewInstancesCount(0)
+                observer.disconnect()
+                currentObserverRef.current = null
+              }
+            },
+            { threshold: 0.1 }
+          )
+
+          observer.observe(element)
+          currentObserverRef.current = observer
+        }
+      }, 100)
+    }
+
+    previousContractsLength.current = deployedContracts.length
+  }, [deployedContracts.length])
+
+  // Cleanup observer on unmount
+  useEffect(() => {
+    return () => {
+      if (currentObserverRef.current) {
+        currentObserverRef.current.disconnect()
+      }
+    }
+  }, [])
+
+  const scrollToLatestContract = () => {
+    if (latestContractAddress) {
+      const element = contractRefsMap.current.get(latestContractAddress)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setShowScrollButton(false)
+        setLatestContractAddress(null)
+        setNewInstancesCount(0)
+      }
+    }
+  }
 
   const handleAddClick = () => {
     dispatch({ type: 'SHOW_ADD_DIALOG', payload: true })
@@ -97,7 +164,7 @@ export default function DeployedContractsPortraitView() {
   }
 
   return (
-    <div className="deployed-contracts-container card mx-2 my-2" data-id="deployedContractsContainer" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
+    <div className="deployed-contracts-container card mx-2 my-2" data-id="deployedContractsContainer" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', position: 'relative' } as React.CSSProperties}>
       <div className="p-3 d-flex align-items-center justify-content-between" style={{ cursor: 'pointer' }}>
         <div className='d-flex align-items-center gap-2'>
           <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
@@ -259,11 +326,50 @@ export default function DeployedContractsPortraitView() {
                   key={`${contract.address}-${index}`}
                   contract={contract}
                   index={index}
+                  registerRef={(ref) => {
+                    if (ref) {
+                      contractRefsMap.current.set(contract.address, ref)
+                    }
+                  }}
                 />
               ))}
             </div>
           </div>
         )
+      )}
+      {/* Floating scroll button - sticky position */}
+      {showScrollButton && latestContractAddress && !showClearAllDialog && (
+        <div
+          style={{
+            position: 'sticky',
+            bottom: '10px',
+            display: 'flex',
+            justifyContent: 'center',
+            paddingTop: '10px',
+            paddingBottom: '10px',
+            pointerEvents: 'none',
+            zIndex: 1000
+          }}
+        >
+          <span
+            className="badge border p-2 text-secondary floating-scroll-button"
+            onClick={scrollToLatestContract}
+            data-id="scrollToNewInstance"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              pointerEvents: 'auto',
+              fontWeight: 'light',
+              backgroundColor: 'var(--custom-onsurface-layer-3)',
+              cursor: 'pointer'
+            }}
+          >
+            <i className="fas fa-angle-down"></i> {newInstancesCount} New {newInstancesCount === 1 ? 'Deployment' : 'Deployments'}
+          </span>
+        </div>
       )}
     </div>
   )

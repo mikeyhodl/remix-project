@@ -56,7 +56,7 @@ export async function addCustomInjectedProvider (providerDetails: ProviderDetail
 
 export async function registerInjectedProvider (event: ProviderDetailsEvent, plugin: EnvironmentPlugin, dispatch: React.Dispatch<Actions>) {
   const name = 'injected-' + event.detail.info.name
-  const displayName = 'Injected Provider - ' + event.detail.info.name
+  const displayName = event.detail.info.name
   await plugin.engine.register([new InjectedProviderDefault(event.detail.provider, name)])
   await addProvider({ position: 0, name, displayName, category: 'Browser Extension', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
 

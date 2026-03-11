@@ -20,6 +20,7 @@ function addFile(browser: NightwatchBrowser, name: string, content: NightwatchCo
   const anyTreeItemSelector = 'li[data-id^="treeViewLitreeViewItem"]' // Any item in tree
 
   browser
+    .closeBetaPopUp()
     .isVisible({
       selector: "//*[@data-id='sidePanelSwapitTitle' and contains(.,'File explorer')]",
       locateStrategy: 'xpath',

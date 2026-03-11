@@ -23,7 +23,7 @@ export interface DeployWidgetState {
     })[]
   }
   selectedContractIndex: number | null
-  value: number
+  value: string
   valueUnit: 'wei' | 'gwei' | 'finney' | 'ether'
   gasLimit: number
   gasPriceStatus: boolean
@@ -33,6 +33,7 @@ export interface DeployWidgetState {
   baseFeePerGas: string
   gasPrice: string
   lastLoadedWorkspace: string | null
+  networkDetected: string
 }
 
 export interface ActionPayloadTypes {
@@ -41,17 +42,19 @@ export interface ActionPayloadTypes {
   REMOVE_CONTRACT_FILE: FilePath,
   CLEAR_ALL_CONTRACT_FILES: void,
   SET_SELECTED_CONTRACT_INDEX: number | null,
-  SET_VALUE: number,
+  SET_VALUE: string,
   SET_VALUE_UNIT: 'wei' | 'gwei' | 'finney' | 'ether',
   SET_GAS_LIMIT: number,
   SET_COMPILING: FilePath,
+  SET_COMPILING_FAILED: FilePath,
   SET_GAS_PRICE_STATUS: boolean,
   SET_CONFIRM_SETTINGS: boolean,
   SET_MAX_PRIORITY_FEE: string,
   SET_GAS_PRICE: string,
   SET_MAX_FEE: string,
   SET_BASE_FEE_PER_GAS: string,
-  SET_LAST_LOADED_WORKSPACE: string
+  SET_LAST_LOADED_WORKSPACE: string,
+  SET_DETECTED_NETWORK: string
 }
 
 export interface Action<T extends keyof ActionPayloadTypes> {

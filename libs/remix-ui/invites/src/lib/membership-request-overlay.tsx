@@ -135,7 +135,7 @@ export const MembershipRequestOverlay: React.FC<MembershipRequestOverlayProps> =
                 </div>
               </div>
               <div className="invite-modal-right-footer">
-                <button className="btn invite-modal-btn-primary w-100" onClick={onClose}>
+                <button data-id="membership-got-it-btn" className="btn invite-modal-btn-primary w-100" onClick={onClose}>
                   Got it!
                 </button>
               </div>
@@ -211,6 +211,7 @@ const SUBSCRIPTION_FEATURES_OPTIONS = [
   { id: 'ai_frontend_builder', label: 'An AI-assisted front-end builder with hosting for dApps and mini-apps' },
   { id: 'security_audits', label: 'AI-powered security audits' },
   { id: 'gas_optimization', label: 'Gas optimization suggestions' },
+  { id: 'none', label: 'None of the above' },
 ]
 
 interface SurveyData {
@@ -242,7 +243,7 @@ const RequestFormModal: React.FC<{
     })
   }
 
-  const canSubmit = survey.usedAiFeatures !== '' && emailConsent && email.trim().length > 0
+  const canSubmit = survey.usedAiFeatures !== '' && survey.subscriptionFeatures.length > 0 && emailConsent && email.trim().length > 0
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -302,6 +303,7 @@ const RequestFormModal: React.FC<{
                   <div className="survey-chip-grid">
                     <button
                       type="button"
+                      data-id="survey-ai-yes"
                       className={`survey-chip ${survey.usedAiFeatures === 'yes' ? 'survey-chip--selected' : ''}`}
                       onClick={() => setSurvey(prev => ({ ...prev, usedAiFeatures: 'yes' }))}
                     >
@@ -309,6 +311,7 @@ const RequestFormModal: React.FC<{
                     </button>
                     <button
                       type="button"
+                      data-id="survey-ai-no"
                       className={`survey-chip ${survey.usedAiFeatures === 'no' ? 'survey-chip--selected' : ''}`}
                       onClick={() => setSurvey(prev => ({ ...prev, usedAiFeatures: 'no' }))}
                     >
@@ -370,6 +373,7 @@ const RequestFormModal: React.FC<{
                     <label className="membership-form-label">Email <span className="text-danger">*</span></label>
                     <input
                       type="email"
+                      data-id="membership-email"
                       className="membership-form-input"
                       placeholder="your@email.com"
                       value={email}
@@ -386,6 +390,7 @@ const RequestFormModal: React.FC<{
                   <label className="survey-consent-label">
                     <input
                       type="checkbox"
+                      data-id="membership-consent"
                       checked={emailConsent}
                       onChange={e => setEmailConsent(e.target.checked)}
                       className="survey-consent-checkbox"
@@ -410,6 +415,7 @@ const RequestFormModal: React.FC<{
               <button
                 className="btn invite-modal-btn-primary invite-modal-btn--glow w-100"
                 onClick={handleSubmit}
+                data-id="membership-apply-btn"
                 disabled={submitting || !canSubmit}
                 title={!emailConsent ? 'Please accept the email consent to continue' : !email.trim() ? 'Please enter your email' : !canSubmit ? 'Please answer the required questions' : ''}
               >

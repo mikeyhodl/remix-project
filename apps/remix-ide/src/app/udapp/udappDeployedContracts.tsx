@@ -8,7 +8,7 @@ const profile = {
   name: 'udappDeployedContracts',
   displayName: 'Udapp Deployed Contracts',
   description: 'Manages the UI and state for deployed contracts',
-  methods: ['getUI', 'addInstance', 'getDeployedInstanceCount', 'getDeployedContracts'],
+  methods: ['getUI', 'addInstance', 'getDeployedInstanceCount', 'getDeployedContracts', 'clearDeployedContracts'],
   events: ['deployedInstanceUpdated']
 }
 
@@ -46,6 +46,10 @@ export class DeployedContractsPlugin extends Plugin {
 
   getDeployedContracts() {
     return this.getWidgetState()?.deployedContracts || []
+  }
+
+  clearDeployedContracts() {
+    this.getDispatch()({ type: 'CLEAR_ALL_CONTRACTS', payload: null })
   }
 
   getUI() {

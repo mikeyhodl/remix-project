@@ -400,5 +400,115 @@ module.exports = {
       }, [], function (result) {
         browser.assert.ok((result.value as number) > 0, `Floating sidebar scrolled: scrollTop is ${result.value} (> 0)`)
       })
-  }
+  },
+  'Should update lastAccessedAt on conversation load #group2': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="maximizeRightSidePanel"]')
+      .pause(500)
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(500)
+      .execute(function () {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        const items = Array.from(document.querySelectorAll('[data-id^="conversation-item-"]'))
+          .filter(el => uuidRegex.test((el.getAttribute('data-id') || '').replace('conversation-item-', '')))
+        return items.length > 1 ? [
+          (items[0].getAttribute('data-id') || '').replace('conversation-item-', ''),
+          (items[items.length - 1].getAttribute('data-id') || '').replace('conversation-item-', '')
+        ] : null
+      }, [], function (result) {
+        const ids = result.value as string[]
+        if (!ids || ids.length < 2) return
+
+        const newestId = ids[0]
+        const oldestId = ids[1]
+
+        browser
+          // Load oldest conversation
+          .click(`*[data-id="conversation-item-${oldestId}"]`)
+          .pause(1000)
+          // Verify it moved to top
+          .execute(function () {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+            const firstItem = Array.from(document.querySelectorAll('[data-id^="conversation-item-"]'))
+              .find(el => uuidRegex.test((el.getAttribute('data-id') || '').replace('conversation-item-', '')))
+            return firstItem ? (firstItem.getAttribute('data-id') || '').replace('conversation-item-', '') : null
+          }, [], function (topResult) {
+            browser.assert.equal(
+              topResult.value,
+              oldestId,
+              'Accessed conversation moved to top of list'
+            )
+          })
+      })
+  },
+  'Should handle very long conversation titles #group3': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-assistant-ready']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      .click('*[data-id="new-chat-btn new-conversation-btn"]')
+      .pause(500)
+      .setValue(
+        '*[data-id="remix-ai-prompt-input"]',
+        'This is a very very skjflskdjflskdfsldkfjlskdjfssdfjlskdflsdkflsdkfjlsdjflksdflsdflsjdflskdfjlsdjflskdfjlsdfjlskdfjlsdfjlsjd long conversation title that should be truncated in the sidebar but show full text on hover or in the detail view'
+      )
+      .click('*[data-id="remix-ai-composer-send-btn"]')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
+        locateStrategy: 'xpath',
+        timeout: 60000
+      })
+      .pause(1000)
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(500)
+      .execute(function () {
+        const item = document.querySelector('[data-id^="conversation-item-"]')
+        const title = item?.querySelector('.conversation-title')
+        return {
+          hasItem: item !== null,
+          hasEllipsis: title ? window.getComputedStyle(title).textOverflow === 'ellipsis' : false
+        }
+      }, [], function (result) {
+        const data = result.value as { hasItem: boolean; hasEllipsis: boolean }
+        browser.assert.ok(data.hasItem, 'Long title conversation created')
+        browser.click('*[data-id="chat-history-back-btn"]')
+      })
+  },
+
+  'Should handle special characters in messages #group3': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="new-chat-btn new-conversation-btn"]')
+      .pause(500)
+      .clearValue('*[data-id="remix-ai-prompt-input"]')
+      .setValue('*[data-id="remix-ai-prompt-input"]', '<script>alert("xss")</script>')
+      .click('*[data-id="remix-ai-composer-send-btn"]')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
+        locateStrategy: 'xpath',
+        timeout: 60000
+      })
+      .pause(1000)
+      .execute(function () {
+        // Check that script tag is not executed (innerHTML should be escaped)
+        const bubbles = document.querySelectorAll('.chat-bubble.bubble-user')
+        const lastBubble = bubbles[bubbles.length - 1]
+        return lastBubble ? lastBubble.textContent : null
+      }, [], function (result) {
+        browser.assert.ok(
+          result.value && (result.value as string).includes('<script>'),
+          'Special characters are properly escaped'
+        )
+      })
+  },
+
+  'Should display conversation count #group3': function (browser: NightwatchBrowser) {
+    browser
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(500)
+      .waitForElementVisible('.sidebar-title', 5000)
+      .assert.containsText('.sidebar-title', '2')
+  },
 }

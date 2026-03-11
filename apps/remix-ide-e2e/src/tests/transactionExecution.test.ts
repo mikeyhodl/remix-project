@@ -16,19 +16,19 @@ module.exports = {
     return sources
   },
 
-  'Execute Simple Contract and Test Terminal #group1': '' + function (browser: NightwatchBrowser) {
+  'Execute Simple Contract and Test Terminal #group1': function (browser: NightwatchBrowser) {
     browser.testContracts('Untitled.sol', sources[0]['Untitled.sol'], ['TestContract'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(0)
-      .clickFunction('f - transact (not payable)')
+      .clickFunction(0, 0)
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
           'decoded output': { 0: 'uint256: 8' }
         })
-      .clickFunction('g - transact (not payable)')
+      .clickFunction(0, 1)
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -39,15 +39,15 @@ module.exports = {
             3: 'uint256: 4'
           }
         })
-      .click('*[data-id="deployAndRunClearInstances"]')
+      .clearDeployedContracts()
   },
 
-  'Test Complex Return Values #group1': '' + function (browser: NightwatchBrowser) {
+  'Test Complex Return Values #group1': function (browser: NightwatchBrowser) {
     browser.testContracts('returnValues.sol', sources[1]['returnValues.sol'], ['testReturnValues'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(0)
-      .clickFunction('returnValues1 - transact (not payable)')
+      .clickFunction(0, 0)
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -58,7 +58,7 @@ module.exports = {
             3: 'address: _a 0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c'
           }
         })
-      .clickFunction('returnValues2 - transact (not payable)')
+      .clickFunction(0, 1)
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -75,7 +75,7 @@ module.exports = {
             9: 'bytes32: _b32 0x0325235325325235325235325235320000000000000000000000000000000000'
           }
         }).pause(500)
-      .clickFunction('returnValues3 - transact (not payable)')
+      .clickFunction(0, 2)
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -83,15 +83,15 @@ module.exports = {
             0: 'uint8: _en 2',
             1: 'int256[5][]: _a1 1,-45,-78,56,60,-1,42,334,-45455,-446,1,10,-5435,45,-7'
           }
-        }).click('*[data-id="deployAndRunClearInstances"]')
+        }).clearDeployedContracts()
   },
 
-  'Test Complex Input Values #group2': '' + function (browser: NightwatchBrowser) {
+  'Test Complex Input Values #group2': function (browser: NightwatchBrowser) {
     browser.testContracts('inputValues.sol', sources[2]['inputValues.sol'], ['test'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(0)
-      .clickFunction('inputValue1 - transact (not payable)', { types: 'uint256 _u, int256 _i, string _str', values: '"2343242", "-4324324", "string _ string _  string _  string _  string _  string _  string _  string _  string _  string _"' })
+      .clickFunction(0, 0, ["2343242", "-4324324", "string _ string _  string _  string _  string _  string _  string _  string _  string _  string _"])
       .testFunction('last',
         {
           status: '1 Transaction mined and execution succeed',
@@ -102,7 +102,7 @@ module.exports = {
           }
         })
       .pause(500)
-      .clickFunction('inputValue2 - transact (not payable)', { types: 'uint256[3] _n, bytes8[4] _b8', values: '[1,2,3], ["0x1234000000000000", "0x1234000000000000","0x1234000000000000","0x1234000000000000"]' })
+      .clickFunction(0, 1, ['[1,2,3]', '["0x1234000000000000","0x1234000000000000","0x1234000000000000","0x1234000000000000"]'])
       .testFunction('last', {
         status: '1 Transaction mined and execution succeed',
         'decoded output': {
@@ -127,35 +127,35 @@ module.exports = {
           }
         ]
       })
-      .click('*[data-id="deployAndRunClearInstances"]')
+      .clearDeployedContracts()
   },
 
-  'Should Compile and Deploy a contract which has an event declaring a function as parameter #group2': '' + function (browser: NightwatchBrowser) {
+  'Should Compile and Deploy a contract which has an event declaring a function as parameter #group2': function (browser: NightwatchBrowser) {
     browser.testContracts('eventFunctionInput.sol', sources[3]['eventFunctionInput.sol'], ['C'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(0)
-      .click('*[data-id="deployAndRunClearInstances"]')
+      .clearDeployedContracts()
   },
 
-  'Should use scientific notation as parameters #group2': '' + function (browser: NightwatchBrowser) {
+  'Should use scientific notation as parameters #group2': function (browser: NightwatchBrowser) {
     browser.testContracts('scientific_notation.sol', sources[8]['scientific_notation.sol'], ['test'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(0)
-      .clickFunction('inputValue1 - transact (not payable)', { types: 'uint256 _u, int256 _i', values: '"101e3", "-1.13e4"' })
+      .clickFunction(0, 0, ["101e3", "-1.13e4"])
       .waitForElementContainsText('*[data-id="terminalJournal"]', '101000', 60000)
       .waitForElementContainsText('*[data-id="terminalJournal"]', '-11300', 60000)
-      .clickFunction('inputValue2 - transact (not payable)', { types: 'uint256 _u', values: '2.345e10' })
+      .clickFunction(0, 1, ['2.345e10'])
       .waitForElementContainsText('*[data-id="terminalJournal"]', '2340000000', 60000)
-      .clickFunction('inputValue3 - transact (not payable)', { types: 'uint256[] _u', values: '["2.445e10", "13e1"]' })
+      .clickFunction(0, 2, ['["2.445e10", "13e1"]'])
       .waitForElementContainsText('*[data-id="terminalJournal"]', '24450000000', 60000)
       .waitForElementContainsText('*[data-id="terminalJournal"]', '130', 60000)
-      .click('*[data-id="deployAndRunClearInstances"]')
+      .clearDeployedContracts()
   },
 
-  'Should filter displayed transactions #group2': '' + function (browser: NightwatchBrowser) {
+  'Should filter displayed transactions #group2': function (browser: NightwatchBrowser) {
     browser
       // it should contain: 0xd9145CCE52D386f254917e481eB44e9943F39138
       .checkTerminalFilter('0xd9145CCE52D386f254917e481eB44e9943F39138', '0xd9145CCE52D386f254917e481eB44e9943F39138', false)
@@ -163,13 +163,20 @@ module.exports = {
       .checkTerminalFilter('0xd9145CCE52D386f254917e481eB44e9943F39140', '0xd9145CCE52D386f254917e481eB44e9943F39138', true)
   },
 
-  'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal #group3': '' + function (browser: NightwatchBrowser) {
-    browser.testContracts('customError.sol', sources[4]['customError.sol'], ['C'])
+  'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal #group3': function (browser: NightwatchBrowser) {
+    browser.waitForElementVisible('*[data-id="topbar-settingsIcon"]')
+      .click('*[data-id="topbar-settingsIcon"]')
+      .waitForElementVisible('[data-id="settings-sidebar-general"]')
+      .click('[data-id="settings-sidebar-general"]')
+      .waitForElementVisible('[data-id="generate-contract-metadataSwitch"]')
+      .click('*[data-id="generate-contract-metadataSwitch"]')
+      .testContracts('customError.sol', sources[4]['customError.sol'], ['C'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
       .createContract('')
+      .pause(2000)
       .clickInstance(0)
-      .clickFunction('g - transact (not payable)')
+      .clickFunction(0, 0)
       .journalLastChildIncludes('Error provided by the contract:')
       .journalLastChildIncludes('CustomError : error description')
       .journalLastChildIncludes('Parameters:')
@@ -179,20 +186,24 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param1"')
       .journalLastChildIncludes('"documentation": "param2"')
       .journalLastChildIncludes('"documentation": "param3"')
-      .click('*[data-id="deployAndRunClearInstances"]')
+      .clearDeployedContracts()
   },
 
-  'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal , using London VM Fork #group3': '' + function (browser: NightwatchBrowser) {
+  'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal , using London VM Fork #group3': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('solidity')
       .click('.remixui_compilerConfigSection')
       .setValue('#evmVersionSelector', 'london') // Set EVM version as fork version
+      .click('*[data-id="compilerContainerCompileBtn"]')
       .clearTransactions()
-      .switchEnvironment('vm-london', null, true) // switch to London fork
+      .switchEnvironment('vm-london', 'Remix_VM') // switch to London fork
+      .pause(5000)
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
+      .pause(2000)
       .createContract('')
       .clickInstance(0)
-      .clickFunction('g - transact (not payable)')
+      .pause(1000)
+      .clickFunction(0, 0)
       .journalLastChildIncludes('Error provided by the contract:')
       .journalLastChildIncludes('CustomError : error description')
       .journalLastChildIncludes('Parameters:')
@@ -204,12 +215,12 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param3"')
   },
 
-  'Should Compile and Deploy a contract which define a custom error in a library, the error should be logged in the terminal #group3': '' + function (browser: NightwatchBrowser) {
+  'Should Compile and Deploy a contract which define a custom error in a library, the error should be logged in the terminal #group3': function (browser: NightwatchBrowser) {
     browser.testContracts('customErrorLib.sol', sources[5]['customErrorLib.sol'], ['D'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > div')
+      .createContract('')
       .clickInstance(1)
-      .clickFunction('h - transact (not payable)')
+      .clickFunction(1, 0)
       .journalLastChildIncludes('Error provided by the contract:')
       .journalLastChildIncludes('CustomError : error description from library')
       .journalLastChildIncludes('Parameters:')
@@ -221,7 +232,7 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param3 from library"')
   },
 
-  'Should compile and deploy 2 simple contracts, the contract creation component state should be correctly reset for the deployment of the second contract #group4': '' + function (browser: NightwatchBrowser) {
+  'Should compile and deploy 2 simple contracts, the contract creation component state should be correctly reset for the deployment of the second contract #group4': function (browser: NightwatchBrowser) {
     browser
       .addFile('Storage.sol', sources[6]['Storage.sol'])
       .pause(1000)
@@ -231,10 +242,10 @@ module.exports = {
       .createContract('42, 24')
       .openFile('Storage.sol')
       .clickLaunchIcon('udapp')
-      .waitForElementVisible('*[data-bs-title="uint256 p"]', 10000)
+      .waitForElementVisible('[data-id="constructorInput0"]', 10000)
       .createContract('102') // this creation will fail if the component hasn't been properly reset.
       .clickInstance(1)
-      .clickFunction('store - transact (not payable)', { types: 'uint256 num', values: '24' })
+      .clickFunction(1, 0, ['24'])
       .testFunction('last', // we check if the contract is actually reachable.
         {
           status: '1 Transaction mined and execution succeed',
@@ -244,7 +255,7 @@ module.exports = {
         })
   },
 
-  'Should switch to the mainnet VM fork and execute a tx to query ENS #group5': '' + function (browser: NightwatchBrowser) {
+  'Should switch to the mainnet VM fork and execute a tx to query ENS #group5': function (browser: NightwatchBrowser) {
     if (!runMasterTests) {
       return
     }
@@ -254,14 +265,8 @@ module.exports = {
       .clickLaunchIcon('solidity')
       .setSolidityCompilerVersion('soljson-v0.8.17+commit.8df45f5f.js')
       .clickLaunchIcon('udapp')
-      .switchEnvironment('vm-mainnet-fork')
-      .click('*[data-id="runTabSelectAccount"]')
-      .waitForElementPresent({
-        locateStrategy: 'css selector',
-        selector: `*[data-id="0xdD870fA1b7C4700F2BD7f44238821C26f7392148"]`,
-        timeout: 250000
-      }) // wait for the udapp to load the list of accounts
-      .click('*[data-id="0xdD870fA1b7C4700F2BD7f44238821C26f7392148"]')
+      .switchEnvironment('vm-mainnet-fork', 'VM_Fork')
+      .selectAccount('0xdD870fA1b7C4700F2BD7f44238821C26f7392148')
       .selectContract('MyResolver')
       .pause(5000)
       .createContract('')
@@ -269,20 +274,16 @@ module.exports = {
       .getAddressAtPosition(0, (address) => {
         addressRef = address
       })
-      .clickFunction('resolve - call')
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:address: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'])
-          .perform(() => done())
-      })
+      .testConstantFunction(0, 0, null, '0:\naddress: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
   },
 
-  'Should stay connected in the mainnet VM fork and execute state changing operations and non state changing operations #group5': '' + function (browser: NightwatchBrowser) {
+  'Should stay connected in the mainnet VM fork and execute state changing operations and non state changing operations #group5': function (browser: NightwatchBrowser) {
     if (!runMasterTests) {
       return
     }
     let addressRef
     browser
-      .click('*[data-id="deployAndRunClearInstances"]') // clear udapp instances
+      .clearDeployedContracts()
       .clickLaunchIcon('filePanel')
       .testContracts('basic_state.sol', sources[9]['basic_state.sol'], ['BasicState'])
       .clickLaunchIcon('udapp')
@@ -292,44 +293,21 @@ module.exports = {
       .getAddressAtPosition(0, (address) => {
         addressRef = address
       })
-      .clickFunction('cake - call')
-      .pause(500)
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:uint256: 0'])
-          .perform(() => done())
-      })
-      .clickFunction('up - transact (payable)')
-      .pause(500)
-      .clickFunction('cake - call')
-      .pause(1000)
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:uint256: 1'])
-          .perform(() => done())
-      })
-      .clickFunction('up - transact (payable)')
-      .pause(500)
-      .clickFunction('cake - call')
-      .pause(1000)
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:uint256: 2'])
-          .perform(() => done())
-      })
-      .clickFunction('up - transact (payable)')
-      .pause(500)
-      .clickFunction('cake - call')
-      .pause(1000)
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:uint256: 3'])
-          .perform(() => done())
-      })
+      .testConstantFunction(0, 1, null, '0:\nuint256: 0')
+      .clickFunction(0, 0)
+      .testConstantFunction(0, 1, null, '0:\nuint256: 1')
+      .clickFunction(0, 0)
+      .testConstantFunction(0, 1, null, '0:\nuint256: 2')
+      .clickFunction(0, 0)
+      .testConstantFunction(0, 1, null, '0:\nuint256: 3')
   },
 
-  'Should stay connected to mainnet VM fork and: check the block number is advancing and is not low #group5': '' + function (browser: NightwatchBrowser) {
+  'Should stay connected to mainnet VM fork and: check the block number is advancing and is not low #group5': function (browser: NightwatchBrowser) {
     if (!runMasterTests) {
       return
     }
     /*
-        Should stay connected in the mainnet VM fork and: 
+        Should stay connected in the mainnet VM fork and:
     - check the block number has been set to the current mainnet block number.
     - check blocknumber is advancing
     - fork and check blocknumber is advancing the forked state. The name is 'Mainnet fork 1'
@@ -349,23 +327,23 @@ module.exports = {
           done()
         } catch (e) {
           console.error(e)
-        }        
+        }
       })
-      .click('*[data-id="deployAndRunClearInstances"]') // clear udapp instances
+      .clearDeployedContracts()
       .clickLaunchIcon('filePanel')
       .testContracts('MainnetBlockNumberContract.sol', sources[10]['MainnetBlockNumberContract.sol'], ['MainnetBlockNumberContract'])
       .clickLaunchIcon('udapp')
       .selectContract('MainnetBlockNumberContract')
       .perform((done) => {
         browser.createContract((currentBlockNumber) + '')
-        .waitForElementPresent('*[data-shared="universalDappUiInstance"]')
-        .perform(() => {
-          done()
-        })
+          .waitForElementPresent('*[data-shared="universalDappUiInstance"]')
+          .perform(() => {
+            done()
+          })
       })
       .clickInstance(0)
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -373,8 +351,8 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -382,8 +360,8 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -393,10 +371,10 @@ module.exports = {
       })
       // Should fork the mainnet VM fork and execute some transaction
       .click('*[data-id="fork-state-icon"]')
-      .waitForElementVisible('*[data-id="udappNotifyModalDialogModalTitle-react"]')
-      .click('input[data-id="modalDialogForkState"]')
-      .setValue('input[data-id="modalDialogForkState"]', 'Mainnet fork 1')
-      .modalFooterOKClick('udappNotify')
+      .waitForElementVisible('[data-id="forkInput"]')
+      .click('[data-id="forkInput"]')
+      .setValue('[data-id="forkInput"]', 'Mainnet fork 1')
+      .click('[data-id="btnForkState"]')
       // check toaster for forked state
       .waitForElementVisible(
         {
@@ -407,15 +385,15 @@ module.exports = {
       .pause(2000)
       .perform((done) => {
         browser.createContract((currentBlockNumber) + '')
-        .waitForElementPresent('*[data-shared="universalDappUiInstance"]')
-        .perform(() => {
-          done()
-        })
+          .waitForElementPresent('*[data-shared="universalDappUiInstance"]')
+          .perform(() => {
+            done()
+          })
       })
+      .scrollAndClick('[data-id="pinDeployedContract-0"]') // pin the contract for later use by a forked state.
       .clickInstance(0)
-      .click('*[data-id="universalDappUiUdappPin"]') // pin the contract for later use by a forked state.
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -423,8 +401,8 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -433,11 +411,11 @@ module.exports = {
           }).perform(() => done())
       })
       // Should fork the mainnet VM fork again and execute some transaction
-      .click('*[data-id="fork-state-icon"]')  
-      .waitForElementVisible('*[data-id="udappNotifyModalDialogModalTitle-react"]')
-      .click('input[data-id="modalDialogForkState"]')
-      .setValue('input[data-id="modalDialogForkState"]', 'Mainnet fork 2')
-      .modalFooterOKClick('udappNotify')
+      .click('*[data-id="fork-state-icon"]')
+      .waitForElementVisible('[data-id="forkInput"]')
+      .click('[data-id="forkInput"]')
+      .setValue('[data-id="forkInput"]', 'Mainnet fork 2')
+      .click('[data-id="btnForkState"]')
       // check toaster for forked state
       .waitForElementVisible(
         {
@@ -447,8 +425,8 @@ module.exports = {
       )
       .pause(2000)
       .clickInstance(0)
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -456,8 +434,8 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-      .clickFunction('getB - call')
-      .clickFunction('checkBlockNumberIsAdvancing - transact (not payable)')
+      .clickFunction(0, 2)
+      .clickFunction(0, 0)
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -465,13 +443,13 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-      .clickFunction('getB - call')
+      .clickFunction(0, 2)
       .getAddressAtPosition(0, (address) => {
         console.log('Test Fork Mainnet', address)
         addressRef = address
       })
       // from Mainnet fork 2, check that block number is at `currentBlockNumber` + 4
-      .clickFunction('checkOrigin - transact (not payable)', { types: 'uint256 incr', values: '3'})
+      .clickFunction(0, 1, ['3'])
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -480,10 +458,10 @@ module.exports = {
           }).perform(() => done())
       })
       // switch back to Mainnet fork 1 and check that block number is at `currentBlockNumber` + 2
-      .switchEnvironment('vm-fs-Mainnet fork 1')
+      .switchEnvironment('vm-fs-Mainnet fork 1', 'Forked_State')
       .pause(2000)
       .clickInstance(0)
-      .clickFunction('checkOrigin - transact (not payable)', { types: 'uint256 incr', values: '1'})
+      .clickFunction(0, 1, ['1'])
       .perform((done) => {
         browser.testFunction('last',
           {
@@ -491,7 +469,7 @@ module.exports = {
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
-    }
+  }
 }
 
 // @TODO test: bytes8[3][] type as input

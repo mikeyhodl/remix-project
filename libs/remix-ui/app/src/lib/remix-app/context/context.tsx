@@ -2,6 +2,7 @@ import React from 'react'
 import { AlertModal, AppModal, AppState, ActionNotification } from '../interface'
 import { ModalInitialState } from '../state/modals'
 import { AppAction } from '../actions/app'
+import { AppConfig } from '@remix-api'
 
 export type appProviderContextType = {
   settings: any,
@@ -13,6 +14,7 @@ export type appProviderContextType = {
   appStateDispatch: React.Dispatch<AppAction>
   isAiWorkspaceBeingGenerated: boolean
   setIsAiWorkspaceBeingGenerated: (isAiWorkspaceBeingGenerated: boolean) => void
+  appConfig?: AppConfig
 }
 
 export enum appPlatformTypes {
