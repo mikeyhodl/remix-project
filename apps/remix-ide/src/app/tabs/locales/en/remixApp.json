@@ -37,7 +37,7 @@
   "remixApp.closeNotification": "Close",
 
   "remixApp.aiChatButton.file": "File",
-  "remixApp.aiChatButton.newWorkspace": "New workspace",
+  "remixApp.aiChatButton.newWorkspace": "New Workspace",
   "remixApp.aiChatButton.exploreCapabilities": "Explore RemixAI capabilities",
   "remixApp.aiChatButton.startLearning": "Start Learning",
   "remixApp.aiChatButton.createDapp": "Create a Dapp",
@@ -48,13 +48,13 @@
   "remixApp.aiChatButton.reviewFile": "Review {fileName}",
   "remixApp.aiChatButton.deployContract": "Deploy {contractName}",
 
-  "remixApp.aiChatPrompt.createFile": "Create a new file",
+  "remixApp.aiChatPrompt.createFile": "Let's create a new file together in the current workspace",
   "remixApp.aiChatPrompt.reviewFile": "Review the file {fileName}",
   "remixApp.aiChatPrompt.deployContract": "Deploy the {contractName} contract",
-  "remixApp.aiChatPrompt.exploreCapabilities": "Sum up a list of all the MCP endpoints and their functionalities in a concise manner. Propose a few prompts I can use to enhance my workflow.",
-  "remixApp.aiChatPrompt.startLearning": "I would like to learn Web3 development. Can you create a learning path for me with resources and projects to work on?",
+  "remixApp.aiChatPrompt.exploreCapabilities": "Create a list of all features and summarized MCP functionalities in a concise manner. Propose a few related prompts I can use to enhance my workflow.",
+  "remixApp.aiChatPrompt.startLearning": "I would like to learn Web3 development. Can you create a learning path for me based on Learneth with resources and projects to work on?. Do not generate URLs",
   "remixApp.aiChatPrompt.loadSkills": "List all the skills available and their functionalities. Then, propose a few prompts to use those skills effectively. Ask the user to specify which skill they want to load, and load those skills accordingly.",
-  "remixApp.aiChatPrompt.etherscan": "Give me a little introduction about Etherscan and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Etherscan with other mcp tools (like TheGraph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
-  "remixApp.aiChatPrompt.thegraph": "Give me a little introduction about TheGraph and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage TheGraph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
-  "remixApp.aiChatPrompt.alchemy": "Give me a little introduction about Alchemy and how I may use it in RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage Alchemy with other mcp tools (like TheGraph, Etherscan, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward."
+  "remixApp.aiChatPrompt.etherscan": "Give me a brief introduction to Etherscan and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like The Graph, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
+  "remixApp.aiChatPrompt.thegraph": "Give me a brief introduction to The Graph and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like Etherscan, Alchemy, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward.",
+  "remixApp.aiChatPrompt.alchemy": "Give me a brief introduction to Alchemy and how it can be used with RemixAI. Give me some examples prompts and if applicable show me how I could write prompts which could leverage The Graph with other mcp tools (like Etherscan, The Graph, etc...). Do not write a wall of text, let me ask questions. Propose me a few directions moving forward."
 }

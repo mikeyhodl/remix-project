@@ -231,7 +231,7 @@ export class RemixAIPlugin extends Plugin {
     } else {
       userPrompt = prompt
     }
-    await statusCallback?.('Generating new workspace with AI...\nThis might take some minutes. Please be patient!')
+    await statusCallback?.('Generating new workspace with AI.\nThis might take a few minutes. Please be patient...')
     const result = await this.remoteInferencer.generate(userPrompt, params)
 
     await statusCallback?.('Creating contracts and files...')
