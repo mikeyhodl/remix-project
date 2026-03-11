@@ -309,12 +309,7 @@ function DeployPortraitView() {
                                 e.stopPropagation()
                                 if (selectedContract?.filePath) {
                                   dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
-                                  try {
-                                    await plugin.call('solidity', 'compile', selectedContract.filePath)
-                                  } catch (error) {
-                                    console.error('Compilation error: ', error)
-                                    dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
-                                  }
+                                  await plugin.call('solidity', 'compile', selectedContract.filePath)
                                 }
                               }}
                               onKeyDown={(e) => {

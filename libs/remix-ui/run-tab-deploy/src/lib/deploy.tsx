@@ -79,6 +79,13 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
         dispatch({ type: 'SET_LAST_LOADED_WORKSPACE', payload: workspaceName })
       }
     })
+
+    plugin.on('solidity', 'compilationFailed', (_, source) => {
+      Object.keys(source.sources).forEach((filePath) => {
+        dispatch({ type: 'SET_COMPILING_FAILED', payload: filePath })
+      })
+    })
+
     // plugin.on('desktopHost', 'chainChanged', (context) => {
     //   //console.log('desktopHost chainChanged', context)
     //   fillAccountsList(plugin, dispatch)
@@ -136,6 +143,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       plugin.off('foundry', 'compilationFinished')
       plugin.off('truffle', 'compilationFinished')
       plugin.off('filePanel', 'setWorkspace')
+      plugin.off('solidity', 'compilationFailed')
     }
   }, [])
 

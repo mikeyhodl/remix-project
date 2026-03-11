@@ -140,6 +140,26 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     }
   }
 
+  case 'SET_COMPILING_FAILED': {
+    const contractList = state.contracts.contractList.map((contract) => {
+      if (contract.filePath === action.payload) {
+        return {
+          ...contract,
+          isCompiling: false,
+          isCompiled: false
+        }
+      }
+      return contract
+    })
+    return {
+      ...state,
+      contracts: {
+        ...state.contracts,
+        contractList
+      }
+    }
+  }
+
   case 'SET_GAS_PRICE_STATUS': {
     return {
       ...state,
