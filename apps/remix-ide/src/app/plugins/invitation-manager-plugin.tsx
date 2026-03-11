@@ -51,6 +51,23 @@ export class InvitationManagerPlugin extends Plugin {
       }
     })
 
+    // Listen for invite token redeemed (e.g. auto-redeemed after login or already
+    // redeemed during the login/registration flow on the backend). This transitions
+    // the modal straight to the success state so the user never sees a stale
+    // "Redeem" button for a token that was already consumed.
+    this.on('auth', 'inviteTokenRedeemed', (data: { token: string; actions: any[] }) => {
+      this.log('[InvitationManager] Invite redeemed via auth plugin:', data.token)
+      if (this.state.show && this.state.token === data.token) {
+        this.state = {
+          ...this.state,
+          redeeming: false,
+          redeemResult: { success: true, actions_applied: data.actions },
+          error: null
+        }
+        this.renderComponent()
+      }
+    })
+
     // Check for pending invite on activation (handles page refresh)
     await this.checkPendingInvite()
 
@@ -335,6 +352,7 @@ export class InvitationManagerPlugin extends Plugin {
         onRedeem={(token) => this.redeemToken(token)}
         onClose={() => this.close()}
         onStartWalkthrough={(slug) => this.startWalkthrough(slug)}
+        plugin={dispatchState.plugin}
       />
     )
   }
