@@ -316,7 +316,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
       setSelected(sections[0]?.key)
       setFilteredSection(sections[0])
     }
-  }, [appConfig, selected])
+  }, [appConfig])
 
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme').then((theme) => {
