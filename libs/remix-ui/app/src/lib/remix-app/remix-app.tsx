@@ -388,10 +388,10 @@ const RemixApp = (props: IRemixAppUi) => {
         <onLineContext.Provider value={online}>
           <AuthProvider plugin={props.app.authPlugin}>
             <AppProvider value={value}>
-              <OriginWarning></OriginWarning>
               <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
               {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
               <div className="d-flex flex-column col-12 vh-100">
+                <OriginWarning />
                 {!props.app.desktopClientMode && (
                   <div className='top-bar'>
                     {props.app.topBar.render()}
