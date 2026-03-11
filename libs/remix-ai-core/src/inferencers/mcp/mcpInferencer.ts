@@ -416,7 +416,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               // Convert LLM tool call to internal MCP format
               const mcpToolCall = this.convertLLMToolCallToMCP(llmToolCall);
               const result = await this.executeToolForLLM(mcpToolCall, uiCallback);
-              console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully`);
+              console.log(`[MCP] Tool ${mcpToolCall.name} executed successfully with result `, result);
 
               // Extract full text content from MCP result
               const extractContent = (mcpResult: any): string => {
@@ -927,14 +927,21 @@ Use this tool when you need:
             throw new Error(`Tool '${innerToolCall.name}' not found in any connected MCP server`);
           }
 
-          if (uiCallback){
-            uiCallback(true, innerToolCall.name, innerToolCall.arguments);
+          try {
+            if (uiCallback){
+              uiCallback(true, innerToolCall.name, innerToolCall.arguments);
+            }
+            const result = await this.executeTool(targetServer, innerToolCall);
+            if (uiCallback){
+              uiCallback(false)
+            }
+            return result
+          } catch (error) {
+          } finally {
+            if (uiCallback){
+              uiCallback(false)
+            }
           }
-          const result = await this.executeTool(targetServer, innerToolCall);
-          if (uiCallback){
-            uiCallback(false)
-          }
-          return result
         },
         60000 * 10, // 10 minutes
       );

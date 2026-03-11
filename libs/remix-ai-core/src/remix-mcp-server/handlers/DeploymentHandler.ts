@@ -251,45 +251,17 @@ export class CallContractHandler extends BaseToolHandler {
           plugin.call('notification', 'toast', `Value of ${formatEther(args.value)} ETH will be sent with the deployment`)
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a moment for the toast to be seen
         }
+        const params = funcABI.type !== 'fallback' ? (args.args? args.args.join(',') : ''): ''
+        txReturn = await plugin.call('blockchain', 'runOrCallContractMethod',
+          args.contractName,
+          args.abi,
+          funcABI,
+          undefined,
+          args.args ? args.args : [],
+          args.address,
+          params,
+          isView)
 
-        txReturn = await new Promise((resolve, reject) => {
-          const params = funcABI.type !== 'fallback' ? (args.args? args.args.join(',') : ''): ''
-          plugin.call('blockchain', 'runOrCallContractMethod',
-            args.contractName,
-            args.abi,
-            funcABI,
-            undefined,
-            args.args ? args.args : [],
-            args.address,
-            params,
-            isView,
-            (msg) => {
-              // logMsg
-            },
-            (msg) => {
-              // logCallback
-            },
-            (returnValue) => {
-              // outputCb
-            },
-            (network, tx, gasEstimation, continueTxExecution, cancelCb) => {
-              // confirmationCb
-              continueTxExecution(null)
-            },
-            (error, continueTxExecution, cancelCb) => {
-              if (error) reject(error)
-              // continueCb
-              continueTxExecution()
-            },
-            (okCb, cancelCb) => {
-              // promptCb
-            },
-            (error, { txResult, address, returnValue }) => {
-              if (error) return reject(error)
-              resolve({ txResult, address, returnValue })
-            },
-          )
-        })
       } catch (e) {
         return this.createErrorResult(`Deployment error: ${e.message}`);
       }
@@ -469,24 +441,25 @@ export class SendTransactionHandler extends BaseToolHandler {
  */
 export class GetDeployedContractsHandler extends BaseToolHandler {
   name = 'get_deployed_contracts';
-  description = 'Get list of deployed contracts';
+  description = 'Get list of deployed contracts for the current environment';
   inputSchema = {
     type: 'object',
-    properties: {
-      network: {
-        type: 'string',
-        description: 'Network name (optional)'
-      }
-    }
+    properties: {}
   };
 
   getPermissions(): string[] {
     return ['deploy:read'];
   }
 
-  async execute(args: { network?: string }, plugin: Plugin): Promise<IMCPToolResult> {
+  async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const deployedContracts = await plugin.call('udappDeployedContracts', 'getDeployedContracts')
+      deployedContracts.forEach((contract: any) => {
+        if (!contract.abi) {
+          contract.abi = contract.contractData?.abi
+        }
+        delete contract.contractData // take too much space for the context.
+      })
       return this.createSuccessResult({
         success: true,
         contracts: deployedContracts,
