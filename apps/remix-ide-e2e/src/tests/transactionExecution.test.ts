@@ -25,13 +25,13 @@ module.exports = {
       .clickFunction(0, 0)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': { 0: 'uint256: 8' }
         })
       .clickFunction(0, 1)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'uint256: 345',
             1: 'string: comment_comment_',
@@ -50,7 +50,7 @@ module.exports = {
       .clickFunction(0, 0)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'bool: _b true',
             1: 'uint256: _u 345',
@@ -61,7 +61,7 @@ module.exports = {
       .clickFunction(0, 1)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'bytes1: _b 0x12',
             1: 'bytes2: _b2 0x1223',
@@ -78,7 +78,7 @@ module.exports = {
       .clickFunction(0, 2)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'uint8: _en 2',
             1: 'int256[5][]: _a1 1,-45,-78,56,60,-1,42,334,-45455,-446,1,10,-5435,45,-7'
@@ -94,7 +94,7 @@ module.exports = {
       .clickFunction(0, 0, ["2343242", "-4324324", "string _ string _  string _  string _  string _  string _  string _  string _  string _  string _"])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'uint256: _uret 2343242',
             1: 'int256: _iret -4324324',
@@ -104,7 +104,7 @@ module.exports = {
       .pause(500)
       .clickFunction(0, 1, ['[1,2,3]', '["0x1234000000000000","0x1234000000000000","0x1234000000000000","0x1234000000000000"]'])
       .testFunction('last', {
-        status: '1 Transaction mined and execution succeed',
+        status: '1 Transaction mined and execution completed',
         'decoded output': {
           0: 'uint256[3]: _nret 1,2,3',
           1: 'bytes8[4]: _b8ret 0x1234000000000000,0x1234000000000000,0x1234000000000000,0x1234000000000000'
@@ -248,7 +248,7 @@ module.exports = {
       .clickFunction(1, 0, ['24'])
       .testFunction('last', // we check if the contract is actually reachable.
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': {
             'uint256 num': '24'
           }
@@ -347,7 +347,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -356,7 +356,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -365,7 +365,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -397,7 +397,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -406,7 +406,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -430,7 +430,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -439,7 +439,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -453,7 +453,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })
@@ -465,7 +465,7 @@ module.exports = {
       .perform((done) => {
         browser.testFunction('last',
           {
-            status: '1 Transaction mined and execution succeed',
+            status: '1 Transaction mined and execution completed',
             'decoded output': { '0':'bool: true' }
           }).perform(() => done())
       })

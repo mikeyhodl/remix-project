@@ -44,7 +44,7 @@ module.exports = {
       .createContract('')
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': {}
         }).end()
   }

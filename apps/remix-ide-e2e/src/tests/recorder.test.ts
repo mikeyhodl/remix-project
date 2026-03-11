@@ -96,7 +96,7 @@ module.exports = {
       .pause(1000)
       .clickFunction(1, 0, ['10'])
       .testFunction('last', {
-        status: '1 Transaction mined and execution succeed',
+        status: '1 Transaction mined and execution completed',
         'decoded input': { 'uint256 _po': '10' }
       })
   },
