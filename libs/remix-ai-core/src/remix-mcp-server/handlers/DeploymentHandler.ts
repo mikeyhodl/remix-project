@@ -513,7 +513,7 @@ export class SetExecutionEnvironmentHandler extends BaseToolHandler {
       if (!provider) {
         return this.createErrorResult(`Could not find provider for environment '${args.environment}'`);
       }
-      await plugin.call('blockchain', 'changeExecutionContext', { context: args.environment })
+      await plugin.call('udappEnv', 'changeExecutionContext', { context: args.environment })
       return this.createSuccessResult({
         success: true,
         message: `Execution environment set to: ${args.environment}`,

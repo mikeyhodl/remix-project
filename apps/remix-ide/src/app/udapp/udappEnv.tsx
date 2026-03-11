@@ -2,13 +2,13 @@ import React from 'react'
 import { Engine, Plugin } from '@remixproject/engine'
 import { Actions, EnvironmentWidget } from '@remix-ui/run-tab-environment'
 import type { Blockchain } from '../../blockchain/blockchain'
-import { WidgetState, Account, PassphraseCreationPrompt } from '@remix-ui/run-tab-environment'
+import { WidgetState, Account, PassphraseCreationPrompt, setExecutionContext } from '@remix-ui/run-tab-environment'
 
 const profile = {
   name: 'udappEnv',
   displayName: 'Udapp Environment',
   description: 'Maintains the schema for deployment and execution environment',
-  methods: ['getUI', 'getSelectedAccount', 'getLoadedAccounts', 'isSmartAccount', 'getDefaultProvider', 'getPassphrasePrompt', 'getSelectedProvider', 'getNetwork'],
+  methods: ['getUI', 'getSelectedAccount', 'getLoadedAccounts', 'isSmartAccount', 'getDefaultProvider', 'getPassphrasePrompt', 'getSelectedProvider', 'getNetwork', 'changeExecutionContext'],
   events: []
 }
 
@@ -81,6 +81,16 @@ export class EnvironmentPlugin extends Plugin {
 
   setMatchPassphrase(matchPassphrase: string) {
     this.getDispatch()({ type: 'SET_MATCH_PASSPHRASE', payload: matchPassphrase })
+  }
+
+  async changeExecutionContext(payload: { context: string }) {
+    const provider = this.getWidgetState()?.providers?.providerList?.find(provider => provider.name === payload.context)
+
+    if (provider) {
+      await setExecutionContext(provider, this, this.getDispatch())
+    } else {
+      throw new Error('Invalid execution context')
+    }
   }
 
   getUI(engine: Engine, blockchain: Blockchain) {

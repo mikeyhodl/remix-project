@@ -15,32 +15,34 @@ import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
 
 const txHelper = remixLib.execution.txHelper
+const highlightedContracts = new Set<string>()
 
 interface DeployedContractItemProps {
   contract: DeployedContract
   index: number
+  registerRef?: (ref: HTMLDivElement | null) => void
 }
 
-export function DeployedContractItem({ contract, index }: DeployedContractItemProps) {
+export function DeployedContractItem({ contract, index, registerRef }: DeployedContractItemProps) {
   const { dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const intl = useIntl()
   const [networkName, setNetworkName] = useState<string>('')
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
   const [contractABI, setContractABI] = useState(null)
-  const [value, setValue] = useState<number>(0)
+  const [value, setValue] = useState<string>('0')
   const [valueUnit, setValueUnit] = useState<string>('wei')
   const [gasLimit, setGasLimit] = useState<number>(0) // 0 means auto
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [llIError, setLlIError] = useState<string>('')
   const [showKebabMenu, setShowKebabMenu] = useState<boolean>(false)
+  const [shouldHighlight, setShouldHighlight] = useState<boolean>(false)
   const kebabIconRef = useRef<HTMLElement>(null)
+  const contractItemRef = useRef<HTMLDivElement>(null)
   const isGenerating = useRef<boolean>(false)
-
-  // New state for the improved design
   const [showHighLevel, setShowHighLevel] = useState<boolean>(true)
   const [showLowLevel, setShowLowLevel] = useState<boolean>(false)
   const [selectedFunctionIndex, setSelectedFunctionIndex] = useState<number | null>(null)
-  const [funcInputs, setFuncInputs] = useState<{[key: number]: string}>({})
+  const [funcInputs, setFuncInputs] = useState<{[funcIndex: number]: {[paramIndex: number]: string}}>({})
   const [expandPath, setExpandPath] = useState<string[]>([])
 
   useEffect(() => {
@@ -62,6 +64,39 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
       setContractABI(contract.abi)
     }
   }, [])
+
+  // Intersection Observer to detect when contract becomes visible
+  useEffect(() => {
+    const contractAddress = contract.address
+    if (highlightedContracts.has(contractAddress)) {
+      return
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && !highlightedContracts.has(contractAddress)) {
+          highlightedContracts.add(contractAddress)
+          setShouldHighlight(true)
+          setTimeout(() => {
+            setShouldHighlight(false)
+          }, 2000)
+
+          observer.disconnect()
+        }
+      })
+    }, {
+      threshold: 0.1, // Trigger when at least 10% of the element is visible
+      rootMargin: '0px'
+    })
+
+    if (contractItemRef.current) {
+      observer.observe(contractItemRef.current)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [contract.address])
 
   const functionABIs = useMemo(() => {
     return contractABI?.filter((item: FuncABI) => item.type === 'function') || []
@@ -147,16 +182,20 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
     }
   }
 
-  const handleFunctionInputChange = (funcIndex: number, value: string) => {
+  const handleFunctionInputChange = (funcIndex: number, paramIndex: number, value: string) => {
     setFuncInputs(prev => ({
       ...prev,
-      [funcIndex]: value
+      [funcIndex]: {
+        ...(prev[funcIndex] || {}),
+        [paramIndex]: value
+      }
     }))
   }
 
   const handleExecuteTransaction = async (funcIndex: number) => {
     const funcABI = functionABIs[funcIndex]
-    const inputsValues = funcInputs[funcIndex] || ''
+    const funcParams = funcInputs[funcIndex] || {}
+    const inputsValues = funcABI.inputs.map((input: any, idx: number) => funcParams[idx] || '').join(',')
     const sendValue = parseUnits(value.toString() || '0', valueUnit || 'wei')
     const gasLimitValue = '0x' + new BN(gasLimit, 10).toString(16)
     const isConstant = funcABI.constant !== undefined ? funcABI.constant : false
@@ -175,8 +214,11 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
         { value: sendValue, gasLimit: gasLimitValue }
       )
     } catch (error) {
-      console.error('Error executing transaction:', error)
-      await plugin.call('notification', 'toast', `Error: ${error.message}`)
+      const functionName =
+      funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
+      const logMsg = `${lookupOnly ? "call" : "transact"} to ${contract.name}.${functionName} errored: ${error.message}`
+
+      await plugin.call('terminal', 'logHtml', logBuilder(logMsg))
     }
   }
 
@@ -238,8 +280,11 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
         { value: sendValue, gasLimit: gasLimitValue }
       )
     } catch (error) {
-      console.error('Error executing low level transaction:', error)
-      await plugin.call('terminal', 'logHtml', logBuilder(error.message))
+      const functionName =
+      funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
+      const logMsg = `transact to ${contract.name}.${functionName} errored: ${error.message}`
+
+      await plugin.call('terminal', 'logHtml', logBuilder(logMsg))
     }
   }
 
@@ -444,9 +489,15 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
   }
 
   return (
-    <div className="mb-3">
+    <div
+      className="mb-3"
+      ref={(el) => {
+        contractItemRef.current = el
+        if (registerRef) registerRef(el)
+      }}
+    >
       <div
-        className="rounded"
+        className={`rounded ${shouldHighlight ? 'contract-highlight-animation' : ''}`}
         style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}
       >
         <div id={`instance${contract.address}`} data-id={contract?.isPinned ? `pinnedInstance${contract?.address}` : `unpinnedInstance${contract?.address}`} className="w-100" data-shared="universalDappUiInstance">
@@ -459,7 +510,7 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                 tooltipText={contract.isPinned ? `Pinned at: ${new Date(contract.pinnedAt).toLocaleString()}` : intl.formatMessage({ id: 'udapp.pinContractTooltip' })}
               >
                 <i
-                  data-id="pinDeployedContract"
+                  data-id={`pinDeployedContract-${index}`}
                   className={`${contract.isPinned ? 'fa-solid' : 'fa-regular'} fa-thumbtack`}
                   style={{ cursor: 'pointer' }}
                   onClick={handlePinContract}
@@ -697,16 +748,9 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                         type="text"
                         placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
                         className="form-control form-control-sm"
-                        value={(() => {
-                          const inputValue = funcInputs[selectedFunctionIndex] || ''
-                          const values = inputValue.split(',').map((v: string) => v.trim())
-                          return values[inputIdx] || ''
-                        })()}
+                        value={(funcInputs[selectedFunctionIndex]?.[inputIdx] || '')}
                         onChange={(e) => {
-                          const inputValue = funcInputs[selectedFunctionIndex] || ''
-                          const values = inputValue.split(',').map((v: string) => v.trim())
-                          values[inputIdx] = e.target.value
-                          handleFunctionInputChange(selectedFunctionIndex, values.join(', '))
+                          handleFunctionInputChange(selectedFunctionIndex, inputIdx, e.target.value)
                         }}
                         style={{
                           backgroundColor: 'var(--custom-onsurface-background, #222336)',
@@ -752,10 +796,13 @@ export function DeployedContractItem({ contract, index }: DeployedContractItemPr
                         min="0"
                         className="form-control form-control-sm border-0"
                         placeholder="3000000"
-                        value={value || ''}
+                        value={value}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                          setValue(isNaN(val) ? 0 : Math.max(0, val))
+                          const val = e.target.value
+                          // Only allow empty string or valid numeric strings
+                          if (val === '' || /^\d+$/.test(val)) {
+                            setValue(val === '' ? '0' : val)
+                          }
                         }}
                         style={{
                           backgroundColor: 'var(--custom-onsurface-background, #222336)',

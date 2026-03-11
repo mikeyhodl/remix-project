@@ -55,7 +55,7 @@ function EnvironmentPortraitView() {
       // select category to show sub-categories
       dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
     } else {
-      setExecutionContext(provider, plugin, widgetState, dispatch)
+      setExecutionContext(provider, plugin, dispatch)
     }
   }
 
@@ -316,12 +316,12 @@ function EnvironmentPortraitView() {
           </div>
           <div className="toggle-container">
             {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
-              <button className='btn btn-primary btn-sm small me-2' style={{ fontSize: '0.7rem' }} onClick={handleForkClick}>
+              <button data-id="fork-state-icon" className='btn btn-primary btn-sm small me-2' style={{ fontSize: '0.7rem' }} onClick={handleForkClick}>
                 <i className='fas fa-code-branch'></i> {intl.formatMessage({ id: 'udapp.fork' })}
               </button>
             )}
             {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
-              <button className='btn btn-outline-danger btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleResetClick}>
+              <button data-id="delete-state-icon" className='btn btn-outline-danger btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleResetClick}>
                 <i className='fas fa-redo'></i> {intl.formatMessage({ id: 'udapp.reset' })}
               </button>
             )}
