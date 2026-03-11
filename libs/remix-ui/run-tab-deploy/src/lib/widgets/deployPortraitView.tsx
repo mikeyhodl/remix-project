@@ -292,7 +292,7 @@ function DeployPortraitView() {
                           {selectedContract && !selectedContract?.isCompiled && !selectedContract?.isCompiling && (
                             <div
                               className="btn btn-primary d-flex align-items-center justify-content-center"
-                              data-id="compile-action"
+                              data-id="compile-deploy-tab"
                               role="button"
                               tabIndex={0}
                               style={{
