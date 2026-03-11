@@ -154,17 +154,17 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
             {searchQuery ? (
               <>
                 <i className="fas fa-search fa-2x mb-2"></i>
-                <p>No conversations found</p>
+                <p data-id="no-conversations-found-floating">No conversations found</p>
               </>
             ) : showArchived ? (
               <>
                 <i className="fas fa-archive fa-2x mb-2"></i>
-                <p>No archived conversations</p>
+                <p data-id="no-archived-conversations-floating">No archived conversations</p>
               </>
             ) : (
               <>
                 <i className="fas fa-comments fa-2x mb-2"></i>
-                <p>No conversations yet</p>
+                <p data-id="no-conversations-floating">No conversations yet</p>
                 <small>Start a new conversation to begin</small>
               </>
             )}
