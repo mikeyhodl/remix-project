@@ -144,7 +144,6 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       icon: `${theme?.toLowerCase() === 'dark' ? 'text-remix-ai' : 'text-remix-ai-light'} fas fa-graduation-cap`,
       color: '',
       action: () => {
-        handleActionClick()
         sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.startLearning' }))
         trackMatomoEvent(plugin, { category: 'ai', action: 'conv_starter', name: 'start_learning', isClick: true })
       }
