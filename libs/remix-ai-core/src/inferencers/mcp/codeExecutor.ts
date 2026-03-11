@@ -186,14 +186,15 @@ export class CodeExecutor {
               executionTime: toolExecutionTime
             });
 
+            // Return result even if isError=true - let callMCPTool handle it
             return result;
           } catch (error) {
-            // Tool execution failed - record the error
+            // Tool execution threw an exception - record the error
             const toolExecutionTime = Date.now() - toolStartTime;
             const errorResult: IMCPToolResult = {
               content: [{
                 type: 'text',
-                text: `Tool execution failed: ${error.message || String(error)}`
+                text: `Tool execution exception: ${error.message || String(error)}`
               }],
               isError: true
             };
@@ -205,8 +206,8 @@ export class CodeExecutor {
               executionTime: toolExecutionTime
             });
 
-            // Rethrow so the code execution to executor
-            throw new Error(`Tool '${name}' failed: ${error.message || String(error)}`);
+            // Return error result instead of throwing - let callMCPTool check isError
+            return errorResult;
           }
         })();
 
@@ -236,7 +237,21 @@ export class CodeExecutor {
 
       const helperFunctions = `
         async function callMCPTool(name, args) {
-          return await executeToolCall(name, args || {});
+          try {
+            const result = await executeToolCall(name, args || {});
+
+            // Stop any further execution if the tool call returned an error
+            if (result && result.isError === true) {
+              const errorMessage = result.content
+                ? result.content.map(c => c.text || JSON.stringify(c)).join('\\n')
+                : 'Tool call failed';
+              throw new Error(\`MCP Tool '\${name}' failed: \${errorMessage}\`);
+            }
+
+            return result;
+          } catch (error) {
+            throw error;
+          }
         }
       `;
 
