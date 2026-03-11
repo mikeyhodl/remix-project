@@ -20,7 +20,6 @@ function DeployPortraitView() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(DeployAppContext)
   // TODO: Move all state to reducer
   const [isExpanded, setIsExpanded] = useState(true)
-  const [defaultProvider, setDefaultProvider] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [expandedInputs, setExpandedInputs] = useState<Set<number>>(new Set())
   const [inputValues, setInputValues] = useState<{[key: number]: string}>({})
@@ -38,11 +37,6 @@ function DeployPortraitView() {
   const intl = useIntl()
 
   useEffect(() => {
-    (async () => {
-      const defaultProvider = await plugin.call('udappEnv', 'getDefaultProvider')
-
-      setDefaultProvider(defaultProvider)
-    })()
     const params: { deployProxy: boolean, upgradeProxy: boolean } = queryParams.get() as any
 
     if (params.deployProxy) {
@@ -267,7 +261,7 @@ function DeployPortraitView() {
             <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="small text-secondary">{ selectedProvider && selectedProvider?.category ? `${selectedProvider.category} ${selectedProvider?.displayName}` : `Remix VM ${defaultProvider?.replace('vm-', '')}` }</span>
+            <span className="small text-secondary">{ widgetState.networkDetected }</span>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>

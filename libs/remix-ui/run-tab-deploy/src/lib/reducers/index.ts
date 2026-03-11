@@ -14,7 +14,8 @@ export const deployInitialState: DeployWidgetState = {
   maxPriorityFee: '.0001',
   baseFeePerGas: '',
   gasPrice: '',
-  lastLoadedWorkspace: null
+  lastLoadedWorkspace: null,
+  networkDetected: 'can\'t detect network'
 }
 
 export const deployReducer = (state = deployInitialState, action: Actions): DeployWidgetState => {
@@ -213,6 +214,13 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     return {
       ...state,
       lastLoadedWorkspace: action.payload
+    }
+  }
+
+  case 'SET_DETECTED_NETWORK': {
+    return {
+      ...state,
+      networkDetected: action.payload
     }
   }
 

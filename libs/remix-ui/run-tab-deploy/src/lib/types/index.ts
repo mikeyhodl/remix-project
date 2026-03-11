@@ -33,6 +33,7 @@ export interface DeployWidgetState {
   baseFeePerGas: string
   gasPrice: string
   lastLoadedWorkspace: string | null
+  networkDetected: string
 }
 
 export interface ActionPayloadTypes {
@@ -52,7 +53,8 @@ export interface ActionPayloadTypes {
   SET_GAS_PRICE: string,
   SET_MAX_FEE: string,
   SET_BASE_FEE_PER_GAS: string,
-  SET_LAST_LOADED_WORKSPACE: string
+  SET_LAST_LOADED_WORKSPACE: string,
+  SET_DETECTED_NETWORK: string
 }
 
 export interface Action<T extends keyof ActionPayloadTypes> {
