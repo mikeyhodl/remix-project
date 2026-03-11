@@ -40,8 +40,7 @@ const basicWorkspaceInit = async (workspaces: { name: string; isGitRepo: boolean
     await createWorkspaceTemplate('default_workspace', 'remixDefault')
     plugin.setWorkspace({ name: 'default_workspace', isLocalhost: false })
     dispatch(setCurrentWorkspace({ name: 'default_workspace', isGitRepo: false }))
-    const openPath = await loadWorkspacePreset('remixDefault')
-    if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
+    await loadWorkspacePreset('remixDefault')
   } else {
     if (workspaces.length > 0) {
       const workspace = workspaces[workspaces.length - 1]
@@ -88,14 +87,20 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       await createWorkspaceTemplate(name, 'gist-template')
       plugin.setWorkspace({ name, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-      const openPath = await loadWorkspacePreset('gist-template')
-      if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
+      await loadWorkspacePreset('gist-template')
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
       await createWorkspaceTemplate('code-sample', 'code-template')
       plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
-      const openPath = await loadWorkspacePreset('code-template')
-      if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
+      const filePath = await loadWorkspacePreset('code-template')
+      plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
+        if (editorMounted){
+          setTimeout(async () => {
+            await plugin.fileManager.openFile(filePath)}, 1000)
+        } else {
+          filePathToOpen = filePath
+        }
+      })
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
         const contractAddress = params.address
@@ -249,14 +254,12 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       await createWorkspaceTemplate(name, 'gist-template')
       plugin.setWorkspace({ name, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
-      const openPath = await loadWorkspacePreset('gist-template')
-      if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
+      await loadWorkspacePreset('gist-template')
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
       await createWorkspaceTemplate('code-sample', 'code-template')
       plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
-      const openPath = await loadWorkspacePreset('code-template')
-      if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
+      const filePath = await loadWorkspacePreset('code-template')
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
         const contractAddress = params.address
