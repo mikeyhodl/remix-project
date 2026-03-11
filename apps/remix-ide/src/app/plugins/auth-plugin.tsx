@@ -582,29 +582,29 @@ export class AuthPlugin extends Plugin {
               const serverMsg = event.data.message
               const adminMsg = this.cachedAccessPolicy?.message || this.cachedLoginMessage
               switch (errorCode) {
-                case 'LOGIN_LOCKED':
-                  errorMsg = serverMsg || adminMsg || 'Login is currently disabled. Please try again later.'
-                  break
-                case 'LOGIN_ADMINS_ONLY':
-                  errorMsg = serverMsg || adminMsg || 'Login is restricted to administrators.'
-                  break
-                case 'LOGIN_MEMBERS_ONLY':
-                  errorMsg = serverMsg || adminMsg || 'Only existing members can sign in at this time.'
-                  break
-                case 'INVITE_REQUIRED':
-                  errorMsg = serverMsg || 'An invite code is required to register.'
-                  break
-                case 'INVITE_INVALID':
-                  errorMsg = serverMsg || 'Your invite code is invalid or expired.'
-                  break
-                case 'LOGIN_CLOSED':
-                  errorMsg = serverMsg || adminMsg || 'Login is currently disabled. Please try again later.'
-                  break
-                case 'LOGIN_FEATURE_GROUP_REQUIRED':
-                  errorMsg = serverMsg || adminMsg || 'Your account does not have login access. Contact an administrator.'
-                  break
-                default:
-                  errorMsg = serverMsg || adminMsg || 'Login is currently restricted.'
+              case 'LOGIN_LOCKED':
+                errorMsg = serverMsg || adminMsg || 'Login is currently disabled. Please try again later.'
+                break
+              case 'LOGIN_ADMINS_ONLY':
+                errorMsg = serverMsg || adminMsg || 'Login is restricted to administrators.'
+                break
+              case 'LOGIN_MEMBERS_ONLY':
+                errorMsg = serverMsg || adminMsg || 'Only existing members can sign in at this time.'
+                break
+              case 'INVITE_REQUIRED':
+                errorMsg = serverMsg || 'An invite code is required to register.'
+                break
+              case 'INVITE_INVALID':
+                errorMsg = serverMsg || 'Your invite code is invalid or expired.'
+                break
+              case 'LOGIN_CLOSED':
+                errorMsg = serverMsg || adminMsg || 'Login is currently disabled. Please try again later.'
+                break
+              case 'LOGIN_FEATURE_GROUP_REQUIRED':
+                errorMsg = serverMsg || adminMsg || 'Your account does not have login access. Contact an administrator.'
+                break
+              default:
+                errorMsg = serverMsg || adminMsg || 'Login is currently restricted.'
               }
               // Refresh access policy since the server just told us access is restricted
               this.refreshAccessPolicy().catch(() => {})

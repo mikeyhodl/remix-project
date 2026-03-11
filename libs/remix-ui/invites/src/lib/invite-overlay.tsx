@@ -133,14 +133,14 @@ function formatExpiry(expiresAt: string | null | undefined): string | null {
 
 function getErrorMessage(errorCode?: string): string {
   switch (errorCode) {
-    case 'NOT_FOUND': return 'This invite code does not exist or is no longer valid.'
-    case 'INACTIVE': return 'This invite code has been deactivated.'
-    case 'EXPIRED': return 'This invite code has expired.'
-    case 'NOT_STARTED': return 'This invite code is not yet active.'
-    case 'EXHAUSTED':
-    case 'MAX_USES_REACHED': return 'This invite code has reached its maximum number of uses.'
-    case 'ALREADY_REDEEMED': return 'You have already used this invite code.'
-    default: return 'This invitation is no longer valid.'
+  case 'NOT_FOUND': return 'This invite code does not exist or is no longer valid.'
+  case 'INACTIVE': return 'This invite code has been deactivated.'
+  case 'EXPIRED': return 'This invite code has expired.'
+  case 'NOT_STARTED': return 'This invite code is not yet active.'
+  case 'EXHAUSTED':
+  case 'MAX_USES_REACHED': return 'This invite code has reached its maximum number of uses.'
+  case 'ALREADY_REDEEMED': return 'You have already used this invite code.'
+  default: return 'This invitation is no longer valid.'
   }
 }
 
