@@ -25,7 +25,7 @@ module.exports = {
       .clickFunction(0, 0)
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded output': {
             0: 'uint256: out1 14',
             1: 'uint256: out2 15'

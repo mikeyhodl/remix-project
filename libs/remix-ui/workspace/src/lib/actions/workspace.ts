@@ -310,8 +310,7 @@ const _createWorkspaceInternal = async (
         if (!currentBranch) {
           await dgitPlugin.call('dgit', 'init')
           if (!isEmpty) {
-            const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-            if (openPath) await plugin.fileManager.openFile(openPath)
+            await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
           }
 
           // Only attempt the commit if we have usable credentials.
@@ -421,8 +420,7 @@ export const populateWorkspace = async (
       plugin.call('notification', 'toast', 'Error adding template: ' + (e.message || e))
     }
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
-    const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-    if (openPath) await plugin.fileManager.openFile(openPath)
+    await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
   }
   cb && cb(null)
   if (isGitRepo) {
@@ -733,12 +731,11 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
             } else {
               const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
               await writeToTargetWorkspace(uniqueFileName, files[file])
-
-              if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('ssrc/') >= 0) && !openPath) {
-                openPath = uniqueFileName
-              } else if (isReadme(uniqueFileName)) {
-                openPath = uniqueFileName
-              }
+            }
+            if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('src/') >= 0) && !openPath) {
+              openPath = uniqueFileName
+            } else if (isReadme(uniqueFileName)) {
+              openPath = uniqueFileName
             }
           } catch (error) {
             console.error(error)

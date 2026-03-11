@@ -17,6 +17,9 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
     if (plugin.setStateGetter) {
       plugin.setStateGetter(() => widgetState)
     }
+    if (plugin.setDispatchGetter) {
+      plugin.setDispatchGetter(() => dispatch)
+    }
   }, [widgetState])
 
   useEffect(() => {

@@ -1351,3 +1351,57 @@ body.dark .conversation-menu-item:hover {
   background-color: #d9dee4 !important;
   color: #8e94a6 !important;
 }
+
+.message-copy-btn {
+  background: none;
+  border: none;
+  color: var(--bs-secondary);
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-copy-btn:hover {
+  color: var(--bs-body-color);
+}
+
+.message-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.chat-row:hover .message-copy-btn {
+  opacity: 1;
+}
+
+.chat-bubble:hover .message-copy-btn {
+  opacity: 1;
+}
+
+.user-message-actions {
+  margin-top: 0.5rem;
+}
+
+[data-theme="dark"] .message-copy-btn,
+body.dark .message-copy-btn {
+  color: #a0a0b0;
+}
+
+[data-theme="dark"] .message-copy-btn:hover,
+body.dark .message-copy-btn:hover {
+  color: #e0e0e0;
+}
+
+[data-theme="light"] .message-copy-btn,
+body.light .message-copy-btn {
+  color: #8e94a6;
+}
+
+[data-theme="light"] .message-copy-btn:hover,
+body.light .message-copy-btn:hover {
+  color: #5a5f75;
+}

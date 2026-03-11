@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useIntl } from 'react-intl'
 
-const OriginWarning = () => {
+export const OriginWarning = () => {
   const [messageId, setMessageId] = useState<string>(null)
   const [dismissed, setDismissed] = useState(false)
   const intl = useIntl()
@@ -22,7 +22,7 @@ const OriginWarning = () => {
     ) {
       setMessageId('remixApp.originWarningMoved')
     }
-  }, [])
+  }, [intl])
 
   if (!messageId || dismissed) return null
 

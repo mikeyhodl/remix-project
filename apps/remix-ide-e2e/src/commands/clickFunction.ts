@@ -30,8 +30,7 @@ class ClickFunction extends EventEmitter {
         (expectedInput || []).forEach((input, index) => {
           client.setValue(
             `[data-id="selectedFunction-${index}"]`,
-            input,
-            (_) => _
+            input
           )
         })
         done()

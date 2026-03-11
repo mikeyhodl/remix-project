@@ -12,8 +12,7 @@ module.exports = {
     return sources
   },
 
-  'Run Scenario using editor play button #group1': ' ' + function (browser: NightwatchBrowser) {
-    let addressRef
+  'Run Scenario using editor play button #group1': function (browser: NightwatchBrowser) {
     browser
       .openFile('remix.config.json')
       .setEditorValue(configFile)
@@ -25,31 +24,22 @@ module.exports = {
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
       .waitForElementVisible('[data-id="compile_group"]')
-      .click('[data-id="compile_group"]')
+      .click('[data-id="compile-action"]')
       .pause(2000)
       .clickInstance(0)
       .clickInstance(1)
-      .clickFunction(1, 0)
-      .clickFunction(1, 1)
-      .clickFunction(1, 2)
-      .waitForElementPresent('[data-id="contractItem-1"] > [data-id="udapp_tree_value"]')
-      .scrollInto('[data-id="contractItem-1"] > [data-id="udapp_tree_value"]')
-      .getAddressAtPosition(1, (address) => {
-        console.log('Test Recorder ' + address)
-        addressRef = address
-      })
-      .perform((done) => {
-        browser.verifyCallReturnValue(addressRef, ['0:uint256: 1', '0:uint256: 3456', '0:address: 0xbBF289D846208c16EDc8474705C748aff07732dB'])
-          .perform(() => done())
-      })
+      .testConstantFunction(1, 0, null, '0:\nuint256: 1')
+      .testConstantFunction(1, 1, null, '0:\nuint256: 3456')
+      .testConstantFunction(1, 2, null, '0:\naddress: 0xbBF289D846208c16EDc8474705C748aff07732dB')
       .clickLaunchIcon('udapp')
       .clearDeployedContracts()
       .clearTransactionsRecorder()
   },
-  'Save scenario #group1': ' ' + function (browser: NightwatchBrowser) {
+  'Save scenario #group1': function (browser: NightwatchBrowser) {
     browser.testContracts('testRecorder.sol', sources[0]['testRecorder.sol'], ['testRecorder'])
       .clickLaunchIcon('udapp')
       .createContract('12')
+      .closeBetaPopUp()
       .clickInstance(0)
       .clickFunction(0, 0, ['34'])
       .execute(function () {
@@ -77,7 +67,7 @@ module.exports = {
       })
   },
 
-  'Record more than one contract #group2': ' ' + function (browser: NightwatchBrowser) {
+  'Record more than one contract #group2': function (browser: NightwatchBrowser) {
     // deploy 2 contracts (2 different ABIs), save the record, reexecute and test one of the function.
     browser
       .testContracts('multipleContracts.sol', sources[1]['multipleContracts.sol'], ['t1est', 't2est'])
@@ -101,12 +91,12 @@ module.exports = {
       .clickLaunchIcon('udapp')
       .clearDeployedContracts()
       .click('*[data-id="terminalClearConsole"]') // clear terminal
-      .click('[data-id="compile_group"]')
+      .click('[data-id="compile-action"]')
       .clickInstance(1)
       .pause(1000)
       .clickFunction(1, 0, ['10'])
       .testFunction('last', {
-        status: '1 Transaction mined and execution succeed',
+        status: '1 Transaction mined and execution completed',
         'decoded input': { 'uint256 _po': '10' }
       })
   },

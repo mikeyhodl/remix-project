@@ -60,7 +60,7 @@ module.exports = {
       .createContract('')
       .pause(5000)
       .testFunction('last', {
-        status: '1 Transaction mined and execution succeed'
+        status: '1 Transaction mined and execution completed'
       })
   },
 
@@ -104,7 +104,7 @@ module.exports = {
       .sendLowLevelTx(0, null, null)
       .pause(5000)
       .testFunction('last', {
-        status: '1 Transaction mined and execution succeed'
+        status: '1 Transaction mined and execution completed'
       })
       // When this is removed and tests are running by connecting to metamask
       // Consider adding tests to check return value of contract call

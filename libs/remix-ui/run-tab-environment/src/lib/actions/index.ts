@@ -33,7 +33,7 @@ export async function resetVmState (plugin: EnvironmentPlugin, widgetState: Widg
   // Reset environment blocks and account data
   await currentProvider.resetEnvironment()
   // Remove deployed and pinned contracts from UI
-  await plugin.call('udapp', 'clearAllInstances')
+  await plugin.call('udappDeployedContracts', 'clearDeployedContracts')
   // Delete environment state file
   await plugin.call('fileManager', 'remove', `.states/${context}/state.json`)
   // If there are pinned contracts, delete pinned contracts folder
@@ -79,7 +79,6 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
   const name = `vm-fs-${currentStateDb.stateName}`
 
   // trackMatomoEvent(plugin, { category: 'blockchain', action: 'providerPinned', name: name, isClick: false })
-  // this.emit('providersChanged')
   await plugin.call('blockchain', 'changeExecutionContext', { context: name })
   plugin.call('notification', 'toast', `New environment '${currentStateDb.stateName}' created with forked state.`)
 
@@ -90,10 +89,12 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
       await plugin.call('fileManager', 'copyDir', `.deploys/pinned-contracts/${provider.name}`, `.deploys/pinned-contracts`, 'vm-fs-' + currentStateDb.stateName)
     }
   }
+  dispatch({ type: 'SET_CURRENT_PROVIDER', payload: name })
+  plugin.emit('providersChanged', { name })
   trackMatomoEvent(plugin, { category: 'udapp', action: 'forkState', name: `forked from ${context}`, isClick: false })
 }
 
-export async function setExecutionContext (provider: Provider, plugin: EnvironmentPlugin, widgetState: WidgetState, dispatch: React.Dispatch<Actions>) {
+export async function setExecutionContext (provider: Provider, plugin: EnvironmentPlugin, dispatch: React.Dispatch<Actions>) {
   if (provider.name === 'walletconnect') {
     await plugin.call('walletconnect', 'openModal')
     plugin.on('walletconnect', 'connectionSuccessful', async () => {
@@ -113,11 +114,6 @@ export async function setExecutionContext (provider: Provider, plugin: Environme
     await plugin.call('blockchain', 'changeExecutionContext', { context: provider.name, fork: provider.config.fork })
     dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
     plugin.emit('providersChanged', provider)
-    if (provider.category === 'Browser Extension') {
-      await plugin.call('layout', 'maximiseSidePanel', 0.25)
-    } else {
-      await plugin.call('layout', 'resetSidePanel')
-    }
   }
 }
 
