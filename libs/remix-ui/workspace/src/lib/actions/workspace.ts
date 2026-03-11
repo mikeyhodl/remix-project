@@ -311,7 +311,7 @@ const _createWorkspaceInternal = async (
           await dgitPlugin.call('dgit', 'init')
           if (!isEmpty) {
             const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-            if (openPath) await plugin.fileManager.openFile(openPath)
+            if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
           }
 
           // Only attempt the commit if we have usable credentials.
@@ -422,7 +422,7 @@ export const populateWorkspace = async (
     }
   } else if (!isEmpty && !(isGitRepo && createCommit)) {
     const openPath = await loadWorkspacePreset(workspaceTemplateName, opts, contractContent, contractName)
-    if (openPath) await plugin.fileManager.openFile(openPath)
+    if (openPath) setTimeout(() => plugin.call('fileManager', 'openFile', openPath), 100)
   }
   cb && cb(null)
   if (isGitRepo) {
