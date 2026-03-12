@@ -54,6 +54,7 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       );
 
       // Add trace cache resource
+      /*
       resources.push(
         this.createResource(
           'debug://trace-cache',
@@ -66,9 +67,9 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
             priority: 8
           }
         )
-      );
+      );*/
 
-      // Add trace cache resource
+      // Add current-debugging-step
       resources.push(
         this.createResource(
           'debug://current-debugging-step',
@@ -99,9 +100,9 @@ export class DebuggingResourceProvider extends BaseResourceProvider {
       return this.getGlobalContext(plugin);
     }
 
-    if (uri === 'debug://trace-cache') {
+    /* if (uri === 'debug://trace-cache') {
       return this.getTraceCache(plugin);
-    }
+    } */
 
     if (uri === 'debug://current-debugging-step') {
       return this.getCurrentSourceLocation(plugin);
