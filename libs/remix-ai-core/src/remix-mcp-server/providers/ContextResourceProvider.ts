@@ -37,20 +37,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
     // Individual context components
     resources.push(
       this.createResource(
-        'context://file-tree',
-        'File Tree',
-        'Project file structure and hierarchy',
-        'application/json',
-        {
-          category: ResourceCategory.PROJECT_FILES,
-          tags: ['files', 'structure', 'tree'],
-          priority: 9
-        }
-      )
-    );
-
-    resources.push(
-      this.createResource(
         'context://editor-state',
         'Editor State',
         'Current editor state including open files, cursor position, and selection',
@@ -91,20 +77,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
       )
     );
 
-    resources.push(
-      this.createResource(
-        'context://terminal-output',
-        'Terminal Output',
-        'Recent terminal output and command history',
-        'application/json',
-        {
-          category: ResourceCategory.CONFIGURATION,
-          tags: ['terminal', 'output', 'console'],
-          priority: 7
-        }
-      )
-    );
-
     return resources;
   }
 
@@ -123,10 +95,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
 
     if (uri === 'context://diagnostics') {
       return this.getDiagnostics();
-    }
-
-    if (uri === 'context://terminal-output') {
-      return this.getTerminalOutput();
     }
 
     throw new Error(`Unsupported context URI: ${uri}`);
@@ -202,21 +170,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
       });
     } catch (error) {
       return this.createTextContent('context://diagnostics', `Error getting diagnostics: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get terminal output
-   */
-  private async getTerminalOutput(): Promise<IMCPResourceContent> {
-    try {
-      const terminalOutput = await this.collectTerminalOutput();
-      return this.createJsonContent('context://terminal-output', {
-        timestamp: new Date().toISOString(),
-        ...terminalOutput
-      });
-    } catch (error) {
-      return this.createTextContent('context://terminal-output', `Error getting terminal output: ${error.message}`);
     }
   }
 
