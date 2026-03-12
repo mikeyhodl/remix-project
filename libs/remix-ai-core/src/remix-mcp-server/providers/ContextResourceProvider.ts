@@ -113,10 +113,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
       return this.getWorkspaceContext();
     }
 
-    if (uri === 'context://file-tree') {
-      return this.getFileTree();
-    }
-
     if (uri === 'context://editor-state') {
       return this.getEditorState();
     }
@@ -161,21 +157,6 @@ export class ContextResourceProvider extends BaseResourceProvider {
       return this.createJsonContent('context://workspace', context);
     } catch (error) {
       return this.createTextContent('context://workspace', `Error gathering context: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get file tree structure
-   */
-  private async getFileTree(): Promise<IMCPResourceContent> {
-    try {
-      const fileTree = await this.collectFileTree();
-      return this.createJsonContent('context://file-tree', {
-        timestamp: new Date().toISOString(),
-        tree: fileTree
-      });
-    } catch (error) {
-      return this.createTextContent('context://file-tree', `Error getting file tree: ${error.message}`);
     }
   }
 
