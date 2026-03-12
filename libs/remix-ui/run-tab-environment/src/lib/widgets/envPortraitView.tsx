@@ -216,6 +216,7 @@ function EnvironmentPortraitView() {
 
   const handleStartEditAlias = (accountId: string, currentAlias: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    setIsAccountDropdownOpen(false)
     setEditingAccountId(accountId)
     setEditingAlias(currentAlias)
     // Auto-select text after state update
@@ -333,6 +334,7 @@ function EnvironmentPortraitView() {
           <div className="d-flex p-3 pt-0">
             <Dropdown className="w-100" show={isEnvironmentDropdownOpen} onToggle={(isOpen) => {
               if (isOpen && isSubCategoryDropdownOpen) setIsSubCategoryDropdownOpen(false)
+              if (isOpen && isAccountDropdownOpen) setIsAccountDropdownOpen(false)
               setIsEnvironmentDropdownOpen(isOpen)
               if (!isOpen) setIsSubCategoryDropdownOpen(false)
             }}>
@@ -345,6 +347,7 @@ function EnvironmentPortraitView() {
                   onToggle={(isOpen: boolean) => {
                     setIsSubCategoryDropdownOpen(isOpen)
                     if (isOpen) setIsEnvironmentDropdownOpen(false)
+                    if (isOpen && isAccountDropdownOpen) setIsAccountDropdownOpen(false)
                   }}
                 />}
                 style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', cursor: 'pointer' }}
@@ -370,7 +373,7 @@ function EnvironmentPortraitView() {
           </div>)}
         {!widgetState.fork.isVisible.resetUI && (
           <div className="d-flex px-3">
-            <Dropdown className="w-100" onToggle={(isOpen) => setIsAccountDropdownOpen(isOpen)}>
+            <Dropdown className="w-100" show={isAccountDropdownOpen} onToggle={(isOpen) => setIsAccountDropdownOpen(isOpen)}>
               <Dropdown.Toggle as={AddressToggle} data-id="runTabSelectAccount" className={`w-100 d-inline-block border form-control selected-account-hover ${isAccountDropdownOpen ? 'dropdown-open' : ''}`} style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
                 <div className="d-flex align-items-center">
                   <div className="me-auto text-nowrap text-truncate overflow-hidden font-sm w-100">
@@ -415,7 +418,10 @@ function EnvironmentPortraitView() {
                           }}
                           className="selected-account-kebab-icon fas fa-ellipsis-v"
                           data-id="selected-account-kebab-menu"
-                          onClick={(e) => handleKebabClick(e, 'selected')}
+                          onClick={(e) => {
+                            setIsAccountDropdownOpen(false)
+                            handleKebabClick(e, 'selected')
+                          }}
                           style={{ cursor: 'pointer' }}
                         ></i>
                       </div>
