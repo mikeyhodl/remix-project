@@ -487,6 +487,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
           if (toolMessages.length > 0) {
             const existingToolsMessages = enhancedOptions.toolsMessages || [];
+            const currentChatHistory = enhancedOptions.chatHistory || [];
             let toolsMessagesArray = [];
 
             if (options.provider === 'anthropic') {
@@ -500,25 +501,41 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                   : tc.function?.arguments || {}
               }));
 
-              toolsMessagesArray = [
-                ...existingToolsMessages,
-                { role: 'assistant', content: toolUseBlocks },
-                { role: 'user', content: toolMessages }
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              } else {
+                // Subsequent iterations: append to existing tool messages
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              }
             } else if (options.provider === 'openai' || options.provider === 'mistralai') {
-              // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
-              toolsMessagesArray = [
-                ...existingToolsMessages,
-                { role: 'assistant', tool_calls: tool_calls },
-                ...toolMessages
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              } else {
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              }
             }
+
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolsMessagesArray,
-              chatHistory: options.provider === 'anthropic'
-                ? [...(enhancedOptions.chatHistory || []), { role: 'user', content: prompt }]
-                : enhancedOptions.chatHistory
+              toolsMessages: toolsMessagesArray
             };
 
             enhancedOptions.toolsMessages = toolsMessagesArray;
