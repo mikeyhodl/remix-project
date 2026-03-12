@@ -166,7 +166,7 @@ export enum CompilerRetriggerMode {
   'retrigger'
 }
 
-export interface LastCompilationResult  {
+export interface LastCompilationResult {
     data: CompilationResult | null,
     source: SourceWithTarget | null | undefined
 }
