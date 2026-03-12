@@ -33,7 +33,7 @@ export async function debugTransaction (plugin: TransactionsPlugin, transaction:
   }
 }
 
-export async function replayTransaction (transaction: Transaction, recorderData: RecorderData, plugin: TransactionsPlugin, dispatch: React.Dispatch<Actions>) {
+export async function replayTransaction (transaction: Transaction, recorderData: RecorderData, plugin: TransactionsPlugin) {
   try {
     const tx = transaction
     const accounts = recorderData._usedAccounts

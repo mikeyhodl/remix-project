@@ -14,8 +14,6 @@ module.exports = {
 
   'Run Scenario using editor play button #group1': function (browser: NightwatchBrowser) {
     browser
-      .openFile('remix.config.json')
-      .setEditorValue(configFile)
       .addFile('scenario.json', { content: records })
       .waitForElementVisible({
         locateStrategy: 'xpath',
@@ -499,14 +497,3 @@ contract Storage {
         return number;
     }
 }`
-
-const configFile = `
-{
-  "project": "remixDefault",
-  "version": "1.6.0-dev",
-  "IDE": "127.0.0.1",
-  "scenarios": {
-    "lastSavedScenario": "scenario.json"
-  }
-}
-`
