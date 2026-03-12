@@ -10,7 +10,7 @@ import * as chains from "viem/chains"
 import { custom, createWalletClient, createPublicClient, http } from "viem"
 import { BrowserProvider, BaseWallet, SigningKey, isAddress } from "ethers"
 import { toChecksumAddress, bytesToHex, isZeroAddress } from '@ethereumjs/util'
-import { isAccountDeleted, getAccountAlias, deleteAccount as deleteAccountFromStorage, setAccountAlias, clearAccountPreferences } from '../utils/accountStorage'
+import { isAccountDeleted, getAccountAlias, deleteAccount as deleteAccountFromStorage, setAccountAlias, clearAccountPreferences, getNextAvailableAccountNumber } from '../utils/accountStorage'
 import { eip7702Constants } from '@remix-project/remix-lib'
 export * from "./providers"
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
@@ -157,12 +157,16 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
   accounts = accounts.filter((account: string) => !isAccountDeleted(account))
   const defaultAccounts = []
   const smartAccounts = []
-  let index = 1
   for (const account of accounts) {
     const balance = await plugin.blockchain.getBalanceInEther(account)
-    // Get custom alias or use default
-    const customAlias = getAccountAlias(account)
-    const alias = customAlias || `Account ${index}`
+    let alias = getAccountAlias(account)
+
+    if (!alias) {
+      const accountNumber = getNextAvailableAccountNumber()
+
+      alias = `Account ${accountNumber}`
+      setAccountAlias(account, alias)
+    }
 
     if (provider.startsWith('injected') && plugin.blockchain && plugin.blockchain['networkNativeCurrency'] && plugin.blockchain['networkNativeCurrency'].symbol)
       defaultAccounts.push({
@@ -183,7 +187,6 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
       account: account,
       balance: parseFloat(balance).toFixed(3)
     })
-    index++
   }
   dispatch({ type: 'SET_ACCOUNTS', payload: defaultAccounts })
   dispatch({ type: 'SET_SMART_ACCOUNTS', payload: smartAccounts })
