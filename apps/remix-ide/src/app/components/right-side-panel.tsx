@@ -13,7 +13,7 @@ const rightSidePanel = {
   description: 'Remix IDE right side panel',
   version: packageJson.version,
   methods: ['addView', 'removeView', 'currentFocus', 'pinView', 'unPinView', 'highlight',
-    'getHiddenPlugin', 'togglePanel', 'isPanelHidden', 'maximizePanel'
+    'getHiddenPlugin', 'togglePanel', 'isPanelHidden', 'maximizePanel', 'isRightSidePanelMaximized'
   ],
   events: []
 }
@@ -301,6 +301,10 @@ export class RightSidePanel extends AbstractPanel {
 
   isPanelHidden() {
     return this.isHidden
+  }
+
+  isRightSidePanelMaximized() {
+    return this.isMaximized
   }
 
   async maximizePanel() {
