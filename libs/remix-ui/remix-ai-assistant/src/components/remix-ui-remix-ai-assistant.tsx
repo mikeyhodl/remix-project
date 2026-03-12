@@ -50,6 +50,13 @@ export interface RemixUiRemixAiAssistantHandle {
   getHistory: () => ChatMessage[]
 }
 
+function getSystemThemeFallback(): string {
+  const bodyTheme = document.body.getAttribute('data-theme')
+    || document.documentElement.getAttribute('data-theme')
+  if (bodyTheme) return bodyTheme
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export const RemixUiRemixAiAssistant = React.forwardRef<
   RemixUiRemixAiAssistantHandle,
   RemixUiRemixAiAssistantProps
@@ -81,7 +88,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
-  const [themeTracker, setThemeTracker] = useState(null)
+  const [themeTracker, setThemeTracker] = useState<{ name: string } | null>(() => ({ name: getSystemThemeFallback() }))
   const historyRef = useRef<HTMLDivElement | null>(null)
   const modelBtnRef = useRef(null)
   const modelSelectorBtnRef = useRef(null)

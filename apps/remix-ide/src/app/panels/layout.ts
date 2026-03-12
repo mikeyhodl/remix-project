@@ -95,8 +95,13 @@ export class Layout extends Plugin {
     })
     this.on('sidePanel', 'focusChanged', async (name) => {
       const current = await this.call('sidePanel', 'currentFocus')
-      if (this.enhanced[current]) {
-        this.event.emit('enhancesidepanel')
+      const isMaxed = await this.call('rightSidePanel', 'isRightSidePanelMaximized')
+      if (isMaxed) {
+        this.enhanced[current] = false
+      } else {
+        if (this.enhanced[current]) {
+          this.event.emit('enhancesidepanel')
+        }
       }
 
       if (this.maximized[current] && this.maximized[current].maximized) {
