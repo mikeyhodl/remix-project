@@ -1021,7 +1021,7 @@ export class Blockchain extends Plugin {
         }
       }
       const eventName = tx.useCall ? 'callExecuted' : 'transactionExecuted'
-
+      if (await this.call('terminal', 'isPanelHidden')) this.call('terminal', 'togglePanel')
       this._triggerEvent(eventName, [null, tx.from, tx.to, tx.data, tx.useCall, result, timestamp, payLoad])
       return new Promise((resolve) => resolve({ result, tx }))
     } catch (err) {
