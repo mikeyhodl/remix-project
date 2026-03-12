@@ -6,7 +6,7 @@ import { Plugin } from '@remixproject/engine';
 import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
-import { LastCompilationResult } from '@remix-project/remix-solidity';
+import { LastCompilationResult, CompiledContract } from '@remix-project/remix-solidity';
 
 export class CompilationResourceProvider extends BaseResourceProvider {
   name = 'compilation';
@@ -207,7 +207,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         errors: compilationResult.data?.errors || [],
         errorFiles: compilationResult.errFiles || [],
         warnings: compilationResult?.data?.errors?.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source || {}
+        // sources: compilationResult?.source || {}
       };
 
       // Process contracts
@@ -332,7 +332,7 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         return this.createTextContent(uri, 'No compilation result available');
       }
 
-      let contractDetails = {}
+      let contractDetails: CompiledContract
       for (const fileName in compilationResult.data.contracts) {
         const contractsInFile = compilationResult.data.contracts[fileName]
         if (Object.keys(contractsInFile).includes(contractName)) {
