@@ -370,6 +370,18 @@ export class ContextResourceProvider extends BaseResourceProvider {
   }
 
   /**
+   * Strip large hex values from text using regex
+   */
+  private stripLargeHexFromText(text: string): string {
+    if (typeof text !== 'string') return text;
+    
+    // Regex to find hex values (with or without 0x prefix) longer than 20 characters
+    return text.replace(/(0x[0-9a-fA-F]{21,}|(?<![0-9a-fA-F])[0-9a-fA-F]{21,}(?![0-9a-fA-F]))/g, 
+      (match) => match.substring(0, 20) + '<removed to not blow up the payload>'
+    );
+  }
+
+  /**
    * Collect recent terminal output
    */
   private async collectTerminalOutput(): Promise<any> {
@@ -384,17 +396,23 @@ export class ContextResourceProvider extends BaseResourceProvider {
         const logs = await this._plugin.call('terminal', 'getLogs');
         if (logs && Array.isArray(logs)) {
           terminal.available = true;
-          // Get last 20 log entries
-          terminal.recent = logs.slice(-20).map((log: any) => ({
-            type: log.type || 'log',
-            value: log.value || log.message || log,
-            timestamp: log.timestamp || new Date().toISOString()
-          }));
+          // Get last 20 log entries and strip large hex values
+          terminal.recent = logs.slice(-20).map((log: any) => {
+            let value = log.value || log.message || log;
+            try {
+              value = typeof value === 'string'? value : JSON.stringify(value)
+            } catch (e) {}
+            
+            return {
+              type: log.type || 'log',
+              value: this.stripLargeHexFromText(value),
+              timestamp: log.timestamp || new Date().toISOString()
+            };
+          });
         }
       } catch (error) {
         // Terminal logs not available
       }
-
       return terminal;
     } catch (error) {
       console.warn('Failed to collect terminal output:', error);
