@@ -374,9 +374,8 @@ export class ContextResourceProvider extends BaseResourceProvider {
    */
   private stripLargeHexFromText(text: string): string {
     if (typeof text !== 'string') return text;
-    
     // Regex to find hex values (with or without 0x prefix) longer than 20 characters
-    return text.replace(/(0x[0-9a-fA-F]{21,}|(?<![0-9a-fA-F])[0-9a-fA-F]{21,}(?![0-9a-fA-F]))/g, 
+    return text.replace(/(0x[0-9a-fA-F]{21,}|(?<![0-9a-fA-F])[0-9a-fA-F]{21,}(?![0-9a-fA-F]))/g,
       (match) => match.substring(0, 20) + '<removed to not blow up the payload>'
     );
   }
@@ -402,7 +401,7 @@ export class ContextResourceProvider extends BaseResourceProvider {
             try {
               value = typeof value === 'string'? value : JSON.stringify(value)
             } catch (e) {}
-            
+
             return {
               type: log.type || 'log',
               value: this.stripLargeHexFromText(value),
