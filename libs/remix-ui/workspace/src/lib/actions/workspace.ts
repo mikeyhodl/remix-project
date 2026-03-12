@@ -701,35 +701,15 @@ export const loadWorkspacePreset = async (template: WorkspaceTemplate = 'remixDe
       if (files) {
         for (const file in files) {
           try {
-            // Special handling for remix.config.json - merge with existing config instead of creating numbered duplicates
+            const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
             if (file === 'remix.config.json') {
-              const exists = await plugin.fileManager.exists(file)
               const remixConfig = JSON.parse(files[file])
 
               remixConfig.project = template
               remixConfig.version = projectVersion
               remixConfig.IDE = window.location.hostname
-
-              if (exists) {
-                // mcp merge
-                try {
-                  const existingContent = await plugin.fileManager.readFile(file)
-                  const existingConfig = JSON.parse(existingContent)
-                  const mergedConfig = { ...existingConfig, ...remixConfig }
-                  await writeToTargetWorkspace(file, JSON.stringify(mergedConfig, null, 2))
-                } catch (parseError) {
-                  console.warn('Existing remix.config.json is invalid, overwriting it:', parseError)
-                  await writeToTargetWorkspace(file, JSON.stringify(remixConfig, null, 2))
-                }
-              } else {
-                await writeToTargetWorkspace(file, JSON.stringify(remixConfig, null, 2))
-              }
-
-              if (isReadme(file)) {
-                openPath = file
-              }
+              await writeToTargetWorkspace(uniqueFileName, JSON.stringify(remixConfig, null, 2))
             } else {
-              const uniqueFileName = await createNonClashingNameAsync(file, plugin.fileManager)
               await writeToTargetWorkspace(uniqueFileName, files[file])
             }
             if ((uniqueFileName.indexOf('contracts/') >= 0 || uniqueFileName.indexOf('src/') >= 0) && !openPath) {
