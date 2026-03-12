@@ -431,7 +431,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                   .join('\n');
               };
 
-              let toolResultContent = extractContent(result);
+              // let toolResultContent = extractContent(result);
 
               // Compress successful results to save tokens for huge mcp payloads
               // const isSuccess = !result.isError;
