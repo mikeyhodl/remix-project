@@ -11,8 +11,11 @@ export interface ModelAccess {
 }
 
 export function useModelAccess(): ModelAccess {
-  const [allowedModels, setAllowedModels] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [allowedModels, setAllowedModels] = useState<string[]>(() => {
+    const defaultModel = getDefaultModel()
+    return [defaultModel.id, 'ollama']
+  })
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchModelAccess = async () => {

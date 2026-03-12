@@ -176,9 +176,10 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             }}
           >
             <button className={`btn fw-light rounded-4 text-nowrap ${themeTracker && themeTracker.name.toLowerCase() === 'light' ? 'btn-light text-light-emphasis' : 'btn-remix-dark'}`}
+              data-id="remix-ai-workspace-generate"
               onClick={handleGenerateWorkspace}>
               <i className="fas fa-plus me-1"></i>
-              <span className="text-nowrap">New workspace</span>
+              <span className="text-nowrap">New Workspace</span>
             </button>
           </div>
         </div>

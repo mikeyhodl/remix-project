@@ -55,9 +55,6 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
           <h4 className="mb-2 fw-bold" style={{ color: isDark ? 'white' : 'black' }}>
             <FormattedMessage id="homeTab.newToRemix" defaultMessage="First time in Remix? here's what you can do" />
           </h4>
-          <p className="mb-0 small" style={{ color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }}>
-            <FormattedMessage id="home.firstTimeUserSubtitle" />
-          </p>
         </div>
 
         {/* Action Cards */}

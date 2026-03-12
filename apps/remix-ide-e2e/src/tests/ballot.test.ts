@@ -32,7 +32,7 @@ module.exports = {
       .clickFunction(0, 0, ['"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"'])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
   },
@@ -121,7 +121,8 @@ module.exports = {
       .assert.textContains('*[data-id="default-workspace-name-span"]', 'WORKSPACE_REMIX_DEFAULT', 'Workspace name is correct')
       .pause(1000)
       .click('*[data-id="validateWorkspaceButton"]')
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .frameParent()
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 60000)
       .addFile('contracts/lib/storage/src/Storage.sol', { content: storageContract })
       .addFile('remappings.txt', { content: 'storage=contracts/lib/storage/src' })
       .addFile('contracts/Retriever.sol', { content: retrieverContract })

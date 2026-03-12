@@ -79,6 +79,26 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
         dispatch({ type: 'SET_LAST_LOADED_WORKSPACE', payload: workspaceName })
       }
     })
+
+    plugin.on('solidity', 'compilationFailed', (_, source) => {
+      Object.keys(source.sources).forEach((filePath) => {
+        dispatch({ type: 'SET_COMPILING_FAILED', payload: filePath })
+      })
+    })
+
+    plugin.on('blockchain', 'networkStatus', async ({ error, network }) => {
+      if (error) {
+        const netUI = 'can\'t detect network'
+
+        return dispatch({ type: 'SET_DETECTED_NETWORK', payload: netUI })
+      }
+      const networkProvider = await plugin.call('udappEnv', 'getSelectedProvider')
+      const isVM = networkProvider.startsWith('vm') ? true : false
+      const netUI = !isVM ? `${network.name} (${network.id || '-'}) network` : `Remix VM ${networkProvider?.replace('vm-', '')}`
+
+      dispatch({ type: 'SET_DETECTED_NETWORK', payload: netUI })
+    })
+
     // plugin.on('desktopHost', 'chainChanged', (context) => {
     //   //console.log('desktopHost chainChanged', context)
     //   fillAccountsList(plugin, dispatch)
@@ -136,6 +156,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       plugin.off('foundry', 'compilationFinished')
       plugin.off('truffle', 'compilationFinished')
       plugin.off('filePanel', 'setWorkspace')
+      plugin.off('solidity', 'compilationFailed')
     }
   }, [])
 

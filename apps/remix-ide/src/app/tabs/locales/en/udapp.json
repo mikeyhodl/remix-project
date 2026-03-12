@@ -51,8 +51,8 @@
   "udapp.signature": "signature",
   "udapp.forkStateTitle": "Fork VM state",
   "udapp.forkStateLabel": "New environment name",
-  "udapp.forkVmStateDesc1":"Forking state will create a new environment with same state as selected environment",
-  "udapp.forkVmStateDesc2":"After forking, new environment will be pinned and selected automatically. It can be unpinned or deleted using Envionment Explorer",
+  "udapp.forkVmStateDesc1":"Forking state will create a new environment with the same state as the selected environment",
+  "udapp.forkVmStateDesc2":"After forking, the new environment will be pinned and selected automatically. It can be unpinned or deleted using Environment Explorer",
   "udapp.fork": "Fork",
   "udapp.resetVmStateTitle": "Environment state reset",
   "udapp.resetVmStateDesc1": "Resetting the state of this VM will delete the associated transaction details in this Workspace.",
@@ -235,7 +235,7 @@
   "udapp.fromLabel": "From:",
   "udapp.toLabel": "To:",
   "udapp.dataLabel": "Data:",
-  "udapp.gweiGasPriceInfo": "visit https://ethgasstation.info for current gas price info.",
+  "udapp.gweiGasPriceInfo": "Visit https://ethgasstation.info for current gas price info.",
 
   "udapp._comment_universalDappUI_new": "new keys for universalDappUI.tsx",
   "udapp.calldataLabel": "CALLDATA",
@@ -263,7 +263,7 @@
   "udapp.ownerAddressForSmartAccount": "Owner address for Smart Account",
 
   "udapp._comment_fork_new": "new keys for forkUI.tsx",
-  "udapp.forkingStateDescription": "Forking state will create a new environment with same state as selected environment.",
+  "udapp.forkingStateDescription": "Forking state will create a new environment with the same state as the selected environment.",
   "udapp.forkNameLabel": "Fork name",
 
   "udapp._comment_resetUI_new": "new keys for resetUI.tsx",

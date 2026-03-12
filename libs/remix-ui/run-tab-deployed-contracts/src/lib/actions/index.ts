@@ -91,7 +91,7 @@ export async function loadPinnedContracts (plugin: DeployedContractsPlugin, disp
 
           await plugin.call('terminal', 'log', { type: 'error', value: msg })
         } else {
-          if (pinnedContractObj) plugin.addInstance(pinnedContractObj.address, pinnedContractObj.abi, pinnedContractObj.name, null, pinnedContractObj.pinnedAt, pinnedContractObj.timestamp)
+          if (pinnedContractObj) await plugin.addInstance(pinnedContractObj.address, pinnedContractObj.abi, pinnedContractObj.name, null, pinnedContractObj.pinnedAt, pinnedContractObj.timestamp)
         }
       }
       if (codeError) {

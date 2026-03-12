@@ -61,6 +61,38 @@ export class CodeExecutor {
       }
 
       const executionTime = Date.now() - startTime;
+      let payload: any;
+
+      if (this.toolCallRecords.length > 0) {
+        const errorRecords = this.toolCallRecords.filter(record => record.result?.isError);
+
+        if (errorRecords.length > 0) {
+          payload = errorRecords.map(record => ({
+            tool: record.name,
+            error: record.result.content
+              .map((c: any) => c.text || JSON.stringify(c))
+              .join('\n')
+          }));
+        } else if (this.toolCallRecords.length === 1) {
+          // const record = this.toolCallRecords[0];
+          // payload = record.result.content
+          //   .map((c: any) => c.text || JSON.stringify(c))
+          //   .join('\n');
+          payload = result
+
+        } else {
+          // payload = this.toolCallRecords.map(record => ({
+          //   tool: record.name,
+          //   result: record.result.content
+          //     .map((c: any) => c.text || JSON.stringify(c))
+          //     .join('\n')
+          // }));
+          payload = result
+        }
+      } else {
+        // No tools called
+        payload = result;
+      }
 
       return {
         success: true,
@@ -68,7 +100,7 @@ export class CodeExecutor {
         executionTime,
         toolsCalled: [...this.toolsCalled],
         toolCallRecords: [...this.toolCallRecords],
-        returnValue: result
+        returnValue: payload
       };
 
     } catch (error) {
@@ -76,13 +108,16 @@ export class CodeExecutor {
         await Promise.all(this.pendingToolCalls);
       }
       const executionTime = Date.now() - startTime;
+      const errorMessage = error.message || String(error);
+
       return {
         success: false,
         output: this.consoleOutput.join('\n'),
-        error: error.message || String(error),
+        error: errorMessage,
         executionTime,
         toolsCalled: [...this.toolsCalled],
-        toolCallRecords: [...this.toolCallRecords]
+        toolCallRecords: [...this.toolCallRecords],
+        returnValue: `Error: ${errorMessage}`
       };
     }
   }
@@ -121,39 +156,59 @@ export class CodeExecutor {
         self.toolsCalled.push(name);
 
         const toolPromise = (async () => {
-          const result = await self.executeToolCallback({ name, arguments: args });
-          const toolExecutionTime = Date.now() - toolStartTime;
-
-          // Check if result content looks like double-escaped JSON and parse it once
           try {
-            if (result?.content) {
-              for (const contentItem of result.content) {
-                if (contentItem?.text && typeof contentItem.text === 'string') {
-                  // Check if text looks like double-escaped JSON (starts and ends with quotes, contains escaped quotes)
-                  const text = contentItem.text.trim();
-                  if (text.startsWith('"') && text.endsWith('"') && text.includes('\\"')) {
-                    try {
-                      // Parse once to remove one layer of escaping
-                      contentItem.text = JSON.parse(text);
-                    } catch (e) {
-                      // If parsing fails, leave the text as is
+            const result = await self.executeToolCallback({ name, arguments: args });
+            const toolExecutionTime = Date.now() - toolStartTime;
+
+            // refine result for double-escaped JSON and parse it once
+            try {
+              if (result?.content) {
+                for (const contentItem of result.content) {
+                  if (contentItem?.text && typeof contentItem.text === 'string') {
+                    const text = contentItem.text.trim();
+                    if (text.startsWith('"') && text.endsWith('"') && text.includes('\\"')) {
+                      try {
+                        contentItem.text = JSON.parse(text);
+                      } catch (e) { // silently
+                      }
                     }
                   }
                 }
               }
+            } catch (e) {
+              console.warn(`[MCP Code mode] - Failed to parse tool output content for tool "${name}":`, e)
             }
-          } catch (e) {
-            console.warn(`[MCP Code mode] - Failed to parse tool output content for tool "${name}":`, e)
+
+            self.toolCallRecords.push({
+              name,
+              arguments: args,
+              result,
+              executionTime: toolExecutionTime
+            });
+
+            // Return result even if isError=true - let callMCPTool handle it
+            return result;
+          } catch (error) {
+            // Tool execution threw an exception - record the error
+            const toolExecutionTime = Date.now() - toolStartTime;
+            const errorResult: IMCPToolResult = {
+              content: [{
+                type: 'text',
+                text: `Tool execution exception: ${error.message || String(error)}`
+              }],
+              isError: true
+            };
+
+            self.toolCallRecords.push({
+              name,
+              arguments: args,
+              result: errorResult,
+              executionTime: toolExecutionTime
+            });
+
+            // Return error result instead of throwing - let callMCPTool check isError
+            return errorResult;
           }
-
-          self.toolCallRecords.push({
-            name,
-            arguments: args,
-            result,
-            executionTime: toolExecutionTime
-          });
-
-          return result;
         })();
 
         self.pendingToolCalls.push(toolPromise);
@@ -182,7 +237,21 @@ export class CodeExecutor {
 
       const helperFunctions = `
         async function callMCPTool(name, args) {
-          return await executeToolCall(name, args || {});
+          try {
+            const result = await executeToolCall(name, args || {});
+
+            // Stop any further execution if the tool call returned an error
+            if (result && result.isError === true) {
+              const errorMessage = result.content
+                ? result.content.map(c => c.text || JSON.stringify(c)).join('\\n')
+                : 'Tool call failed';
+              throw new Error(\`MCP Tool '\${name}' failed: \${errorMessage}\`);
+            }
+
+            return result;
+          } catch (error) {
+            throw error;
+          }
         }
       `;
 

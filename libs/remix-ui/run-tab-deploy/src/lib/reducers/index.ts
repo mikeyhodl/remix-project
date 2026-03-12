@@ -5,7 +5,7 @@ export const deployInitialState: DeployWidgetState = {
     contractList: []
   },
   selectedContractIndex: 0,
-  value: 0,
+  value: '0',
   valueUnit: 'wei',
   gasLimit: 0,
   gasPriceStatus: false,
@@ -14,7 +14,8 @@ export const deployInitialState: DeployWidgetState = {
   maxPriorityFee: '.0001',
   baseFeePerGas: '',
   gasPrice: '',
-  lastLoadedWorkspace: null
+  lastLoadedWorkspace: null,
+  networkDetected: 'can\'t detect network'
 }
 
 export const deployReducer = (state = deployInitialState, action: Actions): DeployWidgetState => {
@@ -140,6 +141,26 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     }
   }
 
+  case 'SET_COMPILING_FAILED': {
+    const contractList = state.contracts.contractList.map((contract) => {
+      if (contract.filePath === action.payload) {
+        return {
+          ...contract,
+          isCompiling: false,
+          isCompiled: false
+        }
+      }
+      return contract
+    })
+    return {
+      ...state,
+      contracts: {
+        ...state.contracts,
+        contractList
+      }
+    }
+  }
+
   case 'SET_GAS_PRICE_STATUS': {
     return {
       ...state,
@@ -193,6 +214,13 @@ export const deployReducer = (state = deployInitialState, action: Actions): Depl
     return {
       ...state,
       lastLoadedWorkspace: action.payload
+    }
+  }
+
+  case 'SET_DETECTED_NETWORK': {
+    return {
+      ...state,
+      networkDetected: action.payload
     }
   }
 

@@ -114,6 +114,23 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                         msg.content
                       )}
                     </div>
+
+                    {/* Copy button for user messages */}
+                    {msg.role === 'user' && (
+                      <div className="user-message-actions text-end mt-2">
+                        <CustomTooltip tooltipText="Copy message" placement="top">
+                          <span
+                            role="button"
+                            aria-label="copy message"
+                            className="message-copy-btn"
+                            onClick={() => copy(msg.content)}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <i className="far fa-copy"></i>
+                          </span>
+                        </CustomTooltip>
+                      </div>
+                    )}
                   </div>
                 )}
                 {msg.role === 'assistant' && msg.isExecutingTools && (
@@ -133,6 +150,18 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                 {/* Feedback buttons */}
                 {msg.role === 'assistant' && (
                   <div className="feedback text-end mt-2 me-1">
+                    <CustomTooltip tooltipText="Copy message" placement="top">
+                      <span
+                        role="button"
+                        aria-label="copy message"
+                        className="message-copy-btn me-3"
+                        onClick={() => copy(msg.content)}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <i className="far fa-copy"></i>
+                      </span>
+                    </CustomTooltip>
+
                     <CustomTooltip tooltipText="Good Response" placement="top">
                       <span
                         role="button"

@@ -25,10 +25,10 @@ module.exports = {
       .createContract('')
       .assert.elementPresent('*[data-id="unpinnedInstance0xd9145CCE52D386f254917e481eB44e9943F39138"]')
       .assert.textContains('*[data-id="deployedContractsBadge"]', '1')
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-regular')
-      .click('*[data-id="pinDeployedContract"]')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-regular')
+      .click('*[data-id="pinDeployedContract-0"]')
       .pause(500)
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-solid')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-solid')
       .assert.elementPresent('*[data-id="pinnedInstance0xd9145CCE52D386f254917e481eB44e9943F39138"]')
   },
   'Test pinned contracts loading on environment change #group1': function (browser: NightwatchBrowser) {
@@ -85,7 +85,7 @@ module.exports = {
       .clickFunction(0, 0, ['35'])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { "uint256 num": "35" }
         })
       .clickFunction(0, 1)
@@ -97,16 +97,16 @@ module.exports = {
   },
   'Unpin & interact #group1': function (browser: NightwatchBrowser) {
     browser
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-solid')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-solid')
       .execute(function () {
-        const pinIcon = document.querySelector(`[data-id="pinDeployedContract"]`) as HTMLElement
+        const pinIcon = document.querySelector(`[data-id="pinDeployedContract-0"]`) as HTMLElement
         if (pinIcon) {
           pinIcon.scrollIntoView({ behavior: 'auto', block: 'center' })
         }
       })
-      .click('*[data-id="pinDeployedContract"]')
+      .click('*[data-id="pinDeployedContract-0"]')
       .pause(500)
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-regular')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-regular')
       .clickFunction(0, 1)
       .testFunction('last',
         {
@@ -116,7 +116,7 @@ module.exports = {
       .clickFunction(0, 0, ['55'])
       .testFunction('last',
         {
-          status: '1 Transaction mined and execution succeed',
+          status: '1 Transaction mined and execution completed',
           'decoded input': { "uint256 num": "55" }
         })
       .clickFunction(0, 1)
@@ -128,16 +128,16 @@ module.exports = {
   },
   'Re-pin & remove from list #group1': function (browser: NightwatchBrowser) {
     browser
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-regular')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-regular')
       .execute(function () {
-        const pinIcon = document.querySelector(`[data-id="pinDeployedContract"]`) as HTMLElement
+        const pinIcon = document.querySelector(`[data-id="pinDeployedContract-0"]`) as HTMLElement
         if (pinIcon) {
           pinIcon.scrollIntoView({ behavior: 'auto', block: 'center' })
         }
       })
-      .click('*[data-id="pinDeployedContract"]')
+      .click('*[data-id="pinDeployedContract-0"]')
       .pause(500)
-      .assert.attributeContains('*[data-id="pinDeployedContract"]', 'class', 'fa-solid')
+      .assert.attributeContains('*[data-id="pinDeployedContract-0"]', 'class', 'fa-solid')
       .assert.textContains('*[data-id="deployedContractsBadge"]', '1')
       .clickLaunchIcon('udapp')
       .clearDeployedContract(0)

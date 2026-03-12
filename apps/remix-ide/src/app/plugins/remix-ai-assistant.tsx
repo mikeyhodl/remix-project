@@ -35,6 +35,7 @@ export class RemixAIAssistant extends ViewPlugin {
   conversations: ConversationMetadata[] = []
   showHistorySidebar: boolean = false
   isMaximized: boolean = false
+  private _initializing: boolean = false
 
   constructor() {
     super(profile)
@@ -80,32 +81,38 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async initializeStorage() {
-    // Create IndexedDB backend
-    const indexedDBBackend = new IndexedDBChatHistoryBackend()
+    this._initializing = true
+    try {
+      // Create IndexedDB backend
+      const indexedDBBackend = new IndexedDBChatHistoryBackend()
 
-    // Initialize storage manager with local backend only for now
-    // Cloud backend can be added later
-    this.storageManager = new ChatHistoryStorageManager(indexedDBBackend)
-    await this.storageManager.init()
+      // Initialize storage manager with local backend only for now
+      // Cloud backend can be added later
+      this.storageManager = new ChatHistoryStorageManager(indexedDBBackend)
+      await this.storageManager.init()
 
-    // Initialize ChatHistory with storage
-    await ChatHistory.init(this.storageManager)
+      // Initialize ChatHistory with storage
+      await ChatHistory.init(this.storageManager)
 
-    // Load conversations
-    await this.loadConversations()
+      // Load conversations
+      await this.loadConversations()
 
-    // Check for existing conversation or create new one
-    if (this.conversations.length > 0) {
-      // Load the most recent conversation
-      const recent = this.conversations[0]
-      await this.loadConversation(recent.id)
-    } else {
-      // Create first conversation
-      await this.newConversation()
+      // Check for existing conversation or create new one
+      if (this.conversations.length > 0) {
+        // Load the most recent conversation
+        const recent = this.conversations[0]
+        await this.loadConversation(recent.id)
+      } else {
+        // Create first conversation
+        await this.newConversation()
+      }
+
+      // Run auto-archive check
+      await this.autoArchiveCheck()
+    } finally {
+      this._initializing = false
+      this.renderComponent()
     }
-
-    // Run auto-archive check
-    await this.autoArchiveCheck()
   }
 
   async loadConversations() {
@@ -320,12 +327,23 @@ export class RemixAIAssistant extends ViewPlugin {
     }
   }
 
+  getInitialState() {
+    return {
+      queuedMessage: this.queuedMessage,
+      conversations: this.conversations,
+      currentConversationId: this.currentConversationId,
+      showHistorySidebar: this.showHistorySidebar,
+      isMaximized: this.isMaximized
+    }
+  }
+
   setDispatch(dispatch: React.Dispatch<any>) {
     this.dispatch = dispatch
     this.renderComponent()
   }
 
   renderComponent() {
+    if (this._initializing) return
     this.dispatch({
       queuedMessage: this.queuedMessage,
       conversations: this.conversations,

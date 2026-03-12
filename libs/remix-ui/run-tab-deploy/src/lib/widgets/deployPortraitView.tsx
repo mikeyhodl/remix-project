@@ -14,12 +14,12 @@ import { VerificationSettingsUI } from '../components/verificationSettingsUI'
 
 const txFormat = remixLib.execution.txFormat
 const txHelper = remixLib.execution.txHelper
+const queryParams = new remixLib.QueryParams()
 
 function DeployPortraitView() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(DeployAppContext)
   // TODO: Move all state to reducer
   const [isExpanded, setIsExpanded] = useState(true)
-  const [defaultProvider, setDefaultProvider] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [expandedInputs, setExpandedInputs] = useState<Set<number>>(new Set())
   const [inputValues, setInputValues] = useState<{[key: number]: string}>({})
@@ -37,11 +37,13 @@ function DeployPortraitView() {
   const intl = useIntl()
 
   useEffect(() => {
-    (async () => {
-      const defaultProvider = await plugin.call('udappEnv', 'getDefaultProvider')
+    const params: { deployProxy: boolean, upgradeProxy: boolean } = queryParams.get() as any
 
-      setDefaultProvider(defaultProvider)
-    })()
+    if (params.deployProxy) {
+      setDeployWithProxy(true)
+    } else if (params.upgradeProxy) {
+      setUpgradeWithProxy(true)
+    }
 
     plugin.on('udappEnv', 'providersChanged', (provider: Provider) => {
       setSelectedProvider(provider)
@@ -259,7 +261,7 @@ function DeployPortraitView() {
             <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="small text-secondary">{ selectedProvider && selectedProvider?.category ? `${selectedProvider.category} ${selectedProvider?.displayName}` : `Remix VM ${defaultProvider?.replace('vm-', '')}` }</span>
+            <span className="small text-secondary">{ widgetState.networkDetected }</span>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>
@@ -284,7 +286,7 @@ function DeployPortraitView() {
                           {selectedContract && !selectedContract?.isCompiled && !selectedContract?.isCompiling && (
                             <div
                               className="btn btn-primary d-flex align-items-center justify-content-center"
-                              data-id="compile-action"
+                              data-id="compile-deploy-tab"
                               role="button"
                               tabIndex={0}
                               style={{
@@ -301,12 +303,7 @@ function DeployPortraitView() {
                                 e.stopPropagation()
                                 if (selectedContract?.filePath) {
                                   dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
-                                  try {
-                                    await plugin.call('solidity', 'compile', selectedContract.filePath)
-                                  } catch (error) {
-                                    console.error('Compilation error: ', error)
-                                    dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
-                                  }
+                                  await plugin.call('solidity', 'compile', selectedContract.filePath)
                                 }
                               }}
                               onKeyDown={(e) => {
@@ -693,10 +690,13 @@ function DeployPortraitView() {
                     min="0"
                     className="form-control form-control-sm border-0"
                     placeholder="0"
-                    value={widgetState.value || ''}
+                    value={widgetState.value}
                     onChange={(e) => {
-                      const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
-                      dispatch({ type: 'SET_VALUE', payload: isNaN(value) ? 0 : Math.max(0, value) })
+                      const val = e.target.value === '0' ? '' : e.target.value
+                      // Only allow empty string or valid numeric strings
+                      if (val === '' || /^\d+$/.test(val)) {
+                        dispatch({ type: 'SET_VALUE', payload: val })
+                      }
                     }}
                     style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', flex: 1, paddingRight: '4rem' }}
                   />
@@ -775,7 +775,8 @@ function DeployPortraitView() {
                   onClick={handleDeployClick}
                   data-id="deployButton"
                   className="btn btn-primary w-100 py-2"
-                  style={{ fontSize: '1rem', fontWeight: '500' }}
+                  style={{ fontSize: '1rem', fontWeight: '500', cursor: selectedContract?.contractData === null ? 'not-allowed' : 'pointer' }}
+                  disabled={selectedContract?.contractData === null}
                 >
                   <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
                 </button>

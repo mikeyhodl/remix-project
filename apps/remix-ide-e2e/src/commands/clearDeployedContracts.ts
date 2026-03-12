@@ -15,7 +15,16 @@ class ClearDeployedContracts extends EventEmitter {
 
 function clearContracts (browser: NightwatchBrowser, callback: VoidFunction) {
   browser
-    .clickLaunchIcon('udapp')
+    .isVisible({
+      selector: "//*[@data-id='sidePanelSwapitTitle' and contains(.,'Deploy & run transactions')]",
+      locateStrategy: 'xpath',
+      suppressNotFoundErrors: true,
+      timeout: 1000
+    }, (okVisible) => {
+      if (!okVisible.value) {
+        browser.clickLaunchIcon('udapp')
+      }
+    })
     .waitForElementVisible('[data-id="deployedContractsContainer"]')
     .waitForElementVisible('[data-id="clearAllDeployedContracts"]')
     .pause(500)

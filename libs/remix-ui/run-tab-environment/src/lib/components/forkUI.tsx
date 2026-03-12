@@ -79,6 +79,7 @@ export function ForkUI() {
         </div>
         <div className="position-relative flex-fill">
           <input
+            data-id="forkInput"
             type="text"
             className="form-control"
             value={forkName}
@@ -88,6 +89,7 @@ export function ForkUI() {
             onKeyDown={handleKeyPress}
           />
           <button
+            data-id="btnForkState"
             className="btn btn-sm btn-primary"
             onClick={handleSubmit}
             disabled={widgetState.fork.isRequesting || !forkName.trim()}

@@ -5,7 +5,7 @@ import 'libs/remix-ui/remix-ai-assistant/src/css/remix-ai-assistant.css'
 import { RemixUIMainPanel } from '@remix-ui/panel'
 import MatomoDialog from './components/modals/matomo'
 import ManagePreferencesDialog from './components/modals/managePreferences'
-import OriginWarning from './components/modals/origin-warning'
+import { OriginWarning } from './components/modals/origin-warning'
 import DragBar from './components/dragbar/dragbar'
 import { AppProvider } from './context/provider'
 import { AuthProvider } from './context/auth-context'
@@ -16,13 +16,34 @@ import { IntlProvider } from 'react-intl'
 import { appReducer } from './reducer/app'
 import { appInitialState } from './state/app'
 import isElectron from 'is-electron'
-import { desktopConnectionType } from '@remix-api'
+import { desktopConnectionType, AppConfig } from '@remix-api'
 import { FloatingChatHistory } from './components/chatHistory/floatingChatHistory'
 import { appActionTypes } from './actions/app'
 
 interface IRemixAppUi {
   app: any
 }
+
+type AppConfigEntry = {
+  key: string
+  value: string | number | boolean | null
+}
+
+const normalizeAppConfig = (config: unknown): AppConfig => {
+  if (!config) return {}
+
+  if (Array.isArray(config)) {
+    return (config as AppConfigEntry[]).reduce((acc, entry) => {
+      if (entry && typeof entry.key === 'string') {
+        acc[entry.key] = entry.value === null ? undefined : entry.value
+      }
+      return acc
+    }, {} as AppConfig)
+  }
+
+  return config as AppConfig
+}
+
 const RemixApp = (props: IRemixAppUi) => {
   const [appReady, setAppReady] = useState<boolean>(false)
   const [showManagePreferencesDialog, setShowManagePreferencesDialog] = useState<boolean>(false)
@@ -47,6 +68,7 @@ const RemixApp = (props: IRemixAppUi) => {
     code: 'en',
     messages: {}
   })
+  const [appConfig, setAppConfig] = useState<AppConfig>({})
   const sidePanelRef = useRef(null)
   const iconPanelRef = useRef<HTMLDivElement>(null)
   const pinnedPanelRef = useRef(null)
@@ -143,6 +165,62 @@ const RemixApp = (props: IRemixAppUi) => {
       window.removeEventListener('rightSidePanelMaximized', handler)
     }
   }, [])
+
+  useEffect(() => {
+    const authPlugin = props.app?.authPlugin
+    if (!authPlugin) return
+
+    let isMounted = true
+    let isBound = false
+    let interval: number | null = null
+
+    const handleAppConfigChanged = (rawConfig: unknown) => {
+      if (!isMounted) return
+      setAppConfig(normalizeAppConfig(rawConfig))
+    }
+
+    const bindAndFetch = async (): Promise<boolean> => {
+      try {
+        const isActive = await authPlugin.call('manager', 'isActive', 'auth')
+        if (!isActive) return false
+
+        if (!isBound) {
+          authPlugin.on('auth', 'appConfigChanged', handleAppConfigChanged)
+          isBound = true
+        }
+
+        const rawConfig = await authPlugin.call('auth', 'getAppConfig')
+        handleAppConfigChanged(rawConfig)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    bindAndFetch().then((ready) => {
+      if (ready || !isMounted) return
+
+      interval = window.setInterval(async () => {
+        const nowReady = await bindAndFetch()
+        if (nowReady && interval) {
+          window.clearInterval(interval)
+          interval = null
+        }
+      }, 500)
+    })
+
+    return () => {
+      isMounted = false
+      if (interval) {
+        window.clearInterval(interval)
+      }
+      try {
+        authPlugin.off('auth', 'appConfigChanged')
+      } catch {
+        // ignore if plugin is already disposed
+      }
+    }
+  }, [props.app])
 
   function setListeners() {
     if (!props.app.desktopClientMode) {
@@ -249,8 +327,11 @@ const RemixApp = (props: IRemixAppUi) => {
     appState: appState,
     appStateDispatch: appStateDispatch,
     isAiWorkspaceBeingGenerated: isAiWorkspaceBeingGenerated,
-    setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated
+    setIsAiWorkspaceBeingGenerated: setIsAiWorkspaceBeingGenerated,
+    appConfig
   }
+
+  const showBetaTestRegisterWidget = appConfig['show_beta_test_register_widget'] !== false
 
   const iconPanelWidth = iconPanelRef.current?.offsetWidth ?? 50
   const sidePanelWidth = hideSidePanel ? 0 : ((sidePanelRef.current as HTMLDivElement | null)?.offsetWidth ?? 320)
@@ -259,27 +340,18 @@ const RemixApp = (props: IRemixAppUi) => {
   const preferredChatWidth = Math.round(
     viewportSize.width * (viewportSize.width < 768 ? 0.86 : viewportSize.width < 1280 ? 0.3 : 0.24)
   )
-  const minChatWidth = 260
-  const maxChatWidth = 320
-  const rightViewportPadding = 10
-  const preferredLeft = iconPanelWidth + sidePanelWidth + horizontalSpacing
-  const availableChatWidth = Math.max(minChatWidth, viewportSize.width - preferredLeft - rightViewportPadding)
-  const floatingChatWidth = Math.min(
-    Math.max(preferredChatWidth, minChatWidth),
-    Math.min(maxChatWidth, availableChatWidth)
-  )
-  const maxLeft = Math.max(12, viewportSize.width - floatingChatWidth - rightViewportPadding)
-  const floatingChatLeft = Math.min(preferredLeft, maxLeft)
-  const preferredTop = verticalSpacing
-  const maxTop = Math.max(12, viewportSize.height - 220)
-  const floatingChatTop = Math.min(preferredTop, maxTop)
+
+  const chatWidthFraction = viewportSize.width < 768 ? 0.86 : viewportSize.width < 1920 ? 0.22 : 0.18
+  const floatingChatWidth = Math.max(260, Math.round(viewportSize.width * chatWidthFraction))
   const floatingChatStyle = useMemo<React.CSSProperties>(() => ({
+    position: 'fixed',
     overflow: 'hidden',
-    top: floatingChatTop,
-    left: floatingChatLeft,
+    top: '3rem',
+    right: '0.8rem',
     width: `${floatingChatWidth}px`,
-    height: '90vh'
-  }), [floatingChatTop, floatingChatLeft, floatingChatWidth])
+    height: '92vh',
+    zIndex: 1050
+  }), [floatingChatWidth])
   const [showArchived, setShowArchived] = useState(false);
 
   // Memoize callbacks to prevent unnecessary re-renders
@@ -307,17 +379,17 @@ const RemixApp = (props: IRemixAppUi) => {
         <onLineContext.Provider value={online}>
           <AuthProvider plugin={props.app.authPlugin}>
             <AppProvider value={value}>
-              <OriginWarning></OriginWarning>
               <MatomoDialog hide={!appReady} managePreferencesFn={() => setShowManagePreferencesDialog(true)}></MatomoDialog>
               {showManagePreferencesDialog && <ManagePreferencesDialog></ManagePreferencesDialog>}
               <div className="d-flex flex-column col-12 vh-100">
+                <OriginWarning />
                 {!props.app.desktopClientMode && (
                   <div className='top-bar'>
                     {props.app.topBar.render()}
                   </div>
                 )}
-                <div className={`remixIDE ${appReady ? '' : 'd-none'}`} data-id="remixIDE">
-                  {showAiChatHistory ? <div className={`position-absolute z-3 ${themeTracker.name.toLowerCase() === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'} rounded-3 p-1`} style={floatingChatStyle}>
+                <div className={`remixIDE ${appReady ? '' : 'd-none'} ${showAiChatHistory ? 'chat-history-open' : ''}`} data-id="remixIDE">
+                  {showAiChatHistory ? <div className={`${themeTracker.name.toLowerCase() === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'} rounded-3 p-1`} style={floatingChatStyle}>
                     <FloatingChatHistory
                       conversations={props.app.remixAiAssistant.conversations}
                       currentConversationId={props.app.remixAiAssistant.currentConversationId}
@@ -392,7 +464,7 @@ const RemixApp = (props: IRemixAppUi) => {
               }
               {props.app.invitationManager.render()}
               {props.app.membershipRequest.render()}
-              {props.app.betaCornerWidget.render()}
+              {showBetaTestRegisterWidget && props.app.betaCornerWidget.render()}
             </AppProvider>
           </AuthProvider>
         </onLineContext.Provider>
