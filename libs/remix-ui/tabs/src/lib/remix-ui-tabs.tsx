@@ -870,7 +870,7 @@ export const TabsUI = (props: TabsUIProps) => {
       // Wait a bit for the panel to open and then send the debugging prompt
       setTimeout(async () => {
         const message = 'Give me more info about current debugging session'
-        await props.plugin.call('remixAI', 'chatPipe', 'code_explaining', '', '', message)
+        await props.plugin.call('remixaiassistant', 'chatPipe', message)
       }, 500)
     } catch (err) {
       console.error('Failed to open RemixAI:', err)
