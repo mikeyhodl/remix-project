@@ -375,3 +375,9 @@ export const extractRecorderTimestamp = (value: any): string | null => {
   }
   return null
 }
+
+export const formatBalance = (balance: string | number, decimals: number = 3): string => {
+  const num = parseFloat(balance.toString())
+  const multiplier = Math.pow(10, decimals)
+  return (Math.floor(num * multiplier) / multiplier).toString()
+}

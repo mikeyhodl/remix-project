@@ -77,7 +77,8 @@ export interface ActionPayloadTypes {
   SET_DELEGATION: { account: string, address: string },
   REMOVE_DELEGATION: string,
   SET_DEPLOYED_CONTRACTS_COUNT: number
-  SET_TRANSACTION_RECORDER_COUNT: number
+  SET_TRANSACTION_RECORDER_COUNT: number,
+  SET_ACCOUNT_BALANCE: { address: string, balance: string }
 }
 export interface Action<T extends keyof ActionPayloadTypes> {
   type: T

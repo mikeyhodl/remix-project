@@ -5,6 +5,7 @@ import { widgetInitialState, widgetReducer } from './reducers'
 import EnvironmentPortraitView from './widgets/envPortraitView'
 import { addFVSProvider, addProvider, getAccountsList, loadAllDelegations, registerInjectedProvider } from './actions'
 import { ProviderDetailsEvent } from './types'
+import { formatBalance } from '@remix-ui/helper'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { EnvironmentPlugin } from 'apps/remix-ide/src/app/udapp/udappEnv'
 
@@ -119,6 +120,16 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       dispatch({ type: 'SET_TRANSACTION_RECORDER_COUNT', payload: transactions.length })
     })
 
+    plugin.on('blockchain', 'transactionExecuted', async (error, address: string) => {
+      if (error) return
+
+      if (address) {
+        const balance = await plugin.call('blockchain', 'getBalanceInEther', address)
+
+        if (balance) dispatch({ type: 'SET_ACCOUNT_BALANCE', payload: { address, balance: formatBalance(balance, 3) } })
+      }
+    })
+
     // Cleanup function to remove event listeners when component unmounts
     return () => {
       plugin.off('filePanel', 'workspaceInitializationCompleted')
@@ -126,6 +137,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       plugin.off('blockchain', 'networkStatus')
       plugin.off('udappDeployedContracts', 'deployedInstanceUpdated')
       plugin.off('udappTransactions', 'transactionRecorderUpdated')
+      plugin.off('blockchain', 'transactionExecuted')
     }
   }, [])
 

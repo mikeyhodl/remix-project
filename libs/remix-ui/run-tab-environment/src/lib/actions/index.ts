@@ -12,6 +12,7 @@ import { BrowserProvider, BaseWallet, SigningKey, isAddress } from "ethers"
 import { toChecksumAddress, bytesToHex, isZeroAddress } from '@ethereumjs/util'
 import { isAccountDeleted, getAccountAlias, deleteAccount as deleteAccountFromStorage, setAccountAlias, clearAccountPreferences, getNextAvailableAccountNumber } from '../utils/accountStorage'
 import { eip7702Constants } from '@remix-project/remix-lib'
+import { formatBalance } from '@remix-ui/helper'
 export * from "./providers"
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { EnvironmentPlugin } from 'apps/remix-ide/src/app/udapp/udappEnv'
@@ -172,20 +173,20 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
       defaultAccounts.push({
         alias: alias,
         account: account,
-        balance: parseFloat(balance).toFixed(3),
+        balance: formatBalance(balance, 3),
         symbol: plugin.blockchain['networkNativeCurrency'].symbol
       })
     else
       defaultAccounts.push({
         alias: alias,
         account: account,
-        balance: parseFloat(balance).toFixed(3),
+        balance: formatBalance(balance, 3),
         symbol: plugin.blockchain['networkNativeCurrency'].symbol
       })
     if (safeAddresses.length && safeAddresses.includes(account)) smartAccounts.push({
       alias: alias,
       account: account,
-      balance: parseFloat(balance).toFixed(3)
+      balance: formatBalance(balance, 3)
     })
   }
   dispatch({ type: 'SET_ACCOUNTS', payload: defaultAccounts })
