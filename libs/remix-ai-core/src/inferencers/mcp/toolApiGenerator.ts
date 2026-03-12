@@ -4,7 +4,8 @@ export class ToolApiGenerator {
 
   generateAPIDescription(): string {
     return `
-Use callMCPTool(toolName, args) to call tools. You can perform multiple tasks by chaining tool calls.
+Use callMCPTool(toolName, args) to call tools. You can only perform one single task or tool call sequentially. 
+Do not allow chaining tool calls. Do not write function or complex code.
 Each callMCPTool returns a object according to this interface
 export interface IMCPToolResult {
   content: Array<{
@@ -15,12 +16,10 @@ export interface IMCPToolResult {
   isError?: boolean;
 }
 
-Pay attention that the result of callMCPTool is not a string but an object. 
-You need to extract the text content from the returned object to use it in subsequent tool calls or for output.
-If required, do JSON.parse on the text content to convert it into an object before using it in the next tool call.
+Pay attention that the result of callMCPTool is not a string but an object in the occasion you have to process the tool result. 
 
 Example of correct usage:
-const toolReturnValue = (await callMCPTool('tool_name', { param1: 'value1' })).content[0].text
+const toolReturnValue = return (await callMCPTool('tool_name', { param1: 'value1' })).content[0].text
 
 Every tool returns a success or failed response following this schema:
 {
@@ -31,19 +30,32 @@ Every tool returns a success or failed response following this schema:
   isError: false
 };
 
-Examples:
+Example Taks:
 
-// Multiple tasks 1
-const compiled = await callMCPTool('solidity_compile', { file: 'contract.sol' });
+## Tasks 1
+return await callMCPTool('solidity_compile', { file: 'contract.sol' });
+
+## Task 2
 const deployed = await callMCPTool('deploy_contract', { contractName: 'MyToken' });
 return deployed
 
+
+## Task 3
 // With loops for batch operations
 const files = ['contracts/Token.sol', 'contracts/NFT.sol', 'contracts/DAO.sol'];
 for (const file of files) {
   await callMCPTool('solidity_compile', { file: 'contracts/' + file });
 }
-return "All Files compiled"
+
+## Sequantial tasks
+### Task 4.1 
+// first: compile a contract
+return await callMCPTool('solidity_compile', { file: 'contract.sol' });
+
+### Task 4.2
+// second: deploy a contract
+return await callMCPTool('deploy_contract', { contractName: 'MyToken' });
+
 
 Do not use remix.call(..) or any other method to interact with Remix, only use callMCPTool as described above.
 `;

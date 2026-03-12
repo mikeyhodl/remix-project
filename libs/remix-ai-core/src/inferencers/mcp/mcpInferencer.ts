@@ -486,6 +486,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
 
           if (toolMessages.length > 0) {
+            // Preserve existing tool messages from previous iterations
+            const existingToolsMessages = enhancedOptions.toolsMessages || [];
             let toolsMessagesArray = [];
 
             if (options.provider === 'anthropic') {
@@ -500,12 +502,14 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
               }));
 
               toolsMessagesArray = [
+                ...existingToolsMessages,
                 { role: 'assistant', content: toolUseBlocks },
                 { role: 'user', content: toolMessages }
               ];
             } else if (options.provider === 'openai' || options.provider === 'mistralai') {
               // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
               toolsMessagesArray = [
+                ...existingToolsMessages,
                 { role: 'assistant', tool_calls: tool_calls },
                 ...toolMessages
               ];
@@ -779,18 +783,7 @@ ${apiDescription}
 
 ${toolsList}
 
-IMPORTANT: Your code MUST always return a value. The return value will be sent back to you as the tool result. Also when wrapped with functions. All functions must be called in the code.
-Example: 
-async function updateContent() {
-    // some code
-    await callMCPTool('file_write', {
-        path: 'contracts/1_Storage.sol',
-        content: newContent
-    });
-    return 'File updated successfully.';
-}
-
-return updateContent();
+IMPORTANT: You always call callMCPTool as follow: return callMCPTool(...)
 
 Note: For detailed schema information about any tool, use the get_tool_schema tool.`,
       input_schema: {
