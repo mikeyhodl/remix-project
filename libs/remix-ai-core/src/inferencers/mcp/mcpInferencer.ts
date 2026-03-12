@@ -514,7 +514,7 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                 ...toolMessages
               ];
             }
-
+            console.log('piping tools message', toolsMessagesArray)
             const followUpOptions = {
               ...enhancedOptions,
               toolsMessages: toolsMessagesArray,
@@ -522,6 +522,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                 ? [...(enhancedOptions.chatHistory || []), { role: 'user', content: prompt }]
                 : enhancedOptions.chatHistory
             };
+
+            enhancedOptions.toolsMessages = toolsMessagesArray;
 
             if (options.provider === 'openai' || options.provider === 'mistralai') {
               return {
