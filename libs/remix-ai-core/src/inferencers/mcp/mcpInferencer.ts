@@ -486,7 +486,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
 
           if (toolMessages.length > 0) {
-            // Preserve existing tool messages from previous iterations
             const existingToolsMessages = enhancedOptions.toolsMessages || [];
             let toolsMessagesArray = [];
 
@@ -514,7 +513,6 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                 ...toolMessages
               ];
             }
-            console.log('piping tools message', toolsMessagesArray)
             const followUpOptions = {
               ...enhancedOptions,
               toolsMessages: toolsMessagesArray,
