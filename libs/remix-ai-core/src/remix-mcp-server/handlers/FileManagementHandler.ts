@@ -15,7 +15,11 @@ import {
   FileCopyArgs,
   DirectoryListArgs,
   FileOperationResult,
-  FileReplacerArgs
+  FileReplacerArgs,
+  FileReadChunkArgs,
+  FileReadChunkResult,
+  FileGrepArgs,
+  FileGrepResult
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
 
@@ -584,6 +588,267 @@ export class DirectoryListHandler extends BaseToolHandler {
 }
 
 /**
+ * File Read Chunk Tool Handler
+ */
+export class FileReadChunkHandler extends BaseToolHandler {
+  name = 'read_file_chunk';
+  description = `Read a chunk of lines from a file with pagination support.
+  Returns an object with content and metadata about the chunk position.
+  {
+    success: boolean,
+    path: string,
+    content: string,
+    startLine: number,
+    endLine: number,
+    totalLines: number,
+    hasMore: boolean
+  }`
+  inputSchema = {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'File path to read'
+      },
+      offset: {
+        type: 'number',
+        description: 'Starting line number (0-based, default: 0)',
+        default: 0
+      },
+      limit: {
+        type: 'number',
+        description: 'Number of lines to read (default: 100)',
+        default: 100
+      }
+    },
+    required: ['path']
+  };
+
+  getPermissions(): string[] {
+    return ['file:read'];
+  }
+
+  validate(args: FileReadChunkArgs): boolean | string {
+    const required = this.validateRequired(args, ['path']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, { 
+      path: 'string',
+      offset: 'number',
+      limit: 'number'
+    });
+    if (types !== true) return types;
+
+    if (args.offset !== undefined && args.offset < 0) {
+      return 'offset must be non-negative';
+    }
+
+    if (args.limit !== undefined && args.limit <= 0) {
+      return 'limit must be positive';
+    }
+
+    return true;
+  }
+
+  async execute(args: FileReadChunkArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const exists = await plugin.call('fileManager', 'exists', args.path);
+      if (!exists) {
+        return this.createErrorResult(`File not found: ${args.path}`);
+      }
+
+      const content = await plugin.call('fileManager', 'readFile', args.path);
+      const lines = content.split('\n');
+      const totalLines = lines.length;
+
+      const offset = args.offset || 0;
+      const limit = args.limit || 100;
+
+      if (offset >= totalLines) {
+        return this.createErrorResult(`Offset ${offset} exceeds file length ${totalLines}`);
+      }
+
+      const endIndex = Math.min(offset + limit, totalLines);
+      const chunkLines = lines.slice(offset, endIndex);
+      const chunkContent = chunkLines.join('\n');
+
+      const result: FileReadChunkResult = {
+        success: true,
+        path: args.path,
+        content: chunkContent,
+        startLine: offset,
+        endLine: endIndex - 1,
+        totalLines: totalLines,
+        hasMore: endIndex < totalLines
+      };
+
+      return this.createSuccessResult(result);
+    } catch (error) {
+      return this.createErrorResult(`Failed to read file chunk: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * File Grep Tool Handler
+ */
+export class FileGrepHandler extends BaseToolHandler {
+  name = 'grep_file';
+  description = `Search for pattern matches within a file using regular expressions.
+  Returns matching lines with optional context and line numbers.
+  {
+    success: boolean,
+    path: string,
+    pattern: string,
+    matches: Array<{
+      lineNumber: number,
+      line: string,
+      contextBefore?: string[],
+      contextAfter?: string[]
+    }>,
+    totalMatches: number,
+    truncated: boolean
+  }`
+  inputSchema = {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'File path to search in'
+      },
+      pattern: {
+        type: 'string',
+        description: 'Regular expression pattern to search for'
+      },
+      ignoreCase: {
+        type: 'boolean',
+        description: 'Case-insensitive matching (default: false)',
+        default: false
+      },
+      lineNumbers: {
+        type: 'boolean',
+        description: 'Include line numbers in results (default: true)',
+        default: true
+      },
+      contextBefore: {
+        type: 'number',
+        description: 'Number of context lines before each match (default: 0)',
+        default: 0
+      },
+      contextAfter: {
+        type: 'number',
+        description: 'Number of context lines after each match (default: 0)',
+        default: 0
+      },
+      maxMatches: {
+        type: 'number',
+        description: 'Maximum number of matches to return (default: 50)',
+        default: 50
+      }
+    },
+    required: ['path', 'pattern']
+  };
+
+  getPermissions(): string[] {
+    return ['file:read'];
+  }
+
+  validate(args: FileGrepArgs): boolean | string {
+    const required = this.validateRequired(args, ['path', 'pattern']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      path: 'string',
+      pattern: 'string',
+      ignoreCase: 'boolean',
+      lineNumbers: 'boolean',
+      contextBefore: 'number',
+      contextAfter: 'number',
+      maxMatches: 'number'
+    });
+    if (types !== true) return types;
+
+    if (args.contextBefore !== undefined && args.contextBefore < 0) {
+      return 'contextBefore must be non-negative';
+    }
+
+    if (args.contextAfter !== undefined && args.contextAfter < 0) {
+      return 'contextAfter must be non-negative';
+    }
+
+    if (args.maxMatches !== undefined && args.maxMatches <= 0) {
+      return 'maxMatches must be positive';
+    }
+
+    // Test if pattern is valid regex
+    try {
+      new RegExp(args.pattern, args.ignoreCase ? 'i' : '');
+    } catch (error) {
+      return `Invalid regular expression: ${error.message}`;
+    }
+
+    return true;
+  }
+
+  async execute(args: FileGrepArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const exists = await plugin.call('fileManager', 'exists', args.path);
+      if (!exists) {
+        return this.createErrorResult(`File not found: ${args.path}`);
+      }
+
+      const content = await plugin.call('fileManager', 'readFile', args.path);
+      const lines = content.split('\n');
+
+      const flags = args.ignoreCase ? 'gi' : 'g';
+      const regex = new RegExp(args.pattern, flags);
+
+      const matches = [];
+      const contextBefore = args.contextBefore || 0;
+      const contextAfter = args.contextAfter || 0;
+      const maxMatches = args.maxMatches || 50;
+
+      for (let i = 0; i < lines.length && matches.length < maxMatches; i++) {
+        const line = lines[i];
+        if (regex.test(line)) {
+          const match: any = {
+            lineNumber: i + 1, // 1-based line numbers
+            line: line
+          };
+
+          // Add context before
+          if (contextBefore > 0) {
+            const beforeStart = Math.max(0, i - contextBefore);
+            match.contextBefore = lines.slice(beforeStart, i);
+          }
+
+          // Add context after
+          if (contextAfter > 0) {
+            const afterEnd = Math.min(lines.length, i + contextAfter + 1);
+            match.contextAfter = lines.slice(i + 1, afterEnd);
+          }
+
+          matches.push(match);
+        }
+      }
+
+      const result: FileGrepResult = {
+        success: true,
+        path: args.path,
+        pattern: args.pattern,
+        matches: matches,
+        totalMatches: matches.length,
+        truncated: matches.length >= maxMatches
+      };
+
+      return this.createSuccessResult(result);
+    } catch (error) {
+      return this.createErrorResult(`Failed to grep file: ${error.message}`);
+    }
+  }
+}
+
+/**
  * File Exists Tool Handler
  */
 export class FileExistsHandler extends BaseToolHandler {
@@ -644,6 +909,8 @@ export function createFileManagementTools(): RemixToolDefinition[] {
   const directoryListHandler = new DirectoryListHandler();
   const fileExistsHandler = new FileExistsHandler();
   const fileReplacerHandler = new FileReplacerHandler();
+  const fileReadChunkHandler = new FileReadChunkHandler();
+  const fileGrepHandler = new FileGrepHandler();
 
   return [
     {
@@ -717,6 +984,22 @@ export function createFileManagementTools(): RemixToolDefinition[] {
       category: ToolCategory.FILE_MANAGEMENT,
       permissions: fileReplacerHandler.getPermissions(),
       handler: fileReplacerHandler
+    },
+    {
+      name: fileReadChunkHandler.name,
+      description: fileReadChunkHandler.description,
+      inputSchema: fileReadChunkHandler.inputSchema,
+      category: ToolCategory.FILE_MANAGEMENT,
+      permissions: fileReadChunkHandler.getPermissions(),
+      handler: fileReadChunkHandler
+    },
+    {
+      name: fileGrepHandler.name,
+      description: fileGrepHandler.description,
+      inputSchema: fileGrepHandler.inputSchema,
+      category: ToolCategory.FILE_MANAGEMENT,
+      permissions: fileGrepHandler.getPermissions(),
+      handler: fileGrepHandler
     }
   ];
 }
