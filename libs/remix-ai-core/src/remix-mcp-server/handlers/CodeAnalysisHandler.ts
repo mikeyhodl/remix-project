@@ -10,6 +10,7 @@ import {
   RemixToolDefinition
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
+import { CompilerAbstract } from "@remix-project/remix-solidity";
 
 export class SlitherHandler extends BaseToolHandler {
   name = 'slither_scan';
@@ -57,14 +58,15 @@ export class SlitherHandler extends BaseToolHandler {
         return this.createErrorResult(`File not found: ${args.filePath}`);
       }
 
-      const compilationResult: any = await plugin.call('compilerArtefacts' as any, 'getCompilerAbstract', args.filePath)
+      const compilationResult: CompilerAbstract = await plugin.call('compilerArtefacts' as any, 'getCompilerAbstract', args.filePath)
       if (!compilationResult || !compilationResult.source || !compilationResult.source.sources) {
         return this.createErrorResult('No compilation result available for the specified file path');
       }
 
+      const compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
+
       const flattened = await plugin.call('contractflattener', 'flattenContract', compilationResult.source, args.filePath, compilationResult.data, JSON.parse(compilationResult.input), false);
 
-      console.log('Flattened contract source code:\n', flattened);
       // Call external Slither endpoint
       const response = await fetch(endpointUrls.mcpCorsProxy8443 + '/slither/analyze', {
         method: 'POST',
@@ -73,6 +75,7 @@ export class SlitherHandler extends BaseToolHandler {
         },
         body: JSON.stringify({
           sources: { [args.filePath]: { content: flattened } },
+          version: compilerConfig?.currentVersion
         })
       });
 
