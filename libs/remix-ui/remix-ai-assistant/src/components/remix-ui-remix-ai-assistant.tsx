@@ -916,8 +916,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [])
 
-  console.log('is ai assistant maximized:', isAiChatMaximized)
-
   return (
     <div
       className="d-flex flex-column w-100 h-100"
