@@ -157,6 +157,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       plugin.off('truffle', 'compilationFinished')
       plugin.off('filePanel', 'setWorkspace')
       plugin.off('solidity', 'compilationFailed')
+      plugin.off('blockchain', 'networkStatus')
     }
   }, [])
 

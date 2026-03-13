@@ -76,23 +76,23 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         if (!isElectron()) window.dispatchEvent(new Event("eip6963:requestProvider"))
         dispatch({ type: 'COMPLETED_LOADING_ALL_PROVIDERS', payload: null })
 
+        plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
+          const ssExists = await plugin.call('fileManager', 'exists', '.states/forked_states')
+          if (ssExists) {
+            const savedStatesDetails = await plugin.call('fileManager', 'readdir', '.states/forked_states')
+            const savedStatesFiles = Object.keys(savedStatesDetails)
+            let pos = 10
+            for (const filePath of savedStatesFiles) {
+              pos += 1
+              await addFVSProvider(filePath, pos, plugin, dispatch)
+            }
+          }
+        })
+
         // Mark as initialized at plugin level to prevent re-initialization
         plugin.markAsInitialized()
       })()
     }
-
-    plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-      const ssExists = await plugin.call('fileManager', 'exists', '.states/forked_states')
-      if (ssExists) {
-        const savedStatesDetails = await plugin.call('fileManager', 'readdir', '.states/forked_states')
-        const savedStatesFiles = Object.keys(savedStatesDetails)
-        let pos = 10
-        for (const filePath of savedStatesFiles) {
-          pos += 1
-          await addFVSProvider(filePath, pos, plugin, dispatch)
-        }
-      }
-    })
 
     plugin.on('blockchain', 'contextChanged', async (context) => {
       await getAccountsList(plugin, dispatch)
