@@ -4,7 +4,7 @@ import { store } from './redux/store'
 import { router } from './App'
 
 class RemixClient extends PluginClient {
-  private currentTutorialId: string | null = null
+  private currentTutorial: any | null = null
 
   constructor() {
     super()
@@ -24,8 +24,8 @@ class RemixClient extends PluginClient {
     })
   }
 
-  currentTutorial(): string {
-    return this.currentTutorialId
+  getCurrentTutorial(): any {
+    return this.currentTutorial
   }
 
   addRepository(name: any, branch: any) {
@@ -39,12 +39,12 @@ class RemixClient extends PluginClient {
     })
   }
 
-  setCurrentTutorialId(id: string): void {
-    this.currentTutorialId = id
+  setCurrentTutorial(tutorial: any): void {
+    this.currentTutorial = tutorial
   }
 
-  clearCurrentTutorialId(): void {
-    this.currentTutorialId = null
+  clearCurrentTutorial(): void {
+    this.currentTutorial = null
   }
 }
 

@@ -10,7 +10,7 @@ import { ResourceCategory } from '../types/mcpResources';
 
 export class TutorialsResourceProvider extends BaseResourceProvider {
   name = 'tutorials';
-  description = 'Provides access to a list of tutorials and their details. If applicable it returns the id of the tutorial that the user is at the moment viewing.';
+  description = 'Provides access to a list of tutorials and their details. If applicable it returns the tutorial that the user is at the moment viewing.';
   private _plugin
 
   constructor (plugin){
@@ -74,7 +74,7 @@ export class TutorialsResourceProvider extends BaseResourceProvider {
 
   private async currentTutorial(plugin: Plugin): Promise<IMCPResourceContent> {
     try {
-      const tutorial = await plugin.call('LearnEth', 'currentTutorial')
+      const tutorial = await plugin.call('LearnEth', 'getCurrentTutorial')
       return this.createJsonContent('tutorials://current', tutorial);
     } catch (error) {
       return this.createTextContent('tutorials://current', `Error getting current tutorial: ${error.message}`);

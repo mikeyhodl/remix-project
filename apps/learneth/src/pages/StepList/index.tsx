@@ -64,7 +64,7 @@ export default function StepListPage(): JSX.Element {
   // Set the current tutorial ID in remixClient when component mounts or ID changes
   useEffect(() => {
     if (id) {
-      remixClient.setCurrentTutorialId(id)
+      remixClient.setCurrentTutorial(detail[selectedId]?.entities?.[id])
     }
   }, [id])
   const repo = detail[selectedId]

@@ -20,7 +20,7 @@ function BackButton({ entity }: any) {
         <Link 
           to="/home" 
           className="btn nav-button d-flex align-items-center"
-          onClick={() => remixClient.clearCurrentTutorialId()}
+          onClick={() => remixClient.clearCurrentTutorial()}
         >
           <i className="fas fa-chevron-left"></i>
           <span>Tutorials list</span>

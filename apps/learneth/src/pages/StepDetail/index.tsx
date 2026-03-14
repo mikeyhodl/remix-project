@@ -448,7 +448,7 @@ function StepDetailPage() {
                   localStorage.setItem('learneth_completed_tutorials', JSON.stringify(completedTutorials));
 
                   // Clear current tutorial ID since tutorial is finished
-                  remixClient.clearCurrentTutorialId();
+                  remixClient.clearCurrentTutorial();
 
                   navigate(`/list?id=${id}`);
                   trackMatomoEvent(remixClient, {

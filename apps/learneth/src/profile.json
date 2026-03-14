@@ -7,7 +7,7 @@
   "methods": [
     "startTutorial",
     "addRepository",
-    "currentTutorial"
+    "getCurrentTutorial"
   ],
   "kind": "none",
   "icon": "assets/img/learnEthLogo.webp",
