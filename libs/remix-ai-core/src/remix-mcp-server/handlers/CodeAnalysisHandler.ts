@@ -65,7 +65,7 @@ export class SlitherHandler extends BaseToolHandler {
 
       const compilerConfig = await plugin.call('solidity' as any , 'getCurrentCompilerConfig');
 
-      const flattened = await plugin.call('contractflattener', 'flattenContract', compilationResult.source, args.filePath, compilationResult.data, JSON.parse(compilationResult.input), false);
+      const flattened = await plugin.call('contractflattener', 'flattenContract', compilationResult.source, args.filePath, compilationResult.data, compilationResult.input, false);
 
       // Call external Slither endpoint
       const response = await fetch(endpointUrls.mcpCorsProxy8443 + '/slither/analyze', {
