@@ -95,13 +95,12 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
       let compilationResult: any;
       if (args.file) {
+        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
         // Compile specific file - need to use plugin API or direct compilation
         const content = await plugin.call('fileManager', 'readFile', args.file);
         const contract = {}
         contract[args.file] = { content: content }
-
         const compilerPayload: CompilerAbstract = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
-        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
         const errors = compilerPayload.getErrors(false)
         console.log('Compilation errors:', errors)
         if (errors && errors.length > 0) {
@@ -111,6 +110,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       } else {
         return this.createErrorResult(`Compilation failed: Workspace compilation not yet implemented. The argument file is not provided`);
       }
+      plugin.call('compilerArtefacts', 'saveCompilerAbstract', args.file, compilationResult)
       // Process compilation result
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,

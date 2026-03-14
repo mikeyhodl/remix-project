@@ -167,6 +167,40 @@ export const widgetReducer = (state = widgetInitialState, action: Actions): Widg
     }
   }
 
+  case 'SET_ACCOUNT_BALANCE': {
+    const defaultAccounts = state.accounts.defaultAccounts
+    const accountIndex = defaultAccounts.findIndex(account => account.account === action.payload.address)
+
+    if (accountIndex > -1) {
+      defaultAccounts[accountIndex].balance = action.payload.balance
+
+      return {
+        ...state,
+        accounts: {
+          ...state.accounts,
+          defaultAccounts
+        }
+      }
+    } else {
+      const smartAccounts = state.accounts.smartAccounts
+      const smartAccountIndex = smartAccounts.findIndex(account => account.account === action.payload.address)
+
+      if (smartAccountIndex > -1) {
+        smartAccounts[smartAccountIndex].balance = action.payload.balance
+
+        return {
+          ...state,
+          accounts: {
+            ...state.accounts,
+            smartAccounts
+          }
+        }
+      } else {
+        return state
+      }
+    }
+  }
+
   case 'SHOW_FORK_UI': {
     return {
       ...state,

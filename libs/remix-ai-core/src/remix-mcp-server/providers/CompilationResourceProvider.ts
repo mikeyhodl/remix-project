@@ -6,6 +6,7 @@ import { Plugin } from '@remixproject/engine';
 import { IMCPResource, IMCPResourceContent } from '../../types/mcp';
 import { BaseResourceProvider } from '../registry/RemixResourceProviderRegistry';
 import { ResourceCategory } from '../types/mcpResources';
+import { LastCompilationResult, CompiledContract } from '@remix-project/remix-solidity';
 
 export class CompilationResourceProvider extends BaseResourceProvider {
   name = 'compilation';
@@ -205,8 +206,8 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         contracts: {},
         errors: compilationResult.data?.errors || [],
         errorFiles: compilationResult.errFiles || [],
-        warnings: compilationResult?.data?.errors.find((error) => error.type === 'Warning') || [],
-        sources: compilationResult?.source || {}
+        warnings: compilationResult?.data?.errors?.find((error) => error.type === 'Warning') || [],
+        // sources: compilationResult?.source || {}
       };
 
       // Process contracts
@@ -326,14 +327,18 @@ export class CompilationResourceProvider extends BaseResourceProvider {
     const contractName = uri.replace('contract://', '');
 
     try {
-      const compilationResult: any = await plugin.call('solidity' as any, 'getCompilationResult')
+      const compilationResult: LastCompilationResult = await plugin.call('solidity' as any, 'getCompilationResult')
       if (!compilationResult) {
         return this.createTextContent(uri, 'No compilation result available');
       }
 
-      let contractDetails = {}
-      for (const contractFileObj of compilationResult.data.contracts) {
-        if (Object.keys(contractFileObj).includes(contractName)) contractDetails = contractFileObj
+      let contractDetails: CompiledContract
+      for (const fileName in compilationResult.data.contracts) {
+        const contractsInFile = compilationResult.data.contracts[fileName]
+        if (Object.keys(contractsInFile).includes(contractName)) {
+          contractDetails = contractsInFile[contractName]
+          break
+        }
       }
       return this.createJsonContent(uri, contractDetails);
     } catch (error) {

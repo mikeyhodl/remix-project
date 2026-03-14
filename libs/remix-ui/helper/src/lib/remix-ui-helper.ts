@@ -375,3 +375,27 @@ export const extractRecorderTimestamp = (value: any): string | null => {
   }
   return null
 }
+
+export const formatBalance = (balance: string | number, decimals: number = 3): string => {
+  const balanceStr = balance.toString()
+
+  // Handle scientific notation
+  if (balanceStr.includes('e')) {
+    const num = parseFloat(balanceStr)
+    const multiplier = Math.pow(10, decimals)
+    const truncated = Math.floor(num * multiplier) / multiplier
+    return truncated.toFixed(decimals)
+  }
+  const decimalIndex = balanceStr.indexOf('.')
+
+  // If no decimal point, add zeros
+  if (decimalIndex === -1) {
+    return balanceStr + '.' + '0'.repeat(decimals)
+  }
+  const integerPart = balanceStr.substring(0, decimalIndex)
+  const decimalPart = balanceStr.substring(decimalIndex + 1)
+  const truncatedDecimal = decimalPart.substring(0, decimals)
+  const paddedDecimal = truncatedDecimal.padEnd(decimals, '0')
+
+  return integerPart + '.' + paddedDecimal
+}

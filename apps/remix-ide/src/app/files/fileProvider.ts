@@ -278,7 +278,7 @@ export default class FileProvider {
     if (path.indexOf('/') !== 0) path = '/' + path
     try {
       const files = await (window as any).remixFileSystem.readdir(path)
-      console.log(`Resolved directory ${path} in ${Date.now() - startTime}ms`, files)
+      // console.log(`Resolved directory ${path} in ${Date.now() - startTime}ms`, files)
       const ret = {}
       if (files) {
         for (let element of files) {

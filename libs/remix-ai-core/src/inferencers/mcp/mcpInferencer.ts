@@ -433,6 +433,14 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
               const toolResultContent = extractContent(result);
 
+              // Compress successful results to save tokens for huge mcp payloads
+              // const isSuccess = !result.isError;
+              // const isVerbose = toolResultContent.length > 1000;
+              // if (isSuccess && isVerbose) {
+              //   const preview = toolResultContent.substring(0, 200);
+              //   toolResultContent = `[Tool executed successfully - Result compressed to save tokens]\n\nPreview:\n${preview}...\n\n[${toolResultContent.length} characters total]`;
+              // }
+
               // Format tool result based on provider
               if (options.provider === 'anthropic') {
                 toolMessages.push({
@@ -486,6 +494,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
 
           if (toolMessages.length > 0) {
+            const existingToolsMessages = enhancedOptions.toolsMessages || [];
+            const currentChatHistory = enhancedOptions.chatHistory || [];
             let toolsMessagesArray = [];
 
             if (options.provider === 'anthropic') {
@@ -499,25 +509,44 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                   : tc.function?.arguments || {}
               }));
 
-              toolsMessagesArray = [
-                { role: 'assistant', content: toolUseBlocks },
-                { role: 'user', content: toolMessages }
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              } else {
+                // Subsequent iterations: append to existing tool messages
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              }
             } else if (options.provider === 'openai' || options.provider === 'mistralai') {
-              // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
-              toolsMessagesArray = [
-                { role: 'assistant', tool_calls: tool_calls },
-                ...toolMessages
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              } else {
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              }
             }
 
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolsMessagesArray,
-              chatHistory: options.provider === 'anthropic'
-                ? [...(enhancedOptions.chatHistory || []), { role: 'user', content: prompt }]
-                : enhancedOptions.chatHistory
+              toolsMessages: toolsMessagesArray
             };
+
+            enhancedOptions.toolsMessages = toolsMessagesArray;
 
             if (options.provider === 'openai' || options.provider === 'mistralai') {
               return {
@@ -779,13 +808,15 @@ ${apiDescription}
 
 ${toolsList}
 
+IMPORTANT: You always call callMCPTool as follow: return callMCPTool(...)
+
 Note: For detailed schema information about any tool, use the get_tool_schema tool.`,
       input_schema: {
         type: "object",
         properties: {
           code: {
             type: "string",
-            description: "TypeScript code to execute. Use callMCPTool(toolName, args) to call available tools."
+            description: "TypeScript code to execute. Use callMCPTool(toolName, args) to call available tools. MUST return a value."
           }
         },
         required: ["code"]
@@ -906,7 +937,10 @@ Use this tool when you need:
     if (toolCall.name === 'execute_tool') {
       const code = toolCall.arguments?.code;
       if (!code || typeof code !== 'string') {
-        throw new Error('execute_tool requires a code argument');
+        return {
+          content: [{ type: 'text', text: 'Error: execute_tool requires a code argument' }],
+          isError: true
+        };
       }
 
       // Create code executor with callback to execute actual MCP tools
@@ -924,120 +958,63 @@ Use this tool when you need:
           }
 
           if (!targetServer) {
-            throw new Error(`Tool '${innerToolCall.name}' not found in any connected MCP server`);
+            return {
+              content: [{
+                type: 'text',
+                text: `Tool '${innerToolCall.name}' not found in any connected MCP server`
+              }],
+              isError: true
+            } as IMCPToolResult;
           }
 
           try {
-            if (uiCallback){
+            if (uiCallback) {
               uiCallback(true, innerToolCall.name, innerToolCall.arguments);
             }
             const result = await this.executeTool(targetServer, innerToolCall);
-            if (uiCallback){
-              uiCallback(false)
+            if (uiCallback) {
+              uiCallback(false);
             }
-            return result
+            return result;
           } catch (error) {
-          } finally {
-            if (uiCallback){
-              uiCallback(false)
+            if (uiCallback) {
+              uiCallback(false);
             }
+            return {
+              content: [{
+                type: 'text',
+                text: `Tool execution failed: ${error.message || String(error)}`
+              }],
+              isError: true
+            } as IMCPToolResult;
           }
         },
-        60000 * 10, // 10 minutes
+        60000 * 10 // 10 minutes
       );
 
       // Execute the code
       const result = await codeExecutor.execute(code);
+      console.log('code execution output', result)
 
-      // Convert code execution result to MCP tool result format
       if (result.success) {
-        const content = [];
-        let isError = false
-
-        // Add all tool call results with their full payloads
-        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
-          content.push({
-            type: 'text' as const,
-            text: `Tool Calls (${result.toolCallRecords.length}):`
-          });
-
-          for (const record of result.toolCallRecords) {
-            const toolResult = record.result.content
-              .map((c: any) => c.text || JSON.stringify(c))
-              .join('\n');
-            isError = record.result?.isError || false
-
-            content.push({
-              type: 'text' as const,
-              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
-            });
-          }
-        }
-
-        if (result.output) {
-          content.push({
-            type: 'text' as const,
-            text: `\nConsole Output:\n${result.output}`
-          });
-        }
-
-        if (result.returnValue !== undefined) {
-          content.push({
-            type: 'text' as const,
-            text: `\nReturn Value:\n${JSON.stringify(result.returnValue, null, 2)}`
-          });
-        }
-
-        content.push({
-          type: 'text' as const,
-          text: `\nExecution Stats:\n- Time: ${result.executionTime}ms\n- Tools Called: ${result.toolsCalled.join(', ') || 'none'}`
-        });
-
         return {
-          content: content.length > 0 ? content : [{ type: 'text', text: 'Code executed successfully with no output' }],
-          isError: isError
+          content: [{
+            type: 'text',
+            text: typeof result.returnValue === 'string'
+              ? result.returnValue
+              : JSON.stringify(result.returnValue, null, 2)
+          }],
+          isError: false
         };
       } else {
-        const content = [];
-
-        content.push({
-          type: 'text' as const,
-          text: `Code Execution Error:\n${result.error}`
-        });
-
-        // Include tool call results even on error
-        if (result.toolCallRecords && result.toolCallRecords.length > 0) {
-          content.push({
-            type: 'text' as const,
-            text: `\nTool Calls Before Error (${result.toolCallRecords.length}):`
-          });
-
-          for (const record of result.toolCallRecords) {
-            const toolResult = record.result.content
-              .map((c: any) => c.text || JSON.stringify(c))
-              .join('\n');
-
-            content.push({
-              type: 'text' as const,
-              text: `\n[${record.name}] (${record.executionTime}ms)\nArguments: ${JSON.stringify(record.arguments, null, 2)}\nResult:\n${toolResult}`
-            });
-          }
-        }
-
-        if (result.output) {
-          content.push({
-            type: 'text' as const,
-            text: `\nConsole Output:\n${result.output}`
-          });
-        }
-
-        content.push({
-          type: 'text' as const,
-          text: `\nExecution Time: ${result.executionTime}ms`
-        });
-
+        // returnValue contains error message processed in code_executor
         return {
-          content,
+          content: [{
+            type: 'text',
+            text: typeof result.returnValue === 'string'
+              ? result.returnValue
+              : JSON.stringify(result.returnValue, null, 2)
+          }],
           isError: true
         };
       }
