@@ -608,7 +608,7 @@ export class GetVerifiedContractFromEtherscanHandler extends BaseToolHandler {
             description: 'Network chain ID (1 for Ethereum mainnet, 11155111 for Sepolia, etc.)'
           },
           name: {
-            type: 'string', 
+            type: 'string',
             description: 'Network name (ethereum, sepolia, polygon, etc.)'
           }
         },
@@ -666,7 +666,7 @@ export class GetVerifiedContractFromEtherscanHandler extends BaseToolHandler {
   }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const targetPath = args.targetPath || 'contracts/imported/' + args.contractAddress
-      
+
       // Ensure target directory exists
       await plugin.call('fileManager', 'mkdir', targetPath);
 
@@ -685,7 +685,7 @@ export class GetVerifiedContractFromEtherscanHandler extends BaseToolHandler {
 
       // Extract information about imported files
       const importedFiles = Object.keys(result.compilationTargets);
-      const contractName = importedFiles.length > 0 ? 
+      const contractName = importedFiles.length > 0 ?
         importedFiles[0].split('/').pop()?.replace('.sol', '') : 'Unknown';
 
       return this.createSuccessResult({

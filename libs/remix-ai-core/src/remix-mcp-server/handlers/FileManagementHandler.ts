@@ -632,7 +632,7 @@ export class FileReadChunkHandler extends BaseToolHandler {
     const required = this.validateRequired(args, ['path']);
     if (required !== true) return required;
 
-    const types = this.validateTypes(args, { 
+    const types = this.validateTypes(args, {
       path: 'string',
       offset: 'number',
       limit: 'number'
