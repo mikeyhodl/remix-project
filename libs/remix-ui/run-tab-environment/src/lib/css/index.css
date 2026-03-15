@@ -1,17 +1,17 @@
 .environment-item-hover:hover {
     background-color: var(--custom-onsurface-layer-3) !important;
     border-radius: 0 !important;
-    color: var(--theme-text-color, white) !important;
+    color: var(--theme-text-color, --bs-gray-500) !important;
   }
   .account-item-hover:hover {
     background-color: var(--custom-onsurface-layer-3) !important;
     border-radius: 0 !important;
-    color: var(--theme-text-color, white) !important;
+    color: var(--theme-text-color, --bs-gray-600) !important;
   }
   .category-item-hover:hover {
     background-color: var(--custom-onsurface-layer-4) !important;
     border-radius: 0 !important;
-    color: var(--theme-text-color, white) !important;
+    color: var(--theme-text-color, --bs-gray-500) !important;
   }
   .account-balance-container {
     position: relative;

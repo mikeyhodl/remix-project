@@ -114,7 +114,7 @@ export const CustomMenu = React.forwardRef(
     const height = window.innerHeight * 0.6
     return (
       <div ref={ref} style={style} className={className} aria-labelledby={labeledBy} data-id={dataId}>
-        <ul className={`overflow-auto list-unstyled mb-0`} style={{ maxHeight: height + 'px' }}>
+        <ul className={`overflow-auto list-unstyled mb-0`} style={{ maxHeight: height + 'px', backgroundColor: 'var(--bs-tertiary-bg)' }}>
           {children}
         </ul>
       </div>
