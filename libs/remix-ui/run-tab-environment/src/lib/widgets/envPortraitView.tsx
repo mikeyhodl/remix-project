@@ -359,7 +359,7 @@ function EnvironmentPortraitView() {
                 </div>
               </Dropdown.Toggle>
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', zIndex: 1, padding: 0 }}>
+              <Dropdown.Menu as={CustomMenu} theme={themeQuality} className="w-100 custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', zIndex: 1, padding: 0 }}>
                 {
                   uniqueDropdownItems.map((provider, index) => {
                     return (
@@ -444,7 +444,7 @@ function EnvironmentPortraitView() {
                 onDeleteAccount={handleDeleteAccount}
               />
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', padding: 0 }}>
+              <Dropdown.Menu as={CustomMenu} theme={themeQuality} className="w-100 custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', padding: 0 }}>
                 {
                   widgetState.accounts.defaultAccounts.map((account, index) => {
                     const accountId = `account-${index}`
