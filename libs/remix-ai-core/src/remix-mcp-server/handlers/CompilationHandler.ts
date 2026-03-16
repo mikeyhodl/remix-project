@@ -14,6 +14,7 @@ import {
 } from '../types/mcpTools';
 import { Plugin } from '@remixproject/engine';
 import isElectron from 'is-electron';
+import { fetchContractFromEtherscan, Network } from '@remix-project/core-plugin' // eslint-disable-line
 
 /**
  * Solidity Compile Tool Handler
@@ -95,13 +96,12 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
       let compilationResult: any;
       if (args.file) {
+        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
         // Compile specific file - need to use plugin API or direct compilation
         const content = await plugin.call('fileManager', 'readFile', args.file);
         const contract = {}
         contract[args.file] = { content: content }
-
         const compilerPayload: CompilerAbstract = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
-        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
         const errors = compilerPayload.getErrors(false)
         console.log('Compilation errors:', errors)
         if (errors && errors.length > 0) {
@@ -111,6 +111,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       } else {
         return this.createErrorResult(`Compilation failed: Workspace compilation not yet implemented. The argument file is not provided`);
       }
+      plugin.call('compilerArtefacts', 'saveCompilerAbstract', args.file, compilationResult)
       // Process compilation result
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
@@ -585,6 +586,128 @@ export class GetCompilerVersionsHandler extends BaseToolHandler {
 }
 
 /**
+ * Get Verified Contract from Etherscan Tool Handler
+ */
+export class GetVerifiedContractFromEtherscanHandler extends BaseToolHandler {
+  name = 'get_verified_contract_from_etherscan';
+  description = 'Fetch a verified contract from Etherscan and import it into the workspace';
+  inputSchema = {
+    type: 'object',
+    properties: {
+      contractAddress: {
+        type: 'string',
+        description: 'The contract address to fetch from Etherscan (0x...)',
+        pattern: '^0x[a-fA-F0-9]{40}$'
+      },
+      network: {
+        type: 'object',
+        description: 'Network configuration',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'Network chain ID (1 for Ethereum mainnet, 11155111 for Sepolia, etc.)'
+          },
+          name: {
+            type: 'string',
+            description: 'Network name (ethereum, sepolia, polygon, etc.)'
+          }
+        },
+        required: ['id', 'name']
+      },
+      targetPath: {
+        type: 'string',
+        description: 'Target directory path to save the contract files',
+        default: 'contracts/imported'
+      }
+    },
+    required: ['contractAddress', 'network']
+  };
+
+  getPermissions(): string[] {
+    return ['file:write', 'etherscan:read'];
+  }
+
+  validate(args: {
+    contractAddress: string;
+    network: Network;
+    targetPath?: string;
+  }): boolean | string {
+    const required = this.validateRequired(args, ['contractAddress', 'network']);
+    if (required !== true) return required;
+
+    const types = this.validateTypes(args, {
+      contractAddress: 'string',
+      network: 'object',
+      targetPath: 'string',
+    });
+    if (types !== true) return types;
+
+    // Validate contract address format
+    if (!args.contractAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return 'Contract address must be a valid Ethereum address (0x followed by 40 hex characters)';
+    }
+
+    // Validate network object
+    if (!args.network.id || !args.network.name) {
+      return 'Network must include both id and name properties';
+    }
+
+    if (typeof args.network.id !== 'number' || args.network.id < 1) {
+      return 'Network id must be a positive number';
+    }
+
+    return true;
+  }
+
+  async execute(args: {
+    contractAddress: string;
+    network: Network;
+    targetPath?: string;
+  }, plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const targetPath = args.targetPath || 'contracts/imported/' + args.contractAddress
+
+      // Ensure target directory exists
+      await plugin.call('fileManager', 'mkdir', targetPath);
+
+      // Fetch contract from Etherscan
+      const result = await fetchContractFromEtherscan(
+        plugin,
+        args.network,
+        args.contractAddress,
+        targetPath,
+        true, // shouldSetFile
+      );
+
+      if (!result) {
+        return this.createErrorResult('Failed to fetch contract from Etherscan - no result returned');
+      }
+
+      // Extract information about imported files
+      const importedFiles = Object.keys(result.compilationTargets);
+      const contractName = importedFiles.length > 0 ?
+        importedFiles[0].split('/').pop()?.replace('.sol', '') : 'Unknown';
+
+      return this.createSuccessResult({
+        success: true,
+        message: `Successfully imported verified contract from Etherscan`,
+        contractAddress: args.contractAddress,
+        network: args.network,
+        contractName: contractName,
+        compilerVersion: result.version,
+        importedFiles: importedFiles,
+        targetPath: targetPath,
+        compilerConfig: result.config,
+        optimizationUsed: result.config?.settings?.optimizer?.enabled || false,
+        optimizationRuns: result.config?.settings?.optimizer?.runs || 0
+      });
+    } catch (error) {
+      return this.createErrorResult(`Failed to fetch contract from Etherscan: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Create compilation tool definitions
  */
 export function createCompilationTools(): RemixToolDefinition[] {
@@ -636,6 +759,14 @@ export function createCompilationTools(): RemixToolDefinition[] {
       category: ToolCategory.COMPILATION,
       permissions: ['compile:read'],
       handler: new GetCompilerVersionsHandler()
+    },
+    {
+      name: 'get_verified_contract_from_etherscan',
+      description: 'Fetch a verified contract from Etherscan and import it into the workspace',
+      inputSchema: new GetVerifiedContractFromEtherscanHandler().inputSchema,
+      category: ToolCategory.COMPILATION,
+      permissions: ['file:write', 'etherscan:read'],
+      handler: new GetVerifiedContractFromEtherscanHandler()
     }
   ]
   if (isElectron()) {

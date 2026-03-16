@@ -175,7 +175,8 @@ export default class Filepanel extends ViewPlugin {
 
   workspaceExists(name) {
     if (!this.workspaces) return false
-    return this.workspaces.find((workspace) => workspace.name === name)
+    const found = this.workspaces.find((workspace) => workspace.name === name)
+    return !!found
   }
 
   async readFileFromWorkspace(workspaceName, filePath) {

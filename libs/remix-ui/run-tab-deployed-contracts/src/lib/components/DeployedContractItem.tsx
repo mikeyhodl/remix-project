@@ -801,7 +801,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                           const val = e.target.value
                           // Only allow empty string or valid numeric strings
                           if (val === '' || /^\d+$/.test(val)) {
-                            setValue(val === '' ? '0' : val)
+                            setValue(val)
                           }
                         }}
                         style={{

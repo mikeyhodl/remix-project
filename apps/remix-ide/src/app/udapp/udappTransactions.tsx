@@ -86,7 +86,9 @@ export class TransactionsPlugin extends Plugin {
         const transaction = scenario.transactions[i]
 
         try {
-          await replayTransaction(transaction, recorderData, this, dispatch)
+          await replayTransaction(transaction, recorderData, this)
+          // Add artificial pause between transactions
+          await new Promise(resolve => setTimeout(resolve, 500))
         } catch (error) {
           console.error(`Error replaying transaction ${i + 1}:`, error)
           await this.call('notification', 'toast', `Error replaying transaction ${i + 1}: ${error.message}`)
