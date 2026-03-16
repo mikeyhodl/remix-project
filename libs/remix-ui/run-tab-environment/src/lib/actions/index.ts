@@ -241,6 +241,7 @@ export async function createNewAccount (plugin: EnvironmentPlugin, dispatch: Rea
 
 export async function createSmartAccount (plugin: EnvironmentPlugin, widgetState: WidgetState, dispatch: React.Dispatch<Actions>) {
   plugin.call('notification', 'toast', `Preparing tx to sign...`)
+  const currentEnv = await plugin.call('blockchain', 'getProviderObject')
   const chainId = widgetState.network.chainId
   const chain = chains[aaSupportedNetworks[chainId].name]
   const PUBLIC_NODE_URL = aaSupportedNetworks[chainId].publicNodeUrl
@@ -249,12 +250,12 @@ export async function createSmartAccount (plugin: EnvironmentPlugin, widgetState
   let salt: number = 0
 
   // @ts-ignore
-  const [account] = await window.ethereum!.request({ method: 'eth_requestAccounts' })
+  const [account] = await currentEnv.provider.request({ method: 'eth_requestAccounts' })
 
   const walletClient = createWalletClient({
     account,
     chain,
-    transport: custom(window.ethereum!),
+    transport: custom(currentEnv.provider),
   })
 
   const publicClient = createPublicClient({
