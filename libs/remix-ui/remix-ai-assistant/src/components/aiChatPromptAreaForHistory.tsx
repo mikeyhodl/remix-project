@@ -154,7 +154,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         stopRequest={props.stopRequest}
         modelSelectorBtnRef={props.modelSelectorBtnRef}
       />
-      <span className="mb-4 text-muted mx-4 w-100">RemixAI can make mistakes. Always check important info.</span>
+      <span className="mb-4 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
   )
 }
