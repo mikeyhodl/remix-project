@@ -24,6 +24,12 @@ export function useModelAccess(): ModelAccess {
 
     try {
       const token = localStorage.getItem('remix_access_token')
+      if (!token) {
+        // Fallback to default model and ollama only
+        const defaultModel = getDefaultModel()
+        setAllowedModels([defaultModel.id, 'ollama'])
+        return
+      }
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
 
       const response = await fetch(`${endpointUrls.permissions}`, {

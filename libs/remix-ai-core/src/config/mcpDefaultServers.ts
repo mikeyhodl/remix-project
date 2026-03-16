@@ -6,54 +6,9 @@ export interface MCPDefaultServersConfig {
   defaultServers: IMCPServer[];
 }
 
-export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
-  version: "1.0.0",
-  defaultServers: [
-    {
-      name: 'Remix IDE Server',
-      description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
-      transport: 'internal',
-      autoStart: true,
-      enabled: true,
-      timeout: 5000,
-      isBuiltIn: true
-    },
-    {
-      name: 'OpenZeppelin Contracts',
-      description: 'OpenZeppelin smart contract library and security tools',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy + '/solidity',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'OpenZeppelin Contracts Cairo',
-      description: 'OpenZeppelin smart contract library and security tools',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy + '/cairo',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'OpenZeppelin Contracts Stellar',
-      description: 'OpenZeppelin smart contract library and security tools',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy + '/stellar',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'OpenZeppelin Contracts Stylus',
-      description: 'OpenZeppelin smart contract library and security tools',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy + '/stylus',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
+export const mcpBasicServersConfig: MCPDefaultServersConfig = {
+  version: '1.0.0',
+  defaultServers: [    
     {
       name: 'Alchemy',
       description: 'Alchemy blockchain data query',
@@ -90,6 +45,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       enabled: true,
       timeout: 30000
     },
+    /*
     {
       name: 'Sourcify',
       description: 'Sourcify smart contract verification',
@@ -98,7 +54,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
-    },
+    },*/
     {
       name: 'ethskills',
       description: 'ethereum dev skills',
@@ -107,16 +63,57 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
-    },
-    /*
+    }
+  ]
+}
+
+export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
+  version: "1.0.0",
+  defaultServers: [
     {
-        name: 'slither',
-        description: 'slither static analysis tool',
-        transport: 'http',
-        url: 'http://localhost:9005/mcp', // endpointUrls.mcpCorsProxy8443 + '/slither/mcp',
-        autoStart: true,
-        enabled: true,
-        timeout: 30000
-    }*/
+      name: 'Remix IDE Server',
+      description: 'Built-in Remix IDE MCP server providing access to workspace files and IDE features',
+      transport: 'internal',
+      autoStart: true,
+      enabled: true,
+      timeout: 5000,
+      isBuiltIn: true,
+    },
+    {
+      name: 'OpenZeppelin Contracts',
+      description: 'OpenZeppelin smart contract library and security tools',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/solidity',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'OpenZeppelin Contracts Cairo',
+      description: 'OpenZeppelin smart contract library and security tools',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/cairo',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'OpenZeppelin Contracts Stellar',
+      description: 'OpenZeppelin smart contract library and security tools',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/stellar',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'OpenZeppelin Contracts Stylus',
+      description: 'OpenZeppelin smart contract library and security tools',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy + '/stylus',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    }   
   ]
 };
