@@ -15,6 +15,7 @@ function TransactionsPortraitView() {
   const [isAccordionOpen, setIsAccordionOpen] = React.useState(context === 'debugger')
 
   const { activeTab, sortOrder, showClearAllDialog, showSaveDialog, scenarioInput } = widgetState
+  const [openKebabMenuId, setOpenKebabMenuId] = React.useState<string | null>(null)
 
   const handleTabChange = (tab: TabType) => {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
@@ -312,6 +313,8 @@ function TransactionsPortraitView() {
                           <TransactionRecordCard
                             key={deployment?.record?.targetAddress}
                             deployment={deployment}
+                            openKebabMenuId={openKebabMenuId}
+                            onKebabMenuToggle={setOpenKebabMenuId}
                           />
                         ))
                       ) : (
@@ -348,6 +351,8 @@ function TransactionsPortraitView() {
                           <TransactionItem
                             key={`${transaction?.record?.txHash || transaction?.timestamp}-${index}`}
                             transaction={transaction}
+                            openKebabMenuId={openKebabMenuId}
+                            onKebabMenuToggle={setOpenKebabMenuId}
                           />
                         ))
                       ) : (

@@ -13,6 +13,7 @@ export default function DeployedContractsPortraitView() {
   const [latestContractAddress, setLatestContractAddress] = useState<string | null>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [newInstancesCount, setNewInstancesCount] = useState(0)
+  const [openKebabMenuAddress, setOpenKebabMenuAddress] = useState<string | null>(null)
   const contractRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
   const previousContractsLength = useRef(deployedContracts.length)
   const currentObserverRef = useRef<IntersectionObserver | null>(null)
@@ -330,6 +331,10 @@ export default function DeployedContractsPortraitView() {
                     if (ref) {
                       contractRefsMap.current.set(contract.address, ref)
                     }
+                  }}
+                  isKebabMenuOpen={openKebabMenuAddress === contract.address}
+                  onKebabMenuToggle={(isOpen) => {
+                    setOpenKebabMenuAddress(isOpen ? contract.address : null)
                   }}
                 />
               ))}
