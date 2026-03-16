@@ -93,6 +93,22 @@ export interface DirectoryListArgs {
   recursive?: boolean;
 }
 
+export interface FileReadChunkArgs {
+  path: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface FileGrepArgs {
+  path: string;
+  pattern: string;
+  ignoreCase?: boolean;
+  lineNumbers?: boolean;
+  contextBefore?: number;
+  contextAfter?: number;
+  maxMatches?: number;
+}
+
 export interface SolidityCompileArgs {
   file?: string;
   version?: string;
@@ -250,6 +266,30 @@ export interface FileOperationResult {
   payload?: string;
   size?: number;
   lastModified?: string;
+}
+
+export interface FileReadChunkResult {
+  success: boolean;
+  path: string;
+  content: string;
+  startLine: number;
+  endLine: number;
+  totalLines: number;
+  hasMore: boolean;
+}
+
+export interface FileGrepResult {
+  success: boolean;
+  path: string;
+  pattern: string;
+  matches: Array<{
+    lineNumber: number;
+    line: string;
+    contextBefore?: string[];
+    contextAfter?: string[];
+  }>;
+  totalMatches: number;
+  truncated: boolean;
 }
 
 export interface CompilationResult {
