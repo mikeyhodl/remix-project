@@ -72,7 +72,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   return (
     <>
       <div
-        className="prompt-area d-flex flex-column mx-2 p-2 rounded-3 border border-text bg-light"
+        className="prompt-area d-flex flex-column mx-2 p-2 rounded-3 border border-text bg-light mb-3"
         style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#2a2c3f' }}
       >
         <div className="d-flex justify-content-between align-items-center mb-3 border border-end-0 border-start-0 border-top-0 border-bottom pb-1">
@@ -127,6 +127,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 outline: 'none',
                 resize: 'none',
                 font: 'inherit',
+                fontSize: '0.975rem',
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
