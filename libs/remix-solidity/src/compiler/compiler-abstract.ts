@@ -9,11 +9,11 @@ export class CompilerAbstract {
   source: CompilationSourceCode
   input: CompilerInput
   mapFilePaths: Record<string, string>
-  constructor (languageversion: string, data: CompilationResult, source: CompilationSourceCode, input?: CompilerInput, plugin?: Plugin) {
+  constructor (languageversion: string, data: CompilationResult, source: CompilationSourceCode, input?: CompilerInput | string, plugin?: Plugin) {
     this.languageversion = languageversion
     this.data = data
     this.source = source // source code
-    this.input = input
+    this.input = typeof input === 'string' ? JSON.parse(input) : input
     if (plugin) {
       this.resolvePaths(plugin).then((mapFilePaths) => {
         this.mapFilePaths = mapFilePaths
