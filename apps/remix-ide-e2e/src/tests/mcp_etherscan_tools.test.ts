@@ -143,8 +143,9 @@ module.exports = {
       }, [], function (result) {
         const data = result.value as any;
         console.log('[etherscan_account_balancehistory]', data);
+        const proEndpoint = data.error && data.error.indexOf('API Pro endpoint') !== -1
         browser.assert.ok(
-          data.success,
+          data.success || proEndpoint,
           'Account balance history tool should execute or indicate not configured'
         );
       });
@@ -194,8 +195,9 @@ module.exports = {
       }, [], function (result) {
         const data = result.value as any;
         console.log('[etherscan_stats_dailyavggaslimit]', data);
+        const proEndpoint = data.error && data.error.indexOf('API Pro endpoint') !== -1
         browser.assert.ok(
-          data.success,
+          data.success || proEndpoint,
           'Daily average gas limit stats tool should execute or indicate not configured'
         );
       });
@@ -245,8 +247,9 @@ module.exports = {
       }, [], function (result) {
         const data = result.value as any;
         console.log('[etherscan_stats_dailyavggasprice]', data);
+        const proEndpoint = data.error && data.error.indexOf('API Pro endpoint') !== -1
         browser.assert.ok(
-          data.success,
+          data.success || proEndpoint,
           'Daily average gas price stats tool should execute or indicate not configured'
         );
       });
@@ -294,8 +297,9 @@ module.exports = {
       }, [], function (result) {
         const data = result.value as any;
         console.log('[etherscan_contract_getabi]', data);
+        const proEndpoint = data.error && data.error.indexOf('API Pro endpoint') !== -1
         browser.assert.ok(
-          data.success,
+          data.success || proEndpoint,
           'Contract ABI tool should execute or indicate not configured'
         );
       });
@@ -343,8 +347,9 @@ module.exports = {
       }, [], function (result) {
         const data = result.value as any;
         console.log('[etherscan_nametag_getaddresstag]', data);
+        const proEndpoint = data.error && data.error.indexOf('API Exclusive endpoint') !== -1
         browser.assert.ok(
-          data.success,
+          data.success || proEndpoint,
           'Name tag address tool should execute or indicate not configured'
         );
       });
