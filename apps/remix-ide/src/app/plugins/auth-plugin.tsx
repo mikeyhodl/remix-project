@@ -458,7 +458,17 @@ export class AuthPlugin extends Plugin {
 
       // Config endpoint is at the auth server root: /config/public
       const authBaseUrl = endpointUrls.sso.replace(/\/sso\/?$/, '')
-      const response = await fetch(`${authBaseUrl}/config/public`)
+      const queryParams = new QueryParams()
+      const allParams = queryParams.get() as Record<string, string>
+      const apiKey = allParams.e2e_pool_key
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      }
+      if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`
+      }
+
+      const response = await fetch(`${authBaseUrl}/config/public`, { headers })
       if (response.ok) {
         const data: AppConfig = await response.json()
         this.cachedAppConfig = data
