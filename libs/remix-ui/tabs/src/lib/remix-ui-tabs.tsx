@@ -157,6 +157,15 @@ export const TabsUI = (props: TabsUIProps) => {
     const classNameImg = 'my-1 me-1 text-dark ' + tab.iconClass
     const classNameTab = 'nav-item nav-link d-flex justify-content-center align-items-center px-2 py-1 tab' + (index === currentIndexRef.current ? ' active' : '')
     const invert = props.themeQuality === 'dark' ? 'invert(1)' : 'invert(0)'
+
+    const handleTabMouseDown = (event: React.MouseEvent, tabIndex: number) => {
+      if (event.button === 1) {
+        event.preventDefault()
+        event.stopPropagation()
+        props.onClose(tabIndex)
+      }
+    }
+
     return (
       <CustomTooltip tooltipId="tabsActive" tooltipText={tab.tooltip} placement="bottom-start">
         <div
@@ -166,6 +175,7 @@ export const TabsUI = (props: TabsUIProps) => {
           className={classNameTab}
           data-id={index === currentIndexRef.current ? 'tab-active' : ''}
           data-path={tab.name}
+          onMouseDown={(event) => handleTabMouseDown(event, index)}
         >
           {tab.icon ? <img className="my-1 me-1 iconImage" src={tab.icon} /> : <i className={classNameImg}></i>}
           <span className={`title-tabs ${getFileDecorationClasses(tab)}`}>{tab.title}</span>
