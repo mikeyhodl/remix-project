@@ -135,18 +135,6 @@ export class WeightedToolSelector extends SimpleToolSelector {
 
     scoredTools.sort((a, b) => b.score - a.score);
 
-    const topTools = scoredTools.slice(0, maxTools);
-    console.log('[WeightedToolSelector] Top weighted matches:');
-    topTools.forEach(st => {
-      const d = st.matchDetails;
-      console.log(
-        `  - ${st.tool.name}: ${st.score.toFixed(2)} ` +
-        `(name:${d.nameMatch.toFixed(1)} desc:${d.descriptionMatch.toFixed(1)} ` +
-        `hist:${d.historyRelevance.toFixed(1)} usage:${d.toolUsageFrequency.toFixed(1)} ` +
-        `temporal:${d.temporalRelevance.toFixed(1)} ctx:${d.conversationContext.toFixed(1)})`
-      );
-    });
-
     const coreToolResults = scoredTools.filter(st => this.coreTools.includes(st.tool.name));
     const nonCoreResults = scoredTools.filter(st => !this.coreTools.includes(st.tool.name));
     const remainingSlots = maxTools - coreToolResults.length;

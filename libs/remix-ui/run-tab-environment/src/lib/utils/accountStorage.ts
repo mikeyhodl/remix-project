@@ -69,3 +69,22 @@ export function clearAccountPreferences(): void {
     console.error('Error clearing account preferences from localStorage:', e)
   }
 }
+
+export function getNextAvailableAccountNumber(): number {
+  const preferences = getAccountPreferences()
+  const usedNumbers = new Set<number>()
+
+  Object.values(preferences.aliases).forEach(alias => {
+    const match = alias.match(/^Account (\d+)$/)
+    if (match) {
+      usedNumbers.add(parseInt(match[1], 10))
+    }
+  })
+
+  let nextNumber = 1
+  while (usedNumbers.has(nextNumber)) {
+    nextNumber++
+  }
+
+  return nextNumber
+}

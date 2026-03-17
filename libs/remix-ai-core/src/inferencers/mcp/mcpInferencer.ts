@@ -433,6 +433,14 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
 
               const toolResultContent = extractContent(result);
 
+              // Compress successful results to save tokens for huge mcp payloads
+              // const isSuccess = !result.isError;
+              // const isVerbose = toolResultContent.length > 1000;
+              // if (isSuccess && isVerbose) {
+              //   const preview = toolResultContent.substring(0, 200);
+              //   toolResultContent = `[Tool executed successfully - Result compressed to save tokens]\n\nPreview:\n${preview}...\n\n[${toolResultContent.length} characters total]`;
+              // }
+
               // Format tool result based on provider
               if (options.provider === 'anthropic') {
                 toolMessages.push({
@@ -486,6 +494,8 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
           }
 
           if (toolMessages.length > 0) {
+            const existingToolsMessages = enhancedOptions.toolsMessages || [];
+            const currentChatHistory = enhancedOptions.chatHistory || [];
             let toolsMessagesArray = [];
 
             if (options.provider === 'anthropic') {
@@ -499,25 +509,44 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
                   : tc.function?.arguments || {}
               }));
 
-              toolsMessagesArray = [
-                { role: 'assistant', content: toolUseBlocks },
-                { role: 'user', content: toolMessages }
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              } else {
+                // Subsequent iterations: append to existing tool messages
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', content: toolUseBlocks },
+                  { role: 'user', content: toolMessages }
+                ];
+              }
             } else if (options.provider === 'openai' || options.provider === 'mistralai') {
-              // OpenAI & MistralAI: assistant message with tool_calls, followed by individual tool messages
-              toolsMessagesArray = [
-                { role: 'assistant', tool_calls: tool_calls },
-                ...toolMessages
-              ];
+              if (existingToolsMessages.length === 0) {
+                toolsMessagesArray = [
+                  ...currentChatHistory,
+                  { role: 'user', content: prompt },
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              } else {
+                toolsMessagesArray = [
+                  ...existingToolsMessages,
+                  { role: 'assistant', tool_calls: tool_calls },
+                  ...toolMessages
+                ];
+              }
             }
 
             const followUpOptions = {
               ...enhancedOptions,
-              toolsMessages: toolsMessagesArray,
-              chatHistory: options.provider === 'anthropic'
-                ? [...(enhancedOptions.chatHistory || []), { role: 'user', content: prompt }]
-                : enhancedOptions.chatHistory
+              toolsMessages: toolsMessagesArray
             };
+
+            enhancedOptions.toolsMessages = toolsMessagesArray;
 
             if (options.provider === 'openai' || options.provider === 'mistralai') {
               return {
@@ -779,18 +808,7 @@ ${apiDescription}
 
 ${toolsList}
 
-IMPORTANT: Your code MUST always return a value. The return value will be sent back to you as the tool result. Also when wrapped with functions. All functions must be called in the code.
-Example: 
-async function updateContent() {
-    // some code
-    await callMCPTool('file_write', {
-        path: 'contracts/1_Storage.sol',
-        content: newContent
-    });
-    return 'File updated successfully.';
-}
-
-return updateContent();
+IMPORTANT: You always call callMCPTool as follow: return callMCPTool(...)
 
 Note: For detailed schema information about any tool, use the get_tool_schema tool.`,
       input_schema: {
@@ -930,6 +948,8 @@ Use this tool when you need:
         async (innerToolCall: IMCPToolCall) => {
           // Find which server has this tool
           const toolsFromServers = await this.getAllTools();
+          console.log('all tools', toolsFromServers)
+
           let targetServer: string | undefined;
 
           for (const [serverName, tools] of Object.entries(toolsFromServers)) {

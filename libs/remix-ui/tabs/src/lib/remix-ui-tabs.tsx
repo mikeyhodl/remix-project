@@ -846,7 +846,7 @@ export const TabsUI = (props: TabsUIProps) => {
     btnDisabled = false
   }
 
-  const handleAskRemixAI = async () => {
+  const handleDebugWithRemixAI = async () => {
     try {
       // When debugging is active, ensure AI assistant is always on the right side
       if (props.isDebugging) {
@@ -880,7 +880,7 @@ export const TabsUI = (props: TabsUIProps) => {
       // Wait a bit for the panel to open and then send the debugging prompt
       setTimeout(async () => {
         const message = 'Give me more info about current debugging session'
-        await props.plugin.call('remixAI', 'chatPipe', 'code_explaining', '', '', message)
+        await props.plugin.call('remixaiassistant', 'chatPipe', message)
       }, 500)
     } catch (err) {
       console.error('Failed to open RemixAI:', err)
@@ -918,11 +918,11 @@ export const TabsUI = (props: TabsUIProps) => {
                       whiteSpace: "nowrap",
                       height: "28px"
                     }}
-                    onClick={handleAskRemixAI}
+                    onClick={handleDebugWithRemixAI}
                   >
                     <img src="assets/img/remixAI_small.svg" alt="Remix AI" style={{ width: "16px", height: "16px" }} />
                     <span style={{ lineHeight: "12px", position: "relative", top: "1px" }}>
-                      Ask RemixAI
+                      Debug with RemixAI
                     </span>
                   </button>
                 </CustomTooltip>

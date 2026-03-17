@@ -42,7 +42,7 @@ export const TransactionRecordCard = ({ deployment }: { deployment: Transaction 
 
   const handleReplay = async (tx: Transaction) => {
     setShowKebabMenu(false)
-    await replayTransaction(tx, widgetState.recorderData, plugin, dispatch)
+    await replayTransaction(tx, widgetState.recorderData, plugin)
   }
 
   const handleOpenInTerminal = async (tx: Transaction) => {
