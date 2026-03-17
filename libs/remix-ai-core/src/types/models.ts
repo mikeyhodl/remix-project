@@ -27,16 +27,6 @@ export const AVAILABLE_MODELS: AIModel[] = [
 
   // Premium models (require auth + access)
   {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'openai',
-    description: 'Optimized for speed and performance',
-    requiresAuth: true,
-    isDefault: false,
-    category: 'coding',
-    capabilities: ['chat', 'code', 'completion']
-  },
-  {
     id: 'claude-opus-4-6',
     name: 'Claude Opus 4.6',
     provider: 'anthropic',
