@@ -898,13 +898,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       })
     }
   }, [showModelSelector])
+  const [aiChatIsMaximized, setAiChatIsMaximized] = useState(false);
 
   useEffect(() => {
     props.plugin.on('rightSidePanel', 'rightSidePanelMaximized', () => {
       setShowButton(false);
+      setAiChatIsMaximized(true);
     })
     props.plugin.on('rightSidePanel', 'rightSidePanelRestored', () => {
       setShowButton(true);
+      setAiChatIsMaximized(false);
     })
 
     return () => {
@@ -912,7 +915,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('rightSidePanel', 'rightSidePanelRestored');
     }
   }, [])
-
+  console.log('Rendering AIChat aiChatIsMaximized:', aiChatIsMaximized)
   return (
     <div
       className="d-flex flex-column w-100 h-100"
@@ -954,6 +957,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               setShowButton={setShowButton}
               theme={themeTracker?.name}
               chatTitle={messages.find(m => m.role === 'user')?.content}
+              aiChatIsMaximized={aiChatIsMaximized}
             />
             <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
               <div data-id="remix-ai-assistant-ready"></div>
@@ -1029,6 +1033,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 setShowButton={setShowButton}
                 theme={themeTracker?.name}
                 chatTitle={messages.find(m => m.role === 'user')?.content}
+                aiChatIsMaximized={aiChatIsMaximized}
               />
               <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
                 <div data-id="remix-ai-assistant-ready"></div>

@@ -11,6 +11,7 @@ interface ChatHistoryHeadingProps {
   setShowButton: (show: boolean) => void
   theme?: string
   chatTitle?: string
+  aiChatIsMaximized?: boolean
 }
 
 const MAX_TITLE_LENGTH = 50
@@ -23,7 +24,8 @@ export default function ChatHistoryHeading({
   currentConversationId,
   showButton,
   theme,
-  chatTitle
+  chatTitle,
+  aiChatIsMaximized
 }: ChatHistoryHeadingProps) {
   const truncatedTitle = chatTitle
     ? chatTitle.length > MAX_TITLE_LENGTH
@@ -64,7 +66,7 @@ export default function ChatHistoryHeading({
               onClick={onNewChat}
               data-id="new-chat-btn new-conversation-btn"
             >
-              <i className="fas fa-plus"></i>
+              <i className="fas fa-plus"></i>{aiChatIsMaximized && ' New chat'}
             </button>
           </CustomTooltip>
         )}
