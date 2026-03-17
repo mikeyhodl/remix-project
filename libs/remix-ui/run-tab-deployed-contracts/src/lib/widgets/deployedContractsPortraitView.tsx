@@ -175,7 +175,7 @@ export default function DeployedContractsPortraitView() {
         </div>
         <div>
           <button className='btn btn-primary btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleAddClick} data-id="addDeployedContract">
-            <i className='fa-solid fa-plus'></i> Add
+            <i className='fa-solid fa-plus'></i> Add Contract
           </button>
           {deployedContracts.length > 0 && (
             <button
@@ -189,7 +189,7 @@ export default function DeployedContractsPortraitView() {
           )}
         </div>
       </div>
-      { !showClearAllDialog && <p className='text-muted px-3' style={{ fontSize: '0.8rem' }}>Make calls to your deployed contracts</p>}
+      { !showClearAllDialog && <p className='text-muted px-3' style={{ fontSize: '0.8rem' }}>Interact with a deployed contract</p>}
       {/* Add Contract Dialog */}
       {showAddDialog && (
         <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>

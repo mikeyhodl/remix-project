@@ -734,7 +734,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                         style={{
                           fontSize: '12px',
                           fontWeight: 700,
-                          color: 'var(--dark/text-secondary, #d5d7e3)',
+                          color: themeQuality === 'dark' ? 'white' : 'black',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -908,14 +908,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                 </div>
               )}
 
-              {/* Divider */}
-              <div className="border-top mb-3"></div>
-              <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
-                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.balanceLabel" /></div>
-                <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
-                  {contract.balance || 0} ETH
-                </div>
-              </div>
               {((selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel) && (
                 <button
                   data-id={`btnExecute-${index}`}
@@ -944,6 +936,15 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                       : intl.formatMessage({ id: 'udapp.transactButton' })}
                 </button>
               )}
+
+              {/* Divider */}
+              <div className="border-top my-3"></div>
+              <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
+                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1 }}><FormattedMessage id="udapp.balanceLabel" /></div>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
+                  {contract.balance || 0} ETH
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -51,12 +51,7 @@ function EnvironmentPortraitView() {
     if (provider.category && selectedProvider?.category === provider.category) {
       return
     }
-    if (provider.category === 'Dev') {
-      // select category to show sub-categories
-      dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
-    } else {
-      setExecutionContext(provider, plugin, dispatch)
-    }
+    setExecutionContext(provider, plugin, dispatch)
   }
 
   const handleAccountSelection = (account: Account) => {
@@ -385,7 +380,7 @@ function EnvironmentPortraitView() {
             <h6 className="my-auto env-card-heading">{intl.formatMessage({ id: 'udapp.environment' })}</h6>
           </div>
           <div className="toggle-container">
-            {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
+            {widgetState.providers?.selectedProvider?.startsWith('vm') && !widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
               <button data-id="fork-state-icon" className='btn btn-primary btn-sm small me-2 btn-small-text' onClick={handleForkClick}>
                 <i className='fas fa-code-branch'></i> {intl.formatMessage({ id: 'udapp.fork' })}
               </button>
