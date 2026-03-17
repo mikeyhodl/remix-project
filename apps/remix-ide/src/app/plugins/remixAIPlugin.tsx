@@ -79,7 +79,7 @@ export class RemixAIPlugin extends Plugin {
     try {
       const token = localStorage.getItem('remix_access_token')
       if (token) {
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}      
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
         const response = await fetch(`${endpointUrls.permissions}`, {
           credentials: 'include',
           headers
@@ -89,7 +89,7 @@ export class RemixAIPlugin extends Plugin {
           const data = await response.json()
           if (data.features) {
             // Check each AI feature and map to provider
-            hasBasicMcp = data.features['mcp:basicExternal']?.is_enabled        
+            hasBasicMcp = data.features['mcp:basicExternal']?.is_enabled
           }
         }
       }

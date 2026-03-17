@@ -8,7 +8,7 @@ export interface MCPDefaultServersConfig {
 
 export const mcpBasicServersConfig: MCPDefaultServersConfig = {
   version: '1.0.0',
-  defaultServers: [    
+  defaultServers: [
     {
       name: 'Alchemy',
       description: 'Alchemy blockchain data query',
