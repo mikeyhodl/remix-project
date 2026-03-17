@@ -1,5 +1,52 @@
 import { JsonStreamParser, IAIStreamResponse } from '../types/types';
 
+function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
+  try {
+    if (!usage) return;
+
+    let userId: string | undefined;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const userStr = window.localStorage?.getItem('remix_user');
+      console.log('userstring:', userStr)
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          userId = user.sub || user.id;
+        } catch (e) {
+        }
+      }
+
+      // If no user ID, create or retrieve a random session ID
+      if (!userId) {
+        let sessionId = window.sessionStorage.getItem('remix_random_session_id');
+        if (!sessionId) {
+          sessionId = `random_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+          window.sessionStorage.setItem('remix_random_session_id', sessionId);
+        }
+        userId = sessionId;
+      }
+    }
+
+    if (typeof window !== 'undefined' && (window as any)._matomoManagerInstance) {
+      const eventName = [
+        provider ? `provider:${provider}` : '',
+        modelId ? `model:${modelId}` : '',
+        usage.prompt_tokens ? `prompt_tokens:${usage.prompt_tokens}` : '',
+        usage.completion_tokens ? `completion_tokens:${usage.completion_tokens}` : '',
+        usage.total_tokens ? `total_tokens:${usage.total_tokens}` : '',
+        userId ? `user_id:${userId}` : ''
+      ].filter(Boolean).join('|');
+
+      console.log('eventna,me:', eventName)
+      if (eventName) {
+        (window as any)._matomoManagerInstance.trackEvent('ai', 'remixAI', 'token_usage', `|${eventName}`);
+      }
+    }
+  } catch (error) {
+    console.log('Token usage tracking error:', error);
+  }
+}
+
 export const HandleSimpleResponse = async (response, cb?: (streamText: string) => void) => {
   let resultText = '';
   const parser = new JsonStreamParser();
@@ -82,12 +129,14 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   const uiToolCallback = aiResponse?.uiToolCallback
   const tool_callback = aiResponse?.callback
   const abortSignal = aiResponse?.abortSignal
+  const modelId = aiResponse?.modelId
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
   let threadId: string = ""
   let resultText = "";
   const toolCalls: Map<number, any> = new Map(); // Accumulate tool calls by index
+  let usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     if (streamResponse.result) {
@@ -103,6 +152,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    console.log('reader')
     // Check if aborted
     if (abortSignal?.aborted) {
       reader.cancel();
@@ -116,7 +166,6 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
 
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
-
     for (const line of lines) {
       // Check if aborted before processing each line
       if (abortSignal?.aborted) {
@@ -128,6 +177,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
         const jsonStr = line.replace(/^data: /, "").trim();
         if (jsonStr === "[DONE]") {
           if (!abortSignal?.aborted) {
+            trackTokenUsage(usage, 'openai', modelId);
             done_cb?.(resultText, threadId);
           }
           return;
@@ -141,6 +191,11 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
         try {
           const json = JSON.parse(jsonStr);
           threadId = json?.thread_id;
+
+          // Extract usage information if available
+          if (json.usage) {
+            usage = json.usage;
+          }
 
           // Handle tool calls in OpenAI format - accumulate deltas
           if (json.choices?.[0]?.delta?.tool_calls) {
@@ -231,11 +286,13 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
   const tool_callback = aiResponse?.callback
   const uiToolCallback = aiResponse?.uiToolCallback
   const abortSignal = aiResponse?.abortSignal
+  const modelId = aiResponse?.modelId
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
   let threadId: string = ""
   let resultText = "";
+  let usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     if (streamResponse.result) {
@@ -267,6 +324,7 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
       if (line.startsWith("data: ")) {
         const jsonStr = line.replace(/^data: /, "").trim();
         if (jsonStr === "[DONE]") {
+          trackTokenUsage(usage, 'mistralai', modelId);
           done_cb?.(resultText, threadId);
           return;
         }
@@ -279,6 +337,12 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
         try {
           const json = JSON.parse(jsonStr);
           threadId = json?.id || threadId;
+
+          // Extract usage information if available
+          if (json.usage) {
+            usage = json.usage;
+          }
+
           if (json.choices[0].delta.tool_calls && tool_callback){
             const toolCalls = json.choices[0].delta.tool_calls;
             const response = await tool_callback(toolCalls, uiToolCallback)
@@ -316,12 +380,14 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
   const uiToolCallback = aiResponse?.uiToolCallback
   const tool_callback = aiResponse?.callback
   const abortSignal = aiResponse?.abortSignal
+  const modelId = aiResponse?.modelId
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
   let resultText = "";
   const toolUseBlocks: Map<number, any> = new Map();
   let currentBlockIndex: number = -1;
+  let usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     if (streamResponse.result) {
@@ -361,7 +427,18 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
         try {
           const json = JSON.parse(jsonStr);
 
+          // Extract usage information from message_delta event (Anthropic format)
+          // Anthropic uses: input_tokens, output_tokens instead of prompt_tokens, completion_tokens
+          if (json.type === "message_delta" && json.usage) {
+            usage = {
+              prompt_tokens: json.usage.input_tokens,
+              completion_tokens: json.usage.output_tokens,
+              total_tokens: (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0)
+            };
+          }
+
           if (json.type === "message_stop"){
+            trackTokenUsage(usage, 'anthropic', modelId);
             done_cb?.(resultText, "");
             return;
           }
@@ -433,10 +510,12 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
   const tool_callback = aiResponse?.callback
   const uiToolCallback = aiResponse?.uiToolCallback
   const abortSignal = aiResponse?.abortSignal
+  const modelId = aiResponse?.modelId
   const reader = streamResponse.body?.getReader();
   const decoder = new TextDecoder("utf-8");
   let resultText = "";
   let inThinking = false;
+  let usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     const result = streamResponse.result || streamResponse.response;
@@ -470,6 +549,15 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
         try {
           const parsed = JSON.parse(line);
           let content = "";
+
+          // Extract usage information if available (Ollama includes this in the final message)
+          if (parsed.prompt_eval_count !== undefined || parsed.eval_count !== undefined) {
+            usage = {
+              prompt_tokens: parsed.prompt_eval_count,
+              completion_tokens: parsed.eval_count,
+              total_tokens: (parsed.prompt_eval_count || 0) + (parsed.eval_count || 0)
+            };
+          }
 
           // Handle tool calls in Ollama format
           if (parsed.message?.tool_calls && tool_callback) {
@@ -511,6 +599,7 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
           }
 
           if (parsed.done) {
+            trackTokenUsage(usage, 'ollama', modelId);
             done_cb?.(resultText);
             return;
           }
@@ -525,9 +614,11 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
       }
     }
 
+    trackTokenUsage(usage, 'ollama', modelId);
     done_cb?.(resultText);
   } catch (error) {
     console.error("Ollama Stream error:", error);
+    trackTokenUsage(usage, 'ollama', modelId);
     done_cb?.(resultText);
   }
 }

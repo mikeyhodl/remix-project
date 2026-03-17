@@ -93,6 +93,7 @@ export interface IAIStreamResponse{
   streamResponse: any,
   callback?: any,
   toolExecutionStatusCallback?: (isExecuting: boolean, toolName?: string, toolArgs?: Record<string, any>) => void
+  modelId?: string
 }
 
 export enum AIRequestType {
