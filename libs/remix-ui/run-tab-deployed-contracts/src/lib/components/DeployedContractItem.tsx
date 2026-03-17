@@ -465,7 +465,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     } else if (funcABI.stateMutability === 'payable') {
       return <span className='badge text-danger' style={{ backgroundColor: '#FF777714' }}>payable</span>
     } else {
-      return <span className='badge text-warning' style={{ backgroundColor: '#FFB96414' }}>store</span>
+      return <span className='badge text-warning' style={{ backgroundColor: '#FFB96414' }}>non-payable</span>
     }
   }
 
