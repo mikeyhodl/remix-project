@@ -43,6 +43,7 @@ export default function ChatHistoryHeading({
             className="fw-semibold text-truncate d-block"
             style={{ fontSize: '0.85rem', maxWidth: '100%' }}
             title={chatTitle}
+            data-id="current-chat-title"
           >
             {truncatedTitle}
           </span>

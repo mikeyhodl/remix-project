@@ -1285,7 +1285,7 @@ body.dark .conversation-menu {
 }
 
 .conversation-menu-item {
-  background: none;
+  background-color: transparent;
   border: none;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
@@ -1295,10 +1295,19 @@ body.dark .conversation-menu {
   cursor: pointer;
   display: flex;
   align-items: center;
+  appearance: none;
 }
 
 .conversation-menu-item:hover {
   background-color: var(--bs-tertiary-bg);
+}
+
+.conversation-menu-item:focus,
+.conversation-menu-item:focus-visible,
+.conversation-menu-item:active {
+  background-color: var(--bs-tertiary-bg);
+  outline: none;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .conversation-menu-item,
@@ -1307,16 +1316,54 @@ body.dark .conversation-menu-item {
 }
 
 [data-theme="dark"] .conversation-menu-item:hover,
-body.dark .conversation-menu-item:hover {
+body.dark .conversation-menu-item:hover,
+[data-theme="dark"] .conversation-menu-item:focus,
+[data-theme="dark"] .conversation-menu-item:focus-visible,
+[data-theme="dark"] .conversation-menu-item:active,
+body.dark .conversation-menu-item:focus,
+body.dark .conversation-menu-item:focus-visible,
+body.dark .conversation-menu-item:active {
   background-color: #3a3a4a !important;
 }
 
-.conversation-menu-item-danger {
+.conversation-menu-item-danger,
+.conversation-menu-item-danger i,
+[data-theme="dark"] .conversation-menu-item-danger,
+[data-theme="dark"] .conversation-menu-item-danger i,
+body.dark .conversation-menu-item-danger,
+body.dark .conversation-menu-item-danger i {
   color: #dc3545 !important;
 }
 
-.conversation-menu-item-danger:hover {
-  background-color: rgba(220, 53, 69, 0.1) !important;
+.conversation-menu-item-danger:hover,
+.conversation-menu-item-danger:focus,
+.conversation-menu-item-danger:focus-visible,
+.conversation-menu-item-danger:active,
+[data-theme="dark"] .conversation-menu-item-danger:hover,
+[data-theme="dark"] .conversation-menu-item-danger:focus,
+[data-theme="dark"] .conversation-menu-item-danger:focus-visible,
+[data-theme="dark"] .conversation-menu-item-danger:active,
+body.dark .conversation-menu-item-danger:hover,
+body.dark .conversation-menu-item-danger:focus,
+body.dark .conversation-menu-item-danger:focus-visible,
+body.dark .conversation-menu-item-danger:active {
+  background-color: rgba(220, 53, 69, 0.14) !important;
+  color: #dc3545 !important;
+}
+
+.conversation-menu-item-danger:hover i,
+.conversation-menu-item-danger:focus i,
+.conversation-menu-item-danger:focus-visible i,
+.conversation-menu-item-danger:active i,
+[data-theme="dark"] .conversation-menu-item-danger:hover i,
+[data-theme="dark"] .conversation-menu-item-danger:focus i,
+[data-theme="dark"] .conversation-menu-item-danger:focus-visible i,
+[data-theme="dark"] .conversation-menu-item-danger:active i,
+body.dark .conversation-menu-item-danger:hover i,
+body.dark .conversation-menu-item-danger:focus i,
+body.dark .conversation-menu-item-danger:focus-visible i,
+body.dark .conversation-menu-item-danger:active i {
+  color: #dc3545 !important;
 }
 
 .text-remix-ai {
