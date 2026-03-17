@@ -312,21 +312,21 @@ export class TimestampToDateHandler extends BaseToolHandler {
       let formatDescription: string;
 
       switch (format) {
-        case 'iso':
-          formattedDate = date.toISOString();
-          formatDescription = 'ISO 8601';
-          break;
-        case 'local':
-          formattedDate = date.toString();
-          formatDescription = 'Local time string';
-          break;
-        case 'utc':
-          formattedDate = date.toUTCString();
-          formatDescription = 'UTC string';
-          break;
-        default:
-          formattedDate = date.toISOString();
-          formatDescription = 'ISO 8601';
+      case 'iso':
+        formattedDate = date.toISOString();
+        formatDescription = 'ISO 8601';
+        break;
+      case 'local':
+        formattedDate = date.toString();
+        formatDescription = 'Local time string';
+        break;
+      case 'utc':
+        formattedDate = date.toUTCString();
+        formatDescription = 'UTC string';
+        break;
+      default:
+        formattedDate = date.toISOString();
+        formatDescription = 'ISO 8601';
       }
 
       return this.createSuccessResult({
