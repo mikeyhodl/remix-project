@@ -255,7 +255,7 @@ body {
 .btn-ai span {
     color: var(--custom-ai-color);
 }
-  
+
 .btn-ai:hover {
     opacity: 0.8;
 }
@@ -282,6 +282,9 @@ h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
 
 h1, .h1 {
   font-size: calc(1.425rem + 2.1vw);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
 }
 @media (min-width: 1200px) {
   h1, .h1 {
@@ -291,6 +294,9 @@ h1, .h1 {
 
 h2, .h2 {
   font-size: calc(1.375rem + 1.5vw);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 20px;
 }
 @media (min-width: 1200px) {
   h2, .h2 {
@@ -300,6 +306,9 @@ h2, .h2 {
 
 h3, .h3 {
   font-size: calc(1.325rem + 0.9vw);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
 }
 @media (min-width: 1200px) {
   h3, .h3 {
@@ -309,6 +318,9 @@ h3, .h3 {
 
 h4, .h4 {
   font-size: calc(1.275rem + 0.3vw);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
 }
 @media (min-width: 1200px) {
   h4, .h4 {
@@ -318,6 +330,9 @@ h4, .h4 {
 
 h5, .h5 {
   font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
 }
 
 h6, .h6 {

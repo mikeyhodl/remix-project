@@ -266,7 +266,7 @@ body {
 .btn-ai span {
     color: var(--custom-ai-color);
 }
-  
+
 .btn-ai:hover {
     opacity: 0.8;
 }
@@ -294,6 +294,9 @@ h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
 
 h1, .h1 {
   font-size: calc(1.425rem + 2.1vw);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
 }
 @media (min-width: 1200px) {
   h1, .h1 {

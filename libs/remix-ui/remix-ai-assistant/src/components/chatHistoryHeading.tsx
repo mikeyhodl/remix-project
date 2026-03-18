@@ -11,6 +11,8 @@ interface ChatHistoryHeadingProps {
   setShowButton: (show: boolean) => void
   theme?: string
   chatTitle?: string
+  isAiChatMaximized?: boolean
+  setIsAiChatMaximized?: (maximized: boolean) => void
 }
 
 const MAX_TITLE_LENGTH = 50
@@ -23,7 +25,8 @@ export default function ChatHistoryHeading({
   currentConversationId,
   showButton,
   theme,
-  chatTitle
+  chatTitle,
+  isAiChatMaximized
 }: ChatHistoryHeadingProps) {
   const truncatedTitle = chatTitle
     ? chatTitle.length > MAX_TITLE_LENGTH
@@ -40,6 +43,7 @@ export default function ChatHistoryHeading({
             className="fw-semibold text-truncate d-block"
             style={{ fontSize: '0.85rem', maxWidth: '100%' }}
             title={chatTitle}
+            data-id="current-chat-title"
           >
             {truncatedTitle}
           </span>
@@ -65,6 +69,7 @@ export default function ChatHistoryHeading({
               data-id="new-chat-btn new-conversation-btn"
             >
               <i className="fas fa-plus"></i>
+              {isAiChatMaximized ? <span className="ms-1">New chat</span> : null}
             </button>
           </CustomTooltip>
         )}
