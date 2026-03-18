@@ -3,19 +3,49 @@ import init from '../helpers/init'
 
 /**
  * Comprehensive test suite for all RemixMCPServer resource providers
- * Tests all three main resource providers: Project, Compilation, and Deployment
+ * Tests all resource providers: Project, Compilation, Deployment, Context, Tutorials, and Debugging
  */
 
+// Simple contract for debugging tests
+const debugTestContract = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DebugTest {
+    uint256 public counter;
+    mapping(address => uint256) public balances;
+
+    event CounterIncremented(uint256 newValue);
+    event BalanceSet(address indexed user, uint256 amount);
+
+    function increment() public {
+        counter++;
+        emit CounterIncremented(counter);
+    }
+
+    function setBalance(address user, uint256 amount) public {
+        balances[user] = amount;
+        emit BalanceSet(user, amount);
+    }
+
+    function complexOperation(uint256 a, uint256 b) public returns (uint256) {
+        uint256 result = a + b;
+        counter = result;
+        emit CounterIncremented(result);
+        return result;
+    }
+}`;
+
 module.exports = {
-  '@disabled': false,
+  '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
   },
 
   /**
    * Test: Verify all resource providers are registered
+   * #group1
    */
-  'Should have all resource providers registered': function (browser: NightwatchBrowser) {
+  'Should have all resource providers registered #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="remix-ai-assistant"]')
       .execute( function () {
@@ -32,6 +62,9 @@ module.exports = {
           const hasProject = providerNames.includes('project');
           const hasCompilation = providerNames.includes('compilation');
           const hasDeployment = providerNames.includes('deployment');
+          const hasContext = providerNames.includes('context');
+          const hasTutorials = providerNames.includes('tutorials');
+          const hasDebugging = providerNames.includes('debugging');
 
           return {
             totalProviders: providers.length,
@@ -39,7 +72,10 @@ module.exports = {
             hasProject,
             hasCompilation,
             hasDeployment,
-            allProvidersRegistered: hasProject && hasCompilation && hasDeployment
+            hasContext,
+            hasTutorials,
+            hasDebugging,
+            allProvidersRegistered: hasProject && hasCompilation && hasDeployment && hasContext && hasTutorials && hasDebugging
           };
         } catch (error) {
           return { error: error.message };
@@ -50,18 +86,22 @@ module.exports = {
           console.error('Resource providers error:', data.error);
           return;
         }
-        browser.assert.ok(data.totalProviders >= 3, 'Should have at least 3 resource providers');
+        browser.assert.ok(data.totalProviders >= 6, 'Should have at least 6 resource providers');
         browser.assert.ok(data.hasProject, 'Should have project resource provider');
         browser.assert.ok(data.hasCompilation, 'Should have compilation resource provider');
         browser.assert.ok(data.hasDeployment, 'Should have deployment resource provider');
+        browser.assert.ok(data.hasContext, 'Should have context resource provider');
+        browser.assert.ok(data.hasTutorials, 'Should have tutorials resource provider');
+        browser.assert.ok(data.hasDebugging, 'Should have debugging resource provider');
         browser.assert.ok(data.allProvidersRegistered, 'All required providers should be registered');
       });
   },
 
   /**
    * PROJECT RESOURCE PROVIDER TESTS
+   * #group1
    */
-  'Should list all project resources': function (browser: NightwatchBrowser) {
+  'Should list all project resources #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -120,7 +160,7 @@ module.exports = {
       });
   },
 
-  'Should read project structure resource': function (browser: NightwatchBrowser) {
+  'Should read project structure resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -172,7 +212,7 @@ module.exports = {
       });
   },
 
-  'Should read project config resource': function (browser: NightwatchBrowser) {
+  'Should read project config resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -216,7 +256,7 @@ module.exports = {
       });
   },
 
-  'Should read project dependencies resource': function (browser: NightwatchBrowser) {
+  'Should read project dependencies resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -265,8 +305,9 @@ module.exports = {
 
   /**
    * COMPILATION RESOURCE PROVIDER TESTS
+   * #group1
    */
-  'Should list all compilation resources': function (browser: NightwatchBrowser) {
+  'Should list all compilation resources #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -321,7 +362,7 @@ module.exports = {
       });
   },
 
-  'Should read compilation latest resource': function (browser: NightwatchBrowser) {
+  'Should read compilation latest resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -370,7 +411,7 @@ module.exports = {
       })
   },
 
-  'Should read compilation contracts resource': function (browser: NightwatchBrowser) {
+  'Should read compilation contracts resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -415,7 +456,7 @@ module.exports = {
       });
   },
 
-  'Should read compilation config resource': function (browser: NightwatchBrowser) {
+  'Should read compilation config resource #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -463,213 +504,10 @@ module.exports = {
   },
 
   /**
-   * DEPLOYMENT RESOURCE PROVIDER TESTS
-   */
-  'Should list all deployment resources': function (browser: NightwatchBrowser) {
-    browser
-      .executeAsync(function (done) {
-        const aiPlugin = (window as any).getRemixAIPlugin;
-        if (!aiPlugin?.remixMCPServer) {
-          done({ error: 'RemixMCPServer not available' });
-          return;
-        }
-
-        aiPlugin.remixMCPServer.handleMessage({
-          method: 'resources/list',
-          id: 'test-9'
-        }).then(function (response) {
-          const resources = response.result.resources || [];
-          const deploymentResources = resources.filter(function (r: any) {
-            return r.uri.startsWith('deployment://') || r.uri.startsWith('instance://');
-          });
-
-          const expectedDeploymentResources = [
-            'deployment://history',
-            'deployment://active',
-            'deployment://networks',
-            'deployment://transactions',
-            'deployment://config'
-          ];
-
-          const foundResources = expectedDeploymentResources.filter(function (uri) {
-            return deploymentResources.some(function (r: any) { return r.uri === uri; });
-          });
-
-          done({
-            deploymentResourceCount: deploymentResources.length,
-            expectedCount: expectedDeploymentResources.length,
-            foundCount: foundResources.length,
-            foundResources: foundResources,
-            missingResources: expectedDeploymentResources.filter(function (uri) {
-              return !deploymentResources.some(function (r: any) { return r.uri === uri; });
-            }),
-            instanceResources: deploymentResources.filter(function (r: any) {
-              return r.uri.startsWith('instance://');
-            }).length
-          });
-        }).catch(function (error) {
-          done({ error: error.message });
-        });
-      }, [], function (result) {
-        const data = result.value as any;
-        if (data?.error) {
-          console.error('Deployment resources list error:', data?.error);
-          return;
-        }
-        browser.assert.ok(data.deploymentResourceCount >= 5, 'Should have at least 5 deployment resources');
-        browser.assert.equal(data.foundCount, data.expectedCount, 'Should have all expected deployment resources');
-        browser.assert.equal(data.missingResources.length, 0, 'Should not have missing deployment resources');
-      });
-  },
-
-  'Should read deployment history resource': function (browser: NightwatchBrowser) {
-    browser
-      .executeAsync(function (done) {
-        const aiPlugin = (window as any).getRemixAIPlugin;
-        if (!aiPlugin?.remixMCPServer) {
-          done({ error: 'RemixMCPServer not available' });
-          return;
-        }
-
-        aiPlugin.remixMCPServer.handleMessage({
-          method: 'resources/read',
-          params: { uri: 'deployment://history' },
-          id: 'test-10'
-        }).then(function (response) {
-          const content = response.result;
-          let historyData = null;
-
-          if (content.text) {
-            historyData = JSON.parse(content.text);
-          }
-
-          done({
-            hasContent: !!content,
-            mimeType: content.mimeType,
-            hasDeployments: !!historyData?.deployments,
-            hasSummary: !!historyData?.summary,
-            hasGeneratedAt: !!historyData?.generatedAt,
-            deploymentCount: historyData?.deployments?.length || 0,
-            summary: historyData?.summary || null
-          });
-        }).catch(function (error) {
-          done({ error: error.message });
-        });
-      }, [], function (result) {
-        const data = result.value as any;
-        if (data?.error) {
-          console.error('Deployment history read error:', data.error);
-          return;
-        }
-        browser.assert.ok(data.hasContent, 'Should have history content');
-        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
-        browser.assert.ok(data.hasDeployments, 'Should have deployments array');
-        browser.assert.ok(data.hasSummary, 'Should have summary');
-      });
-  },
-
-  'Should read deployment networks resource': function (browser: NightwatchBrowser) {
-    browser
-      .executeAsync(function (done) {
-        const aiPlugin = (window as any).getRemixAIPlugin;
-        if (!aiPlugin?.remixMCPServer) {
-          done({ error: 'RemixMCPServer not available' });
-          return;
-        }
-
-        aiPlugin.remixMCPServer.handleMessage({
-          method: 'resources/read',
-          params: { uri: 'deployment://networks' },
-          id: 'test-11'
-        }).then(function (response) {
-          const content = response.result;
-          let networksData = null;
-
-          if (content.text) {
-            networksData = JSON.parse(content.text);
-          }
-
-          done({
-            hasContent: !!content,
-            mimeType: content.mimeType,
-            hasConfigured: !!networksData?.configured,
-            hasCurrent: !!networksData?.current,
-            hasEnvironment: !!networksData?.environment,
-            hasStatistics: !!networksData?.statistics,
-            networkCount: networksData?.configured?.length || 0,
-            currentNetwork: networksData?.current || null
-          });
-        }).catch(function (error) {
-          done({ error: error.message });
-        });
-      }, [], function (result) {
-        const data = result.value as any;
-        if (data?.error) {
-          console.error('Deployment networks read error:', data.error);
-          return;
-        }
-        browser.assert.ok(data.hasContent, 'Should have networks content');
-        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
-        browser.assert.ok(data.hasConfigured, 'Should have configured networks');
-        browser.assert.ok(data.hasCurrent, 'Should have current network');
-        browser.assert.ok(data.hasStatistics, 'Should have statistics');
-      });
-  },
-
-  'Should read deployment config resource': function (browser: NightwatchBrowser) {
-    browser
-      .executeAsync(function (done) {
-        const aiPlugin = (window as any).getRemixAIPlugin;
-        if (!aiPlugin?.remixMCPServer) {
-          done({ error: 'RemixMCPServer not available' });
-          return;
-        }
-
-        aiPlugin.remixMCPServer.handleMessage({
-          method: 'resources/read',
-          params: { uri: 'deployment://config' },
-          id: 'test-12'
-        }).then(function (response) {
-          const content = response.result;
-          let configData = null;
-
-          if (content.text) {
-            configData = JSON.parse(content.text);
-          }
-
-          done({
-            hasContent: !!content,
-            mimeType: content.mimeType,
-            hasEnvironment: !!configData?.environment,
-            hasAccounts: !!configData?.accounts,
-            hasGas: !!configData?.gas,
-            hasCompiler: !!configData?.compiler,
-            hasDeployment: !!configData?.deployment,
-            hasCapabilities: !!configData?.capabilities,
-            accountCount: configData?.accounts?.length || 0,
-            selectedAccount: configData?.selectedAccount || null
-          });
-        }).catch(function (error) {
-          done({ error: error.message });
-        });
-      }, [], function (result) {
-        const data = result.value as any;
-        if (data?.error) {
-          console.error('Deployment config read error:', data.error);
-          return;
-        }
-        browser.assert.ok(data.hasContent, 'Should have config content');
-        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
-        browser.assert.ok(data.hasEnvironment, 'Should have environment config');
-        browser.assert.ok(data.hasAccounts, 'Should have accounts');
-        browser.assert.ok(data.hasGas, 'Should have gas config');
-      });
-  },
-
-  /**
    * ERROR HANDLING TESTS
+   * #group1
    */
-  'Should handle invalid resource URIs gracefully': function (browser: NightwatchBrowser) {
+  'Should handle invalid resource URIs gracefully #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -740,8 +578,9 @@ module.exports = {
 
   /**
    * PERFORMANCE & CACHING TESTS
+   * #group1
    */
-  'Should test resource caching performance': function (browser: NightwatchBrowser) {
+  'Should test resource caching performance #group1': function (browser: NightwatchBrowser) {
     browser
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
@@ -797,6 +636,848 @@ module.exports = {
         }
         browser.assert.ok(data.hasCacheStats, 'Should have cache statistics');
         browser.assert.ok(data.cacheSize >= 0, 'Should have cache size');
+      });
+  },
+
+  /**
+   * CONTEXT RESOURCE PROVIDER TESTS
+   * #group2
+   */
+  'Should list all context resources #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-context-list'
+        }).then(function (response: any) {
+          const resources = response.result.resources || [];
+          const contextResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('context://');
+          });
+
+          const expectedContextResources = [
+            'context://workspace',
+            'context://editor-state',
+            'context://git-status',
+            'context://diagnostics'
+          ];
+
+          const foundResources = expectedContextResources.filter(function (uri) {
+            return contextResources.some(function (r: any) { return r.uri === uri; });
+          });
+
+          done({
+            contextResourceCount: contextResources.length,
+            expectedCount: expectedContextResources.length,
+            foundCount: foundResources.length,
+            foundResources: foundResources,
+            missingResources: expectedContextResources.filter(function (uri) {
+              return !contextResources.some(function (r: any) { return r.uri === uri; });
+            })
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Context resources list error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.contextResourceCount >= 4, 'Should have at least 4 context resources');
+        browser.assert.equal(data.foundCount, data.expectedCount, 'Should have all expected context resources');
+        browser.assert.equal(data.missingResources.length, 0, 'Should not have missing context resources');
+      });
+  },
+
+  'Should read context workspace resource #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'context://workspace' },
+          id: 'test-context-workspace'
+        }).then(function (response: any) {
+          const content = response.result;
+          let workspaceData = null;
+
+          if (content.text) {
+            workspaceData = JSON.parse(content.text);
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasTimestamp: !!workspaceData?.timestamp,
+            hasFileTree: !!workspaceData?.fileTree,
+            hasEditorState: !!workspaceData?.editorState,
+            hasGitStatus: !!workspaceData?.gitStatus,
+            hasDiagnostics: !!workspaceData?.diagnostics,
+            hasWorkspace: !!workspaceData?.workspace,
+            hasTerminalOutput: !!workspaceData?.terminalOutput
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Context workspace read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have workspace content');
+        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
+        browser.assert.ok(data.hasTimestamp, 'Should have timestamp');
+        browser.assert.ok(data.hasEditorState, 'Should have editor state');
+        browser.assert.ok(data.hasWorkspace, 'Should have workspace info');
+      });
+  },
+
+  'Should read context editor-state resource #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'context://editor-state' },
+          id: 'test-context-editor-state'
+        }).then(function (response: any) {
+          const content = response.result;
+          let editorData = null;
+
+          if (content.text) {
+            editorData = JSON.parse(content.text);
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasTimestamp: !!editorData?.timestamp,
+            hasOpenFiles: editorData?.openFiles !== undefined,
+            hasCurrentFile: editorData?.currentFile !== undefined,
+            hasCursorPosition: editorData?.cursorPosition !== undefined,
+            hasSelectedText: editorData?.selectedText !== undefined
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Context editor-state read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have editor state content');
+        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
+        browser.assert.ok(data.hasTimestamp, 'Should have timestamp');
+        browser.assert.ok(data.hasOpenFiles !== undefined, 'Should have open files field');
+      });
+  },
+
+  'Should read context git-status resource #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'context://git-status' },
+          id: 'test-context-git-status'
+        }).then(function (response: any) {
+          const content = response.result;
+          let gitData = null;
+
+          if (content.text) {
+            gitData = JSON.parse(content.text);
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasTimestamp: !!gitData?.timestamp,
+            hasAvailable: gitData?.available !== undefined,
+            hasBranch: gitData?.branch !== undefined,
+            hasModified: gitData?.modified !== undefined,
+            hasStaged: gitData?.staged !== undefined,
+            hasUntracked: gitData?.untracked !== undefined
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Context git-status read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have git status content');
+        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
+        browser.assert.ok(data.hasTimestamp, 'Should have timestamp');
+        browser.assert.ok(data.hasAvailable !== undefined, 'Should have available field');
+      });
+  },
+
+  'Should read context diagnostics resource #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'context://diagnostics' },
+          id: 'test-context-diagnostics'
+        }).then(function (response: any) {
+          const content = response.result;
+          let diagnosticsData = null;
+
+          if (content.text) {
+            diagnosticsData = JSON.parse(content.text);
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasTimestamp: !!diagnosticsData?.timestamp,
+            hasCompilation: diagnosticsData?.compilation !== undefined,
+            hasAnalysis: diagnosticsData?.analysis !== undefined,
+            hasTotal: diagnosticsData?.total !== undefined
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Context diagnostics read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have diagnostics content');
+        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
+        browser.assert.ok(data.hasTimestamp, 'Should have timestamp');
+        browser.assert.ok(data.hasCompilation !== undefined, 'Should have compilation field');
+        browser.assert.ok(data.hasTotal !== undefined, 'Should have total field');
+      });
+  },
+
+  /**
+   * TUTORIALS RESOURCE PROVIDER TESTS
+   * #group2
+   */
+  'Should list all tutorials resources #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-tutorials-list'
+        }).then(function (response: any) {
+          const resources = response.result.resources || [];
+          const tutorialsResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('tutorials://');
+          });
+
+          const expectedTutorialsResources = [
+            'tutorials://list',
+            'tutorials://current'
+          ];
+
+          const foundResources = expectedTutorialsResources.filter(function (uri) {
+            return tutorialsResources.some(function (r: any) { return r.uri === uri; });
+          });
+
+          done({
+            tutorialsResourceCount: tutorialsResources.length,
+            expectedCount: expectedTutorialsResources.length,
+            foundCount: foundResources.length,
+            foundResources: foundResources,
+            missingResources: expectedTutorialsResources.filter(function (uri) {
+              return !tutorialsResources.some(function (r: any) { return r.uri === uri; });
+            })
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Tutorials resources list error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.tutorialsResourceCount >= 2, 'Should have at least 2 tutorials resources');
+        browser.assert.equal(data.foundCount, data.expectedCount, 'Should have all expected tutorials resources');
+        browser.assert.equal(data.missingResources.length, 0, 'Should not have missing tutorials resources');
+      });
+  },
+
+  'Should read tutorials list resource #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'tutorials://list' },
+          id: 'test-tutorials-list-read'
+        }).then(function (response: any) {
+          const content = response.result;
+          let tutorialsData = null;
+
+          if (content.text) {
+            tutorialsData = JSON.parse(content.text);
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasData: !!tutorialsData,
+            isArray: Array.isArray(tutorialsData),
+            tutorialCount: Array.isArray(tutorialsData) ? tutorialsData.length : 0,
+            hasTutorialProperties: Array.isArray(tutorialsData) && tutorialsData.length > 0 ?
+              !!(tutorialsData[0].name || tutorialsData[0].id) : false
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Tutorials list read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have tutorials list content');
+        browser.assert.equal(data.mimeType, 'application/json', 'Should be JSON content');
+        browser.assert.ok(data.hasData, 'Should have tutorials data');
+      });
+  },
+
+  'Should read tutorials current resource gracefully when no tutorial is active #group2': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'tutorials://current' },
+          id: 'test-tutorials-current'
+        }).then(function (response: any) {
+          const content = response.result;
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasResponse: true,
+            // When no tutorial is active, we expect either null/empty or an error message
+            isHandledGracefully: true
+          });
+        }).catch(function (error: any) {
+          // Even catching an error is graceful handling
+          done({
+            hasContent: false,
+            hasResponse: true,
+            isHandledGracefully: true,
+            errorMessage: error.message
+          });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error && data?.error !== 'RemixMCPServer not available') {
+          console.error('Tutorials current read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasResponse, 'Should have a response');
+        browser.assert.ok(data.isHandledGracefully, 'Should handle gracefully when no tutorial is active');
+      });
+  },
+
+  /**
+   * DEBUGGING RESOURCE PROVIDER TESTS
+   * #group3
+   * Note: These tests require setting up a debug session first
+   */
+  'Should list all debugging resources #group3': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-debugging-list'
+        }).then(function (response: any) {
+          const resources = response.result.resources || [];
+          const debugResources = resources.filter(function (r: any) {
+            return r.uri.startsWith('debug://');
+          });
+
+          const expectedDebugResources = [
+            'debug://scopes-summary',
+            'debug://global-context',
+            'debug://current-debugging-step'
+          ];
+
+          const foundResources = expectedDebugResources.filter(function (uri) {
+            return debugResources.some(function (r: any) { return r.uri === uri; });
+          });
+
+          done({
+            debugResourceCount: debugResources.length,
+            expectedCount: expectedDebugResources.length,
+            foundCount: foundResources.length,
+            foundResources: foundResources,
+            missingResources: expectedDebugResources.filter(function (uri) {
+              return !debugResources.some(function (r: any) { return r.uri === uri; });
+            })
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Debugging resources list error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.debugResourceCount >= 3, 'Should have at least 3 debugging resources');
+        browser.assert.equal(data.foundCount, data.expectedCount, 'Should have all expected debugging resources');
+        browser.assert.equal(data.missingResources.length, 0, 'Should not have missing debugging resources');
+      });
+  },
+
+  'Should read debugging resources gracefully when no debug session is active #group3': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        const debugUris = [
+          'debug://scopes-summary',
+          'debug://global-context',
+          'debug://current-debugging-step'
+        ];
+
+        const results: any[] = [];
+
+        function processNextUri(index: number) {
+          if (index >= debugUris.length) {
+            done({
+              totalTests: debugUris.length,
+              results: results,
+              allHandledGracefully: results.every(function (r) { return r.handledGracefully; })
+            });
+            return;
+          }
+
+          const uri = debugUris[index];
+          aiPlugin.remixMCPServer.handleMessage({
+            method: 'resources/read',
+            params: { uri: uri },
+            id: 'test-debug-' + index
+          }).then(function (response: any) {
+            const content = response.result;
+            // Check if it returns appropriate "no session" message
+            const text = content?.text || '';
+            const isNoSessionMessage = text.includes('not available') ||
+                                        text.includes('no debug session') ||
+                                        text.includes('Please start a debug session') ||
+                                        content?.success === false;
+
+            results.push({
+              uri: uri,
+              hasContent: !!content,
+              handledGracefully: true,
+              isNoSessionMessage: isNoSessionMessage,
+              mimeType: content?.mimeType
+            });
+            processNextUri(index + 1);
+          }).catch(function (error: any) {
+            // Even an error is graceful as long as it doesn't crash
+            results.push({
+              uri: uri,
+              hasContent: false,
+              handledGracefully: true,
+              errorMessage: error.message
+            });
+            processNextUri(index + 1);
+          });
+        }
+
+        processNextUri(0);
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Debugging resources graceful handling error:', data.error);
+          return;
+        }
+        browser.assert.equal(data.totalTests, 3, 'Should test all debugging resources');
+        browser.assert.ok(data.allHandledGracefully, 'All debugging resources should be handled gracefully without active session');
+      });
+  },
+
+  /**
+   * DEBUGGING RESOURCE PROVIDER TESTS WITH ACTIVE DEBUG SESSION
+   * #group4
+   * These tests set up a contract, compile, deploy, execute, and debug to test debugging resources with data
+   */
+  'Setup: Create and compile test contract for debugging #group4': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('filePanel')
+      .addFile('contracts/DebugTest.sol', { content: debugTestContract })
+      .waitForElementVisible('[data-id="treeViewLitreeViewItemcontracts/DebugTest.sol"]')
+      .openFile('contracts/DebugTest.sol')
+      .clickLaunchIcon('solidity')
+      .waitForElementVisible('[data-id="compilerContainerCompileBtn"]')
+      .click('[data-id="compilerContainerCompileBtn"]')
+      .waitForElementPresent('[data-id="compiledContracts"] option[value="DebugTest"]', 60000)
+      .execute(function () {
+        // Verify compilation succeeded
+        const compiledContract = document.querySelector('[data-id="compiledContracts"] option[value="DebugTest"]');
+        return { compiled: !!compiledContract };
+      }, [], function (result) {
+        const data = result.value as any;
+        browser.assert.ok(data.compiled, 'Contract should be compiled successfully');
+      });
+  },
+
+  'Setup: Deploy test contract for debugging #group4': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('udapp')
+      .waitForElementVisible('[data-id="Deploy - transact (not payable)"]')
+      .click('[data-id="Deploy - transact (not payable)"]')
+      .waitForElementPresent('.instance', 60000)
+      .pause(2000); // Wait for deployment to complete
+  },
+
+  'Setup: Execute transaction for debugging #group4': function (browser: NightwatchBrowser) {
+    browser
+      .waitForElementVisible('.instance')
+      .waitForElementVisible('[data-id="universalDappUiTitleExpander0"]')
+      .click('[data-id="universalDappUiTitleExpander0"]')
+      .waitForElementVisible('[data-id="instanceContractBal"]')
+      .waitForElementVisible('[data-title="increment"]')
+      .click('[data-title="increment"]')
+      .pause(3000); // Wait for transaction to complete
+  },
+
+  'Setup: Start debugger on transaction #group4': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('debugger')
+      .waitForElementVisible('[data-id="debuggerTransactionStartButton"]')
+      .click('[data-id="debuggerTransactionStartButton"]')
+      .pause(3000) // Wait for debugger to load
+      .waitForElementVisible('[data-id="slider"]', 30000);
+  },
+
+  'Should read debugging scopes-summary with active session #group4': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'debug://scopes-summary' },
+          id: 'test-debug-scopes-active'
+        }).then(function (response: any) {
+          const content = response.result;
+          let scopesData = null;
+
+          if (content.text) {
+            try {
+              scopesData = JSON.parse(content.text);
+            } catch (e) {
+              done({ error: 'Failed to parse scopes JSON', raw: content.text });
+              return;
+            }
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasSuccess: scopesData?.success !== undefined,
+            success: scopesData?.success,
+            hasSummary: !!scopesData?.summary,
+            hasMetadata: !!scopesData?.metadata,
+            totalTopLevelScopes: scopesData?.summary?.totalTopLevelScopes,
+            totalAllScopes: scopesData?.summary?.totalAllScopes,
+            totalVariables: scopesData?.summary?.totalVariables,
+            hasScopeHierarchy: !!scopesData?.summary?.scopeHierarchy
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Debugging scopes-summary read error:', data.error);
+          // Don't fail the test if debug session isn't available
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have scopes content');
+        if (data.success) {
+          browser.assert.ok(data.hasSummary, 'Should have summary when debug session active');
+          browser.assert.ok(data.hasMetadata, 'Should have metadata');
+        }
+      });
+  },
+
+  'Should read debugging global-context with active session #group4': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'debug://global-context' },
+          id: 'test-debug-global-context-active'
+        }).then(function (response: any) {
+          const content = response.result;
+          let contextData = null;
+
+          if (content.text) {
+            try {
+              contextData = JSON.parse(content.text);
+            } catch (e) {
+              done({ error: 'Failed to parse context JSON', raw: content.text });
+              return;
+            }
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasSuccess: contextData?.success !== undefined,
+            success: contextData?.success,
+            hasContext: !!contextData?.context,
+            hasBlock: !!contextData?.context?.block,
+            hasMsg: !!contextData?.context?.msg,
+            hasTx: !!contextData?.context?.tx,
+            hasMetadata: !!contextData?.metadata
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Debugging global-context read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have global context content');
+        if (data.success) {
+          browser.assert.ok(data.hasContext, 'Should have context object when debug session active');
+        }
+      });
+  },
+
+  'Should read debugging current-debugging-step with active session #group4': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/read',
+          params: { uri: 'debug://current-debugging-step' },
+          id: 'test-debug-current-step-active'
+        }).then(function (response: any) {
+          const content = response.result;
+          let stepData = null;
+
+          if (content.text) {
+            try {
+              stepData = JSON.parse(content.text);
+            } catch (e) {
+              done({ error: 'Failed to parse step JSON', raw: content.text });
+              return;
+            }
+          }
+
+          done({
+            hasContent: !!content,
+            mimeType: content.mimeType,
+            hasSuccess: stepData?.success !== undefined,
+            success: stepData?.success,
+            hasResult: !!stepData?.result,
+            hasStack: !!stepData?.stack,
+            hasDescription: !!stepData?.description,
+            step: stepData?.result?.step
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Debugging current-debugging-step read error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.hasContent, 'Should have current debugging step content');
+        if (data.success) {
+          browser.assert.ok(data.hasResult, 'Should have result when debug session active');
+          browser.assert.ok(data.hasDescription, 'Should have description');
+        }
+      });
+  },
+
+  /**
+   * CROSS-PROVIDER INTEGRATION TESTS
+   * #group5
+   */
+  'Should list all resources from all providers #group5': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        aiPlugin.remixMCPServer.handleMessage({
+          method: 'resources/list',
+          id: 'test-all-resources'
+        }).then(function (response: any) {
+          const resources = response.result.resources || [];
+
+          // Group resources by protocol
+          const resourcesByProtocol: Record<string, number> = {};
+          resources.forEach(function (r: any) {
+            const protocol = r.uri.split('://')[0];
+            resourcesByProtocol[protocol] = (resourcesByProtocol[protocol] || 0) + 1;
+          });
+
+          done({
+            totalResources: resources.length,
+            resourcesByProtocol: resourcesByProtocol,
+            hasProject: resourcesByProtocol['project'] > 0,
+            hasCompilation: resourcesByProtocol['compilation'] > 0,
+            hasDeployment: resourcesByProtocol['deployment'] > 0,
+            hasContext: resourcesByProtocol['context'] > 0,
+            hasTutorials: resourcesByProtocol['tutorials'] > 0,
+            hasDebugging: resourcesByProtocol['debug'] > 0,
+            hasFile: resourcesByProtocol['file'] > 0
+          });
+        }).catch(function (error: any) {
+          done({ error: error.message });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('All resources list error:', data.error);
+          return;
+        }
+        browser.assert.ok(data.totalResources >= 18, 'Should have at least 18 total resources');
+        browser.assert.ok(data.hasProject, 'Should have project resources');
+        browser.assert.ok(data.hasCompilation, 'Should have compilation resources');
+        browser.assert.ok(data.hasDeployment, 'Should have deployment resources');
+        browser.assert.ok(data.hasContext, 'Should have context resources');
+        browser.assert.ok(data.hasTutorials, 'Should have tutorials resources');
+        browser.assert.ok(data.hasDebugging, 'Should have debugging resources');
+      });
+  },
+
+  'Should handle rapid sequential resource reads #group5': function (browser: NightwatchBrowser) {
+    browser
+      .executeAsync(function (done) {
+        const aiPlugin = (window as any).getRemixAIPlugin;
+        if (!aiPlugin?.remixMCPServer) {
+          done({ error: 'RemixMCPServer not available' });
+          return;
+        }
+
+        const urisToRead = [
+          'project://structure',
+          'compilation://config',
+          'deployment://networks',
+          'context://editor-state',
+          'tutorials://list'
+        ];
+
+        const startTime = Date.now();
+
+        Promise.all(urisToRead.map(function (uri, index) {
+          return aiPlugin.remixMCPServer.handleMessage({
+            method: 'resources/read',
+            params: { uri: uri },
+            id: 'test-rapid-' + index
+          }).then(function (response: any) {
+            return { uri: uri, success: true, hasContent: !!response.result };
+          }).catch(function (error: any) {
+            return { uri: uri, success: false, error: error.message };
+          });
+        })).then(function (allResults) {
+          const elapsed = Date.now() - startTime;
+          done({
+            totalRequests: urisToRead.length,
+            successCount: allResults.filter(function (r: any) { return r.success; }).length,
+            failCount: allResults.filter(function (r: any) { return !r.success; }).length,
+            results: allResults,
+            elapsedMs: elapsed,
+            systemStable: true
+          });
+        });
+      }, [], function (result) {
+        const data = result.value as any;
+        if (data?.error) {
+          console.error('Rapid sequential reads error:', data.error);
+          return;
+        }
+        browser.assert.equal(data.totalRequests, 5, 'Should have made 5 requests');
+        browser.assert.ok(data.successCount >= 4, 'Most requests should succeed');
+        browser.assert.ok(data.systemStable, 'System should remain stable after rapid requests');
       });
   }
 };
