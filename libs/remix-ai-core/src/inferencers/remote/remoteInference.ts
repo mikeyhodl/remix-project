@@ -14,6 +14,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
   event: EventEmitter
   test_env=false
   test_url="http://solcodertest.org"
+  protected currentAbortController: AbortController | null = null
 
   constructor(apiUrl?:string, completionUrl?:string) {
     this.api_url = apiUrl!==undefined ? apiUrl: this.test_env? this.test_url : endpointUrls.solcoder
@@ -97,6 +98,11 @@ export class RemoteInferencer implements ICompletions, IGeneration {
     }
   }
 
+  cancelRequest(): void {
+    this.currentAbortController?.abort()
+    this.currentAbortController = null
+  }
+
   async _streamInferenceRequest(payload, rType:AIRequestType){
     let resultText = ""
 
@@ -107,6 +113,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
 
     try {
       this.event.emit('onInference')
+      this.currentAbortController = new AbortController()
       const requestURL = rType === AIRequestType.COMPLETION ? this.completion_url : this.api_url
       const token = typeof window !== 'undefined' ? window.localStorage?.getItem('remix_access_token') : undefined
       const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -117,6 +124,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
           ...authHeader,
         },
         body: JSON.stringify(payload),
+        signal: this.currentAbortController.signal,
       });
 
       if (payload.return_stream_response) {

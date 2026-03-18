@@ -60,7 +60,7 @@ export const TxList = (props: any) => {
           return x.message.map((trans: any) => {
             return (
               <div
-                className={classNameBlock}
+                className={`${classNameBlock} text-danger`}
                 data-id={`block_tx${trans.tx.hash}`}
                 key={index}
               >

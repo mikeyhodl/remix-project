@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Cloud Sync Engine — Hybrid ZIP + Incremental
  *

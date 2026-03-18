@@ -27,7 +27,7 @@ const profile = {
     'getSelectedModel', 'getModelAccess', 'getOllamaModels',
     'addMCPServer', 'removeMCPServer', 'getMCPConnectionStatus', 'getMCPResources', 'getMCPTools', 'executeMCPTool',
     'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers',
-    'clearCaches'
+    'clearCaches', 'cancelRequest'
   ],
   events: [],
   icon: 'assets/img/remix-logo-blue.png',
@@ -684,6 +684,14 @@ export class RemixAIPlugin extends Plugin {
   clearCaches(){
     if (this.mcpInferencer){
       this.mcpInferencer.resetResourceCache()
+    }
+  }
+
+  cancelRequest(): void {
+    if (this.mcpEnabled && this.mcpInferencer) {
+      this.mcpInferencer.cancelRequest()
+    } else if (this.remoteInferencer) {
+      (this.remoteInferencer as RemoteInferencer).cancelRequest()
     }
   }
 }
