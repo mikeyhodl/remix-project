@@ -413,6 +413,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         setMessages(prev => prev.filter(m => m.id !== parsingId))
 
         GenerationParams.stream_result = true
+        GenerationParams.stream = true
         GenerationParams.return_stream_response = true
         GenerationParams.threadId = await props.plugin.call('remixAI', 'getAssistantThrId') || ""
 
@@ -502,6 +503,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         if (response && typeof response === 'object') {
           response.uiToolCallback = uiToolCallback
           response.abortSignal = abortControllerRef.current?.signal
+          response.modelId = selectedModel?.id
         }
 
         // Derive provider from selectedModel to avoid stale state issues
