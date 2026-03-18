@@ -7,7 +7,6 @@ function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
     let userId: string | undefined;
     if (typeof window !== 'undefined' && window.sessionStorage) {
       const userStr = window.localStorage?.getItem('remix_user');
-      console.log('userstring:', userStr)
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
@@ -37,7 +36,6 @@ function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
         userId ? `user_id:${userId}` : ''
       ].filter(Boolean).join('|');
 
-      console.log('eventna,me:', eventName)
       if (eventName) {
         (window as any)._matomoManagerInstance.trackEvent('ai', 'remixAI', 'token_usage', `|${eventName}`);
       }

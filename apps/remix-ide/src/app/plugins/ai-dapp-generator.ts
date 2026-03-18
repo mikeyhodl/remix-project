@@ -493,6 +493,8 @@ export class AIDappGenerator extends Plugin {
     // const BACKEND_URL = "http://localhost:4000/dapp-generator/generate"
 
     try {
+      console.log('[AI-DAPP] Calling LLM API', { isUpdate, hasImage, messageCount: messages.length + systemPrompt.length });
+
       const response = await fetch(BACKEND_URL, {
         method: "POST",
         headers: this.getAuthHeaders(),
@@ -510,7 +512,47 @@ export class AIDappGenerator extends Plugin {
       }
 
       const json = await response.json();
+      const promptTokens = Math.ceil((messages.length + systemPrompt.length) * 1.3)
+      const completionTokens = Math.ceil((json?.content.length) * 1.3 || 0);
 
+      let userId: string | undefined;
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const userStr = window.localStorage?.getItem('remix_user');
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            userId = user.sub || user.id;
+          } catch (e) {
+          }
+        }
+
+        // If no user ID, create or retrieve a random session ID
+        if (!userId) {
+          let sessionId = window.sessionStorage.getItem('remix_random_session_id');
+          if (!sessionId) {
+            sessionId = `random_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+            window.sessionStorage.setItem('remix_random_session_id', sessionId);
+          }
+          userId = sessionId;
+        }
+      }
+
+      const eventLog = [
+        `provider:fireworks-custom-llm`,
+        `promptTokens:${promptTokens}`,
+        `completionTokens:${completionTokens}`,
+        `totalTokens:${promptTokens + completionTokens}`,
+        `model:${json.meta?.model}` || 'unknown',
+        `userId:${userId}`
+      ].filter(Boolean).join('|')
+
+      trackMatomoEvent(this, {
+        category: 'quick-dapp-v2',
+        action: 'generate',
+        name: 'token_usage',
+        value: `|${eventLog}`,
+        isClick: false
+      });
       return json.content;
 
     } catch (error: any) {
