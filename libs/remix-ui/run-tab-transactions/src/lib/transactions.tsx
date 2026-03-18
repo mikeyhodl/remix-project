@@ -67,10 +67,11 @@ function TransactionsWidget({ plugin }: { plugin: TransactionsPlugin }) {
 
     plugin.on('blockchain', 'transactionExecuted', handleTransactionExecuted)
     plugin.on('blockchain', 'contextChanged', handleContextChanged)
-
+    plugin.on('filePanel', 'setWorkspace', handleContextChanged)
     return () => {
       plugin.off('blockchain', 'transactionExecuted')
       plugin.off('blockchain', 'contextChanged')
+      plugin.off('filePanel', 'setWorkspace')
     }
   }, [plugin, localDispatch])
 
