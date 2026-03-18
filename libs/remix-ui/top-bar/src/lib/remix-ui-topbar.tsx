@@ -760,25 +760,29 @@ export function RemixUiTopbar() {
         </div>
         <div
           className="d-flex flex-row align-items-center justify-content-end flex-nowrap"
-          style={{ minWidth: 0, flex: '1 1 0' }}
+          style={{ minWidth: 0, flex: '1 1 0', whiteSpace: 'nowrap' }}
         >
-          <GitHubLogin
-            cloneGitRepository={showCloneModal}
-            logOutOfGithub={logOutOfGithub}
-            publishToGist={publishToGist}
-            loginWithGitHub={loginWithGitHub}
-          />
+          <div className="d-flex flex-row align-items-center flex-nowrap" style={{ whiteSpace: 'nowrap' }}>
+            <div style={{ whiteSpace: 'nowrap' }}>
+              <GitHubLogin
+                cloneGitRepository={showCloneModal}
+                logOutOfGithub={logOutOfGithub}
+                publishToGist={publishToGist}
+                loginWithGitHub={loginWithGitHub}
+              />
+            </div>
 
-          {showLoginUI && (
-            <LoginButton
-              plugin={plugin}
-              variant="compact"
-              showCredits={true}
-              className="ms-3"
-              cloneGitRepository={showCloneModal}
-              publishToGist={publishToGist}
-            />
-          )}
+            {showLoginUI && (
+              <LoginButton
+                plugin={plugin}
+                variant="compact"
+                showCredits={true}
+                className="ms-3 text-nowrap"
+                cloneGitRepository={showCloneModal}
+                publishToGist={publishToGist}
+              />
+            )}
+          </div>
           {showJoinBetaTopButton && <BetaPromoPill plugin={plugin} />}
           {showNotificationBell && <NotificationBell className="ms-3" />}
           {supportEnabled && isAuthenticated && token && (
