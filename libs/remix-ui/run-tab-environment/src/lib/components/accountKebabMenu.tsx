@@ -131,7 +131,9 @@ export const AccountKebabMenu: React.FC<AccountKebabMenuProps> = ({
                     ...(index === 0 && { borderTopLeftRadius: 8, borderTopRightRadius: 8 }),
                     ...(index === menuItems.length - 1 && { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 })
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bs-secondary-bg)'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bs-secondary-bg)'
+                  }}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span className="me-2">

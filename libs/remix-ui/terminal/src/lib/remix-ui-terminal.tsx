@@ -764,7 +764,7 @@ export const RemixUiTerminal = (props: RemixUiTerminalProps) => {
                     else if (!msg) msg = 'null'
                     if (React.isValidElement(msg)) {
                       return (
-                        <div className="px-4 block" data-id="block" key={i}>
+                        <div className="px-4 block mt-3" data-id="block" key={i}>
                           <span className={x.style}>{msg}</span>
                         </div>
                       )

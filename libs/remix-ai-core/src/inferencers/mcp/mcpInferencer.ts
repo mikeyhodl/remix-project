@@ -113,6 +113,10 @@ export class MCPInferencer extends RemoteInferencer implements ICompletions, IGe
     }
   }
 
+  cancelRequest(): void {
+    this.baseInferencer?.cancelRequest()
+  }
+
   async connectAllServers(): Promise<void> {
     const promises = Array.from(this.mcpClients.values()).map(async (client) => {
       try {
