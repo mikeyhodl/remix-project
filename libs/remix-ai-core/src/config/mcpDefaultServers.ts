@@ -6,6 +6,49 @@ export interface MCPDefaultServersConfig {
   defaultServers: IMCPServer[];
 }
 
+export const mcpBasicServersConfig: MCPDefaultServersConfig = {
+  version: '1.0.0',
+  defaultServers: [
+    {
+      name: 'Alchemy',
+      description: 'Alchemy blockchain data query',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/alchemy',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Etherscan',
+      description: 'Etherscan block explorer',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/etherscan/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Thegraph API',
+      description: 'Thegraph API (subgraph and token API',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/thegraph/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    /*
+    {
+      name: 'Sourcify',
+      description: 'Sourcify smart contract verification',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/sourcify/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },*/
+  ]
+}
+
 export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
   version: "1.0.0",
   defaultServers: [
@@ -16,7 +59,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 5000,
-      isBuiltIn: true
+      isBuiltIn: true,
     },
     {
       name: 'OpenZeppelin Contracts',
@@ -55,10 +98,10 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       timeout: 30000
     },
     {
-      name: 'Alchemy',
-      description: 'Alchemy blockchain data query',
+      name: 'ethskills',
+      description: 'ethereum dev skills',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/alchemy',
+      url: endpointUrls.mcpCorsProxy8443 + '/ethskills/mcp',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -71,52 +114,6 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       autoStart: true,
       enabled: true,
       timeout: 30000
-    },
-    {
-      name: 'Etherscan',
-      description: 'Etherscan block explorer',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/etherscan/mcp',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'Thegraph API',
-      description: 'Thegraph API (subgraph and token API',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/thegraph/mcp',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'Sourcify',
-      description: 'Sourcify smart contract verification',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/sourcify/mcp',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
-      name: 'ethskills',
-      description: 'ethereum dev skills',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/ethskills/mcp',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    /*
-    {
-        name: 'slither',
-        description: 'slither static analysis tool',
-        transport: 'http',
-        url: 'http://localhost:9005/mcp', // endpointUrls.mcpCorsProxy8443 + '/slither/mcp',
-        autoStart: true,
-        enabled: true,
-        timeout: 30000
-    }*/
+    }
   ]
 };

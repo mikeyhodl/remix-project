@@ -128,16 +128,16 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
   let accounts = await plugin.call('blockchain', 'getAccounts')
   const provider = await plugin.call('blockchain', 'getProvider')
   let safeAddresses = []
+  let storedSmartAccounts = {}
 
   if (provider && provider.startsWith('injected') && accounts?.length) {
     const smartAccountsStr = localStorage.getItem(aaLocalStorageKey)
-    let smartAccounts = []
     const networkStatus = await plugin.call('blockchain', 'getCurrentNetworkStatus')
     const currentChainId = networkStatus?.network?.id
     if (smartAccountsStr) {
       const smartAccountsObj = JSON.parse(smartAccountsStr)
       if (smartAccountsObj[currentChainId]) {
-        smartAccounts = smartAccountsObj[currentChainId]
+        storedSmartAccounts = smartAccountsObj[currentChainId]
       } else {
         smartAccountsObj[currentChainId] = {}
         localStorage.setItem(aaLocalStorageKey, JSON.stringify(smartAccountsObj))
@@ -147,10 +147,8 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
       objToStore[currentChainId] = {}
       localStorage.setItem(aaLocalStorageKey, JSON.stringify(objToStore))
     }
-    if (Object.keys(smartAccounts).length) {
-      safeAddresses = smartAccounts.map(account => account.account)
-      accounts.push(...safeAddresses)
-    }
+    safeAddresses = Object.keys(storedSmartAccounts)
+    if (safeAddresses.length) accounts.push(...safeAddresses)
   }
   if (!accounts) accounts = []
 
@@ -183,11 +181,18 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
         balance: formatBalance(balance, 3),
         symbol: plugin.blockchain['networkNativeCurrency'].symbol
       })
-    if (safeAddresses.length && safeAddresses.includes(account)) smartAccounts.push({
-      alias: alias,
-      account: account,
-      balance: formatBalance(balance, 3)
-    })
+    if (safeAddresses.length && safeAddresses.includes(account)) {
+      const storedSmartAccount = storedSmartAccounts[account]
+      smartAccounts.push({
+        alias: storedSmartAccount?.alias || alias,
+        account: account,
+        balance: formatBalance(balance, 3),
+        salt: storedSmartAccount?.salt,
+        ownerEOA: storedSmartAccount?.ownerEOA,
+        timestamp: storedSmartAccount?.timestamp,
+        symbol: plugin.blockchain['networkNativeCurrency']?.symbol
+      })
+    }
   }
   dispatch({ type: 'SET_ACCOUNTS', payload: defaultAccounts })
   dispatch({ type: 'SET_SMART_ACCOUNTS', payload: smartAccounts })
@@ -236,6 +241,7 @@ export async function createNewAccount (plugin: EnvironmentPlugin, dispatch: Rea
 
 export async function createSmartAccount (plugin: EnvironmentPlugin, widgetState: WidgetState, dispatch: React.Dispatch<Actions>) {
   plugin.call('notification', 'toast', `Preparing tx to sign...`)
+  const currentEnv = await plugin.call('blockchain', 'getProviderObject')
   const chainId = widgetState.network.chainId
   const chain = chains[aaSupportedNetworks[chainId].name]
   const PUBLIC_NODE_URL = aaSupportedNetworks[chainId].publicNodeUrl
@@ -244,12 +250,12 @@ export async function createSmartAccount (plugin: EnvironmentPlugin, widgetState
   let salt: number = 0
 
   // @ts-ignore
-  const [account] = await window.ethereum!.request({ method: 'eth_requestAccounts' })
+  const [account] = await currentEnv.provider.request({ method: 'eth_requestAccounts' })
 
   const walletClient = createWalletClient({
     account,
     chain,
-    transport: custom(window.ethereum!),
+    transport: custom(currentEnv.provider),
   })
 
   const publicClient = createPublicClient({
@@ -315,15 +321,22 @@ export async function createSmartAccount (plugin: EnvironmentPlugin, widgetState
       timestamp: Date.now()
     }
     const smartAccounts = [...widgetState.accounts.smartAccounts, sAccount]
+
+    // Convert array to object format for storage (keyed by address)
+    const smartAccountsForStorage = smartAccounts.reduce((acc, sa) => {
+      acc[sa.account] = sa
+      return acc
+    }, {})
+
     // Save smart accounts in local storage
     const smartAccountsStr = localStorage.getItem(aaLocalStorageKey)
     if (!smartAccountsStr) {
       const objToStore = {}
-      objToStore[chainId] = smartAccounts
+      objToStore[chainId] = smartAccountsForStorage
       localStorage.setItem(aaLocalStorageKey, JSON.stringify(objToStore))
     } else {
       const smartAccountsObj = JSON.parse(smartAccountsStr)
-      smartAccountsObj[chainId] = smartAccounts
+      smartAccountsObj[chainId] = smartAccountsForStorage
       localStorage.setItem(aaLocalStorageKey, JSON.stringify(smartAccountsObj))
     }
     await getAccountsList(plugin, dispatch)
@@ -473,6 +486,19 @@ export async function updateAccountAlias (
 ) {
   // Save alias to localStorage
   setAccountAlias(accountAddress, newAlias)
+
+  // Also update alias in smart account storage if this is a smart account
+  const smartAccountsStr = localStorage.getItem(aaLocalStorageKey)
+  if (smartAccountsStr) {
+    const smartAccountsObj = JSON.parse(smartAccountsStr)
+    const networkStatus = await plugin.call('blockchain', 'getCurrentNetworkStatus')
+    const currentChainId = networkStatus?.network?.id
+
+    if (smartAccountsObj[currentChainId] && smartAccountsObj[currentChainId][accountAddress]) {
+      smartAccountsObj[currentChainId][accountAddress].alias = newAlias
+      localStorage.setItem(aaLocalStorageKey, JSON.stringify(smartAccountsObj))
+    }
+  }
 
   // Refresh accounts list to show updated alias
   await getAccountsList(plugin, dispatch)
