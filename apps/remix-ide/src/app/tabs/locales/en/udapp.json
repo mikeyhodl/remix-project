@@ -49,7 +49,7 @@
   "udapp.enterAMessageToSign": "Enter a message to sign and click `Sign`",
   "udapp.hash": "hash",
   "udapp.signature": "signature",
-  "udapp.forkStateTitle": "Fork VM state",
+  "udapp.forkStateTitle": "Fork VM State",
   "udapp.forkStateLabel": "New environment name",
   "udapp.forkVmStateDesc1":"Forking state will create a new environment with the same state as the selected environment",
   "udapp.forkVmStateDesc2":"After forking, the new environment will be pinned and selected automatically. It can be unpinned or deleted using Environment Explorer",
