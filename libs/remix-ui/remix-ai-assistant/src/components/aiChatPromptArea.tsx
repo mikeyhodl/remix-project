@@ -1,7 +1,7 @@
 import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
-import { AiAssistantType } from '../types/componentTypes'
+import { AiAssistantType, groupListType } from '../types/componentTypes'
 import { ChatMessage } from '@remix/remix-ai-core'
 
 interface AiChatPromptAreaProps {
@@ -22,6 +22,7 @@ interface AiChatPromptAreaProps {
     availableModels: any[]
     selectedModel: any
     handleModelSelection: (modelName: string) => void
+    onLockedModelClick?: (modelId: string, modelName: string) => void
     input: string
     setInput: React.Dispatch<React.SetStateAction<string>>
     isStreaming: boolean
@@ -47,6 +48,23 @@ interface AiChatPromptAreaProps {
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
+  const modelList = useMemo(() => {
+    return props.availableModels.map(model => {
+      const hasAccess = props.modelAccess.checkAccess(model.id)
+      return {
+        label: model.name,
+        bodyText: model.description,
+        icon: 'fa-solid fa-check' as const,
+        stateValue: model.id,
+        dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`,
+        isLocked: !hasAccess
+      }
+    })
+  }, [props.availableModels, props.modelAccess.allowedModels])
+
+  const handleLockedItemClick = (item: groupListType) => {
+    props.onLockedModelClick?.(item.stateValue, item.label)
+  }
 
   {/* Prompt area - fixed at bottom */}
   return (
@@ -67,27 +85,8 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
             choice={props.selectedModelId}
-            groupList={props.availableModels
-              .filter(model => {
-                // Check if user is logged in by checking for token
-                const isLoggedIn = !!localStorage.getItem('remix_access_token')
-
-                // If not logged in, only show models that don't require auth
-                if (!isLoggedIn) {
-                  return !model.requiresAuth
-                }
-
-                // If logged in, only show models the user has access to
-                return props.modelAccess.checkAccess(model.id)
-              })
-              .map(model => ({
-                label: model.name,
-                bodyText: model.description,
-                icon: 'fa-solid fa-check',
-                stateValue: model.id,
-                dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`
-              }))
-            }
+            groupList={modelList}
+            onLockedItemClick={handleLockedItemClick}
           />
           {props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">

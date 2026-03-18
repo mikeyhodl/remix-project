@@ -106,8 +106,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             // eslint-disable-next-line no-constant-condition
             style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'dark' ? '#2b3b4d' : '#c6e8f1', color: themeTracker && themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : '#2de7f3', cursor: 'default' }}
           >
-            <i className="fa fa-info-circle me-1"></i>
-            AI beta
           </span>
         </div>
         <div className="ai-chat-input d-flex flex-column">

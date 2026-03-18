@@ -16,7 +16,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
   // Default free model (no auth required)
   {
     id: 'mistral-medium-latest',
-    name: 'Mistral medium (Free)',
+    name: 'Mistral Medium (Free)',
     provider: 'mistralai',
     description: 'Fast and efficient for basic tasks',
     requiresAuth: false,

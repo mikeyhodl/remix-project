@@ -786,6 +786,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setShowModelSelector(false)
   }, [props.plugin, modelAccess])
 
+  const handleLockedModelClick = useCallback((modelId: string, modelName: string) => {
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: `**Join the Beta Program for ${modelName}**\n\nThis model is currently in beta and requires special access.\n\n**How to get access:**\nUse the *Sign in BETA* or *Join Remix Beta* buttons to join Beta Program\nYou'll directly have access to all beta models\n\n*Beta models include the latest AI capabilities for smart contract development, including advanced code analysis, MCP integrations and generation features.*`,
+      timestamp: Date.now(),
+      sentiment: 'none'
+    }])
+    props.plugin.call('betaCornerWidget', 'show').catch(() => {
+    })
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'beta_model_click', value: modelId, isClick: true })
+  }, [props.plugin])
+
   const modalMessage = () => {
     return (
       <ul className="p-3">
@@ -1072,6 +1085,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             availableModels={AVAILABLE_MODELS}
             selectedModel={selectedModel}
             handleModelSelection={handleModelSelection}
+            onLockedModelClick={handleLockedModelClick}
             input={input}
             setInput={setInput}
             isStreaming={isStreaming}
@@ -1114,6 +1128,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             availableModels={AVAILABLE_MODELS}
             selectedModel={selectedModel}
             handleModelSelection={handleModelSelection}
+            onLockedModelClick={handleLockedModelClick}
             input={input}
             setInput={setInput}
             isStreaming={isStreaming}
