@@ -300,21 +300,15 @@ export default function DeployedContractsPortraitView() {
             />
           </div>
           <div className='pb-3'>
-            <a href="#">
-              <FormattedMessage
-                id="udapp.deployFirstContract"
-                defaultMessage="Deploy your first contract"
-              />
-            </a>
             <span>
               <FormattedMessage
                 id="udapp.orLearnMoreDeploying"
-                defaultMessage=", or learn how to do it following our "
+                defaultMessage="Learn how to deploy "
               /></span>
-            <a href="#">
+            <a href="https://remix-ide.readthedocs.io/en/latest/run.html" target='_blank'>
               <FormattedMessage
                 id="udapp.learnEth"
-                defaultMessage="in-app tutorials."
+                defaultMessage='"your first contract".'
               /></a>
           </div>
         </div>
