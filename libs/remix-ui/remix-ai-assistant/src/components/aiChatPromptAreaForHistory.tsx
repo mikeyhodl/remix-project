@@ -48,7 +48,6 @@ interface AiChatPromptAreaForHistoryProps {
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
-  // Build model list showing all models, with locked indicator for inaccessible ones
   const modelList = useMemo(() => {
     return props.availableModels.map(model => {
       const hasAccess = props.modelAccess.checkAccess(model.id)

@@ -13,6 +13,5 @@ export type groupListType = {
   icon: 'fa-solid fa-check'
   dataId: string
   stateValue: AiContextType | string | any
-  /** If true, shows beta badge and triggers beta program prompt on click */
   isLocked?: boolean
 }
