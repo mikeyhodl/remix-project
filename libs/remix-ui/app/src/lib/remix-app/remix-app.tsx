@@ -55,7 +55,8 @@ const RemixApp = (props: IRemixAppUi) => {
   const [maximiseRightTrigger, setMaximiseRightTrigger] = useState<number>(0)
   const [enhanceRightTrigger, setEnhanceRightTrigger] = useState<number>(0)
   const [resetRightTrigger, setResetRightTrigger] = useState<number>(0)
-  const [coeff, setCoeff] = useState<number>(undefined)
+  const [leftPanelCoeff, setLeftPanelCoeff] = useState<number>(undefined)
+  const [rightPanelCoeff, setRightPanelCoeff] = useState<number>(undefined)
   const [themeTracker, setThemeTracker] = useState<{name: string, quality: string, backgroundColor: string, fillColor: string, shapeColor: string, textColor: string, url: string}>(null);
   const [showAiChatHistory, setShowAiChatHistory] = useState<boolean>(false)
 
@@ -250,7 +251,7 @@ const RemixApp = (props: IRemixAppUi) => {
       })
 
       props.app.layout.event.on('maximisesidepanel', (coeff: number) => {
-        setCoeff(coeff)
+        setLeftPanelCoeff(coeff)
         setMaximiseLeftTrigger((prev) => {
           return prev + 1
         })
@@ -258,7 +259,7 @@ const RemixApp = (props: IRemixAppUi) => {
     }
 
     props.app.layout.event.on('enhancesidepanel', (coeff: number) => {
-      setCoeff(coeff)
+      setLeftPanelCoeff(coeff)
       setEnhanceLeftTrigger((prev) => {
         return prev + 1
       })
@@ -271,14 +272,14 @@ const RemixApp = (props: IRemixAppUi) => {
     })
 
     props.app.layout.event.on('maximiseRightSidePanel', (coeff: number) => {
-      setCoeff(coeff)
+      setRightPanelCoeff(coeff)
       setMaximiseRightTrigger((prev) => {
         return prev + 1
       })
     })
 
     props.app.layout.event.on('enhanceRightSidePanel', (coeff: number) => {
-      setCoeff(coeff)
+      setRightPanelCoeff(coeff)
       setEnhanceRightTrigger((prev) => {
         return prev + 1
       })
@@ -427,7 +428,7 @@ const RemixApp = (props: IRemixAppUi) => {
                     hidden={hideSidePanel}
                     setHideStatus={setHideSidePanel}
                     layoutPosition='left'
-                    coeff={coeff}
+                    coeff={leftPanelCoeff}
                   ></DragBar>
                   <div id="main-panel" data-id="remixIdeMainPanel" className="mainpanel d-flex">
                     <RemixUIMainPanel layout={props.app.layout}></RemixUIMainPanel>
@@ -446,7 +447,7 @@ const RemixApp = (props: IRemixAppUi) => {
                       hidden={hidePinnedPanel}
                       setHideStatus={setHidePinnedPanel}
                       layoutPosition='right'
-                      coeff={coeff}
+                      coeff={rightPanelCoeff}
                     ></DragBar>
                   }
                   <div>{props.app.hiddenPanel.render()}</div>
