@@ -1,10 +1,14 @@
 import { Plugin } from '@remixproject/engine'
 import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { useAuth } from '@remix-ui/app'
 import * as packageJson from '../../../../../package.json'
 import './beta-corner-widget.css'
 
 /* ─── Constants ─── */
+
+const DEBUG = false
+const log = (...args: any[]) => { if (DEBUG) console.log('[BetaCornerWidget]', ...args) }
 
 const DISMISSED_KEY = 'remix_beta_corner_dismissed'
 const TOKEN_STORAGE_KEY = 'remix_anonymous_request_tokens'
@@ -139,7 +143,7 @@ export class BetaCornerWidgetPlugin extends Plugin {
   /* ─── Scoring logic ─── */
 
   private addScore(pts: number): void {
-    console.debug(`[BetaCornerWidget] Adding ${pts} points for activity. Current score: ${this.score + pts}`)
+    log(`Adding ${pts} points for activity. Current score: ${this.score + pts}`)
     this.score += pts
     this.tryShow()
   }
@@ -148,7 +152,7 @@ export class BetaCornerWidgetPlugin extends Plugin {
     if (this.shown) return
     const elapsed = Date.now() - this.sessionStart
     if (this.score >= ACTIVITY_THRESHOLD && elapsed >= MIN_SESSION_MS) {
-      console.debug(`[BetaCornerWidget] Activity threshold met (score: ${this.score}, elapsed: ${elapsed}ms). Showing widget.`)
+      log(`Activity threshold met (score: ${this.score}, elapsed: ${elapsed}ms). Showing widget.`)
       this.showWidget()
     }
   }
@@ -248,7 +252,10 @@ interface BetaCornerWidgetUIProps {
 }
 
 function BetaCornerWidgetUI({ state, onRegister, onDismiss, onDismissPermanent }: BetaCornerWidgetUIProps) {
-  if (state.dismissed || state.closedThisSession || !state.visible || hasExistingBetaToken()) {
+  const { isAuthenticated, featureGroups } = useAuth()
+  const hasBeta = featureGroups?.some(fg => fg.name === 'beta')
+
+  if (state.dismissed || state.closedThisSession || !state.visible || isAuthenticated || hasBeta || hasExistingBetaToken()) {
     return null
   }
 
