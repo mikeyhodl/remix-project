@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-use-before-define
-import React, { useEffect, useLayoutEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Draggable from 'react-draggable'
 import './dragbar.css'
 
@@ -9,6 +9,7 @@ interface IRemixDragBarUi {
   hidden: boolean
   minHeight?: number
   onResize: (height: number) => void
+  layoutRevision?: number
 }
 
 const DragBar = (props: IRemixDragBarUi) => {
@@ -17,25 +18,59 @@ const DragBar = (props: IRemixDragBarUi) => {
   const [dragState, setDragState] = useState<boolean>(false)
   const [dragBarPosY, setDragBarPosY] = useState<number>(0)
   const nodeRef = React.useRef(null) // fix for strictmode
+  const animationFrameRefs = useRef<number[]>([])
+  const timeoutRefs = useRef<number[]>([])
 
   const getContainerElement = () => nodeRef.current ? (nodeRef.current as HTMLDivElement).offsetParent as HTMLElement | null : null
+
+  const clearPendingSync = () => {
+    animationFrameRefs.current.forEach((frameId) => cancelAnimationFrame(frameId))
+    timeoutRefs.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    animationFrameRefs.current = []
+    timeoutRefs.current = []
+  }
+
+  const isTerminalReady = (terminalElement: HTMLElement, containerElement: HTMLElement) => {
+    if (props.hidden || terminalElement.offsetParent === null) return false
+    if (terminalElement.classList.contains('d-none') || terminalElement.classList.contains('minimized') || terminalElement.classList.contains('maximized')) return false
+
+    const terminalRect = terminalElement.getBoundingClientRect()
+    const containerRect = containerElement.getBoundingClientRect()
+
+    return terminalRect.height > 0 && containerRect.height > 0 && terminalRect.bottom > containerRect.top
+  }
 
   const syncDragbarPosition = () => {
     const terminalElement = props.refObject.current as HTMLElement | null
     const containerElement = getContainerElement()
-    if (!terminalElement || !containerElement || terminalElement.offsetParent === null) return
+    if (!terminalElement || !containerElement || !isTerminalReady(terminalElement, containerElement)) return false
 
     const terminalRect = terminalElement.getBoundingClientRect()
     const containerRect = containerElement.getBoundingClientRect()
     const topEdge = terminalRect.top - containerRect.top
+    const maxPosition = Math.max(containerRect.height - handleSize, 0)
+    const nextPosition = Math.min(Math.max(topEdge - halfHandleSize, 0), maxPosition)
 
-    setDragBarPosY(topEdge - halfHandleSize)
+    setDragBarPosY(nextPosition)
+    return true
   }
 
   const scheduleSync = () => {
-    requestAnimationFrame(() => {
-      syncDragbarPosition()
-    })
+    clearPendingSync()
+
+    const queueSync = () => {
+      const firstFrame = requestAnimationFrame(() => {
+        const secondFrame = requestAnimationFrame(() => {
+          syncDragbarPosition()
+        })
+        animationFrameRefs.current.push(secondFrame)
+      })
+      animationFrameRefs.current.push(firstFrame)
+    }
+
+    queueSync()
+    timeoutRefs.current.push(window.setTimeout(queueSync, 50))
+    timeoutRefs.current.push(window.setTimeout(() => syncDragbarPosition(), 150))
   }
 
   function stopDrag(_e: MouseEvent, data: { y: number }) {
@@ -57,8 +92,12 @@ const DragBar = (props: IRemixDragBarUi) => {
   }
 
   useLayoutEffect(() => {
-    syncDragbarPosition()
-  }, [props.hidden])
+    scheduleSync()
+
+    return () => {
+      clearPendingSync()
+    }
+  }, [props.hidden, props.layoutRevision])
 
   useEffect(() => {
     const terminalElement = props.refObject.current as HTMLElement | null
@@ -81,10 +120,19 @@ const DragBar = (props: IRemixDragBarUi) => {
       attributeFilter: ['class', 'style']
     })
 
+    const containerObserver = new MutationObserver(() => scheduleSync())
+    containerObserver.observe(containerElement, {
+      attributes: true,
+      childList: true,
+      subtree: false
+    })
+
     return () => {
+      clearPendingSync()
       window.removeEventListener('resize', scheduleSync)
       resizeObserver.disconnect()
       observer.disconnect()
+      containerObserver.disconnect()
     }
   }, [])
 
