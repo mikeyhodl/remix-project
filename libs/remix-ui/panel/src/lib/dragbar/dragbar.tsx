@@ -95,9 +95,9 @@ const DragBar = (props: IRemixDragBarUi) => {
 
   return (
     <>
-      <div className={`overlay ${dragState ? '' : 'd-none'}`}></div>
+      <div className={`overlay ${dragState ? '' : 'd-none'}`} data-id="dragbar-overlay" id="dragbar-overlay"></div>
       <Draggable nodeRef={nodeRef} position={{ x: 0, y: dragBarPosY }} onStart={startDrag} onStop={stopDrag} axis="y">
-        <div ref={nodeRef} className={`dragbar_terminal ${dragState ? 'ondrag' : ''}`}></div>
+        <div ref={nodeRef} className={`dragbar_terminal ${dragState ? 'ondrag' : ''}`} data-id="dragbar-draggable" id="dragbar-draggable"></div>
       </Draggable>
     </>
   )

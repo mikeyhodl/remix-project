@@ -252,9 +252,9 @@ const DragBar = (props: IRemixDragBarUi) => {
 
   return (
     <>
-      <div className={`overlay ${dragState ? '' : 'd-none'}`}></div>
+      <div className={`overlay ${dragState ? '' : 'd-none'}`} data-id="sidepanel-dragbar-overlay" id="sidepanel-dragbar-overlay"></div>
       <Draggable nodeRef={nodeRef} position={{ x: dragBarPosX, y: 0 }} onStart={startDrag} onStop={stopDrag} axis="x">
-        <div ref={nodeRef} className={`dragbar ${dragState ? 'ondrag' : ''}`}></div>
+        <div ref={nodeRef} className={`dragbar ${dragState ? 'ondrag' : ''}`} data-id="sidepanel-dragbar-draggable" id="sidepanel-dragbar-draggable" data-right-sidepanel={props.layoutPosition === 'right' ? 'rightSidepanel-dragbar-draggable' : null}></div>
       </Draggable>
     </>
   )
