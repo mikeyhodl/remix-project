@@ -208,6 +208,11 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     const lookupOnly = funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure' || isConstant
 
     try {
+      const code = await plugin.call('blockchain', 'getCode', contract.address)
+      if (code === '' || code === '0x') {
+        await plugin.call('terminal', 'log', { type: 'error', value: `Cannot execute transaction, no code found at address ${contract.address}`})
+        return
+      }
       await runTransactions(
         plugin,
         dispatch,
