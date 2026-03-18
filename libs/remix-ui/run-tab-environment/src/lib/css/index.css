@@ -62,8 +62,6 @@
     display: block;
     padding-right: 0.5rem;
   }
-<<<<<<< joe-patch-028
-=======
 
   /* Smart account hierarchical display */
   .smart-account-item {
@@ -214,4 +212,3 @@
   .normal-dropdown-item {
     padding-left: 0.5rem !important;
   }
->>>>>>> master
