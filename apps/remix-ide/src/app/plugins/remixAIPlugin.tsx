@@ -107,6 +107,7 @@ export class RemixAIPlugin extends Plugin {
     this.workspaceAgent = workspaceAgent.getInstance(this)
 
     // Initialize MCP servers with defaults (after initialize() completes)
+    hasBasicMcp = true // to remove when we add the permission
     this.mcpServers = [...mcpDefaultServersConfig.defaultServers, ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])]
 
     // Initialize MCP inferencer if we have servers and remixMCPServer exists

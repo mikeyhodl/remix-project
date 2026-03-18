@@ -19,15 +19,6 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
       timeout: 30000
     },
     {
-      name: 'Web Search',
-      description: 'Web search capabilities',
-      transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/web-search',
-      autoStart: true,
-      enabled: true,
-      timeout: 30000
-    },
-    {
       name: 'Etherscan',
       description: 'Etherscan block explorer',
       transport: 'http',
@@ -111,6 +102,15 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       description: 'ethereum dev skills',
       transport: 'http',
       url: endpointUrls.mcpCorsProxy8443 + '/ethskills/mcp',
+      autoStart: true,
+      enabled: true,
+      timeout: 30000
+    },
+    {
+      name: 'Web Search',
+      description: 'Web search capabilities',
+      transport: 'http',
+      url: endpointUrls.mcpCorsProxy8443 + '/web-search',
       autoStart: true,
       enabled: true,
       timeout: 30000
