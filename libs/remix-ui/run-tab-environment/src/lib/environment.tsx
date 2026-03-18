@@ -76,7 +76,6 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
           }
         )
         if (!isElectron()) window.dispatchEvent(new Event("eip6963:requestProvider"))
-        // await addProvider({ position: 23, name: 'base-provider-8453', displayName: 'Base Wallet Provider', category: 'Base', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
         await addProvider({ position: 24, name: 'base-provider-84532', displayName: 'Base Wallet Sepolia Provider', category: 'Base', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
         dispatch({ type: 'COMPLETED_LOADING_ALL_PROVIDERS', payload: null })
 
@@ -184,6 +183,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
+      plugin.off('blockchain', 'changeExecutionContext')
       plugin.off('filePanel', 'setWorkspace')
     }
   }, [])
