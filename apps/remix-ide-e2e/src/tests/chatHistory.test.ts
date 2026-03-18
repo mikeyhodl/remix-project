@@ -140,7 +140,7 @@ module.exports = {
           .pause(1000)
           .waitForElementVisible('*[data-id="ai-response-chat-bubble-section"]')
           .pause(500)
-          .assert.textContains('*[data-id="ai-user-chat-bubble"]', 'Hello, this is my first message')
+          .assert.textContains('*[data-id="current-chat-title"]', 'Hello, this is my first message')
       })
   },
 

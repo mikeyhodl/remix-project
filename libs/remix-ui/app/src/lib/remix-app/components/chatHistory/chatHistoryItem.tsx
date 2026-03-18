@@ -21,7 +21,9 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuContainerRef = useRef<HTMLDivElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const menuPanelRef = useRef<HTMLDivElement>(null)
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
@@ -41,8 +43,8 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
 
   // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: any) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(event.target as Node)) {
         setShowMenu(false)
       }
     }
@@ -52,33 +54,53 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
     }
   }, [showMenu])
 
-  const toggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    if (showMenu) {
-      setShowMenu(false)
-      return
+  const getMenuPosition = (triggerRect: DOMRect, menuWidth = 170, menuHeight = 110) => {
+    const gutter = 8
+    const sidebarRect = menuButtonRef.current
+      ?.closest('[data-id="chat-history-sidebar-maximized"]')
+      ?.getBoundingClientRect()
+    const preferredRightLeft = sidebarRect ? sidebarRect.right + gutter : triggerRect.right + gutter
+    const shouldOpenLeft =
+      preferredRightLeft + menuWidth > window.innerWidth &&
+      triggerRect.left - gutter - menuWidth >= gutter
+
+    return {
+      top: Math.max(gutter, Math.min(triggerRect.top, window.innerHeight - menuHeight - gutter)),
+      left: shouldOpenLeft
+        ? triggerRect.left - menuWidth - gutter
+        : Math.max(gutter, Math.min(preferredRightLeft, window.innerWidth - menuWidth - gutter))
+    }
+  }
+
+  useEffect(() => {
+    if (!showMenu || !menuButtonRef.current || !menuPanelRef.current) return
+
+    const updateMenuPosition = () => {
+      const triggerRect = menuButtonRef.current?.getBoundingClientRect()
+      const menuWidth = menuPanelRef.current?.offsetWidth
+      const menuHeight = menuPanelRef.current?.offsetHeight
+
+      if (!triggerRect || !menuWidth || !menuHeight) return
+
+      setMenuPosition(getMenuPosition(triggerRect, menuWidth, menuHeight))
     }
 
-    const triggerRect = event.currentTarget.getBoundingClientRect()
-    const sidebar = event.currentTarget.closest('[data-id="chat-history-sidebar-maximized"]')
-    const sidebarRect = sidebar?.getBoundingClientRect()
-    const flyoutWidth = 170
-    const flyoutLeft = sidebarRect ? sidebarRect.right + 8 : triggerRect.right + 8
-    const safeLeft = Math.min(flyoutLeft, window.innerWidth - flyoutWidth - 8)
-    const safeTop = Math.max(8, Math.min(triggerRect.top, window.innerHeight - 110))
+    updateMenuPosition()
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
 
-    setMenuPosition({
-      top: safeTop,
-      left: safeLeft
-    })
-    setShowMenu(true)
-  }
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [showMenu])
 
   return (
     <div
       className={`conversation-item chat-history-item p-3 mb-2 rounded-3 cursor-pointer position-relative ${active ? (theme.toLowerCase() === 'light' ? 'conversation-item-active-light' : 'conversation-item-active') : ''}`}
       onClick={onClick}
       data-id={`conversation-item-${conversation.id}`}
+      data-theme={theme.toLowerCase()}
       style={{
         backgroundColor: theme.toLowerCase() === 'dark' ? '#2a2c3f' : 'var(--bs-body-bg)',
         transition: 'background-color 0.2s ease',
@@ -98,11 +120,21 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
         <div className={`conversation-meta text-nowrap ${theme.toLowerCase() === 'dark' ? 'text-secondary' : 'text-muted'} small`}>
           {formatDate(conversation.lastAccessedAt)} · {conversation.messageCount} message{conversation.messageCount !== 1 ? 's' : ''}
         </div>
-        <div className="conversation-menu-trigger ms-1 flex-shrink-0" ref={menuRef}>
+        <div className="conversation-menu-trigger ms-1 flex-shrink-0" ref={menuContainerRef}>
           <button
             className="btn btn-sm p-0 conversation-menu-btn"
-            onClick={toggleMenu}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (showMenu) {
+                setShowMenu(false)
+                return
+              }
+
+              setMenuPosition(getMenuPosition(event.currentTarget.getBoundingClientRect()))
+              setShowMenu(true)
+            }}
             data-id={`conversation-menu-${conversation.id}`}
+            ref={menuButtonRef}
             style={{
               color: theme.toLowerCase() === 'dark' ? '#888' : 'var(--text-color)',
               transition: 'color 0.2s ease'
@@ -120,6 +152,8 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
           {showMenu && (
             <div
               className="conversation-menu position-fixed shadow-sm"
+              ref={menuPanelRef}
+              data-theme={theme.toLowerCase()}
               style={{
                 top: `${menuPosition.top}px`,
                 left: `${menuPosition.left}px`,

@@ -196,6 +196,11 @@ export interface HexToDecimalArgs {
   hex: string;
 }
 
+export interface TimestampToDateArgs {
+  timestamp: string | number;
+  format?: 'iso' | 'local' | 'utc';
+}
+
 export interface DebugSessionArgs {
   transactionHash?: string;
 }

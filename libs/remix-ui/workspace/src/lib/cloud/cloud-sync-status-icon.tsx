@@ -160,11 +160,11 @@ export const CloudToggle: React.FC<CloudToggleProps> = ({
     : null
 
   const iconClass = isOn
-    ? `${syncProps!.icon}${syncProps!.animate ? ' ' + syncProps!.animate : ''}`
+    ? `${syncProps?.icon}${syncProps?.animate ? ' ' + syncProps?.animate : ''}`
     : `fas fa-cloud-slash${loading ? ' fa-beat-fade' : ''}`
 
   const iconColor = isOn
-    ? syncProps!.color
+    ? syncProps?.color
     : 'var(--bs-white)'
 
   const handleClick = useCallback(() => {

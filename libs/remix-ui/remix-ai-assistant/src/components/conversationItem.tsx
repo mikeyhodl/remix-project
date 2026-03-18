@@ -20,7 +20,10 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   theme
 }) => {
   const [showMenu, setShowMenu] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+  const menuContainerRef = useRef<HTMLDivElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const menuPanelRef = useRef<HTMLDivElement>(null)
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
@@ -41,13 +44,50 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(event.target as Node)) {
         setShowMenu(false)
       }
     }
     if (showMenu) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
+
+  const getMenuPosition = (triggerRect: DOMRect, menuWidth = 170, menuHeight = 110) => {
+    const gutter = 8
+    const shouldOpenLeft =
+      triggerRect.right + gutter + menuWidth > window.innerWidth &&
+      triggerRect.left - gutter - menuWidth >= gutter
+
+    return {
+      top: Math.max(gutter, Math.min(triggerRect.top, window.innerHeight - menuHeight - gutter)),
+      left: shouldOpenLeft
+        ? triggerRect.left - menuWidth - gutter
+        : Math.max(gutter, Math.min(triggerRect.right + gutter, window.innerWidth - menuWidth - gutter))
+    }
+  }
+
+  useEffect(() => {
+    if (!showMenu || !menuButtonRef.current || !menuPanelRef.current) return
+
+    const updateMenuPosition = () => {
+      const triggerRect = menuButtonRef.current?.getBoundingClientRect()
+      const menuWidth = menuPanelRef.current?.offsetWidth
+      const menuHeight = menuPanelRef.current?.offsetHeight
+
+      if (!triggerRect || !menuWidth || !menuHeight) return
+
+      setMenuPosition(getMenuPosition(triggerRect, menuWidth, menuHeight))
+    }
+
+    updateMenuPosition()
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
     }
   }, [showMenu])
 
@@ -68,20 +108,35 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
           </div>
         </div>
 
-        <div className="conversation-menu-trigger" ref={menuRef}>
+        <div className="conversation-menu-trigger" ref={menuContainerRef}>
           <button
             className="btn btn-sm p-0 conversation-menu-btn"
             onClick={(e) => {
               e.stopPropagation()
-              setShowMenu(!showMenu)
+              if (showMenu) {
+                setShowMenu(false)
+                return
+              }
+
+              setMenuPosition(getMenuPosition(e.currentTarget.getBoundingClientRect()))
+              setShowMenu(true)
             }}
             data-id={`conversation-menu-${conversation.id}`}
+            ref={menuButtonRef}
           >
             <i className="fas fa-ellipsis-v"></i>
           </button>
 
           {showMenu && (
-            <div className="conversation-menu position-absolute end-0 mt-1 shadow-sm">
+            <div
+              className="conversation-menu position-fixed shadow-sm"
+              ref={menuPanelRef}
+              style={{
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+                zIndex: 1100
+              }}
+            >
               <button
                 className="conversation-menu-item w-100 text-start"
                 onClick={(e) => {
@@ -101,7 +156,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
                   setShowMenu(false)
                 }}
               >
-                <i className="fas fa-trash me-2 text-danger"></i>
+                <i className="fas fa-trash me-2"></i>
                 Delete
               </button>
             </div>
