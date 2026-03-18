@@ -102,6 +102,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       const currentProvider = await plugin.call('blockchain', 'getProvider')
       const accounts = await plugin.call('blockchain', 'getAccounts')
       if (accounts && accounts.length > 0) {
+        dispatch({ type: 'SET_SELECTED_ACCOUNT', payload: accounts[0] })
         // Convert account addresses to Account objects for loadAllDelegations
         const accountObjects = accounts.map((addr: string) => ({ account: addr } as any))
         await loadAllDelegations(plugin, accountObjects, currentProvider, dispatch)
@@ -174,7 +175,6 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       plugin.off('udappTransactions', 'transactionRecorderUpdated')
       plugin.off('blockchain', 'transactionExecuted')
       injectedProviderPluginsRef.current.forEach((injectedPlugin) => {
-        console.log('cleanup for ', injectedPlugin.trim())
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
