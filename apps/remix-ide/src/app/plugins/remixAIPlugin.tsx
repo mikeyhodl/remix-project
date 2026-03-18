@@ -9,7 +9,6 @@ import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-import { QueryParams } from '@remix-project/remix-lib'
 
 type chatRequestBufferT<T> = {
   [key in keyof T]: T[key]
