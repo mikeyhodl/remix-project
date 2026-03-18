@@ -20,7 +20,7 @@ export async function broadcastCompilationResult (compilerName: string, compileR
   const compiler = new CompilerAbstract(languageVersion, data, source, input)
   await plugin.call('compilerArtefacts', 'saveCompilerAbstract', file, compiler)
 
-  const contracts = getCompiledContracts(compiler)
+  const contracts = getCompiledContracts(compiler, plugin)
   if (contracts.length > 0) {
     contracts.forEach(async (contract) => {
       if (contract.contract.file !== source.target) {
@@ -44,13 +44,17 @@ export async function broadcastCompilationResult (compilerName: string, compileR
   }
 }
 
-function getCompiledContracts (compiler: CompilerAbstract) {
+function getCompiledContracts (compiler: CompilerAbstract, plugin: DeployPlugin) {
   const contracts: ContractData[] = []
 
   compiler.visitContracts((contract: VisitedContract) => {
     const contractData = getContractData(contract.name, compiler)
+    const widgetState = plugin.getWidgetState()
+    const contractIndex = widgetState.contracts.contractList.findIndex(item => (item.name === contract.name) && (item.filePath === contract.file))
 
-    if (contractData && contractData.bytecodeObject.length !== 0) {
+    if (contractIndex > -1){
+      contracts.push(contractData)
+    } else if (contractData && contractData.bytecodeObject.length !== 0) {
       contracts.push(contractData)
     }
   })
