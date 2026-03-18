@@ -76,6 +76,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
           }
         )
         if (!isElectron()) window.dispatchEvent(new Event("eip6963:requestProvider"))
+        await addProvider({ position: 23, name: 'base-provider', displayName: 'Base Wallet Provider', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
         dispatch({ type: 'COMPLETED_LOADING_ALL_PROVIDERS', payload: null })
 
         plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
