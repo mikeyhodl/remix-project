@@ -168,6 +168,10 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       }
     })
 
+    plugin.on('filePanel', 'setWorkspace', async () => {
+      await plugin.changeExecutionContext({ context: 'vm-osaka' })
+    })
+
     // Cleanup function to remove event listeners when component unmounts
     return () => {
       plugin.off('filePanel', 'workspaceInitializationCompleted')
@@ -180,6 +184,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
+      plugin.off('filePanel', 'setWorkspace')
     }
   }, [])
 
