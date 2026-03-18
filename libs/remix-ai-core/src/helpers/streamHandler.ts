@@ -84,7 +84,7 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
     while (true) {
       // Check if aborted
       if (abortSignal?.aborted) {
-        reader.cancel();
+        reader.cancel().catch(() => {});
         return;
       }
 
@@ -96,7 +96,7 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
         for (const parsedData of chunk) {
           // Check if aborted before processing each chunk
           if (abortSignal?.aborted) {
-            reader.cancel();
+            reader.cancel().catch(() => {});
             return;
           }
           resultText += parsedData.generatedText;
@@ -134,7 +134,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   let threadId: string = ""
   let resultText = "";
   const toolCalls: Map<number, any> = new Map(); // Accumulate tool calls by index
-  let usage: any = null; // Track token usage
+  const usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     if (streamResponse.result) {
@@ -148,132 +148,136 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
     return;
   }
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    console.log('reader')
-    // Check if aborted
-    if (abortSignal?.aborted) {
-      reader.cancel();
-      return;
-    }
-
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer = decoder.decode(value, { stream: true });
-
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
-    for (const line of lines) {
-      // Check if aborted before processing each line
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      console.log('reader')
+      // Check if aborted
       if (abortSignal?.aborted) {
         reader.cancel();
         return;
       }
 
-      if (line.startsWith("data: ")) {
-        const jsonStr = line.replace(/^data: /, "").trim();
-        if (jsonStr === "[DONE]") {
-          if (!abortSignal?.aborted) {
-            trackTokenUsage(usage, 'openai', modelId);
-            done_cb?.(resultText, threadId);
-          }
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer = decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
+      for (const line of lines) {
+      // Check if aborted before processing each line
+        if (abortSignal?.aborted) {
+          reader.cancel().catch(() => {});
           return;
         }
 
-        // Skip empty JSON strings
-        if (!jsonStr || jsonStr.length === 0) {
-          continue;
-        }
-
-        try {
-          const json = JSON.parse(jsonStr);
-          threadId = json?.thread_id;
-
-          // Extract usage information if available
-          if (json.usage) {
-            usage = json.usage;
-          }
-
-          // Handle tool calls in OpenAI format - accumulate deltas
-          if (json.choices?.[0]?.delta?.tool_calls) {
-            const toolCallDeltas = json.choices[0].delta.tool_calls;
-
-            for (const delta of toolCallDeltas) {
-              const index = delta.index;
-
-              if (!toolCalls.has(index)) {
-                // Initialize new tool call
-                toolCalls.set(index, {
-                  id: delta.id || "",
-                  type: delta.type || "function",
-                  function: {
-                    name: delta.function?.name || "",
-                    arguments: delta.function?.arguments || ""
-                  }
-                });
-              } else {
-                // Accumulate deltas
-                const existing = toolCalls.get(index);
-                if (delta.id) existing.id = delta.id;
-                if (delta.function?.name) existing.function.name += delta.function.name;
-                if (delta.function?.arguments) existing.function.arguments += delta.function.arguments;
-              }
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.replace(/^data: /, "").trim();
+          if (jsonStr === "[DONE]") {
+            if (!abortSignal?.aborted) {
+              trackTokenUsage(usage, 'openai', modelId);
+              done_cb?.(resultText, threadId);
             }
-          }
-
-          // Check if this is the finish reason for tool calls
-          if (json.choices?.[0]?.finish_reason === "tool_calls" && tool_callback && toolCalls.size > 0) {
-            const toolCallsArray = Array.from(toolCalls.values());
-            const response = await tool_callback(toolCallsArray, uiToolCallback)
-
-            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
-            if (response && typeof response === 'object') {
-              if (!response.uiToolCallback && uiToolCallback) {
-                response.uiToolCallback = uiToolCallback;
-              }
-            }
-            cb("\n\n");
-            HandleOpenAIResponse(response, cb, done_cb)
             return;
           }
 
-          // Handle OpenAI "thread.message.delta" format
-          if (json.object === "thread.message.delta" && json.delta?.content) {
-            for (const contentItem of json.delta.content) {
-              if (
-                contentItem.type === "text" &&
-                contentItem.text &&
-                typeof contentItem.text.value === "string"
-              ) {
-                cb(contentItem.text.value);
-                resultText += contentItem.text.value;
+          // Skip empty JSON strings
+          if (!jsonStr || jsonStr.length === 0) {
+            continue;
+          }
+
+          try {
+            const json = JSON.parse(jsonStr);
+            threadId = json?.thread_id;
+
+            // Handle tool calls in OpenAI format - accumulate deltas
+            if (json.choices?.[0]?.delta?.tool_calls) {
+              const toolCallDeltas = json.choices[0].delta.tool_calls;
+
+              for (const delta of toolCallDeltas) {
+                const index = delta.index;
+
+                if (!toolCalls.has(index)) {
+                  // Initialize new tool call
+                  toolCalls.set(index, {
+                    id: delta.id || "",
+                    type: delta.type || "function",
+                    function: {
+                      name: delta.function?.name || "",
+                      arguments: delta.function?.arguments || ""
+                    }
+                  });
+                } else {
+                  // Accumulate deltas
+                  const existing = toolCalls.get(index);
+                  if (delta.id) existing.id = delta.id;
+                  if (delta.function?.name) existing.function.name += delta.function.name;
+                  if (delta.function?.arguments) existing.function.arguments += delta.function.arguments;
+                }
               }
             }
-          } else if (json.choices?.[0]?.delta?.content) {
-            // Handle standard OpenAI streaming format
-            const content = json.choices[0].delta.content;
-            if (typeof content === "string") {
-              cb(content);
-              resultText += content;
+
+            // Check if this is the finish reason for tool calls
+            if (json.choices?.[0]?.finish_reason === "tool_calls" && tool_callback && toolCalls.size > 0) {
+              const toolCallsArray = Array.from(toolCalls.values());
+              const response = await tool_callback(toolCallsArray, uiToolCallback)
+
+              // Preserve the uiToolCallback and abortSignal from the response if it exists (from subsequent calls)
+              if (response && typeof response === 'object') {
+                if (!response.uiToolCallback && uiToolCallback) {
+                  response.uiToolCallback = uiToolCallback;
+                }
+                if (!response.abortSignal && abortSignal) {
+                  response.abortSignal = abortSignal;
+                }
+              }
+              cb("\n\n");
+              HandleOpenAIResponse(response, cb, done_cb)
+              return;
             }
-          } else if (json.delta?.content) {
-            // fallback for other formats
-            const content = json.delta.content;
-            if (typeof content === "string") {
-              cb(content);
-              resultText += content;
+
+            // Handle OpenAI "thread.message.delta" format
+            if (json.object === "thread.message.delta" && json.delta?.content) {
+              for (const contentItem of json.delta.content) {
+                if (
+                  contentItem.type === "text" &&
+                  contentItem.text &&
+                  typeof contentItem.text.value === "string"
+                ) {
+                  cb(contentItem.text.value);
+                  resultText += contentItem.text.value;
+                }
+              }
+            } else if (json.choices?.[0]?.delta?.content) {
+              // Handle standard OpenAI streaming format
+              const content = json.choices[0].delta.content;
+              if (typeof content === "string") {
+                cb(content);
+                resultText += content;
+              }
+            } else if (json.delta?.content) {
+              // fallback for other formats
+              const content = json.delta.content;
+              if (typeof content === "string") {
+                cb(content);
+                resultText += content;
+              }
             }
+          } catch (e) {
+            console.error("⚠️ OpenAI Stream parse error:", e);
+            console.error("Problematic JSON string:", jsonStr);
+            const errorMessage = "Network Error: Unable to process the AI response. Please try again";
+            cb(errorMessage);
+            done_cb?.(errorMessage, threadId);
+            return;
           }
-        } catch (e) {
-          console.error("⚠️ OpenAI Stream parse error:", e);
-          console.error("Problematic JSON string:", jsonStr);
-          const errorMessage = "Network Error: Unable to process the AI response. Please try again";
-          cb(errorMessage);
-          done_cb?.(errorMessage, threadId);
-          return;
         }
       }
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Error processing OpenAI stream:', error);
     }
   }
 }
@@ -304,70 +308,79 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
     return;
   }
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // Check if aborted
-    if (abortSignal?.aborted) {
-      reader.cancel();
-      return;
-    }
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // Check if aborted
+      if (abortSignal?.aborted) {
+        reader.cancel().catch(() => {});
+        return;
+      }
 
-    const { done, value } = await reader.read();
-    if (done) break;
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer = decoder.decode(value, { stream: true });
+      buffer = decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const jsonStr = line.replace(/^data: /, "").trim();
-        if (jsonStr === "[DONE]") {
-          trackTokenUsage(usage, 'mistralai', modelId);
-          done_cb?.(resultText, threadId);
-          return;
-        }
-
-        // Skip empty JSON strings
-        if (!jsonStr || jsonStr.length === 0) {
-          continue;
-        }
-
-        try {
-          const json = JSON.parse(jsonStr);
-          threadId = json?.id || threadId;
-
-          // Extract usage information if available
-          if (json.usage) {
-            usage = json.usage;
+      const lines = buffer.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.replace(/^data: /, "").trim();
+          if (jsonStr === "[DONE]") {
+            trackTokenUsage(usage, 'mistralai', modelId);
+            done_cb?.(resultText, threadId);
+            return;
           }
 
-          if (json.choices[0].delta.tool_calls && tool_callback){
-            const toolCalls = json.choices[0].delta.tool_calls;
-            const response = await tool_callback(toolCalls, uiToolCallback)
+          // Skip empty JSON strings
+          if (!jsonStr || jsonStr.length === 0) {
+            continue;
+          }
 
-            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
-            if (response && typeof response === 'object') {
-              if (!response.uiToolCallback && uiToolCallback) {
-                response.uiToolCallback = uiToolCallback;
-              }
+          try {
+            const json = JSON.parse(jsonStr);
+            threadId = json?.id || threadId;
+
+            // Extract usage information if available
+            if (json.usage) {
+              usage = json.usage;
             }
-            HandleMistralAIResponse(response, cb, done_cb)
-          } else if (json.choices[0].delta.content){
-            const content = json.choices[0].delta.content
-            cb(content);
-            resultText += content;
-          } else {
-            continue
+
+            if (json.choices[0].delta.tool_calls && tool_callback){
+              const toolCalls = json.choices[0].delta.tool_calls;
+              const response = await tool_callback(toolCalls, uiToolCallback)
+
+              // Preserve the uiToolCallback and abortSignal from the response if it exists (from subsequent calls)
+              if (response && typeof response === 'object') {
+                if (!response.uiToolCallback && uiToolCallback) {
+                  response.uiToolCallback = uiToolCallback;
+                }
+                if (!response.abortSignal && abortSignal) {
+                  response.abortSignal = abortSignal;
+                }
+              }
+              HandleMistralAIResponse(response, cb, done_cb)
+            } else if (json.choices[0].delta.content){
+              const content = json.choices[0].delta.content
+              cb(content);
+              resultText += content;
+            } else {
+              continue
+            }
+          } catch (e) {
+            console.error("MistralAI Stream parse error:", e);
+            console.error("Problematic JSON string:", jsonStr);
+            const errorMessage = "Network Error: Unable to process the AI response. Please try again";
+            cb(errorMessage);
+            done_cb?.(errorMessage, threadId);
+            return;
           }
-        } catch (e) {
-          console.error("MistralAI Stream parse error:", e);
-          console.error("Problematic JSON string:", jsonStr);
-          const errorMessage = "Network Error: Unable to process the AI response. Please try again";
-          cb(errorMessage);
-          done_cb?.(errorMessage, threadId);
-          return;
         }
       }
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Error processing MistralAI stream:', error);
     }
   }
 }
@@ -399,105 +412,107 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
     return;
   }
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // Check if aborted
-    if (abortSignal?.aborted) {
-      reader.cancel();
-      return;
-    }
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // Check if aborted
+      if (abortSignal?.aborted) {
+        reader.cancel().catch(() => {});
+        return;
+      }
 
-    const { done, value } = await reader.read();
-    if (done) break;
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer = decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const jsonStr = line.replace(/^data: /, "").trim();
+      buffer = decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.replace(/^data: /, "").trim();
 
-        // Skip empty or invalid JSON strings
-        if (!jsonStr || jsonStr.length === 0) {
-          continue;
-        }
+          try {
+            const json = JSON.parse(jsonStr);
 
-        try {
-          const json = JSON.parse(jsonStr);
-
-          // Extract usage information from message_delta event (Anthropic format)
-          // Anthropic uses: input_tokens, output_tokens instead of prompt_tokens, completion_tokens
-          if (json.type === "message_delta" && json.usage) {
-            usage = {
-              prompt_tokens: json.usage.input_tokens,
-              completion_tokens: json.usage.output_tokens,
-              total_tokens: (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0)
-            };
-          }
-
-          if (json.type === "message_stop"){
-            trackTokenUsage(usage, 'anthropic', modelId);
-            done_cb?.(resultText, "");
-            return;
-          }
-
-          // Handle tool use block start in Anthropic format
-          if (json.type === "content_block_start" && json.content_block?.type === "tool_use") {
-            currentBlockIndex = json.index;
-            toolUseBlocks.set(currentBlockIndex, {
-              id: json.content_block.id,
-              name: json.content_block.name,
-              input: ""
-            });
-          }
-
-          // Accumulate tool input deltas
-          if (json.type === "content_block_delta" && json.delta?.type === "input_json_delta") {
-            if (currentBlockIndex >= 0 && toolUseBlocks.has(json.index)) {
-              const block = toolUseBlocks.get(json.index);
-              block.input += json.delta.partial_json;
+            if (json.type === "message_delta" && json.usage) {
+              usage = {
+                prompt_tokens: json.usage.input_tokens,
+                completion_tokens: json.usage.output_tokens,
+                total_tokens: (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0)
+              };
             }
-          }
 
-          // Handle tool calls when message stops for tool use
-          if (json.type === "message_delta" && json.delta?.stop_reason === "tool_use" && tool_callback) {
-
-            // Convert accumulated tool use blocks to tool calls format
-            const toolCalls = Array.from(toolUseBlocks.values()).map(block => ({
-              id: block.id,
-              function: {
-                name: block.name,
-                arguments: block.input
-              }
-            }));
-
-            if (toolCalls.length > 0) {
-              const response = await tool_callback(toolCalls, uiToolCallback)
-              if (response && typeof response === 'object') {
-                if (!response.uiToolCallback && uiToolCallback) {
-                  response.uiToolCallback = uiToolCallback;
-                }
-              }
-              cb("\n\n");
-              HandleAnthropicResponse(response, cb, done_cb)
+            if (json.type === "message_stop"){
+              trackTokenUsage(usage, 'anthropic', modelId);
+              done_cb?.(resultText, "");
               return;
             }
-          }
 
-          // Handle text content deltas
-          if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-            cb(json.delta.text);
-            resultText += json.delta.text;
+            // Handle tool use block start in Anthropic format
+            if (json.type === "content_block_start" && json.content_block?.type === "tool_use") {
+              currentBlockIndex = json.index;
+              toolUseBlocks.set(currentBlockIndex, {
+                id: json.content_block.id,
+                name: json.content_block.name,
+                input: ""
+              });
+            }
+
+            // Accumulate tool input deltas
+            if (json.type === "content_block_delta" && json.delta?.type === "input_json_delta") {
+              if (currentBlockIndex >= 0 && toolUseBlocks.has(json.index)) {
+                const block = toolUseBlocks.get(json.index);
+                block.input += json.delta.partial_json;
+              }
+            }
+
+            // Handle tool calls when message stops for tool use
+            if (json.type === "message_delta" && json.delta?.stop_reason === "tool_use" && tool_callback) {
+
+              // Convert accumulated tool use blocks to tool calls format
+              const toolCalls = Array.from(toolUseBlocks.values()).map(block => ({
+                id: block.id,
+                function: {
+                  name: block.name,
+                  arguments: block.input
+                }
+              }));
+
+              if (toolCalls.length > 0) {
+                const response = await tool_callback(toolCalls, uiToolCallback)
+                if (response && typeof response === 'object') {
+                  if (!response.uiToolCallback && uiToolCallback) {
+                    response.uiToolCallback = uiToolCallback;
+                  }
+                  if (!response.abortSignal && abortSignal) {
+                    response.abortSignal = abortSignal;
+                  }
+                }
+                cb("\n\n");
+                HandleAnthropicResponse(response, cb, done_cb)
+                return;
+              }
+            }
+
+            // Handle text content deltas
+            if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+              cb(json.delta.text);
+              resultText += json.delta.text;
+            }
+          } catch (e) {
+            console.error("Anthropic Stream parse error:", e);
+            console.error("Problematic JSON string:", jsonStr);
+            const errorMessage = "Network Error: Unable to process the AI response. Please try again";
+            cb(errorMessage);
+            done_cb?.(errorMessage, "");
+            return;
           }
-        } catch (e) {
-          console.error("Anthropic Stream parse error:", e);
-          console.error("Problematic JSON string:", jsonStr);
-          const errorMessage = "Network Error: Unable to process the AI response. Please try again";
-          cb(errorMessage);
-          done_cb?.(errorMessage, "");
-          return;
         }
       }
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Error processing Anthropic stream:', error);
     }
   }
 }
@@ -533,7 +548,7 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
     while (true) {
       // Check if aborted
       if (abortSignal?.aborted) {
-        reader.cancel();
+        reader.cancel().catch(() => {});
         return;
       }
 
@@ -562,10 +577,13 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
             const toolCalls = parsed.message.tool_calls;
             const response = await tool_callback(toolCalls, uiToolCallback)
             // Keep the callback attached for recursive calls
-            // Preserve the uiToolCallback from the response if it exists (from subsequent calls)
+            // Preserve the uiToolCallback and abortSignal from the response if it exists (from subsequent calls)
             if (response && typeof response === 'object') {
               if (!response.uiToolCallback && uiToolCallback) {
                 response.uiToolCallback = uiToolCallback;
+              }
+              if (!response.abortSignal && abortSignal) {
+                response.abortSignal = abortSignal;
               }
             }
             cb("\n\n");
