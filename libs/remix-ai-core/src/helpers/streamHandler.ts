@@ -134,7 +134,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   let threadId: string = ""
   let resultText = "";
   const toolCalls: Map<number, any> = new Map(); // Accumulate tool calls by index
-  let usage: any = null; // Track token usage
+  const usage: any = null; // Track token usage
 
   if (!reader) { // normal response, not a stream
     if (streamResponse.result) {
@@ -148,79 +148,36 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
     return;
   }
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    console.log('reader')
-    // Check if aborted
-    if (abortSignal?.aborted) {
-      reader.cancel();
-      return;
-    }
-
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer = decoder.decode(value, { stream: true });
-
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
-    for (const line of lines) {
-      // Check if aborted before processing each line
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      console.log('reader')
+      // Check if aborted
       if (abortSignal?.aborted) {
-        reader.cancel().catch(() => {});
+        reader.cancel();
         return;
       }
 
-      if (line.startsWith("data: ")) {
-        const jsonStr = line.replace(/^data: /, "").trim();
-        if (jsonStr === "[DONE]") {
-          if (!abortSignal?.aborted) {
-            trackTokenUsage(usage, 'openai', modelId);
-            done_cb?.(resultText, threadId);
-          }
-          return;
-        }
+      const { done, value } = await reader.read();
+      if (done) break;
 
+      buffer = decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // Keep the unfinished line for next chunk
       for (const line of lines) {
-        // Check if aborted before processing each line
+      // Check if aborted before processing each line
         if (abortSignal?.aborted) {
           reader.cancel().catch(() => {});
           return;
         }
 
-        try {
-          const json = JSON.parse(jsonStr);
-          threadId = json?.thread_id;
-
-          // Extract usage information if available
-          if (json.usage) {
-            usage = json.usage;
-          }
-
-          // Handle tool calls in OpenAI format - accumulate deltas
-          if (json.choices?.[0]?.delta?.tool_calls) {
-            const toolCallDeltas = json.choices[0].delta.tool_calls;
-
-            for (const delta of toolCallDeltas) {
-              const index = delta.index;
-
-              if (!toolCalls.has(index)) {
-                // Initialize new tool call
-                toolCalls.set(index, {
-                  id: delta.id || "",
-                  type: delta.type || "function",
-                  function: {
-                    name: delta.function?.name || "",
-                    arguments: delta.function?.arguments || ""
-                  }
-                });
-              } else {
-                // Accumulate deltas
-                const existing = toolCalls.get(index);
-                if (delta.id) existing.id = delta.id;
-                if (delta.function?.name) existing.function.name += delta.function.name;
-                if (delta.function?.arguments) existing.function.arguments += delta.function.arguments;
-              }
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.replace(/^data: /, "").trim();
+          if (jsonStr === "[DONE]") {
+            if (!abortSignal?.aborted) {
+              trackTokenUsage(usage, 'openai', modelId);
+              done_cb?.(resultText, threadId);
             }
             return;
           }
@@ -365,33 +322,33 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
 
       buffer = decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const jsonStr = line.replace(/^data: /, "").trim();
-        if (jsonStr === "[DONE]") {
-          trackTokenUsage(usage, 'mistralai', modelId);
-          done_cb?.(resultText, threadId);
-          return;
-        }
+      const lines = buffer.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.replace(/^data: /, "").trim();
+          if (jsonStr === "[DONE]") {
+            trackTokenUsage(usage, 'mistralai', modelId);
+            done_cb?.(resultText, threadId);
+            return;
+          }
 
           // Skip empty JSON strings
           if (!jsonStr || jsonStr.length === 0) {
             continue;
           }
 
-        try {
-          const json = JSON.parse(jsonStr);
-          threadId = json?.id || threadId;
+          try {
+            const json = JSON.parse(jsonStr);
+            threadId = json?.id || threadId;
 
-          // Extract usage information if available
-          if (json.usage) {
-            usage = json.usage;
-          }
+            // Extract usage information if available
+            if (json.usage) {
+              usage = json.usage;
+            }
 
-          if (json.choices[0].delta.tool_calls && tool_callback){
-            const toolCalls = json.choices[0].delta.tool_calls;
-            const response = await tool_callback(toolCalls, uiToolCallback)
+            if (json.choices[0].delta.tool_calls && tool_callback){
+              const toolCalls = json.choices[0].delta.tool_calls;
+              const response = await tool_callback(toolCalls, uiToolCallback)
 
               // Preserve the uiToolCallback and abortSignal from the response if it exists (from subsequent calls)
               if (response && typeof response === 'object') {
@@ -474,26 +431,19 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
         if (line.startsWith("data: ")) {
           const jsonStr = line.replace(/^data: /, "").trim();
 
-          // Extract usage information from message_delta event (Anthropic format)
-          // Anthropic uses: input_tokens, output_tokens instead of prompt_tokens, completion_tokens
-          if (json.type === "message_delta" && json.usage) {
-            usage = {
-              prompt_tokens: json.usage.input_tokens,
-              completion_tokens: json.usage.output_tokens,
-              total_tokens: (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0)
-            };
-          }
-
-          if (json.type === "message_stop"){
-            trackTokenUsage(usage, 'anthropic', modelId);
-            done_cb?.(resultText, "");
-            return;
-          }
-
           try {
             const json = JSON.parse(jsonStr);
 
+            if (json.type === "message_delta" && json.usage) {
+              usage = {
+                prompt_tokens: json.usage.input_tokens,
+                completion_tokens: json.usage.output_tokens,
+                total_tokens: (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0)
+              };
+            }
+
             if (json.type === "message_stop"){
+              trackTokenUsage(usage, 'anthropic', modelId);
               done_cb?.(resultText, "");
               return;
             }
