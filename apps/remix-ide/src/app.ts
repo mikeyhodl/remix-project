@@ -420,7 +420,10 @@ class AppComponent {
     const ganacheProvider = new GanacheProvider(blockchain)
     const foundryProvider = new FoundryProvider(blockchain)
     const externalHttpProvider = new ExternalHttpProvider(blockchain)
-    const baseProvider = new BaseProvider()
+    const baseSepoliaChainId = 84532
+    const baseMainnetChainId = 8453    
+    const baseProviderSepolia = new BaseProvider(baseSepoliaChainId)
+    const baseProvider = new BaseProvider(baseMainnetChainId)
 
     const environmentExplorer = new EnvironmentExplorer()
     // ----------------- convert offset to line/column service -----------
@@ -518,6 +521,7 @@ class AppComponent {
       foundryProvider,
       externalHttpProvider,
       baseProvider,
+      baseProviderSepolia,
       environmentExplorer,
       this.walkthroughService,
       search,

@@ -2,7 +2,7 @@ import React from 'react' // eslint-disable-line
 import * as packageJson from '../../../../../package.json'
 import { IProvider, JsonDataRequest, JsonDataResult } from './abstract-provider'
 import { Plugin } from '@remixproject/engine'
-import { createBaseAccountSDK } from '@base-org/account'
+import { createBaseAccountSDK, base } from '@base-org/account'
 
 const profile = {
   name: 'base-provider',
@@ -12,21 +12,21 @@ const profile = {
   methods: ['sendAsync', 'init'],
   version: packageJson.version
 }
-
 export class BaseProvider extends Plugin implements IProvider {
   provider: any
   options: {[id: string]: any} = {}
-  constructor() {
-    super(profile)
+  id: number
+  constructor(id) {    
+    const p = {...profile, ...{ name: 'base-provider-' + id, displayName: 'Base Wallet Provider - ' + id} }
+    console.log(p)
+    super(p)
+    this.id = id
   }
 
   async init() {
-    const baseSepoliaChainId = 84532
-    const baseMainnetChainId = 8453
-
     const sdk = createBaseAccountSDK({
       appName: 'Remix IDE',
-      appChainIds: [baseSepoliaChainId, baseMainnetChainId]
+      appChainIds: [this.id]
     })
 
     this.provider = sdk.getProvider()
