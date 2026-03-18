@@ -58,11 +58,11 @@ export function useModelAccess(): ModelAccess {
           }
         }
 
-        const alloweddMcps = []
+        const allowedMcpsFea = []
         if (data.features) {
           // Check each AI feature and map to provider
           if (data.features['mcp:basicExternal']?.is_enabled) {
-            alloweddMcps.push('mcpBasicExternal')
+            allowedMcpsFea.push('mcpBasicExternal')
           }
         }
 
@@ -84,7 +84,7 @@ export function useModelAccess(): ModelAccess {
         })
 
         setAllowedModels(allowedModelIds)
-        setAllowedMcps(allowedMcps)
+        setAllowedMcps(allowedMcpsFea)
       } else {
         // Fallback to default model and ollama only
         const defaultModel = getDefaultModel()
