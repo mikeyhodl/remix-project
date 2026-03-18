@@ -71,6 +71,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   )
   const [showArchivedConversations, setShowArchivedConversations] = useState(false)
   const [showButton, setShowButton] = useState(true);
+  const [isAiChatMaximized, setIsAiChatMaximized] = useState(false)
   const [showOllamaModelSelector, setShowOllamaModelSelector] = useState(false)
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
@@ -319,9 +320,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       abortControllerRef.current.abort()
       setIsStreaming(false)
 
+      // Cancel the backend fetch so the server stops generating
+      props.plugin.call('remixAI', 'cancelRequest').catch(() => { /* best-effort */ })
+
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
     }
-  }, [])
+  }, [props.plugin])
 
   // reusable sender (used by both UI button and imperative ref)
   const sendPrompt = useCallback(
@@ -903,11 +907,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useEffect(() => {
     props.plugin.on('rightSidePanel', 'rightSidePanelMaximized', () => {
       setShowButton(false);
-      setAiChatIsMaximized(true);
+      setIsAiChatMaximized(true);
     })
     props.plugin.on('rightSidePanel', 'rightSidePanelRestored', () => {
       setShowButton(true);
-      setAiChatIsMaximized(false);
+      setIsAiChatMaximized(false);
     })
 
     return () => {
@@ -957,7 +961,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               setShowButton={setShowButton}
               theme={themeTracker?.name}
               chatTitle={messages.find(m => m.role === 'user')?.content}
-              aiChatIsMaximized={aiChatIsMaximized}
+              isAiChatMaximized={isAiChatMaximized}
+              setIsAiChatMaximized={setIsAiChatMaximized}
             />
             <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
               <div data-id="remix-ai-assistant-ready"></div>
@@ -1033,7 +1038,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 setShowButton={setShowButton}
                 theme={themeTracker?.name}
                 chatTitle={messages.find(m => m.role === 'user')?.content}
-                aiChatIsMaximized={aiChatIsMaximized}
+                isAiChatMaximized={isAiChatMaximized}
+                setIsAiChatMaximized={setIsAiChatMaximized}
               />
               <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
                 <div data-id="remix-ai-assistant-ready"></div>

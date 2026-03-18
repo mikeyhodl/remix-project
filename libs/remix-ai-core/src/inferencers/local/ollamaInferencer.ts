@@ -340,10 +340,12 @@ export class OllamaInferencer extends RemoteInferencer implements ICompletions, 
     }
 
     try {
+      this.currentAbortController = new AbortController()
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(streamPayload),
+        signal: this.currentAbortController.signal,
       });
 
       if (!response.ok) {
