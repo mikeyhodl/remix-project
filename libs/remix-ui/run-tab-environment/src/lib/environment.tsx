@@ -76,6 +76,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
           }
         )
         if (!isElectron()) window.dispatchEvent(new Event("eip6963:requestProvider"))
+        await addProvider({ position: 24, name: 'base-provider-84532', displayName: 'Base Wallet Sepolia Provider', category: 'Base', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
         dispatch({ type: 'COMPLETED_LOADING_ALL_PROVIDERS', payload: null })
 
         plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
@@ -166,6 +167,10 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       }
     })
 
+    plugin.on('filePanel', 'setWorkspace', async () => {
+      await plugin.changeExecutionContext({ context: 'vm-osaka' })
+    })
+
     // Cleanup function to remove event listeners when component unmounts
     return () => {
       plugin.off('filePanel', 'workspaceInitializationCompleted')
@@ -178,6 +183,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
+      plugin.off('filePanel', 'setWorkspace')
     }
   }, [])
 

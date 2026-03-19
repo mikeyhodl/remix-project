@@ -34,6 +34,7 @@ module.exports = {
       .waitForElementVisible('.right-side-panel h6[data-id="sidePanelSwapitTitle"]')
       .assert.containsText('.right-side-panel h6[data-id="sidePanelSwapitTitle"]', 'SOLIDITY COMPILER')
       .clickLaunchIcon('udapp')
+      .waitForElementVisible('[data-id="movePluginToRight"]')
       .click('[data-id="movePluginToRight"]')
       .waitForElementVisible('[data-id="movePluginToLeft"]')
       .assert.containsText('.right-side-panel h6[data-id="sidePanelSwapitTitle"]', 'DEPLOY & RUN TRANSACTIONS')

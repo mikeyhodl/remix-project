@@ -76,6 +76,7 @@ module.exports = {
       .waitForElementNotVisible('#right-side-panel')
       .clickLaunchIcon('udapp')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToRight-udapp"]')
+      .waitForElementVisible('*[data-id="movePluginToRight"]')
       .click('*[data-id="movePluginToRight"]')
       .waitForElementVisible('#right-side-panel')
       .waitForElementVisible('*[data-pinnedplugin="movePluginToLeft-udapp"]')
