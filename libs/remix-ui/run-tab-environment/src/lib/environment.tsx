@@ -183,7 +183,6 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
-      plugin.off('blockchain', 'changeExecutionContext')
       plugin.off('filePanel', 'setWorkspace')
     }
   }, [])

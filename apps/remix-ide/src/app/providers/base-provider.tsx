@@ -16,8 +16,8 @@ export class BaseProvider extends Plugin implements IProvider {
   provider: any
   options: {[id: string]: any} = {}
   id: number
-  constructor(id) {    
-    const p = {...profile, ...{ name: 'base-provider-' + id, displayName: 'Base Wallet Provider - ' + id} }
+  constructor(id) {
+    const p = { ...profile, ...{ name: 'base-provider-' + id, displayName: 'Base Wallet Provider - ' + id } }
     console.log(p)
     super(p)
     this.id = id
@@ -30,7 +30,7 @@ export class BaseProvider extends Plugin implements IProvider {
     })
 
     this.provider = sdk.getProvider()
-    const addresses = await this.provider.request({method: 'eth_requestAccounts'});
+    const addresses = await this.provider.request({ method: 'eth_requestAccounts' });
     console.log('Base Wallet accounts:', addresses)
     return {}
   }

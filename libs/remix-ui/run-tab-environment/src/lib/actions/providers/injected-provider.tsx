@@ -48,6 +48,7 @@ export abstract class InjectedProvider extends Plugin implements IProvider {
       try {
         await web3Provider.request({ method: 'eth_requestAccounts' })
       } catch (error) {
+        console.error(error)
         throw new Error(this.notFound())
       }
     } else if (throwIfNoInjectedProvider) {

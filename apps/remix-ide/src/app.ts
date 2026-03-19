@@ -421,7 +421,7 @@ class AppComponent {
     const foundryProvider = new FoundryProvider(blockchain)
     const externalHttpProvider = new ExternalHttpProvider(blockchain)
     const baseSepoliaChainId = 84532
-    const baseMainnetChainId = 8453    
+    const baseMainnetChainId = 8453
     const baseProviderSepolia = new BaseProvider(baseSepoliaChainId)
     const baseProvider = new BaseProvider(baseMainnetChainId)
 

@@ -210,7 +210,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     try {
       const code = await plugin.call('blockchain', 'getCode', contract.address)
       if (code === '' || code === '0x') {
-        await plugin.call('terminal', 'log', { type: 'error', value: `Cannot continue the execution, no code found at address ${contract.address}`})
+        await plugin.call('terminal', 'log', { type: 'error', value: `Cannot continue the execution, no code found at address ${contract.address}` })
         return
       }
       await runTransactions(
