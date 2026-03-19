@@ -680,16 +680,6 @@ export function RemixUiTopbar() {
             className="d-flex align-items-center flex-nowrap"
             style={{ minWidth: 0, width: '100%', justifyContent: isNonMaximizedWindow ? 'flex-start' : 'center' }}
           >
-            {/* <div
-              style={{
-                minWidth: 0,
-                width: isNonMaximizedWindow ? '50%' : '100%',
-                maxWidth: isNonMaximizedWindow ? '50%' : '100%',
-                flex: isNonMaximizedWindow ? '0 1 50%' : '0 1 100%',
-                overflow: 'hidden',
-                transition: 'width 180ms ease, max-width 180ms ease, flex-basis 180ms ease'
-              }}
-            > */}
             <WorkspacesDropdown
               menuItems={menuItems}
               toggleDropdown={toggleDropdown}
@@ -714,7 +704,6 @@ export function RemixUiTopbar() {
               openTemplateExplorer={openTemplateExplorer}
               onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
             />
-            {/* </div> */}
             <div
               className="d-flex gap-2 align-items-center"
               style={{ marginLeft: isNonMaximizedWindow ? '0.75rem' : '1.5rem', flexShrink: 0 }}
