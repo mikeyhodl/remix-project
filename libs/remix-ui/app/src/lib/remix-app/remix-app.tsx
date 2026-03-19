@@ -363,7 +363,7 @@ const RemixApp = (props: IRemixAppUi) => {
     top: `${topBarHeight}px`,
     right: '0.8rem',
     width: `${floatingChatWidth}px`,
-    height: `calc(95vh - ${topBarHeight}px)`,
+    height: `calc(89vh - ${topBarHeight}px)`,
     zIndex: 1050
   }), [floatingChatWidth, topBarHeight])
   const [showArchived, setShowArchived] = useState(false);
