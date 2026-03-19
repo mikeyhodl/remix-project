@@ -263,7 +263,7 @@
   "udapp.ownerAddressForSmartAccount": "Owner address for Smart Account",
 
   "udapp._comment_fork_new": "new keys for forkUI.tsx",
-  "udapp.forkingStateDescription": "Forking state will create a new environment with the same state as the selected environment.",
+  "udapp.forkingStateDescription": "Forking creates a new virtual chain with the same state as the current VM.",
   "udapp.forkNameLabel": "Fork name",
 
   "udapp._comment_resetUI_new": "new keys for resetUI.tsx",
