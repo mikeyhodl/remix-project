@@ -124,7 +124,7 @@ function TransactionsPortraitView() {
     })
     return sorted
   }, [widgetState.recorderData.journal, sortOrder])
-
+  console.log('themeQuality:', themeQuality) // IGNORE
   return (
     <div className="card mx-2 my-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
       <div className="p-3 d-flex align-items-center justify-content-between" style={{ cursor: 'pointer' }} onClick={toggleAccordion} data-id="transaction-recorder-accordion-toggle">

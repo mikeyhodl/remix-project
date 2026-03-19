@@ -13,7 +13,7 @@ function TransactionsWidget({ plugin, context }: { plugin: TransactionsPlugin; c
   // Initialize with shared state if available (for secondary instances)
   const initialState = plugin.getWidgetState?.() || transactionsInitialState
   const [widgetState, localDispatch] = useReducer(transactionsReducer, initialState)
-  const [themeQuality] = useState<string>('dark')
+  const [themeQuality, setThemeQuality] = useState<string>('dark')
   const [syncTrigger, setSyncTrigger] = useState(0)
 
   // Always set the state getter and dispatch getter (primary instance sets them)
@@ -78,6 +78,27 @@ function TransactionsWidget({ plugin, context }: { plugin: TransactionsPlugin; c
   useEffect(() => {
     plugin.emit('transactionRecorderUpdated', currentState.recorderData.journal)
   }, [currentState.recorderData.journal, plugin, syncTrigger])
+
+  useEffect(() => {
+    const pollTheme = async () => {
+      const theme = await plugin.call('theme', 'currentTheme')
+      if (theme && theme.quality) {
+        setThemeQuality(theme.quality)
+      }
+    }
+    pollTheme()
+  }, [])
+
+  useEffect(() => {
+    plugin.on('theme', 'themeChanged', (theme: any) => {
+      if (theme && theme.quality) {
+        setThemeQuality(theme.quality)
+      }
+    })
+    return () => {
+      plugin.off('theme', 'themeChanged')
+    }
+  }, [])
 
   return (
     <TransactionsAppContext.Provider value={{ widgetState: currentState, dispatch, plugin, themeQuality, context }}>
