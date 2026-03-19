@@ -245,7 +245,7 @@ function TransactionsPortraitView() {
                   <FormattedMessage id="udapp.cancel" defaultMessage="Cancel" />
                 </button>
                 <button
-                  className={`btn btn-sm btn-danger ${themeQuality === 'dark' ? 'text-white' : 'text-dark'} flex-fill`}
+                  className={`btn btn-sm btn-danger ${themeQuality === 'dark' ? 'text-white' : 'text-white'} flex-fill`}
                   onClick={handleConfirmClearAll}
                   data-id="confirmClearAllTransactions"
                 >
