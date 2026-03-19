@@ -86,13 +86,28 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
     <Overlay
       show={show}
       target={target}
-      placement="right-start"
+      placement="auto"
       container={document.body}
       popperConfig={{
         modifiers: [
-          { name: "offset", options: { offset: [-4, 22]} },
-          { name: "preventOverflow", options: { boundary: "viewport", padding: 8 } },
-          { name: 'flip', options: { enabled: false } }
+          { name: "offset", options: { offset: [0, 8]} },
+          {
+            name: "preventOverflow",
+            options: {
+              boundary: "clippingParents",
+              padding: 8,
+              mainAxis: true,
+              altAxis: true
+            }
+          },
+          {
+            name: 'flip',
+            options: {
+              enabled: true,
+              fallbackPlacements: ['bottom', 'top', 'left', 'right'],
+              padding: 8
+            }
+          }
         ],
       }}
       rootClose

@@ -6,11 +6,15 @@ import { Transaction } from '../types'
 import { TransactionKebabMenu } from './TransactionKebabMenu'
 import { debugTransaction, replayTransaction, openTransactionInTerminal, openTransactionInExplorer, clearTransaction } from '../actions'
 
-export const TransactionRecordCard = ({ deployment }: { deployment: Transaction }) => {
+interface TransactionRecordCardProps {
+  deployment: Transaction
+  openKebabMenuId: string | null
+  onKebabMenuToggle: (txHash: string | null) => void
+}
+
+export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenuToggle }: TransactionRecordCardProps) => {
   const { plugin, widgetState, dispatch } = useContext(TransactionsAppContext)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showKebabMenu, setShowKebabMenu] = useState<boolean>(false)
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const kebabIconRefs = useRef<{ [key: string]: HTMLElement }>({})
 
   const transactions = useMemo(() => {
@@ -31,32 +35,33 @@ export const TransactionRecordCard = ({ deployment }: { deployment: Transaction 
   const handleKebabClick = (e: React.MouseEvent, transaction: Transaction) => {
     e.preventDefault()
     e.stopPropagation()
-    setSelectedTransaction(transaction)
-    setShowKebabMenu(prev => !prev)
+    const txHash = transaction?.record?.txHash || String(transaction?.timestamp)
+    const isCurrentlyOpen = openKebabMenuId === txHash
+    onKebabMenuToggle(isCurrentlyOpen ? null : txHash)
   }
 
   const handleDebug = async (tx: Transaction) => {
-    setShowKebabMenu(false)
+    onKebabMenuToggle(null)
     await debugTransaction(plugin, tx)
   }
 
   const handleReplay = async (tx: Transaction) => {
-    setShowKebabMenu(false)
+    onKebabMenuToggle(null)
     await replayTransaction(tx, widgetState.recorderData, plugin)
   }
 
   const handleOpenInTerminal = async (tx: Transaction) => {
-    setShowKebabMenu(false)
+    onKebabMenuToggle(null)
     await openTransactionInTerminal(plugin, tx)
   }
 
   const handleOpenInExplorer = async (tx: Transaction) => {
-    setShowKebabMenu(false)
+    onKebabMenuToggle(null)
     await openTransactionInExplorer(plugin, tx)
   }
 
   const handleClear = async (tx: Transaction) => {
-    setShowKebabMenu(false)
+    onKebabMenuToggle(null)
     await clearTransaction(plugin, tx, dispatch)
   }
 
@@ -129,11 +134,11 @@ export const TransactionRecordCard = ({ deployment }: { deployment: Transaction 
               ></i>
             </div>
           </div>
-          {selectedTransaction?.record?.txHash === transaction?.record?.txHash && (
+          {openKebabMenuId === (transaction?.record?.txHash || String(transaction?.timestamp)) && (
             <TransactionKebabMenu
-              show={showKebabMenu}
+              show={true}
               target={kebabIconRefs.current[transaction.record?.txHash]}
-              onHide={() => setShowKebabMenu(false)}
+              onHide={() => onKebabMenuToggle(null)}
               transaction={transaction}
               onDebug={handleDebug}
               onReplay={handleReplay}
