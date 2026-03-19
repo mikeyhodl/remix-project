@@ -680,7 +680,7 @@ export function RemixUiTopbar() {
             className="d-flex align-items-center flex-nowrap"
             style={{ minWidth: 0, width: '100%', justifyContent: isNonMaximizedWindow ? 'flex-start' : 'center' }}
           >
-            <div
+            {/* <div
               style={{
                 minWidth: 0,
                 width: isNonMaximizedWindow ? '50%' : '100%',
@@ -689,32 +689,32 @@ export function RemixUiTopbar() {
                 overflow: 'hidden',
                 transition: 'width 180ms ease, max-width 180ms ease, flex-basis 180ms ease'
               }}
-            >
-              <WorkspacesDropdown
-                menuItems={menuItems}
-                toggleDropdown={toggleDropdown}
-                showDropdown={showDropdown}
-                currentWorkspace={currentWorkspace}
-                NO_WORKSPACE={NO_WORKSPACE}
-                switchWorkspace={switchWorkspace}
-                ShowNonLocalHostMenuItems={ShowNonLocalHostMenuItems}
-                CustomToggle={CustomToggle}
-                showSubMenuFlyOut={showSubMenuFlyOut}
-                setShowSubMenuFlyOut={setShowSubMenuFlyOut}
-                createWorkspace={createWorkspace}
-                renameCurrentWorkspace={renameCurrentWorkspace}
-                downloadCurrentWorkspace={downloadCurrentWorkspace}
-                deleteCurrentWorkspace={deleteCurrentWorkspace}
-                downloadWorkspaces={downloadWorkspaces}
-                restoreBackup={restoreBackup}
-                deleteAllWorkspaces={deleteAllWorkspaces}
-                setCurrentMenuItemName={setCurrentMenuItemName}
-                setMenuItems={setMenuItems}
-                connectToLocalhost={() => switchWorkspace(LOCALHOST)}
-                openTemplateExplorer={openTemplateExplorer}
-                onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
-              />
-            </div>
+            > */}
+            <WorkspacesDropdown
+              menuItems={menuItems}
+              toggleDropdown={toggleDropdown}
+              showDropdown={showDropdown}
+              currentWorkspace={currentWorkspace}
+              NO_WORKSPACE={NO_WORKSPACE}
+              switchWorkspace={switchWorkspace}
+              ShowNonLocalHostMenuItems={ShowNonLocalHostMenuItems}
+              CustomToggle={CustomToggle}
+              showSubMenuFlyOut={showSubMenuFlyOut}
+              setShowSubMenuFlyOut={setShowSubMenuFlyOut}
+              createWorkspace={createWorkspace}
+              renameCurrentWorkspace={renameCurrentWorkspace}
+              downloadCurrentWorkspace={downloadCurrentWorkspace}
+              deleteCurrentWorkspace={deleteCurrentWorkspace}
+              downloadWorkspaces={downloadWorkspaces}
+              restoreBackup={restoreBackup}
+              deleteAllWorkspaces={deleteAllWorkspaces}
+              setCurrentMenuItemName={setCurrentMenuItemName}
+              setMenuItems={setMenuItems}
+              connectToLocalhost={() => switchWorkspace(LOCALHOST)}
+              openTemplateExplorer={openTemplateExplorer}
+              onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
+            />
+            {/* </div> */}
             <div
               className="d-flex gap-2 align-items-center"
               style={{ marginLeft: isNonMaximizedWindow ? '0.75rem' : '1.5rem', flexShrink: 0 }}
