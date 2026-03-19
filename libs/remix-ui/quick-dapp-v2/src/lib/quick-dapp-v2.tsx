@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useReducer, useState, useMemo, useRef, useContext } from 'react';
 import { LoginModal } from '@remix-ui/login';
 import { IntlProvider } from 'react-intl';
 import CreateInstance from './components/CreateInstance';
@@ -7,6 +7,7 @@ import LoadingScreen from './components/LoadingScreen';
 import Dashboard from './components/Dashboard';
 import { appInitialState, appReducer, AppAction } from './reducers';
 import { AppContext } from './contexts';
+import { AppContext as RemixAppContext } from '@remix-ui/app';
 import { DappManager } from './utils/DappManager';
 import { QuickDappV2PluginApi, DappConfig } from './types';
 import { endpointUrls } from '@remix-endpoints-helper';
@@ -25,7 +26,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     code: 'en',
     messages: null,
   });
-
+  const appContext = useContext(AppContext)
+  const remixAppContext = useContext(RemixAppContext)
   const [appState, dispatch] = useReducer(appReducer, appInitialState);
   const dappsRef = useRef(appState.dapps);
   const [isAppLoading, setIsAppLoading] = useState(true);
@@ -426,6 +428,20 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
   };
 
   const renderContent = () => {
+    // If quickdapp is disabled via app config, show "Coming Soon"
+    const quickdappEnabled = remixAppContext?.appConfig?.['quickdapp.enabled']
+    if (quickdappEnabled === false) {
+      return (
+        <div className="d-flex flex-column justify-content-center align-items-center text-center px-4" style={{ height: '80vh' }}>
+          <i className="fas fa-flask fa-3x mb-3 text-info"></i>
+          <h4 className="mb-2">Coming Soon</h4>
+          <p className="text-muted" style={{ maxWidth: '400px' }}>
+            QuickDapp V2 is under development and will be available soon. Stay tuned!
+          </p>
+        </div>
+      );
+    }
+
     // Permission check: show loading while checking access
     if (hasAccess === null) {
       return (
