@@ -31,6 +31,7 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
     }
     if (provider?.category === 'Dev') {
       setEnforceSelect(true)
+      dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
     } else {
       setEnforceSelect(false)
     }
@@ -54,7 +55,10 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
       </Dropdown.Toggle>
 
       <Dropdown.Menu as={CustomMenu} className="custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', zIndex: 1000, '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', padding: 0, minWidth: 'max-content', width: 'auto' } as React.CSSProperties}>
-        { provider?.category === 'Dev' && <Dropdown.Item onClick={() => setEnforceSelect(true)}>select</Dropdown.Item> }
+        { provider?.category === 'Dev' && <Dropdown.Item onClick={() => {
+          setEnforceSelect(true)
+          dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
+        }}>select</Dropdown.Item> }
         {subCategories.map((provider) => {
           return (
             <Dropdown.Item key={provider.name} onClick={() => handleCategorySelection(provider)} data-id={`dropdown-item-${provider.name}`} className="category-item-hover px-2">

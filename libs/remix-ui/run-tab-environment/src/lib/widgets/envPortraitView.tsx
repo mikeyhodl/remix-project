@@ -441,6 +441,7 @@ function EnvironmentPortraitView() {
           </div>)}
         {!widgetState.fork.isVisible.resetUI && (
           <div className="d-flex px-3">
+            { hierarchicalAccounts.length > 0 &&
             <Dropdown className="w-100" show={!widgetState.accounts.isRequesting && isAccountDropdownOpen} onToggle={(isOpen) => !widgetState.accounts.isRequesting && setIsAccountDropdownOpen(isOpen)}>
               <Dropdown.Toggle as={AddressToggle} data-id="runTabSelectAccount" className={`w-100 d-inline-block border form-control ${!selectedAccountIsSmartAccount ? 'selected-account-hover' : ''} account-toggle ${isAccountDropdownOpen ? 'dropdown-open' : ''} ${widgetState.accounts.isRequesting ? 'disabled' : ''}`} style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', cursor: widgetState.accounts.isRequesting ? 'not-allowed' : 'pointer', opacity: widgetState.accounts.isRequesting ? 0.6 : 1 }}>
                 {widgetState.accounts.isRequesting ? (
@@ -611,6 +612,7 @@ function EnvironmentPortraitView() {
                 }
               </Dropdown.Menu>
             </Dropdown>
+            }
           </div>)}
         {!widgetState.fork.isVisible.resetUI && selectedSmartAccountOwner && (
           <div className="px-3">
