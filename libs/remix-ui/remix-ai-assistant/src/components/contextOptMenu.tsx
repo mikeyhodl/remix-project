@@ -19,12 +19,11 @@ export default function GroupListMenu(props: GroupListMenuProps) {
           className={`btn btn-light border border-0 ${item.isLocked ? 'opacity-75' : ''}`}
           data-id={item.dataId}
           onClick={() => {
+            props.setShowOptions(false)
             if (item.isLocked) {
               props.onLockedItemClick?.(item)
-              props.setShowOptions(false)
             } else {
               props.setChoice(item.stateValue)
-              props.setShowOptions(false)
             }
           }}
         >

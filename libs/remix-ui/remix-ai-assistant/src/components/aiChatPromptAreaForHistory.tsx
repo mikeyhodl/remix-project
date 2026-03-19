@@ -103,7 +103,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
                 </label>
               </div>
               <div className="small text-muted ms-2">
-                      Adds relevant context from configured MCP servers to AI requests
+                      Adds relevant context from the connected MCP servers
               </div>
             </div>
           )}
