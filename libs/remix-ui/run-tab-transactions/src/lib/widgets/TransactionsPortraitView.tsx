@@ -124,12 +124,12 @@ function TransactionsPortraitView() {
     })
     return sorted
   }, [widgetState.recorderData.journal, sortOrder])
-  console.log('themeQuality:', themeQuality) // IGNORE
+
   return (
-    <div className="card mx-2 my-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
+    <div className="card mx-2 my-2 text-theme-contrast" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
       <div className="p-3 d-flex align-items-center justify-content-between" style={{ cursor: 'pointer' }} onClick={toggleAccordion} data-id="transaction-recorder-accordion-toggle">
         <div className='d-flex align-items-center gap-2'>
-          <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0, }}>
+          <h6 className="my-auto text-theme-contrast" style={{ margin: 0, }}>
             <FormattedMessage id="udapp.transactionRecorderTitle" defaultMessage="Transactions recorder" /> <span className="text-secondary small">{widgetState.recorderData.journal.length}</span>
           </h6>
         </div>
@@ -158,8 +158,8 @@ function TransactionsPortraitView() {
           {/* Add Contract Dialog */}
           {showSaveDialog && (
             <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <p className="mb-0" style={{ color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.9rem' }}>
+              <div className="d-flex justify-content-between align-items-center mb-2 text-theme-contrast">
+                <p className="mb-0" style={{ fontSize: '0.9rem' }}>
                   <FormattedMessage id="udapp.saveTransactionsHeader" />
                 </p>
                 <button
@@ -210,21 +210,20 @@ function TransactionsPortraitView() {
           {/* Clear All Confirmation Dialog */}
           {showClearAllDialog && (
             <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <p className="mb-0" style={{ color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.9rem' }}>
+              <div className="d-flex justify-content-between align-items-center mb-2 text-theme-contrast">
+                <p className="mb-0" style={{ fontSize: '0.9rem' }}>
                   <FormattedMessage
                     id="udapp.clearAllTransactionsTitle"
                     defaultMessage="Clear all transactions"
                   />
                 </p>
                 <button
-                  className="btn btn-sm"
+                  className="btn btn-sm text-theme-contrast"
                   onClick={handleCancelClearAll}
                   style={{
                     background: 'none',
                     border: 'none',
                     fontSize: '1.2rem',
-                    color: themeQuality === 'dark' ? 'white' : 'black',
                     padding: 0
                   }}
                 > × </button>
@@ -245,7 +244,7 @@ function TransactionsPortraitView() {
                   <FormattedMessage id="udapp.cancel" defaultMessage="Cancel" />
                 </button>
                 <button
-                  className={`btn btn-sm btn-danger ${themeQuality === 'dark' ? 'text-white' : 'text-white'} flex-fill`}
+                  className={`btn btn-sm btn-danger text-theme-contrast flex-fill`}
                   onClick={handleConfirmClearAll}
                   data-id="confirmClearAllTransactions"
                 >
