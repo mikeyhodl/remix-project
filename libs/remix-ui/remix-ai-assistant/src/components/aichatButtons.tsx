@@ -155,6 +155,7 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
       action: () => {
         handleActionClick()
         sendPrompt(intl.formatMessage({ id: 'remixApp.aiChatPrompt.ethernews' }))
+        trackMatomoEvent(plugin, { category: 'ai', action: 'conv_starter', name: 'ether_news', isClick: true })
       }
     },
     {
