@@ -26,7 +26,6 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     code: 'en',
     messages: null,
   });
-  const appContext = useContext(AppContext)
   const remixAppContext = useContext(RemixAppContext)
   const [appState, dispatch] = useReducer(appReducer, appInitialState);
   const dappsRef = useRef(appState.dapps);
