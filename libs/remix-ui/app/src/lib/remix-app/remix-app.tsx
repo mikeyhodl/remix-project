@@ -73,6 +73,8 @@ const RemixApp = (props: IRemixAppUi) => {
   const sidePanelRef = useRef(null)
   const iconPanelRef = useRef<HTMLDivElement>(null)
   const pinnedPanelRef = useRef(null)
+  const topBarRef = useRef<HTMLDivElement>(null)
+  const [topBarHeight, setTopBarHeight] = useState<number>(0)
   const [appState, appStateDispatch] = useReducer(appReducer, {
     ...appInitialState,
     showPopupPanel: !window.localStorage.getItem('did_show_popup_panel') && !isElectron(),
@@ -133,6 +135,17 @@ const RemixApp = (props: IRemixAppUi) => {
       window.removeEventListener('resize', onResize)
     }
   }, [])
+
+  useEffect(() => {
+    const el = topBarRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      setTopBarHeight(el.offsetHeight)
+    })
+    observer.observe(el)
+    setTopBarHeight(el.offsetHeight)
+    return () => observer.disconnect()
+  }, [topBarRef.current])
 
   useEffect(() => {
     const theme = props.app.themeModule.currentTheme()
@@ -347,12 +360,12 @@ const RemixApp = (props: IRemixAppUi) => {
   const floatingChatStyle = useMemo<React.CSSProperties>(() => ({
     position: 'fixed',
     overflow: 'hidden',
-    top: '3rem',
+    top: `${topBarHeight}px`,
     right: '0.8rem',
     width: `${floatingChatWidth}px`,
-    height: '92vh',
+    height: `calc(95vh - ${topBarHeight}px)`,
     zIndex: 1050
-  }), [floatingChatWidth])
+  }), [floatingChatWidth, topBarHeight])
   const [showArchived, setShowArchived] = useState(false);
 
   // Memoize callbacks to prevent unnecessary re-renders
@@ -385,7 +398,7 @@ const RemixApp = (props: IRemixAppUi) => {
               <div className="d-flex flex-column col-12 vh-100">
                 <OriginWarning />
                 {!props.app.desktopClientMode && (
-                  <div className='top-bar'>
+                  <div ref={topBarRef} className='top-bar'>
                     {props.app.topBar.render()}
                   </div>
                 )}
