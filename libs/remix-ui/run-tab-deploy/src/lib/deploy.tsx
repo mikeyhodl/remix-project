@@ -109,33 +109,6 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
     //   setExecutionContext(plugin, dispatch, { context: 'vm-cancun', fork: '' })
     // })
 
-    // plugin.on('manager', 'pluginActivated', (activatedPlugin: Plugin) => {
-    //   if (activatedPlugin.name === 'remixd') {
-    //     dispatch(setRemixDActivated(true))
-    //   } else {
-    //     if (activatedPlugin && activatedPlugin.name.startsWith('injected')) {
-    //       plugin.on(activatedPlugin.name, 'accountsChanged', (accounts: Array<string>) => {
-    //         const accountsMap = {}
-    //         accounts.map(account => { accountsMap[account] = shortenAddress(account, '0')})
-    //         dispatch(fetchAccountsListSuccess(accountsMap))
-    //         dispatch(setSelectedAccount((window as any).ethereum.selectedAddress || accounts[0]))
-    //       })
-    //     } else if (activatedPlugin && activatedPlugin.name === 'walletconnect') {
-    //       plugin.on('walletconnect', 'accountsChanged', async (accounts: Array<string>) => {
-    //         const accountsMap = {}
-
-    //         await Promise.all(accounts.map(async (account) => {
-    //           const balance = await plugin.blockchain.getBalanceInEther(account)
-    //           const updated = shortenAddress(account, balance)
-
-    //           accountsMap[account] = updated
-    //         }))
-    //         dispatch(fetchAccountsListSuccess(accountsMap))
-    //       })
-    //     }
-    //   }
-    // })
-
     // plugin.on('manager', 'pluginDeactivated', (plugin: Plugin) => {
     //   if (plugin.name === 'remixd') {
     //     dispatch(setRemixDActivated(false))
@@ -157,6 +130,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       plugin.off('truffle', 'compilationFinished')
       plugin.off('filePanel', 'setWorkspace')
       plugin.off('solidity', 'compilationFailed')
+      plugin.off('blockchain', 'networkStatus')
     }
   }, [])
 

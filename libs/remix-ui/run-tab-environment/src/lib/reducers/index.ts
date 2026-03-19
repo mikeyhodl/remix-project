@@ -80,6 +80,20 @@ export const widgetReducer = (state = widgetInitialState, action: Actions): Widg
       }
     }
 
+  case 'CLEAR_ALL_ACCOUNTS':
+    return {
+      ...state,
+      accounts: {
+        selectedAccount: '',
+        smartAccounts: [],
+        defaultAccounts: [],
+        delegations: {},
+        isRequesting: false,
+        isSuccessful: false,
+        error: null
+      }
+    }
+
   case 'SET_CURRENT_PROVIDER':
     return {
       ...state,

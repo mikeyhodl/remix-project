@@ -18,6 +18,7 @@ export class EnvironmentPlugin extends Plugin {
   getWidgetState: (() => WidgetState) | null = null
   private getDispatch: (() => React.Dispatch<Actions>) | null = null
   private isInitialized: boolean = false
+  injectedProviderPlugins: string[] = []
 
   constructor () {
     super(profile)

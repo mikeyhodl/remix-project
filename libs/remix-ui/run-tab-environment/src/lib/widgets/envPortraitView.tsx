@@ -385,7 +385,7 @@ function EnvironmentPortraitView() {
             <h6 className="my-auto env-card-heading">{intl.formatMessage({ id: 'udapp.environment' })}</h6>
           </div>
           <div className="toggle-container">
-            {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
+            {widgetState.providers?.selectedProvider?.startsWith('vm') && !widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
               <button data-id="fork-state-icon" className='btn btn-primary btn-sm small me-2 btn-small-text' onClick={handleForkClick}>
                 <i className='fas fa-code-branch'></i> {intl.formatMessage({ id: 'udapp.fork' })}
               </button>
@@ -441,71 +441,78 @@ function EnvironmentPortraitView() {
           </div>)}
         {!widgetState.fork.isVisible.resetUI && (
           <div className="d-flex px-3">
-            <Dropdown className="w-100" show={isAccountDropdownOpen} onToggle={(isOpen) => setIsAccountDropdownOpen(isOpen)}>
-              <Dropdown.Toggle as={AddressToggle} data-id="runTabSelectAccount" className={`w-100 d-inline-block border form-control ${!selectedAccountIsSmartAccount ? 'selected-account-hover' : ''} account-toggle ${isAccountDropdownOpen ? 'dropdown-open' : ''}`} style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
-                <div className="d-flex align-items-center">
-                  <div className="me-auto text-nowrap text-truncate overflow-hidden font-sm w-100">
-                    <div className="d-flex align-items-center justify-content-between w-100">
-                      <div className='d-flex align-items-start account-info-container'>
-                        {selectedAccountIsSmartAccount && (
-                          <CustomTooltip
-                            placement="top"
-                            tooltipClasses="text-nowrap"
-                            tooltipId="selected-smart-account-badge-tooltip"
-                            tooltipText="Smart Account"
-                          >
-                            <span className="smart-account-badge smart-account-badge-selected">S</span>
-                          </CustomTooltip>
-                        )}
-                        <div className='d-flex flex-column align-items-start ms-1'>
-                          <div className="text-truncate text-dark d-flex align-items-center">
-                            {editingAccountId === 'selected' ? (
-                              <input
-                                ref={editingInputRef}
-                                type="text"
-                                className="form-control form-control-sm edit-account-input"
-                                value={editingAlias}
-                                onChange={(e) => setEditingAlias(e.target.value)}
-                                onKeyDown={(e) => handleAliasKeyDown(e, selectedAccount?.account)}
-                                onBlur={() => handleSaveAlias(selectedAccount?.account)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <>
-                                <span>{selectedAccount?.alias}</span>
-                                <i
-                                  className="fa-solid fa-pen small ms-1"
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={(e) => handleStartEditAlias('selected', selectedAccount?.alias, e)}
-                                ></i>
-                              </>
-                            )}
-                          </div>
-                          <div className="account-address-label">
-                            <span className="small">{shortenAddress(selectedAccount?.account)}</span>
-                            <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => selectedAccount?.account}>
-                              <i className="fa-solid fa-copy small ms-1 copy-icon"></i>
-                            </CopyToClipboard>
+            { hierarchicalAccounts.length > 0 &&
+            <Dropdown className="w-100" show={!widgetState.accounts.isRequesting && isAccountDropdownOpen} onToggle={(isOpen) => !widgetState.accounts.isRequesting && setIsAccountDropdownOpen(isOpen)}>
+              <Dropdown.Toggle as={AddressToggle} data-id="runTabSelectAccount" className={`w-100 d-inline-block border form-control ${!selectedAccountIsSmartAccount ? 'selected-account-hover' : ''} account-toggle ${isAccountDropdownOpen ? 'dropdown-open' : ''} ${widgetState.accounts.isRequesting ? 'disabled' : ''}`} style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', cursor: widgetState.accounts.isRequesting ? 'not-allowed' : 'pointer', opacity: widgetState.accounts.isRequesting ? 0.6 : 1 }}>
+                {widgetState.accounts.isRequesting ? (
+                  <div className="d-flex align-items-center justify-content-center w-100">
+                    <i className="fas fa-spinner fa-spin"></i>
+                  </div>
+                ) : (
+                  <div className="d-flex align-items-center">
+                    <div className="me-auto text-nowrap text-truncate overflow-hidden font-sm w-100">
+                      <div className="d-flex align-items-center justify-content-between w-100">
+                        <div className='d-flex align-items-start account-info-container'>
+                          {selectedAccountIsSmartAccount && (
+                            <CustomTooltip
+                              placement="top"
+                              tooltipClasses="text-nowrap"
+                              tooltipId="selected-smart-account-badge-tooltip"
+                              tooltipText="Smart Account"
+                            >
+                              <span className="smart-account-badge smart-account-badge-selected">S</span>
+                            </CustomTooltip>
+                          )}
+                          <div className='d-flex flex-column align-items-start ms-1'>
+                            <div className="text-truncate text-dark d-flex align-items-center">
+                              {editingAccountId === 'selected' ? (
+                                <input
+                                  ref={editingInputRef}
+                                  type="text"
+                                  className="form-control form-control-sm edit-account-input"
+                                  value={editingAlias}
+                                  onChange={(e) => setEditingAlias(e.target.value)}
+                                  onKeyDown={(e) => handleAliasKeyDown(e, selectedAccount?.account)}
+                                  onBlur={() => handleSaveAlias(selectedAccount?.account)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <>
+                                  <span>{selectedAccount?.alias}</span>
+                                  <i
+                                    className="fa-solid fa-pen small ms-1"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={(e) => handleStartEditAlias('selected', selectedAccount?.alias, e)}
+                                  ></i>
+                                </>
+                              )}
+                            </div>
+                            <div className="account-address-label">
+                              <span className="small">{shortenAddress(selectedAccount?.account)}</span>
+                              <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => selectedAccount?.account}>
+                                <i className="fa-solid fa-copy small ms-1 copy-icon"></i>
+                              </CopyToClipboard>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className={`selected-account-balance-container account-balance-color ${openKebabMenuId === 'selected' ? 'kebab-menu-open' : ''}`}>
-                        <span className="selected-account-balance-text">{`${selectedAccount?.balance} ${selectedAccount?.symbol}`}</span>
-                        <i
-                          ref={(el) => {
-                            if (el && selectedAccount) kebabIconRefs.current['selected'] = el
-                          }}
-                          className="selected-account-kebab-icon fas fa-ellipsis-v cursor-pointer"
-                          data-id="selected-account-kebab-menu"
-                          onClick={(e) => {
-                            setIsAccountDropdownOpen(false)
-                            handleKebabClick(e, 'selected')
-                          }}
-                        ></i>
+                        <div className={`selected-account-balance-container account-balance-color ${openKebabMenuId === 'selected' ? 'kebab-menu-open' : ''}`}>
+                          <span className="selected-account-balance-text">{`${selectedAccount?.balance} ${selectedAccount?.symbol}`}</span>
+                          <i
+                            ref={(el) => {
+                              if (el && selectedAccount) kebabIconRefs.current['selected'] = el
+                            }}
+                            className="selected-account-kebab-icon fas fa-ellipsis-v cursor-pointer"
+                            data-id="selected-account-kebab-menu"
+                            onClick={(e) => {
+                              setIsAccountDropdownOpen(false)
+                              handleKebabClick(e, 'selected')
+                            }}
+                          ></i>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </Dropdown.Toggle>
 
               <AccountKebabMenu
@@ -605,6 +612,7 @@ function EnvironmentPortraitView() {
                 }
               </Dropdown.Menu>
             </Dropdown>
+            }
           </div>)}
         {!widgetState.fork.isVisible.resetUI && selectedSmartAccountOwner && (
           <div className="px-3">

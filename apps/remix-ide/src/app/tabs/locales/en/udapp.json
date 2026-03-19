@@ -49,13 +49,13 @@
   "udapp.enterAMessageToSign": "Enter a message to sign and click `Sign`",
   "udapp.hash": "hash",
   "udapp.signature": "signature",
-  "udapp.forkStateTitle": "Fork VM state",
+  "udapp.forkStateTitle": "Fork VM State",
   "udapp.forkStateLabel": "New environment name",
   "udapp.forkVmStateDesc1":"Forking state will create a new environment with the same state as the selected environment",
   "udapp.forkVmStateDesc2":"After forking, the new environment will be pinned and selected automatically. It can be unpinned or deleted using Environment Explorer",
   "udapp.fork": "Fork",
   "udapp.resetVmStateTitle": "Environment state reset",
-  "udapp.resetVmStateDesc1": "Resetting the state of this VM will delete the associated transaction details in this Workspace.",
+  "udapp.resetVmStateDesc1": "Resetting the state will delete all transactions in the Remix VM and all of its forks in this Workspace. ",
   "udapp.resetVmStateDesc2": "It will also delete the data of contracts deployed and pinned in this Workspace.",
   "udapp.resetVmStateDesc3": "Do you want to continue?",
   "udapp.reset": "Reset",
@@ -263,7 +263,7 @@
   "udapp.ownerAddressForSmartAccount": "Owner address for Smart Account",
 
   "udapp._comment_fork_new": "new keys for forkUI.tsx",
-  "udapp.forkingStateDescription": "Forking state will create a new environment with the same state as the selected environment.",
+  "udapp.forkingStateDescription": "Forking creates a new virtual chain with the same state as the current VM.",
   "udapp.forkNameLabel": "Fork name",
 
   "udapp._comment_resetUI_new": "new keys for resetUI.tsx",
@@ -285,7 +285,7 @@
   "udapp.deleteAccountMenuItem": "Delete account",
 
   "udapp._comment_deployedContractItem": "keys for DeployedContractItem.tsx",
-  "udapp.highLevelInteraction": "High level interaction",
+  "udapp.highLevelInteraction": "Functions",
   "udapp.lowLevelInteraction": "Low level interaction",
   "udapp.noABIAvailableForContract": "No ABI available for this contract",
   "udapp.valueLabel": "Value",

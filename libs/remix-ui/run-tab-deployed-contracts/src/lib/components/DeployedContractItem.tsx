@@ -21,9 +21,11 @@ interface DeployedContractItemProps {
   contract: DeployedContract
   index: number
   registerRef?: (ref: HTMLDivElement | null) => void
+  isKebabMenuOpen?: boolean
+  onKebabMenuToggle?: (isOpen: boolean) => void
 }
 
-export function DeployedContractItem({ contract, index, registerRef }: DeployedContractItemProps) {
+export function DeployedContractItem({ contract, index, registerRef, isKebabMenuOpen = false, onKebabMenuToggle }: DeployedContractItemProps) {
   const { dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const intl = useIntl()
   const [networkName, setNetworkName] = useState<string>('')
@@ -34,7 +36,6 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   const [gasLimit, setGasLimit] = useState<number>(0) // 0 means auto
   const [calldataValue, setCalldataValue] = useState<string>('')
   const [llIError, setLlIError] = useState<string>('')
-  const [showKebabMenu, setShowKebabMenu] = useState<boolean>(false)
   const [shouldHighlight, setShouldHighlight] = useState<boolean>(false)
   const kebabIconRef = useRef<HTMLElement>(null)
   const contractItemRef = useRef<HTMLDivElement>(null)
@@ -296,11 +297,15 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   const handleKebabClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowKebabMenu(prev => !prev)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(!isKebabMenuOpen)
+    }
   }
 
   const handleCreateDapp = async (contract: DeployedContract) => {
-    setShowKebabMenu(false)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
 
     try {
       let compilerData = null
@@ -399,7 +404,9 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   }
 
   const handleCopyABI = async (contract: DeployedContract) => {
-    setShowKebabMenu(false)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
     const abi = contract.abi || contract.contractData?.abi
     if (abi) {
       navigator.clipboard.writeText(JSON.stringify(abi, null, 2))
@@ -408,7 +415,9 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   }
 
   const handleCopyBytecode = async (contract: DeployedContract) => {
-    setShowKebabMenu(false)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
     const bytecode = contract.contractData?.bytecode || contract.contractData?.object
     if (bytecode) {
       navigator.clipboard.writeText(bytecode)
@@ -417,7 +426,9 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   }
 
   const handleOpenInExplorer = async (contract: DeployedContract) => {
-    setShowKebabMenu(false)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
     const network = await plugin.call('udappEnv', 'getNetwork')
     let explorerUrl = ''
 
@@ -442,7 +453,9 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
   }
 
   const handleClear = async () => {
-    setShowKebabMenu(false)
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
     handleRemove({ stopPropagation: () => {} } as React.MouseEvent)
   }
 
@@ -452,7 +465,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
     } else if (funcABI.stateMutability === 'payable') {
       return <span className='badge text-danger' style={{ backgroundColor: '#FF777714' }}>payable</span>
     } else {
-      return <span className='badge text-warning' style={{ backgroundColor: '#FFB96414' }}>store</span>
+      return <span className='badge text-warning' style={{ backgroundColor: '#FFB96414' }}>non-payable</span>
     }
   }
 
@@ -548,9 +561,13 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
             </div>
           </div>
           <ContractKebabMenu
-            show={showKebabMenu}
+            show={isKebabMenuOpen}
             target={kebabIconRef.current}
-            onHide={() => setShowKebabMenu(false)}
+            onHide={() => {
+              if (onKebabMenuToggle) {
+                onKebabMenuToggle(false)
+              }
+            }}
             contract={contract}
             onCreateDapp={handleCreateDapp}
             onCopyABI={handleCopyABI}
@@ -717,7 +734,7 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                         style={{
                           fontSize: '12px',
                           fontWeight: 700,
-                          color: 'var(--dark/text-secondary, #d5d7e3)',
+                          color: themeQuality === 'dark' ? 'white' : 'black',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -891,14 +908,6 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                 </div>
               )}
 
-              {/* Divider */}
-              <div className="border-top mb-3"></div>
-              <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
-                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1, color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.balanceLabel" /></div>
-                <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
-                  {contract.balance || 0} ETH
-                </div>
-              </div>
               {((selectedFunctionIndex !== null && functionABIs[selectedFunctionIndex]) || showLowLevel) && (
                 <button
                   data-id={`btnExecute-${index}`}
@@ -927,6 +936,15 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                       : intl.formatMessage({ id: 'udapp.transactButton' })}
                 </button>
               )}
+
+              {/* Divider */}
+              <div className="border-top my-3"></div>
+              <div className='d-flex align-items-center gap-1' data-id="deployedContractBal">
+                <div style={{ fontSize: '12px', fontWeight: 700, flex: 1 }}><FormattedMessage id="udapp.balanceLabel" /></div>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary, #a2a3bd)', fontFamily: 'Monaco, monospace' }}>
+                  {contract.balance || 0} ETH
+                </div>
+              </div>
             </div>
           )}
         </div>

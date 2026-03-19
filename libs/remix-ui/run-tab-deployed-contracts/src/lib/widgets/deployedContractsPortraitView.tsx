@@ -13,6 +13,7 @@ export default function DeployedContractsPortraitView() {
   const [latestContractAddress, setLatestContractAddress] = useState<string | null>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [newInstancesCount, setNewInstancesCount] = useState(0)
+  const [openKebabMenuAddress, setOpenKebabMenuAddress] = useState<string | null>(null)
   const contractRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
   const previousContractsLength = useRef(deployedContracts.length)
   const currentObserverRef = useRef<IntersectionObserver | null>(null)
@@ -174,7 +175,7 @@ export default function DeployedContractsPortraitView() {
         </div>
         <div>
           <button className='btn btn-primary btn-sm small' style={{ fontSize: '0.7rem' }} onClick={handleAddClick} data-id="addDeployedContract">
-            <i className='fa-solid fa-plus'></i> Add
+            <i className='fa-solid fa-plus'></i> Add Contract
           </button>
           {deployedContracts.length > 0 && (
             <button
@@ -188,7 +189,7 @@ export default function DeployedContractsPortraitView() {
           )}
         </div>
       </div>
-      { !showClearAllDialog && <p className='text-muted px-3' style={{ fontSize: '0.8rem' }}>Make calls to your deployed contracts</p>}
+      { !showClearAllDialog && <p className='text-muted px-3' style={{ fontSize: '0.8rem' }}>Interact with a deployed contract</p>}
       {/* Add Contract Dialog */}
       {showAddDialog && (
         <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
@@ -299,21 +300,15 @@ export default function DeployedContractsPortraitView() {
             />
           </div>
           <div className='pb-3'>
-            <a href="#">
-              <FormattedMessage
-                id="udapp.deployFirstContract"
-                defaultMessage="Deploy your first contract"
-              />
-            </a>
             <span>
               <FormattedMessage
                 id="udapp.orLearnMoreDeploying"
-                defaultMessage=", or learn how to do it following our "
+                defaultMessage="Learn how to deploy "
               /></span>
-            <a href="#">
+            <a href="https://remix-ide.readthedocs.io/en/latest/run.html" target='_blank'>
               <FormattedMessage
                 id="udapp.learnEth"
-                defaultMessage="in-app tutorials."
+                defaultMessage='"your first contract".'
               /></a>
           </div>
         </div>
@@ -330,6 +325,10 @@ export default function DeployedContractsPortraitView() {
                     if (ref) {
                       contractRefsMap.current.set(contract.address, ref)
                     }
+                  }}
+                  isKebabMenuOpen={openKebabMenuAddress === contract.address}
+                  onKebabMenuToggle={(isOpen) => {
+                    setOpenKebabMenuAddress(isOpen ? contract.address : null)
                   }}
                 />
               ))}
