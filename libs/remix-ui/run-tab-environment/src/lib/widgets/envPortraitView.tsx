@@ -51,7 +51,12 @@ function EnvironmentPortraitView() {
     if (provider.category && selectedProvider?.category === provider.category) {
       return
     }
-    setExecutionContext(provider, plugin, dispatch)
+    if (provider.category === 'Dev') {
+      // select category to show sub-categories
+      dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
+    } else {
+      setExecutionContext(provider, plugin, dispatch)
+    }
   }
 
   const handleAccountSelection = (account: Account) => {
