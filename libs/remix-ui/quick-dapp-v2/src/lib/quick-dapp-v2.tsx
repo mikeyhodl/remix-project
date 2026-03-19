@@ -31,7 +31,7 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
   const activeDappRef = useRef(appState.activeDapp);
 
   // Permission gating
-  const hasAccess = features?.['dapp:quickdapp']?.is_enabled === true
+  const hasAccess = features?.['dapp:quickdapp']
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // DappManager now receives the plugin from props instead of a singleton
