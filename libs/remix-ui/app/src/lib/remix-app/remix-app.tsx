@@ -357,15 +357,18 @@ const RemixApp = (props: IRemixAppUi) => {
 
   const chatWidthFraction = viewportSize.width < 768 ? 0.86 : viewportSize.width < 1920 ? 0.22 : 0.18
   const floatingChatWidth = Math.max(260, Math.round(viewportSize.width * chatWidthFraction))
-  const floatingChatStyle = useMemo<React.CSSProperties>(() => ({
-    position: 'fixed',
-    overflow: 'hidden',
-    top: `${topBarHeight}px`,
-    right: '0.8rem',
-    width: `${floatingChatWidth}px`,
-    height: `calc(89vh - ${topBarHeight}px)`,
-    zIndex: 1050
-  }), [floatingChatWidth, topBarHeight])
+  const floatingChatStyle = useMemo<React.CSSProperties>(() => {
+    const height = topBarHeight + (topBarHeight / 2)
+    return {
+      position: 'fixed',
+      overflow: 'hidden',
+      top: `${height}px`,
+      right: '0.8rem',
+      width: `${floatingChatWidth}px`,
+      height: `calc(92vh - ${height}px)`,
+      zIndex: 1050
+    }
+  }, [floatingChatWidth, topBarHeight])
   const [showArchived, setShowArchived] = useState(false);
 
   // Memoize callbacks to prevent unnecessary re-renders
