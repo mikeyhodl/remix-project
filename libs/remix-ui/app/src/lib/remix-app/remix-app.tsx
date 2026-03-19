@@ -365,7 +365,7 @@ const RemixApp = (props: IRemixAppUi) => {
       top: `${height}px`,
       right: '0.8rem',
       width: `${floatingChatWidth}px`,
-      height: `calc(92vh - ${height}px)`,
+      height: `calc(94vh - ${height}px)`,
       zIndex: 1050
     }
   }, [floatingChatWidth, topBarHeight])
