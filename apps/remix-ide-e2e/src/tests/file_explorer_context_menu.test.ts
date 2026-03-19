@@ -42,7 +42,6 @@ module.exports = {
       .waitForElementVisible('*[data-id$="fileExplorerTreeItemInput"]')
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.CONTROL + 'v')
       .sendKeys('*[data-id$="fileExplorerTreeItemInput"]', browser.Keys.ENTER)
-      .pause()
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtests/README.txt"]', 7000)
   },
   'Should copy file name and paste in another folder that has the same filename with new file button and it will contain a new file #group1 ': function (browser: NightwatchBrowser) {
