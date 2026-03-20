@@ -29,7 +29,7 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
     if (provider && provider.category) {
       setSubCategories(widgetState.providers.providerList.filter(item => item.category === provider.category))
     }
-    if (provider?.category === 'Dev') {
+    if (provider?.category === 'Dev' || provider?.category === 'Browser Extension') {
       setEnforceSelect(true)
       dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
     } else {
@@ -55,7 +55,7 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
       </Dropdown.Toggle>
 
       <Dropdown.Menu as={CustomMenu} className="custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', zIndex: 1000, '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', padding: 0, minWidth: 'max-content', width: 'auto' } as React.CSSProperties}>
-        { provider?.category === 'Dev' && <Dropdown.Item onClick={() => {
+        { (provider?.category === 'Dev' || provider?.category === 'Browser Extension') && <Dropdown.Item onClick={() => {
           setEnforceSelect(true)
           dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
         }}>select</Dropdown.Item> }
