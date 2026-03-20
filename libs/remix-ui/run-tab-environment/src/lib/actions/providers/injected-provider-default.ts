@@ -2,7 +2,7 @@
 import * as packageJson from '../../../../../../../package.json'
 import { InjectedProvider } from './injected-provider'
 
-export class InjectedProviderDefaultBase extends InjectedProvider {
+export abstract class InjectedProviderDefaultBase extends InjectedProvider {
   constructor(profile) {
     super(profile)
   }
@@ -15,9 +15,11 @@ export class InjectedProviderDefaultBase extends InjectedProvider {
     return super.init()
   }
 
+  /* 
   getInjectedProvider() {
     return (window as any).ethereum
   }
+  */
 
   notFound() {
     return 'No injected provider found. Make sure your provider (e.g. MetaMask, ...) is active and running (when recently activated you may have to reload the page).'
