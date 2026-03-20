@@ -168,7 +168,11 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
     })
 
     plugin.on('filePanel', 'setWorkspace', async () => {
-      await plugin.changeExecutionContext({ context: 'vm-osaka' })
+      try {
+        await plugin.changeExecutionContext({ context: 'vm-osaka' })
+      } catch (e) {
+        console.error(e)
+      }
     })
 
     // Cleanup function to remove event listeners when component unmounts
