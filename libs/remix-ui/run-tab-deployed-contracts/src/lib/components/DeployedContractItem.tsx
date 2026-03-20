@@ -779,7 +779,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                           handleFunctionInputChange(selectedFunctionIndex, inputIdx, e.target.value)
                         }}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                          // backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           border: 'none',
                           padding: '8px 12px',
