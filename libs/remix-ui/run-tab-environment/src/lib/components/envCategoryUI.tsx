@@ -18,6 +18,7 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
   const [enforceSelect, setEnforceSelect] = useState(false)
 
   const handleCategorySelection = async (provider: Provider) => {
+    dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
     await setExecutionContext(provider, plugin, dispatch)
     setEnforceSelect(false)
   }

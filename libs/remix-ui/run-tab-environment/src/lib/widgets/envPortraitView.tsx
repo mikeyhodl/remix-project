@@ -51,7 +51,7 @@ function EnvironmentPortraitView() {
     if (provider.category && selectedProvider?.category === provider.category) {
       return
     }
-    if (provider.category === 'Dev') {
+    if (provider.category === 'Dev' || provider.category === 'Browser Extension') {
       // select category to show sub-categories
       dispatch({ type: 'SET_CURRENT_PROVIDER', payload: provider.name })
     } else {
