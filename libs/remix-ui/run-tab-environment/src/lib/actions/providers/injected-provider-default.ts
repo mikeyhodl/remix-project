@@ -15,7 +15,7 @@ export abstract class InjectedProviderDefaultBase extends InjectedProvider {
     return super.init()
   }
 
-  /* 
+  /*
   getInjectedProvider() {
     return (window as any).ethereum
   }

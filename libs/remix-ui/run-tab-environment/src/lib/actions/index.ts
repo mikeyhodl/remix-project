@@ -98,7 +98,7 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
 export async function setExecutionContext (provider: Provider, plugin: EnvironmentPlugin, dispatch: React.Dispatch<Actions>) {
   try {
     plugin.blockchain.discardPreviousConnectionAttempt()
-  } catch (e) {}  
+  } catch (e) {}
   if (provider.name === 'walletconnect') {
     await plugin.call('walletconnect', 'openModal')
     plugin.on('walletconnect', 'connectionSuccessful', async () => {
