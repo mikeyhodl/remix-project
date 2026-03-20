@@ -153,7 +153,7 @@ module.exports = {
       })
       // Step 2: Open AI assistant and ensure it's on the left side
       .clickLaunchIcon('remixaiassistant')
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]', 10000)
+      .assistantWaitForReady()
       .waitForElementPresent({
         selector: "//*[@data-id='remix-ai-assistant-ready']",
         locateStrategy: 'xpath',
@@ -199,7 +199,7 @@ module.exports = {
       // Step 5: Verify AI assistant is now on the right side panel
       .waitForElementVisible('#right-side-panel', 10000) // Right side panel should be visible
       .waitForElementVisible('*[data-id="movePluginToLeft"]', 10000) // Move to left button indicates it's on right side
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]', 10000) // Assistant should be visible
+      .assistantWaitForReady() // Assistant should be visible and ready
       .waitForElementPresent({
         selector: "//*[@data-id='remix-ai-assistant-ready']",
         locateStrategy: 'xpath',

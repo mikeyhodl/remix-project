@@ -247,7 +247,7 @@ export default function DeployedContractsPortraitView() {
       {showClearAllDialog && (
         <div className="m-3 mt-0 p-3 rounded" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)' }}>
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <p className="mb-0 text-danger" style={{ color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.9rem' }}>
+            <p className="mb-0 text-danger text-theme-contrast" style={{ fontSize: '0.9rem' }}>
             Clear all deployed contracts
             </p>
             <button
@@ -269,7 +269,7 @@ export default function DeployedContractsPortraitView() {
               defaultMessage="You are about to delete the list of your deployed contracts."
             />
           </p>
-          <p style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>Do you want to proceed?</p>
+          <p className="text-theme-contrast">Do you want to proceed?</p>
           <div className="d-flex justify-content-between align-items-center gap-3">
             <button
               className="btn btn-sm btn-secondary flex-fill"

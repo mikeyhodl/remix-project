@@ -14,7 +14,7 @@ module.exports = {
 
   'Setup: Clear any existing file permissions #group1 #group2': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .execute(function () {
         // Clear config to ensure modal appears on first write
         localStorage.removeItem('remix.config.json');
@@ -31,7 +31,7 @@ module.exports = {
 
   'Should test file_write tool #group1 #group2': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       // Trigger file write - this will show the permission modal
       .execute(function () {
         const aiPlugin = (window as any).getRemixAIPlugin;

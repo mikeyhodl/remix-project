@@ -1465,3 +1465,42 @@ body.light .message-copy-btn {
 body.light .message-copy-btn:hover {
   color: #5a5f75;
 }
+
+.ai-assistant-startup {
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.ai-assistant-startup__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.ai-assistant-startup__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  color: var(--bs-primary);
+  background: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+.ai-assistant-startup__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.ai-assistant-startup__subtitle {
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+}

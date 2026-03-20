@@ -687,7 +687,6 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                       value={calldataValue}
                       onChange={(e) => setCalldataValue(e.target.value)}
                       style={{
-                        backgroundColor: 'var(--custom-onsurface-background, #222336)',
                         color: themeQuality === 'dark' ? 'white' : 'black',
                         border: 'none',
                         padding: '8px 12px',
@@ -810,7 +809,6 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                           }
                         }}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           flex: 1,
                           paddingRight: '3.5rem',
@@ -875,7 +873,6 @@ export function DeployedContractItem({ contract, index, registerRef }: DeployedC
                         onChange={(e) => setGasLimit(parseInt(e.target.value))}
                         disabled={gasLimit === 0}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           flex: 1,
                           paddingLeft: '4rem',

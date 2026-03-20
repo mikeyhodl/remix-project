@@ -82,6 +82,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
   async initializeStorage() {
     this._initializing = true
+    this.renderComponent()
     try {
       // Create IndexedDB backend
       const indexedDBBackend = new IndexedDBChatHistoryBackend()
@@ -329,6 +330,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
   getInitialState() {
     return {
+      isInitializing: this._initializing,
       queuedMessage: this.queuedMessage,
       conversations: this.conversations,
       currentConversationId: this.currentConversationId,
@@ -343,8 +345,8 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   renderComponent() {
-    if (this._initializing) return
     this.dispatch({
+      isInitializing: this._initializing,
       queuedMessage: this.queuedMessage,
       conversations: this.conversations,
       currentConversationId: this.currentConversationId,
@@ -409,6 +411,7 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   updateComponent(state: {
+    isInitializing: boolean
     queuedMessage: { text: string, timestamp: number } | null
     conversations: ConversationMetadata[]
     currentConversationId: string | null
@@ -420,6 +423,7 @@ export class RemixAIAssistant extends ViewPlugin {
         onActivity={this.handleActivity.bind(this)}
         ref={this.chatRef}
         plugin={this}
+        isInitializing={state.isInitializing}
         initialMessages={this.history}
         onMessagesChange={(msgs) => { this.history = msgs }}
         queuedMessage={state.queuedMessage}
