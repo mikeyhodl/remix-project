@@ -1,14 +1,15 @@
-import * as packageJson from '../../../../../package.json'
+import React from 'react' // eslint-disable-line
+import * as packageJson from '../../../../../../../package.json'
 import { BasicVMProvider } from './vm-provider'
 
-export class SepoliaForkVMProvider extends BasicVMProvider {
+export class MainnetForkVMProvider extends BasicVMProvider {
   nodeUrl: string
   blockNumber: number | 'latest'
   constructor(blockchain) {
     super(
       {
-        name: 'vm-sepolia-fork',
-        displayName: 'Sepolia fork - Remix VM (Osaka)',
+        name: 'vm-mainnet-fork',
+        displayName: 'Mainnet fork - Remix VM (Osaka)',
         kind: 'provider',
         description: 'Remix VM (Osaka)',
         methods: ['sendAsync', 'init'],
@@ -18,7 +19,7 @@ export class SepoliaForkVMProvider extends BasicVMProvider {
     )
     this.blockchain = blockchain
     this.fork = 'osaka'
-    this.nodeUrl = 'https://go.getblock.io/7fbe62b139884d2c9c1616ca0de8b5b2'
+    this.nodeUrl = 'https://go.getblock.us/1552e4e35bcf4efe8a78897cba5557f9'
     this.blockNumber = 'latest'
   }
 

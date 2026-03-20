@@ -157,6 +157,18 @@ export class ExecutionContext {
     await this.executionContextChange(context)
   }
 
+  discardPreviousConnectionAttempt () {
+    this.abortController && this.abortController.abort()
+  }
+
+  _withAbort(promise, signal) {
+    return new Promise((resolve, reject) => {
+      signal.throwIfAborted(); // already aborted before we start
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      promise.then(resolve).catch(reject);
+    })
+  }
+
   async executionContextChange (value) {
     // Track provider change event
     track({
@@ -170,7 +182,9 @@ export class ExecutionContext {
       this.isConnected = false
       var network = this.customNetWorks[context]
       try {
-        await network.init()
+        this.abortController = new AbortController();
+        await this._withAbort(network.init(), this.abortController.signal)
+        this.abortController = null
         this.currentFork = network.config.fork
         // injected
         provider = new ethers.BrowserProvider(network.provider, 'any')

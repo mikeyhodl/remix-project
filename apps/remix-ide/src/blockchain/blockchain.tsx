@@ -209,6 +209,10 @@ export class Blockchain extends Plugin {
     })
   }
 
+  discardPreviousConnectionAttempt () {
+    this.executionContext.discardPreviousConnectionAttempt()
+  }
+
   getCurrentNetworkStatus() {
     return this.networkStatus
   }

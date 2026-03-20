@@ -48,14 +48,14 @@ export class InjectedCustomProvider extends InjectedProviderDefault {
       }
     }
     await super.init()
-    await setCustomNetwork(this.chainName, this.chainId, this.rpcUrls, this.nativeCurrency, this.blockExplorerUrls)
+    await setCustomNetwork(this.chainName, this.chainId, this.rpcUrls, this.nativeCurrency, this.blockExplorerUrls, this.getInjectedProvider())
     return {}
   }
 }
 
-export const setCustomNetwork = async (chainName: string, chainId: string, rpcUrls: Array<string>, nativeCurrency?: Record<string, any>, blockExplorerUrls?: Array<string>) => {
+export const setCustomNetwork = async (chainName: string, chainId: string, rpcUrls: Array<string>, nativeCurrency?: Record<string, any>, blockExplorerUrls?: Array<string>, provider?: any) => {
   try {
-    await (window as any).ethereum.request({
+    await provider.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: chainId }]
     })
@@ -71,12 +71,12 @@ export const setCustomNetwork = async (chainName: string, chainId: string, rpcUr
           }
           paramsObj.nativeCurrency = nativeCurrency ? nativeCurrency : null
           paramsObj.blockExplorerUrls = blockExplorerUrls ? blockExplorerUrls : null
-          await (window as any).ethereum.request({
+          await provider.request({
             method: 'wallet_addEthereumChain',
             params: [paramsObj]
           })
 
-          await (window as any).ethereum.request({
+          await provider.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: chainId }]
           })

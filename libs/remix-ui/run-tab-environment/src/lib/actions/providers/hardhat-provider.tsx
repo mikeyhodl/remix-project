@@ -1,18 +1,18 @@
-import * as packageJson from '../../../../../package.json'
 import React from 'react' // eslint-disable-line
+import * as packageJson from '../../../../../../../package.json'
 import { FormattedMessage } from 'react-intl'
 import { AbstractProvider } from './abstract-provider'
 
 const profile = {
-  name: 'foundry-provider',
-  displayName: 'Foundry Provider',
+  name: 'hardhat-provider',
+  displayName: 'Hardhat Provider',
   kind: 'provider',
-  description: 'Foundry Anvil provider',
+  description: 'Hardhat provider',
   methods: ['sendAsync', 'init'],
   version: packageJson.version
 }
 
-export class FoundryProvider extends AbstractProvider {
+export class HardhatProvider extends AbstractProvider {
   constructor(blockchain) {
     super(profile, blockchain, 'http://127.0.0.1:8545')
   }
@@ -21,26 +21,23 @@ export class FoundryProvider extends AbstractProvider {
     return (
       <div>
         {' '}
-        <FormattedMessage id="udapp.foundryProviderText1" />
+        <FormattedMessage id="udapp.hardhatProviderText1" />
         <div className="p-1 ps-3">
-          <b>curl -L https://foundry.paradigm.xyz | bash</b>
-        </div>
-        <div className="p-1 ps-3">
-          <b>anvil --steps-tracing</b>
+          <b>npx hardhat node</b>
         </div>
         <div className="pt-2 pb-4">
           <FormattedMessage
-            id="udapp.foundryProviderText2"
+            id="udapp.hardhatProviderText2"
             values={{
               a: (chunks) => (
-                <a href="https://github.com/foundry-rs/foundry" target="_blank">
+                <a href="https://hardhat.org/getting-started/#connecting-a-wallet-or-dapp-to-hardhat-network" target="_blank">
                   {chunks}
                 </a>
               )
             }}
           />
         </div>
-        <div>Anvil JSON-RPC Endpoint:</div>
+        <div>Hardhat JSON-RPC Endpoint:</div>
       </div>
     )
   }

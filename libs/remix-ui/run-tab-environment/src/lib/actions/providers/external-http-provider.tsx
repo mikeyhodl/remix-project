@@ -1,5 +1,5 @@
-import * as packageJson from '../../../../../package.json'
 import React from 'react' // eslint-disable-line
+import * as packageJson from '../../../../../../../package.json'
 import { FormattedMessage } from 'react-intl'
 import { AbstractProvider } from './abstract-provider'
 
