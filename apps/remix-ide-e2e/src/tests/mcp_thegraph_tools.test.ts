@@ -9,7 +9,7 @@ module.exports = {
 
   'Setup: Verify RemixAI Plugin and Thegraph API connection': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .pause(2000)
       .execute(function () {
         const aiPlugin = (window as any).getRemixAIPlugin;

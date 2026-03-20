@@ -709,7 +709,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                       value={calldataValue}
                       onChange={(e) => setCalldataValue(e.target.value)}
                       style={{
-                        backgroundColor: 'var(--custom-onsurface-background, #222336)',
                         color: themeQuality === 'dark' ? 'white' : 'black',
                         border: 'none',
                         padding: '8px 12px',
@@ -780,7 +779,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                           handleFunctionInputChange(selectedFunctionIndex, inputIdx, e.target.value)
                         }}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
+                          // backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           border: 'none',
                           padding: '8px 12px',
@@ -832,7 +831,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                           }
                         }}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           flex: 1,
                           paddingRight: '3.5rem',
@@ -897,7 +895,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                         onChange={(e) => setGasLimit(parseInt(e.target.value))}
                         disabled={gasLimit === 0}
                         style={{
-                          backgroundColor: 'var(--custom-onsurface-background, #222336)',
                           color: 'var(--dark/text-quaternary, #959bad)',
                           flex: 1,
                           paddingLeft: '4rem',

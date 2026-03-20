@@ -83,6 +83,7 @@ declare module 'nightwatch' {
     hideToolTips: (this: NightwatchBrowser) => NightwatchBrowser
     // hidePopupPanel: (this: NightwatchBrowser) => NightwatchBrowser
     assistantSetProvider: (provider: string) => NightwatchBrowser
+    assistantWaitForReady: (timeout?: number) => NightwatchBrowser
     assistantAddContext: (context: string) => NightwatchBrowser
     assistantGenerate: (prompt: string, provider: string) => NightwatchBrowser
     assistantWorkspace: (prompt: string, provider: string) => NightwatchBrowser

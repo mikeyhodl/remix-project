@@ -16,6 +16,7 @@ class ChatHistoryCreateConversation extends EventEmitter {
 function createConversation(browser: NightwatchBrowser, done: VoidFunction) {
   browser
     .clickLaunchIcon('remixaiassistant')
+    .assistantWaitForReady()
     .waitForElementVisible('*[data-id="chat-history-sidebar"]', 10000)
     .waitForElementVisible('*[data-id="new-conversation-btn"]', 5000)
     .click('*[data-id="new-conversation-btn"]')

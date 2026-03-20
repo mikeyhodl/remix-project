@@ -25,7 +25,7 @@ const tests = {
   'Should contain message starters #group1': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('remixaiassistant')
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .waitForElementPresent({
         locateStrategy: 'xpath',
         selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
@@ -40,7 +40,7 @@ const tests = {
       .clickLaunchIcon('solidity')
       .waitForElementVisible('*[data-id="ask-remix-ai-button"]')
       .click('*[data-id="ask-remix-ai-button"]')
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .waitForElementVisible({
         locateStrategy: 'xpath',
         selector: '//div[contains(@class,"chat-bubble") and contains(.,"Explain the error")]'
@@ -60,7 +60,7 @@ const tests = {
         locateStrategy: 'xpath',
         timeout: 120000
       })
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .assistantSetProvider('mistralai')
   },
 

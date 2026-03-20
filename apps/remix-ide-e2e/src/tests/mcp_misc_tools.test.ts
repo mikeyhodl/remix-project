@@ -41,7 +41,7 @@ module.exports = {
 
   'Setup: Clear any existing file permissions': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .execute(function () {
         // Clear config to ensure modal appears on first write
         localStorage.removeItem('remix.config.json');
@@ -61,7 +61,7 @@ module.exports = {
    */
   'Should test wei_to_ether tool': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .executeAsync(function (done) {
         const aiPlugin = (window as any).getRemixAIPlugin;
         if (!aiPlugin?.remixMCPServer) {
@@ -225,7 +225,7 @@ module.exports = {
    */
   'Should test solidity_scan tool': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       // Write vulnerable contract - this will show the permission modal
       .execute(function (vulnerableContract) {
         const aiPlugin = (window as any).getRemixAIPlugin;

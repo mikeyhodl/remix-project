@@ -24,6 +24,7 @@ import { useModelAccess } from '../hooks/useModelAccess'
 
 export interface RemixUiRemixAiAssistantProps {
   plugin: RemixAIAssistant
+  isInitializing?: boolean
   queuedMessage: { text: string; timestamp: number } | null
   initialMessages?: ChatMessage[]
   onMessagesChange?: (msgs: ChatMessage[]) => void
@@ -934,115 +935,54 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('rightSidePanel', 'rightSidePanelRestored');
     }
   }, [])
-  console.log('Rendering AIChat aiChatIsMaximized:', aiChatIsMaximized)
-  return (
-    <div
-      className="d-flex flex-column w-100 h-100"
-      ref={aiChatRef}
-      style={{ overflow: 'hidden' }}
-      data-theme={themeTracker && themeTracker?.name.toLowerCase()}
-    >
-      {/* Main content area with sidebar and chat */}
-      <div className="d-flex flex-row flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
-        {/* Maximized Mode: Show sidebar on left if enabled */}
-        {props.isMaximized && props.showHistorySidebar && props.conversations && (
-          <ChatHistorySidebar
-            conversations={props.conversations}
-            currentConversationId={props.currentConversationId || null}
-            showArchived={showArchivedConversations}
-            onNewConversation={props.onNewConversation || (() => {})}
-            onLoadConversation={props.onLoadConversation || (() => {})}
-            onArchiveConversation={props.onArchiveConversation || (() => {})}
-            onDeleteConversation={props.onDeleteConversation || (() => {})}
-            onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
-            onClose={props.onToggleHistorySidebar || (() => {})}
-            onSearch={props.onSearch}
-            isFloating={false}
-            isMaximized={true}
-            theme={themeTracker?.name}
-          />
-        )}
 
-        {/* Maximized Mode: Always show chat area */}
-        {props.isMaximized ? (
-          <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
-            <ChatHistoryHeading
-              onNewChat={props.onNewConversation || (() => {})}
-              onToggleHistory={props.onToggleHistorySidebar || (() => {})}
-              showHistorySidebar={props.showHistorySidebar || false}
-              archiveChat={props.onArchiveConversation || (() => {})}
-              currentConversationId={props.currentConversationId}
-              showButton={showButton}
-              setShowButton={setShowButton}
-              theme={themeTracker?.name}
-              chatTitle={messages.find(m => m.role === 'user')?.content}
-              isAiChatMaximized={isAiChatMaximized}
-              setIsAiChatMaximized={setIsAiChatMaximized}
-            />
-            <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
-              <div data-id="remix-ai-assistant-ready"></div>
-              {/* hidden hook for E2E tests: data-streaming="true|false" */}
-              <div
-                data-id="remix-ai-streaming"
-                className='d-none'
-                data-streaming={isStreaming ? 'true' : 'false'}
-              ></div>
-              <ChatHistoryComponent
-                messages={messages}
-                isStreaming={isStreaming}
-                sendPrompt={sendPrompt}
-                recordFeedback={recordFeedback}
-                historyRef={historyRef}
-                theme={themeTracker?.name}
-                plugin={props.plugin}
-                handleGenerateWorkspace={handleGenerateWorkspace}
-              />
-            </section>
+  return (
+    props.isInitializing ? (
+      <div
+        className="d-flex flex-column w-100 h-100 ai-assistant-startup"
+        ref={aiChatRef}
+        data-theme={themeTracker && themeTracker?.name.toLowerCase()}
+      >
+        <div className="ai-assistant-startup__body">
+          <div className="ai-assistant-startup__logo">
+            <i className="fa fa-spinner fa-spin fa-2x" aria-hidden="true"></i>
           </div>
-        ) : (
-          /* Non-Maximized Mode: Toggle between history view and chat view */
-          props.showHistorySidebar && props.isMaximized === false && props.conversations ? (
-            <div className="d-flex flex-column flex-grow-1 ai-assistant-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
-              {/* Back button header */}
-              <div
-                className="p-2 border-bottom"
-                style={{ backgroundColor: themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5' }}
-              >
-                <button
-                  className={`btn btn-sm ${themeTracker?.name.toLowerCase() === 'dark' ? 'btn-dark' : 'btn-light text-light-emphasis'}`}
-                  onClick={props.onToggleHistorySidebar || (() => {})}
-                  data-id="chat-history-back-btn"
-                >
-                  <i className="fas fa-chevron-left me-3"></i>
-                  <span>Back to chat</span>
-                </button>
-              </div>
-              {/* Chat history content */}
-              <div className="flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
-                <ChatHistorySidebar
-                  conversations={props.conversations}
-                  currentConversationId={props.currentConversationId || null}
-                  showArchived={showArchivedConversations}
-                  onNewConversation={props.onNewConversation || (() => {})}
-                  onLoadConversation={(id) => {
-                    props.onLoadConversation?.(id)
-                    // Close sidebar after loading conversation in non-maximized mode
-                    props.onToggleHistorySidebar?.()
-                  }}
-                  onArchiveConversation={props.onArchiveConversation || (() => {})}
-                  onDeleteConversation={props.onDeleteConversation || (() => {})}
-                  onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
-                  onClose={props.onToggleHistorySidebar || (() => {})}
-                  onSearch={props.onSearch}
-                  isFloating={false}
-                  isMaximized={false}
-                  theme={themeTracker?.name}
-                />
-              </div>
-            </div>
-          ) : (
-            /* Show chat area when sidebar is closed */
-            <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+          <div className="ai-assistant-startup__title">Starting Remix AI Assistant</div>
+          <div className="ai-assistant-startup__subtitle">Loading chat history...</div>
+          <div data-id="remix-ai-assistant-loading"></div>
+        </div>
+      </div>
+    ) : (
+      <div
+        className="d-flex flex-column w-100 h-100"
+        ref={aiChatRef}
+        style={{ overflow: 'hidden' }}
+        data-theme={themeTracker && themeTracker?.name.toLowerCase()}
+      >
+        {/* Main content area with sidebar and chat */}
+        <div className="d-flex flex-row flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
+          {/* Maximized Mode: Show sidebar on left if enabled */}
+          {props.isMaximized && props.showHistorySidebar && props.conversations && (
+            <ChatHistorySidebar
+              conversations={props.conversations}
+              currentConversationId={props.currentConversationId || null}
+              showArchived={showArchivedConversations}
+              onNewConversation={props.onNewConversation || (() => {})}
+              onLoadConversation={props.onLoadConversation || (() => {})}
+              onArchiveConversation={props.onArchiveConversation || (() => {})}
+              onDeleteConversation={props.onDeleteConversation || (() => {})}
+              onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
+              onClose={props.onToggleHistorySidebar || (() => {})}
+              onSearch={props.onSearch}
+              isFloating={false}
+              isMaximized={true}
+              theme={themeTracker?.name}
+            />
+          )}
+
+          {/* Maximized Mode: Always show chat area */}
+          {props.isMaximized ? (
+            <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
               <ChatHistoryHeading
                 onNewChat={props.onNewConversation || (() => {})}
                 onToggleHistory={props.onToggleHistorySidebar || (() => {})}
@@ -1076,100 +1016,175 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 />
               </section>
             </div>
-          )
-        )}
-      </div>
+          ) : (
+          /* Non-Maximized Mode: Toggle between history view and chat view */
+            props.showHistorySidebar && props.isMaximized === false && props.conversations ? (
+              <div className="d-flex flex-column flex-grow-1 ai-assistant-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+                {/* Back button header */}
+                <div
+                  className="p-2 border-bottom"
+                  style={{ backgroundColor: themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5' }}
+                >
+                  <button
+                    className={`btn btn-sm ${themeTracker?.name.toLowerCase() === 'dark' ? 'btn-dark' : 'btn-light text-light-emphasis'}`}
+                    onClick={props.onToggleHistorySidebar || (() => {})}
+                    data-id="chat-history-back-btn"
+                  >
+                    <i className="fas fa-chevron-left me-3"></i>
+                    <span>Back to chat</span>
+                  </button>
+                </div>
+                {/* Chat history content */}
+                <div className="flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
+                  <ChatHistorySidebar
+                    conversations={props.conversations}
+                    currentConversationId={props.currentConversationId || null}
+                    showArchived={showArchivedConversations}
+                    onNewConversation={props.onNewConversation || (() => {})}
+                    onLoadConversation={(id) => {
+                      props.onLoadConversation?.(id)
+                      // Close sidebar after loading conversation in non-maximized mode
+                      props.onToggleHistorySidebar?.()
+                    }}
+                    onArchiveConversation={props.onArchiveConversation || (() => {})}
+                    onDeleteConversation={props.onDeleteConversation || (() => {})}
+                    onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
+                    onClose={props.onToggleHistorySidebar || (() => {})}
+                    onSearch={props.onSearch}
+                    isFloating={false}
+                    isMaximized={false}
+                    theme={themeTracker?.name}
+                  />
+                </div>
+              </div>
+            ) : (
+            /* Show chat area when sidebar is closed */
+              <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+                <ChatHistoryHeading
+                  onNewChat={props.onNewConversation || (() => {})}
+                  onToggleHistory={props.onToggleHistorySidebar || (() => {})}
+                  showHistorySidebar={props.showHistorySidebar || false}
+                  archiveChat={props.onArchiveConversation || (() => {})}
+                  currentConversationId={props.currentConversationId}
+                  showButton={showButton}
+                  setShowButton={setShowButton}
+                  theme={themeTracker?.name}
+                  chatTitle={messages.find(m => m.role === 'user')?.content}
+                  isAiChatMaximized={isAiChatMaximized}
+                  setIsAiChatMaximized={setIsAiChatMaximized}
+                />
+                <section id="remix-ai-chat-history" className="d-flex flex-column p-2" style={{ flex: 1, overflow: 'auto', minHeight: 0 }} ref={chatHistoryRef}>
+                  <div data-id="remix-ai-assistant-ready"></div>
+                  {/* hidden hook for E2E tests: data-streaming="true|false" */}
+                  <div
+                    data-id="remix-ai-streaming"
+                    className='d-none'
+                    data-streaming={isStreaming ? 'true' : 'false'}
+                  ></div>
+                  <ChatHistoryComponent
+                    messages={messages}
+                    isStreaming={isStreaming}
+                    sendPrompt={sendPrompt}
+                    recordFeedback={recordFeedback}
+                    historyRef={historyRef}
+                    theme={themeTracker?.name}
+                    plugin={props.plugin}
+                    handleGenerateWorkspace={handleGenerateWorkspace}
+                  />
+                </section>
+              </div>
+            )
+          )}
+        </div>
 
-      {
-        messages.length > 0 ? (
-          <AiChatPromptAreaForHistory
-            themeTracker={themeTracker}
-            showHistorySidebar={props.showHistorySidebar || false}
-            isMaximized={false}
-            modelOpt={modelOpt}
-            menuRef={menuRef}
-            assistantChoice={assistantChoice}
-            setAssistantChoice={setAssistantChoice}
-            mcpEnabled={mcpEnabled}
-            mcpEnhanced={mcpEnhanced}
-            setMcpEnhanced={setMcpEnhanced}
-            availableModels={AVAILABLE_MODELS}
-            selectedModel={selectedModel}
-            handleModelSelection={handleModelSelection}
-            onLockedModelClick={handleLockedModelClick}
-            input={input}
-            setInput={setInput}
-            isStreaming={isStreaming}
-            handleSend={handleSend}
-            stopRequest={stopRequest}
-            showModelOptions={showModelOptions}
-            setShowModelOptions={setShowModelOptions}
-            handleSetModel={handleSetModel}
-            handleGenerateWorkspace={handleGenerateWorkspace}
-            handleRecord={handleRecord}
-            isRecording={isRecording}
-            dispatchActivity={dispatchActivity}
-            modelBtnRef={modelBtnRef}
-            modelSelectorBtnRef={modelSelectorBtnRef}
-            textareaRef={textareaRef}
-            maximizePanel={maximizePanel}
-            setShowOllamaModelSelector={setShowOllamaModelSelector}
-            showOllamaModelSelector={showOllamaModelSelector}
-            showModelSelector={showModelSelector}
-            setShowModelSelector={setShowModelSelector}
-            modelAccess={modelAccess}
-            selectedModelId={selectedModelId}
-            handleOllamaModelSelection={handleModelSelection}
-            selectedOllamaModel={selectedOllamaModel}
-            ollamaModels={ollamaModels}
-            messages={messages}
-          />
-        ) : (
-          <AiChatPromptArea
-            themeTracker={themeTracker}
-            showHistorySidebar={props.showHistorySidebar || false}
-            isMaximized={false}
-            modelOpt={modelOpt}
-            menuRef={menuRef}
-            assistantChoice={assistantChoice}
-            setAssistantChoice={setAssistantChoice}
-            mcpEnabled={mcpEnabled}
-            mcpEnhanced={mcpEnhanced}
-            setMcpEnhanced={setMcpEnhanced}
-            availableModels={AVAILABLE_MODELS}
-            selectedModel={selectedModel}
-            handleModelSelection={handleModelSelection}
-            onLockedModelClick={handleLockedModelClick}
-            input={input}
-            setInput={setInput}
-            isStreaming={isStreaming}
-            handleSend={handleSend}
-            stopRequest={stopRequest}
-            showModelOptions={showModelOptions}
-            setShowModelOptions={setShowModelOptions}
-            handleSetModel={handleSetModel}
-            handleGenerateWorkspace={handleGenerateWorkspace}
-            handleRecord={handleRecord}
-            isRecording={isRecording}
-            dispatchActivity={dispatchActivity}
-            modelBtnRef={modelBtnRef}
-            modelSelectorBtnRef={modelSelectorBtnRef}
-            textareaRef={textareaRef}
-            maximizePanel={maximizePanel}
-            setShowOllamaModelSelector={setShowOllamaModelSelector}
-            showOllamaModelSelector={showOllamaModelSelector}
-            showModelSelector={showModelSelector}
-            setShowModelSelector={setShowModelSelector}
-            modelAccess={modelAccess}
-            selectedModelId={selectedModelId}
-            handleOllamaModelSelection={handleModelSelection}
-            selectedOllamaModel={selectedOllamaModel}
-            ollamaModels={ollamaModels}
-            messages={messages}
-          />
-        )
-      }
-    </div>
+        {
+          messages.length > 0 ? (
+            <AiChatPromptAreaForHistory
+              themeTracker={themeTracker}
+              showHistorySidebar={props.showHistorySidebar || false}
+              isMaximized={false}
+              modelOpt={modelOpt}
+              menuRef={menuRef}
+              assistantChoice={assistantChoice}
+              setAssistantChoice={setAssistantChoice}
+              mcpEnabled={mcpEnabled}
+              mcpEnhanced={mcpEnhanced}
+              setMcpEnhanced={setMcpEnhanced}
+              availableModels={AVAILABLE_MODELS}
+              selectedModel={selectedModel}
+              handleModelSelection={handleModelSelection}
+              input={input}
+              setInput={setInput}
+              isStreaming={isStreaming}
+              handleSend={handleSend}
+              stopRequest={stopRequest}
+              showModelOptions={showModelOptions}
+              setShowModelOptions={setShowModelOptions}
+              handleSetModel={handleSetModel}
+              handleGenerateWorkspace={handleGenerateWorkspace}
+              handleRecord={handleRecord}
+              isRecording={isRecording}
+              dispatchActivity={dispatchActivity}
+              modelBtnRef={modelBtnRef}
+              modelSelectorBtnRef={modelSelectorBtnRef}
+              textareaRef={textareaRef}
+              maximizePanel={maximizePanel}
+              setShowOllamaModelSelector={setShowOllamaModelSelector}
+              showOllamaModelSelector={showOllamaModelSelector}
+              showModelSelector={showModelSelector}
+              setShowModelSelector={setShowModelSelector}
+              modelAccess={modelAccess}
+              selectedModelId={selectedModelId}
+              handleOllamaModelSelection={handleModelSelection}
+              selectedOllamaModel={selectedOllamaModel}
+              ollamaModels={ollamaModels}
+              messages={messages}
+            />
+          ) : (
+            <AiChatPromptArea
+              themeTracker={themeTracker}
+              showHistorySidebar={props.showHistorySidebar || false}
+              isMaximized={false}
+              modelOpt={modelOpt}
+              menuRef={menuRef}
+              assistantChoice={assistantChoice}
+              setAssistantChoice={setAssistantChoice}
+              mcpEnabled={mcpEnabled}
+              mcpEnhanced={mcpEnhanced}
+              setMcpEnhanced={setMcpEnhanced}
+              availableModels={AVAILABLE_MODELS}
+              selectedModel={selectedModel}
+              handleModelSelection={handleModelSelection}
+              input={input}
+              setInput={setInput}
+              isStreaming={isStreaming}
+              handleSend={handleSend}
+              stopRequest={stopRequest}
+              showModelOptions={showModelOptions}
+              setShowModelOptions={setShowModelOptions}
+              handleSetModel={handleSetModel}
+              handleGenerateWorkspace={handleGenerateWorkspace}
+              handleRecord={handleRecord}
+              isRecording={isRecording}
+              dispatchActivity={dispatchActivity}
+              modelBtnRef={modelBtnRef}
+              modelSelectorBtnRef={modelSelectorBtnRef}
+              textareaRef={textareaRef}
+              maximizePanel={maximizePanel}
+              setShowOllamaModelSelector={setShowOllamaModelSelector}
+              showOllamaModelSelector={showOllamaModelSelector}
+              showModelSelector={showModelSelector}
+              setShowModelSelector={setShowModelSelector}
+              modelAccess={modelAccess}
+              selectedModelId={selectedModelId}
+              handleOllamaModelSelection={handleModelSelection}
+              selectedOllamaModel={selectedOllamaModel}
+              ollamaModels={ollamaModels}
+              messages={messages}
+            />
+          )
+        }
+      </div>
+    )
   )
 })
-

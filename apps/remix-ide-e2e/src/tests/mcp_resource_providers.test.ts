@@ -22,7 +22,7 @@ module.exports = {
 
   'Setup: Clear any existing file permissions': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       .execute(function () {
         // Clear config to ensure modal appears on first write
         localStorage.removeItem('remix.config.json');
@@ -39,7 +39,7 @@ module.exports = {
 
   'Should prepare resources for testing': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="remix-ai-assistant"]')
+      .assistantWaitForReady()
       // First write - this will show the permission modal
       .execute(function (resourceTestContract) {
         const aiPlugin = (window as any).getRemixAIPlugin;
