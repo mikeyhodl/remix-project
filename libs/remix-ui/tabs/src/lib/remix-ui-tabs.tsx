@@ -10,6 +10,7 @@ import { QuickDappBanner } from './components/QuickDappBanner'
 import { AIRequestForm } from '@remix-ui/run-tab'
 import { values } from 'lodash'
 import { AppContext } from '@remix-ui/app'
+import { useAuth } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
 import { desktopConnectionType } from '@remix-api'
 import { CompileDropdown, RunScriptDropdown, EmptyDropdown, AmpSqlDropdown } from '@remix-ui/tabs'
@@ -95,6 +96,7 @@ export const TabsUI = (props: TabsUIProps) => {
   const tabs = useRef(props.tabs)
   tabs.current = props.tabs // we do this to pass the tabs list to the onReady callbacks
   const appContext = useContext(AppContext)
+  const { features } = useAuth()
   const { trackMatomoEvent } = useContext(TrackingContext)
   const canRunScenario = props.canRunScenario
 
@@ -783,7 +785,14 @@ export const TabsUI = (props: TabsUIProps) => {
     setBannerVisible(true)
   }, [tabsState.selectedIndex])
 
-  const shouldShowQuickDappBanner = tabsState.currentExt === 'sol' && bannerVisible
+  const shouldShowQuickDappBanner = (() => {
+    if (tabsState.currentExt !== 'sol' || !bannerVisible) return false
+    const quickdappEnabled = appContext?.appConfig?.['quickdapp.enabled']
+    if (quickdappEnabled === false) return false
+    const quickdappFeature = features?.['dapp:quickdapp']
+    if (!quickdappFeature?.is_enabled) return false
+    return true
+  })()
 
   let mainLabel = ''
   if (canRunScenario) {

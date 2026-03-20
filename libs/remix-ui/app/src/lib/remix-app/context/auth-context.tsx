@@ -18,6 +18,7 @@ export interface AuthState {
   token: string | null
   credits: Credits | null
   featureGroups: FeatureGroup[]
+  features: Record<string, any>
   loading: boolean
   error: string | null
 }
@@ -28,6 +29,7 @@ type AuthAction =
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'UPDATE_CREDITS'; payload: Credits }
   | { type: 'UPDATE_FEATURE_GROUPS'; payload: FeatureGroup[] }
+  | { type: 'UPDATE_FEATURES'; payload: Record<string, any> }
   | { type: 'TOKEN_REFRESHED'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' }
@@ -70,6 +72,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       ...state,
       featureGroups: action.payload
     }
+  case 'UPDATE_FEATURES':
+    return {
+      ...state,
+      features: action.payload
+    }
   case 'TOKEN_REFRESHED':
     return {
       ...state,
@@ -82,6 +89,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       token: null,
       credits: null,
       featureGroups: [],
+      features: {},
       loading: false,
       error: null
     }
@@ -98,6 +106,7 @@ const initialState: AuthState = {
   token: null,
   credits: null,
   featureGroups: [],
+  features: {},
   loading: false,
   error: null
 }
@@ -169,6 +178,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
                 console.warn('[AuthContext] Failed to update Matomo feature groups:', matomoErr)
               }
             }
+            if (permissions && permissions.features) {
+              dispatch({ type: 'UPDATE_FEATURES', payload: permissions.features })
+            }
           } catch (permErr) {
             console.warn('[AuthContext] Failed to fetch feature groups:', permErr)
           }
@@ -200,6 +212,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, plugin }) 
             } catch (matomoErr) {
               console.warn('[AuthContext] Failed to update Matomo feature groups:', matomoErr)
             }
+          }
+          if (permissions && permissions.features) {
+            dispatch({ type: 'UPDATE_FEATURES', payload: permissions.features })
           }
         } catch (permErr) {
           console.warn('[AuthContext] Failed to fetch feature groups on auth change:', permErr)

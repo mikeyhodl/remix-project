@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useReducer, useState, useMemo, useRef, useContext } from 'react';
 import { LoginModal } from '@remix-ui/login';
 import { IntlProvider } from 'react-intl';
 import CreateInstance from './components/CreateInstance';
@@ -7,12 +7,10 @@ import LoadingScreen from './components/LoadingScreen';
 import Dashboard from './components/Dashboard';
 import { appInitialState, appReducer, AppAction } from './reducers';
 import { AppContext } from './contexts';
+import { AppContext as RemixAppContext, useAuth } from '@remix-ui/app';
 import { DappManager } from './utils/DappManager';
 import { QuickDappV2PluginApi, DappConfig } from './types';
-import { endpointUrls } from '@remix-endpoints-helper';
 import './App.css';
-
-const QUICK_DAPP_FEATURE = 'dapp:quickdapp';
 
 import { getNetworkName } from './utils/networks';
 
@@ -25,72 +23,20 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     code: 'en',
     messages: null,
   });
-
+  const remixAppContext = useContext(RemixAppContext)
+  const { isAuthenticated, features } = useAuth()
   const [appState, dispatch] = useReducer(appReducer, appInitialState);
   const dappsRef = useRef(appState.dapps);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const activeDappRef = useRef(appState.activeDapp);
 
-  // Permission gating state
-  const [hasAccess, setHasAccess] = useState<boolean | null>(null); // null = checking
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Permission gating
+  const hasAccess = features?.['dapp:quickdapp']
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // DappManager now receives the plugin from props instead of a singleton
   const dappManager = useMemo(() => new DappManager(plugin as any), [plugin]);
   const dappManagerRef = useRef(dappManager);
-
-  // Check dapp:quickdapp permission on mount and when auth state changes
-  useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        const token = typeof localStorage !== 'undefined'
-          ? localStorage.getItem('remix_access_token')
-          : null;
-
-        if (!token) {
-          setIsAuthenticated(false);
-          setHasAccess(false);
-          return;
-        }
-
-        const response = await fetch(endpointUrls.permissions, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(true);
-          const feature = data.features?.[QUICK_DAPP_FEATURE];
-          setHasAccess(feature?.is_enabled === true);
-        } else {
-          setIsAuthenticated(false);
-          setHasAccess(false);
-        }
-      } catch (err) {
-        console.error('[QuickDapp] Permission check failed:', err);
-        setIsAuthenticated(false);
-        setHasAccess(false);
-      }
-    };
-
-    checkAccess();
-
-    // Re-check permissions when login/logout occurs
-    const onAuthChanged = () => { checkAccess(); };
-    try {
-      plugin.on('auth' as any, 'authStateChanged', onAuthChanged);
-    } catch (e) {
-      console.warn('[QuickDapp] Could not listen for authStateChanged:', e);
-    }
-
-    return () => {
-      try {
-        (plugin as any).off('auth', 'authStateChanged', onAuthChanged);
-      } catch (_) {}
-    };
-  }, [plugin]);
 
   useEffect(() => {
     dappsRef.current = appState.dapps;
@@ -108,37 +54,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     if (!plugin) return;
 
     const handleCreateDapp = async (payload: any) => {
-      // Permission gate: check dapp:quickdapp access before creating workspace
-      try {
-        const token = typeof localStorage !== 'undefined'
-          ? localStorage.getItem('remix_access_token')
-          : null;
-
-        if (!token) {
-          return;
-        }
-
-        const permResponse = await fetch(endpointUrls.permissions, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        if (permResponse.ok) {
-          const permData = await permResponse.json();
-          const feature = permData.features?.[QUICK_DAPP_FEATURE];
-          if (!feature?.is_enabled) {
-            plugin.call('notification', 'toast', 'QuickDapp V2 is currently available to beta testers only. Please contact the Remix team to request access.');
-            return;
-          }
-        } else {
-          plugin.call('notification', 'toast', 'Unable to verify access. Please sign in and try again.');
-          return;
-        }
-      } catch (err) {
-        console.error('[QuickDapp] Permission check failed in handleCreateDapp:', err);
-        plugin.call('notification', 'toast', 'Unable to verify access. Please try again.');
-        return;
-      }
+      // Permission gate is now handled at the plugin level (quick-dapp-v2.tsx)
+      // and via useAuth() context check in renderContent
 
       dispatch({ type: 'SET_AI_LOADING', payload: true });
       dispatch({ type: 'SET_VIEW', payload: 'create' });
@@ -426,12 +343,16 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
   };
 
   const renderContent = () => {
-    // Permission check: show loading while checking access
-    if (hasAccess === null) {
+    // If quickdapp is disabled via app config, show "Coming Soon"
+    const quickdappEnabled = remixAppContext?.appConfig?.['quickdapp.enabled']
+    if (quickdappEnabled === false) {
       return (
-        <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '80vh' }}>
-          <i className="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i>
-          <p className="text-muted">Checking access...</p>
+        <div className="d-flex flex-column justify-content-center align-items-center text-center px-4" style={{ height: '80vh' }}>
+          <i className="fas fa-flask fa-3x mb-3 text-info"></i>
+          <h4 className="mb-2">Coming Soon</h4>
+          <p className="text-muted" style={{ maxWidth: '400px' }}>
+            QuickDapp V2 is under development and will be available soon. Stay tuned!
+          </p>
         </div>
       );
     }

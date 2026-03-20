@@ -59,6 +59,15 @@ export class QuickDappV2 extends ViewPlugin {
     this.listenersRegistered = false
   }
 
+  private async isQuickDappEnabled(): Promise<boolean> {
+    try {
+      const enabled = await this.call('auth', 'getAppConfigValue', 'quickdapp.enabled', true)
+      return enabled !== false
+    } catch {
+      return true
+    }
+  }
+
   setDispatch(dispatch: React.Dispatch<any>) {
     this.dispatch = dispatch
     this.renderComponent()
@@ -82,7 +91,7 @@ export class QuickDappV2 extends ViewPlugin {
     )
   }
 
-  edit(params: {
+  async edit(params: {
     address?: string;
     abi?: any[];
     network?: string;
@@ -92,7 +101,11 @@ export class QuickDappV2 extends ViewPlugin {
     solcVersion?: string;
     htmlTemplate?: string;
     pages?: any;
-  }): void {
+  }): Promise<void> {
+    if (!(await this.isQuickDappEnabled())) {
+      this.call('notification', 'toast', 'QuickDapp is coming soon. Stay tuned!')
+      return
+    }
     this.event.emit('edit', params)
   }
 
@@ -105,6 +118,10 @@ export class QuickDappV2 extends ViewPlugin {
   }
 
   async createDapp(payload: any): Promise<void> {
+    if (!(await this.isQuickDappEnabled())) {
+      this.call('notification', 'toast', 'QuickDapp is coming soon. Stay tuned!')
+      return
+    }
     if (this.event.listenerCount('createDapp') > 0) {
       this.event.emit('createDapp', payload)
     } else {
