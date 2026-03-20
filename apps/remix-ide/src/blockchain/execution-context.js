@@ -18,12 +18,15 @@ function track(event) {
     console.debug('Tracking error:', error)
   }
 }
+/*
 if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
   var injectedProvider = window.ethereum
   provider = new ethers.BrowserProvider(injectedProvider, 'any')
 } else {
   provider = new ethers.JsonRpcProvider('http://localhost:8545')
-}
+}*/
+
+provider = new ethers.AbstractProvider()
 
 /*
   trigger contextChanged, web3EndpointChanged

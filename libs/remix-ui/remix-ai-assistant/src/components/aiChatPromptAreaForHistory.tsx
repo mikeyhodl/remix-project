@@ -1,7 +1,8 @@
-import React, { Dispatch, useState, useMemo } from 'react'
+import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { ChatMessage } from '@remix/remix-ai-core'
+import { groupListType } from '../types/componentTypes'
 
 interface AiChatPromptAreaForHistoryProps {
   selectedModelId: unknown
@@ -21,6 +22,7 @@ interface AiChatPromptAreaForHistoryProps {
       availableModels: any[]
       selectedModel: any
       handleModelSelection: (modelName: string) => void
+      onLockedModelClick?: (modelId: string, modelName: string) => void
       input: string
       setInput: React.Dispatch<React.SetStateAction<string>>
       isStreaming: boolean
@@ -46,25 +48,23 @@ interface AiChatPromptAreaForHistoryProps {
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
-  // Memoize filtered model list to avoid repeated checkAccess calls
-  const filteredModelList = useMemo(() => {
-    const isLoggedIn = !!localStorage.getItem('remix_access_token')
-
-    return props.availableModels
-      .filter(model => {
-        if (!isLoggedIn) {
-          return !model.requiresAuth
-        }
-        return props.modelAccess.checkAccess(model.id)
-      })
-      .map(model => ({
+  const modelList = useMemo(() => {
+    return props.availableModels.map(model => {
+      const hasAccess = props.modelAccess.checkAccess(model.id)
+      return {
         label: model.name,
         bodyText: model.description,
         icon: 'fa-solid fa-check' as const,
         stateValue: model.id,
-        dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`
-      }))
+        dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`,
+        isLocked: !hasAccess
+      }
+    })
   }, [props.availableModels, props.modelAccess.allowedModels])
+
+  const handleLockedItemClick = (item: groupListType) => {
+    props.onLockedModelClick?.(item.stateValue, item.label)
+  }
 
   return (
     <section
@@ -84,7 +84,8 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
             choice={props.selectedModelId}
-            groupList={filteredModelList}
+            groupList={modelList}
+            onLockedItemClick={handleLockedItemClick}
           />
           {props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
@@ -102,7 +103,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
                 </label>
               </div>
               <div className="small text-muted ms-2">
-                      Adds relevant context from configured MCP servers to AI requests
+                      Adds relevant context from the connected MCP servers
               </div>
             </div>
           )}

@@ -8,11 +8,13 @@ import { ProviderDetailsEvent } from './types'
 import { formatBalance } from '@remix-ui/helper'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { EnvironmentPlugin } from 'apps/remix-ide/src/app/udapp/udappEnv'
+import { Plugin } from '@remixproject/engine'
 
 function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
   const widgetInitializer = plugin.getWidgetState ? plugin.getWidgetState() : null
   const [widgetState, dispatch] = useReducer(widgetReducer, widgetInitializer || widgetInitialState)
   const [themeQuality, setThemeQuality] = useState<string>('dark')
+  const injectedProviderPluginsRef = React.useRef<string[]>([])
 
   useEffect(() => {
     if (plugin.setStateGetter) {
@@ -74,25 +76,26 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
           }
         )
         if (!isElectron()) window.dispatchEvent(new Event("eip6963:requestProvider"))
+        await addProvider({ position: 24, name: 'base-provider-84532', displayName: 'Base Wallet Sepolia Provider', category: 'Base', providerConfig: { isInjected: true, isVM: false, isRpcForkedState: false, fork: '' } }, plugin, dispatch)
         dispatch({ type: 'COMPLETED_LOADING_ALL_PROVIDERS', payload: null })
+
+        plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
+          const ssExists = await plugin.call('fileManager', 'exists', '.states/forked_states')
+          if (ssExists) {
+            const savedStatesDetails = await plugin.call('fileManager', 'readdir', '.states/forked_states')
+            const savedStatesFiles = Object.keys(savedStatesDetails)
+            let pos = 10
+            for (const filePath of savedStatesFiles) {
+              pos += 1
+              await addFVSProvider(filePath, pos, plugin, dispatch)
+            }
+          }
+        })
 
         // Mark as initialized at plugin level to prevent re-initialization
         plugin.markAsInitialized()
       })()
     }
-
-    plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-      const ssExists = await plugin.call('fileManager', 'exists', '.states/forked_states')
-      if (ssExists) {
-        const savedStatesDetails = await plugin.call('fileManager', 'readdir', '.states/forked_states')
-        const savedStatesFiles = Object.keys(savedStatesDetails)
-        let pos = 10
-        for (const filePath of savedStatesFiles) {
-          pos += 1
-          await addFVSProvider(filePath, pos, plugin, dispatch)
-        }
-      }
-    })
 
     plugin.on('blockchain', 'contextChanged', async (context) => {
       await getAccountsList(plugin, dispatch)
@@ -100,6 +103,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       const currentProvider = await plugin.call('blockchain', 'getProvider')
       const accounts = await plugin.call('blockchain', 'getAccounts')
       if (accounts && accounts.length > 0) {
+        dispatch({ type: 'SET_SELECTED_ACCOUNT', payload: accounts[0] })
         // Convert account addresses to Account objects for loadAllDelegations
         const accountObjects = accounts.map((addr: string) => ({ account: addr } as any))
         await loadAllDelegations(plugin, accountObjects, currentProvider, dispatch)
@@ -130,6 +134,43 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       }
     })
 
+    const registerInjectedPluginListener = (pluginName: string) => {
+      if (!injectedProviderPluginsRef.current.includes(pluginName)) {
+        if (pluginName.startsWith('injected')) {
+          plugin.on(pluginName, 'accountsChanged', async (accounts) => {
+            await getAccountsList(plugin, dispatch)
+            dispatch({ type: 'SET_SELECTED_ACCOUNT', payload: (window as any).ethereum.selectedAddress || accounts[0] })
+          })
+          injectedProviderPluginsRef.current.push(pluginName)
+          plugin.injectedProviderPlugins = injectedProviderPluginsRef.current
+        } else if (pluginName === 'walletconnect') {
+          plugin.on('walletconnect', 'accountsChanged', async (accounts: Array<string>) => {
+            await getAccountsList(plugin, dispatch)
+          })
+          injectedProviderPluginsRef.current.push('walletconnect')
+          plugin.injectedProviderPlugins = injectedProviderPluginsRef.current
+        }
+      }
+    }
+
+    if ((plugin as any).injectedProviderPlugins && Array.isArray((plugin as any).injectedProviderPlugins)) {
+      const savedPlugins = (plugin as any).injectedProviderPlugins as string[]
+
+      savedPlugins.forEach((pluginName) => {
+        registerInjectedPluginListener(pluginName)
+      })
+    }
+
+    plugin.on('manager', 'pluginActivated', (activatedPlugin: Plugin) => {
+      if (activatedPlugin && (activatedPlugin.name.startsWith('injected') || activatedPlugin.name === 'walletconnect')) {
+        registerInjectedPluginListener(activatedPlugin.name)
+      }
+    })
+
+    plugin.on('filePanel', 'setWorkspace', async () => {
+      await plugin.changeExecutionContext({ context: 'vm-osaka' })
+    })
+
     // Cleanup function to remove event listeners when component unmounts
     return () => {
       plugin.off('filePanel', 'workspaceInitializationCompleted')
@@ -138,6 +179,11 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       plugin.off('udappDeployedContracts', 'deployedInstanceUpdated')
       plugin.off('udappTransactions', 'transactionRecorderUpdated')
       plugin.off('blockchain', 'transactionExecuted')
+      injectedProviderPluginsRef.current.forEach((injectedPlugin) => {
+        plugin.off(injectedPlugin, 'accountsChanged')
+      })
+      plugin.off('manager', 'pluginActivated')
+      plugin.off('filePanel', 'setWorkspace')
     }
   }, [])
 

@@ -23,7 +23,8 @@ export const PROVIDER_DESCRIPTIONS = {
   'injected-metamask-arbitrum': 'Deploy to Arbitrum through the Metamask browser extension.',
   'injected-metamask-sepolia': 'Deploy to the Sepolia testnet through the Metamask browser extension.',
   'injected-metamask-ephemery': 'Deploy to the Ephemery testnet through the Metamask browser extension.',
-  'injected-metamask-linea': 'Deploy to Linea through the Metamask browser extension.'
+  'injected-metamask-linea': 'Deploy to Linea through the Metamask browser extension.',
+  'base-provider': 'Deploy through the Base Wallet.'
 }
 
 export const PROVIDER_LOGOS = {

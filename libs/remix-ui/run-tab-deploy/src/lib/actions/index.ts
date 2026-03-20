@@ -20,7 +20,7 @@ export async function broadcastCompilationResult (compilerName: string, compileR
   const compiler = new CompilerAbstract(languageVersion, data, source, input)
   await plugin.call('compilerArtefacts', 'saveCompilerAbstract', file, compiler)
 
-  const contracts = getCompiledContracts(compiler)
+  const contracts = getCompiledContracts(compiler, plugin)
   if (contracts.length > 0) {
     contracts.forEach(async (contract) => {
       if (contract.contract.file !== source.target) {
@@ -44,13 +44,17 @@ export async function broadcastCompilationResult (compilerName: string, compileR
   }
 }
 
-function getCompiledContracts (compiler: CompilerAbstract) {
+function getCompiledContracts (compiler: CompilerAbstract, plugin: DeployPlugin) {
   const contracts: ContractData[] = []
 
   compiler.visitContracts((contract: VisitedContract) => {
     const contractData = getContractData(contract.name, compiler)
+    const widgetState = plugin.getWidgetState()
+    const contractIndex = widgetState.contracts.contractList.findIndex(item => (item.name === contract.name) && (item.filePath === contract.file))
 
-    if (contractData && contractData.bytecodeObject.length !== 0) {
+    if (contractIndex > -1){
+      contracts.push(contractData)
+    } else if (contractData && contractData.bytecodeObject.length !== 0) {
       contracts.push(contractData)
     }
   })
@@ -222,31 +226,13 @@ async function createInstance(selectedContract: ContractData, args, deployMode: 
     try {
       const status = await plugin.call('blockchain', 'detectNetwork')
       const currentChainId = parseInt(status.id)
-      const response = await fetch('https://chainid.network/chains.json')
-
-      if (!response.ok) throw new Error('Could not fetch chains list from chainid.network.')
-      const allChains = await response.json()
-      const currentChain = allChains.find(chain => chain.chainId === currentChainId)
-
-      if (!currentChain) {
-        console.error('Could not find chain data for Chain ID: ', currentChainId)
-        // const errorMsg = `Could not find chain data for Chain ID: ${currentChainId}. Verification cannot proceed.`
-        // const errorLog = logBuilder(errorMsg)
-        // terminalLogger(plugin, errorLog)
-        return
-      }
-
-      const etherscanApiKey = await plugin.call('config', 'getAppParameter', 'etherscan-access-token')
 
       const verificationData = {
         chainId: currentChainId.toString(),
-        currentChain: currentChain,
         address: result.address,
         contractName: selectedContract.name,
         filePath: selectedContract.contract.file,
-        compilationResult: await plugin.call('compilerArtefacts', 'getCompilerAbstract', selectedContract.contract.file),
-        constructorArgs: args,
-        etherscanApiKey: etherscanApiKey
+        args: args
       }
 
       setTimeout(async () => {

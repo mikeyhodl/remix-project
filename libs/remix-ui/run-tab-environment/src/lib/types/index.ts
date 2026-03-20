@@ -62,6 +62,7 @@ export interface ActionPayloadTypes {
   COMPLETED_LOADING_ALL_PROVIDERS: undefined,
   LOADING_ALL_ACCOUNTS: undefined,
   COMPLETED_LOADING_ALL_ACCOUNTS: undefined,
+  CLEAR_ALL_ACCOUNTS: undefined,
   SET_ACCOUNTS: Account[],
   SET_SMART_ACCOUNTS: SmartAccount[],
   SET_SELECTED_ACCOUNT: string,

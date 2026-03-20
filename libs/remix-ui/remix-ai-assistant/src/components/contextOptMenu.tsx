@@ -6,6 +6,7 @@ export interface GroupListMenuProps {
   choice: AiContextType | AiAssistantType | any
   setShowOptions: Dispatch<React.SetStateAction<boolean>>
   groupList: groupListType[]
+  onLockedItemClick?: (item: groupListType) => void
 }
 
 export default function GroupListMenu(props: GroupListMenuProps) {
@@ -15,17 +16,33 @@ export default function GroupListMenu(props: GroupListMenuProps) {
       {props.groupList.map((item, index) => (
         <button
           key={`${item.label}-${index}`}
-          className={`btn btn-light border border-0`}
+          className={`btn btn-light border border-0 ${item.isLocked ? 'opacity-75' : ''}`}
           data-id={item.dataId}
           onClick={() => {
-            props.setChoice(item.stateValue)
             props.setShowOptions(false)
+            if (item.isLocked) {
+              props.onLockedItemClick?.(item)
+            } else {
+              props.setChoice(item.stateValue)
+            }
           }}
         >
           <div className="d-flex flex-column small text-start">
-            <span className="form-check-label fw-bold mb-1">{item.label}</span>
+            <div className="d-flex align-items-center mb-1">
+              <span className="form-check-label fw-bold">{item.label}</span>
+              {item.isLocked && (
+                <span
+                  className="badge bg-info ms-2 text-white"
+                  style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                >
+                  <i className="fas fa-flask me-1" style={{ fontSize: '0.6rem' }}></i>
+                  Beta
+                </span>
+              )}
+            </div>
             <div className="d-flex justify-content-between">
-              <span className="form-check-label me-2 text-wrap">{item.bodyText}</span>{ props.choice === item.stateValue && <span className={item.icon}></span> }
+              <span className="form-check-label me-2 text-wrap">{item.bodyText}</span>
+              {props.choice === item.stateValue && !item.isLocked && <span className={item.icon}></span>}
             </div>
           </div>
         </button>
