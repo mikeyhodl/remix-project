@@ -16,11 +16,13 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
   const [subCategories, setSubCategories] = useState<Provider[]>([])
   const [provider, setProvider] = useState<Provider | null>(null)
   const [enforceSelect, setEnforceSelect] = useState(false)
+  const [selectedOption, setSelectedOption] = useState<string>(null)
 
   const handleCategorySelection = async (provider: Provider) => {
     dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
     await setExecutionContext(provider, plugin, dispatch)
     setEnforceSelect(false)
+    setSelectedOption(provider.name)
   }
 
   useEffect(() => {
@@ -31,8 +33,10 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
       setSubCategories(widgetState.providers.providerList.filter(item => item.category === provider.category))
     }
     if (provider?.category === 'Dev' || provider?.category === 'Browser Extension') {
-      setEnforceSelect(true)
-      dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
+      if (provider?.name !== selectedOption) {
+        setEnforceSelect(true)
+        dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
+      }
     } else {
       setEnforceSelect(false)
     }
