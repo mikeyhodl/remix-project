@@ -32,7 +32,7 @@ type EndpointUrls = {
 const defaultUrls: EndpointUrls = {
   corsProxy: 'https://gitproxy.api.remix.live',
   mcpCorsProxy: "https://mcp.api.remix.live",
-  mcpCorsProxy8443: "https://mcp.api.remix.live:8443",
+  mcpCorsProxy8443: "https://mcp.api.remix.live",
   solidityScan: 'https://solidityscan.api.remix.live',
   ipfsGateway: 'https://jqgt.api.remix.live',
   commonCorsProxy: 'https://common-corsproxy.api.remix.live',
@@ -46,18 +46,18 @@ const defaultUrls: EndpointUrls = {
   completion: 'https://completion.api.remix.live',
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
-  sso: 'https://auth.api.remix.live:8443/sso',
-  billing: 'https://auth.api.remix.live:8443/billing',
-  credits: 'https://auth.api.remix.live:8443/credits',
+  sso: 'https://auth.api.remix.live/sso',
+  billing: 'https://auth.api.remix.live/billing',
+  credits: 'https://auth.api.remix.live/credits',
   audio: 'https://audio.api.remix.live',
-  storage: 'https://auth.api.remix.live:8443/storage',
-  permissions: 'https://auth.api.remix.live:8443/permissions',
-  walkthroughs: 'https://auth.api.remix.live:8443/walkthroughs',
-  notifications: 'https://auth.api.remix.live:8443/notifications',
-  invite: 'https://auth.api.remix.live:8443/invite',
-  feedback: 'https://auth.api.remix.live:8443/feedback',
-  membershipRequests: 'https://auth.api.remix.live:8443/permissions/membership-requests/anonymous',
-  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
+  storage: 'https://auth.api.remix.live/storage',
+  permissions: 'https://auth.api.remix.live/permissions',
+  walkthroughs: 'https://auth.api.remix.live/walkthroughs',
+  notifications: 'https://auth.api.remix.live/notifications',
+  invite: 'https://auth.api.remix.live/invite',
+  feedback: 'https://auth.api.remix.live/feedback',
+  membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
+  workspaceLock: 'https://auth.api.remix.live/workspace-lock',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
@@ -98,7 +98,7 @@ const localhostUrls: EndpointUrls = {
   // PROXY service (port 3005)
   corsProxy: 'http://localhost:3005/corsproxy',
   mcpCorsProxy: 'http://localhost:3005/mcp',
-  mcpCorsProxy8443: 'http://localhost:8443/mcp',
+  mcpCorsProxy8443: 'http://localhost/mcp',
   commonCorsProxy: 'http://localhost:3005/common-corsproxy',
   github: 'http://localhost:3005/github',
   ghfolderpull: 'http://localhost:3005/ghfolderpull',
@@ -120,11 +120,11 @@ const localhostUrls: EndpointUrls = {
   rag: 'http://localhost:3003/rag',
 
   // AUTH service (port 3001)
-  sso: 'https://auth.api.remix.live:8443/sso',
+  sso: 'https://auth.api.remix.live/sso',
   
   // BILLING service (port 3002)
-  billing: 'https://auth.api.remix.live:8443/billing',
-  credits: 'https://auth.api.remix.live:8443/credits',
+  billing: 'https://auth.api.remix.live/billing',
+  credits: 'https://auth.api.remix.live/credits',
   
   // AUDIO service (port 3004)
   audio: 'http://localhost:3004/audio',
@@ -132,7 +132,7 @@ const localhostUrls: EndpointUrls = {
   // STORAGE service (port 3002 - same as billing)
   storage: 'http://localhost:3002/storage',
   // PERMISSIONS service
-  permissions: 'https://auth.api.remix.live:8443/permissions',
+  permissions: 'https://auth.api.remix.live/permissions',
 
   // NOTIFICATION service (port 3013) - walkthroughs
   walkthroughs: 'http://localhost:3013/walkthroughs',
@@ -140,15 +140,15 @@ const localhostUrls: EndpointUrls = {
   // NOTIFICATIONS service (port 3013)
   notifications: 'http://localhost:3013/notifications',
   // INVITE service
-  invite: 'https://auth.api.remix.live:8443/invite',
+  invite: 'https://auth.api.remix.live/invite',
 
   // FEEDBACK service
-  feedback: 'https://auth.api.remix.live:8443/feedback',
+  feedback: 'https://auth.api.remix.live/feedback',
 
   // MEMBERSHIP REQUESTS (anonymous, no auth needed)
   membershipRequests: 'https://auth.api.remix.live/permissions/membership-requests/anonymous',
   // WORKSPACE LOCK service (Redis-based, same auth gateway)
-  workspaceLock: 'https://auth.api.remix.live:8443/workspace-lock',
+  workspaceLock: 'https://auth.api.remix.live/workspace-lock',
 };
 
 const resolvedUrls: EndpointUrls = prefix
