@@ -222,7 +222,7 @@ export function updateEndpoints(config: RemixConfig): void {
  * Falls back to current values silently on failure.
  */
 export async function initEndpoints(baseUrl?: string): Promise<void> {
-  const base = baseUrl || (process.env.NX_ENDPOINTS_URL || 'https://api.remix.live').replace(/\/$/, '');
+  const base = baseUrl || ('https://api.remix.live').replace(/\/$/, '');
   try {
     const config = await Promise.race([
       fetchRemixConfig(base),
