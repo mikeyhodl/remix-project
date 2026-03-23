@@ -8,7 +8,7 @@
  * Environment variables:
  *   E2E_POOL_API_KEY  - Required. The test-account-access API key (rmx_...).
  *   REMIX_API_URL     - Optional. Base URL for the auth service.
- *                       Defaults to https://auth.api.remix.live:8443
+ *                       Defaults to https://auth.api.remix.live
  *
  * Usage from shell (browser_test.sh):
  *   export POOL_SESSION=$(npx ts-node apps/remix-ide-e2e/src/helpers/pool.ts checkout)
@@ -21,7 +21,7 @@
 
 require('dotenv').config()
 
-const API_URL = process.env.REMIX_API_URL || 'https://auth.api.remix.live:8443'
+const API_URL = process.env.REMIX_API_URL || 'https://auth.api.remix.live'
 const API_KEY = process.env.E2E_POOL_API_KEY || ''
 const POOL_BASE = `${API_URL}/sso/test/pool`
 

@@ -15,7 +15,7 @@
 import { endpointUrls } from '@remix-endpoints-helper'
 import { STSToken, CloudWorkspace, SyncManifest, ManifestVerifyResponse } from './types'
 
-const storageBase = () => endpointUrls.storage // e.g. "https://auth.api.remix.live:8443/storage"
+const storageBase = () => endpointUrls.storage // e.g. "https://auth.api.remix.live/storage"
 
 /** Get the current access token from localStorage (set by AuthPlugin) */
 function getAccessToken(): string | null {
