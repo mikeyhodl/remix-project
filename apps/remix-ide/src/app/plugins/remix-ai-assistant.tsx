@@ -150,6 +150,7 @@ export class RemixAIAssistant extends ViewPlugin {
         ...otherConversations,
         ...(emptyNewConversations.length > 0 ? [emptyNewConversations[0]] : [])
       ]
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'load_conversation', isClick: false })
       this.renderComponent()
     } catch (error) {
       console.error('Failed to load conversations:', error)
@@ -179,7 +180,7 @@ export class RemixAIAssistant extends ViewPlugin {
       this.currentConversationId = await ChatHistory.startNewConversation(workspace)
       this.history = []
       await this.loadConversations()
-      trackMatomoEvent(this, { category: 'circuit-compiler', action: 'generateR1cs', name: 'R1CS Generation successful', isClick: true })
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: true })
       this.renderComponent()
     } catch (error) {
       console.error('Failed to create new conversation:', error)
@@ -197,7 +198,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
       // Update ChatHistory context
       await ChatHistory.loadConversation(id)
-
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'load_conversation', isClick: true })
       this.renderComponent()
     } catch (error) {
       console.error('Failed to load conversation:', error)
@@ -214,6 +215,7 @@ export class RemixAIAssistant extends ViewPlugin {
           archived: !conversation.archived,
           archivedAt: !conversation.archived ? Date.now() : undefined
         })
+        trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'archive_conversation', isClick: true })
 
         // Reload conversations
         await this.loadConversations()
@@ -222,6 +224,7 @@ export class RemixAIAssistant extends ViewPlugin {
         if (id === this.currentConversationId && !conversation.archived) {
           ChatHistory.clearHistory()
           await this.newConversation()
+          trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'new_conversation', isClick: false })
         }
       }
     } catch (error) {
@@ -234,13 +237,14 @@ export class RemixAIAssistant extends ViewPlugin {
 
     try {
       await this.storageManager.deleteConversation(id)
-
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'delete_conversation', isClick: true })
       // Reload conversations
       await this.loadConversations()
 
       // If we deleted the current conversation, create a new one
       if (id === this.currentConversationId) {
         await this.newConversation()
+        trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: false })
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error)
@@ -310,6 +314,7 @@ export class RemixAIAssistant extends ViewPlugin {
     // The previous implementation fell through to a full message-content scan
     // (N sequential getMessages() calls for N conversations) which is O(N·M)
     // and blocks the main thread noticeably with large histories.
+    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'search_conversations', isClick: true })
     return this.storageManager.searchConversations(query)
   }
 

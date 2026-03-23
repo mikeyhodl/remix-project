@@ -3,7 +3,7 @@
  *
  * This file contains all AI-related Matomo events including RemixAI interactions,
  * Ollama local AI, and code completion features.
- * 
+ *
  * STANDARDIZED PATTERN:
  * - category: 'ai' (always)
  * - action: 'remixAI' (always)
@@ -98,6 +98,12 @@ export interface AIEvent extends MatomoEventBase {
     | 'SetOllamaModel'
     | 'GenerateNewAIWorkspaceFromModal'
     | 'conv_starter'
+    | 'show_chat_history'
+    | 'archive_conversation'
+    | 'load_conversation'
+    | 'delete_conversation'
+    | 'create_new_conversation'
+    | 'search_conversations'
 }
 
 /**
