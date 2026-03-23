@@ -11,6 +11,7 @@ import { localStorageFS } from '../files/filesystems/localStorage'
 import { fileSystemUtility, migrationTestData } from '../files/filesystems/fileSystemUtility'
 import './styles/preload.css'
 import isElectron from 'is-electron'
+import { initEndpoints } from '@remix-endpoints-helper'
 
 // _paq.push(['trackEvent', 'App', 'Preload', 'start'])
 
@@ -41,7 +42,7 @@ export const Preload = (props: PreloadProps) => {
   )
 
   function loadAppComponent() {
-    import('../../app')
+    initEndpoints().then(() => import('../../app'))
       .then((AppComponent) => {
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {

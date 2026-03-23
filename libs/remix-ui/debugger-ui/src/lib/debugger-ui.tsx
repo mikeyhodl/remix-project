@@ -8,7 +8,6 @@ import {Toaster} from '@remix-ui/toaster' // eslint-disable-line
 import { CustomTooltip, isValidHash } from '@remix-ui/helper'
 import { DebuggerEvent, MatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
-import { ContractDeployment } from './transaction-recorder/types'
 /* eslint-disable-next-line */
 import './debugger-ui.css'
 import type { CompilerAbstract } from '@remix-project/remix-solidity'
@@ -44,7 +43,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     showOpcodes: false
   })
 
-  const [deployments] = useState<ContractDeployment[]>([])
+  const [deployments] = useState<any[]>([])
   const [traceData, setTraceData] = useState<{ currentStep: number; traceLength: number } | null>(null)
   const [currentFunction, setCurrentFunction] = useState<string>('')
   const [functionStack, setFunctionStack] = useState<any[]>([])
@@ -104,7 +103,10 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       })
 
       debuggerModule.onBreakpointAdded((fileName, row) => {
-        if (state.debugger) state.debugger.breakPointManager.add({ fileName: fileName, row: row })
+        if (state.debugger) {
+          trackMatomoEvent({ category: 'debugger', action: 'breakpoint', value: `breakpoint added`, isClick: true })
+          state.debugger.breakPointManager.add({ fileName: fileName, row: row })
+        }
       })
 
       debuggerModule.onEditorContentChanged(() => {
@@ -118,6 +120,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       debuggerModule.onEnvChanged((provider) => {
         setState((prevState) => {
           const isLocalNodeUsed = !provider.startsWith('vm') && !provider.startsWith('injected')
+          trackMatomoEvent({ category: 'debugger', action: 'debugConfig', value: `isLocalNodeUsed status: ${isLocalNodeUsed}`, isClick: false })
           return { ...prevState, isLocalNodeUsed: isLocalNodeUsed }
         })
       })
@@ -182,7 +185,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       })
     })
 
-    debuggerInstance.event.register('locatingBreakpoint', async (isActive) => {
+    debuggerInstance.event.register('locatingBreakpoint', async () => {
       setState((prevState) => {
         return {
           ...prevState,
@@ -191,7 +194,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       })
     })
 
-    debuggerInstance.event.register('noBreakpointHit', async (isActive) => {
+    debuggerInstance.event.register('noBreakpointHit', async () => {
       setState((prevState) => {
         return { ...prevState, sourceLocationStatus: '' }
       })
@@ -333,29 +336,6 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       })
     }
   }
-  const requestDebug = (blockNumber, txNumber, tx) => {
-    startDebugging(blockNumber, txNumber, tx)
-  }
-
-  const updateTxNumberFlag = (empty: boolean) => {
-    setState((prevState) => {
-      return {
-        ...prevState,
-        txNumberIsEmpty: empty,
-        validationError: ''
-      }
-    })
-  }
-
-  const unloadRequested = (blockNumber, txIndex, tx) => {
-    unLoad()
-    setState((prevState) => {
-      return {
-        ...prevState,
-        sourceLocationStatus: ''
-      }
-    })
-  }
 
   const unLoad = () => {
     debuggerModule.onStopDebugging()
@@ -386,6 +366,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     debuggerModule.call('editor', 'clearAllBreakpoints').catch((e) => {
       console.error('Failed to clear breakpoints:', e)
     })
+    trackMatomoEvent({ category: 'debugger', action: 'stopDebugging', isClick: true })
     // Emit debugging stopped event
     debuggerModule.emit('debuggingStopped')
   }
@@ -403,6 +384,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       }
     })
     if (!isValidHash(txNumber)) {
+      trackMatomoEvent({ category: 'debugger', action: 'errorInStartDebugging', value: 'invalidTxHash', isClick: true })
       setState((prevState) => {
         return {
           ...prevState,
@@ -413,9 +395,11 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
     }
 
     const web3 = optWeb3 || (state.opt.debugWithLocalNode ? await debuggerModule.web3() : await debuggerModule.getDebugProvider())
+    let networkId
     try {
-      const networkId = (await web3.getNetwork()).chainId
-      trackMatomoEvent({ category: 'debugger', action: 'startDebugging', value: networkId, isClick: true })
+      const chainId = (await web3.getNetwork()).chainId
+      // Convert BigInt to number for analytics tracking
+      networkId = typeof chainId === 'bigint' ? Number(chainId) : chainId
     } catch (e) {
       console.error(e)
     }
@@ -427,6 +411,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
       currentBlock = await web3.getBlock(currentReceipt.blockHash)
       currentTransaction = await web3.getTransaction(txNumber)
     } catch (e) {
+      trackMatomoEvent({ category: 'debugger', action: 'errorInStartDebugging', value: e.message, isClick: true })
       setState((prevState) => {
         return {
           ...prevState,
@@ -476,18 +461,22 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
           })
           // Activate the debugger plugin when debugging starts
           debuggerModule.call('menuicons', 'select', 'debugger').catch(err => {
+            trackMatomoEvent({ category: 'debugger', action: 'errorInStartDebugging', value: 'Failed to activate debugger', isClick: true })
             console.error('Failed to activate debugger:', err)
           })
           // Close right side panel if it's open when debugging starts
           debuggerModule.call('rightSidePanel', 'isPanelHidden').then((isHidden: boolean) => {
             if (!isHidden) {
               debuggerModule.call('rightSidePanel', 'togglePanel').catch(err => {
+                trackMatomoEvent({ category: 'debugger', action: 'errorInStartDebugging', value: 'Failed to close right side panel', isClick: true })
                 console.error('Failed to close right side panel:', err)
               })
             }
           }).catch(err => {
+            trackMatomoEvent({ category: 'debugger', action: 'errorInStartDebugging', value: 'Failed to check right side panel state', isClick: true })
             console.error('Failed to check right side panel state:', err)
           })
+          trackMatomoEvent({ category: 'debugger', action: 'startDebugging', value: networkId, isClick: true })
           // Emit debugging started event
           debuggerModule.emit('debuggingStarted', {
             txHash: txNumber,
@@ -537,6 +526,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
   }
 
   const handleShowOpcodesChange = (showOpcodes: boolean) => {
+    trackMatomoEvent({ category: 'debugger', action: 'debugConfig', value: `showOpcodes status: ${showOpcodes}`, isClick: false })
     setState((prevState) => {
       return { ...prevState, showOpcodes }
     })
@@ -566,6 +556,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
   }
 
   const handleSearch = (txHash: string) => {
+    trackMatomoEvent({ category: 'debugger', action: 'searchTxHash', value: txHash, isClick: true })
     debug(txHash)
   }
 
@@ -686,6 +677,7 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
             callTree={callTreeInstance}
             debugWithGeneratedSources={state.opt.debugWithGeneratedSources}
             onDebugWithGeneratedSourcesChange={(checked) => {
+              trackMatomoEvent({ category: 'debugger', action: 'debugConfig', value: `debugWithGeneratedSources status: ${checked}`, isClick: true })
               setState((prevState) => {
                 return {
                   ...prevState,

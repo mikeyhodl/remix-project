@@ -3,11 +3,13 @@ import EventEmitter from 'events'
 
 class VerifyLoad extends EventEmitter {
   command(this: NightwatchBrowser) {
-    browser.saveScreenshot('./reports/screenshots/verifyLoad.png').waitForElementPresent({
-      selector: "//span[@data-id='typesloaded']",
-      locateStrategy: 'xpath',
-      timeout: 60000
-    })
+    browser
+      .getBrowserLogs()
+      .saveScreenshot('./reports/screenshots/verifyLoad.png').waitForElementPresent({
+        selector: "//span[@data-id='typesloaded']",
+        locateStrategy: 'xpath',
+        timeout: 60000
+      })
       .waitForElementPresent({
         selector: "//span[@data-id='editorloaded']",
         locateStrategy: 'xpath',
