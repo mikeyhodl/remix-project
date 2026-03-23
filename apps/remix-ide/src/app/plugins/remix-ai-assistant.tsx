@@ -179,6 +179,7 @@ export class RemixAIAssistant extends ViewPlugin {
       this.currentConversationId = await ChatHistory.startNewConversation(workspace)
       this.history = []
       await this.loadConversations()
+      trackMatomoEvent(this, { category: 'circuit-compiler', action: 'generateR1cs', name: 'R1CS Generation successful', isClick: true })
       this.renderComponent()
     } catch (error) {
       console.error('Failed to create new conversation:', error)
