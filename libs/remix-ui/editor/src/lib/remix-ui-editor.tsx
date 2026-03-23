@@ -864,7 +864,6 @@ export const EditorUI = (props: EditorUIProps) => {
             const isMatch = changes.some(change => change.text === metadata.item.insertText);
 
             if (isMatch) {
-              console.log('[Editor.tsx] Full completion acceptance detected via text change');
               metadata.onAccepted();
               trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'Copilot_Completion_Accepted', isClick: true })
             }
