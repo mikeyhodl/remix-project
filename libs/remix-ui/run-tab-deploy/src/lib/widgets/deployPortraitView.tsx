@@ -11,6 +11,7 @@ import { deployContract, getNetworkProxyAddresses } from '../actions'
 import { ToggleSwitch } from '@remix-ui/toggle'
 import { ContractKebabMenu } from './contractKebabMenu'
 import { VerificationSettingsUI } from '../components/verificationSettingsUI'
+import { TrackingContext } from '@remix-ide/tracking'
 
 const txFormat = remixLib.execution.txFormat
 const txHelper = remixLib.execution.txHelper
@@ -18,6 +19,7 @@ const queryParams = new remixLib.QueryParams()
 
 function DeployPortraitView() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(DeployAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   // TODO: Move all state to reducer
   const [isExpanded, setIsExpanded] = useState(true)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
@@ -160,6 +162,7 @@ function DeployPortraitView() {
   }
 
   const handleInputChange = (index: number, value: string) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'constructorInput', name: `param${index}` })
     setInputValues(prev => ({
       ...prev,
       [index]: value
@@ -179,6 +182,7 @@ function DeployPortraitView() {
   }
 
   const handleProxyInputChange = (index: number, value: string) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'proxyConstructorInput', name: `param${index}` })
     setProxyInputValues(prev => ({
       ...prev,
       [index]: value
@@ -186,6 +190,8 @@ function DeployPortraitView() {
   }
 
   const handleDeployClick = () => {
+    const deployType = deployWithProxy ? 'withProxy' : (upgradeWithProxy ? 'upgrade' : 'standard')
+    trackMatomoEvent?.({ category: 'udapp', action: 'deployButtonClick', name: deployType, isClick: true })
     const args = getMultiValsString(Object.values(inputValues))
     const deployArgs = deployWithProxy ?getMultiValsString(Object.values(proxyInputValues)) : proxyAddress
     const proxyOptions = selectedContract?.isUpgradeable
@@ -199,6 +205,10 @@ function DeployPortraitView() {
     e.preventDefault()
     e.stopPropagation()
     if (selectedContract) {
+      const willOpen = !isContractMenuOpen
+      if (willOpen) {
+        trackMatomoEvent?.({ category: 'udapp', action: 'contractKebabMenuOpen', name: selectedContract.name, isClick: true })
+      }
       setIsContractMenuOpen(prev => !prev)
     }
   }
@@ -218,16 +228,21 @@ function DeployPortraitView() {
   }
 
   const switchProxyAddress = (address: string) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'proxyAddressSelected', name: shortenProxyAddress(address), isClick: true })
     setProxyAddress(address)
     setShowProxyDropdown(false)
   }
 
   const toggleProxyDropdown = (isOpen: boolean) => {
+    if (isOpen) {
+      trackMatomoEvent?.({ category: 'udapp', action: 'proxyDropdownOpen', name: 'opened' })
+    }
     setShowProxyDropdown(isOpen)
   }
 
   const handleProxyAddressChange = (e: any) => {
     const address = e.target.value
+    trackMatomoEvent?.({ category: 'udapp', action: 'proxyAddressInput', name: address ? 'entered' : 'cleared' })
     setProxyAddress(address)
   }
 
@@ -249,6 +264,7 @@ function DeployPortraitView() {
   }
 
   const handleVerifyCheckedChange = (isChecked: boolean) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'verifyContractToggle', name: isChecked ? 'enabled' : 'disabled', isClick: true })
     setVerifyChecked(isChecked)
     window.localStorage.setItem('deploy-verify-contract-checked', JSON.stringify(isChecked))
   }
@@ -256,7 +272,10 @@ function DeployPortraitView() {
   return (
     <>
       <div className="card mx-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
-        <div className="p-3 d-flex align-items-center justify-content-between" onClick={() => setIsExpanded(!isExpanded)} style={{ cursor: 'pointer' }}>
+        <div className="p-3 d-flex align-items-center justify-content-between" onClick={() => {
+          trackMatomoEvent?.({ category: 'udapp', action: 'deployCardToggle', name: isExpanded ? 'collapsed' : 'expanded', isClick: true })
+          setIsExpanded(!isExpanded)
+        }} style={{ cursor: 'pointer' }}>
           <div className='d-flex align-items-center gap-2'>
             <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
@@ -301,6 +320,7 @@ function DeployPortraitView() {
                               }}
                               onClick={async (e) => {
                                 e.stopPropagation()
+                                trackMatomoEvent?.({ category: 'udapp', action: 'compileContract', name: selectedContract?.name, isClick: true })
                                 if (selectedContract?.filePath) {
                                   dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
                                   await plugin.call('solidity', 'compile', selectedContract.filePath)
@@ -326,6 +346,7 @@ function DeployPortraitView() {
                               style={{ cursor: "pointer" }}
                               onClick={async (e) => {
                                 e.stopPropagation()
+                                trackMatomoEvent?.({ category: 'udapp', action: 'recompileContract', name: selectedContract?.name, isClick: true })
                                 if (selectedContract?.filePath) {
                                   dispatch({ type: 'SET_COMPILING', payload: selectedContract.filePath })
                                   try {
@@ -372,7 +393,10 @@ function DeployPortraitView() {
                 {widgetState.contracts.contractList.length > 0 && (
                   <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden" style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', padding: 0 } as React.CSSProperties} data-id="contractDropdownMenu">
                     {widgetState.contracts.contractList.map((contract, index) => (
-                      <Dropdown.Item key={`${contract.filePath}:${contract.name}`} className="d-flex align-items-center contract-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_SELECTED_CONTRACT_INDEX', payload: index })} data-id={`contractDropdownItem-${contract.name}`}>
+                      <Dropdown.Item key={`${contract.filePath}:${contract.name}`} className="d-flex align-items-center contract-dropdown-item-hover" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'contractSelected', name: contract.name, isClick: true })
+                        dispatch({ type: 'SET_SELECTED_CONTRACT_INDEX', payload: index })
+                      }} data-id={`contractDropdownItem-${contract.name}`}>
                         <div className="me-auto text-nowrap text-truncate overflow-hidden font-sm w-100">
                           <div className="d-flex align-items-center justify-content-between w-100">
                             <div className='d-flex flex-column align-items-start'>
@@ -430,6 +454,7 @@ function DeployPortraitView() {
                         id={`deployWithProxyToggle`}
                         isOn={deployWithProxy}
                         onClick={() => {
+                          trackMatomoEvent?.({ category: 'udapp', action: 'deployWithProxyToggle', name: !deployWithProxy ? 'enabled' : 'disabled', isClick: true })
                           if (!deployWithProxy) {
                             setUpgradeWithProxy(false)
                           }
@@ -451,6 +476,7 @@ function DeployPortraitView() {
                         id={`upgradeWithProxyToggle`}
                         isOn={upgradeWithProxy}
                         onClick={() => {
+                          trackMatomoEvent?.({ category: 'udapp', action: 'upgradeWithProxyToggle', name: !upgradeWithProxy ? 'enabled' : 'disabled', isClick: true })
                           if (!upgradeWithProxy) {
                             setDeployWithProxy(false)
                           }
@@ -524,7 +550,10 @@ function DeployPortraitView() {
                             <div
                               className='btn border-0 p-0'
                               style={{ minWidth: '120px', cursor: 'pointer' }}
-                              onClick={() => toggleProxyInputExpansion(index)}
+                              onClick={() => {
+                                trackMatomoEvent?.({ category: 'udapp', action: 'proxyConstructorExpand', name: `param${index}`, isClick: true })
+                                toggleProxyInputExpansion(index)
+                              }}
                             >
                               <div className='d-flex flex-column align-items-start'>
                                 <span className="small" style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>{input.name}</span>
@@ -543,7 +572,7 @@ function DeployPortraitView() {
                                   style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.7rem', paddingRight: '1.5rem', minHeight: '30px' }}
                                 />
                                 <div className="copy-icon-hover" style={{ position: 'absolute', right: '8px', top: '40%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none' }}>
-                                  <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue}>
+                                  <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyProxyInput', name: `param${index}`, isClick: true })}>
                                     <span style={{ pointerEvents: 'auto' }}>
                                       <i className="far fa-copy" style={{ color: 'var(--bs-secondary)', fontSize: '0.75rem' }}></i>
                                     </span>
@@ -562,7 +591,7 @@ function DeployPortraitView() {
                                 style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', fontSize: '0.7rem', paddingRight: '1.5rem', minHeight: '80px', resize: 'vertical' }}
                               />
                               <div className="copy-icon-hover" style={{ position: 'absolute', right: '8px', top: '8px', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none' }}>
-                                <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue}>
+                                <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyProxyInput', name: `param${index}`, isClick: true })}>
                                   <span style={{ pointerEvents: 'auto' }}>
                                     <i className="far fa-copy" style={{ color: 'var(--bs-secondary)', fontSize: '0.75rem' }}></i>
                                   </span>
@@ -601,7 +630,10 @@ function DeployPortraitView() {
                             <div
                               className='btn border-0 p-0'
                               style={{ minWidth: '120px', cursor: 'pointer' }}
-                              onClick={() => toggleInputExpansion(index)}
+                              onClick={() => {
+                                trackMatomoEvent?.({ category: 'udapp', action: 'constructorExpand', name: `param${index}`, isClick: true })
+                                toggleInputExpansion(index)
+                              }}
                             >
                               <div className='d-flex flex-column align-items-start'>
                                 <span className="small" style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>{input.name}</span>
@@ -620,7 +652,7 @@ function DeployPortraitView() {
                                   data-id={`constructorInput${index}`}
                                 />
                                 <div className="copy-icon-hover" style={{ position: 'absolute', right: '8px', top: '40%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none' }}>
-                                  <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue}>
+                                  <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyConstructorInput', name: `param${index}`, isClick: true })}>
                                     <span style={{ pointerEvents: 'auto' }}>
                                       <i className="far fa-copy" style={{ color: 'var(--bs-secondary)', fontSize: '0.75rem' }}></i>
                                     </span>
@@ -640,7 +672,7 @@ function DeployPortraitView() {
                                 data-id={`constructorInput${index}`}
                               />
                               <div className="copy-icon-hover" style={{ position: 'absolute', right: '8px', top: '8px', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none' }}>
-                                <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue}>
+                                <CopyToClipboard tip="Copy" icon="fa-copy" direction="top" getContent={() => currentValue} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyConstructorInput', name: `param${index}`, isClick: true })}>
                                   <span style={{ pointerEvents: 'auto' }}>
                                     <i className="far fa-copy" style={{ color: 'var(--bs-secondary)', fontSize: '0.75rem' }}></i>
                                   </span>
@@ -659,13 +691,13 @@ function DeployPortraitView() {
                   }
                   {/* Call Data and Parameters */}
                   <div className="d-flex align-items-center justify-content-between gap-2">
-                    <CopyToClipboard tip="Copy Call Data" icon="fa-clipboard" direction="bottom" getContent={getEncodedCall}>
+                    <CopyToClipboard tip="Copy Call Data" icon="fa-clipboard" direction="bottom" getContent={getEncodedCall} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyCallData', name: 'clicked', isClick: true })}>
                       <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
                         <span className="text-secondary">Call data</span>
                         <i className="far fa-copy ms-1 text-secondary"></i>
                       </button>
                     </CopyToClipboard>
-                    <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams}>
+                    <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>
                       <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
                         <span className="text-secondary">Parameters</span>
                         <i className="far fa-copy ms-1 text-secondary"></i>
@@ -692,6 +724,7 @@ function DeployPortraitView() {
                     placeholder="0"
                     value={widgetState.value}
                     onChange={(e) => {
+                      trackMatomoEvent?.({ category: 'udapp', action: 'valueInput', name: e.target.value || '0' })
                       const val = e.target.value === '0' ? '' : e.target.value
                       // Only allow empty string or valid numeric strings
                       if (val === '' || /^\d+$/.test(val)) {
@@ -711,10 +744,22 @@ function DeployPortraitView() {
                       {widgetState.valueUnit}
                     </Dropdown.Toggle>
                     <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', '--bs-dropdown-min-width' : '4rem', padding: 0 } as React.CSSProperties}>
-                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'wei' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
-                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'gwei' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
-                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'finney' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
-                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => dispatch({ type: 'SET_VALUE_UNIT', payload: 'ether' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'valueUnitChange', name: 'wei', isClick: true })
+                        dispatch({ type: 'SET_VALUE_UNIT', payload: 'wei' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'valueUnitChange', name: 'gwei', isClick: true })
+                        dispatch({ type: 'SET_VALUE_UNIT', payload: 'gwei' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'valueUnitChange', name: 'finney', isClick: true })
+                        dispatch({ type: 'SET_VALUE_UNIT', payload: 'finney' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'valueUnitChange', name: 'ether', isClick: true })
+                        dispatch({ type: 'SET_VALUE_UNIT', payload: 'ether' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
                 </div>
@@ -739,6 +784,8 @@ function DeployPortraitView() {
                       zIndex: 1
                     }}
                     onClick={() => {
+                      const newMode = widgetState.gasLimit === 0 ? 'custom' : 'auto'
+                      trackMatomoEvent?.({ category: 'udapp', action: 'gasLimitToggle', name: newMode, isClick: true })
                       if (widgetState.gasLimit === 0) {
                         // Switch from auto to custom - set a default value
                         dispatch({ type: 'SET_GAS_LIMIT', payload: 3000000 })
@@ -755,7 +802,10 @@ function DeployPortraitView() {
                     className="form-control form-control-sm border-0"
                     placeholder="0000000"
                     value={widgetState.gasLimit}
-                    onChange={(e) => dispatch({ type: 'SET_GAS_LIMIT', payload: parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      trackMatomoEvent?.({ category: 'udapp', action: 'gasLimitInput', name: e.target.value })
+                      dispatch({ type: 'SET_GAS_LIMIT', payload: parseInt(e.target.value) })
+                    }}
                     disabled={widgetState.gasLimit === 0}
                     style={{
                       backgroundColor: 'var(--bs-body-bg)',

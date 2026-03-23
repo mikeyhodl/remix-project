@@ -180,6 +180,10 @@ export async function deployContract(selectedContract: ContractData, args: strin
     } else {
       try {
         await createInstance(selectedContract, args, deployMode, isVerifyChecked, plugin)
+        if (!isVerifyChecked) {
+          const networkStatus = await plugin.call('udappEnv', 'getNetwork')
+          await trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployOnly', name: networkStatus.name || 'unknown', isClick: false })
+        }
       } catch (error) {
         plugin.call('terminal', 'logHtml', logBuilder(error.message))
       }
@@ -221,7 +225,8 @@ async function createInstance(selectedContract: ContractData, args, deployMode: 
   await plugin.call('compilerArtefacts', 'addResolvedContract', result.address, data)
 
   if (isVerifyChecked) {
-    // trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployAndPublish', name: plugin.REACT_API.networkName, isClick: true })
+    const networkStatus = await plugin.call('udappEnv', 'getNetwork')
+    await trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployAndPublish', name: networkStatus.name || 'unknown', isClick: false })
 
     try {
       const status = await plugin.call('blockchain', 'detectNetwork')
@@ -250,7 +255,8 @@ async function createInstance(selectedContract: ContractData, args, deployMode: 
 }
 
 async function deployOnBlockchain (selectedContract: ContractData, args: string, contractMetadata: any, compilerContracts: any, plugin: DeployPlugin) {
-  // trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployContractTo', name: plugin.REACT_API.networkName, isClick: true })
+  const networkStatus = await plugin.call('udappEnv', 'getNetwork')
+  await trackMatomoEvent(plugin, { category: 'udapp', action: 'DeployContractTo', name: networkStatus.name || 'unknown', isClick: false })
   if (!contractMetadata || (contractMetadata && contractMetadata.autoDeployLib)) {
     return await plugin.call('blockchain', 'deployContractAndLibraries', selectedContract, args, contractMetadata, compilerContracts)
   }
