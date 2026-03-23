@@ -11,7 +11,7 @@ import { initEndpoints } from '@remix-endpoints-helper'
 
 ; (async function () {
   // Load endpoint URLs from service discovery
-  await initEndpoints();
+  //await initEndpoints();
 
   // Create Matomo configuration
   const matomoConfig = createMatomoConfig();
