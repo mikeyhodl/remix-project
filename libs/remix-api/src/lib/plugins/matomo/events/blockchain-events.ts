@@ -132,7 +132,27 @@ export interface UdappEvent extends MatomoEventBase {
     | 'deployedContractCopyABI'
     | 'deployedContractCopyBytecode'
     | 'deployedContractOpenExplorer'
-    | 'deployedContractRemove';
+    | 'deployedContractRemove'
+    | 'transactionsAccordionToggle'
+    | 'transactionsSaveButtonClick'
+    | 'transactionsClearAllButtonClick'
+    | 'transactionsSaveDialogClose'
+    | 'transactionsScenarioInput'
+    | 'transactionsSaveScenario'
+    | 'transactionsClearAllDialogClose'
+    | 'transactionsClearAllCancel'
+    | 'transactionsClearAllConfirm'
+    | 'transactionsTabChange'
+    | 'transactionsSortChange'
+    | 'transactionCopyHash'
+    | 'transactionKebabMenuOpen'
+    | 'transactionDebug'
+    | 'transactionReplay'
+    | 'transactionOpenTerminal'
+    | 'transactionOpenExplorer'
+    | 'transactionClear'
+    | 'transactionRecordCardToggle'
+    | 'transactionRecordCopyAddress';
 }
 
 export interface RunEvent extends MatomoEventBase {

@@ -5,6 +5,7 @@ import { TransactionsAppContext } from '../contexts'
 import { Transaction } from '../types'
 import { TransactionKebabMenu } from './TransactionKebabMenu'
 import { debugTransaction, replayTransaction, openTransactionInTerminal, openTransactionInExplorer, clearTransaction } from '../actions'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface TransactionItemProps {
   transaction: Transaction
@@ -14,6 +15,7 @@ interface TransactionItemProps {
 
 export const TransactionItem = ({ transaction, openKebabMenuId, onKebabMenuToggle }: TransactionItemProps) => {
   const { plugin, widgetState, dispatch } = useContext(TransactionsAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const kebabIconRef = useRef<HTMLElement>(null)
 
   const txHash = transaction?.record?.txHash || String(transaction?.timestamp)
@@ -30,6 +32,7 @@ export const TransactionItem = ({ transaction, openKebabMenuId, onKebabMenuToggl
   const handleKebabClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionKebabMenuOpen', name: shortenAddress(transaction?.record?.txHash), isClick: true })
     onKebabMenuToggle(showKebabMenu ? null : txHash)
   }
 
@@ -73,7 +76,7 @@ export const TransactionItem = ({ transaction, openKebabMenuId, onKebabMenuToggl
             </div>
             <div className="font-sm" style={{ color: 'var(--bs-tertiary-color)', position: 'relative' }}>
               <span className="text-dark">tx: {shortenAddress(transaction?.record?.txHash)}</span>
-              <CopyToClipboard tip="Copy transaction hash" icon="fa-copy" direction="top" getContent={() => transaction?.record?.txHash}>
+              <CopyToClipboard tip="Copy transaction hash" icon="fa-copy" direction="top" getContent={() => transaction?.record?.txHash} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'transactionCopyHash', name: shortenAddress(transaction?.record?.txHash), isClick: true })}>
                 <i className="fa-solid fa-copy small ms-1" style={{ cursor: 'pointer' }}></i>
               </CopyToClipboard>
             </div>
