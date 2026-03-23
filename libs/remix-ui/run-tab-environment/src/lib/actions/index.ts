@@ -12,7 +12,7 @@ import { BrowserProvider, BaseWallet, SigningKey, isAddress } from "ethers"
 import { toChecksumAddress, bytesToHex, isZeroAddress } from '@ethereumjs/util'
 import { isAccountDeleted, getAccountAlias, deleteAccount as deleteAccountFromStorage, setAccountAlias, clearAccountPreferences, getNextAvailableAccountNumber } from '../utils/accountStorage'
 import { eip7702Constants } from '@remix-project/remix-lib'
-import { formatBalance } from '@remix-ui/helper'
+import { formatBalance, shortenAddress } from '@remix-ui/helper'
 export * from "./providers"
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { EnvironmentPlugin } from 'apps/remix-ide/src/app/udapp/udappEnv'
@@ -79,7 +79,6 @@ export async function forkState (plugin: EnvironmentPlugin, dispatch: React.Disp
   await addFVSProvider(`.states/forked_states/${currentStateDb.stateName}.json`, 20, plugin, dispatch)
   const name = `vm-fs-${currentStateDb.stateName}`
 
-  // trackMatomoEvent(plugin, { category: 'blockchain', action: 'providerPinned', name: name, isClick: false })
   await plugin.call('blockchain', 'changeExecutionContext', { context: name })
   plugin.call('notification', 'toast', `New environment '${currentStateDb.stateName}' created with forked state.`)
 
@@ -237,6 +236,7 @@ export async function createNewAccount (plugin: EnvironmentPlugin, dispatch: Rea
 
     plugin.call('notification', 'toast', `account ${address} created`)
     await getAccountsList(plugin, dispatch)
+    trackMatomoEvent(plugin, { category: 'udapp', action: 'newAccount', name: shortenAddress(address), isClick: false })
   } catch (error) {
     return plugin.call('notification', 'toast', 'Cannot create an account: ' + error)
   }
@@ -436,6 +436,13 @@ export async function authorizeDelegation (contractAddress: string, plugin: Envi
 
   await plugin.call('blockchain', 'dumpState')
 
+  trackMatomoEvent(plugin, {
+    category: 'udapp',
+    action: 'authorizeDelegation',
+    name: isZeroAddress(contractAddress) ? 'removed' : 'created',
+    isClick: false
+  })
+
   return { txHash: receipt.hash }
 }
 
@@ -447,6 +454,7 @@ export async function signMessageWithAddress (
 ): Promise<{ msgHash: string, signedData: string }> {
   try {
     const result = await plugin.call('blockchain', 'signMessage', message, account, passphrase)
+    trackMatomoEvent(plugin, { category: 'udapp', action: 'signUsingAccount', name: 'signed', isClick: false })
     return result
   } catch (err) {
     console.error(err)
@@ -479,6 +487,7 @@ export async function deleteAccountAction (
   await getAccountsList(plugin, dispatch)
 
   plugin.call('notification', 'toast', `Account ${accountAddress} deleted`)
+  trackMatomoEvent(plugin, { category: 'udapp', action: 'deleteAccount', name: shortenAddress(accountAddress), isClick: false })
 }
 
 export async function updateAccountAlias (
@@ -507,4 +516,5 @@ export async function updateAccountAlias (
   await getAccountsList(plugin, dispatch)
 
   plugin.call('notification', 'toast', `Account alias updated to "${newAlias}"`)
+  trackMatomoEvent(plugin, { category: 'udapp', action: 'accountAliasSaved', name: newAlias, isClick: false })
 }

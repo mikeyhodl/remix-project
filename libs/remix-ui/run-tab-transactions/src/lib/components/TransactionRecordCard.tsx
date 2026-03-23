@@ -5,6 +5,7 @@ import { TransactionsAppContext } from '../contexts'
 import { Transaction } from '../types'
 import { TransactionKebabMenu } from './TransactionKebabMenu'
 import { debugTransaction, replayTransaction, openTransactionInTerminal, openTransactionInExplorer, clearTransaction } from '../actions'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface TransactionRecordCardProps {
   deployment: Transaction
@@ -14,6 +15,7 @@ interface TransactionRecordCardProps {
 
 export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenuToggle }: TransactionRecordCardProps) => {
   const { plugin, widgetState, dispatch } = useContext(TransactionsAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [isExpanded, setIsExpanded] = useState(false)
   const kebabIconRefs = useRef<{ [key: string]: HTMLElement }>({})
 
@@ -28,6 +30,7 @@ export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenu
     if (transactions.length === 0) {
       plugin.call('notification', 'toast', 'No transactions to display')
     } else {
+      trackMatomoEvent?.({ category: 'udapp', action: 'transactionRecordCardToggle', name: !isExpanded ? 'expanded' : 'collapsed', isClick: true })
       setIsExpanded(!isExpanded)
     }
   }
@@ -37,6 +40,7 @@ export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenu
     e.stopPropagation()
     const txHash = transaction?.record?.txHash || String(transaction?.timestamp)
     const isCurrentlyOpen = openKebabMenuId === txHash
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionKebabMenuOpen', name: shortenAddress(transaction?.record?.txHash), isClick: true })
     onKebabMenuToggle(isCurrentlyOpen ? null : txHash)
   }
 
@@ -74,7 +78,7 @@ export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenu
           </div>
           <div className="font-sm" style={{ color: 'var(--bs-tertiary-color)', position: 'relative' }}>
             <span className="text-dark">{shortenAddress(deployment?.record?.targetAddress)}</span>
-            <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => deployment?.record?.targetAddress}>
+            <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => deployment?.record?.targetAddress} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'transactionRecordCopyAddress', name: shortenAddress(deployment?.record?.targetAddress), isClick: true })}>
               <i className="fa-solid fa-copy small ms-1" style={{ cursor: 'pointer' }}></i>
             </CopyToClipboard>
           </div>
@@ -110,7 +114,7 @@ export const TransactionRecordCard = ({ deployment, openKebabMenuId, onKebabMenu
                 </div>
                 <div className="font-sm" style={{ color: 'var(--bs-tertiary-color)', position: 'relative' }}>
                   <span className="text-dark">tx: {shortenAddress(transaction?.record?.txHash)}</span>
-                  <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => transaction?.record?.txHash}>
+                  <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => transaction?.record?.txHash} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'transactionCopyHash', name: shortenAddress(transaction?.record?.txHash), isClick: true })}>
                     <i className="fa-solid fa-copy small ms-1" style={{ cursor: 'pointer' }}></i>
                   </CopyToClipboard>
                 </div>

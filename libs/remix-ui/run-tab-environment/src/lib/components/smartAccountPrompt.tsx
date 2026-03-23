@@ -35,7 +35,7 @@ export function SmartAccountPrompt ({ plugin }: { plugin: EnvironmentPlugin }) {
         href="https://docs.safe.global/advanced/smart-account-overview#safe-smart-account"
         target="_blank"
         rel="noreferrer noopener"
-        onClick={() => trackMatomoEvent({ category: 'udapp', action: 'safeSmartAccount', name: 'learnMore', isClick: true })}
+        onClick={() => trackMatomoEvent({ category: 'udapp', action: 'smartAccountLearnMore', name: 'clicked', isClick: true })}
         className="mb-3 d-inline-block link-primary"
       >
         <FormattedMessage id="udapp.learnMore" />
