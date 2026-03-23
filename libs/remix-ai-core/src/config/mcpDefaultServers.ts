@@ -13,7 +13,7 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
       name: 'Alchemy',
       description: 'Alchemy blockchain data query',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/alchemy',
+      url: endpointUrls.mcpCorsProxy + '/alchemy',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -22,7 +22,7 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
       name: 'Etherscan',
       description: 'Etherscan block explorer',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/etherscan/mcp',
+      url: endpointUrls.mcpCorsProxy + '/etherscan/mcp',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -31,7 +31,7 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
       name: 'Thegraph API',
       description: 'Thegraph API (subgraph and token API',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/thegraph/mcp',
+      url: endpointUrls.mcpCorsProxy + '/thegraph/mcp',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -41,7 +41,7 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
       name: 'Sourcify',
       description: 'Sourcify smart contract verification',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/sourcify/mcp',
+      url: endpointUrls.mcpCorsProxy + '/sourcify/mcp',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -101,7 +101,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'ethskills',
       description: 'ethereum dev skills',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/ethskills/mcp',
+      url: endpointUrls.mcpCorsProxy + '/ethskills/mcp',
       autoStart: true,
       enabled: true,
       timeout: 30000
@@ -110,7 +110,7 @@ export const mcpDefaultServersConfig: MCPDefaultServersConfig = {
       name: 'Web Search',
       description: 'Web search capabilities',
       transport: 'http',
-      url: endpointUrls.mcpCorsProxy8443 + '/web-search',
+      url: endpointUrls.mcpCorsProxy + '/web-search',
       autoStart: true,
       enabled: true,
       timeout: 30000

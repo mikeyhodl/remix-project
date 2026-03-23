@@ -68,7 +68,7 @@ export class SlitherHandler extends BaseToolHandler {
       const flattened = await plugin.call('contractflattener', 'flattenContract', compilationResult.source, args.filePath, compilationResult.data, compilationResult.input, false);
 
       // Call external Slither endpoint
-      const response = await fetch(endpointUrls.mcpCorsProxy8443 + '/slither/analyze', {
+      const response = await fetch(endpointUrls.mcpCorsProxy + '/slither/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -7,8 +7,12 @@ import { createMatomoConfig } from './app/matomo/MatomoConfig'
 import { createTrackingFunction } from './app/utils/TrackingFunction'
 import { setupThemeAndLocale } from './app/utils/AppSetup'
 import { renderApp } from './app/utils/AppRenderer'
+import { initEndpoints } from '@remix-endpoints-helper'
 
 ; (async function () {
+  // Load endpoint URLs from service discovery
+  await initEndpoints();
+
   // Create Matomo configuration
   const matomoConfig = createMatomoConfig();
   const matomoManager = new MatomoManager(matomoConfig);
