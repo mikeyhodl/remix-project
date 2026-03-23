@@ -749,7 +749,7 @@ export class TestPoolApiService {
   private apiKey: string
 
   /**
-   * @param ssoBaseUrl - The SSO base URL (e.g. https://auth.api.remix.live:8443/sso)
+   * @param ssoBaseUrl - The SSO base URL (e.g. https://auth.api.remix.live/sso)
    * @param apiKey - The test-account-access API key (e.g. rmx_abc123...)
    */
   constructor(ssoBaseUrl: string, apiKey: string) {
