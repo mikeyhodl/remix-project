@@ -69,12 +69,6 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     metadata.accepted = true;
     metadata.acceptanceType = 'full'; // Full Tab completion
 
-    console.log('[handleExternalAcceptance] Full completion accepted (Tab key)', {
-      sessionId,
-      task: metadata.task,
-      rateLimiterStats: this.rateLimiter.getStats()
-    });
-
     this.rateLimiter.trackCompletionAccepted();
   }
 
@@ -404,15 +398,8 @@ export class RemixInLineCompletionProvider implements monacoTypes.languages.Inli
     metadata.accepted = true;
     metadata.acceptanceType = 'partial';
 
-    console.log('[handlePartialAccept] Partial completion accepted', {
-      sessionId: metadata.sessionId,
-      task: metadata.task,
-      acceptedCharacters,
-      rateLimiterStats: this.rateLimiter.getStats()
-    });
-
     this.rateLimiter.trackCompletionAccepted()
-    this.trackMatomoEvent?.({ category: 'ai', action: 'completion', name: metadata.task + '_partial_accept', isClick: true })
+    this.trackMatomoEvent?.({ category: 'ai', action: 'completion', name: metadata.task + '_partial_accept', isClick: false })
   }
 
   freeInlineCompletions(
