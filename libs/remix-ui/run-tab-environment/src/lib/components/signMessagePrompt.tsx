@@ -1,7 +1,8 @@
-import React, { useState } from "react"
+import React, { useState, useContext } from "react"
 import { FormattedMessage, useIntl } from "react-intl"
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { EnvironmentPlugin } from "apps/remix-ide/src/app/udapp/udappEnv"
+import { TrackingContext } from '@remix-ide/tracking'
 
 const EIP712_Example = {
   domain: {
@@ -39,15 +40,18 @@ export function SignMessagePrompt ({
   defaultMessage?: string
 }) {
   const intl = useIntl()
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [message, setMessage] = useState(defaultMessage)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
+    trackMatomoEvent?.({ category: 'udapp', action: 'signMessageInput', name: String(value.length) })
     setMessage(value)
     onMessageChange(value)
   }
 
   const handleEIP712Click = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'signEIP712', name: 'clicked', isClick: true })
     // Hack to close SignMessagePrompt modal and show EIP712MessageSigning modal
     // TODO: Remove this hack when we have a proper way to close modals via plugin calls
     const cancelBtn = document.querySelector('[data-id="signMessage-modal-footer-cancel-react"]') as HTMLButtonElement

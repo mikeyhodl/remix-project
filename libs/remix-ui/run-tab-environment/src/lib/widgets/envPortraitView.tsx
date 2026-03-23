@@ -48,6 +48,7 @@ function EnvironmentPortraitView() {
   }
 
   const handleProviderSelection = (provider: Provider) => {
+    trackMatomoEvent({ category: 'udapp', action: 'environmentSelected', name: provider.category || provider.displayName, isClick: true })
     if (provider.category && selectedProvider?.category === provider.category) return
     if (provider.category === 'Dev' || provider.category === 'Browser Extension') {
       // select category to show sub-categories
@@ -58,21 +59,28 @@ function EnvironmentPortraitView() {
   }
 
   const handleAccountSelection = (account: Account) => {
+    trackMatomoEvent({ category: 'udapp', action: 'accountSelected', name: shortenAddress(account.account), isClick: true })
     dispatch({ type: 'SET_SELECTED_ACCOUNT', payload: account.account })
   }
 
   const handleKebabClick = (e: React.MouseEvent, accountId: string) => {
     e.preventDefault()
     e.stopPropagation()
+    const willOpen = openKebabMenuId !== accountId
+    if (willOpen) {
+      trackMatomoEvent({ category: 'udapp', action: 'kebabMenuOpen', name: accountId, isClick: true })
+    }
     setOpenKebabMenuId(prev => prev === accountId ? null : accountId)
   }
 
   const handleNewAccount = () => {
+    trackMatomoEvent({ category: 'udapp', action: 'newAccount', name: 'clicked', isClick: true })
     createNewAccount(plugin, dispatch)
     setOpenKebabMenuId(null)
   }
 
   const handleCreateSmartAccount = (_account: Account) => {
+    trackMatomoEvent({ category: 'udapp', action: 'createSmartAccount', name: shortenAddress(_account.account), isClick: true })
     plugin.call('notification', 'modal', {
       id: 'createSmartAccount',
       title: <SmartAccountPromptTitle title={intl.formatMessage({ id: 'udapp.createSmartAccount' })} />,
@@ -88,6 +96,7 @@ function EnvironmentPortraitView() {
   }
 
   const handleAuthorizeDelegation = (_account: Account) => {
+    trackMatomoEvent({ category: 'udapp', action: 'authorizeDelegation', name: shortenAddress(_account.account), isClick: true })
     plugin.call('notification', 'modal', {
       id: 'createDelegationAuthorization',
       title: intl.formatMessage({ id: 'udapp.createDelegationTitle' }),
@@ -187,6 +196,7 @@ function EnvironmentPortraitView() {
   }
 
   const handleRenameAccount = (account: Account) => {
+    trackMatomoEvent({ category: 'udapp', action: 'renameAccount', name: shortenAddress(account.account), isClick: true })
     setOpenKebabMenuId(null)
     const accountId = account.account === selectedAccount?.account ? 'selected' : `account-${widgetState.accounts.defaultAccounts.findIndex(a => a.account === account.account)}`
     setEditingAccountId(accountId)
@@ -199,6 +209,7 @@ function EnvironmentPortraitView() {
   }
 
   const handleDeleteAccount = (account: Account) => {
+    trackMatomoEvent({ category: 'udapp', action: 'deleteAccount', name: shortenAddress(account.account), isClick: true })
     plugin.call('notification', 'modal', {
       id: 'deleteAccount',
       title: 'Delete Account',
@@ -214,6 +225,7 @@ function EnvironmentPortraitView() {
 
   const handleStartEditAlias = (accountId: string, currentAlias: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    trackMatomoEvent({ category: 'udapp', action: 'accountAliasEditStart', name: accountId, isClick: true })
     setIsAccountDropdownOpen(false)
     setEditingAccountId(accountId)
     setEditingAlias(currentAlias)
@@ -227,6 +239,7 @@ function EnvironmentPortraitView() {
 
   const handleSaveAlias = async (accountAddress: string) => {
     if (editingAlias.trim()) {
+      trackMatomoEvent({ category: 'udapp', action: 'accountAliasSaved', name: editingAlias.trim() })
       await updateAccountAlias(accountAddress, editingAlias.trim(), plugin, dispatch)
     }
     setEditingAccountId(null)
@@ -238,6 +251,7 @@ function EnvironmentPortraitView() {
       e.preventDefault()
       handleSaveAlias(accountAddress)
     } else if (e.key === 'Escape') {
+      trackMatomoEvent({ category: 'udapp', action: 'accountAliasCancelled', name: shortenAddress(accountAddress) })
       setEditingAccountId(null)
       setEditingAlias('')
     }
@@ -352,6 +366,7 @@ function EnvironmentPortraitView() {
   }, [widgetState.accounts.defaultAccounts, widgetState.accounts.smartAccounts])
 
   const handleDeleteDelegation = async () => {
+    trackMatomoEvent({ category: 'udapp', action: 'deleteDelegation', name: shortenAddress(selectedAccount?.account), isClick: true })
     plugin.call('notification', 'modal', {
       id: 'deleteDelegation',
       title: 'Remove Delegation',
@@ -400,6 +415,9 @@ function EnvironmentPortraitView() {
         {!widgetState.fork.isVisible.forkUI && !widgetState.fork.isVisible.resetUI && (
           <div className="d-flex p-3 pt-0">
             <Dropdown className="w-100" show={isEnvironmentDropdownOpen} onToggle={(isOpen) => {
+              if (isOpen) {
+                trackMatomoEvent({ category: 'udapp', action: 'environmentDropdownOpen', name: selectedProvider?.category || selectedProvider?.displayName || 'Remix VM' })
+              }
               if (isOpen && isSubCategoryDropdownOpen) setIsSubCategoryDropdownOpen(false)
               if (isOpen && isAccountDropdownOpen) setIsAccountDropdownOpen(false)
               setIsEnvironmentDropdownOpen(isOpen)
@@ -440,7 +458,14 @@ function EnvironmentPortraitView() {
         {!widgetState.fork.isVisible.resetUI && (
           <div className="d-flex px-3">
             { hierarchicalAccounts.length > 0 &&
-            <Dropdown className="w-100" show={!widgetState.accounts.isRequesting && isAccountDropdownOpen} onToggle={(isOpen) => !widgetState.accounts.isRequesting && setIsAccountDropdownOpen(isOpen)}>
+            <Dropdown className="w-100" show={!widgetState.accounts.isRequesting && isAccountDropdownOpen} onToggle={(isOpen) => {
+              if (!widgetState.accounts.isRequesting) {
+                if (isOpen) {
+                  trackMatomoEvent({ category: 'udapp', action: 'accountDropdownOpen', name: shortenAddress(selectedAccount?.account) })
+                }
+                setIsAccountDropdownOpen(isOpen)
+              }
+            }}>
               <Dropdown.Toggle as={AddressToggle} data-id="runTabSelectAccount" className={`w-100 d-inline-block border form-control ${!selectedAccountIsSmartAccount ? 'selected-account-hover' : ''} account-toggle ${isAccountDropdownOpen ? 'dropdown-open' : ''} ${widgetState.accounts.isRequesting ? 'disabled' : ''}`} style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', cursor: widgetState.accounts.isRequesting ? 'not-allowed' : 'pointer', opacity: widgetState.accounts.isRequesting ? 0.6 : 1 }}>
                 {widgetState.accounts.isRequesting ? (
                   <div className="d-flex align-items-center justify-content-center w-100">
@@ -487,7 +512,7 @@ function EnvironmentPortraitView() {
                             </div>
                             <div className="account-address-label">
                               <span className="small">{shortenAddress(selectedAccount?.account)}</span>
-                              <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => selectedAccount?.account}>
+                              <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => selectedAccount?.account} callback={() => trackMatomoEvent({ category: 'udapp', action: 'copyAccountAddress', name: shortenAddress(selectedAccount?.account), isClick: true })}>
                                 <i className="fa-solid fa-copy small ms-1 copy-icon"></i>
                               </CopyToClipboard>
                             </div>
@@ -578,7 +603,7 @@ function EnvironmentPortraitView() {
                               </div>
                               <div className="account-address-label">
                                 <span className="small">{shortenAddress(accountData?.account)}</span>
-                                <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => accountData?.account}>
+                                <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => accountData?.account} callback={() => trackMatomoEvent({ category: 'udapp', action: 'copyAccountAddress', name: shortenAddress(accountData?.account), isClick: true })}>
                                   <i className="fa-solid fa-copy small ms-1 copy-icon"></i>
                                 </CopyToClipboard>
                               </div>
@@ -617,7 +642,7 @@ function EnvironmentPortraitView() {
             <div className="d-flex align-items-center mt-2">
               <span className="owner-label-badge d-flex align-items-center">
                 Owner: {shortenAddress(selectedSmartAccountOwner)}
-                <CopyToClipboard tip="Copy owner address" icon="fa-copy" direction="top" getContent={() => selectedSmartAccountOwner}>
+                <CopyToClipboard tip="Copy owner address" icon="fa-copy" direction="top" getContent={() => selectedSmartAccountOwner} callback={() => trackMatomoEvent({ category: 'udapp', action: 'copyAccountAddress', name: shortenAddress(selectedSmartAccountOwner), isClick: true })}>
                   <i className="fa-solid fa-copy ms-2 copy-icon"></i>
                 </CopyToClipboard>
               </span>
@@ -630,7 +655,7 @@ function EnvironmentPortraitView() {
               <div className="d-flex align-items-center small">
                 <span className="me-2">Delegation:</span>
                 <span className="text-truncate delegation-address">{shortenAddress(delegationAddress)}</span>
-                <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => delegationAddress}>
+                <CopyToClipboard tip="Copy address" icon="fa-copy" direction="top" getContent={() => delegationAddress} callback={() => trackMatomoEvent({ category: 'udapp', action: 'copyDelegationAddress', name: shortenAddress(delegationAddress), isClick: true })}>
                   <i className="fa-solid fa-copy small ms-1 copy-icon"></i>
                 </CopyToClipboard>
               </div>

@@ -60,6 +60,12 @@ export async function loadAddress (plugin: DeployedContractsPlugin, dispatch: Re
 
       // Add instance with contract data
       await plugin.addInstance(address, contractData.abi, contractData.name, contractData)
+      trackMatomoEvent(plugin, {
+        category: 'udapp',
+        action: 'useAtAddress',
+        name: 'AtAddressLoadWithContract',
+        isClick: false
+      })
       dispatch({ type: 'SET_ADDRESS_INPUT', payload: '' })
     } catch (e) {
       console.error('Error loading contract:', e)

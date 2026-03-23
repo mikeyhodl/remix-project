@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ToggleSwitch } from '@remix-ui/toggle'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface VerificationSettingsProps {
   isVerifyChecked: boolean
@@ -11,6 +12,7 @@ interface VerificationSettingsProps {
 export function VerificationSettingsUI(props: VerificationSettingsProps) {
   const { isVerifyChecked, onVerifyCheckedChange } = props
   const intl = useIntl()
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   return (
     <div className="d-flex align-items-center justify-content-between pb-2">
@@ -38,7 +40,10 @@ export function VerificationSettingsUI(props: VerificationSettingsProps) {
             <ToggleSwitch
               id="deployAndRunVerifyContract"
               isOn={isVerifyChecked}
-              onClick={() => onVerifyCheckedChange(!isVerifyChecked)}
+              onClick={() => {
+                trackMatomoEvent?.({ category: 'udapp', action: 'verifyContractToggle', name: !isVerifyChecked ? 'enabled' : 'disabled', isClick: true })
+                onVerifyCheckedChange(!isVerifyChecked)
+              }}
             />
           </div>
         </CustomTooltip>

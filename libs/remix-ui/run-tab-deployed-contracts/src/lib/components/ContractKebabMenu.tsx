@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { Overlay } from 'react-bootstrap'
 import { useIntl } from 'react-intl'
 import { DeployedContract } from '../types'
+import { TrackingContext } from '@remix-ide/tracking'
+import { UdappEvent } from '@remix-api'
 
 interface ContractKebabMenuProps {
   show: boolean
@@ -46,12 +48,21 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
   onClear
 }) => {
   const intl = useIntl()
-  const menuItems = [
+  const { trackMatomoEvent } = useContext(TrackingContext)
+  const menuItems: Array<{
+    id: string
+    label: string
+    icon: string
+    color: string
+    action: UdappEvent['action']
+    onClick: () => void
+  }> = [
     onCreateDapp && {
       id: 'createDapp',
       label: intl.formatMessage({ id: 'udapp.createDappMenuItem' }),
       icon: 'fa-kit fa-remixai',
       color: 'var(--bs-body-color)',
+      action: 'deployedContractCreateDapp' as const,
       onClick: () => onCreateDapp(contract)
     },
     onCopyABI && {
@@ -59,6 +70,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
       label: intl.formatMessage({ id: 'udapp.copyABIMenuItem' }),
       icon: 'far fa-copy',
       color: 'var(--bs-body-color)',
+      action: 'deployedContractCopyABI' as const,
       onClick: () => onCopyABI(contract)
     },
     onCopyBytecode && {
@@ -66,6 +78,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
       label: intl.formatMessage({ id: 'udapp.copyBytecodeMenuItem' }),
       icon: 'far fa-copy',
       color: 'var(--bs-body-color)',
+      action: 'deployedContractCopyBytecode' as const,
       onClick: () => onCopyBytecode(contract)
     },
     onOpenInExplorer && {
@@ -73,6 +86,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
       label: intl.formatMessage({ id: 'udapp.openInExplorerMenuItem' }),
       icon: 'fas fa-external-link-alt',
       color: 'var(--bs-body-color)',
+      action: 'deployedContractOpenExplorer' as const,
       onClick: () => onOpenInExplorer(contract)
     },
     onClear && {
@@ -80,6 +94,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
       label: intl.formatMessage({ id: 'udapp.clearMenuItem' }),
       icon: 'far fa-trash-alt text-danger',
       color: 'var(--bs-danger)',
+      action: 'deployedContractRemove' as const,
       onClick: () => onClear(contract)
     }
   ].filter(Boolean)
@@ -127,6 +142,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
                   data-id={item.id}
                   onClick={(e) => {
                     e.stopPropagation()
+                    trackMatomoEvent?.({ category: 'udapp', action: item.action, name: 'clicked', isClick: true })
                     item.onClick()
                   }}
                   style={{

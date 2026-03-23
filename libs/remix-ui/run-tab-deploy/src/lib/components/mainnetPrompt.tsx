@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { CopyToClipboard } from '@remix-ui/clipboard'
 import { formatUnits, parseUnits } from 'ethers'
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { DeployPlugin } from 'apps/remix-ide/src/app/udapp/udappDeploy'
 import { DeployUdappTx, DeployUdappNetwork } from '../types'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export function MainnetPrompt({ udappDeploy, tx, network, amount, gasEstimation, gasPriceValue }: { udappDeploy: DeployPlugin, tx: DeployUdappTx, network: DeployUdappNetwork, amount: string, gasEstimation: string, gasPriceValue: string }) {
   const intl = useIntl()
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [baseFee, setBaseFee] = useState<string>('')
   const [transactionFee, setTransactionFee] = useState<string>('')
   const [maxPriorityFee, setMaxPriorityFee] = useState<string>('')
@@ -89,7 +91,7 @@ export function MainnetPrompt({ udappDeploy, tx, network, amount, gasEstimation,
           <span className="text-dark me-2"><FormattedMessage id="udapp.dataLabel" /></span>
           <pre className="udapp_wrapword mb-0">
             {tx.data && tx.data.length > 50 ? tx.data.substring(0, 49) + '...' : tx.data}
-            <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copy' })} content={tx.data} />
+            <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copy' })} content={tx.data} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyTransactionData', name: 'clicked', isClick: true })} />
           </pre>
         </div>
         <div className="mb-3">
@@ -176,7 +178,12 @@ export function MainnetPrompt({ udappDeploy, tx, network, amount, gasEstimation,
         </div>
       </div>
       <div className="d-flex py-1 align-items-center form-check">
-        <input className="form-check-input" id="confirmsetting" type="checkbox" />
+        <input
+          className="form-check-input"
+          id="confirmsetting"
+          type="checkbox"
+          onChange={(e) => trackMatomoEvent?.({ category: 'udapp', action: 'mainnetConfirmCheckbox', name: e.target.checked ? 'checked' : 'unchecked', isClick: true })}
+        />
         <label className="ms-1 mt-1 form-check-label" htmlFor="confirmsetting">
           <FormattedMessage id="udapp.mainnetText3" />
         </label>

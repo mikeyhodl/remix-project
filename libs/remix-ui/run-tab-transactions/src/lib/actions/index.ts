@@ -3,7 +3,8 @@ import React from 'react'
 import { TransactionsPlugin } from 'apps/remix-ide/src/app/udapp/udappTransactions'
 import { Actions, Transaction, RecorderData } from '../types'
 import * as remixLib from '@remix-project/remix-lib'
-import { extractRecorderTimestamp } from '@remix-ui/helper'
+import { extractRecorderTimestamp, shortenAddress } from '@remix-ui/helper'
+import { trackMatomoEvent } from '@remix-api'
 
 const format = remixLib.execution.txFormat
 const txHelper = remixLib.execution.txHelper
@@ -27,6 +28,13 @@ export async function debugTransaction (plugin: TransactionsPlugin, transaction:
     if (!isDebuggerActive) await plugin.call('manager', 'activatePlugin', 'debugger')
     plugin.call('menuicons', 'select', 'debugger')
     plugin.call('debugger', 'debug', transaction.record?.txHash)
+
+    trackMatomoEvent(plugin, {
+      category: 'udapp',
+      action: 'transactionDebug',
+      name: shortenAddress(transaction.record?.txHash),
+      isClick: false
+    })
   } catch (error) {
     console.error('Error debugging transaction:', error)
     await plugin.call('notification', 'toast', `Error: ${error.message}`)
@@ -114,6 +122,13 @@ export async function replayTransaction (transaction: Transaction, recorderData:
       const result = await plugin.call('blockchain', 'runTx', txData)
 
       if (tx.record.type === 'constructor') await plugin.call('udappDeployedContracts', 'addInstance', result.address, txData.data.contractABI, tx.record.contractName, txData.data)
+
+      trackMatomoEvent(plugin, {
+        category: 'udapp',
+        action: 'transactionReplay',
+        name: tx.record.type === 'constructor' ? 'deployment' : tx.record.name || 'transaction',
+        isClick: false
+      })
     } catch (err) {
       console.error(err)
       throw new Error(err + '. Execution failed at ' + record.targetAddress)
@@ -133,6 +148,13 @@ export async function openTransactionInTerminal (plugin: TransactionsPlugin, tra
       const element = document.querySelector(`[data-id="${dataId}"]`) as HTMLElement
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+        trackMatomoEvent(plugin, {
+          category: 'udapp',
+          action: 'transactionOpenTerminal',
+          name: shortenAddress(txHash),
+          isClick: false
+        })
       }
     }
   } catch (error) {
@@ -164,6 +186,13 @@ export async function openTransactionInExplorer (plugin: TransactionsPlugin, tra
         return
       }
       window.open(explorerUrl, '_blank')
+
+      trackMatomoEvent(plugin, {
+        category: 'udapp',
+        action: 'transactionOpenExplorer',
+        name: network.name.toLowerCase(),
+        isClick: false
+      })
     }
   } catch (error) {
     console.error('Error opening in explorer:', error)
@@ -175,6 +204,13 @@ export async function clearTransaction (plugin: TransactionsPlugin, transaction:
   try {
     dispatch({ type: 'REMOVE_TRANSACTION', payload: transaction.timestamp.toString() })
     await plugin.call('notification', 'toast', 'Transaction removed')
+
+    trackMatomoEvent(plugin, {
+      category: 'udapp',
+      action: 'transactionClear',
+      name: shortenAddress(transaction.record?.txHash),
+      isClick: false
+    })
   } catch (error) {
     console.error('Error clearing transaction:', error)
     await plugin.call('notification', 'toast', `Error: ${error.message}`)

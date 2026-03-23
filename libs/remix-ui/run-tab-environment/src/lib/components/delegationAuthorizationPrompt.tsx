@@ -1,5 +1,7 @@
-import React, { useState } from "react"
+import React, { useState, useContext } from "react"
 import { FormattedMessage, useIntl } from "react-intl"
+import { TrackingContext } from '@remix-ide/tracking'
+import { shortenAddress } from '@remix-ui/helper'
 
 export function DelegationAuthorizationPrompt ({
   onAddressChange
@@ -7,10 +9,12 @@ export function DelegationAuthorizationPrompt ({
   onAddressChange: (address: string) => void
 }) {
   const intl = useIntl()
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [authAddress, setAuthAddress] = useState('')
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
+    trackMatomoEvent?.({ category: 'udapp', action: 'delegationAddressInput', name: value ? shortenAddress(value) : 'empty' })
     setAuthAddress(value)
     onAddressChange(value)
   }
