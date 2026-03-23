@@ -214,7 +214,7 @@ export function updateEndpoints(config: RemixConfig): void {
 
   // SSO must always point to auth.api.remix.live (separate auth domain)
   endpointUrls.sso = 'https://auth.api.remix.live/sso';
-  console.warn('[endpoints] Updated endpoint URLs from discovery:', Object.entries(endpointUrls).map(([k, v]) => `${k}: ${v}`).join(', '));
+ 
 }
 
 /**
@@ -228,16 +228,12 @@ export async function initEndpoints(baseUrl?: string): Promise<void> {
   const timeout = setTimeout(() => controller.abort(), 3000);
   try {
     const url = `${base}/.well-known/remix-config`;
-    console.warn(`[endpoints] Fetching service discovery from ${url}...`);
     const res = await fetch(url, { signal: controller.signal });
-    console.warn(`[endpoints] Discovery response: ${res.status} ${res.statusText}`);
     if (!res.ok) throw new Error(`Discovery HTTP ${res.status}`);
-    console.warn('[endpoints] Discovery config received, updating endpoints...');
     const config: RemixConfig = await res.json();
-    console.warn('[endpoints] Discovery config:', config.baseUrl, Object.keys(config.services).length, 'services');
     updateEndpoints(config);
-  } catch (e) {
-    console.warn('[endpoints] Discovery failed, using defaults:', (e as Error).message);
+  } catch {
+    // Discovery failed — continue with defaults
   } finally {
     clearTimeout(timeout);
   }
