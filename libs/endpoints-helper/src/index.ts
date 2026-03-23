@@ -228,7 +228,7 @@ export async function initEndpoints(baseUrl?: string): Promise<void> {
       fetchRemixConfig(base),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Discovery timeout')), 5000))
     ]);
-    updateEndpoints(config);
+    //updateEndpoints(config);
   } catch (e) {
     console.warn('[endpoints] Discovery failed, using defaults:', e);
   }
