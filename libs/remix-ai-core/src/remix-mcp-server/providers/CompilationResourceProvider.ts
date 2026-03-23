@@ -215,13 +215,15 @@ export class CompilationResourceProvider extends BaseResourceProvider {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
-            result.contracts[`${fileName}:${contractName}`] = {
-              abi: contract.abi || [],
-              // bytecode: contract.evm?.bytecode?.object || '',
-              // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
-              // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
-              gasEstimates: contract.evm?.gasEstimates || {}
-            };
+            if (fileName.includes(compilationResult.source?.target as string)){
+              result.contracts[`${fileName}:${contractName}`] = {
+                abi: contract.abi || [],
+                // bytecode: contract.evm?.bytecode?.object || '',
+                // deployedBytecode: contract.evm?.deployedBytecode?.object || '',
+                // metadata: contract.metadata ? JSON.parse(contract.metadata) : {},
+                gasEstimates: contract.evm?.gasEstimates || {}
+              };
+            }
           }
         }
       }
