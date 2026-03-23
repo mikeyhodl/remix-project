@@ -39,7 +39,7 @@ parameters:
   resource_class:
     type: enum
     enum: ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
-    default: "medium"
+    default: "2xlarge"
 
   # E2E configuration
   e2e_parallelism:
