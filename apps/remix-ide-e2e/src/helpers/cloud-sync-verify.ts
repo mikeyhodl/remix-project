@@ -22,7 +22,7 @@ import { NightwatchBrowser } from 'nightwatch'
 
 require('dotenv').config()
 
-const API_URL = process.env.REMIX_API_URL || 'https://auth.api.remix.live:8443'
+const API_URL = process.env.REMIX_API_URL || 'https://auth.api.remix.live'
 
 export interface SyncVerifyResult {
   ok: boolean
