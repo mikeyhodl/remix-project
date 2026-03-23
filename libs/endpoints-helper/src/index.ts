@@ -223,13 +223,17 @@ export function updateEndpoints(config: RemixConfig): void {
  */
 export async function initEndpoints(baseUrl?: string): Promise<void> {
   const base = baseUrl || ('https://api.remix.live').replace(/\/$/, '');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
   try {
-    const config = await Promise.race([
-      fetchRemixConfig(base),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Discovery timeout')), 5000))
-    ]);
-    //updateEndpoints(config);
+    const url = `${base}/.well-known/remix-config`;
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Discovery HTTP ${res.status}`);
+    const config: RemixConfig = await res.json();
+    updateEndpoints(config);
   } catch (e) {
-    console.warn('[endpoints] Discovery failed, using defaults:', e);
+    console.warn('[endpoints] Discovery failed, using defaults:', (e as Error).message);
+  } finally {
+    clearTimeout(timeout);
   }
 }

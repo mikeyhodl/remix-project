@@ -10,8 +10,8 @@ import { renderApp } from './app/utils/AppRenderer'
 import { initEndpoints } from '@remix-endpoints-helper'
 
 ; (async function () {
-  // Load endpoint URLs from service discovery
-  await initEndpoints();
+  // Load endpoint URLs from service discovery (non-blocking)
+  initEndpoints();
 
   // Create Matomo configuration
   const matomoConfig = createMatomoConfig();
