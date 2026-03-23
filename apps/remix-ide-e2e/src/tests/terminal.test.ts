@@ -9,7 +9,7 @@ const runMasterTests: boolean = (branch ? (isMasterBranch ? true : false) : true
 module.exports = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
-    init(browser, done, 'http://127.0.0.1:8080?plugins=solidity,udapp', false, undefined, true, false)
+    init(browser, done, 'http://localhost:8080?plugins=solidity,udapp', false, undefined, true, false)
   },
 
   'Terminal dragbar should not be visible on load #group1': function (browser: NightwatchBrowser) {
