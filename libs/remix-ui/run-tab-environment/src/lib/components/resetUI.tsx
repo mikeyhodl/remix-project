@@ -1,14 +1,17 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvAppContext } from '../contexts'
 import { resetVmState } from '../actions'
 import { Spinner } from 'react-bootstrap'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export function ResetUI() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(EnvAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
 
   const handleSubmit = async () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'resetConfirm', name: 'confirmed', isClick: true })
     dispatch({ type: 'REQUEST_FORK', payload: undefined })
     try {
       await resetVmState(plugin, widgetState, dispatch)
@@ -27,7 +30,10 @@ export function ResetUI() {
         <p className="mb-0 text-danger" style={{ fontSize: '0.9rem' }}> {intl.formatMessage({ id: 'udapp.resetVmStateTitle' })} </p>
         <button
           className="btn btn-sm"
-          onClick={() => dispatch({ type: 'HIDE_RESET_UI', payload: undefined })}
+          onClick={() => {
+            trackMatomoEvent?.({ category: 'udapp', action: 'resetDialogClose', name: 'close_button', isClick: true })
+            dispatch({ type: 'HIDE_RESET_UI', payload: undefined })
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -51,7 +57,10 @@ export function ResetUI() {
         <div className="d-flex justify-content-between align-items-center gap-3">
           <button
             className="btn btn-sm btn-secondary rounded"
-            onClick={() => dispatch({ type: 'HIDE_RESET_UI', payload: undefined })}
+            onClick={() => {
+              trackMatomoEvent?.({ category: 'udapp', action: 'resetCancel', name: 'cancelled', isClick: true })
+              dispatch({ type: 'HIDE_RESET_UI', payload: undefined })
+            }}
             disabled={widgetState.fork.isRequesting}
             style={{ color: themeQuality === 'dark' ? 'white' : 'black', flex: 1 }}
           >

@@ -13,6 +13,7 @@ import { ContractKebabMenu } from './ContractKebabMenu'
 import { AIRequestForm } from '@remix-ui/run-tab'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
+import { TrackingContext } from '@remix-ide/tracking'
 
 const txHelper = remixLib.execution.txHelper
 const highlightedContracts = new Set<string>()
@@ -27,6 +28,7 @@ interface DeployedContractItemProps {
 
 export function DeployedContractItem({ contract, index, registerRef, isKebabMenuOpen = false, onKebabMenuToggle }: DeployedContractItemProps) {
   const { dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
   const [networkName, setNetworkName] = useState<string>('')
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
@@ -120,6 +122,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
 
   const handlePinContract = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    trackMatomoEvent?.({ category: 'udapp', action: 'pinContractToggle', name: contract.isPinned ? 'unpinned' : 'pinned', isClick: true })
     const network = await plugin.call('udappEnv', 'getNetwork')
     const chainId = network?.chainId
     const providerName = network?.name === 'VM' ? await plugin.call('udappEnv', 'getSelectedProvider') : chainId
@@ -159,10 +162,12 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   }
 
   const handleContractClick = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractToggle', name: !isExpanded ? 'expanded' : 'collapsed', isClick: true })
     setIsExpanded(!isExpanded)
   }
 
   const toggleHighLevel = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'highLevelInteractionToggle', name: !showHighLevel ? 'expanded' : 'collapsed', isClick: true })
     if (!showHighLevel) {
       setShowHighLevel(true)
       setShowLowLevel(false)
@@ -173,6 +178,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   }
 
   const toggleLowLevel = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'lowLevelInteractionToggle', name: !showLowLevel ? 'expanded' : 'collapsed', isClick: true })
     if (!showLowLevel) {
       setShowLowLevel(true)
       setShowHighLevel(false)
@@ -184,11 +190,13 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
 
   const handleFunctionClick = (funcIndex: number) => {
     if (selectedFunctionIndex !== funcIndex) {
+      trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractFunctionSelect', name: functionABIs[funcIndex]?.name || `func${funcIndex}`, isClick: true })
       setSelectedFunctionIndex(funcIndex)
     }
   }
 
   const handleFunctionInputChange = (funcIndex: number, paramIndex: number, value: string) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractFunctionInput', name: `func${funcIndex}_param${paramIndex}` })
     setFuncInputs(prev => ({
       ...prev,
       [funcIndex]: {
@@ -302,6 +310,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const handleKebabClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractKebabMenuOpen', name: shortenAddress(contract.address), isClick: true })
     if (onKebabMenuToggle) {
       onKebabMenuToggle(!isKebabMenuOpen)
     }
@@ -475,6 +484,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   }
 
   const handleExpand = (path: string) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractTreeExpand', name: path })
     if (expandPath.includes(path)) {
       const filteredPath = expandPath.filter((value) => value !== path)
       setExpandPath(filteredPath)
@@ -545,7 +555,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                 </div>
                 <div className="d-flex align-items-center gap-1 font-sm" style={{ color: 'var(--bs-tertiary-color)' }}>
                   <span>{shortenAddress(contract.address)}</span>
-                  <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyAddressTooltip' })} icon="fa-copy" direction="top" getContent={() => contract?.address}>
+                  <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyAddressTooltip' })} icon="fa-copy" direction="top" getContent={() => contract?.address} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyDeployedContractAddress', name: shortenAddress(contract.address), isClick: true })}>
                     <i className="fa-solid fa-copy small ms-1" style={{ cursor: 'pointer' }}></i>
                   </CopyToClipboard>
                 </div>
@@ -707,7 +717,10 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                       placeholder="calldata"
                       className="form-control form-control-sm"
                       value={calldataValue}
-                      onChange={(e) => setCalldataValue(e.target.value)}
+                      onChange={(e) => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractCalldataInput', name: e.target.value })
+                        setCalldataValue(e.target.value)
+                      }}
                       style={{
                         color: themeQuality === 'dark' ? 'white' : 'black',
                         border: 'none',
@@ -825,6 +838,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                         value={value}
                         onChange={(e) => {
                           const val = e.target.value
+                          trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractValueInput', name: val || '0' })
                           // Only allow empty string or valid numeric strings
                           if (val === '' || /^\d+$/.test(val)) {
                             setValue(val)
@@ -852,10 +866,22 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                           {valueUnit}
                         </Dropdown.Toggle>
                         <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', '--bs-dropdown-min-width': '4rem', padding: 0 } as React.CSSProperties}>
-                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('wei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
-                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('gwei')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
-                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('finney')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
-                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => setValueUnit('ether')} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractValueUnitChange', name: 'wei', isClick: true })
+                            setValueUnit('wei')
+                          }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>wei</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractValueUnitChange', name: 'gwei', isClick: true })
+                            setValueUnit('gwei')
+                          }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>gwei</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractValueUnitChange', name: 'finney', isClick: true })
+                            setValueUnit('finney')
+                          }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>finney</Dropdown.Item>
+                          <Dropdown.Item className="unit-dropdown-item-hover" onClick={() => {
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractValueUnitChange', name: 'ether', isClick: true })
+                            setValueUnit('ether')
+                          }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}>ether</Dropdown.Item>
                         </Dropdown.Menu>
                       </Dropdown>
                     </div>
@@ -878,6 +904,8 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                           zIndex: 1
                         }}
                         onClick={() => {
+                          const newMode = gasLimit === 0 ? 'custom' : 'auto'
+                          trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitToggle', name: newMode, isClick: true })
                           if (gasLimit === 0) {
                             setGasLimit(3000000)
                           } else {
@@ -892,7 +920,10 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                         className="form-control form-control-sm border-0"
                         placeholder="3000000"
                         value={gasLimit}
-                        onChange={(e) => setGasLimit(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitInput', name: e.target.value })
+                          setGasLimit(parseInt(e.target.value))
+                        }}
                         disabled={gasLimit === 0}
                         style={{
                           color: 'var(--dark/text-quaternary, #959bad)',
@@ -915,6 +946,8 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
                   data-id={`btnExecute-${index}`}
                   className="btn btn-primary w-100 mt-3"
                   onClick={() => {
+                    const actionType = showLowLevel ? 'lowLevel' : functionABIs[selectedFunctionIndex]?.name || 'function'
+                    trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractExecute', name: actionType, isClick: true })
                     if (showLowLevel) {
                       sendData()
                     } else if (selectedFunctionIndex !== null) {

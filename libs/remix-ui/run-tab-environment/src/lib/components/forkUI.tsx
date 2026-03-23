@@ -1,11 +1,13 @@
-import React, { useState, useContext, useMemo } from 'react'
+import React, { useState, useContext, useMemo, useEffect } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { EnvAppContext } from '../contexts'
 import { forkState } from '../actions'
 import { Spinner } from 'react-bootstrap'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export function ForkUI() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(EnvAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
 
   const currentProvider = useMemo(() => {
@@ -31,6 +33,7 @@ export function ForkUI() {
       return
     }
 
+    trackMatomoEvent?.({ category: 'udapp', action: 'forkSubmit', name: forkName.trim(), isClick: true })
     dispatch({ type: 'REQUEST_FORK', payload: undefined })
     try {
       await forkState(plugin, dispatch, currentProvider, forkName.trim())
@@ -57,7 +60,10 @@ export function ForkUI() {
         </p>
         <button
           className="btn btn-sm"
-          onClick={() => dispatch({ type: 'HIDE_FORK_UI', payload: undefined })}
+          onClick={() => {
+            trackMatomoEvent?.({ category: 'udapp', action: 'forkDialogClose', name: 'close_button', isClick: true })
+            dispatch({ type: 'HIDE_FORK_UI', payload: undefined })
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -83,7 +89,10 @@ export function ForkUI() {
             type="text"
             className="form-control"
             value={forkName}
-            onChange={(e) => setForkName(e.target.value)}
+            onChange={(e) => {
+              trackMatomoEvent?.({ category: 'udapp', action: 'forkNameInput', name: e.target.value })
+              setForkName(e.target.value)
+            }}
             disabled={widgetState.fork.isRequesting}
             style={{ backgroundColor: 'var(--bs-body-bg)', color: themeQuality === 'dark' ? 'white' : 'black', flex: 1, padding: '0.75rem', paddingRight: '3.5rem', fontSize: '0.75rem' }}
             onKeyDown={handleKeyPress}

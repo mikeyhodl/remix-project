@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { Overlay } from 'react-bootstrap'
 import { Transaction } from '../types'
+import { TrackingContext } from '@remix-ide/tracking'
+import { UdappEvent } from '@remix-api'
 
 interface TransactionKebabMenuProps {
   show: boolean
@@ -44,12 +46,21 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
   onOpenInExplorer,
   onClear
 }) => {
-  const menuItems = [
+  const { trackMatomoEvent } = useContext(TrackingContext)
+  const menuItems: Array<{
+    id: string
+    label: string
+    icon: string
+    color: string
+    action: UdappEvent['action']
+    onClick: () => void
+  }> = [
     onDebug && {
       id: 'debug',
       label: 'Debug',
       icon: 'fas fa-bug',
       color: 'var(--bs-body-color)',
+      action: 'transactionDebug' as const,
       onClick: () => onDebug(transaction)
     },
     onReplay && {
@@ -57,6 +68,7 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
       label: 'Replay',
       icon: 'fas fa-arrows-rotate',
       color: 'var(--bs-body-color)',
+      action: 'transactionReplay' as const,
       onClick: () => onReplay(transaction)
     },
     onOpenInTerminal && {
@@ -64,6 +76,7 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
       label: 'Open in terminal',
       icon: 'fas fa-terminal',
       color: 'var(--bs-body-color)',
+      action: 'transactionOpenTerminal' as const,
       onClick: () => onOpenInTerminal(transaction)
     },
     onOpenInExplorer && {
@@ -71,6 +84,7 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
       label: 'Open in explorer',
       icon: 'fas fa-external-link-alt',
       color: 'var(--bs-body-color)',
+      action: 'transactionOpenExplorer' as const,
       onClick: () => onOpenInExplorer(transaction)
     },
     onClear && {
@@ -78,6 +92,7 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
       label: 'Clear',
       icon: 'far fa-trash-alt text-danger',
       color: 'var(--bs-danger)',
+      action: 'transactionClear' as const,
       onClick: () => onClear(transaction)
     }
   ].filter(Boolean)
@@ -125,6 +140,7 @@ export const TransactionKebabMenu: React.FC<TransactionKebabMenuProps> = ({
                   data-id={item.id}
                   onClick={(e) => {
                     e.stopPropagation()
+                    trackMatomoEvent?.({ category: 'udapp', action: item.action, name: 'clicked', isClick: true })
                     item.onClick()
                   }}
                   style={{

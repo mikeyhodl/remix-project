@@ -6,10 +6,12 @@ import { TransactionsAppContext } from '../contexts'
 import { TabType } from '../types'
 import { TransactionRecordCard } from '../components/TransactionRecordCard'
 import { TransactionItem } from '../components/TransactionItem'
+import { TrackingContext } from '@remix-ide/tracking'
 
 function TransactionsPortraitView() {
   const intl = useIntl()
   const { plugin, widgetState, dispatch, themeQuality, context } = useContext(TransactionsAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
 
   // Debugger: expanded by default, udapp: collapsed by default
   const [isAccordionOpen, setIsAccordionOpen] = React.useState(context === 'debugger')
@@ -18,23 +20,28 @@ function TransactionsPortraitView() {
   const [openKebabMenuId, setOpenKebabMenuId] = React.useState<string | null>(null)
 
   const handleTabChange = (tab: TabType) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsTabChange', name: tab, isClick: true })
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tab })
   }
 
   const toggleAccordion = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsAccordionToggle', name: !isAccordionOpen ? 'expanded' : 'collapsed', isClick: true })
     setIsAccordionOpen(!isAccordionOpen)
   }
 
   const handleClearAllClick = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsClearAllButtonClick', name: 'clicked', isClick: true })
     setIsAccordionOpen(true) // Expand accordion to show the dialog
     dispatch({ type: 'SHOW_CLEAR_ALL_DIALOG', payload: true })
   }
 
   const handleConfirmClearAll = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsClearAllConfirm', name: 'confirmed', isClick: true })
     dispatch({ type: 'CLEAR_RECORDER_DATA' })
   }
 
   const handleCancelClearAll = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsClearAllCancel', name: 'cancelled', isClick: true })
     dispatch({ type: 'SHOW_CLEAR_ALL_DIALOG', payload: false })
   }
 
@@ -43,20 +50,24 @@ function TransactionsPortraitView() {
       await plugin.call('notification', 'toast', intl.formatMessage({ id: 'udapp.noTransactionsToSave' }))
       return
     }
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSaveButtonClick', name: 'clicked', isClick: true })
     setIsAccordionOpen(true) // Expand accordion to show the dialog
     dispatch({ type: 'SHOW_SAVE_DIALOG', payload: true })
     dispatch({ type: 'SHOW_CLEAR_ALL_DIALOG', payload: false })
   }
 
   const handleCancelSave = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSaveDialogClose', name: 'cancelled', isClick: true })
     dispatch({ type: 'SHOW_SAVE_DIALOG', payload: false })
   }
 
   const handleScenarioInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsScenarioInput', name: e.target.value })
     dispatch({ type: 'SET_SCENARIO_INPUT', payload: e.target.value })
   }
 
   const handleSaveScenario = async () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSaveScenario', name: scenarioInput, isClick: true })
     try {
       // Save the recorder data to the scenario file
       const scenario = {
@@ -165,7 +176,10 @@ function TransactionsPortraitView() {
                 </p>
                 <button
                   className="btn btn-sm"
-                  onClick={handleCancelSave}
+                  onClick={() => {
+                    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSaveDialogClose', name: 'close_button', isClick: true })
+                    handleCancelSave()
+                  }}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -220,7 +234,10 @@ function TransactionsPortraitView() {
                 </p>
                 <button
                   className="btn btn-sm text-theme-contrast"
-                  onClick={handleCancelClearAll}
+                  onClick={() => {
+                    trackMatomoEvent?.({ category: 'udapp', action: 'transactionsClearAllDialogClose', name: 'close_button', isClick: true })
+                    handleCancelClearAll()
+                  }}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -296,8 +313,14 @@ function TransactionsPortraitView() {
                       {sortOrder === 'newest' ? intl.formatMessage({ id: 'udapp.newestSortLabel' }) : intl.formatMessage({ id: 'udapp.oldestSortLabel' })}
                     </Dropdown.Toggle>
                     <Dropdown.Menu style={{ backgroundColor: 'var(--custom-onsurface-layer-2)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black', padding: 0, '--bs-dropdown-min-width' : '5rem' } as React.CSSProperties}>
-                      <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'newest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.newestSortLabel" /></Dropdown.Item>
-                      <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => dispatch({ type: 'SET_SORT_ORDER', payload: 'oldest' })} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.oldestSortLabel" /></Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSortChange', name: 'newest', isClick: true })
+                        dispatch({ type: 'SET_SORT_ORDER', payload: 'newest' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.newestSortLabel" /></Dropdown.Item>
+                      <Dropdown.Item className="unit-dropdown-item-hover small" onClick={() => {
+                        trackMatomoEvent?.({ category: 'udapp', action: 'transactionsSortChange', name: 'oldest', isClick: true })
+                        dispatch({ type: 'SET_SORT_ORDER', payload: 'oldest' })
+                      }} style={{ color: themeQuality === 'dark' ? 'white' : 'black' }}><FormattedMessage id="udapp.oldestSortLabel" /></Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
                 </div>

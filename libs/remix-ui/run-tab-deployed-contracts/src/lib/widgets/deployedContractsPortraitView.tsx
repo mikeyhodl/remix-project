@@ -5,9 +5,11 @@ import { DeployedContractsAppContext } from '../contexts'
 import { DeployedContractItem } from '../components/DeployedContractItem'
 import { checkSumWarning } from '@remix-ui/helper'
 import { loadAddress } from '../actions'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export default function DeployedContractsPortraitView() {
   const { widgetState, dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const { deployedContracts, showAddDialog, addressInput, showClearAllDialog, loadType, currentFile } = widgetState
   const [enableAtAddress, setEnableAtAddress] = useState(false)
   const [latestContractAddress, setLatestContractAddress] = useState<string | null>(null)
@@ -68,6 +70,7 @@ export default function DeployedContractsPortraitView() {
   }, [])
 
   const scrollToLatestContract = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'scrollToNewInstanceClick', name: 'clicked', isClick: true })
     if (latestContractAddress) {
       const element = contractRefsMap.current.get(latestContractAddress)
       if (element) {
@@ -80,11 +83,13 @@ export default function DeployedContractsPortraitView() {
   }
 
   const handleAddClick = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'addContractButtonClick', name: 'clicked', isClick: true })
     dispatch({ type: 'SHOW_ADD_DIALOG', payload: true })
     dispatch({ type: 'SHOW_CLEAR_ALL_DIALOG', payload: false })
   }
 
   const handleClearAllClick = async () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'clearAllContractsButtonClick', name: 'clicked', isClick: true })
     const network = await plugin.call('udappEnv', 'getNetwork')
     const chainId = network?.chainId
     const providerName = network?.name === 'VM' ? await plugin.call('udappEnv', 'getSelectedProvider') : chainId
@@ -121,6 +126,7 @@ export default function DeployedContractsPortraitView() {
     // Load contract at address using the action
     try {
       await loadAddress(plugin, dispatch, address, currentFile, loadType)
+      trackMatomoEvent?.({ category: 'udapp', action: 'addContractSubmit', name: address, isClick: false })
     } catch (e) {
       console.error('Error adding contract:', e)
       await plugin.call('notification', 'toast', `⚠️ Error adding contract: ${e.message}`)
@@ -128,11 +134,13 @@ export default function DeployedContractsPortraitView() {
   }
 
   const handleCancelAdd = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'addContractDialogClose', name: 'cancelled', isClick: true })
     dispatch({ type: 'SHOW_ADD_DIALOG', payload: false })
     dispatch({ type: 'SET_ADDRESS_INPUT', payload: '' })
   }
 
   const handleConfirmClearAll = async () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'clearAllDialogConfirm', name: 'confirmed', isClick: true })
     const network = await plugin.call('udappEnv', 'getNetwork')
     const chainId = network?.chainId
     // Clear pinned contracts file if it exists
@@ -144,11 +152,13 @@ export default function DeployedContractsPortraitView() {
   }
 
   const handleCancelClearAll = () => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'clearAllDialogCancel', name: 'cancelled', isClick: true })
     dispatch({ type: 'SHOW_CLEAR_ALL_DIALOG', payload: false })
   }
 
   const handleAddressInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
+    trackMatomoEvent?.({ category: 'udapp', action: 'addContractAddressInput', name: value })
     dispatch({ type: 'SET_ADDRESS_INPUT', payload: value })
 
     // Enable button if address is provided and file type is valid
@@ -199,7 +209,10 @@ export default function DeployedContractsPortraitView() {
             </p>
             <button
               className="btn btn-sm"
-              onClick={handleCancelAdd}
+              onClick={() => {
+                trackMatomoEvent?.({ category: 'udapp', action: 'addContractDialogClose', name: 'close_button', isClick: true })
+                handleCancelAdd()
+              }}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -253,7 +266,10 @@ export default function DeployedContractsPortraitView() {
             </p>
             <button
               className="btn btn-sm"
-              onClick={handleCancelClearAll}
+              onClick={() => {
+                trackMatomoEvent?.({ category: 'udapp', action: 'clearAllDialogClose', name: 'close_button', isClick: true })
+                handleCancelClearAll()
+              }}
               style={{
                 background: 'transparent',
                 border: 'none',

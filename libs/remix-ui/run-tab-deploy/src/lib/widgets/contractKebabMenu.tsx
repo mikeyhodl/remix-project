@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { Overlay } from 'react-bootstrap'
 import { CopyToClipboard } from '@remix-ui/clipboard'
+import { TrackingContext } from '@remix-ide/tracking'
 
 interface ContractKebabMenuProps {
   show: boolean
@@ -38,6 +39,8 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
   onCopyBytecode,
   menuIndex = 'default',
 }) => {
+  const { trackMatomoEvent } = useContext(TrackingContext)
+
   return (
     <Overlay
       show={show}
@@ -74,7 +77,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
         <MenuContent {...props} data-id={`contractKebabMenu-${menuIndex}`}>
           <div className="p-0 rounded w-100" style={{ backgroundColor: 'var(--bs-light)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}>
             <div className="d-flex flex-column">
-              <CopyToClipboard tip="Copy" icon="fa-clipboard" direction="right" getContent={onCopyABI}>
+              <CopyToClipboard tip="Copy" icon="fa-clipboard" direction="right" getContent={onCopyABI} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyContractABI', name: 'clicked', isClick: true })}>
                 <div
                   className="d-flex align-items-center px-3 py-2"
                   data-id="copyABI"
@@ -93,7 +96,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
                   <span>Copy ABI</span>
                 </div>
               </CopyToClipboard>
-              <CopyToClipboard tip="Copy" icon="fa-clipboard" direction="right" getContent={onCopyBytecode}>
+              <CopyToClipboard tip="Copy" icon="fa-clipboard" direction="right" getContent={onCopyBytecode} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyContractBytecode', name: 'clicked', isClick: true })}>
                 <div
                   className="d-flex align-items-center px-3 py-2"
                   data-id="copyBytecode"
