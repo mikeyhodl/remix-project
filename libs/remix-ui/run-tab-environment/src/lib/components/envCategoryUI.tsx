@@ -5,6 +5,7 @@ import { CustomMenu } from '@remix-ui/helper'
 import { Provider } from '../types'
 import { setExecutionContext } from '../actions'
 import { EnvAppContext } from '../contexts'
+import { TrackingContext } from '@remix-ide/tracking'
 
 export interface EnvCategoryUIProps {
   isOpen: boolean
@@ -13,12 +14,14 @@ export interface EnvCategoryUIProps {
 
 export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }) => {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(EnvAppContext)
+  const { trackMatomoEvent } = useContext(TrackingContext)
   const [subCategories, setSubCategories] = useState<Provider[]>([])
   const [provider, setProvider] = useState<Provider | null>(null)
   const [enforceSelect, setEnforceSelect] = useState(false)
   const [selectedOption, setSelectedOption] = useState<string>(null)
 
   const handleCategorySelection = async (provider: Provider) => {
+    trackMatomoEvent?.({ category: 'udapp', action: 'categorySelected', name: provider.displayName, isClick: true })
     dispatch({ type: 'CLEAR_ALL_ACCOUNTS', payload: null })
     await setExecutionContext(provider, plugin, dispatch)
     setEnforceSelect(false)
@@ -45,7 +48,12 @@ export const EnvCategoryUI: React.FC<EnvCategoryUIProps> = ({ isOpen, onToggle }
   return provider?.category && subCategories.length > 0 ? (
     <Dropdown
       show={isOpen}
-      onToggle={onToggle}
+      onToggle={(willOpen) => {
+        if (willOpen) {
+          trackMatomoEvent?.({ category: 'udapp', action: 'categoryDropdownOpen', name: provider?.category || 'category' })
+        }
+        onToggle(willOpen)
+      }}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
