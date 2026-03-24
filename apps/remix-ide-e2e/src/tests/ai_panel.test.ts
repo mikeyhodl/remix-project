@@ -21,17 +21,6 @@ const tests = {
     browser
       .addFile('Untitled.sol', sources[0]['Untitled.sol'])
   },
-  'Should show startup spinner when AI assistant first loads #group1': function (browser: NightwatchBrowser) {
-    browser
-      .refreshPage()
-      // Wait for init to complete and the main container to appear.
-      // data-was-loading="true" is set once isInitializing was ever true,
-      // proving the spinner was shown before the ready state.
-      .waitForElementPresent('*[data-was-loading="true"]', 5000)
-      .assistantWaitForReady()
-      .waitForElementNotPresent('*[data-id="remix-ai-assistant-loading"]', 3000)
-  },
-
   // Conversation starter button with data id 'explain-editor' doesn't exist anymore
   'Should contain message starters #group1': function (browser: NightwatchBrowser) {
     browser

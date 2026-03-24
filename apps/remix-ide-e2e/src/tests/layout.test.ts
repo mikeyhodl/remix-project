@@ -10,7 +10,6 @@ module.exports = {
   '@sources': function () {
     return sources
   },
-
   'Should pin solidity compiler plugin to the right and switch focus for left side panel to the file-explorer': function (browser: NightwatchBrowser) {
     browser.waitForElementVisible('[data-id="movePluginToRight"]')
       .click('[data-id="movePluginToRight"]')
