@@ -98,12 +98,14 @@ export interface AIEvent extends MatomoEventBase {
     | 'SetOllamaModel'
     | 'GenerateNewAIWorkspaceFromModal'
     | 'conv_starter'
-    | 'show_chat_history'
-    | 'archive_conversation'
-    | 'load_conversation'
-    | 'delete_conversation'
-    | 'create_new_conversation'
-    | 'search_conversations'
+    //Remix Ai Assistant
+    | 'aiassistant_show_chat_history'
+    | 'aiassistant_archive_conversation'
+    | 'aiassistant_load_conversation'
+    | 'aiassistant_delete_conversation'
+    | 'aiassistant_create_new_conversation'
+    | 'aiassistant_search_conversations'
+    | 'aiassistant_unarchive_conversation'
 }
 
 /**

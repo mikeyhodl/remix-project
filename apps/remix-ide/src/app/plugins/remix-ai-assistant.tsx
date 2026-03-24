@@ -86,8 +86,7 @@ export class RemixAIAssistant extends ViewPlugin {
     this._initializing = true
     this.renderComponent()
     try {
-      // TEMPORARY: delay to visualise the startup spinner — remove before merging
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      //if a timeout is set here the spinner become visible
       // Create IndexedDB backend
       const indexedDBBackend = new IndexedDBChatHistoryBackend()
 
