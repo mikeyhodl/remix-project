@@ -871,6 +871,3 @@ workflows:
     jobs:
       - deploy-build:
           script: "beta"
-          filters:
-            branches:
-              only: master
