@@ -443,7 +443,7 @@ function EnvironmentPortraitView() {
                 </div>
               </Dropdown.Toggle>
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env">
+              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env p-0">
                 {
                   uniqueDropdownItems.map((provider, index) => {
                     return (
@@ -552,7 +552,7 @@ function EnvironmentPortraitView() {
                 onDeleteAccount={handleDeleteAccount}
               />
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env">
+              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env p-0">
                 {
                   hierarchicalAccounts.map((item, index) => {
                     const { account, isSmartAccount, level } = item
