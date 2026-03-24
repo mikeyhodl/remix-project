@@ -34,6 +34,9 @@ parameters:
   run_deploy_alpha:
     type: boolean
     default: false
+  run_deploy_beta:
+    type: boolean
+    default: false
 
   # Resource sizing
   resource_class:
@@ -859,6 +862,15 @@ workflows:
     jobs:
       - deploy-build:
           script: "alpha"
+          filters:
+            branches:
+              only: master
+
+  deploy_beta:
+    when: << pipeline.parameters.run_deploy_beta >>
+    jobs:
+      - deploy-build:
+          script: "beta"
           filters:
             branches:
               only: master
