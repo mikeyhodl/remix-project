@@ -113,13 +113,9 @@ export class Compiler {
    */
 
   onCompilerLoaded(version: string, license: string): void {
-    console.log(`[COMPILER] onCompilerLoaded called at ${new Date().toISOString()}`)
-    console.log(`[COMPILER] Version: ${version}, License: ${license}`)
     this.state.currentVersion = version
     this.state.compilerLicense = license
-    console.log(`[COMPILER] Triggering 'compilerLoaded' event...`)
     this.event.trigger('compilerLoaded', [version, license])
-    console.log(`[COMPILER] 'compilerLoaded' event triggered`)
   }
 
   /**
@@ -292,29 +288,19 @@ export class Compiler {
    */
 
   loadWorker(url: string): void {
-    const loadStartTime = Date.now()
-    console.log(`[COMPILER] loadWorker called at ${new Date().toISOString()}`)
-    console.log(`[COMPILER] Creating worker and loading URL: ${url}`)
 
     this.state.worker = this.workerHandler.getWorker()
     const jobs: Record<'sources', SourceWithTarget>[] = []
 
     this.state.worker.addEventListener('message', (msg: Record<'data', MessageFromWorker>) => {
-      const messageReceivedTime = Date.now()
       const data: MessageFromWorker = msg.data
-      console.log(`[COMPILER] Message received from worker: ${data.cmd} at ${new Date().toISOString()}`)
-      console.log(`[COMPILER] Time since loadWorker start: ${messageReceivedTime - loadStartTime}ms`)
-
       if (this.state.compilerRetriggerMode == CompilerRetriggerMode.retrigger && data.timestamp < this.state.compilationStartTime) {
         // drop message from previous compilation
-        console.log(`[COMPILER] Dropping message from previous compilation`)
         return
       }
       switch (data.cmd) {
       case 'versionLoaded':
-        console.log(`[COMPILER] versionLoaded message received, version: ${data.data}`)
         if (data.data) this.onCompilerLoaded(data.data, data.license)
-        console.log(`[COMPILER] onCompilerLoaded called, total time: ${Date.now() - loadStartTime}ms`)
         break
       case 'compiled':
       {
@@ -340,8 +326,6 @@ export class Compiler {
 
     this.state.worker.addEventListener('error', (msg: Record<'data', MessageFromWorker>) => {
       const formattedMessage = `Worker error: ${msg.data && msg.data !== undefined ? msg.data : msg['message']}`
-      console.error(`[COMPILER] Worker error received: ${formattedMessage}`)
-      console.error(`[COMPILER] Error occurred ${Date.now() - loadStartTime}ms after loadWorker start`)
       this.onCompilationFinished({ error: { formattedMessage } })
     })
 
@@ -373,12 +357,10 @@ export class Compiler {
       }
     }
 
-    console.log(`[COMPILER] Posting loadVersion message to worker...`)
     this.state.worker.postMessage({
       cmd: 'loadVersion',
       data: url
     })
-    console.log(`[COMPILER] loadVersion message posted at ${Date.now() - loadStartTime}ms`)
   }
 
   /**

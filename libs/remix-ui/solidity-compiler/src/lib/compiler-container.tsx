@@ -375,7 +375,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const loadingCompiler = () => {
-    console.log(`[COMPILER-CONTAINER] loadingCompiler called at ${new Date().toISOString()}`)
     if (!compileIcon.current) return
     compileIcon.current.setAttribute('title', intl.formatMessage({ id: 'solidity.compileIconAttribute' }))
     compileIcon.current.classList.add('remixui_spinningIcon')
@@ -390,11 +389,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const compilerLoaded = (license) => {
-    const compilerLoadedStartTime = Date.now()
-    console.log(`[COMPILER-CONTAINER] compilerLoaded called at ${new Date().toISOString()}`)
-    console.log(`[COMPILER-CONTAINER] License: ${license}`)
-    console.log(`[COMPILER-CONTAINER] Selected version: ${state.selectedVersion}`)
-
     if (!compileIcon.current) return
     compileIcon.current.setAttribute('title', '')
     compileIcon.current.classList.remove('remixui_spinningIcon')
@@ -411,7 +405,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
 
     // just for e2e
     // eslint-disable-next-line no-case-declarations
-    console.log(`[COMPILER-CONTAINER] Creating compilerloaded element for E2E tests...`)
     const elements = document.querySelectorAll('[data-id="compilerloaded"]')
     // remove elements
     for (let i = 0; i < elements.length; i++) {
@@ -421,8 +414,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     loadedElement.setAttribute('data-id', 'compilerloaded')
     loadedElement.setAttribute('data-version', state.selectedVersion)
     document.body.appendChild(loadedElement)
-    console.log(`[COMPILER-CONTAINER] compilerloaded element created and appended to body`)
-    console.log(`[COMPILER-CONTAINER] compilerLoaded handler completed in ${Date.now() - compilerLoadedStartTime}ms`)
   }
 
   const compilationFinished = () => {
@@ -508,7 +499,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
   }
 
   const _updateVersionSelector = (version, customUrl = '', setQueryParameter = true) => {
-    console.log(`[COMPILER-CONTAINER] _updateVersionSelector called with version: ${version}`)
     // update selectedversion of previous one got filtered out
     let selectedVersion = version
     if (!selectedVersion || !_shouldBeAdded(selectedVersion)) {
@@ -551,8 +541,6 @@ export const CompilerContainer = (props: CompilerContainerProps) => {
     // resort to non-worker version in that case.
     if (selectedVersion === 'builtin') selectedVersion = state.defaultVersion
     const useWorker = selectedVersion !== 'builtin' && (canUseWorker(selectedVersion) || platform === appPlatformTypes.desktop)
-    console.log(`[COMPILER-CONTAINER] Loading compiler version ${selectedVersion} from ${url}`)
-    console.log(`[COMPILER-CONTAINER] Using worker: ${useWorker}`)
     if (useWorker) {
       compileTabLogic.compiler.loadVersion(true, url)
     } else {
