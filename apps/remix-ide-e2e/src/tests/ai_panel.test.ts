@@ -21,6 +21,14 @@ const tests = {
     browser
       .addFile('Untitled.sol', sources[0]['Untitled.sol'])
   },
+  'Should show startup spinner when AI assistant first loads #group1': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent('*[data-id="remix-ai-assistant-loading"]', 5000)
+      .assistantWaitForReady()
+      .waitForElementNotPresent('*[data-id="remix-ai-assistant-loading"]', 10000)
+  },
+
   // Conversation starter button with data id 'explain-editor' doesn't exist anymore
   'Should contain message starters #group1': function (browser: NightwatchBrowser) {
     browser
