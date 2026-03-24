@@ -266,14 +266,19 @@ export class DappManager {
     );
 
     // Preserve VM state: the VM reads .states/{provider}/state.json per workspace.
-    // Without copying, switching to a new workspace resets the VM and loses deployed contracts.\
+    // Without copying, switching to a new workspace resets the VM and loses deployed contracts.
     let vmStateSnapshot: string | null = null;
     const vmProviderName = contractData.chainId && String(contractData.chainId).startsWith('vm-')
       ? String(contractData.chainId) : null;
     if (vmProviderName) {
       try {
-        // Flush the latest in-memory state to disk first
-        try { await (this.plugin as any).call('blockchain', 'dumpState'); } catch (_) { /* non-critical */ }
+        // Flush the latest in-memory state to disk first (with timeout to prevent hang)
+        try {
+          await Promise.race([
+            (this.plugin as any).call('blockchain', 'dumpState'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('dumpState timeout')), 2000))
+          ]);
+        } catch (_) { /* non-critical: dumpState may timeout */ }
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const statePath = `.states/${vmProviderName}/state.json`;
