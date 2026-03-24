@@ -145,11 +145,13 @@ export class QuickDappV2 extends ViewPlugin {
     address: string,
     prompt: string | any[],
     files: any,
-    image: string | null
+    image: string | null,
+    abi: any[] = [],
+    chainId: string | number = 1
   ): Promise<void> {
     try {
       this.event.emit('dappUpdateStart', { slug })
-      await this.call('ai-dapp-generator', 'updateDapp', address, prompt, files, image, slug)
+      await this.call('ai-dapp-generator', 'updateDapp', address, prompt, files, image, slug, abi, chainId)
     } catch (e: any) {
       console.error('[QuickDappV2] updateDapp failed:', e)
       this.event.emit('dappGenerationError', { slug, error: e.message })

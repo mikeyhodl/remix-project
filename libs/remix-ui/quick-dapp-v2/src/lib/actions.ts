@@ -2,7 +2,6 @@ import axios from 'axios';
 import { omitBy } from 'lodash';
 import semver from 'semver';
 import { execution } from '@remix-project/remix-lib';
-import remixClient from './remix-client';
 
 const { encodeFunctionId } = execution.txHelper;
 
@@ -29,24 +28,6 @@ export const initDispatch = (_dispatch: any) => {
 
 export const updateState = (_state: any) => {
   state = _state;
-};
-
-export const connectRemix = async () => {
-  await dispatch({
-    type: 'SET_LOADING',
-    payload: {
-      screen: true,
-    },
-  });
-
-  await remixClient.onload();
-
-  await dispatch({
-    type: 'SET_LOADING',
-    payload: {
-      screen: false,
-    },
-  });
 };
 
 export const saveDetails = async (payload: any) => {

@@ -54,12 +54,6 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     if (!plugin) return;
 
     const handleCreateDapp = async (payload: any) => {
-      // Permission gate is now handled at the plugin level (quick-dapp-v2.tsx)
-      // and via useAuth() context check in renderContent
-
-      dispatch({ type: 'SET_AI_LOADING', payload: true });
-      dispatch({ type: 'SET_VIEW', payload: 'create' });
-
       try {
         const contractData = {
           address: payload.address,
@@ -80,7 +74,6 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
         dispatch({ type: 'SET_DAPPS', payload: [newDapp, ...dappsRef.current]});
         dispatch({ type: 'SET_DAPP_PROCESSING', payload: { slug: newDapp.slug, isProcessing: true } });
         dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
-        dispatch({ type: 'SET_AI_LOADING', payload: false });
 
         await plugin.call('ai-dapp-generator', 'generateDapp', {
           description: payload.description,
@@ -97,7 +90,6 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
 
       } catch (error: any) {
         console.error('[QuickDapp] Failed to create dapp:', error);
-        dispatch({ type: 'SET_AI_LOADING', payload: false });
         plugin.call('notification', 'toast', `Failed to create DApp: ${error.message}`);
       }
     };
