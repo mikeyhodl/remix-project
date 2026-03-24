@@ -351,15 +351,9 @@ function TransactionsPortraitView() {
                             <span>
                               <FormattedMessage
                                 id="debugger.initiateFirstTransaction"
-                                defaultMessage="Initiate your first transaction by deploying a contract, or learn more following our "
+                                defaultMessage="Initiate your first transaction by deploying a contract."
                               />
                             </span>
-                            <a href="#">
-                              <FormattedMessage
-                                id="debugger.inAppTutorials"
-                                defaultMessage="in-app tutorials."
-                              />
-                            </a>
                           </div>
                         </div>
                       )}
@@ -389,15 +383,9 @@ function TransactionsPortraitView() {
                             <span>
                               <FormattedMessage
                                 id="debugger.initiateFirstTransaction"
-                                defaultMessage="Initiate your first transaction by deploying a contract, or learn more following our "
+                                defaultMessage="Initiate your first transaction by deploying a contract."
                               />
                             </span>
-                            <a href="#">
-                              <FormattedMessage
-                                id="debugger.inAppTutorials"
-                                defaultMessage="in-app tutorials."
-                              />
-                            </a>
                           </div>
                         </div>
                       )}
