@@ -35,7 +35,8 @@ export class RemixAIAssistant extends ViewPlugin {
   conversations: ConversationMetadata[] = []
   showHistorySidebar: boolean = false
   isMaximized: boolean = false
-  private _initializing: boolean = false
+  private _initializing: boolean = true
+  private _initStarted: boolean = false
 
   constructor() {
     super(profile)
@@ -81,9 +82,12 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async initializeStorage() {
+    this._initStarted = true
     this._initializing = true
     this.renderComponent()
     try {
+      // TEMPORARY: delay to visualise the startup spinner — remove before merging
+      await new Promise(resolve => setTimeout(resolve, 5000))
       // Create IndexedDB backend
       const indexedDBBackend = new IndexedDBChatHistoryBackend()
 
@@ -347,6 +351,11 @@ export class RemixAIAssistant extends ViewPlugin {
 
   setDispatch(dispatch: React.Dispatch<any>) {
     this.dispatch = dispatch
+    // Safety: if React wired up but initializeStorage was never called
+    // (onActivation not triggered), clear the spinner so it doesn't hang.
+    if (this._initializing && !this._initStarted) {
+      this._initializing = false
+    }
     this.renderComponent()
   }
 
