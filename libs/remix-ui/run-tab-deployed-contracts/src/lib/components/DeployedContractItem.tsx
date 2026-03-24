@@ -446,17 +446,19 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     const network = await plugin.call('udappEnv', 'getNetwork')
     let explorerUrl = ''
 
-    if (network?.name) {
-      switch (network.name.toLowerCase()) {
-      case 'mainnet':
-      case 'ethereum':
+    if (network?.chainId) {
+      switch (network.chainId) {
+      case '1':
         explorerUrl = `https://etherscan.io/address/${contract.address}`
         break
-      case 'sepolia':
+      case '11155111':
         explorerUrl = `https://sepolia.etherscan.io/address/${contract.address}`
         break
-      case 'goerli':
+      case '5':
         explorerUrl = `https://goerli.etherscan.io/address/${contract.address}`
+        break
+      case '10':
+        explorerUrl = `https://optimistic.etherscan.io/address/${contract.address}`
         break
       default:
         await plugin.call('notification', 'toast', 'Block explorer not available for this network')
