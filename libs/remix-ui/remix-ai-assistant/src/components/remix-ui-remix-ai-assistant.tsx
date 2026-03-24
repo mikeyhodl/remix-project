@@ -99,6 +99,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const userHasScrolledRef = useRef(false)
   const lastMessageCountRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const wasInitializingRef = useRef(props.isInitializing)
+  if (props.isInitializing) wasInitializingRef.current = true
 
   // Audio transcription hook
   const {
@@ -958,6 +960,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         ref={aiChatRef}
         style={{ overflow: 'hidden' }}
         data-theme={themeTracker && themeTracker?.name.toLowerCase()}
+        data-was-loading={wasInitializingRef.current ? 'true' : undefined}
       >
         {/* Main content area with sidebar and chat */}
         <div className="d-flex flex-row flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>

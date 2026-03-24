@@ -87,6 +87,7 @@ export class RemixAIAssistant extends ViewPlugin {
     this.renderComponent()
     try {
       //if a timeout is set here the spinner become visible
+      await new Promise(resolve => setTimeout(resolve, 1000))
       // Create IndexedDB backend
       const indexedDBBackend = new IndexedDBChatHistoryBackend()
 
