@@ -57,6 +57,7 @@
           "optimization": true,
           "generateIndexHtml": true,
           "extractCss": false,
+          "sourceMap": false,
           "vendorChunk": false,
           "verbose": true
         },
