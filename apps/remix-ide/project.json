@@ -13,8 +13,7 @@
     "learneth", 
     "quick-dapp", 
     "remix-dapp", 
-    "noir-compiler",
-    "remix-debug"
+    "noir-compiler"
   ],
   "targets": {
     "build": {
@@ -58,6 +57,7 @@
           "optimization": true,
           "generateIndexHtml": true,
           "extractCss": false,
+          "sourceMap": false,
           "vendorChunk": false,
           "verbose": true
         },
