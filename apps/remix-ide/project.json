@@ -13,8 +13,7 @@
     "learneth", 
     "quick-dapp", 
     "remix-dapp", 
-    "noir-compiler",
-    "remix-debug"
+    "noir-compiler"
   ],
   "targets": {
     "build": {
