@@ -232,18 +232,32 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     let isRefreshing = false // avoid circular calls
 
     const handleAuthStateChanged = async (authState: any) => {
-      if (authState.isAuthenticated && !isRefreshing) {
-        if (refreshTimeout) {
-          clearTimeout(refreshTimeout)
-        }
+      if (isRefreshing) return
 
-        refreshTimeout = setTimeout(async () => {
-          isRefreshing = true
-          console.log('Auth state changed to authenticated, refreshing model access...')
-          await modelAccess.refreshAccess()
-          isRefreshing = false
-        }, 500)
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout)
       }
+
+      refreshTimeout = setTimeout(async () => {
+        isRefreshing = true
+        if (authState.isAuthenticated) {
+          console.log('Auth state changed to authenticated, refreshing model access...')
+        } else {
+          console.log('Auth state changed to logged out, refreshing model access and switching to default model...')
+          // Switch back to default model on logout
+          const defaultModel = getDefaultModel()
+          setSelectedModelId(defaultModel.id)
+          setSelectedModel(defaultModel)
+          setAssistantChoice(defaultModel.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
+          try {
+            await props.plugin.call('remixAI', 'setModel', defaultModel.id)
+          } catch (error) {
+            console.warn('Failed to set default model on logout:', error)
+          }
+        }
+        await modelAccess.refreshAccess()
+        isRefreshing = false
+      }, 2000)
     }
 
     props.plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
@@ -1116,6 +1130,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               availableModels={AVAILABLE_MODELS}
               selectedModel={selectedModel}
               handleModelSelection={handleModelSelection}
+              onLockedModelClick={handleLockedModelClick}
               input={input}
               setInput={setInput}
               isStreaming={isStreaming}
@@ -1158,6 +1173,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               availableModels={AVAILABLE_MODELS}
               selectedModel={selectedModel}
               handleModelSelection={handleModelSelection}
+              onLockedModelClick={handleLockedModelClick}
               input={input}
               setInput={setInput}
               isStreaming={isStreaming}
