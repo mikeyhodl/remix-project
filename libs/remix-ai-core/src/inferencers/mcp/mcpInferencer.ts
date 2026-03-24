@@ -952,7 +952,6 @@ Use this tool when you need:
         async (innerToolCall: IMCPToolCall) => {
           // Find which server has this tool
           const toolsFromServers = await this.getAllTools();
-          console.log('all tools', toolsFromServers)
 
           let targetServer: string | undefined;
 
