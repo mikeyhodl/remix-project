@@ -428,6 +428,7 @@ function EnvironmentPortraitView() {
                 data-id="settingsSelectEnvOptions"
                 className="w-100 d-inline-block border form-control env-toggle"
                 environmentUI={<EnvCategoryUI
+                  key={selectedProvider?.category || widgetState.providers.selectedProvider}
                   isOpen={isSubCategoryDropdownOpen}
                   onToggle={(isOpen: boolean) => {
                     setIsSubCategoryDropdownOpen(isOpen)
