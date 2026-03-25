@@ -428,6 +428,7 @@ function EnvironmentPortraitView() {
                 data-id="settingsSelectEnvOptions"
                 className="w-100 d-inline-block border form-control env-toggle"
                 environmentUI={<EnvCategoryUI
+                  key={selectedProvider?.category || widgetState.providers.selectedProvider}
                   isOpen={isSubCategoryDropdownOpen}
                   onToggle={(isOpen: boolean) => {
                     setIsSubCategoryDropdownOpen(isOpen)
@@ -443,7 +444,7 @@ function EnvironmentPortraitView() {
                 </div>
               </Dropdown.Toggle>
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env">
+              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env p-0">
                 {
                   uniqueDropdownItems.map((provider, index) => {
                     return (
@@ -552,7 +553,7 @@ function EnvironmentPortraitView() {
                 onDeleteAccount={handleDeleteAccount}
               />
 
-              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env">
+              <Dropdown.Menu as={CustomMenu} className="w-100 custom-dropdown-items overflow-hidden dropdown-menu-env p-0">
                 {
                   hierarchicalAccounts.map((item, index) => {
                     const { account, isSmartAccount, level } = item

@@ -169,17 +169,19 @@ export async function openTransactionInExplorer (plugin: TransactionsPlugin, tra
     let explorerUrl = ''
 
     // Determine explorer URL based on network
-    if (network?.name) {
-      switch (network.name.toLowerCase()) {
-      case 'mainnet':
-      case 'ethereum':
-        explorerUrl = `https://etherscan.io/tx/${transaction.record?.txHash}`
+    if (network?.chainId) {
+      switch (network.chainId) {
+      case '1':
+        explorerUrl = `https://etherscan.io/address/${transaction.record?.txHash}`
         break
-      case 'sepolia':
-        explorerUrl = `https://sepolia.etherscan.io/tx/${transaction.record?.txHash}`
+      case '11155111':
+        explorerUrl = `https://sepolia.etherscan.io/address/${transaction.record?.txHash}`
         break
-      case 'goerli':
-        explorerUrl = `https://goerli.etherscan.io/tx/${transaction.record?.txHash}`
+      case '5':
+        explorerUrl = `https://goerli.etherscan.io/address/${transaction.record?.txHash}`
+        break
+      case '10':
+        explorerUrl = `https://optimistic.etherscan.io/address/${transaction.record?.txHash}`
         break
       default:
         await plugin.call('notification', 'toast', 'Block explorer not available for this network')

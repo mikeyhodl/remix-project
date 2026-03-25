@@ -35,7 +35,7 @@ class switchEnvironment extends EventEmitter {
     ) => {
       const start = Date.now()
       const poll = () => {
-        browser.isPresent({ selector: `[data-id="dropdown-item-${providerName}"]`, suppressNotFoundErrors: true, timeout: 0 }, (selRes) => {
+        browser.isPresent({ selector: `[data-id="selected-provider-${providerName}"]`, suppressNotFoundErrors: true, timeout: 0 }, (selRes) => {
           if (selRes.value) return cb && cb(true)
           browser.isPresent({ selector: `*[data-id="${providerName}ModalDialogModalBody-react"]`, suppressNotFoundErrors: true, timeout: 0 }, (modalBody) => {
             if (modalBody.value) return cb && cb(true)
