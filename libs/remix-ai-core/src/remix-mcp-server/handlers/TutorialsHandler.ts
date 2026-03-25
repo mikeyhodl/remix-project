@@ -22,7 +22,7 @@ export class TutorialsHandler extends BaseToolHandler {
     properties: {
       tutorialId: {
         type: 'string',
-        description: 'id of the tutorial to start'
+        description: 'id of the tutorial to start. This is the id, not the name.'
       }
     },
     required: ['tutorialId']
@@ -41,6 +41,9 @@ export class TutorialsHandler extends BaseToolHandler {
   async execute(args: { tutorialId: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       await plugin.call('LearnEth', 'startTutorial', "remix-project-org/remix-workshops", "master", args.tutorialId)
+      if (await plugin.call('sidePanel', 'isPanelHidden')) {
+        await plugin.call('sidePanel', 'togglePanel')
+      }
       await plugin.call('sidePanel', 'showContent', 'LearnEth' )
       return this.createSuccessResult({
         success: true,
