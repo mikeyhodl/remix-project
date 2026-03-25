@@ -204,11 +204,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
     setEditingServer(null)
   }
 
-  const editServer = (server: IMCPServer) => {
-    setFormData(server)
-    setEditingServer(server)
-  }
-
   const getStatusIcon = (status?: IMCPConnectionStatus) => {
     if (!status) return <span className="text-muted">○</span>
 
@@ -284,14 +279,6 @@ export const IMCPServerManager: React.FC<IMCPServerManagerProps> = ({ plugin }) 
                         onClick={() => toggleServer(server)}
                       >
                         {server.enabled ? 'Disconnect' : 'Connect'}
-                      </button>
-                    )}
-                    {!server.isBuiltIn && (
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() => editServer(server)}
-                      >
-                        Edit
                       </button>
                     )}
                     {!server.isBuiltIn && (

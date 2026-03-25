@@ -12,6 +12,7 @@ interface ChatHistorySidebarProps {
   onLoadConversation: (id: string) => void
   onArchiveConversation: (id: string) => void
   onDeleteConversation: (id: string) => void
+  onDeleteAllConversations?: () => void
   onToggleArchived: () => void
   onClose: () => void
   onSearch?: (query: string) => Promise<ConversationMetadata[]>
@@ -28,6 +29,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   onLoadConversation,
   onArchiveConversation,
   onDeleteConversation,
+  onDeleteAllConversations,
   onToggleArchived,
   onClose,
   onSearch,
@@ -111,19 +113,39 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
           />
         </div>
 
-        {/* Archive Toggle */}
-        <div className="d-flex justify-content-between align-items-center">
+        <div className="d-flex justify-content-between align-items-center mb-2">
           <h6 className="mb-0 fw-normal sidebar-title" data-id="chat-history-sidebar-title">
             {'Chat history'} <span className="ms-2 text-muted">{filteredConversations.length}</span>
           </h6>
-          <button
-            className={`btn btn-sm btn-archive-toggle ${showArchived ? 'active' : ''}`}
-            onClick={onToggleArchived}
-            data-id="toggle-archived-btn"
-          >
-            <i className="fas fa-archive me-2"></i>
-            {showArchived ? 'Show Active' : `Archived (${archivedCount})`}
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              className={`btn btn-sm btn-archive-toggle ${showArchived ? 'active' : ''}`}
+              onClick={onToggleArchived}
+              data-id="toggle-archived-btn"
+            >
+              <i className="fas fa-archive me-2"></i>
+              {showArchived ? 'Show Active' : `Archived (${archivedCount})`}
+            </button>
+            {onDeleteAllConversations && filteredConversations.length > 0 && (
+              <CustomTooltip tooltipText="Delete all conversations">
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={() => {
+                    const confirmMsg = showArchived
+                      ? `Delete all ${filteredConversations.length} archived conversations? This action cannot be undone.`
+                      : `Delete all ${filteredConversations.length} conversations? This action cannot be undone.`
+                    if (confirm(confirmMsg)) {
+                      onDeleteAllConversations()
+                    }
+                  }}
+                  data-id="delete-all-conversations-btn"
+                >
+                  <i className="fas fa-trash-alt me-2"></i>
+                  Delete All
+                </button>
+              </CustomTooltip>
+            )}
+          </div>
         </div>
       </div>
 
@@ -134,12 +156,12 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
             {searchQuery ? (
               <>
                 <i className="fas fa-search fa-2x mb-2"></i>
-                <p>No conversations found</p>
+                <p data-id="no-conversations-msg">No conversations found</p>
               </>
             ) : showArchived ? (
               <>
                 <i className="fas fa-archive fa-2x mb-2"></i>
-                <p>No archived conversations</p>
+                <p data-id="no-conversations-msg">No archived conversations</p>
               </>
             ) : (
               <>

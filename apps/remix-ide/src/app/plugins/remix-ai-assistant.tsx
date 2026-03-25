@@ -254,6 +254,26 @@ export class RemixAIAssistant extends ViewPlugin {
     }
   }
 
+  async deleteAllConversations() {
+    if (!this.storageManager) return
+
+    try {
+      const deletePromises = this.conversations.map(conv =>
+        this.storageManager.deleteConversation(conv.id)
+      )
+      await Promise.all(deletePromises)
+
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'delete_all_conversations', isClick: true })
+
+      await this.loadConversations()
+
+      await this.newConversation()
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: false })
+    } catch (error) {
+      console.error('Failed to delete all conversations:', error)
+    }
+  }
+
   onFirstPromptSent(conversationId: string, prompt: string) {
     if (!conversationId) return
 
@@ -449,6 +469,7 @@ export class RemixAIAssistant extends ViewPlugin {
         onLoadConversation={this.loadConversation.bind(this)}
         onArchiveConversation={this.archiveConversation.bind(this)}
         onDeleteConversation={this.deleteConversation.bind(this)}
+        onDeleteAllConversations={this.deleteAllConversations.bind(this)}
         onToggleHistorySidebar={this.toggleHistorySidebar.bind(this)}
         onSearch={this.searchConversations.bind(this)}
       />

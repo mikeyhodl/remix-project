@@ -511,4 +511,55 @@ module.exports = {
       .waitForElementVisible('.sidebar-title', 5000)
       .assert.containsText('.sidebar-title', '2')
   },
+
+  'Should delete all archived conversations #group3': function (browser: NightwatchBrowser) {
+    browser
+      // First create and archive some conversations
+      .click('*[data-id="chat-history-back-btn"]')
+      .click('*[data-id="new-chat-btn new-conversation-btn"]')
+      .setValue('*[data-id="remix-ai-prompt-input"]', 'First archived conversation')
+      .click('*[data-id="remix-ai-composer-send-btn"]')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      .pause(500)
+      .click('*[data-id="archive-chat-btn"]')
+      .pause(500)
+      .click('*[data-id="new-chat-btn new-conversation-btn"]')
+      .setValue('*[data-id="remix-ai-prompt-input"]', 'Second archived conversation')
+      .click('*[data-id="remix-ai-composer-send-btn"]')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      .pause(500)
+      .click('*[data-id="archive-chat-btn"]')
+      .pause(500)
+      // Switch to archived view
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(500)
+      .click('*[data-id="toggle-archived-btn"]')
+      .pause(500)
+      // Verify we have archived conversations
+      .execute(function () {
+        const items = document.querySelectorAll('[data-id^="conversation-item-"]')
+        return items.length
+      }, [], function (result) {
+        const count = result.value as number
+        console.log(`Archived conversation count before delete all: ${count}`)
+        browser.assert.ok(count >= 2, `Should have at least 2 archived conversations, found ${count}`)
+      })
+      // Delete all archived conversations
+      .waitForElementVisible('*[data-id="delete-all-conversations-btn"]', 5000)
+      .click('*[data-id="delete-all-conversations-btn"]')
+      .pause(500)
+      .acceptAlert()
+      .pause(2000)
+      // Verify all archived conversations are deleted
+      .waitForElementVisible('*[data-id="no-conversations-msg"]', 5000)
+      .assert.textContains('*[data-id="no-conversations-msg"]', 'No')
+  },
 }
