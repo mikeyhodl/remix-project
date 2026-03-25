@@ -1,8 +1,10 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { ConversationMetadata } from '@remix/remix-ai-core'
 import { CustomTooltip } from '@remix-ui/helper'
 import { ChatHistoryItem } from './chatHistoryItem'
+import { AIEvent, MatomoEvent, trackMatomoEvent } from '@remix-api'
+import TrackingContext from '@remix-ide/tracking'
 
 interface FloatingChatHistoryProps {
   conversations: ConversationMetadata[]
@@ -40,6 +42,10 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredConversations, setFilteredConversations] = useState<ConversationMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const defaultPanelWidth = '350px'
   const resolvedPanelWidth = panelWidth !== undefined
     ? typeof panelWidth === 'number' ? `${panelWidth}px` : panelWidth
@@ -180,6 +186,7 @@ export const FloatingChatHistory: React.FC<FloatingChatHistoryProps> = ({
                 // Automatically unarchive if the conversation is archived
                 if (conv.archived) {
                   onArchiveConversation(conv.id)
+                  trackMatomoEvent({ category: 'ai', action: 'aiassistant_unarchive_conversation', name: 'Unarchive Conversation', isClick: true })
                 }
                 onLoadConversation(conv.id)
               }}

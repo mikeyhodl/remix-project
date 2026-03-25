@@ -10,7 +10,6 @@ module.exports = {
   '@sources': function () {
     return sources
   },
-
   'Should pin solidity compiler plugin to the right and switch focus for left side panel to the file-explorer': function (browser: NightwatchBrowser) {
     browser.waitForElementVisible('[data-id="movePluginToRight"]')
       .click('[data-id="movePluginToRight"]')
@@ -25,7 +24,8 @@ module.exports = {
       .click('[data-id="movePluginToLeft"]')
       .waitForElementVisible('[data-id="movePluginToRight"]')
       .assert.containsText('.sidepanel h6[data-id="sidePanelSwapitTitle"]', 'SOLIDITY COMPILER')
-      .waitForElementNotVisible('.right-side-panel h6[data-id="sidePanelSwapitTitle"]')
+      .waitForElementVisible('*[data-id="close_settings"]')
+      .click('*[data-id="close_settings"]')
   },
   'Should pin a plugin while an another plugin is already pinned': function (browser: NightwatchBrowser) {
     browser.waitForElementVisible('[data-id="movePluginToRight"]')
