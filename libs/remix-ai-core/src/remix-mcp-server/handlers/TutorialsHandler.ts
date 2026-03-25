@@ -28,69 +28,6 @@ export class TutorialsHandler extends BaseToolHandler {
     required: ['tutorialId']
   };
 
-  private static readonly CACHE_KEY = 'remix_tutorials_config';
-  private static readonly CACHE_EXPIRY_KEY = 'remix_tutorials_config_expiry';
-  private static readonly CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
-  
-  constructor () {
-    super()
-    this.loadTutorialsConfig()
-  }
-
-  private async loadTutorialsConfig(): Promise<void> {
-    try {
-      const cachedData = this.getCachedConfig();
-      if (cachedData) {
-        this.description = this.description + ' Here is the list of available tutorials:\n' + cachedData
-        console.log(this.description)
-        return;
-      }
-
-      const response = await axios('https://raw.githubusercontent.com/remix-project-org/remix-workshops/refs/heads/master/config-properties.json');
-      const dataStr = JSON.stringify(response.data)
-      this.setCachedConfig(dataStr);
-      this.description = this.description + ' Here is the list of available tutorials:\n' + dataStr
-      console.log(this.description)
-    } catch (error) {
-      console.error('Failed to load tutorials config:', error);
-    }
-  }
-
-  private getCachedConfig(): string | null {
-    if (typeof localStorage === 'undefined') return null;
-    
-    try {
-      const cachedData = localStorage.getItem(TutorialsHandler.CACHE_KEY);
-      const expiryTime = localStorage.getItem(TutorialsHandler.CACHE_EXPIRY_KEY);
-      
-      if (!cachedData || !expiryTime) return null;
-      
-      const now = Date.now();
-      if (now > parseInt(expiryTime, 10)) {
-        localStorage.removeItem(TutorialsHandler.CACHE_KEY);
-        localStorage.removeItem(TutorialsHandler.CACHE_EXPIRY_KEY);
-        return null;
-      }
-      
-      return cachedData;
-    } catch (error) {
-      console.error('Error reading from localStorage:', error);
-      return null;
-    }
-  }
-
-  private setCachedConfig(data: string): void {
-    if (typeof localStorage === 'undefined') return;
-    
-    try {
-      const expiryTime = Date.now() + TutorialsHandler.CACHE_DURATION_MS;
-      localStorage.setItem(TutorialsHandler.CACHE_KEY, data);
-      localStorage.setItem(TutorialsHandler.CACHE_EXPIRY_KEY, expiryTime.toString());
-    } catch (error) {
-      console.error('Error writing to localStorage:', error);
-    }
-  }
-
   getPermissions(): string[] {
     return ['tutorial:start'];
   }
@@ -117,6 +54,99 @@ export class TutorialsHandler extends BaseToolHandler {
 }
 
 /**
+ * Tutorials List Tool Handler
+ * Gets the list of available tutorials
+ */
+export class TutorialsListHandler extends BaseToolHandler {
+  name = 'tutorials_list';
+  description = 'Get the list of available learneth tutorials';
+  inputSchema = {
+    type: 'object',
+    properties: {},
+    required: []
+  }
+  static readonly CACHE_KEY = 'remix_tutorials_config';
+  static readonly CACHE_EXPIRY_KEY = 'remix_tutorials_config_expiry';
+  static readonly CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+  
+  getPermissions(): string[] {
+    return ['tutorial:list'];
+  }
+
+  validate(_args: any): boolean | string {
+    return true;
+  }
+
+  async execute(_args: any, _plugin: Plugin): Promise<IMCPToolResult> {
+    try {
+      const tutorialsConfig = await this.loadTutorialsConfig();
+      
+      if (!tutorialsConfig) {
+        return this.createErrorResult('Failed to load tutorials configuration.');
+      }
+
+      return this.createSuccessResult({
+        success: true,
+        tutorials: tutorialsConfig,
+        message: 'Tutorials list retrieved successfully.'
+      });
+    } catch (error) {
+      return this.createErrorResult(`Failed to get tutorials list: ${error.message}`);
+    }
+  }
+
+  private async loadTutorialsConfig(): Promise<any> {
+    try {
+      const cachedData = this.getCachedConfig();
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+
+      const response = await axios('https://raw.githubusercontent.com/remix-project-org/remix-workshops/refs/heads/master/config-properties.json');
+      this.setCachedConfig(JSON.stringify(response.data));
+      return response.data
+    } catch (error) {
+      console.error('Failed to load tutorials config:', error);
+    }
+  }
+
+  private getCachedConfig(): string | null {
+    if (typeof localStorage === 'undefined') return null;
+    
+    try {
+      const cachedData = localStorage.getItem(TutorialsListHandler.CACHE_KEY);
+      const expiryTime = localStorage.getItem(TutorialsListHandler.CACHE_EXPIRY_KEY);
+      
+      if (!cachedData || !expiryTime) return null;
+      
+      const now = Date.now();
+      if (now > parseInt(expiryTime, 10)) {
+        localStorage.removeItem(TutorialsListHandler.CACHE_KEY);
+        localStorage.removeItem(TutorialsListHandler.CACHE_EXPIRY_KEY);
+        return null;
+      }
+      
+      return cachedData;
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return null;
+    }
+  }
+
+  private setCachedConfig(data: string): void {
+    if (typeof localStorage === 'undefined') return;
+    
+    try {
+      const expiryTime = Date.now() + TutorialsListHandler.CACHE_DURATION_MS;
+      localStorage.setItem(TutorialsListHandler.CACHE_KEY, data);
+      localStorage.setItem(TutorialsListHandler.CACHE_EXPIRY_KEY, expiryTime.toString());
+    } catch (error) {
+      console.error('Error writing to localStorage:', error);
+    }
+  }
+}
+
+/**
  * Create code analysis tool definitions
  */
 export function createTutorialsTools(): RemixToolDefinition[] {
@@ -128,6 +158,14 @@ export function createTutorialsTools(): RemixToolDefinition[] {
       category: ToolCategory.ANALYSIS,
       permissions: ['analysis:scan', 'file:read'],
       handler: new TutorialsHandler()
+    },
+    {
+      name: 'tutorials_list',
+      description: 'get the list of available learneth tutorials',
+      inputSchema: new TutorialsListHandler().inputSchema,
+      category: ToolCategory.ANALYSIS,
+      permissions: ['tutorial:list'],
+      handler: new TutorialsListHandler()
     }
   ];
 }
