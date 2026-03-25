@@ -180,7 +180,7 @@ const Model: ModelType = {
         const { ids, entities } = detail[selectedId]
         for (let i = 0; i < ids.length; i++) {
           const entity = entities[ids[i]]
-          if (entity.metadata.data.id === payload.id || i + 1 === payload.id) {
+          if (entity.metadata.data.name === payload.id || entity.metadata.data.id === payload.id || i + 1 === payload.id) {
             yield router.navigate(`/list?id=${ids[i]}`)
             break
           }

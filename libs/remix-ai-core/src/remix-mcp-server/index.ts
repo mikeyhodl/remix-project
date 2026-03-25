@@ -32,7 +32,6 @@ export { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 export { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 export { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
-export { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 export { AmpResourceProvider } from './providers/AmpResourceProvider';
 export { DebuggingResourceProvider } from './providers/DebuggingResourceProvider';
 

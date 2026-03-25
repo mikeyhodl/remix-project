@@ -56,7 +56,6 @@ import { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
 import { CompilationResourceProvider } from './providers/CompilationResourceProvider';
 import { DeploymentResourceProvider } from './providers/DeploymentResourceProvider';
-import { TutorialsResourceProvider } from './providers/TutorialsResourceProvider';
 import { AmpResourceProvider } from './providers/AmpResourceProvider';
 import { DebuggingResourceProvider } from './providers/DebuggingResourceProvider';
 import { ContextResourceProvider } from './providers/ContextResourceProvider';
@@ -886,10 +885,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register deployment resource provider
       const deploymentProvider = new DeploymentResourceProvider(this._plugin);
       this._resources.register(deploymentProvider);
-
-      // Register tutorial resource provider
-      const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
-      this._resources.register(tutorialsProvider);
 
       // Register debugging resource provider
       const debuggingProvider = new DebuggingResourceProvider(this._plugin);
