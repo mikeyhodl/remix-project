@@ -39,6 +39,7 @@ export interface RemixUiRemixAiAssistantProps {
   onLoadConversation?: (id: string) => void
   onArchiveConversation?: (id: string) => void
   onDeleteConversation?: (id: string) => void
+  onDeleteAllConversations?: () => void
   onToggleHistorySidebar?: () => void
   onSearch?: (query: string) => Promise<ConversationMetadata[]>
 }
@@ -1026,6 +1027,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               onLoadConversation={props.onLoadConversation || (() => {})}
               onArchiveConversation={props.onArchiveConversation || (() => {})}
               onDeleteConversation={props.onDeleteConversation || (() => {})}
+              onDeleteAllConversations={props.onDeleteAllConversations}
               onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
               onClose={props.onToggleHistorySidebar || (() => {})}
               onSearch={props.onSearch}
@@ -1103,6 +1105,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     }}
                     onArchiveConversation={props.onArchiveConversation || (() => {})}
                     onDeleteConversation={props.onDeleteConversation || (() => {})}
+                    onDeleteAllConversations={props.onDeleteAllConversations}
                     onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
                     onClose={props.onToggleHistorySidebar || (() => {})}
                     onSearch={props.onSearch}
