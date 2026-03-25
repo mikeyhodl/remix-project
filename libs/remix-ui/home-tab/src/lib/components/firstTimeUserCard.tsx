@@ -38,6 +38,13 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
       name: 'Get started with contract',
       isClick: true
     })
+    const params = {
+      optimize: false,
+      evmVersion: 'osaka',
+      language: 'Solidity',
+      version: '0.8.34+commit.80d5c536'
+    }
+    await plugin.call('solidity', 'setCompilerConfig', params)
     await plugin.call('remixaiassistant', 'newConversation')
     setTimeout(async () => {
       if (!await plugin.call('filePanel', 'workspaceExists', 'Introduction to ERC20 token')) await plugin.call('filePanel', 'createWorkspace', 'Introduction to ERC20 token', 'ozerc20')
