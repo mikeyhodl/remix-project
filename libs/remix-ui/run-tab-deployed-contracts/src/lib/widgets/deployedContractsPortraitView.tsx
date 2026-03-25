@@ -69,6 +69,20 @@ export default function DeployedContractsPortraitView() {
     }
   }, [])
 
+  useEffect(() => {
+    // Enable button if address is provided and file type is valid
+    // Valid types: compiled contracts (.sol, .vy, .lex, .contract) or ABI files (.abi)
+    if (!addressInput) {
+      setEnableAtAddress(false)
+    } else {
+      if (['sol', 'vyper', 'lexon', 'contract', 'abi'].includes(loadType)) {
+        setEnableAtAddress(true)
+      } else {
+        setEnableAtAddress(false)
+      }
+    }
+  }, [loadType, addressInput])
+
   const scrollToLatestContract = () => {
     trackMatomoEvent?.({ category: 'udapp', action: 'scrollToNewInstanceClick', name: 'clicked', isClick: true })
     if (latestContractAddress) {
@@ -160,18 +174,6 @@ export default function DeployedContractsPortraitView() {
     const value = event.target.value
     trackMatomoEvent?.({ category: 'udapp', action: 'addContractAddressInput', name: value })
     dispatch({ type: 'SET_ADDRESS_INPUT', payload: value })
-
-    // Enable button if address is provided and file type is valid
-    // Valid types: compiled contracts (.sol, .vy, .lex, .contract) or ABI files (.abi)
-    if (!value) {
-      setEnableAtAddress(false)
-    } else {
-      if (['sol', 'vyper', 'lexon', 'contract', 'abi'].includes(loadType)) {
-        setEnableAtAddress(true)
-      } else {
-        setEnableAtAddress(false)
-      }
-    }
   }
 
   return (
