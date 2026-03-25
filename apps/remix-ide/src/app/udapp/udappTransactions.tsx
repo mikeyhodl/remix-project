@@ -33,6 +33,11 @@ export class TransactionsPlugin extends Plugin {
     return this._getDispatch?.()
   }
 
+  clearGetters() {
+    this.getWidgetState = null
+    this._getDispatch = null
+  }
+
   getTransactionRecorderCount() {
     return this.getWidgetState()?.recorderData.journal.length || 0
   }
