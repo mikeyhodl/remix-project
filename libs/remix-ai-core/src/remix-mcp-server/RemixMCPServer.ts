@@ -888,8 +888,8 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._resources.register(deploymentProvider);
 
       // Register tutorial resource provider
-      const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
-      this._resources.register(tutorialsProvider);
+      // const tutorialsProvider = new TutorialsResourceProvider(this._plugin);
+      // this._resources.register(tutorialsProvider);
 
       // Register debugging resource provider
       const debuggingProvider = new DebuggingResourceProvider(this._plugin);
