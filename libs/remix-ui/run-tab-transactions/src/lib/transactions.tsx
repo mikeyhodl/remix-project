@@ -27,6 +27,15 @@ function TransactionsWidget({ plugin, context }: { plugin: TransactionsPlugin; c
         plugin.setDispatchGetter(() => localDispatch)
       }
     }
+
+    // Cleanup: Clear the getters when the primary instance unmounts
+    // This ensures that when the component remounts (e.g., after moving panels),
+    // it will correctly detect itself as the primary instance again
+    return () => {
+      if (isPrimaryInstance.current) {
+        plugin.clearGetters()
+      }
+    }
   }, [widgetState, localDispatch, plugin])
 
   // Secondary instances poll for state changes
