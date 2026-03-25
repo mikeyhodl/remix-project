@@ -156,12 +156,12 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
             {searchQuery ? (
               <>
                 <i className="fas fa-search fa-2x mb-2"></i>
-                <p>No conversations found</p>
+                <p data-id="no-conversations-msg">No conversations found</p>
               </>
             ) : showArchived ? (
               <>
                 <i className="fas fa-archive fa-2x mb-2"></i>
-                <p>No archived conversations</p>
+                <p data-id="no-conversations-msg">No archived conversations</p>
               </>
             ) : (
               <>

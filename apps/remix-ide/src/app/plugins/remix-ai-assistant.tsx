@@ -258,7 +258,6 @@ export class RemixAIAssistant extends ViewPlugin {
     if (!this.storageManager) return
 
     try {
-      // Delete all conversations
       const deletePromises = this.conversations.map(conv =>
         this.storageManager.deleteConversation(conv.id)
       )
