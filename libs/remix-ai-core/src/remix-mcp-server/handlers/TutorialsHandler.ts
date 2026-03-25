@@ -71,7 +71,7 @@ export class TutorialsListHandler extends BaseToolHandler {
   static readonly CACHE_KEY = 'remix_tutorials_config';
   static readonly CACHE_EXPIRY_KEY = 'remix_tutorials_config_expiry';
   static readonly CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
-  
+
   getPermissions(): string[] {
     return ['tutorial:list'];
   }
@@ -83,7 +83,7 @@ export class TutorialsListHandler extends BaseToolHandler {
   async execute(_args: any, _plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const tutorialsConfig = await this.loadTutorialsConfig();
-      
+
       if (!tutorialsConfig) {
         return this.createErrorResult('Failed to load tutorials configuration.');
       }
@@ -115,20 +115,20 @@ export class TutorialsListHandler extends BaseToolHandler {
 
   private getCachedConfig(): string | null {
     if (typeof localStorage === 'undefined') return null;
-    
+
     try {
       const cachedData = localStorage.getItem(TutorialsListHandler.CACHE_KEY);
       const expiryTime = localStorage.getItem(TutorialsListHandler.CACHE_EXPIRY_KEY);
-      
+
       if (!cachedData || !expiryTime) return null;
-      
+
       const now = Date.now();
       if (now > parseInt(expiryTime, 10)) {
         localStorage.removeItem(TutorialsListHandler.CACHE_KEY);
         localStorage.removeItem(TutorialsListHandler.CACHE_EXPIRY_KEY);
         return null;
       }
-      
+
       return cachedData;
     } catch (error) {
       console.error('Error reading from localStorage:', error);
@@ -138,7 +138,7 @@ export class TutorialsListHandler extends BaseToolHandler {
 
   private setCachedConfig(data: string): void {
     if (typeof localStorage === 'undefined') return;
-    
+
     try {
       const expiryTime = Date.now() + TutorialsListHandler.CACHE_DURATION_MS;
       localStorage.setItem(TutorialsListHandler.CACHE_KEY, data);
