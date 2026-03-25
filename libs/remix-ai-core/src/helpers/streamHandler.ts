@@ -37,7 +37,7 @@ function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
       ].filter(Boolean).join('|');
 
       if (eventName) {
-        (window as any)._matomoManagerInstance.trackEvent('ai', 'remixAI', 'token_usage', `|${eventName}`);
+        (window as any)._matomoManagerInstance.trackEvent('ai', 'remixAI', `token_usage|${eventName}`);
       }
     }
   } catch (error) {

@@ -188,8 +188,7 @@ export class AIDappGenerator extends Plugin {
         trackMatomoEvent(this, {
           category: 'quick-dapp-v2',
           action: 'ai_usage',
-          name: 'token_usage',
-          value: `|${eventLog}`,
+          name: `token_usage|${eventLog}`,
           isClick: false
         });
       }
@@ -594,8 +593,7 @@ export class AIDappGenerator extends Plugin {
       trackMatomoEvent(this, {
         category: 'quick-dapp-v2',
         action: 'ai_usage',
-        name: 'token_usage',
-        value: `|${eventLog}`,
+        name: `token_usage|${eventLog}`,
         isClick: false
       });
       return json.content;
