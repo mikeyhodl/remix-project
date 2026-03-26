@@ -150,7 +150,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         }
       }
 
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       return this.createSuccessResult(result);
     } catch (error) {
       return this.createErrorResult(`Compilation failed: ${error.message}`);
