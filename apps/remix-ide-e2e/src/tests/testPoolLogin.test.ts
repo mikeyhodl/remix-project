@@ -11,7 +11,7 @@ const poolApiKey = process.env.E2E_POOL_API_KEY || ''
 module.exports = {
   '@disabled': true,
 
-  before: '' +  function (browser: NightwatchBrowser, done: VoidFunction) {
+  before: function (browser: NightwatchBrowser, done: VoidFunction) {
     if (!poolApiKey) {
       console.error('[TestPoolLogin] E2E_POOL_API_KEY not set — cannot run pool test')
       return done()
@@ -120,7 +120,7 @@ module.exports = {
 
   // ── Cloud workspace + sync verification ────────────────
 
-  'Should create a cloud workspace #group2': async function (browser: NightwatchBrowser) {
+  'Should create a cloud workspace #group2': '' +  async function (browser: NightwatchBrowser) {
     // group2 needs login first — repeat the login flow
     browser
       .execute(function () {
@@ -176,7 +176,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemtest-sync.sol"]', 10000)
   },
 
-  'Should flush pending changes and verify sync integrity #group2': async function (browser: NightwatchBrowser) {
+  'Should flush pending changes and verify sync integrity #group2': '' +  async function (browser: NightwatchBrowser) {
     // waitAndVerifySync polls until the engine is idle with 0 pending changes
     const result = await waitAndVerifySync(browser, 30_000, {
       allowPhantoms: 0,
@@ -187,7 +187,7 @@ module.exports = {
     console.log(`[TestPoolLogin:SyncVerify] manifest=${result.manifestFileCount} files, remote=${result.remoteFileCount} files, ok=${result.ok}`)
   },
 
-  'Should edit the file and re-verify sync #group2': async function (browser: NightwatchBrowser) {
+  'Should edit the file and re-verify sync #group2': '' +  async function (browser: NightwatchBrowser) {
     // Open the file and edit it through the editor UI
     browser
       .openFile('test-sync.sol')
@@ -202,7 +202,7 @@ module.exports = {
     console.log(`[TestPoolLogin:SyncVerify] After edit: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should delete the file and verify sync reflects deletion #group2': async function (browser: NightwatchBrowser) {
+  'Should delete the file and verify sync reflects deletion #group2': '' +  async function (browser: NightwatchBrowser) {
     // Delete the file through the real UI: right-click → Delete → confirm modal
     browser
       .removeFile('test-sync.sol', 'e2e-sync-test')
@@ -214,7 +214,7 @@ module.exports = {
 
   // ── S3 Restore: wipe local, reload, verify restore ────────
 
-  'Should login and create first cloud workspace ws-alpha #group3': async function (browser: NightwatchBrowser) {
+  'Should login and create first cloud workspace ws-alpha #group3': '' +  async function (browser: NightwatchBrowser) {
     // Login (each group is isolated)
     browser
       .execute(function () {
@@ -265,7 +265,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should create second cloud workspace ws-beta #group3': async function (browser: NightwatchBrowser) {
+  'Should create second cloud workspace ws-beta #group3': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -297,7 +297,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should create third cloud workspace ws-gamma #group3': async function (browser: NightwatchBrowser) {
+  'Should create third cloud workspace ws-gamma #group3': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -325,7 +325,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should verify sync integrity for all three workspaces #group3': async function (browser: NightwatchBrowser) {
+  'Should verify sync integrity for all three workspaces #group3': '' +  async function (browser: NightwatchBrowser) {
     // Currently on ws-gamma — verify it
     const gammaResult = await waitAndVerifySync(browser, 30_000)
     console.log(`[group3] ws-gamma: manifest=${gammaResult.manifestFileCount}, remote=${gammaResult.remoteFileCount}, ok=${gammaResult.ok}`)
@@ -353,7 +353,7 @@ module.exports = {
     console.log(`[group3] ws-alpha: manifest=${alphaResult.manifestFileCount}, remote=${alphaResult.remoteFileCount}, ok=${alphaResult.ok}`)
   },
 
-  'Should wipe local cloud data and reload the page #group3': async function (browser: NightwatchBrowser) {
+  'Should wipe local cloud data and reload the page #group3': '' +  async function (browser: NightwatchBrowser) {
     browser
       // Wipe the local .cloud-workspaces directory from IndexedDB
       .execute(function () {
@@ -487,7 +487,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should clone Account Abstraction repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+  'Should clone Account Abstraction repo into a cloud workspace #group4': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -520,7 +520,7 @@ module.exports = {
     console.log(`[group4] accountAbstraction: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should clone Uniswap v4 Template repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+  'Should clone Uniswap v4 Template repo into a cloud workspace #group4': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -554,7 +554,7 @@ module.exports = {
     console.log(`[group4] uniswapV4Template: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should clone Breakthrough-Labs Hooks repo into a cloud workspace #group4': async function (browser: NightwatchBrowser) {
+  'Should clone Breakthrough-Labs Hooks repo into a cloud workspace #group4': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -588,7 +588,7 @@ module.exports = {
     console.log(`[group4] breakthroughLabsUniswapv4Hooks: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should verify all cloned workspaces are listed and switchable #group4': async function (browser: NightwatchBrowser) {
+  'Should verify all cloned workspaces are listed and switchable #group4': '' +  async function (browser: NightwatchBrowser) {
     // Open workspace dropdown and verify all three cloned workspaces are listed
     browser
       .clickWorkspaceDropdown()
@@ -670,7 +670,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should create a Basic workspace with git init checked #group5': async function (browser: NightwatchBrowser) {
+  'Should create a Basic workspace with git init checked #group5': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -696,7 +696,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 10000)
   },
 
-  'Should add a file, commit, and verify .git sync to S3 #group5': async function (browser: NightwatchBrowser) {
+  'Should add a file, commit, and verify .git sync to S3 #group5': '' +  async function (browser: NightwatchBrowser) {
     // Add a custom test file
     browser
       .addFile('git-test.sol', {
@@ -748,7 +748,7 @@ module.exports = {
     console.log(`[group5] After git push: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should wipe local data and reload — workspace + .git must restore from S3 #group5': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and reload — workspace + .git must restore from S3 #group5': '' +  async function (browser: NightwatchBrowser) {
     // Save current workspace name for later verification
     const wsName = await new Promise<string>((resolve) => {
       browser.execute(
@@ -814,7 +814,7 @@ module.exports = {
       })
   },
 
-  'Should verify .git directory was restored from S3 #group5': async function (browser: NightwatchBrowser) {
+  'Should verify .git directory was restored from S3 #group5': '' +  async function (browser: NightwatchBrowser) {
     // .git is hidden in file explorer — verify via engine state and filesystem
     // Poll for lastGitZipEtag (set when _git.zip is pulled from S3 during activate)
     let restoredEtag: string | null = null
@@ -1022,7 +1022,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="cloud-migration-dialogModalDialogContainer-react"]', 15000)
   },
 
-  'Should deselect migrate-ws-C and migrate only A and B #group6': async function (browser: NightwatchBrowser) {
+  'Should deselect migrate-ws-C and migrate only A and B #group6': '' +  async function (browser: NightwatchBrowser) {
     // Wait for workspace rows to load (select phase)
     browser
       .waitForElementVisible('*[data-id="migration-ws-migrate-ws-A"]', 10000)
@@ -1186,7 +1186,7 @@ module.exports = {
 
   // ───── Group 7: logout / login isolation — cloud workspaces are per-account ─────
 
-  'Should login and create a cloud workspace with data #group7': async function (browser: NightwatchBrowser) {
+  'Should login and create a cloud workspace with data #group7': '' +  async function (browser: NightwatchBrowser) {
     // Standard pool login flow
     browser
       .execute(function () {
@@ -1234,7 +1234,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should add a file to the cloud workspace #group7': async function (browser: NightwatchBrowser) {
+  'Should add a file to the cloud workspace #group7': '' +  async function (browser: NightwatchBrowser) {
     browser
       .addFile('isolation-test.sol', {
         content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract IsolationTest {\n    string public owner = "user1";\n}\n',
@@ -1342,7 +1342,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should create three cloud workspaces #group8': async function (browser: NightwatchBrowser) {
+  'Should create three cloud workspaces #group8': '' +  async function (browser: NightwatchBrowser) {
     // ─── Create rename-me ───
     browser
       .clickWorkspaceDropdown()
@@ -1419,7 +1419,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should rename rename-me to renamed-ws #group8': async function (browser: NightwatchBrowser) {
+  'Should rename rename-me to renamed-ws #group8': '' +  async function (browser: NightwatchBrowser) {
     // Open dropdown and click the sub-menu icon for rename-me
     browser
       .clickWorkspaceDropdown()
@@ -1487,7 +1487,7 @@ module.exports = {
       .pause(500)
   },
 
-  'Should wipe local data and reload #group8': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and reload #group8': '' +  async function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         return (window as any).remixFileSystem.unlink('.cloud-workspaces')
@@ -1502,7 +1502,7 @@ module.exports = {
     await waitForSyncIdle(browser, 60_000)
   },
 
-  'Should verify renamed-ws survived S3 restore #group8': async function (browser: NightwatchBrowser) {
+  'Should verify renamed-ws survived S3 restore #group8': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1530,7 +1530,7 @@ module.exports = {
       .pause(500)
   },
 
-  'Should verify keep-me survived S3 restore #group8': async function (browser: NightwatchBrowser) {
+  'Should verify keep-me survived S3 restore #group8': '' +  async function (browser: NightwatchBrowser) {
     browser
       .pause(2000)
       .waitForElementVisible('*[data-id="dropdown-item-keep-me"]', 20000)
@@ -1575,7 +1575,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should create a workspace with three files #group9': async function (browser: NightwatchBrowser) {
+  'Should create a workspace with three files #group9': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1614,7 +1614,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should edit edit-me.sol with new content #group9': async function (browser: NightwatchBrowser) {
+  'Should edit edit-me.sol with new content #group9': '' +  async function (browser: NightwatchBrowser) {
     browser
       .openFile('edit-me.sol')
       .pause(2000)
@@ -1628,7 +1628,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should delete delete-me.sol #group9': async function (browser: NightwatchBrowser) {
+  'Should delete delete-me.sol #group9': '' +  async function (browser: NightwatchBrowser) {
     browser
       .removeFile('delete-me.sol', 'file-ops-ws')
 
@@ -1651,7 +1651,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemuntouched.sol"]', 10000)
   },
 
-  'Should wipe local data and reload #group9': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and reload #group9': '' +  async function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         // Clear workspace names from localStorage BEFORE wipe/reload
@@ -1679,7 +1679,7 @@ module.exports = {
     browser.pause(5000)
   },
 
-  'Should verify edit-me.sol has v2 content after S3 restore #group9': async function (browser: NightwatchBrowser) {
+  'Should verify edit-me.sol has v2 content after S3 restore #group9': '' +  async function (browser: NightwatchBrowser) {
     // The first enableCloud restored data from S3 but the tree may not render.
     // Do a second refresh → enableCloud cycle to ensure proper tree rendering.
     browser
@@ -1758,7 +1758,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should open template explorer and clone awesome-remix via Git Clone #group10': async function (browser: NightwatchBrowser) {
+  'Should open template explorer and clone awesome-remix via Git Clone #group10': '' +  async function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1790,12 +1790,12 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemREADME.md"]', 30000)
   },
 
-  'Should verify awesome-remix sync integrity #group10': async function (browser: NightwatchBrowser) {
+  'Should verify awesome-remix sync integrity #group10': '' +  async function (browser: NightwatchBrowser) {
     const result = await waitAndVerifySync(browser, 60_000)
     console.log(`[group10] awesome-remix clone: manifest=${result.manifestFileCount}, remote=${result.remoteFileCount}, ok=${result.ok}`)
   },
 
-  'Should wipe local data and restore cloned workspace from S3 #group10': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and restore cloned workspace from S3 #group10': '' +  async function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         return (window as any).remixFileSystem.unlink('.cloud-workspaces')
@@ -1878,7 +1878,7 @@ module.exports = {
       .pause(3000)
   },
 
-  'Should wait for AI workspace generation to complete #group11': async function (browser: NightwatchBrowser) {
+  'Should wait for AI workspace generation to complete #group11': '' +  async function (browser: NightwatchBrowser) {
     // The AI generates files asynchronously — poll until the workspace has at least one .sol file
     let hasSolFile = false
     const start = Date.now()
@@ -1905,7 +1905,7 @@ module.exports = {
     browser.assert.ok(hasSolFile, 'AI generated at least one .sol file in the workspace')
   },
 
-  'Should verify AI workspace has files and sync to S3 #group11': async function (browser: NightwatchBrowser) {
+  'Should verify AI workspace has files and sync to S3 #group11': '' +  async function (browser: NightwatchBrowser) {
     // Wait for sync to push the AI-generated files to S3
     await waitForSyncIdle(browser, 60_000)
 
@@ -1915,7 +1915,7 @@ module.exports = {
     browser.assert.ok(result.manifestFileCount > 0, 'AI workspace has files in manifest')
   },
 
-  'Should wipe local data and restore AI workspace from S3 #group11': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and restore AI workspace from S3 #group11': '' +  async function (browser: NightwatchBrowser) {
     // Save workspace name before wipe
     const wsName = await new Promise<string>((resolve) => {
       browser.execute(
@@ -1943,7 +1943,7 @@ module.exports = {
     await waitForSyncIdle(browser, 120_000)
   },
 
-  'Should verify AI workspace restored from S3 with .sol files #group11': async function (browser: NightwatchBrowser) {
+  'Should verify AI workspace restored from S3 with .sol files #group11': '' +  async function (browser: NightwatchBrowser) {
     // After restore, check that at least one .sol file exists in the file tree
     // The AI workspace should be auto-selected or available in the dropdown
     browser.clickLaunchIcon('filePanel').expandAllFolders()

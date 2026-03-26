@@ -9,7 +9,7 @@ const poolApiKey = process.env.E2E_POOL_API_KEY || ''
 
 module.exports = {
   '@disabled': true,
-  before: '' + function (browser: NightwatchBrowser, done: VoidFunction) {
+  before: function (browser: NightwatchBrowser, done: VoidFunction) {
     if (!poolApiKey) {
       console.error('[QuickDappV2] E2E_POOL_API_KEY not set — cannot run pool test')
       return done()
