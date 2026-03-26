@@ -11,7 +11,7 @@ const poolApiKey = process.env.E2E_POOL_API_KEY || ''
 module.exports = {
   '@disabled': true,
 
-  before: function (browser: NightwatchBrowser, done: VoidFunction) {
+  before: '' +  function (browser: NightwatchBrowser, done: VoidFunction) {
     if (!poolApiKey) {
       console.error('[TestPoolLogin] E2E_POOL_API_KEY not set — cannot run pool test')
       return done()
@@ -44,7 +44,7 @@ module.exports = {
     done()
   },
 
-  'Should enable login and show sign-in button #group1': function (browser: NightwatchBrowser) {
+  'Should enable login and show sign-in button #group1': '' +  function (browser: NightwatchBrowser) {
     browser
       // enableLogin must be set for the Sign In button to appear
       .execute(function () {
@@ -56,7 +56,7 @@ module.exports = {
       .assert.elementPresent('*[data-id="login-button"]')
   },
 
-  'Should login via the test pool through the real UI flow #group1': function (browser: NightwatchBrowser) {
+  'Should login via the test pool through the real UI flow #group1': '' +  function (browser: NightwatchBrowser) {
     browser
       // Open the login modal
       .click('*[data-id="login-button"]')
@@ -76,7 +76,7 @@ module.exports = {
       .pause(5000)
   },
 
-  'Should have auth tokens in localStorage after pool login #group1': function (browser: NightwatchBrowser) {
+  'Should have auth tokens in localStorage after pool login #group1': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         return {
@@ -95,7 +95,7 @@ module.exports = {
       })
   },
 
-  'Should show the user as logged in with test provider #group1': function (browser: NightwatchBrowser) {
+  'Should show the user as logged in with test provider #group1': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         const user = localStorage.getItem('remix_user')
@@ -167,7 +167,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should create a test file in the cloud workspace #group2': function (browser: NightwatchBrowser) {
+  'Should create a test file in the cloud workspace #group2': '' +  function (browser: NightwatchBrowser) {
     browser
       // Use the real UI: right-click tree → New File → type name → set content
       .addFile('test-sync.sol', {
@@ -372,7 +372,7 @@ module.exports = {
     await waitForSyncIdle(browser, 60_000)
   },
 
-  'Should verify ws-alpha restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-alpha restored from S3 with correct files #group3': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -399,7 +399,7 @@ module.exports = {
       })
   },
 
-  'Should verify ws-beta restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-beta restored from S3 with correct files #group3': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -434,7 +434,7 @@ module.exports = {
       })
   },
 
-  'Should verify ws-gamma restored from S3 with correct files #group3': function (browser: NightwatchBrowser) {
+  'Should verify ws-gamma restored from S3 with correct files #group3': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -461,7 +461,7 @@ module.exports = {
 
   // ── Git-clone workspace templates ──────────────────────
 
-  'Should login for git clone tests #group4': function (browser: NightwatchBrowser) {
+  'Should login for git clone tests #group4': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         localStorage.setItem('enableLogin', 'true')
@@ -644,7 +644,7 @@ module.exports = {
 
   // ── Git-init workspace + .git cloud sync + S3 restore ──
 
-  'Should login for git-init sync tests #group5': function (browser: NightwatchBrowser) {
+  'Should login for git-init sync tests #group5': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () {
         localStorage.setItem('enableLogin', 'true')
@@ -779,7 +779,7 @@ module.exports = {
     await waitForSyncIdle(browser, 120_000)
   },
 
-  'Should verify workspace files restored from S3 after wipe #group5': function (browser: NightwatchBrowser) {
+  'Should verify workspace files restored from S3 after wipe #group5': '' +  function (browser: NightwatchBrowser) {
     // The restored workspace should be listed — switch to it
     browser
       .clickWorkspaceDropdown()
@@ -871,7 +871,7 @@ module.exports = {
   //  Group 6 — Migration: local workspaces → cloud
   // ══════════════════════════════════════════════════════════════
 
-  'Should login for local workspace creation #group6': function (browser: NightwatchBrowser) {
+  'Should login for local workspace creation #group6': '' +  function (browser: NightwatchBrowser) {
     // Login only — cloud is OFF by default, no need to toggle
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
@@ -893,7 +893,7 @@ module.exports = {
       .pause(5000)
   },
 
-  'Should create local workspace migrate-ws-A with files #group6': function (browser: NightwatchBrowser) {
+  'Should create local workspace migrate-ws-A with files #group6': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -927,7 +927,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileA.sol"]', 10000)
   },
 
-  'Should create local workspace migrate-ws-B with files #group6': function (browser: NightwatchBrowser) {
+  'Should create local workspace migrate-ws-B with files #group6': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -960,7 +960,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileB.sol"]', 10000)
   },
 
-  'Should create local workspace migrate-ws-C (will NOT be migrated) #group6': function (browser: NightwatchBrowser) {
+  'Should create local workspace migrate-ws-C (will NOT be migrated) #group6': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -993,7 +993,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemfileC.sol"]', 10000)
   },
 
-  'Should enable cloud and open migration via dropdown #group6': function (browser: NightwatchBrowser) {
+  'Should enable cloud and open migration via dropdown #group6': '' +  function (browser: NightwatchBrowser) {
     // Re-enable cloud via toggle
     browser
       .clickCloudToggle()
@@ -1063,7 +1063,7 @@ module.exports = {
       .pause(3000)
   },
 
-  'Should verify migrated workspaces in cloud dropdown #group6': function (browser: NightwatchBrowser) {
+  'Should verify migrated workspaces in cloud dropdown #group6': '' +  function (browser: NightwatchBrowser) {
     browser
       .pause(5000)
       .clickWorkspaceDropdown()
@@ -1093,7 +1093,7 @@ module.exports = {
       })
   },
 
-  'Should verify migrate-ws-B content in cloud #group6': function (browser: NightwatchBrowser) {
+  'Should verify migrate-ws-B content in cloud #group6': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1110,7 +1110,7 @@ module.exports = {
       })
   },
 
-  'Should verify migrate-ws-C is still local and A/B are gone locally #group6': function (browser: NightwatchBrowser) {
+  'Should verify migrate-ws-C is still local and A/B are gone locally #group6': '' +  function (browser: NightwatchBrowser) {
     // Disable cloud to switch to local mode
     browser
       .clickCloudToggle()
@@ -1152,7 +1152,7 @@ module.exports = {
       })
   },
 
-  'Should re-enable cloud and verify migrated workspaces persist #group6': function (browser: NightwatchBrowser) {
+  'Should re-enable cloud and verify migrated workspaces persist #group6': '' +  function (browser: NightwatchBrowser) {
     // Re-enable cloud
     browser
       .clickCloudToggle()
@@ -1244,7 +1244,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should verify workspace content before logout #group7': function (browser: NightwatchBrowser) {
+  'Should verify workspace content before logout #group7': '' +  function (browser: NightwatchBrowser) {
     browser
       .openFile('isolation-test.sol')
       .pause(2000)
@@ -1253,7 +1253,7 @@ module.exports = {
       })
   },
 
-  'Should log out and see only local default workspace #group7': function (browser: NightwatchBrowser) {
+  'Should log out and see only local default workspace #group7': '' +  function (browser: NightwatchBrowser) {
     // Open user menu and click Sign Out
     browser
       .click('*[data-id="user-menu-compact"]')
@@ -1284,7 +1284,7 @@ module.exports = {
       .pause(500)
   },
 
-  'Should login with a new pool account #group7': function (browser: NightwatchBrowser) {
+  'Should login with a new pool account #group7': '' +  function (browser: NightwatchBrowser) {
     // Log in again — the pool should give us a DIFFERENT account
     // Cloud stays OFF — we just verify the workspace list is empty for this user
     browser
@@ -1302,7 +1302,7 @@ module.exports = {
       .pause(5000)
   },
 
-  'Should NOT see the first user cloud workspace #group7': function (browser: NightwatchBrowser) {
+  'Should NOT see the first user cloud workspace #group7': '' +  function (browser: NightwatchBrowser) {
     // The new user should not have user1-cloud-ws in their workspace list
     browser
       .clickWorkspaceDropdown()
@@ -1320,7 +1320,7 @@ module.exports = {
   //  Group 8 — Rename & delete cloud workspaces + S3 persistence
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and enable cloud #group8': function (browser: NightwatchBrowser) {
+  'Should login and enable cloud #group8': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -1453,7 +1453,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemrename-file.sol"]', 20000)
   },
 
-  'Should delete delete-me workspace #group8': function (browser: NightwatchBrowser) {
+  'Should delete delete-me workspace #group8': '' +  function (browser: NightwatchBrowser) {
     // Open dropdown and click the sub-menu icon for delete-me
     browser
       .clickWorkspaceDropdown()
@@ -1522,7 +1522,7 @@ module.exports = {
       })
   },
 
-  'Should verify delete-me is still gone after S3 restore #group8': function (browser: NightwatchBrowser) {
+  'Should verify delete-me is still gone after S3 restore #group8': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1553,7 +1553,7 @@ module.exports = {
   //  Group 9 — File edit + file delete persistence across S3 restore
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and enable cloud for file ops test #group9': function (browser: NightwatchBrowser) {
+  'Should login and enable cloud for file ops test #group9': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -1635,7 +1635,7 @@ module.exports = {
     await waitForSyncIdle(browser)
   },
 
-  'Should verify state before wipe #group9': function (browser: NightwatchBrowser) {
+  'Should verify state before wipe #group9': '' +  function (browser: NightwatchBrowser) {
     // edit-me.sol should exist with v2 content
     browser
       .openFile('edit-me.sol')
@@ -1714,12 +1714,12 @@ module.exports = {
       })
   },
 
-  'Should verify delete-me.sol is still gone after S3 restore #group9': function (browser: NightwatchBrowser) {
+  'Should verify delete-me.sol is still gone after S3 restore #group9': '' +  function (browser: NightwatchBrowser) {
     browser
       .assert.not.elementPresent('*[data-id="treeViewLitreeViewItemdelete-me.sol"]')
   },
 
-  'Should verify untouched.sol is unchanged after S3 restore #group9': function (browser: NightwatchBrowser) {
+  'Should verify untouched.sol is unchanged after S3 restore #group9': '' +  function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemuntouched.sol"]', 30000)
       .openFile('untouched.sol')
@@ -1736,7 +1736,7 @@ module.exports = {
   //  Group 10 — Git Clone via template explorer in cloud mode
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and enable cloud for git clone test #group10': function (browser: NightwatchBrowser) {
+  'Should login and enable cloud for git clone test #group10': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -1810,7 +1810,7 @@ module.exports = {
     await waitForSyncIdle(browser, 120_000)
   },
 
-  'Should verify cloned workspace restored from S3 #group10': function (browser: NightwatchBrowser) {
+  'Should verify cloned workspace restored from S3 #group10': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1834,7 +1834,7 @@ module.exports = {
   //  Group 11 — AI workspace generation in cloud mode
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and enable cloud for AI workspace test #group11': function (browser: NightwatchBrowser) {
+  'Should login and enable cloud for AI workspace test #group11': '' +  function (browser: NightwatchBrowser) {
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -1856,7 +1856,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should open template explorer and generate workspace with AI #group11': function (browser: NightwatchBrowser) {
+  'Should open template explorer and generate workspace with AI #group11': '' +  function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
