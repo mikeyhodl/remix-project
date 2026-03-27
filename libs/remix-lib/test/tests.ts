@@ -1,4 +1,5 @@
 require('./eventManager.ts')
+require('./event-guard.ts')
 require('./util.ts')
 require('./txFormat.ts')
 require('./txHelper.ts')

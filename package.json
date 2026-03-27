@@ -274,6 +274,7 @@
     "webauthn-p256": "^0.0.10",
     "winston": "^3.3.3",
     "ws": "^8.18.0",
+    "xstate": "^5",
     "xterm": "^5.2.1",
     "xterm-addon-search": "^0.12.0"
   },

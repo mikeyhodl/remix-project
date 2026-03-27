@@ -34,7 +34,7 @@ import { WalkthroughService } from './walkthroughService'
 
 import { OffsetToLineColumnConverter, CompilerMetadata, CompilerArtefacts, FetchAndCompile, CompilerImports, GistHandler, AmpPlugin, ChartJsPlugin } from '@remix-project/core-plugin'
 
-import { Registry } from '@remix-project/remix-lib'
+import { Registry, AppLifecycle, LifecyclePlugin, all } from '@remix-project/remix-lib'
 import { ConfigPlugin } from './app/plugins/config'
 import { StoragePlugin } from './app/plugins/storage'
 import { StorageMonitorPlugin } from './app/plugins/storage-monitor'
@@ -181,6 +181,8 @@ class AppComponent {
   membershipRequest: MembershipRequestPlugin
   betaCornerWidget: BetaCornerWidgetPlugin
   accountPlugin: AccountPlugin
+  lifecycle: AppLifecycle
+  lifecyclePlugin: LifecyclePlugin
   params: any
   desktopClientMode: boolean
 
@@ -202,6 +204,9 @@ class AppComponent {
       name: 'platform'
     })
     this.appManager = new RemixAppManager()
+    this.lifecycle = new AppLifecycle()
+    this.lifecyclePlugin = new LifecyclePlugin(this.lifecycle)
+    Registry.getInstance().put({ api: this.lifecycle, name: 'lifecycle' })
     this.queryParams = new QueryParams()
     this.params = this.queryParams.get()
     this.desktopClientMode = this.params && this.params.activate && this.params.activate.split(',').includes('desktopClient')
@@ -469,6 +474,7 @@ class AppComponent {
     const txRunnerPlugin = new TxRunnerPlugin()
 
     this.engine.register([
+      this.lifecyclePlugin,
       txRunnerPlugin,
       permissionHandler,
       this.layout,
@@ -669,12 +675,20 @@ class AppComponent {
   }
 
   async activate() {
+    // Boot the lifecycle state machine
+    this.lifecycle.send({ type: 'BOOT' })
 
     try {
       this.engine.register(await this.appManager.registeredPlugins())
     } catch (e) {
       console.log("couldn't register iframe plugins", e.message)
     }
+
+    // Signal that all plugins are registered with the engine
+    this.lifecycle.send({ type: 'PLUGINS_REGISTERED' })
+
+    // Activate lifecycle plugin first so other plugins can call it
+    await this.appManager.activatePlugin(['lifecycle'])
     if (isElectron()) {
       await this.appManager.activatePlugin(['fs'])
     }
@@ -742,27 +756,50 @@ class AppComponent {
       await this.appManager.activatePlugin(['isogit', 'electronconfig', 'electronTemplates', 'xterm', 'ripgrep', 'appUpdater', 'slither', 'foundry', 'hardhat', 'circom', 'githubAuthHandler']) // 'remixAID'
     }
 
+    // ─── Lifecycle event bridges ────────────────────────────────────
+    // Forward plugin events into the lifecycle state machine so guards can react to them.
+
     this.appManager.on(
       'filePanel',
       'workspaceInitializationCompleted',
       async () => {
-        // for e2e tests
-        const loadedElement = document.createElement('span')
-        loadedElement.setAttribute('data-id', 'workspaceloaded')
-        document.body.appendChild(loadedElement)
-        await this.appManager.registerContextMenuItems()
+        this.lifecycle.send({ type: 'WORKSPACE_INITIALIZED' })
       }
     )
+
+    // Workspace initialized guard: create DOM marker for E2E tests + register context menus
+    this.lifecycle.when('WORKSPACE_INITIALIZED', async () => {
+      const loadedElement = document.createElement('span')
+      loadedElement.setAttribute('data-id', 'workspaceloaded')
+      document.body.appendChild(loadedElement)
+      await this.appManager.registerContextMenuItems()
+    })
+
     await this.appManager.activatePlugin(['solidity-script'])
     await this.appManager.activatePlugin(['filePanel'])
 
-    // Set workspace after initial activation
+    // Forward editor mount into lifecycle
     this.appManager.on('editor', 'editorMounted', () => {
-      // Preload prettier and plugins to improve first-format performance
+      this.lifecycle.send({ type: 'EDITOR_MOUNTED' })
+    })
+
+    // Editor mounted guard: preload prettifier
+    this.lifecycle.when('EDITOR_MOUNTED', () => {
       this.appManager.call('codeFormatter', 'preloadPrettier').catch((e) => {
         console.log('Failed to preload code formatter:', e)
       })
+    })
 
+    // App loaded guard: fires when both editor is mounted AND workspace is initialized
+    this.lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), () => {
+      this.lifecycle.send({ type: 'APP_LOADED' })
+      const loadedElement = document.createElement('span')
+      loadedElement.setAttribute('data-id', 'apploaded')
+      document.body.appendChild(loadedElement)
+    })
+
+    // Editor mounted guard: activate workspace plugins and handle query params
+    this.lifecycle.when('EDITOR_MOUNTED', () => {
       const restorePinnedPlugin = () => {
         const lastPinned = localStorage.getItem('pinnedPlugin')
 
@@ -836,9 +873,6 @@ class AppComponent {
       } else {
         restorePinnedPlugin()
       }
-      const loadedElement = document.createElement('span')
-      loadedElement.setAttribute('data-id', 'apploaded')
-      document.body.appendChild(loadedElement)
     })
 
     this.appManager.on('rightSidePanel', 'pinnedPlugin', (pluginProfile) => {

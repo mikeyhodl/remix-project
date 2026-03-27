@@ -35545,6 +35545,11 @@ xregexp@^5.1.1:
   dependencies:
     "@babel/runtime-corejs3" "^7.26.9"
 
+xstate@^5:
+  version "5.29.0"
+  resolved "https://registry.yarnpkg.com/xstate/-/xstate-5.29.0.tgz#32ea2615822a1e8b57e61b2317df97840d340755"
+  integrity sha512-p0hiOPhhBgXn29t18zDScaN95+y1MAu1Pz5Z2IduCuOUh+d3RqJO7fmexbuQ6rlwFNgYFeXvFsFeiuiAiH3mhg==
+
 xtend@^4.0.0, xtend@^4.0.1, xtend@^4.0.2, xtend@~4.0.0, xtend@~4.0.1:
   version "4.0.2"
   resolved "https://registry.yarnpkg.com/xtend/-/xtend-4.0.2.tgz#bb72779f5fa465186b1f438f674fa347fdb5db54"
