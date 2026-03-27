@@ -138,6 +138,9 @@ const appLifecycleMachine = setup({
         EDITOR_MOUNTED: {
           actions: ['recordEvent']
         },
+        WORKSPACE_PLUGINS_ACTIVATED: {
+          actions: ['recordEvent']
+        },
         CACHE_READY: {
           actions: ['recordEvent']
         },
@@ -220,6 +223,9 @@ const appLifecycleMachine = setup({
         EDITOR_MOUNTED: {
           actions: ['recordEvent']
         },
+        WORKSPACE_PLUGINS_ACTIVATED: {
+          actions: ['recordEvent']
+        },
         CACHE_READY: {
           actions: ['recordEvent']
         },
@@ -258,10 +264,38 @@ export class AppLifecycle {
   private actor: AnyActorRef
   private guard: EventGuard
   private listeners: Array<(state: string) => void> = []
+  private debug: boolean
 
-  constructor() {
+  constructor(options?: { debug?: boolean }) {
+    this.debug = options?.debug ?? false
     this.guard = new EventGuard()
-    this.actor = createActor(appLifecycleMachine)
+
+    const inspectFn = this.debug
+      ? (inspectionEvent: any) => {
+        if (inspectionEvent.type === '@xstate.event') {
+          console.log(
+            '%c[Lifecycle] event %c%s',
+            'color:#8be9fd', 'color:#50fa7b;font-weight:bold',
+            JSON.stringify(inspectionEvent.event)
+          )
+        } else if (inspectionEvent.type === '@xstate.snapshot') {
+          const ctx = inspectionEvent.snapshot?.context
+          console.log(
+            '%c[Lifecycle] → phase %c%s %c| state %c%s %c| plugins %c%d',
+            'color:#8be9fd',
+            'color:#ff79c6;font-weight:bold', ctx?.currentPhase,
+            'color:#8be9fd',
+            'color:#f1fa8c', JSON.stringify(inspectionEvent.snapshot?.value),
+            'color:#8be9fd',
+            'color:#ffb86c', ctx?.activatedPlugins?.size ?? 0
+          )
+        }
+      }
+      : undefined
+
+    this.actor = createActor(appLifecycleMachine, {
+      inspect: inspectFn
+    })
 
     // Sync machine state changes to listeners
     this.actor.subscribe((snapshot) => {

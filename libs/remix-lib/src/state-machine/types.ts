@@ -15,6 +15,7 @@ export type LifecycleEvent =
   | { type: 'CACHE_READY' }
   | { type: 'PROVIDER_CONNECTED'; name: string }
   | { type: 'PROVIDER_DISCONNECTED'; name: string }
+  | { type: 'WORKSPACE_PLUGINS_ACTIVATED' }
   | { type: 'APP_LOADED' }
   | { type: 'CUSTOM'; id: string; payload?: any }
 

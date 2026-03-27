@@ -204,7 +204,7 @@ class AppComponent {
       name: 'platform'
     })
     this.appManager = new RemixAppManager()
-    this.lifecycle = new AppLifecycle()
+    this.lifecycle = new AppLifecycle({ debug: true })
     this.lifecyclePlugin = new LifecyclePlugin(this.lifecycle)
     Registry.getInstance().put({ api: this.lifecycle, name: 'lifecycle' })
     this.queryParams = new QueryParams()
@@ -798,80 +798,81 @@ class AppComponent {
       document.body.appendChild(loadedElement)
     })
 
-    // Editor mounted guard: activate workspace plugins and handle query params
+    // Editor mounted: activate workspace plugins, then signal readiness
     this.lifecycle.when('EDITOR_MOUNTED', () => {
-      const restorePinnedPlugin = () => {
-        const lastPinned = localStorage.getItem('pinnedPlugin')
-
-        if (lastPinned) {
-          try {
-            this.appManager.call('sidePanel', 'pinView', JSON.parse(lastPinned))
-          } catch (e) {
-            console.error('Failed to restore pinned plugin:', e)
-          }
-        }
-      }
-
       if (Array.isArray(this.workspace)) {
         this.appManager
           .activatePlugin(this.workspace)
-          .then(async () => {
-            try {
-              if (this.params.deactivate) {
-                await this.appManager.deactivatePlugin(this.params.deactivate.split(','))
-              }
-            } catch (e) {
-              console.log(e)
-            }
-            if (this.params.code && (!this.params.activate || this.params.activate.split(',').includes('solidity'))) {
-              // if code is given in url we focus on solidity plugin
-              this.menuicons.select('solidity')
-            } else {
-              // If plugins are loaded from the URL params, we focus on the last one.
-              if (this.appManager.pluginLoader.current === 'queryParams' && this.workspace.length > 0) {
-                this.menuicons.select(this.workspace[this.workspace.length - 1])
-              } else {
-                this.appManager.call('tabs', 'focus', 'home')
-              }
-            }
-
-            if (this.params.call) {
-              const callDetails = this.params.call.split('//')
-              if (callDetails.length > 1) {
-                this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
-                // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                this.track({ category: 'App', action: 'queryParams-calls', name: this.params.call, isClick: false })
-                //@ts-ignore
-                await this.appManager.call(...callDetails).catch(console.error)
-              }
-            }
-
-            if (this.params.calls) {
-              const calls = this.params.calls.split('///')
-
-              // call all functions in the list, one after the other
-              for (const call of calls) {
-                this.track({ category: 'App', action: 'queryParams-calls', name: call, isClick: false })
-                const callDetails = call.split('//')
-                if (callDetails.length > 1) {
-                  this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
-
-                  // @todo(remove the timeout when activatePlugin is on 0.3.0)
-                  try {
-                    //@ts-ignore
-                    await this.appManager.call(...callDetails)
-                  } catch (e) {
-                    console.error(e)
-                  }
-                }
-              }
-            }
-          }).finally(restorePinnedPlugin)
+          .then(() => {
+            this.lifecycle.send({ type: 'WORKSPACE_PLUGINS_ACTIVATED' })
+          })
           .catch((e) => {
             console.error(e)
+            // Signal anyway so query param handling isn't permanently blocked
+            this.lifecycle.send({ type: 'WORKSPACE_PLUGINS_ACTIVATED' })
           })
       } else {
-        restorePinnedPlugin()
+        this.lifecycle.send({ type: 'WORKSPACE_PLUGINS_ACTIVATED' })
+      }
+    })
+
+    // Query params & UI restoration: wait for workspace ready + plugins activated
+    // This guarantees the filesystem, file tree, and workspace plugins are all
+    // initialized before we run any query-param-driven actions.
+    this.lifecycle.when(all('WORKSPACE_PLUGINS_ACTIVATED', 'WORKSPACE_INITIALIZED'), async () => {
+      // Restore pinned plugin
+      const lastPinned = localStorage.getItem('pinnedPlugin')
+      if (lastPinned) {
+        try {
+          this.appManager.call('sidePanel', 'pinView', JSON.parse(lastPinned))
+        } catch (e) {
+          console.error('Failed to restore pinned plugin:', e)
+        }
+      }
+
+      try {
+        if (this.params.deactivate) {
+          await this.appManager.deactivatePlugin(this.params.deactivate.split(','))
+        }
+      } catch (e) {
+        console.log(e)
+      }
+
+      if (this.params.code && (!this.params.activate || this.params.activate.split(',').includes('solidity'))) {
+        this.menuicons.select('solidity')
+      } else {
+        if (this.appManager.pluginLoader.current === 'queryParams' && this.workspace.length > 0) {
+          this.menuicons.select(this.workspace[this.workspace.length - 1])
+        } else {
+          this.appManager.call('tabs', 'focus', 'home')
+        }
+      }
+
+      if (this.params.call) {
+        const callDetails = this.params.call.split('//')
+        if (callDetails.length > 1) {
+          this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
+          this.track({ category: 'App', action: 'queryParams-calls', name: this.params.call, isClick: false })
+          //@ts-ignore
+          await this.appManager.call(...callDetails).catch(console.error)
+        }
+      }
+
+      if (this.params.calls) {
+        const calls = this.params.calls.split('///')
+        for (const call of calls) {
+          this.track({ category: 'App', action: 'queryParams-calls', name: call, isClick: false })
+          const callDetails = call.split('//')
+          if (callDetails.length > 1) {
+            this.appManager.call('notification', 'toast', `initiating ${callDetails[0]} and calling "${callDetails[1]}" ...`)
+            try {
+              //@ts-ignore
+              await this.appManager.call(...callDetails)
+            } catch (e) {
+              console.error(e)
+            }
+          }
+        }
       }
     })
 
