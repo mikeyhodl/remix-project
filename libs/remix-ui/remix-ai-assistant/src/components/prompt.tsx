@@ -169,7 +169,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             /> : null }
           </div>
 
-          <div className="d-flex flex-row justify-content-between align-items-center overflow-x-scroll overflow-y-hidden p-2 mt-2 gap-2"
+          {/* <div className="d-flex flex-row justify-content-between align-items-center overflow-x-scroll overflow-y-hidden p-2 mt-2 gap-2"
             style={{
               scrollbarWidth: 'none'
             }}
@@ -180,7 +180,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               <i className="fas fa-plus me-1"></i>
               <span className="text-nowrap">New Workspace</span>
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </>
