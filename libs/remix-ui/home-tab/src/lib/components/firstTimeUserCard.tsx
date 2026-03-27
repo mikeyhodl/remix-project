@@ -18,14 +18,17 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
     baseTrackEvent?.<T>(event)
   }
 
-  const handleExplainEthereum = () => {
+  const handleExplainEthereum = async () => {
     trackMatomoEvent({
       category: 'hometab',
       action: 'explainEthereum',
       name: 'Explain Ethereum importance',
       isClick: true
     })
-    plugin.call('remixaiassistant', 'chatPipe', `Why Ethereum and decentralized applications are important for the future of technology and society. Give me a concise and clear explanation. Provide use cases. Propose some areas of discussion, then stop and let me ask you more questions about it.`)
+    await plugin.call('remixaiassistant', 'newConversation')
+    setTimeout(() => {
+      plugin.call('remixaiassistant', 'chatPipe', `Why Ethereum and decentralized applications are important for the future of technology and society. Give me a concise and clear explanation. Provide use cases. Propose some areas of discussion, then stop and let me ask you more questions about it.`)
+    }, 200)
   }
 
   const handleGetStarted = async () => {
@@ -35,12 +38,23 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
       name: 'Get started with contract',
       isClick: true
     })
-    if (!await plugin.call('filePanel', 'workspaceExists', 'Introduction to ERC20 token')) await plugin.call('filePanel', 'createWorkspace', 'Introduction to ERC20 token', 'ozerc20')
-    await plugin.call('filePanel', 'switchToWorkspace', { name: 'Introduction to ERC20 token', isLocalHost: false })
+    const params = {
+      optimize: false,
+      evmVersion: 'osaka',
+      language: 'Solidity',
+      version: '0.8.34+commit.80d5c536'
+    }
+    await plugin.call('solidity', 'setCompilerConfig', params)
+    await plugin.call('remixaiassistant', 'newConversation')
+    setTimeout(async () => {
+      if (!await plugin.call('filePanel', 'workspaceExists', 'Introduction to ERC20 token')) await plugin.call('filePanel', 'createWorkspace', 'Introduction to ERC20 token', 'ozerc20')
+      await plugin.call('filePanel', 'switchToWorkspace', { name: 'Introduction to ERC20 token', isLocalHost: false })
 
-    plugin.call('notification', 'toast', 'Creating a new workspace and start building...')
-    await new Promise((res) => setTimeout(() => res({}), 500)) // wait for the workspace to actually be created
-    plugin.call('remixaiassistant', 'chatPipe', `an ERC20 token workspace has been created. Compile and Deploy MyToken. Then give precise details for interacting with that contract in Remix. Propose some next steps for me to learn more about it and experiment with it. Then stop and let me ask you more questions.`)
+      plugin.call('notification', 'toast', 'Creating a new workspace and start building...')
+      await new Promise((res) => setTimeout(() => res({}), 500)) // wait for the workspace to actually be created
+      await plugin.call('fileManager', 'open', 'contracts/MyToken.sol')
+      plugin.call('remixaiassistant', 'chatPipe', `an ERC20 token workspace has been created. Compile and Deploy MyToken. Then give precise details for interacting with that contract in Remix. Propose some next steps for me to learn more about it and experiment with it. Then stop and let me ask you more questions.`)
+    }, 200)
   }
 
   return (
@@ -69,8 +83,12 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               backdropFilter: 'blur(10px)',
               border: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               transition: 'all 0.3s ease',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              outline: 'none',
+              userSelect: 'none'
             }}
+            tabIndex={-1}
+            onClick={handleExplainEthereum}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-5px) scale(1.02)'
               e.currentTarget.style.boxShadow = '0 15px 35px rgba(0,0,0,0.2)'
@@ -80,7 +98,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'
             }}
           >
-            <div className="d-flex align-items-center flex-grow-1" onClick={handleExplainEthereum}>
+            <div className="d-flex align-items-center flex-grow-1">
               <div
                 className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
@@ -107,8 +125,12 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               backdropFilter: 'blur(10px)',
               border: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               transition: 'all 0.3s ease',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              outline: 'none',
+              userSelect: 'none'
             }}
+            tabIndex={-1}
+            onClick={handleGetStarted}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-5px) scale(1.02)'
               e.currentTarget.style.boxShadow = '0 15px 35px rgba(0,0,0,0.2)'
@@ -118,7 +140,7 @@ export const FirstTimeUserCard: React.FC<FirstTimeUserCardProps> = ({ plugin }) 
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'
             }}
           >
-            <div className="d-flex align-items-center flex-grow-1" onClick={handleGetStarted}>
+            <div className="d-flex align-items-center flex-grow-1">
               <div
                 className="d-flex justify-content-center align-items-center me-3 shadow-sm"
                 style={{
