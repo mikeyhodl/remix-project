@@ -126,7 +126,6 @@ module.exports = {
 
   'Should create ERC20 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('filePanel')
       .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
@@ -144,11 +143,6 @@ module.exports = {
       .click('*[data-id="contract-wizard-pausable-checkbox"]')
       .assert.selected('*[data-id="contract-wizard-access-ownable-radio"]', 'checked')
       .click('*[data-id="contract-wizard-validate-workspace-button"]')
-      .perform(function () {
-        browser.isVisible('*[data-id="treeViewUltreeViewMenu"]', function (result) {
-          if (!result.value) browser.clickLaunchIcon('filePanel')
-        })
-      })
       .isVisible('*[data-id="treeViewLitreeViewItemremix.config.json"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemremappings.txt"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
@@ -163,8 +157,6 @@ module.exports = {
       .click('*[data-id="compile_group"]')
       .waitForElementVisible('#verticalIconsKindsolidity > i.remixui_status.fas.fa-check-circle.text-success.remixui_statusCheck')
       .pause(1000)
-      // check js and ts files are not transformed
-      .clickLaunchIcon('filePanel')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .click('*[data-id="treeViewLitreeViewItemscripts/deploy_with_ethers.ts"]')
       .waitForElementPresent({
@@ -191,7 +183,6 @@ module.exports = {
 
   'Should create ERC721 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('filePanel')
       .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
@@ -251,7 +242,6 @@ module.exports = {
 
   'Should create ERC1155 workspace with files #group1': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('filePanel')
       .clickWorkspaceDropdown()
       .pause(2000)
       .click('*[data-id="workspacecreate"]')
