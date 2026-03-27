@@ -763,6 +763,18 @@ class AppComponent {
         console.log('Failed to preload code formatter:', e)
       })
 
+      const restorePinnedPlugin = () => {
+        const lastPinned = localStorage.getItem('pinnedPlugin')
+
+        if (lastPinned) {
+          try {
+            this.appManager.call('sidePanel', 'pinView', JSON.parse(lastPinned))
+          } catch (e) {
+            console.error('Failed to restore pinned plugin:', e)
+          }
+        }
+      }
+
       if (Array.isArray(this.workspace)) {
         this.appManager
           .activatePlugin(this.workspace)
@@ -817,16 +829,12 @@ class AppComponent {
                 }
               }
             }
-          }).then(async () => {
-            const lastPinned = localStorage.getItem('pinnedPlugin')
-
-            if (lastPinned) {
-              this.appManager.call('sidePanel', 'pinView', JSON.parse(lastPinned))
-            }
-          })
+          }).finally(restorePinnedPlugin)
           .catch((e) => {
             console.error(e)
           })
+      } else {
+        restorePinnedPlugin()
       }
       const loadedElement = document.createElement('span')
       loadedElement.setAttribute('data-id', 'apploaded')
