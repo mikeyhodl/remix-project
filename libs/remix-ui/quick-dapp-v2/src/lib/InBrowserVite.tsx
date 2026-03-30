@@ -299,7 +299,7 @@ export class InBrowserVite {
               return { contents: jsContent, loader: 'js' };
             }
           }
-          return { contents: `throw new Error('File not found: ${args.path}')`, loader: 'js' };
+          return { errors: [{ text: `CSS file not found: ${args.path}. Check that the file exists in your workspace.` }]};
         });
 
         // load local files
@@ -319,7 +319,7 @@ export class InBrowserVite {
             }
           }
 
-          return { contents: `throw new Error('File not found in virtual filesystem: ${args.path}')`, loader: 'js' };
+          return { errors: [{ text: `File not found: ${args.path}. This file is imported but does not exist in the workspace.` }]};
         });
 
       }
