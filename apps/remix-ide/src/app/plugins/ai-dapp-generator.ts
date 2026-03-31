@@ -353,10 +353,40 @@ export class AIDappGenerator extends Plugin {
         throw new Error("AI failed to return valid file structure.");
       }
 
-      // Merge: start with current files, overwrite only the ones LLM returned
-      const mergedPages: Record<string, string> = { ...currentFiles };
+      // Normalize all paths: strip leading '/' to match parsePages output
+      const normalizeKey = (k: string) => k.startsWith('/') ? k.substring(1) : k;
+
+      const normalizedCurrent: Record<string, string> = {};
+      for (const [file, content] of Object.entries(currentFiles)) {
+        normalizedCurrent[normalizeKey(file)] = content as string;
+      }
+
+      // Merge: current (normalized) + patched (already normalized by parsePages)
+      const mergedPages: Record<string, string> = { ...normalizedCurrent };
       for (const [file, content] of Object.entries(patchedPages)) {
-        mergedPages[file] = content;
+        mergedPages[normalizeKey(file)] = content;
+      }
+
+      // Detect missing imports: files referenced via import but not in mergedPages
+      const missingImports = findMissingImports(mergedPages);
+      if (missingImports.length > 0) {
+        try {
+          const retryMessages = [
+            ...messages,
+            { role: 'assistant', content: htmlContent },
+            {
+              role: 'user',
+              content: `The following files are imported in the code but were not included in your response:\n${missingImports.map(f => `- ${f}`).join('\n')}\n\nPlease generate ONLY these missing files using the START_TITLE format. Do not regenerate files that were already provided.`
+            }
+          ];
+          const additionalContent = await this.callLLMAPI(retryMessages, systemPrompt, false, true);
+          const additionalPages = parsePages(additionalContent);
+          for (const [file, content] of Object.entries(additionalPages)) {
+            mergedPages[normalizeKey(file)] = content;
+          }
+        } catch (retryErr: any) {
+          console.warn('[AI-DAPP] Retry for missing imports failed:', retryErr.message);
+        }
       }
 
       this.pendingResults.set(slug, { address, content: mergedPages, isUpdate: true })
@@ -631,6 +661,47 @@ const cleanFileContent = (content: string, filename: string): string => {
   }
 
   return cleaned.trim()
+}
+
+/**
+ * Scan all JS/JSX/TS/TSX files for relative imports and find ones that
+ * point to files not present in the file set.
+ */
+const findMissingImports = (pages: Record<string, string>): string[] => {
+  const allFiles = new Set(Object.keys(pages).map(f =>
+    f.startsWith('/') ? f : '/' + f
+  ));
+  const missing: string[] = [];
+
+  for (const [filename, content] of Object.entries(pages)) {
+    if (!filename.match(/\.(js|jsx|ts|tsx)$/)) continue;
+
+    // Match: import ... from './path' or require('./path')
+    const importRegex = /(?:import\s+[\s\S]*?\s+from\s+['"]|require\s*\(\s*['"])(\.\.?\/[^'"]+)['"]/g;
+    let match;
+    while ((match = importRegex.exec(content)) !== null) {
+      const importPath = match[1];
+      const fileDir = '/' + filename.replace(/\\/g, '/').replace(/[^/]+$/, '');
+      const resolved = resolveRelativePath(fileDir, importPath);
+
+      // Try with common extensions
+      const candidates = [resolved, resolved + '.jsx', resolved + '.js', resolved + '.tsx', resolved + '.ts'];
+      if (!candidates.some(c => allFiles.has(c))) {
+        missing.push(resolved);
+      }
+    }
+  }
+  return [...new Set(missing)];
+}
+
+/** Resolve a relative path against a directory */
+const resolveRelativePath = (base: string, relative: string): string => {
+  const parts = base.split('/').filter(Boolean);
+  for (const part of relative.split('/')) {
+    if (part === '..') parts.pop();
+    else if (part !== '.') parts.push(part);
+  }
+  return '/' + parts.join('/');
 }
 
 // Helper function to ensure HTML has complete structure

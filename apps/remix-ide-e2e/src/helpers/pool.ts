@@ -21,7 +21,7 @@
 
 require('dotenv').config()
 
-const API_URL = process.env.REMIX_API_URL || 'https://auth.api.remix.live'
+const API_URL = process.env.REMIX_API_URL || 'https://api.remix.live'
 const API_KEY = process.env.E2E_POOL_API_KEY || ''
 const POOL_BASE = `${API_URL}/sso/test/pool`
 

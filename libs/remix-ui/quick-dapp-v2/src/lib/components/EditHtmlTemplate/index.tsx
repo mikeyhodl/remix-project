@@ -222,7 +222,7 @@ function EditHtmlTemplate(): JSX.Element {
   };
 
   const runBuild = async (showNotification: boolean = false) => {
-    console.log('[QuickDapp][runBuild] START', { slug: activeDapp?.slug, showNotification });
+
     if (!iframeRef.current || !activeDapp) return;
     if (isBuilding) return;
 
@@ -313,7 +313,6 @@ window.addEventListener('unhandledrejection', function(e) {
     const ext = `<script>
 (function() {
   if (parent.__remixVMBridge) {
-    console.log('[DApp] Using Remix VM Bridge');
     var _listeners = {};
     window.ethereum = {
       isMetaMask: false,
@@ -341,16 +340,10 @@ window.addEventListener('unhandledrejection', function(e) {
       },
       removeAllListeners: function() { _listeners = {}; return this; }
     };
-    // Set static defaults — ethers.js will call eth_chainId / eth_requestAccounts
-    // itself during connection, so async pre-fetching is unnecessary and
-    // causes timeout errors during workspace switches.
-    window.ethereum.chainId = '0x539'; // 1337 (standard local dev chain ID)
+    window.ethereum.chainId = '0x539';
     window.ethereum.selectedAddress = null;
   } else if (parent.window && parent.window.ethereum) {
-    console.log('[DApp] Using parent window.ethereum (MetaMask)');
     window.ethereum = parent.window.ethereum;
-  } else {
-    console.warn('[DApp] No provider available');
   }
 })();
 </script>`;
@@ -477,31 +470,43 @@ window.addEventListener('unhandledrejection', function(e) {
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (isBuilderReady && activeDapp && !isAiUpdating) {
-      setTimeout(() => {
-        runBuild(false);
-      }, 100);
-    }
-  }, [isBuilderReady, isAiUpdating, activeDapp?.slug]);
-
   const isVM = !!activeDapp?.contract?.chainId && activeDapp.contract.chainId.toString().startsWith('vm');
-
   const [isCurrentProviderVM, setIsCurrentProviderVM] = useState(false);
   const [vmContractStatus, setVmContractStatus] = useState<'checking' | 'deployed' | 'not-found'>('checking');
 
   useEffect(() => {
-    if (!plugin) return;
-    const checkVM = async () => {
-      try {
-        const provider = await plugin.call('blockchain', 'getProvider');
-        setIsCurrentProviderVM(!!provider && provider.startsWith('vm-'));
-      } catch (e) {
-        setIsCurrentProviderVM(false);
+    if (isBuilderReady && activeDapp && !isAiUpdating) {
+      // VM dapps: wait until VM Worker is ready before building.
+      if (isVM && !isCurrentProviderVM) {
+        return;
       }
+      setTimeout(() => runBuild(false), 100);
+    }
+  }, [isBuilderReady, isAiUpdating, activeDapp?.slug, isCurrentProviderVM]);
+
+  // Detect when blockchain VM is ready via contextChanged event (debounced).
+  // Uses plugin.on (passive event) instead of plugin.call (blocked by engine queue).
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!plugin || !isVM) return;
+
+    const onContextChanged = (context: string) => {
+      if (!context || !context.startsWith('vm')) return;
+
+      // Reset the debounce timer on every event
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        setIsCurrentProviderVM(true);
+      }, 1500);
     };
-    checkVM();
-  }, [plugin, activeDapp]);
+
+    plugin.on('blockchain', 'contextChanged', onContextChanged);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      try { plugin.off('blockchain', 'contextChanged', onContextChanged); } catch (e) {}
+    };
+  }, [plugin, isVM]);
 
   useEffect(() => {
     if (!isVM || !isCurrentProviderVM || !plugin || !activeDapp?.contract?.address) {
@@ -511,83 +516,72 @@ window.addEventListener('unhandledrejection', function(e) {
 
     let cancelled = false;
 
-    const checkWithRetry = async () => {
-      const MAX_RETRIES = 5;
-      const RETRY_DELAY_MS = 3000;
-
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const checkContract = async () => {
+      try {
+        const web3 = (window as any).__remixVM_web3;
+        if (!web3) {
+          setVmContractStatus('deployed');
+          return;
+        }
+        const result = await web3.send('eth_getCode', [activeDapp.contract.address, 'latest']);
         if (cancelled) return;
-        if (attempt > 0) {
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-          if (cancelled) return;
+        if (result && result !== '0x' && result !== '0x0' && result.length > 2) {
+          setVmContractStatus('deployed');
+        } else {
+          setVmContractStatus('not-found');
         }
+      } catch (e) {
+        if (cancelled) return;
 
-        try {
-          const code = await plugin.call('blockchain', 'sendRpc', 'eth_getCode', [
-            activeDapp.contract.address, 'latest'
-          ]);
-          console.log(`[QuickDapp] getCode attempt ${attempt + 1}/${MAX_RETRIES}:`, code?.substring(0, 20));
-          if (code && code !== '0x' && code !== '0x0' && code.length > 2) {
-            setVmContractStatus('deployed');
-            return;
-          }
-        } catch (e) {
-          console.warn(`[QuickDapp] getCode attempt ${attempt + 1} failed:`, e);
-        }
-      }
-
-      if (!cancelled) {
-        setVmContractStatus('not-found');
+        setVmContractStatus('deployed');
       }
     };
 
-    checkWithRetry();
+    checkContract();
     return () => { cancelled = true; };
   }, [isVM, isCurrentProviderVM, plugin, activeDapp?.contract?.address]);
 
+  // Bridge setup: provides window.__remixVMBridge for DApp iframe to call VM directly.
   useEffect(() => {
     let isMounted = true;
 
-    if (!isVM || !isCurrentProviderVM || !plugin) {
+    if (!isVM || !plugin) {
       delete (window as any).__remixVMBridge;
       return;
     }
 
     const bridge = {
       request: async ({ method, params }: { method: string; params?: any[] }) => {
+        if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') {
+          return null;
+        }
+        // Direct VM access: bypasses plugin queue (which gets permanently blocked)
+        const web3 = (window as any).__remixVM_web3;
+        if (!web3) {
+          // VM not ready yet
+          throw new Error('VM not ready');
+        }
         try {
-          if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') {
-            return null;
-          }
-
-          const result = await plugin.call('blockchain', 'sendRpc', method, params || []);
-
+          const result = await web3.send(method, params || []);
           if (!isMounted) return;
-
           if (method === 'eth_sendTransaction') {
-            try {
-              await plugin.call('blockchain', 'dumpState');
-            } catch (e) {
-              console.warn('[VM-Bridge] dumpState after TX failed:', e);
-            }
+            // dumpState is non-critical, fire-and-forget
+            plugin.call('blockchain', 'dumpState').catch(() => {});
           }
-
           return result;
         } catch (error: any) {
           if (!isMounted) return;
-          console.error(`[VM-Bridge] ${method} failed:`, error);
+          console.error(`[QD] bridge:${method} ERROR:`, error);
           throw error;
         }
       }
     };
 
     (window as any).__remixVMBridge = bridge;
-    console.log('[VM-Bridge] Remix VM bridge activated');
 
     return () => {
       isMounted = false;
       delete (window as any).__remixVMBridge;
-      console.log('[VM-Bridge] Remix VM bridge deactivated');
     };
   }, [isVM, isCurrentProviderVM, plugin]);
 
@@ -697,6 +691,10 @@ window.addEventListener('unhandledrejection', function(e) {
                         <div className="mt-1 text-danger">
                           <i className="fas fa-ban me-1"></i>
                           IPFS deployment will not work — Remix VM is local to this browser only.
+                        </div>
+                        <div className="mt-1 text-warning">
+                          <i className="fas fa-info-circle me-1"></i>
+                          VM data is not permanently stored. Clearing browser data or switching workspaces may reset the VM state.
                         </div>
                       </div>
                     </div>
