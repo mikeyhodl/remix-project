@@ -99,7 +99,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 boxShadow: 'none',
                 paddingRight: isStreaming ? '50px' : '10px',
                 overflowY: 'auto',
-                minHeight: '3rem',
+                minHeight: '2rem',
                 maxHeight: '12rem'
               }}
               className="form-control mb-1 border-0"
@@ -119,67 +119,49 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               }}
               placeholder="Ask me anything about your code or generate new contracts..."
             />
-            <div>
-              <div className="d-flex flex-row justify-content-between">
-                <div>
-                  <div className="d-flex flex-row align-items-center justify-content-between">
-                    <button
-                      className="rounded-circle btn btn-sm border-0 d-flex align-items-center justify-content-center"
-                      style={{
-                        backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#2a2c3f',
-                      }}
-                      onClick={() => {}}
-                    >
-                      <i className="far fa-plus"></i>
-                    </button>
-                    <div>
-                      <button
-                        onClick={handleSetModel}
-                        className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border-0 rounded"
-                        data-assist-btn="assistant-selector-btn"
-                        ref={modelBtnRef}
-                      >
-                        <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
-                          <span>{selectedModel?.name || 'Select Model'}</span>
-                          <span className={showModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
-                        </div>
-                      </button>
-                      {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
-                        <button
-                          onClick={() => setShowOllamaModelSelector(prev => !prev)}
-                          className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border border-text rounded ms-2"
-                          ref={modelSelectorBtnRef}
-                          data-id="ollama-model-selector"
-                          data-assist-btn="assistant-selector-btn"
-                        >
-                          <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
-                            <span>{selectedModel?.name || 'Select Model'}</span>
-                            <span className={showOllamaModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
-                          </div>
-                        </button>
-                      )}
-                    </div>
+            <div className="d-flex flex-row align-items-center">
+              {/* <div className="d-flex flex-row align-items-center"> */}
+              <button
+                onClick={handleSetModel}
+                className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border-0 rounded"
+                data-assist-btn="assistant-selector-btn"
+                ref={modelBtnRef}
+              >
+                <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
+                  <span className="text-nowrap">{selectedModel?.name || 'Select Model'}</span>
+                  <span className={showModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
+                </div>
+              </button>
+              {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
+                <button
+                  onClick={() => setShowOllamaModelSelector(prev => !prev)}
+                  className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border border-text rounded ms-2"
+                  ref={modelSelectorBtnRef}
+                  data-id="ollama-model-selector"
+                  data-assist-btn="assistant-selector-btn"
+                >
+                  <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
+                    <span>{selectedModel?.name || 'Select Model'}</span>
+                    <span className={showOllamaModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
                   </div>
-                </div>
-                <div>
-                  { !isRecording ? <PromptDefault
-                    handleRecording={handleRecord}
-                    isRecording={isRecording}
-                    isStreaming={isStreaming}
-                    handleSend={handleSend}
-                    themeTracker={themeTracker}
-                    handleCancel={stopRequest}
-                  /> : null }
-                  { isRecording ? <PromptActiveButtons
-                    handleRecordingStoppage={handleRecord}
-                    isStreaming={isStreaming}
-                    handleSend={handleSend}
-                    isRecording={isRecording}
-                    themeTracker={themeTracker}
-                    handleCancel={stopRequest}
-                  /> : null }
-                </div>
-              </div>
+                </button>
+              )}
+              {/* </div> */}
+              { !isRecording ? <PromptDefault
+                handleRecording={handleRecord}
+                isRecording={isRecording}
+                isStreaming={isStreaming}
+                handleSend={handleSend}
+                themeTracker={themeTracker}
+                handleCancel={stopRequest}
+              /> : <PromptActiveButtons
+                handleRecordingStoppage={handleRecord}
+                isStreaming={isStreaming}
+                handleSend={handleSend}
+                isRecording={isRecording}
+                themeTracker={themeTracker}
+                handleCancel={stopRequest}
+              /> }
             </div>
           </div>
         </div>
