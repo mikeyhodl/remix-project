@@ -128,6 +128,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                       style={{
                         backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#2a2c3f',
                       }}
+                      onClick={() => {}}
                     >
                       <i className="far fa-plus"></i>
                     </button>
