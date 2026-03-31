@@ -36,6 +36,7 @@ export function PromptDefault(props: PromptDefaultProps) {
           }}
         >
           <i className="fas fa-microphone"></i>
+          <span className="ms-1">Audio</span>
         </button>
       </CustomTooltip>
       {!props.isStreaming ? <PromptSubmitButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} handleSend={props.handleSend} isStreaming={props.isStreaming} /> :
