@@ -81,6 +81,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               onClick={handleSetModel}
               className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border-0 rounded"
               data-assist-btn="assistant-selector-btn"
+              
               ref={modelBtnRef}
             >
               {selectedModel?.name || 'Select Model'}

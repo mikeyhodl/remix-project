@@ -659,6 +659,7 @@ export class AuthPlugin extends Plugin {
         user: result.user,
         token: result.accessToken
       })
+      this.call('nudgePlugin', 'fire', 'user:logged_in')
 
       // If logged in via GitHub, bridge the provider token to dgit config
       if (result.user.provider === 'github' && result.providerToken) {
@@ -1871,6 +1872,7 @@ export class AuthPlugin extends Plugin {
       user: authUser,
       token: access_token
     })
+    this.call('nudgePlugin', 'fire', 'user:logged_in')
 
     // Fetch credits after login
     this.refreshCredits().catch(console.error)

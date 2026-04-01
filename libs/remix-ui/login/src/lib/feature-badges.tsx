@@ -3,6 +3,7 @@ import { FeatureGroup } from '@remix-api'
 import { useAuth } from '../../../app/src/lib/remix-app/context/auth-context'
 import { BetaInfoModal } from './modals/beta-info-modal'
 import './feature-badges.css'
+import BetaFeatureReel from './modals/beta-feature-reel'
 
 interface FeatureBadgesProps {
   plugin?: any
@@ -62,11 +63,8 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
       <div className="dropdown-divider user-menu-divider"></div>
 
       {showBetaModal && (
-        <BetaInfoModal
-          onClose={() => {
-            setShowBetaModal(false)
-          }}
-          plugin={plugin}
+        <BetaFeatureReel
+
         />
       )}
     </>

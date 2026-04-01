@@ -13,6 +13,7 @@
 export { AppLifecycle } from './app-lifecycle'
 export { EventGuard, all, any, sequence, deserializeCondition } from './event-guard'
 export { LifecyclePlugin } from './lifecycle-plugin'
+export { NudgeEngine } from './nudge-engine'
 
 // Types
 export type {
@@ -29,5 +30,8 @@ export type {
   GuardRegistration,
   SerializedCondition,
   SerializedConditionInput,
-  LifecyclePluginMethods
+  LifecyclePluginMethods,
+  NudgeRule,
+  NudgeAction,
+  SerializedNudgeRule
 } from './types'

@@ -102,3 +102,39 @@ export type SerializedCondition =
   | string
 
 export type SerializedConditionInput = SerializedCondition
+
+// ─── Nudge Engine Types ──────────────────────────────────────────────
+
+export interface NudgeAction {
+  type: 'toast' | 'modal' | 'hint' | 'widget'
+  title?: string
+  message: string
+  actionLabel?: string   // e.g. "Try it now"
+  actionTarget?: string  // e.g. 'remixAI::switchModel::opus'
+  icon?: string          // e.g. 'fas fa-robot'
+  dismissable?: boolean  // default true
+  hintStyle?: 'pulse' | 'glow' | 'badge'  // decoration style for type:'hint' (default 'pulse')
+  hintColor?: string     // CSS color override, e.g. '#10b981', 'var(--bs-warning)'
+  widgetColor?: string   // accent color for the widget, e.g. '#6366f1'
+  widgetBg?: string      // background gradient start color for the illustration area
+}
+
+export interface NudgeRule {
+  id: string
+  condition: ConditionInput
+  action: NudgeAction
+  /** true = show once ever (localStorage), 'session' = once per session, false = every time */
+  showOnce?: boolean | 'session'
+  priority?: number
+  enabled?: boolean
+}
+
+/** JSON-safe nudge rule for API-loaded rules */
+export interface SerializedNudgeRule {
+  id: string
+  condition: SerializedCondition
+  action: NudgeAction
+  showOnce?: boolean | 'session'
+  priority?: number
+  enabled?: boolean
+}

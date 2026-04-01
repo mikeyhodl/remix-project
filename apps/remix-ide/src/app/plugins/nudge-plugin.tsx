@@ -1,0 +1,569 @@
+import { Plugin } from '@remixproject/engine'
+import React from 'react'
+import { PluginViewWrapper } from '@remix-ui/helper'
+import { NudgeEngine, all } from '@remix-project/remix-lib'
+import type { NudgeRule, NudgeAction, SerializedNudgeRule } from '@remix-project/remix-lib'
+import * as packageJson from '../../../../../package.json'
+import './nudge-widget.css'
+
+/* ─── Inline SVG icons (avoids FA version issues) ─── */
+const MCP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="4.5" r="2"/><circle cx="19.5" cy="4.5" r="2"/><circle cx="4.5" cy="19.5" r="2"/><circle cx="19.5" cy="19.5" r="2"/><line x1="6.3" y1="6.3" x2="10" y2="10"/><line x1="17.7" y1="6.3" x2="14" y2="10"/><line x1="6.3" y1="17.7" x2="10" y2="14"/><line x1="17.7" y1="17.7" x2="14" y2="14"/></svg>`
+
+const CLAUDE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor"><path d="M164.4 404.5L265.1 348L266.8 343.1L265.1 340.4L260.2 340.4L243.4 339.4L185.9 337.8L136 335.7L87.7 333.1L75.5 330.5L64.1 315.5L65.3 308L75.5 301.1L90.2 302.4C109.1 303.7 136.1 305.5 171.2 308L206.4 310.1L258.6 315.5L266.9 315.5L268.1 312.1L265.3 310L263.1 307.9L212.8 273.8L158.4 237.8L129.9 217.1L114.5 206.6L106.7 196.8L103.3 175.3L117.3 159.9L136.1 161.2L140.9 162.5L159.9 177.2L200.6 208.7L253.7 247.8L261.5 254.3L264.6 252.1L265 250.5L261.5 244.7L232.6 192.5L201.8 139.4L188.1 117.4L184.5 104.2C183.2 98.8 182.3 94.2 182.3 88.7L198.2 67.1L207 64.3L228.2 67.1L237.1 74.9L250.3 105.1L271.7 152.6L304.9 217.2L314.6 236.4L319.8 254.2L321.7 259.6L325.1 259.6L325.1 256.5L327.8 220.1L332.8 175.4L337.7 117.9L339.4 101.7L347.4 82.3L363.3 71.8L375.7 77.7L385.9 92.4L384.5 101.9L378.4 141.4L366.5 203.3L358.7 244.8L363.2 244.8L368.4 239.6L389.4 211.8L424.6 167.7L440.1 150.2L458.2 130.9L469.8 121.7L491.8 121.7L508 145.8L500.7 170.7L478 199.4L459.2 223.8L432.2 260.1L415.4 289.1L417 291.4L421 291L481.9 278L514.8 272.1L554.1 265.4L571.9 273.7L573.8 282.1L566.8 299.3L524.8 309.7L475.6 319.5L402.3 336.8L401.4 337.5L402.4 338.8L435.4 341.9L449.5 342.7L484.1 342.7L548.5 347.5L565.3 358.6L575.4 372.2L573.7 382.6L547.8 395.8C532.3 392.1 493.4 382.9 431.2 368.1L403.2 361.1L399.3 361.1L399.3 363.4L422.6 386.2L465.3 424.8L518.8 474.6L521.5 486.9L514.6 496.6L507.3 495.6L460.3 460.2L442.2 444.3L401.1 409.7L398.4 409.7L398.4 413.3L407.9 427.2L457.9 502.4L460.5 525.4L456.9 532.9L443.9 537.4L429.7 534.8L400.4 493.7L370.2 447.4L345.8 405.9L342.8 407.6L328.4 562.4L321.7 570.3L306.2 576.2L293.2 566.4L286.3 550.5L293.2 519L301.5 477.9L308.2 445.2L314.3 404.6L317.9 391.1L317.7 390.2L314.7 390.6L284.1 432.6L237.6 495.5L200.8 534.9L192 538.4L176.7 530.5L178.1 516.4L186.6 503.8L237.5 439L268.2 398.8L288 375.6L287.9 372.2L286.7 372.2L151.4 460L127.3 463.1L116.9 453.4L118.2 437.5L123.1 432.3L163.8 404.3L163.7 404.4L163.7 404.5z"/></svg>`
+
+/* ─── Plugin profile ─── */
+
+const profile = {
+    name: 'nudgePlugin',
+    displayName: 'Nudge Plugin',
+    description: 'Contextual feature discovery widget — surfaces tips, CTAs, and hints based on user context',
+    methods: ['dismiss', 'dismissPermanent', 'addRule', 'addRules', 'fire', 'clearActive'],
+    events: ['nudgeTriggered', 'nudgeDismissed'],
+    icon: '',
+    location: 'none',
+    version: packageJson.version,
+    maintainedBy: 'Remix'
+}
+
+/* ─── State shape ─── */
+
+export interface NudgePluginState {
+    activeNudge: NudgeRule | null
+    queue: NudgeRule[]
+    animateOut: boolean
+    /** Map of element‑id → decoration style for the hint layer */
+    decorations: Map<string, NudgeDecoration>
+}
+
+export interface NudgeDecoration {
+    elementId: string
+    style: 'pulse' | 'glow' | 'badge'
+    tooltip?: string
+    nudgeId: string
+    color?: string  // CSS color override
+}
+
+/* ─── Plugin class ─── */
+
+export class NudgePlugin extends Plugin {
+    dispatch: React.Dispatch<any> = () => { }
+    engine_: NudgeEngine
+    private state: NudgePluginState
+
+    constructor(options?: { debug?: boolean }) {
+        super(profile)
+        this.engine_ = new NudgeEngine({ debug: options?.debug })
+        this.state = {
+            activeNudge: null,
+            queue: [],
+            animateOut: false,
+            decorations: new Map()
+        }
+    }
+
+    /* ─── Lifecycle ─── */
+
+    async onActivation(): Promise<void> {
+        // Subscribe to nudge triggers from the engine
+        this.engine_.onNudge((rule) => {
+            if (rule.action.type === 'hint') {
+                this._handleHint(rule)
+            } else if (rule.action.type === 'widget' || rule.action.type === 'toast' || rule.action.type === 'modal') {
+                this._enqueue(rule)
+            }
+            this.emit('nudgeTriggered', { id: rule.id, action: rule.action })
+        })
+
+        this._setupBuiltinRules()
+        this.renderComponent()
+    }
+
+    onDeactivation(): void {
+        // NudgeEngine has no teardown needed
+    }
+
+    /* ─── Built-in rules ─── */
+
+    private _setupBuiltinRules(): void {
+        // Example: suggest switching to Opus when a beta user opens AI chat with Mistral
+        
+        this.engine_.addRule({
+            id: 'try-opus-model',
+            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            action: {
+                type: 'widget',
+                title: 'Try a premium model',
+                message: 'You have access to Claude Opus — it excels at complex Solidity patterns and audits.',
+                actionLabel: 'Switch to Opus',
+                actionTarget: 'remixAI::switchModel::opus',
+                icon: CLAUDE_SVG,
+                widgetColor: '#7289da',
+                widgetBg: 'rgba(114, 137, 218, 0.1)'
+            },
+            showOnce: 'session',
+            priority: 10
+        })
+            
+
+        this.engine_.addRule({
+            id: 'try-cloud-workspaces',
+            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            action: {
+                type: 'widget',
+                title: 'Try the cloud',
+                message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
+                actionLabel: 'Learn more',
+                actionTarget: 'settings::cloud-workspaces',
+                icon: 'fas fa-cloud-upload-alt',
+                widgetColor: '#1abc9c',
+                widgetBg: 'rgba(26, 188, 156, 0.1)'
+            },
+            showOnce: 'session',
+            priority: 10
+        })
+
+        // MCP tools — highlight the ecosystem of connected services
+        this.engine_.addRule({
+            id: 'try-mcp-tools',
+            condition: all('user:logged_in'),
+            action: {
+                type: 'widget',
+                title: 'AI with superpowers',
+                message: 'Your AI assistant connects to Alchemy, Etherscan, The Graph, and more through MCP — ask it to fetch on-chain data, verify contracts, or query subgraphs directly in chat.',
+                actionLabel: 'Explore MCP tools',
+                actionTarget: 'menuicons::select::settings',
+                icon: MCP_SVG,
+                widgetColor: '#8b5cf6',
+                widgetBg: 'rgba(139, 92, 246, 0.08)'
+            },
+            showOnce: 'session',
+            priority: 9
+        })
+
+        /// quickdapp demo rule
+        this.engine_.addRule({
+            id: 'try-quickdapp',
+            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            action: {
+                type: 'widget',
+                title: 'Try QuickDapp',
+                message: 'Generate a QuickDapp for your project — a ready‑to‑use dashboard for interacting with your contracts.',
+                actionLabel: 'Generate QuickDapp',
+                actionTarget: 'remixAI::generateQuickDapp',
+                icon: 'fas fa-rocket',
+                widgetColor: '#e67e22',
+                widgetBg: 'rgba(230, 126, 34, 0.1)'
+            },
+            showOnce: 'session',
+            priority: 9
+        })
+
+
+        
+
+        // Example: suggest cloud workspaces to logged-in users with local-only workspaces
+        this.engine_.addRule({
+            id: 'try-cloud-toggle',
+            condition: all('user:logged_in', 'workspace:local_only', 'lifecycle:APP_LOADED'),
+            action: {
+                type: 'widget',
+                title: 'Cloud workspaces',
+                message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
+                actionLabel: 'Learn more',
+                actionTarget: 'settings::cloud-workspaces',
+                icon: 'fas fa-cloud-upload-alt'
+            },
+            showOnce: true,
+            priority: 5
+        })
+
+        // Demo: pulsating dot on the AI assistant selector when logged in
+        this.engine_.addRule({
+            id: 'hint-assistant-selector',
+            condition: 'user:logged_in',
+            action: {
+                type: 'hint',
+                message: 'You now have access to premium AI models — try switching!',
+                hintStyle: 'glow',
+                hintColor: '#f39c12',
+                actionTarget: 'assistant-selector-btn',
+            },
+            showOnce: 'session',
+            priority: 8
+        })
+
+        this.engine_.addRule({
+            id: 'hint-cloud-selector',
+            condition: 'user:logged_in',
+            action: {
+                type: 'hint',
+                message: 'You now have access to cloud features — try enabling cloud sync!',
+                hintStyle: 'glow',
+                hintColor: '#1abc9c',
+                actionTarget: 'cloud-toggle',
+            },
+            showOnce: 'session',
+            priority: 8
+        })
+
+        // remix-ai-assistant
+        this.engine_.addRule({
+            id: 'try-ollama-models',
+            condition: all('user:logged_in'),
+            action: {
+                type: 'hint',
+                message: 'You have Ollama models available — check out the model selector!',
+                hintStyle: 'glow',
+                hintColor: '#8e44ad',
+                actionTarget: 'remix-ai-assistant',
+            },
+            showOnce: 'session',
+            priority: 7
+        })
+    }
+
+    /* ─── Public methods (callable by other plugins) ─── */
+
+    /** Fire a context event into the nudge engine */
+    fire(eventId: string): void {
+        this.engine_.fire(eventId)
+    }
+
+    /** Add a rule programmatically from another plugin */
+    addRule(rule: NudgeRule): void {
+        this.engine_.addRule(rule)
+    }
+
+    /** Add multiple rules */
+    addRules(rules: NudgeRule[]): void {
+        this.engine_.addRules(rules)
+    }
+
+    /** Dismiss the currently active nudge (X button / session only) */
+    dismiss(): void {
+        if (!this.state.activeNudge) return
+        const id = this.state.activeNudge.id
+        this.state = { ...this.state, animateOut: true }
+        this.renderComponent()
+        this.emit('nudgeDismissed', { id, permanent: false })
+        setTimeout(() => {
+            this._dequeueNext()
+        }, 300)
+    }
+
+    /** Permanently dismiss the active nudge (never show again) */
+    dismissPermanent(): void {
+        if (!this.state.activeNudge) return
+        const id = this.state.activeNudge.id
+        this.engine_.disableRule(id)
+        this.state = { ...this.state, animateOut: true }
+        this.renderComponent()
+        this.emit('nudgeDismissed', { id, permanent: true })
+        // Persist in localStorage
+        try {
+            const key = 'remix_nudge_dismissed_permanent'
+            const raw = localStorage.getItem(key)
+            const dismissed: string[] = raw ? JSON.parse(raw) : []
+            if (!dismissed.includes(id)) {
+                dismissed.push(id)
+                localStorage.setItem(key, JSON.stringify(dismissed))
+            }
+        } catch { }
+        setTimeout(() => {
+            this._dequeueNext()
+        }, 300)
+    }
+
+    /** Clear all active nudges and queue */
+    clearActive(): void {
+        this.state = {
+            ...this.state,
+            activeNudge: null,
+            queue: [],
+            animateOut: false,
+            decorations: new Map()
+        }
+        this.renderComponent()
+    }
+
+    /* ─── CTA handler ─── */
+
+    async handleAction(target: string): Promise<void> {
+        // Parse actionTarget format: 'pluginName::method::arg1::arg2'
+        const parts = target.split('::')
+        if (parts.length >= 2) {
+            const [pluginName, method, ...args] = parts
+            try {
+                await this.call(pluginName as any, method as any, ...args)
+            } catch (e) {
+                console.warn(`[NudgePlugin] Failed to call ${pluginName}.${method}:`, e)
+            }
+        }
+        this.dismiss()
+    }
+
+    /* ─── Queue management ─── */
+
+    private _enqueue(rule: NudgeRule): void {
+        // Check permanent dismissal
+        try {
+            const raw = localStorage.getItem('remix_nudge_dismissed_permanent')
+            const dismissed: string[] = raw ? JSON.parse(raw) : []
+            if (dismissed.includes(rule.id)) return
+        } catch { }
+
+        if (this.state.activeNudge) {
+            // Insert into queue sorted by priority (higher first)
+            const queue = [...this.state.queue, rule].sort(
+                (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
+            )
+            this.state = { ...this.state, queue }
+        } else {
+            this.state = { ...this.state, activeNudge: rule, animateOut: false }
+        }
+        this.renderComponent()
+    }
+
+    private _dequeueNext(): void {
+        const [next, ...rest] = this.state.queue
+        this.state = {
+            ...this.state,
+            activeNudge: next || null,
+            queue: rest,
+            animateOut: false
+        }
+        this.renderComponent()
+    }
+
+    /* ─── Hint / decoration management ─── */
+
+    private _handleHint(rule: NudgeRule): void {
+        if (!rule.action.actionTarget) return
+        const decoration: NudgeDecoration = {
+            elementId: rule.action.actionTarget,
+            style: rule.action.hintStyle || 'pulse',
+            tooltip: rule.action.message,
+            nudgeId: rule.id,
+            color: rule.action.hintColor
+        }
+        const decorations = new Map(this.state.decorations)
+        decorations.set(rule.action.actionTarget, decoration)
+        this.state = { ...this.state, decorations }
+        this.renderComponent()
+    }
+
+    /** Remove a decoration (e.g. after user interacts with the decorated element) */
+    removeDecoration(elementId: string): void {
+        const decorations = new Map(this.state.decorations)
+        decorations.delete(elementId)
+        this.state = { ...this.state, decorations }
+        this.renderComponent()
+    }
+
+    /* ─── Rendering ─── */
+
+    setDispatch(dispatch: React.Dispatch<any>): void {
+        this.dispatch = dispatch
+        this.renderComponent()
+    }
+
+    renderComponent(): void {
+        this.dispatch({
+            state: this.state,
+            plugin: this
+        })
+    }
+
+    updateComponent(dispatchState: { state: NudgePluginState; plugin: NudgePlugin }): JSX.Element {
+        return (
+            <NudgeWidgetUI
+                state={dispatchState.state}
+                onAction={(target) => this.handleAction(target)}
+                onDismiss={() => this.dismiss()}
+                onDismissPermanent={() => this.dismissPermanent()}
+                onDecorationClick={(elementId) => this.removeDecoration(elementId)}
+            />
+        )
+    }
+
+    render(): JSX.Element {
+        if (window['__IS_E2E_TEST__']) return null
+        return (
+            <div id="nudge-widget-container">
+                <PluginViewWrapper plugin={this} />
+            </div>
+        )
+    }
+}
+
+/* ─── Pure React UI Component: Widget ─── */
+
+interface NudgeWidgetUIProps {
+    state: NudgePluginState
+    onAction: (target: string) => void
+    onDismiss: () => void
+    onDismissPermanent: () => void
+    onDecorationClick: (elementId: string) => void
+}
+
+function NudgeWidgetUI({ state, onAction, onDismiss, onDismissPermanent, onDecorationClick }: NudgeWidgetUIProps) {
+    const nudge = state.activeNudge
+
+    return (
+        <>
+            {/* Corner widget for active nudges */}
+            {nudge && nudge.action.type !== 'hint' && (
+                <div
+                    className={`nudge-widget ${state.animateOut ? 'nudge-widget--out' : ''}`}
+                    data-id="nudge-widget"
+                    style={{
+                        ...(nudge.action.widgetColor ? { '--nw-accent': nudge.action.widgetColor } as React.CSSProperties : {}),
+                        ...(nudge.action.widgetBg ? { '--nw-bg': nudge.action.widgetBg } as React.CSSProperties : {})
+                    }}
+                >
+                    {(nudge.action.dismissable !== false) && (
+                        <button
+                            className="nudge-widget-close"
+                            onClick={(e) => { e.stopPropagation(); onDismiss() }}
+                            title="Dismiss"
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+                    )}
+
+                    <div
+                        className="nudge-widget-body"
+                        onClick={() => nudge.action.actionTarget && onAction(nudge.action.actionTarget)}
+                    >
+                        {nudge.action.icon && (
+                            <div className="nudge-widget-illustration">
+                                <div className="nudge-widget-icon-wrap">
+                                    {nudge.action.icon.trim().startsWith('<svg')
+                                        ? <span dangerouslySetInnerHTML={{ __html: nudge.action.icon }} />
+                                        : <i className={nudge.action.icon}></i>
+                                    }
+                                </div>
+                            </div>
+                        )}
+
+                        {nudge.action.title && (
+                            <h6 className="nudge-widget-title">{nudge.action.title}</h6>
+                        )}
+                        <p className="nudge-widget-desc">{nudge.action.message}</p>
+
+                        {nudge.action.actionLabel && (
+                            <span className="nudge-widget-cta">
+                                {nudge.action.actionLabel} <i className="fas fa-chevron-right"></i>
+                            </span>
+                        )}
+                    </div>
+
+                    {(nudge.action.dismissable !== false) && (
+                        <button
+                            className="nudge-widget-never"
+                            onClick={(e) => { e.stopPropagation(); onDismissPermanent() }}
+                        >
+                            Don&apos;t show this again
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Decorations layer for hint-type nudges */}
+            {state.decorations.size > 0 && (
+                <NudgeDecorations
+                    decorations={state.decorations}
+                    onClick={onDecorationClick}
+                />
+            )}
+        </>
+    )
+}
+
+/* ─── Nudge Decorations (pulsating dots, glowing borders, tooltips) ─── */
+
+interface NudgeDecorationsProps {
+    decorations: Map<string, NudgeDecoration>
+    onClick: (elementId: string) => void
+}
+
+function NudgeDecorations({ decorations, onClick }: NudgeDecorationsProps) {
+    return (
+        <>
+            {[...decorations.values()].map((dec) => (
+                <NudgeDecorationOverlay key={dec.elementId} decoration={dec} onClick={onClick} />
+            ))}
+        </>
+    )
+}
+
+function NudgeDecorationOverlay({ decoration, onClick }: { decoration: NudgeDecoration; onClick: (id: string) => void }) {
+    const [pos, setPos] = React.useState<{ top: number; left: number; width: number; height: number } | null>(null)
+    const [showTooltip, setShowTooltip] = React.useState(false)
+
+    React.useEffect(() => {
+        // Try data-id first, then fall back to any data-* attribute matching the value
+        const el = (
+            document.querySelector(`[data-id="${decoration.elementId}"]`) ||
+            document.querySelector(`[data-assist-btn="${decoration.elementId}"]`) ||
+            document.querySelector(`#${decoration.elementId}`)
+        ) as HTMLElement
+        if (!el) return
+
+        const update = () => {
+            const rect = el.getBoundingClientRect()
+            setPos({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+        }
+        update()
+
+        // Re-position on scroll/resize
+        const observer = new ResizeObserver(update)
+        observer.observe(el)
+        window.addEventListener('scroll', update, true)
+        window.addEventListener('resize', update)
+
+        return () => {
+            observer.disconnect()
+            window.removeEventListener('scroll', update, true)
+            window.removeEventListener('resize', update)
+        }
+    }, [decoration.elementId])
+
+    if (!pos) return null
+
+    const colorStyle = decoration.color ? { '--nudge-color': decoration.color } as React.CSSProperties : {}
+
+    return (
+        <div
+            className={`nudge-decoration nudge-decoration--${decoration.style}`}
+            style={{
+                position: 'fixed',
+                top: pos.top,
+                left: pos.left,
+                width: pos.width,
+                height: pos.height,
+                pointerEvents: 'none',
+                zIndex: 8999,
+                ...colorStyle
+            }}
+        >
+            {/* Pulsating dot indicator */}
+            {decoration.style === 'pulse' && (
+                <div
+                    className="nudge-pulse-dot"
+                    style={{ pointerEvents: 'auto', ...(decoration.color ? { background: decoration.color } : {}) }}
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                    onClick={() => onClick(decoration.elementId)}
+                />
+            )}
+
+            {/* Tooltip */}
+            {showTooltip && decoration.tooltip && (
+                <div className="nudge-tooltip">
+                    {decoration.tooltip}
+                </div>
+            )}
+        </div>
+    )
+}
