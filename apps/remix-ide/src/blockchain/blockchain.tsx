@@ -745,6 +745,9 @@ export class Blockchain extends Plugin {
       await this.getCurrentProvider().resetEnvironment()
     }
 
+    // Expose web3 for QuickDapp bridge (bypasses plugin queue)
+    ;(globalThis as any).__remixVM_web3 = this.web3()
+
     const logTransaction = async (txhash, origin) => {
       const network = await this.detectNetwork()
       const actionName = origin === 'plugin' ? 'sendTransaction-from-plugin' : 'sendTransaction-from-gui';

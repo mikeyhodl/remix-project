@@ -576,11 +576,11 @@ ${descText}
 ${currentFiles}
 
 **RULES:**
-1. Return ONLY the files that need changes using START_TITLE format. Do NOT return files that are unmodified.
+1. Return ALL modified files AND all NEW files using START_TITLE format. Do NOT return files that are completely unmodified.
 2. Do NOT provide explanations — only code blocks.
-3. You are allowed to create NEW files if the request requires new features.
+3. **CRITICAL:** If you add an import for a new file (e.g. \`import Foo from './components/Foo.jsx'\`), you MUST also generate that file in your response. Missing files will crash the app.
 4. If \`App.jsx\` is getting too large, refactor parts into \`src/components/\`.
-5. When returning a modified file, return the COMPLETE file content — not just the changed portion.
+5. When returning a file, return the COMPLETE file content — not just the changed portion.
 `
   },
 
