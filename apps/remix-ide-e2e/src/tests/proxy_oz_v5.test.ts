@@ -53,6 +53,7 @@ module.exports = {
       .waitForElementPresent('select[id="compiledContracts"] option[value=MyToken]', 60000)
       .clickLaunchIcon('udapp')
       .selectContract('MyToken')
+      .pause()
       .verify.visible('[data-id="contractGUIDeployWithProxyLabel"]')
       .waitForElementPresent('[data-id="contractGUIDeployWithProxyLabel"]')
       .click('[data-id="contractGUIDeployWithProxy"]')
