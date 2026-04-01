@@ -181,7 +181,7 @@ export async function getAccountsList (plugin: EnvironmentPlugin, dispatch: Reac
         alias: alias,
         account: account,
         balance: formatBalance(balance, 3),
-        symbol: plugin.blockchain['networkNativeCurrency'].symbol
+        symbol: plugin.blockchain['networkNativeCurrency']?.symbol || 'ETH'
       })
     if (safeAddresses.length && safeAddresses.includes(account)) {
       const storedSmartAccount = storedSmartAccounts[account]
