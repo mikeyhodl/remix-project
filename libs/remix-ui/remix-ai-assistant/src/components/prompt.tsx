@@ -72,13 +72,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   return (
     <>
       <div
-        className="prompt-area d-flex flex-column mx-2 p-2 rounded-3 border border-text mb-1"
+        className="prompt-area d-flex flex-column mx-2 p-1 rounded-3 border border-text mb-1"
         style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336' }}
         data-id="remix-ai-prompt-area"
       >
         <div className="ai-chat-input d-flex flex-column">
           <div
-            className="d-flex flex-column rounded-3 p-1"
+            className="d-flex flex-column rounded-3"
             style={{
               backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
               outline: 'none',
@@ -93,13 +93,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 outline: 'none',
                 resize: 'none',
                 font: 'inherit',
-                fontSize: '0.975rem',
+                fontSize: '0.875rem',
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
                 paddingRight: isStreaming ? '50px' : '10px',
                 overflowY: 'auto',
-                minHeight: '2rem',
+                minHeight: '1rem',
                 maxHeight: '12rem'
               }}
               className="form-control mb-1 border-0"
