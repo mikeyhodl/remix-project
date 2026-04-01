@@ -93,7 +93,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 outline: 'none',
                 resize: 'none',
                 font: 'inherit',
-                fontSize: '0.875rem',
+                fontSize: '0.8rem',
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
@@ -102,7 +102,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 minHeight: '1rem',
                 maxHeight: '12rem'
               }}
-              className="form-control mb-1 border-0"
+              className="form-control border-0"
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
               value={input}
@@ -123,26 +123,26 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               {/* <div className="d-flex flex-row align-items-center"> */}
               <button
                 onClick={handleSetModel}
-                className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border-0 rounded"
+                className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
                 data-assist-btn="assistant-selector-btn"
                 ref={modelBtnRef}
               >
                 <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
                   <span className="text-nowrap">{selectedModel?.name || 'Select Model'}</span>
-                  <span className={showModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
+                  <span className={showModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                 </div>
               </button>
               {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
                 <button
                   onClick={() => setShowOllamaModelSelector(prev => !prev)}
-                  className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border border-text rounded ms-2"
+                  className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border border-text rounded ms-2"
                   ref={modelSelectorBtnRef}
                   data-id="ollama-model-selector"
                   data-assist-btn="assistant-selector-btn"
                 >
                   <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
                     <span>{selectedModel?.name || 'Select Model'}</span>
-                    <span className={showOllamaModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
+                    <span className={showOllamaModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                   </div>
                 </button>
               )}
