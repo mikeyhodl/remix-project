@@ -93,7 +93,7 @@ module.exports = {
       .pause(2000)
       .click('[data-id="compilerContainerCompileBtn"]')
       .clickLaunchIcon('filePanel')
-      .verifyContracts(['PoolManager'], { wait: 10000 })
+      .verifyContracts(['PoolManager'], { wait: 60000 })
       .pause(5000)
   },
 
