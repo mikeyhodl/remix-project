@@ -156,7 +156,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         modelSelectorBtnRef={props.modelSelectorBtnRef}
         stopRequest={props.stopRequest}
       />
-      <span className="mb-1 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
+      <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
   )
 }

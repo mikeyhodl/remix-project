@@ -72,7 +72,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   return (
     <>
       <div
-        className="prompt-area d-flex flex-column mx-2 p-1 rounded-3 border border-text mb-1"
+        className="prompt-area d-flex flex-column mx-2 p-1 rounded-3 border border-text"
         style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336' }}
         data-id="remix-ai-prompt-area"
       >
