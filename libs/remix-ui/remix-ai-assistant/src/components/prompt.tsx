@@ -93,13 +93,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 outline: 'none',
                 resize: 'none',
                 font: 'inherit',
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
                 paddingRight: isStreaming ? '50px' : '10px',
                 overflowY: 'auto',
-                minHeight: '1rem',
+                minHeight: '2rem',
                 maxHeight: '12rem'
               }}
               className="form-control border-0"

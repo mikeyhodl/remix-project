@@ -30,6 +30,7 @@ export type PanelConfiguration = {
 
 export class Layout extends Plugin {
   event: any
+  // @ts-ignore
   panels: panels
   enhanced: { [key: string]: boolean | { coeff?: number } }
   maximized: { [key: string]: {
@@ -39,7 +40,10 @@ export class Layout extends Plugin {
   constructor () {
     super(profile)
     this.maximized = {
-      // 'remixaiassistant': true
+      'remixaiassistant': {
+        maximized: true,
+        coeff: undefined
+      },
       'LearnEth': {
         maximized: true,
         coeff: undefined
@@ -104,7 +108,7 @@ export class Layout extends Plugin {
         break
       }
     })
-    this.on('sidePanel', 'focusChanged', async (name) => {
+    this.on('sidePanel', 'focusChanged', async (name: any) => {
       const current = await this.call('sidePanel', 'currentFocus')
       const isMaxed = await this.call('rightSidePanel', 'isRightSidePanelMaximized')
       if (isMaxed) {
@@ -124,7 +128,7 @@ export class Layout extends Plugin {
       }
     })
 
-    this.on('rightSidePanel', 'pinnedPlugin', async (name) => {
+    this.on('rightSidePanel', 'pinnedPlugin', async (name: any) => {
       const current = await this.call('rightSidePanel', 'currentFocus')
       if (this.isEnhancedPanel(current)) {
         this.event.emit('enhanceRightSidePanel', this.getEnhancedCoeff(current))
@@ -179,6 +183,7 @@ export class Layout extends Plugin {
   }
 
   minimize (name: string, minimized:boolean): void {
+    // @ts-ignore
     this.panels[name].minimized = minimized
     this.event.emit('change', this.panels)
     this.emit('change', this.panels)

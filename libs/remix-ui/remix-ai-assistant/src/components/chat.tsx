@@ -23,7 +23,7 @@ export interface ChatHistoryComponentProps {
   sendPrompt: (prompt: string) => void
   recordFeedback: (msgId: string, next: 'like' | 'dislike' | 'none') => void
   historyRef: React.RefObject<HTMLDivElement>
-  theme: string
+  theme: any
   plugin?: any
   handleGenerateWorkspace: () => void
 }

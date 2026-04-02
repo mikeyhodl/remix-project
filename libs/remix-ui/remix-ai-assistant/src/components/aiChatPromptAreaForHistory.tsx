@@ -34,7 +34,7 @@ interface AiChatPromptAreaForHistoryProps {
       handleGenerateWorkspace: () => void
       handleRecord: () => void
       isRecording: boolean
-      dispatchActivity: (type: string, payload?: any) => void
+      dispatchActivity: (type: string, payload?: any) => void | any
       modelBtnRef: React.RefObject<HTMLButtonElement>
       modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
       textareaRef?: React.RefObject<HTMLTextAreaElement>
@@ -69,8 +69,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
   return (
     <section
       id="remix-ai-prompt-area"
-      className=""
-      style={{ flexShrink: 0, minHeight: '140px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') }}
+      style={{ flexShrink: 0, minHeight: '110px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') as any }}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
       {props.showModelSelector && (
@@ -119,7 +118,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
             setChoice={props.handleOllamaModelSelection}
             setShowOptions={props.setShowOllamaModelSelector}
             choice={props.selectedOllamaModel}
-            groupList={props.ollamaModels.map(model => ({
+            groupList={props.ollamaModels.map((model: any) => ({
               label: model,
               bodyText: `Use ${model} model`,
               icon: 'fa-solid fa-check',
@@ -155,7 +154,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         stopRequest={props.stopRequest}
         modelSelectorBtnRef={props.modelSelectorBtnRef}
       />
-      <span className="mb-4 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
+      <span className="mb-1 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
   )
 }
