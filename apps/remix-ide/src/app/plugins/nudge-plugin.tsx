@@ -192,19 +192,19 @@ export class NudgePlugin extends Plugin {
             priority: 8
         })
 
-        this.engine_.addRule({
-            id: 'hint-cloud-selector',
-            condition: 'user:logged_in',
-            action: {
-                type: 'hint',
-                message: 'You now have access to cloud features — try enabling cloud sync!',
-                hintStyle: 'glow',
-                hintColor: '#1abc9c',
-                actionTarget: 'cloud-toggle',
-            },
-            showOnce: 'session',
-            priority: 8
-        })
+        // this.engine_.addRule({
+        //     id: 'hint-cloud-selector',
+        //     condition: 'user:logged_in',
+        //     action: {
+        //         type: 'hint',
+        //         message: 'You now have access to cloud features — try enabling cloud sync!',
+        //         hintStyle: 'glow',
+        //         hintColor: '#1abc9c',
+        //         actionTarget: 'cloud-toggle',
+        //     },
+        //     showOnce: 'session',
+        //     priority: 8
+        // })
 
         // remix-ai-assistant
         this.engine_.addRule({

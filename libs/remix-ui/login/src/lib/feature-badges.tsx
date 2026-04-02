@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { FeatureGroup } from '@remix-api'
 import { useAuth } from '../../../app/src/lib/remix-app/context/auth-context'
-import { BetaInfoModal } from './modals/beta-info-modal'
+import { BetaFeatureReel } from '@remix-ui/modal-help'
 import './feature-badges.css'
-import BetaFeatureReel from './modals/beta-feature-reel'
 
 interface FeatureBadgesProps {
   plugin?: any
@@ -63,9 +62,33 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
       <div className="dropdown-divider user-menu-divider"></div>
 
       {showBetaModal && (
-        <BetaFeatureReel
-
-        />
+        <div
+          className="modal d-flex align-items-center justify-content-center"
+          style={{ display: 'flex', background: 'rgba(0,0,0,0.5)', zIndex: 10000, whiteSpace: "normal" }}
+          onClick={() => setShowBetaModal(false)}
+        >
+          <div
+    
+            onClick={(e) => e.stopPropagation()}
+          >
+            <BetaFeatureReel
+              dismissible
+              autoAdvanceMs={5000}
+              onAction={(feature) => {
+                setShowBetaModal(false)
+                if (plugin) {
+                  switch (feature) {
+                    case 'models': plugin.call('menuicons', 'select', 'remixAI'); break
+                    case 'mcp': plugin.call('menuicons', 'select', 'settings'); break
+                    case 'cloud': plugin.call('menuicons', 'select', 'settings'); break
+                    case 'quickdapp': plugin.call('menuicons', 'select', 'quickDapp'); break
+                  }
+                }
+              }}
+              onDismiss={() => setShowBetaModal(false)}
+            />
+          </div>
+        </div>
       )}
     </>
   )

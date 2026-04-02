@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
-type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp";
+export type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp";
 
 interface Feature {
   tag: string;

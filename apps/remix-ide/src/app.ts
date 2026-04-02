@@ -53,6 +53,7 @@ import { InvitationManagerPlugin } from './app/plugins/invitation-manager-plugin
 import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin'
 import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
 import { NudgePlugin } from './app/plugins/nudge-plugin'
+import { HelpPlugin } from '@remix-ui/modal-help'
 import { AccountPlugin } from './app/plugins/account-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
@@ -182,6 +183,7 @@ class AppComponent {
   membershipRequest: MembershipRequestPlugin
   betaCornerWidget: BetaCornerWidgetPlugin
   nudgePlugin: NudgePlugin
+  helpPlugin: HelpPlugin
   accountPlugin: AccountPlugin
   lifecycle: AppLifecycle
   lifecyclePlugin: LifecyclePlugin
@@ -646,6 +648,7 @@ class AppComponent {
     this.membershipRequest = new MembershipRequestPlugin()
     this.betaCornerWidget = new BetaCornerWidgetPlugin()
     this.nudgePlugin = new NudgePlugin({ debug: true })
+    this.helpPlugin = new HelpPlugin()
     const feedbackPlugin = new FeedbackPlugin()
 
     this.engine.register([
@@ -664,6 +667,7 @@ class AppComponent {
       this.membershipRequest,
       this.betaCornerWidget,
       this.nudgePlugin,
+      this.helpPlugin,
       this.accountPlugin,
       feedbackPlugin
     ])
@@ -749,6 +753,7 @@ class AppComponent {
     await this.appManager.activatePlugin(['membershipRequest'])
     await this.appManager.activatePlugin(['betaCornerWidget'])
     await this.appManager.activatePlugin(['nudgePlugin'])
+    await this.appManager.activatePlugin(['helpPlugin'])
     await this.appManager.activatePlugin(['account'])
     await this.appManager.activatePlugin(['notificationCenter'])
     await this.appManager.activatePlugin(['feedback'])
