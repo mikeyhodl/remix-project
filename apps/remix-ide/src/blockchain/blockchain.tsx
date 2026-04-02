@@ -99,7 +99,11 @@ export class Blockchain extends Plugin {
             await this.changeExecutionContext({ context: plugin.name })
             const network = await this.detectNetwork()
             this.networkStatus = { network, error: null }
-            if (network.networkNativeCurrency) this.networkNativeCurrency = network.networkNativeCurrency
+            if (network.networkNativeCurrency) {
+              this.networkNativeCurrency = network.networkNativeCurrency
+            } else {
+              this.networkNativeCurrency = { name: "Ether", symbol: "ETH", decimals: 18 }
+            }
             this._triggerEvent('networkStatus', [this.networkStatus])
           }
         })
@@ -154,7 +158,11 @@ export class Blockchain extends Plugin {
       this._triggerEvent('contextChanged', [context])
       const network = await this.detectNetwork()
       this.networkStatus = { network, error: null }
-      if (network.networkNativeCurrency) this.networkNativeCurrency = network.networkNativeCurrency
+      if (network.networkNativeCurrency) {
+        this.networkNativeCurrency = network.networkNativeCurrency
+      } else {
+        this.networkNativeCurrency = { name: "Ether", symbol: "ETH", decimals: 18 }
+      }
       this._triggerEvent('networkStatus', [this.networkStatus])
     })
 
@@ -169,7 +177,11 @@ export class Blockchain extends Plugin {
     setInterval(async () => {
       const network = await this.detectNetwork()
       this.networkStatus = { network, error: null }
-      if (network.networkNativeCurrency) this.networkNativeCurrency = network.networkNativeCurrency
+      if (network.networkNativeCurrency) {
+        this.networkNativeCurrency = network.networkNativeCurrency
+      } else {
+        this.networkNativeCurrency = { name: "Ether", symbol: "ETH", decimals: 18 }
+      }
       this._triggerEvent('networkStatus', [this.networkStatus])
     }, 30000)
 
