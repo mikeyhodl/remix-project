@@ -20,6 +20,7 @@ type OverlayPanelState = {
 }
 
 export class OverlayPanel extends AbstractPanel {
+// @ts-ignore
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => {}
   appStateDispatch: React.Dispatch<AppAction> = () => {}

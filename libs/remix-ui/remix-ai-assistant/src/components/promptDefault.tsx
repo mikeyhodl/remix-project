@@ -17,7 +17,7 @@ export function PromptDefault(props: PromptDefaultProps) {
 
   return (
     <div
-      className="d-flex justify-content-end gap-3 align-items-center w-100 py-2 align-items-center px-3"
+      className="d-flex justify-content-end gap-3 align-items-center w-100 px-1"
       style={{
         backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
       }}
@@ -28,15 +28,15 @@ export function PromptDefault(props: PromptDefaultProps) {
         tooltipId="audioPromptTooltip"
       >
         <button
-          className="btn btn-sm small font-weight-light text-secondary rounded-3"
+          className="btn btn-sm small font-weight-light text-secondary rounded-3 text-nowrap"
           onClick={props.handleRecording}
           style={{
             backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#e4e8f1' : '#2a2c3f',
             color: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#747b90' : '#d5d7e3'
           }}
         >
-          <i className="fas fa-microphone me-2"></i>
-        Audio Prompt
+          <i className="fas fa-microphone"></i>
+          <span className="ms-1">Audio</span>
         </button>
       </CustomTooltip>
       {!props.isStreaming ? <PromptSubmitButton backgroundColor={props.themeTracker && props.themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : "#2de7f3"} handleSend={props.handleSend} isStreaming={props.isStreaming} /> :
