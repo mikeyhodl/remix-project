@@ -11,10 +11,15 @@ export default class WorkspaceFileProvider extends FileProvider {
     this.event = new EventManager()
 
     try {
-      // make sure "code-sample" has been removed
-      window.remixFileSystem.exists(this.workspacesPath + '/code-sample').then((exist) => {
-        if (exist) window.remixFileSystem.unlink(this.workspacesPath + '/code-sample').catch((e) => {
-          console.log(e)
+      // Clean up temporary code-sample workspaces (both old 'code-sample' and new 'code-sample-xxxxxxxx' format)
+      window.remixFileSystem.readdir(this.workspacesPath).then((workspaces) => {
+        workspaces.forEach((workspace) => {
+          // Match 'code-sample' or 'code-sample-xxxxxxxx' where x is alphanumeric (8 chars)
+          if (/^code-sample(-[a-z0-9]{8})?$/.test(workspace)) {
+            window.remixFileSystem.unlink(this.workspacesPath + '/' + workspace).catch((e) => {
+              console.log('[Cleanup] Failed to delete temporary workspace:', workspace, e)
+            })
+          }
         })
       }).catch((e) => {
         console.log(e)
