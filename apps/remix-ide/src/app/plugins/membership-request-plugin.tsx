@@ -56,6 +56,11 @@ export class MembershipRequestPlugin extends Plugin {
   async onActivation(): Promise<void> {
     // Check pending requests on startup
     await this.checkPendingRequests()
+    // Start polling if there are still pending tokens
+    const stored = this.getStoredTokens()
+    if (stored.length > 0) {
+      this.startPolling()
+    }
     this.renderComponent()
   }
 
@@ -178,12 +183,6 @@ export class MembershipRequestPlugin extends Plugin {
       } catch (e) {
         console.error('[MembershipRequest] Error checking token status:', e)
       }
-    }
-
-    // Start polling if there are still pending tokens
-    const remaining = this.getStoredTokens()
-    if (remaining.length > 0) {
-      this.startPolling()
     }
   }
 
