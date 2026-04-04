@@ -72,46 +72,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   return (
     <>
       <div
-        className="prompt-area d-flex flex-column mx-2 p-2 rounded-3 border border-text bg-light mb-1"
-        style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#2a2c3f' }}
+        className="prompt-area d-flex flex-column mx-2 p-1 rounded-3 border border-text"
+        style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336' }}
+        data-id="remix-ai-prompt-area"
       >
-        <div className="d-flex justify-content-between align-items-center mb-3 border border-end-0 border-start-0 border-top-0 border-bottom pb-1">
-          <div className="d-flex">
-            <button
-              onClick={handleSetModel}
-              className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border-0 rounded"
-              data-assist-btn="assistant-selector-btn"
-              
-              ref={modelBtnRef}
-            >
-              {selectedModel?.name || 'Select Model'}
-              {'  '}
-              <span className={showModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
-            </button>
-            {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
-              <button
-                onClick={() => setShowOllamaModelSelector(prev => !prev)}
-                className="btn btn-text btn-sm small font-weight-light text-secondary mt-2 align-self-end border border-text rounded ms-2"
-                ref={modelSelectorBtnRef}
-                data-id="ollama-model-selector"
-                data-assist-btn="assistant-selector-btn"
-              >
-                {selectedOllamaModel || 'Select Model'}
-                {'  '}
-                <span className={showOllamaModelSelector ? "fa fa-caret-up" : "fa fa-caret-down"}></span>
-              </button>
-            )}
-          </div>
-          <span
-            className="btn btn-sm disabled small rounded-3 align-self-center fw-light"
-            // eslint-disable-next-line no-constant-condition
-            style={{ backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'dark' ? '#2b3b4d' : '#c6e8f1', color: themeTracker && themeTracker.name.toLowerCase() === 'light' ? '#1ea2aa' : '#2de7f3', cursor: 'default' }}
-          >
-          </span>
-        </div>
         <div className="ai-chat-input d-flex flex-column">
           <div
-            className="d-flex flex-column rounded-3 p-1"
+            className="d-flex flex-column rounded-3"
             style={{
               backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
               outline: 'none',
@@ -126,16 +93,16 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 outline: 'none',
                 resize: 'none',
                 font: 'inherit',
-                fontSize: '0.975rem',
+                fontSize: '0.75rem',
                 color: 'inherit',
                 backgroundColor: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
                 boxShadow: 'none',
                 paddingRight: isStreaming ? '50px' : '10px',
                 overflowY: 'auto',
-                minHeight: '3rem',
+                minHeight: '2rem',
                 maxHeight: '12rem'
               }}
-              className="form-control mb-1 border-0"
+              className="form-control border-0"
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
               value={input}
@@ -152,35 +119,50 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               }}
               placeholder="Ask me anything about your code or generate new contracts..."
             />
-            { !isRecording ? <PromptDefault
-              handleRecording={handleRecord}
-              isRecording={isRecording}
-              isStreaming={isStreaming}
-              handleSend={handleSend}
-              themeTracker={themeTracker}
-              handleCancel={stopRequest}
-            /> : null }
-            { isRecording ? <PromptActiveButtons
-              handleRecordingStoppage={handleRecord}
-              isStreaming={isStreaming}
-              handleSend={handleSend}
-              isRecording={isRecording}
-              themeTracker={themeTracker}
-              handleCancel={stopRequest}
-            /> : null }
-          </div>
-
-          <div className="d-flex flex-row justify-content-between align-items-center overflow-x-scroll overflow-y-hidden p-2 mt-2 gap-2"
-            style={{
-              scrollbarWidth: 'none'
-            }}
-          >
-            <button className={`btn fw-light rounded-4 text-nowrap ${themeTracker && themeTracker.name.toLowerCase() === 'light' ? 'btn-light text-light-emphasis' : 'btn-remix-dark'}`}
-              data-id="remix-ai-workspace-generate"
-              onClick={handleGenerateWorkspace}>
-              <i className="fas fa-plus me-1"></i>
-              <span className="text-nowrap">New Workspace</span>
-            </button>
+            <div className="d-flex flex-row align-items-center">
+              {/* <div className="d-flex flex-row align-items-center"> */}
+              <button
+                onClick={handleSetModel}
+                className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
+                data-assist-btn="assistant-selector-btn"
+                ref={modelBtnRef}
+              >
+                <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
+                  <span className="text-nowrap">{selectedModel?.name || 'Select Model'}</span>
+                  <span className={showModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
+                </div>
+              </button>
+              {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
+                <button
+                  onClick={() => setShowOllamaModelSelector(prev => !prev)}
+                  className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border border-text rounded ms-2"
+                  ref={modelSelectorBtnRef}
+                  data-id="ollama-model-selector"
+                  data-assist-btn="assistant-selector-btn"
+                >
+                  <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
+                    <span>{selectedModel?.name || 'Select Model'}</span>
+                    <span className={showOllamaModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
+                  </div>
+                </button>
+              )}
+              {/* </div> */}
+              { !isRecording ? <PromptDefault
+                handleRecording={handleRecord}
+                isRecording={isRecording}
+                isStreaming={isStreaming}
+                handleSend={handleSend}
+                themeTracker={themeTracker}
+                handleCancel={stopRequest}
+              /> : <PromptActiveButtons
+                handleRecordingStoppage={handleRecord}
+                isStreaming={isStreaming}
+                handleSend={handleSend}
+                isRecording={isRecording}
+                themeTracker={themeTracker}
+                handleCancel={stopRequest}
+              /> }
+            </div>
           </div>
         </div>
       </div>

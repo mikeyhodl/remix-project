@@ -1,9 +1,11 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
 import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, MutableRefObject, useContext } from 'react'
+//@ts-ignore
 import '../css/remix-ai-assistant.css'
 
 import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, AIModel } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
+//@ts-ignore
 import '../css/color.css'
 import { ModalTypes } from '@remix-ui/app'
 import { MatomoEvent, AIEvent } from '@remix-api'
@@ -11,11 +13,9 @@ import { MatomoEvent, AIEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage, ConversationMetadata } from '../lib/types'
-import { groupListType } from '../types/componentTypes'
 import { useOnClickOutside } from './onClickOutsideHook'
 import { RemixAIAssistant } from 'apps/remix-ide/src/app/plugins/remix-ai-assistant'
 import { useAudioTranscription } from '../hooks/useAudioTranscription'
-import { QueryParams } from '@remix-project/remix-lib'
 import ChatHistoryHeading from './chatHistoryHeading'
 import { ChatHistorySidebar } from './chatHistorySidebar'
 import AiChatPromptAreaForHistory from './aiChatPromptAreaForHistory'
@@ -210,7 +210,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     try {
       await props.plugin.call('remixAI', 'setModel', modelName)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_success', value: modelName, isClick: false })
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to set model:', error)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_failed', value: `${modelName}|${error.message || 'unknown'}`, isClick: false })
     }
@@ -220,9 +220,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme')
       .then((theme) => setThemeTracker(theme))
-      .catch((error) => console.log(error))
+      .catch((error: any) => console.log(error))
 
-    props.plugin.on('theme', 'themeChanged', (theme) => {
+    props.plugin.on('theme', 'themeChanged', (theme: any) => {
       setThemeTracker(theme)
     })
     return () => {
@@ -647,7 +647,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         // Note: setIsStreaming(false) is called in each handler's completion callback
         // DO NOT call it here as it would stop the spinner before the response completes
       }
-      catch (error) {
+      catch (error: any) {
         console.error('Error sending prompt:', error)
         setIsStreaming(false)
         abortControllerRef.current = null
@@ -770,7 +770,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             setSelectedModelId(defaultModel.id)
             setSelectedModel(defaultModel)
           }
-        } catch (error) {
+        } catch (error: any) {
           console.warn('Failed to fetch Ollama models:', error)
           setOllamaModels([])
           setMessages(prev => [...prev, {
@@ -956,7 +956,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     if (showModelSelector && modelBtnRef.current && menuRef.current) {
       // Use requestAnimationFrame to ensure menu is rendered and has dimensions
       requestAnimationFrame(() => {
-        const modelBtn = modelBtnRef.current
+        const modelBtn = modelBtnRef.current as any
         const menu = menuRef.current
 
         if (modelBtn && menu) {
@@ -1016,7 +1016,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         data-was-loading={wasInitializingRef.current ? 'true' : undefined}
       >
         {/* Main content area with sidebar and chat */}
-        <div className="d-flex flex-row flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
+        <div className="d-flex flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
           {/* Maximized Mode: Show sidebar on left if enabled */}
           {props.isMaximized && props.showHistorySidebar && props.conversations && (
             <ChatHistorySidebar
@@ -1183,7 +1183,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               handleGenerateWorkspace={handleGenerateWorkspace}
               handleRecord={handleRecord}
               isRecording={isRecording}
-              dispatchActivity={dispatchActivity}
+              dispatchActivity={dispatchActivity as any}
               modelBtnRef={modelBtnRef}
               modelSelectorBtnRef={modelSelectorBtnRef}
               textareaRef={textareaRef}
@@ -1226,7 +1226,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               handleGenerateWorkspace={handleGenerateWorkspace}
               handleRecord={handleRecord}
               isRecording={isRecording}
-              dispatchActivity={dispatchActivity}
+              dispatchActivity={dispatchActivity as any}
               modelBtnRef={modelBtnRef}
               modelSelectorBtnRef={modelSelectorBtnRef}
               textareaRef={textareaRef}

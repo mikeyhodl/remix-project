@@ -21,7 +21,7 @@ export function PromptActiveButtons(props: PromptActiveButtonsProps) {
         backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
       }}
     >
-      <button className="btn btn-sm small font-weight-light text-secondary d-flex justify-content-center align-items-center" style={{
+      <button className="btn btn-sm small font-weight-light text-secondary d-flex justify-content-center align-items-center text-nowrap" style={{
         backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#e4e8f1' : '#2a2c3f',
         width: '2rem',
         height: '2rem',
