@@ -1,7 +1,7 @@
 import { Plugin } from '@remixproject/engine'
 import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { NudgeEngine, all } from '@remix-project/remix-lib'
+import { NudgeEngine, all, any } from '@remix-project/remix-lib'
 import type { NudgeRule, NudgeAction, SerializedNudgeRule } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
 import './nudge-widget.css'
@@ -75,6 +75,7 @@ export class NudgePlugin extends Plugin {
         })
 
         this._setupBuiltinRules()
+        this._setupEventListeners()
         this.renderComponent()
     }
 
@@ -82,20 +83,158 @@ export class NudgePlugin extends Plugin {
         // NudgeEngine has no teardown needed
     }
 
+    /* ─── Event listeners — bridge plugin events into the nudge engine ─── */
+
+    private _setupEventListeners(): void {
+        // Auth state changes
+        this.on('auth', 'authStateChanged', (state: { isAuthenticated: boolean }) => {
+            if (state?.isAuthenticated) {
+                this.engine_.fire('user:logged_in')
+            } else {
+                this.engine_.fire('user:not_logged_in')
+            }
+        })
+
+        // Check current auth state (auth may have already emitted before we started listening)
+        this._checkInitialAuthState()
+
+        // Fetch registration mode / app config on activation so we can fire config events
+        this._fetchConfigEvents()
+
+        // Solidity file opened in editor
+        this.on('fileManager', 'currentFileChanged', (file: string) => {
+            if (file && file.endsWith('.sol')) {
+                this.engine_.fire('editor:solidity_active')
+            }
+        })
+
+        // Contract compiled successfully
+        this.on('solidity', 'compilationFinished', (_fileName: string, _source: any, _languageVersion: string, data: any) => {
+            // Only fire if compilation has no errors
+            if (data && (!data.errors || data.errors.every((e: any) => e.severity !== 'error'))) {
+                this.engine_.fire('contract:compiled')
+            }
+        })
+
+        // Contract deployed
+        this.on('udapp', 'newTransaction', () => {
+            this.engine_.fire('contract:deployed')
+        })
+
+        // Workspace dropdown opened
+        this.on('filePanel', 'setWorkspace', () => {
+            this.engine_.fire('workspace:switched')
+        })
+
+        // AI chat panel opened (side panel focus)
+        this.on('layout', 'maximiseRightSidePanel', () => {
+            this.engine_.fire('ai:chat_opened')
+        })
+    }
+
+    private async _fetchConfigEvents(): Promise<void> {
+        try {
+            const regMode = await this.call('auth' as any, 'getRegistrationMode')
+            if (regMode === 'open') {
+                this.engine_.fire('config:registration_open')
+            } else if (regMode === 'invite_required' || regMode === 'invite_only') {
+                this.engine_.fire('config:invite_only')
+            }
+
+            const appConfig = await this.call('auth' as any, 'getAppConfig')
+            if (appConfig?.['auth.sign_in_button_mode'] !== 'hidden') {
+                this.engine_.fire('config:login_enabled')
+            }
+        } catch {
+            // Auth plugin may not be ready yet — config events won't fire, which is fine
+        }
+    }
+
+    private async _checkInitialAuthState(): Promise<void> {
+        try {
+            const isAuth = await this.call('auth' as any, 'isAuthenticated')
+            if (isAuth) {
+                this.engine_.fire('user:logged_in')
+            } else {
+                this.engine_.fire('user:not_logged_in')
+            }
+        } catch {
+            // Auth not ready yet — we'll catch it via the event listener
+        }
+    }
+
     /* ─── Built-in rules ─── */
 
     private _setupBuiltinRules(): void {
-        // Example: suggest switching to Opus when a beta user opens AI chat with Mistral
-        
+
+        /* ─── Unauthenticated nudges ─── */
+
+        // Sign up prompt — shown to unauthenticated users when registration is open
+        this.engine_.addRule({
+            id: 'nudge-sign-up',
+            condition: all('user:not_logged_in', 'config:registration_open', 'config:login_enabled'),
+            action: {
+                type: 'widget',
+                title: 'Unlock the full experience',
+                message: 'Create a free account to access AI code assistance, cloud workspaces, premium models, and more.',
+                actionLabel: 'Sign up',
+                actionTarget: 'menuicons::select::settings',
+                icon: 'fas fa-user-plus',
+                widgetColor: '#3498db',
+                widgetBg: 'rgba(52, 152, 219, 0.1)'
+            },
+            showOnce: true,
+            priority: 12
+        })
+
+        // Beta invite prompt — shown when registration is invite-only
+        this.engine_.addRule({
+            id: 'nudge-join-beta',
+            condition: all('user:not_logged_in', 'config:invite_only', 'config:login_enabled'),
+            action: {
+                type: 'widget',
+                title: 'Join the Beta program',
+                message: 'Remix Beta is invite-only right now. Apply for early access to AI models, cloud sync, MCP integrations, and QuickDapp.',
+                actionLabel: 'Apply for access',
+                actionTarget: 'menuicons::select::settings',
+                icon: 'fas fa-flask',
+                widgetColor: '#e74c3c',
+                widgetBg: 'rgba(231, 76, 60, 0.08)'
+            },
+            showOnce: true,
+            priority: 11
+        })
+
+        /* ─── Authenticated — contextual feature discovery ─── */
+
+        // Beta welcome — first thing a beta tester sees after logging in
+        this.engine_.addRule({
+            id: 'beta-welcome',
+            condition: 'user:logged_in',
+            action: {
+                type: 'widget',
+                title: 'Welcome to Remix Beta',
+                message: 'You\'ve unlocked premium AI models, MCP integrations, cloud sync, and QuickDapp. Tap to take a quick tour.',
+                actionLabel: 'Take the tour',
+                actionTarget: 'helpPlugin::showModal::beta-reel',
+                icon: 'fas fa-sparkles',
+                widgetColor: '#2fbfb1',
+                widgetBg: 'rgba(47, 191, 177, 0.1)'
+            },
+            showOnce: true,
+            priority: 15
+        })
+
+        // Premium AI models — triggers when user opens the AI chat
         this.engine_.addRule({
             id: 'try-opus-model',
-            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            condition: all('user:logged_in', 'ai:chat_opened'),
             action: {
                 type: 'widget',
                 title: 'Try a premium model',
                 message: 'You have access to Claude Opus — it excels at complex Solidity patterns and audits.',
-                actionLabel: 'Switch to Opus',
-                actionTarget: 'remixAI::switchModel::opus',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::beta-info',
                 icon: CLAUDE_SVG,
                 widgetColor: '#7289da',
                 widgetBg: 'rgba(114, 137, 218, 0.1)'
@@ -103,65 +242,62 @@ export class NudgePlugin extends Plugin {
             showOnce: 'session',
             priority: 10
         })
-            
 
+        // Cloud workspaces — triggers when user switches workspaces
         this.engine_.addRule({
             id: 'try-cloud-workspaces',
-            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            condition: all('user:logged_in', 'workspace:switched'),
             action: {
                 type: 'widget',
-                title: 'Try the cloud',
-                message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
+                title: 'Try cloud workspaces',
+                message: 'Your projects are only stored locally. Enable cloud sync to access them from any device, anytime.',
                 actionLabel: 'Learn more',
-                actionTarget: 'settings::cloud-workspaces',
+                actionTarget: 'helpPlugin::showModal::cloud',
                 icon: 'fas fa-cloud-upload-alt',
                 widgetColor: '#1abc9c',
                 widgetBg: 'rgba(26, 188, 156, 0.1)'
             },
             showOnce: 'session',
-            priority: 10
+            priority: 9
         })
 
-        // MCP tools — highlight the ecosystem of connected services
+        // MCP tools — triggers when user opens AI chat (they'll likely want on-chain data)
         this.engine_.addRule({
             id: 'try-mcp-tools',
-            condition: all('user:logged_in'),
+            condition: all('user:logged_in', 'ai:chat_opened'),
             action: {
                 type: 'widget',
                 title: 'AI with superpowers',
-                message: 'Your AI assistant connects to Alchemy, Etherscan, The Graph, and more through MCP — ask it to fetch on-chain data, verify contracts, or query subgraphs directly in chat.',
-                actionLabel: 'Explore MCP tools',
-                actionTarget: 'menuicons::select::settings',
+                message: 'Your AI assistant connects to Alchemy, Etherscan, The Graph, and more through MCP — ask it to fetch on-chain data or verify contracts directly in chat.',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::mcp',
                 icon: MCP_SVG,
                 widgetColor: '#8b5cf6',
                 widgetBg: 'rgba(139, 92, 246, 0.08)'
             },
             showOnce: 'session',
-            priority: 9
+            priority: 8
         })
 
-        /// quickdapp demo rule
+        // QuickDapp — triggers when user compiles a contract successfully
         this.engine_.addRule({
             id: 'try-quickdapp',
-            condition: all('user:logged_in'),//, 'user:beta_tester', 'ai:model:mistral', 'ai:chat_opened'),
+            condition: all('user:logged_in', 'contract:compiled'),
             action: {
                 type: 'widget',
                 title: 'Try QuickDapp',
-                message: 'Generate a QuickDapp for your project — a ready‑to‑use dashboard for interacting with your contracts.',
-                actionLabel: 'Generate QuickDapp',
-                actionTarget: 'remixAI::generateQuickDapp',
+                message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no frontend code needed.',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::quickdapp',
                 icon: 'fas fa-rocket',
                 widgetColor: '#e67e22',
                 widgetBg: 'rgba(230, 126, 34, 0.1)'
             },
             showOnce: 'session',
-            priority: 9
+            priority: 7
         })
 
-
-        
-
-        // Example: suggest cloud workspaces to logged-in users with local-only workspaces
+        // Cloud workspaces — persistent nudge for local-only users
         this.engine_.addRule({
             id: 'try-cloud-toggle',
             condition: all('user:logged_in', 'workspace:local_only', 'lifecycle:APP_LOADED'),
@@ -170,20 +306,58 @@ export class NudgePlugin extends Plugin {
                 title: 'Cloud workspaces',
                 message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
                 actionLabel: 'Learn more',
-                actionTarget: 'settings::cloud-workspaces',
+                actionTarget: 'helpPlugin::showModal::cloud',
                 icon: 'fas fa-cloud-upload-alt'
             },
             showOnce: true,
             priority: 5
         })
 
-        // Demo: pulsating dot on the AI assistant selector when logged in
+        // Solidity-specific hint — when editing a .sol file, suggest the AI for help
+        this.engine_.addRule({
+            id: 'hint-ai-for-solidity',
+            condition: all('user:logged_in', 'editor:solidity_active'),
+            action: {
+                type: 'widget',
+                title: 'AI knows Solidity',
+                message: 'Ask the AI assistant to explain, audit, or optimize your contract. It understands your project context through MCP.',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::mcp',
+                icon: 'fas fa-robot',
+                widgetColor: '#27ae60',
+                widgetBg: 'rgba(39, 174, 96, 0.08)'
+            },
+            showOnce: true,
+            priority: 6
+        })
+
+        // Deployment nudge — after deploying a contract, suggest QuickDapp
+        this.engine_.addRule({
+            id: 'quickdapp-after-deploy',
+            condition: all('user:logged_in', 'contract:deployed'),
+            action: {
+                type: 'widget',
+                title: 'Build a dApp from this',
+                message: 'You just deployed a contract — generate a QuickDapp to get an instant frontend for interacting with it.',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::quickdapp',
+                icon: 'fas fa-magic',
+                widgetColor: '#9b59b6',
+                widgetBg: 'rgba(155, 89, 182, 0.08)'
+            },
+            showOnce: 'session',
+            priority: 8
+        })
+
+        /* ─── Hint decorations (pulsating dots / glows on UI elements) ─── */
+
+        // Glow on AI model selector when logged in
         this.engine_.addRule({
             id: 'hint-assistant-selector',
             condition: 'user:logged_in',
             action: {
                 type: 'hint',
-                message: 'You now have access to premium AI models — try switching!',
+                message: 'You have access to premium AI models — try switching!',
                 hintStyle: 'glow',
                 hintColor: '#f39c12',
                 actionTarget: 'assistant-selector-btn',
@@ -192,27 +366,13 @@ export class NudgePlugin extends Plugin {
             priority: 8
         })
 
-        // this.engine_.addRule({
-        //     id: 'hint-cloud-selector',
-        //     condition: 'user:logged_in',
-        //     action: {
-        //         type: 'hint',
-        //         message: 'You now have access to cloud features — try enabling cloud sync!',
-        //         hintStyle: 'glow',
-        //         hintColor: '#1abc9c',
-        //         actionTarget: 'cloud-toggle',
-        //     },
-        //     showOnce: 'session',
-        //     priority: 8
-        // })
-
-        // remix-ai-assistant
+        // Glow on AI assistant panel icon when logged in
         this.engine_.addRule({
-            id: 'try-ollama-models',
-            condition: all('user:logged_in'),
+            id: 'hint-ai-panel',
+            condition: all('user:logged_in', 'editor:solidity_active'),
             action: {
                 type: 'hint',
-                message: 'You have Ollama models available — check out the model selector!',
+                message: 'Ask the AI to explain or audit this contract',
                 hintStyle: 'glow',
                 hintColor: '#8e44ad',
                 actionTarget: 'remix-ai-assistant',

@@ -806,6 +806,9 @@ class AppComponent {
       const loadedElement = document.createElement('span')
       loadedElement.setAttribute('data-id', 'apploaded')
       document.body.appendChild(loadedElement)
+
+      // Fire lifecycle event into nudge engine so context-aware rules can activate
+      this.appManager.call('nudgePlugin', 'fire', 'lifecycle:APP_LOADED').catch(() => {})
     })
 
     // Editor mounted: activate workspace plugins, then signal readiness
