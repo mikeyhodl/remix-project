@@ -57,7 +57,7 @@ const FEATURES: Feature[] = [
     vizBg: "linear-gradient(135deg, #2a1a40, #1a1a3a)",
     headline: "Advanced AI models — free for beta testers",
     desc: "Claude Sonnet 4.6 is your default. Switch to Opus 4.6 for complex audits or Codestral for fast code generation. All free with fair usage rate limits.",
-    btn: "Open AI assistant",
+    btn: "",
     visual: "models",
   },
   {
@@ -66,7 +66,7 @@ const FEATURES: Feature[] = [
     vizBg: "linear-gradient(135deg, #1a2640, #1a1a30)",
     headline: "Alchemy, Etherscan, The Graph, ethSkills",
     desc: "MCP-connected tools bring on-chain data, verification, subgraph queries, and interactive Solidity lessons directly into your workflow.",
-    btn: "Explore plugins",
+    btn: "Explore MCP plugins",
     visual: "mcp",
   },
   {
@@ -75,7 +75,7 @@ const FEATURES: Feature[] = [
     vizBg: "linear-gradient(135deg, #1a2a3a, #1a2040)",
     headline: "Your workspaces, always available",
     desc: "Projects sync to the cloud automatically. Open any workspace from any device — your contracts, tests, and scripts are always there.",
-    btn: "Enable cloud sync",
+    btn: "Learn more",
     visual: "cloud",
   },
   {
@@ -84,7 +84,7 @@ const FEATURES: Feature[] = [
     vizBg: "linear-gradient(135deg, #1a3020, #1a2a2a)",
     headline: "Generate a DApp from a prompt",
     desc: "Describe what you want, and QuickDApp scaffolds a full frontend connected to your contract. Deploy and share in minutes.",
-    btn: "Create a DApp",
+    btn: "Learn more",
     visual: "quickdapp",
   },
 ];
@@ -595,6 +595,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
               <div style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.3, marginBottom: 4, whiteSpace: "normal", wordWrap: "break-word", overflowWrap: "break-word" }}>{feat.headline}</div>
               <div style={{ fontSize: 13, color: "#8888aa", lineHeight: 1.5, whiteSpace: "normal", wordWrap: "break-word", overflowWrap: "break-word" }}>{feat.desc}</div>
               <div style={{ marginTop: 8 }}>
+                {feat.btn && (
                 <button
                   onClick={() => onAction?.(feat.visual)}
                   style={{
@@ -622,6 +623,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
                 >
                   {feat.btn}
                 </button>
+                )}
               </div>
             </div>
           </div>

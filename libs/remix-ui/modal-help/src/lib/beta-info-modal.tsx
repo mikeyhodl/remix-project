@@ -4,9 +4,10 @@ import './beta-info-modal.css'
 interface BetaInfoModalProps {
   onClose: () => void
   plugin?: any
+  onFeedback?: () => void
 }
 
-export const BetaInfoModal: React.FC<BetaInfoModalProps> = ({ onClose, plugin }) => {
+export const BetaInfoModal: React.FC<BetaInfoModalProps> = ({ onClose, plugin, onFeedback }) => {
   return (
     <div
       className="modal d-flex align-items-center justify-content-center beta-modal-backdrop"
@@ -100,7 +101,7 @@ export const BetaInfoModal: React.FC<BetaInfoModalProps> = ({ onClose, plugin })
               <div className="beta-modal-actions">
                 <button
                   className="btn beta-modal-btn-discord"
-                  onClick={() => window.open('https://discord.gg/remix', '_blank')}
+                  onClick={() => window.open('https://discord.com/invite/9bw6pMWEAw', '_blank')}
                 >
                   <i className="fab fa-discord me-2"></i>
                   Join our Discord
@@ -114,11 +115,20 @@ export const BetaInfoModal: React.FC<BetaInfoModalProps> = ({ onClose, plugin })
                 </button>
                 <button
                   className="btn beta-modal-btn-blog"
-                  onClick={() => window.open('https://medium.com/remix-ide', '_blank')}
+                  onClick={() => window.open('https://ethereumremix.substack.com/', '_blank')}
                 >
                   <i className="fas fa-newspaper me-2"></i>
                   Latest Blog Posts
                 </button>
+                {onFeedback && (
+                  <button
+                    className="btn beta-modal-btn-feedback"
+                    onClick={() => { onClose(); onFeedback(); }}
+                  >
+                    <i className="fas fa-comment-dots me-2"></i>
+                    Send Feedback
+                  </button>
+                )}
               </div>
             </div>
 

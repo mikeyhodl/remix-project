@@ -219,6 +219,22 @@
   color: var(--bs-body-color, #ccc);
 }
 
+.beta-modal-btn-feedback {
+  background: rgba(155, 125, 255, 0.12);
+  color: #9b7dff;
+  border: 1px solid rgba(155, 125, 255, 0.25);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.beta-modal-btn-feedback:hover {
+  background: rgba(155, 125, 255, 0.2);
+  color: #b19dff;
+}
+
 /* Footer */
 .beta-modal-footer {
   padding: 0.75rem 1.5rem;

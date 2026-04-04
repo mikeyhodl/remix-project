@@ -11,6 +11,8 @@ interface QuickDAppHelpModalProps {
   onClose: () => void;
   /** Called when the user clicks the "Got it" or "Start now" button. */
   onStart?: () => void;
+  /** Called when the user wants to go back to the feature reel. */
+  onShowReel?: () => void;
 }
 
 // ─── Keyframes ───────────────────────────────────────────────────
@@ -524,6 +526,7 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
   open,
   onClose,
   onStart,
+  onShowReel,
 }) => {
   const [activeStep, setActiveStep] = useState<StepIndex>(0);
 
@@ -688,12 +691,23 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
               display: "flex", alignItems: "center", justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
-                <rect x="3" y="3" width="10" height="10" rx="2" />
-                <path d="M7 7l3 2-3 2" />
-              </svg>
-              Contract to DApp in minutes
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {onShowReel && (
+                <span
+                  onClick={onShowReel}
+                  style={{ fontSize: 11, color: c.cy, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <i className="fas fa-chevron-left" style={{ fontSize: 9 }}></i>
+                  All features
+                </span>
+              )}
+              <span style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
+                  <rect x="3" y="3" width="10" height="10" rx="2" />
+                  <path d="M7 7l3 2-3 2" />
+                </svg>
+                Contract to DApp in minutes
+              </span>
             </div>
             <GotItButton onClick={handleGotIt} />
           </div>

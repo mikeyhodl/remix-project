@@ -15,6 +15,8 @@ interface CloudHelpModalProps {
     onAction?: (action: CloudAction) => void;
     /** If true, clicking an action will also close the modal. */
     closeOnAction?: boolean;
+    /** Called when the user wants to go back to the feature reel. */
+    onShowReel?: () => void;
 }
 
 // ─── Keyframes ───────────────────────────────────────────────────
@@ -281,6 +283,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
     onClose,
     onAction,
     closeOnAction = false,
+    onShowReel,
 }) => {
     const [picked, setPicked] = useState<WorkspaceType>("cloud");
 
@@ -666,12 +669,23 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                             justifyContent: "space-between",
                         }}
                     >
-                        <div style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
-                                <path d="M8 3v5l3 2" />
-                                <circle cx="8" cy="8" r="6" />
-                            </svg>
-                            Cloud workspaces sync in real time
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {onShowReel && (
+                                <span
+                                    onClick={onShowReel}
+                                    style={{ fontSize: 11, color: c.cy, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                                >
+                                    <i className="fas fa-chevron-left" style={{ fontSize: 9 }}></i>
+                                    All features
+                                </span>
+                            )}
+                            <span style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
+                                    <path d="M8 3v5l3 2" />
+                                    <circle cx="8" cy="8" r="6" />
+                                </svg>
+                                Cloud workspaces sync in real time
+                            </span>
                         </div>
                         <GotItButton onClick={onClose} />
                     </div>

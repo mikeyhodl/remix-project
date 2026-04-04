@@ -24,6 +24,8 @@ interface McpHelpModalProps {
   open: boolean;
   /** Called when the user closes the modal. */
   onClose: () => void;
+  /** Called when the user wants to go back to the feature reel. */
+  onShowReel?: () => void;
   /**
    * Called when the user clicks "Try this" — receives the prompt string.
    * Wire this to your AI assistant's sendPrompt to execute for real.
@@ -386,6 +388,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, active, onSelect, on
 const McpHelpModal: React.FC<McpHelpModalProps> = ({
   open,
   onClose,
+  onShowReel,
   onSendPrompt,
   closeOnTry = false,
 }) => {
@@ -682,12 +685,23 @@ const McpHelpModal: React.FC<McpHelpModalProps> = ({
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
-                <circle cx="8" cy="8" r="6" />
-                <path d="M8 5.5V8l2 1.5" />
-              </svg>
-              MCP runs queries in real time
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {onShowReel && (
+                <span
+                  onClick={onShowReel}
+                  style={{ fontSize: 11, color: c.cy, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <i className="fas fa-chevron-left" style={{ fontSize: 9 }}></i>
+                  All features
+                </span>
+              )}
+              <span style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M8 5.5V8l2 1.5" />
+                </svg>
+                MCP runs queries in real time
+              </span>
             </div>
             <button
               onClick={onClose}
