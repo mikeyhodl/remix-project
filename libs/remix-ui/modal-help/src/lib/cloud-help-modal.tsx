@@ -206,9 +206,7 @@ const WsCard: React.FC<WsCardProps> = ({ type, picked, onClick }) => {
                     }}
                 >
                     {isCloud ? (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke={c.bl} strokeWidth="1.5">
-                            <path d="M5 11c-2 0-3.5-1.2-3.5-3 0-1.5 1-2.7 2.5-3C4.5 3.2 6 1.5 8.5 1.5c2.5 0 4.5 1.8 5 4.2.8.2 1.5 1 1.5 2 0 1.5-1.3 2.5-2.8 2.5" />
-                        </svg>
+                        <i className="fas fa-cloud" style={{ fontSize: 12, color: c.bl }}></i>
                     ) : (
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke={c.tm} strokeWidth="1.5">
                             <rect x="2" y="3" width="10" height="8" rx="1.5" />
@@ -344,10 +342,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                     {/* ── Header ── */}
                     <div style={{ padding: "20px 24px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <h2 style={{ fontSize: 18, fontWeight: 500, color: c.tx, display: "flex", alignItems: "center", gap: 10, margin: 0 }}>
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke={c.bl} strokeWidth="1.5" strokeLinecap="round">
-                                <path d="M7 16c-2.8 0-5-1.8-5-4.5 0-2.2 1.5-4 3.8-4.4C6.5 4.5 8.8 2 12 2c4 0 7 2.7 7.5 6.2C17.5 8.3 19 9.8 19 11.7c0 2.2-2 3.8-4.4 3.8" />
-                                <path d="M10 10v7M7 14l3-3 3 3" />
-                            </svg>
+                            <i className="fas fa-cloud" style={{ fontSize: 18, color: c.bl }}></i>
                             Cloud workspaces
                             <span
                                 style={{

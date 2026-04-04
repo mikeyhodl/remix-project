@@ -39,7 +39,7 @@ const c = {
   cy: "#2fbfb1",
   tx: "#e0e0ec",
   tm: "#8888aa",
-  td: "#5c5c7a",
+  td: "#b2b2c3",
   bl: "#5b9cf5",
   gn: "#6bdb8a",
   am: "#f0a030",

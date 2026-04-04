@@ -111,9 +111,7 @@ const FEATURES: FeatureConfig[] = [
     iconColor: c.bl,
     iconBg: "rgba(91,156,245,0.1)",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5b9cf5" strokeWidth="1.5">
-        <path d="M5.5 12c-2 0-3.5-1.2-3.5-3 0-1.5 1-2.7 2.5-3C5 3.5 7 2 9.5 2c2.5 0 4.5 1.8 5 4.2.8.2 1.5 1 1.5 2 0 1.5-1.3 2.5-2.8 2.5" />
-      </svg>
+      <i className="fas fa-cloud" style={{ fontSize: 14, color: '#5b9cf5' }}></i>
     ),
   },
 ];

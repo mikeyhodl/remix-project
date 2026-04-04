@@ -50,15 +50,15 @@ const SERVICES: ServiceConfig[] = [
     name: "Alchemy",
     color: "#5b9cf5",
     desc: "Query balances, transactions, token metadata, and gas prices from any EVM chain.",
-    example: '"What\'s the ETH balance of vitalik.eth?"',
-    prompt: "Use Alchemy to check the ETH balance and recent transactions of vitalik.eth",
+    example: '"What\'s the ETH balance of my deploy wallet?"',
+    prompt: "Use Alchemy to check the ETH balance and recent transactions of 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
     mockReply:
-      'Querying Alchemy for <span class="hlc">vitalik.eth</span>...\n\n' +
-      'Balance: <span class="hlc">1,247.83 ETH</span> ($3.2M)\n\n' +
+      'Querying Alchemy for <span class="hlc">0x742d...bD18</span>...\n\n' +
+      'Balance: <span class="hlc">4.82 ETH</span> ($12,450)\n\n' +
       "Last 3 transactions:\n" +
-      "  1. Sent 10 ETH to 0x3a2f...8c1d (2h ago)\n" +
-      "  2. Received 50 ETH from 0x7b1c...4e2a (1d ago)\n" +
-      "  3. Contract interaction with Uniswap V3 (2d ago)",
+      "  1. Contract deploy 0xa1f3...9c2e (2h ago)\n" +
+      "  2. Sent 0.5 ETH to 0x3a2f...8c1d (1d ago)\n" +
+      "  3. Received 5 ETH from 0x7b1c...4e2a (3d ago)",
   },
   {
     key: "etherscan",
