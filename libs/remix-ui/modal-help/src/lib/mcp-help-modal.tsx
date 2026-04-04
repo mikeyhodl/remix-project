@@ -372,7 +372,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, active, onSelect, on
           btn.style.borderColor = "rgba(47,191,177,0.2)";
         }}
       >
-        Try this
+        Demo
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M3 8h10M9 4l4 4-4 4" />
         </svg>

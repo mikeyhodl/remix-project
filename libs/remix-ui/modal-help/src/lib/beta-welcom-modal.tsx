@@ -68,7 +68,7 @@ const FEATURES: FeatureConfig[] = [
   {
     key: "models",
     name: "Advanced AI models",
-    desc: "Claude Opus 4.6, Sonnet, Codestral",
+    desc: "Sonnet 4.6 (default), Opus, Codestral — free with rate limits",
     iconColor: c.pu,
     iconBg: "rgba(155,125,255,0.1)",
     icon: (
@@ -413,27 +413,14 @@ const BetaWelcomeModal: React.FC<BetaWelcomeModalProps> = ({
             </div>
 
             {/* Hero text */}
-            <div style={{ position: "relative", zIndex: 2, fontSize: 22, fontWeight: 500, color: c.tx, lineHeight: 1.3, marginBottom: 8 }}>
-              You&apos;re shaping the{" "}
-              <span
-                style={{
-                  background: `linear-gradient(90deg, ${c.cy}, ${c.bl}, ${c.pu}, ${c.cy})`,
-                  backgroundSize: "200% auto",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  animation: "bwShimmer 4s linear infinite",
-                }}
-              >
-                future of Web3 tooling
-              </span>
-            </div>
+           
             <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: c.tm, lineHeight: 1.5 }}>
               These features are unlocked early for you. Explore them, break them, tell us what you think.
             </div>
           </div>
 
           {/* ── Features ── */}
-          <div style={{ padding: "0 24px 16px" }}>
+          <div style={{ padding: "10px 24px 16px" }}>
             <SectionLabel>What&apos;s unlocked</SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {FEATURES.map((feat) => (
@@ -609,7 +596,7 @@ export type { BetaWelcomeModalProps, FeatureKey, LinkKey };
 //    onFeature={(feature) => {
 //      setShowBeta(false)
 //      switch (feature) {
-//        case 'models':    openModelReel(); break
+//        case 'models':    activatePanel('ai-assistant'); break // no modal, just open the panel
 //        case 'mcp':       setShowMcp(true); break
 //        case 'quickdapp': setShowQD(true); break
 //        case 'cloud':     setShowCloud(true); break

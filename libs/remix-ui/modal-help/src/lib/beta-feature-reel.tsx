@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
-export type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp";
+type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp";
 
 interface Feature {
   tag: string;
@@ -55,8 +55,8 @@ const FEATURES: Feature[] = [
     tag: "AI models",
     tagColor: "#9b7dff",
     vizBg: "linear-gradient(135deg, #2a1a40, #1a1a3a)",
-    headline: "Advanced AI models",
-    desc: "Claude Opus 4.6, Sonnet 4.6, and Codestral — pick the right model for the job. Audit contracts, generate code, or explain Solidity patterns.",
+    headline: "Advanced AI models — free for beta testers",
+    desc: "Claude Sonnet 4.6 is your default. Switch to Opus 4.6 for complex audits or Codestral for fast code generation. All free with fair usage rate limits.",
     btn: "Open AI assistant",
     visual: "models",
   },
