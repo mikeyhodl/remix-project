@@ -922,7 +922,12 @@ export class AuthPlugin extends Plugin {
       const refreshToken = localStorage.getItem('remix_refresh_token')
       if (!refreshToken) {
         console.warn('[AuthPlugin] No refresh token available, logging out')
-        await this.logout()
+        // Only call logout if we still have stored auth data to clear,
+        // otherwise we'd re-emit authStateChanged and trigger listeners again
+        const hasStoredAuth = !!localStorage.getItem('remix_access_token') || !!localStorage.getItem('remix_user')
+        if (hasStoredAuth) {
+          await this.logout()
+        }
         return null
       }
 

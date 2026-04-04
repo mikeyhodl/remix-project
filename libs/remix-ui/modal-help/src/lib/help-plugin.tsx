@@ -39,7 +39,12 @@ export class HelpPlugin extends ViewPlugin {
     }
 
     // Listen for auth changes
-    this.on('auth', 'authStateChanged', async () => {
+    this.on('auth', 'authStateChanged', async (state: { isAuthenticated: boolean }) => {
+      if (!state?.isAuthenticated) {
+        this._isBeta = false
+        this.renderComponent()
+        return
+      }
       try {
         this._isBeta = await this.call('auth', 'checkPermission', 'beta')
       } catch {
