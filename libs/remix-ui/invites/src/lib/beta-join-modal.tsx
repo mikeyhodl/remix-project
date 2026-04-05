@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { InviteValidateResponse, InviteRedeemResponse } from '@remix-api'
+import { LoginModal } from '@remix-ui/login'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -7,8 +9,20 @@ interface BetaJoinModalProps {
   open: boolean;
   /** Called when the user closes the modal. */
   onClose: () => void;
-  /** Called when the user clicks the CTA button (sign in to activate). */
-  onActivate?: () => void;
+  /** Invite token string. */
+  token: string;
+  /** Server-side validation result for the invite. */
+  validation: InviteValidateResponse;
+  /** Whether the current user is authenticated. */
+  isAuthenticated: boolean;
+  /** True while the redeem request is in flight. */
+  redeeming: boolean;
+  /** Error message from a failed redeem attempt. */
+  error: string | null;
+  /** Called when the user clicks "Join the Beta". */
+  onRedeem: (token: string) => Promise<InviteRedeemResponse>;
+  /** Plugin reference passed to LoginButton. */
+  plugin?: any;
 }
 
 // ─── Keyframes ───────────────────────────────────────────────────
@@ -245,10 +259,27 @@ const WhyJoinCard: React.FC<{ card: WhyCard; delay: string }> = ({ card, delay }
   </div>
 );
 
+// ─── Helpers ─────────────────────────────────────────────────────
+
+function formatExpiry(expiresAt: string | null | undefined): string | null {
+  if (!expiresAt) return null;
+  const date = new Date(expiresAt);
+  const diff = date.getTime() - Date.now();
+  if (diff < 0) return "Expired";
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `${days}d remaining`;
+  if (hours > 0) return `${hours}h remaining`;
+  return "Expires soon";
+}
+
 // ─── Main component ──────────────────────────────────────────────
 
-const BetaJoinModal: React.FC<BetaJoinModalProps> = ({ open, onClose, onActivate }) => {
+const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
+  open, onClose, token, validation, isAuthenticated, redeeming, error, onRedeem, plugin,
+}) => {
   const [ctaHovered, setCtaHovered] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   if (!open) return null;
 
@@ -408,30 +439,112 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({ open, onClose, onActivate
             </div>
           </div>
 
+          {/* ── Meta badges ── */}
+          {(validation.expires_at || validation.uses_remaining != null) && (
+            <div style={{ padding: "0 28px 12px", display: "flex", gap: 8, animation: "bjFadeUp 0.5s ease 0.4s both" }}>
+              {validation.expires_at && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", borderRadius: 8, fontSize: 11,
+                  background: c.s1, border: "0.5px solid rgba(255,255,255,0.06)", color: c.tm,
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={c.tm} strokeWidth="1.3">
+                    <circle cx="6" cy="6" r="4.5" /><path d="M6 3.5V6l2 1.5" />
+                  </svg>
+                  {formatExpiry(validation.expires_at)}
+                </span>
+              )}
+              {validation.uses_remaining != null && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", borderRadius: 8, fontSize: 11,
+                  background: c.s1, border: "0.5px solid rgba(255,255,255,0.06)", color: c.tm,
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={c.tm} strokeWidth="1.3">
+                    <rect x="2" y="3" width="8" height="6" rx="1" /><path d="M5 3V2h2v1" />
+                  </svg>
+                  {validation.uses_remaining} left
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* ── Error ── */}
+          {error && (
+            <div style={{
+              margin: "0 28px 12px", padding: "10px 14px", borderRadius: 10,
+              background: "rgba(239,68,68,0.08)", border: "0.5px solid rgba(239,68,68,0.2)",
+              fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#f87171" strokeWidth="1.5">
+                <path d="M7 1L1 13h12L7 1z" /><path d="M7 5.5v3M7 10.5v.5" />
+              </svg>
+              {error}
+            </div>
+          )}
+
           {/* ── CTA ── */}
           <div style={{ padding: "0 28px 20px", animation: "bjFadeUp 0.5s ease 0.45s both" }}>
-            <button
-              onClick={() => onActivate?.()}
-              onMouseEnter={() => setCtaHovered(true)}
-              onMouseLeave={() => setCtaHovered(false)}
-              style={{
-                width: "100%", padding: 14, borderRadius: 12,
-                background: c.cy, border: "none",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 14, fontWeight: 500, color: c.bg,
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                transition: "all 0.2s",
-                filter: ctaHovered ? "brightness(1.1)" : "none",
-                transform: ctaHovered ? "translateY(-1px)" : "none",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="7" width="10" height="7" rx="1.5" />
-                <path d="M5 7V5a3 3 0 016 0v2" />
-              </svg>
-              Sign in to activate your invite
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => onRedeem(token)}
+                onMouseEnter={() => setCtaHovered(true)}
+                onMouseLeave={() => setCtaHovered(false)}
+                disabled={redeeming}
+                data-id="invite-join-beta-btn"
+                style={{
+                  width: "100%", padding: 14, borderRadius: 12,
+                  background: c.cy, border: "none",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 14, fontWeight: 500, color: c.bg,
+                  cursor: redeeming ? "wait" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  transition: "all 0.2s",
+                  opacity: redeeming ? 0.7 : 1,
+                  filter: ctaHovered && !redeeming ? "brightness(1.1)" : "none",
+                  transform: ctaHovered && !redeeming ? "translateY(-1px)" : "none",
+                }}
+              >
+                {redeeming ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                      style={{ animation: "bjDotPulse 1s ease-in-out infinite" }}>
+                      <circle cx="8" cy="8" r="6" strokeDasharray="20 10" />
+                    </svg>
+                    Activating…
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M2 8l5 5L14 3" />
+                    </svg>
+                    Join the Beta
+                  </>
+                )}
+              </button>
+            ) : (
+              <div>
+                <button
+                  onClick={() => setShowLogin(true)}
+                  style={{
+                    width: "100%", padding: 14, borderRadius: 12,
+                    background: c.cy, border: "none",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 14, fontWeight: 500, color: c.bg,
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    transition: "all 0.2s",
+                  }}
+                  data-id="invite-sign-in-btn"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="7" width="10" height="7" rx="1.5" />
+                    <path d="M5 7V5a3 3 0 016 0v2" />
+                  </svg>
+                  Sign in to activate your invite
+                </button>
+              </div>
+            )}
             <div style={{ textAlign: "center", fontSize: 11, color: c.td, marginTop: 10, lineHeight: 1.4 }}>
               Free to join. Free to leave anytime. About a month of testing.
             </div>
@@ -457,6 +570,13 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({ open, onClose, onActivate
           </div>
         </div>
       </div>
+
+      {/* LoginModal rendered outside the animated card to avoid CSS containment */}
+      {showLogin && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000 }}>
+          <LoginModal onClose={() => setShowLogin(false)} plugin={plugin} />
+        </div>
+      )}
     </>
   );
 };
@@ -466,15 +586,16 @@ export type { BetaJoinModalProps };
 
 // ─── Usage example ───────────────────────────────────────────────
 //
-//  import BetaJoinModal from './BetaJoinModal'
-//
-//  const [showJoin, setShowJoin] = useState(false)
+//  import BetaJoinModal from './beta-join-modal'
 //
 //  <BetaJoinModal
 //    open={showJoin}
 //    onClose={() => setShowJoin(false)}
-//    onActivate={() => {
-//      setShowJoin(false)
-//      redirectToSignIn()
-//    }}
+//    token={token}
+//    validation={validation}
+//    isAuthenticated={isAuthenticated}
+//    redeeming={redeeming}
+//    error={error}
+//    onRedeem={handleRedeem}
+//    plugin={plugin}
 //  />

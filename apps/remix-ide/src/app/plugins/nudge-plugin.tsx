@@ -194,12 +194,12 @@ export class NudgePlugin extends Plugin {
             action: {
                 type: 'widget',
                 title: 'Join the Beta program',
-                message: 'Remix Beta is invite-only right now. Apply for early access to AI models, cloud sync, MCP integrations, and QuickDapp.',
+                message: 'Get early access to advanced AI models, cloud workspaces, MCP integrations, and QuickDapp — free for beta testers.',
                 actionLabel: 'Apply for access',
                 actionTarget: 'membershipRequest::showRequestForm::beta',
-                icon: 'fas fa-flask',
-                widgetColor: '#e74c3c',
-                widgetBg: 'rgba(231, 76, 60, 0.08)'
+                icon: 'fas fa-rocket',
+                widgetColor: '#2fbfb1',
+                widgetBg: 'rgba(47, 191, 177, 0.08)'
             },
             showOnce: true,
             priority: 11

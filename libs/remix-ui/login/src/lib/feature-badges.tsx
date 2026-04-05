@@ -78,10 +78,10 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
                 setShowBetaModal(false)
                 if (plugin) {
                   switch (feature) {
-                    case 'models': plugin.call('menuicons', 'select', 'remixAI'); break
-                    case 'mcp': plugin.call('menuicons', 'select', 'settings'); break
-                    case 'cloud': plugin.call('menuicons', 'select', 'settings'); break
-                    case 'quickdapp': plugin.call('menuicons', 'select', 'quickDapp'); break
+                    case 'models': plugin.call('helpPlugin', 'showModal', 'beta-info'); break
+                    case 'mcp': plugin.call('helpPlugin', 'showModal', 'mcp'); break
+                    case 'cloud': plugin.call('helpPlugin', 'showModal', 'cloud'); break
+                    case 'quickdapp': plugin.call('helpPlugin', 'showModal', 'quickdapp'); break
                   }
                 }
               }}
