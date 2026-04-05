@@ -125,13 +125,28 @@ export class EventGuard {
   private registrations: GuardRegistration[] = []
   private nextId = 1
   private evaluating = false // re-entrancy guard
+  private debug: boolean
+  private label: string
+
+  constructor(options?: { debug?: boolean; label?: string }) {
+    this.debug = options?.debug ?? false
+    this.label = options?.label ?? 'EventGuard'
+  }
+
+  private log(...args: any[]): void {
+    if (this.debug) console.log(`[${this.label}]`, ...args)
+  }
 
   /** Record that an event has occurred, then evaluate all pending guards */
   fire(eventId: EventId): void {
-    if (this.firedEvents.has(eventId)) return // idempotent
+    if (this.firedEvents.has(eventId)) {
+      this.log(`⏭ fire("${eventId}") — already fired, skipping`)
+      return
+    }
 
     this.firedEvents.add(eventId)
     this.orderedEvents.push(eventId)
+    this.log(`🔥 fire("${eventId}") — total fired: [${[...this.firedEvents].join(', ')}]`)
     this.evaluate()
   }
 
@@ -162,9 +177,12 @@ export class EventGuard {
       fired: false
     }
 
+    this.log(`📋 when(#${reg.id}) registered — condition:`, conditionToString(condition), once ? '(once)' : '(repeatable)')
+
     // Check if already satisfied (late registration)
     if (isSatisfied(condition, this.firedEvents, this.orderedEvents)) {
       reg.fired = true
+      this.log(`⚡ when(#${reg.id}) — already satisfied, firing immediately`)
       try {
         callback()
       } catch (e) {
@@ -223,10 +241,16 @@ export class EventGuard {
 
       for (const reg of this.registrations) {
         if (reg.once && reg.fired) continue
-        if (isSatisfied(reg.condition, this.firedEvents, this.orderedEvents)) {
+        const satisfied = isSatisfied(reg.condition, this.firedEvents, this.orderedEvents)
+        if (satisfied) {
           reg.fired = true
           toFire.push(reg)
+          this.log(`✅ guard #${reg.id} satisfied:`, conditionToString(reg.condition))
         }
+      }
+
+      if (toFire.length === 0 && this.registrations.length > 0) {
+        this.log(`⏳ ${this.registrations.filter(r => !(r.once && r.fired)).length} guard(s) still waiting`)
       }
 
       // Remove one-shot registrations that have fired
@@ -247,10 +271,29 @@ export class EventGuard {
 
   /** Reset all state (primarily for testing) */
   reset(): void {
+    this.log('🔄 reset()')
     this.firedEvents.clear()
     this.orderedEvents = []
     this.registrations = []
     this.nextId = 1
     this.evaluating = false
+  }
+}
+
+// ─── Debug Helpers ───────────────────────────────────────────────────
+
+/** Pretty-print a condition tree for logging */
+function conditionToString(condition: Condition): string {
+  switch (condition.kind) {
+  case 'event':
+    return `"${condition.eventId}"`
+  case 'all':
+    return `all(${condition.conditions.map(conditionToString).join(', ')})`
+  case 'any':
+    return `any(${condition.conditions.map(conditionToString).join(', ')})`
+  case 'sequence':
+    return `seq(${condition.conditions.map(conditionToString).join(' → ')})`
+  default:
+    return '?'
   }
 }

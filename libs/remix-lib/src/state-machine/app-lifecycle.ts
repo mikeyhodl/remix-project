@@ -268,7 +268,7 @@ export class AppLifecycle {
 
   constructor(options?: { debug?: boolean }) {
     this.debug = options?.debug ?? false
-    this.guard = new EventGuard()
+    this.guard = new EventGuard({ debug: this.debug, label: 'Lifecycle' })
 
     const inspectFn = this.debug
       ? (inspectionEvent: any) => {

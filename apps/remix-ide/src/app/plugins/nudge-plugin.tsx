@@ -178,7 +178,7 @@ export class NudgePlugin extends Plugin {
                 title: 'Unlock the full experience',
                 message: 'Create a free account to access AI code assistance, cloud workspaces, premium models, and more.',
                 actionLabel: 'Sign up',
-                actionTarget: 'menuicons::select::settings',
+                actionTarget: 'membershipRequest::showRequestForm::beta',
                 icon: 'fas fa-user-plus',
                 widgetColor: '#3498db',
                 widgetBg: 'rgba(52, 152, 219, 0.1)'
@@ -196,7 +196,7 @@ export class NudgePlugin extends Plugin {
                 title: 'Join the Beta program',
                 message: 'Remix Beta is invite-only right now. Apply for early access to AI models, cloud sync, MCP integrations, and QuickDapp.',
                 actionLabel: 'Apply for access',
-                actionTarget: 'menuicons::select::settings',
+                actionTarget: 'membershipRequest::showRequestForm::beta',
                 icon: 'fas fa-flask',
                 widgetColor: '#e74c3c',
                 widgetBg: 'rgba(231, 76, 60, 0.08)'
@@ -351,35 +351,6 @@ export class NudgePlugin extends Plugin {
 
         /* ─── Hint decorations (pulsating dots / glows on UI elements) ─── */
 
-        // Glow on AI model selector when logged in
-        this.engine_.addRule({
-            id: 'hint-assistant-selector',
-            condition: 'user:logged_in',
-            action: {
-                type: 'hint',
-                message: 'You have access to premium AI models — try switching!',
-                hintStyle: 'glow',
-                hintColor: '#f39c12',
-                actionTarget: 'assistant-selector-btn',
-            },
-            showOnce: 'session',
-            priority: 8
-        })
-
-        // Glow on AI assistant panel icon when logged in
-        this.engine_.addRule({
-            id: 'hint-ai-panel',
-            condition: all('user:logged_in', 'editor:solidity_active'),
-            action: {
-                type: 'hint',
-                message: 'Ask the AI to explain or audit this contract',
-                hintStyle: 'glow',
-                hintColor: '#8e44ad',
-                actionTarget: 'remix-ai-assistant',
-            },
-            showOnce: 'session',
-            priority: 7
-        })
     }
 
     /* ─── Public methods (callable by other plugins) ─── */
