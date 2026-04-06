@@ -243,7 +243,7 @@ export class NudgePlugin extends Plugin {
             priority: 10
         })
 
-        // Cloud workspaces — triggers when user switches workspaces
+        // Cloud Workspaces — triggers when user switches workspaces
         this.engine_.addRule({
             id: 'try-cloud-workspaces',
             condition: all('user:logged_in', 'workspace:switched'),
@@ -297,13 +297,13 @@ export class NudgePlugin extends Plugin {
             priority: 7
         })
 
-        // Cloud workspaces — persistent nudge for local-only users
+        // Cloud Workspaces — persistent nudge for local-only users
         this.engine_.addRule({
             id: 'try-cloud-toggle',
             condition: all('user:logged_in', 'workspace:local_only', 'lifecycle:APP_LOADED'),
             action: {
                 type: 'widget',
-                title: 'Cloud workspaces',
+                title: 'Cloud Workspaces',
                 message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
                 actionLabel: 'Learn more',
                 actionTarget: 'helpPlugin::showModal::cloud',

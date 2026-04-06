@@ -122,7 +122,7 @@ const FEATURES: FeatureChip[] = [
     ),
   },
   {
-    name: "Cloud workspaces",
+    name: "Cloud Workspaces",
     desc: "Sync, access from any device",
     iconColor: c.cy,
     iconBg: "rgba(47,191,177,0.1)",

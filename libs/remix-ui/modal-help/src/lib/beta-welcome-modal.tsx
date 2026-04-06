@@ -106,7 +106,7 @@ const FEATURES: FeatureConfig[] = [
   },
   {
     key: "cloud",
-    name: "Cloud workspaces",
+    name: "Cloud Workspaces",
     desc: "Sync, access anywhere, snapshots",
     iconColor: c.bl,
     iconBg: "rgba(91,156,245,0.1)",

@@ -346,7 +346,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                     <div style={{ padding: "20px 24px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <h2 style={{ fontSize: 18, fontWeight: 500, color: c.tx, display: "flex", alignItems: "center", gap: 10, margin: 0 }}>
                             <i className="fas fa-cloud" style={{ fontSize: 18, color: c.bl }}></i>
-                            Cloud workspaces
+                            Cloud Workspaces
                             <span
                                 style={{
                                     fontFamily: "'JetBrains Mono', monospace",
@@ -581,7 +581,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                                 animation: "cloudPanelIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
                             }}
                         >
-                            <PanelHeader dotColor={c.bl} title="Cloud workspaces" tagText="Synced" tagColor={c.bl} />
+                            <PanelHeader dotColor={c.bl} title="Cloud Workspaces" tagText="Synced" tagColor={c.bl} />
                             <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 6 }}>
                                 <ActionRow
                                     icon={<CheckCircleIcon color={c.gn} />}
@@ -684,7 +684,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                                     <path d="M8 3v5l3 2" />
                                     <circle cx="8" cy="8" r="6" />
                                 </svg>
-                                Cloud workspaces sync in real time
+                                Cloud Workspaces sync in real time
                             </span>
                         </div>
                         <GotItButton onClick={onClose} />
