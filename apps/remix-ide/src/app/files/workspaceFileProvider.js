@@ -10,23 +10,8 @@ export default class WorkspaceFileProvider extends FileProvider {
     this.workspace = null
     this.event = new EventManager()
 
-    try {
-      // Clean up temporary code-sample workspaces (both old 'code-sample' and new 'code-sample-xxxxxxxx' format)
-      window.remixFileSystem.readdir(this.workspacesPath).then((workspaces) => {
-        workspaces.forEach((workspace) => {
-          // Match 'code-sample' or 'code-sample-xxxxxxxx' where x is alphanumeric (8 chars)
-          if (/^code-sample(-[a-z0-9]{8})?$/.test(workspace)) {
-            window.remixFileSystem.unlink(this.workspacesPath + '/' + workspace).catch((e) => {
-              console.log('[Cleanup] Failed to delete temporary workspace:', workspace, e)
-            })
-          }
-        })
-      }).catch((e) => {
-        console.log(e)
-      })
-    } catch (e) {
-      // we don't need to log error if this throws an error
-    }
+    // Cleanup is now handled by the workspace initialization logic in remix-ui/workspace
+    // No need to run it here in the constructor to avoid slowing down startup
   }
 
   setWorkspace (workspace) {

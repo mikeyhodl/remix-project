@@ -52,19 +52,44 @@ const isCodeSampleWorkspace = (name: string): boolean => {
 }
 
 // Clean up all temporary code-sample workspaces
-const cleanupCodeSampleWorkspaces = async (workspaces: { name: string; isGitRepo: boolean; }[], workspaceProvider) => {
-  const browserProvider = plugin.fileProviders.browser
-  const workspacesPath = workspaceProvider.workspacesPath
+// Runs on every page load but optimized to be non-blocking and fast
+const cleanupCodeSampleWorkspaces = (workspaces: { name: string; isGitRepo: boolean; }[], workspaceProvider) => {
+  try {
+    // Quick synchronous check: if no workspace names match the pattern, return immediately
+    const codeSampleWorkspaces = workspaces.filter(ws => isCodeSampleWorkspace(ws.name))
 
-  for (const workspace of workspaces) {
-    if (isCodeSampleWorkspace(workspace.name)) {
-      try {
-        await browserProvider.remove(workspacesPath + '/' + workspace.name)
-        console.log(`[Cleanup] Deleted temporary workspace: ${workspace.name}`)
-      } catch (error) {
-        console.error(`[Cleanup] Failed to delete workspace ${workspace.name}:`, error)
-      }
+    if (codeSampleWorkspaces.length === 0) {
+      return // Nothing to clean, exit fast
     }
+
+    // Background cleanup - doesn't block initialization
+    const browserProvider = plugin.fileProviders.browser
+    const workspacesPath = workspaceProvider.workspacesPath
+
+    // Fire and forget - delete all temporary workspaces in parallel
+    const cleanupPromises = codeSampleWorkspaces.map(ws =>
+      browserProvider.remove(workspacesPath + '/' + ws.name)
+        .then(() => {
+          console.log(`[Cleanup] Deleted temporary workspace: ${ws.name}`)
+          return ws.name
+        })
+        .catch((error) => {
+          console.error(`[Cleanup] Failed to delete workspace ${ws.name}:`, error)
+          return null
+        })
+    )
+
+    // Log results when done (in background, no need to update state as it's already filtered)
+    Promise.all(cleanupPromises).then((results) => {
+      const cleanedCount = results.filter(r => r !== null).length
+      if (cleanedCount > 0) {
+        console.log(`[Cleanup] Cleaned up ${cleanedCount} temporary workspace(s)`)
+      }
+    }).catch((error) => {
+      console.error('[Cleanup] Error during cleanup:', error)
+    })
+  } catch (error) {
+    console.error('[Cleanup] Error during cleanup:', error)
   }
 }
 
@@ -112,14 +137,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       }
     })
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
-      workspaces = await getWorkspaces() || []
+      const allWorkspaces = await getWorkspaces() || []
 
-      // Clean up temporary code-sample workspaces from previous sessions
-      await cleanupCodeSampleWorkspaces(workspaces, workspaceProvider)
-
-      // Refresh workspace list after cleanup
-      workspaces = await getWorkspaces() || []
+      // Filter out code-sample workspaces - these should never be used or displayed
+      workspaces = allWorkspaces.filter(ws => !isCodeSampleWorkspace(ws.name))
       dispatch(setWorkspaces(workspaces))
+
+      // Clean up temporary code-sample workspaces from previous sessions (non-blocking)
+      cleanupCodeSampleWorkspaces(allWorkspaces, workspaceProvider)
     }
     if (params.gist) {
       const name = 'gist ' + params.gist
@@ -286,14 +311,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       }
     })
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
-      workspaces = await getWorkspaces() || []
+      const allWorkspaces = await getWorkspaces() || []
 
-      // Clean up temporary code-sample workspaces from previous sessions
-      await cleanupCodeSampleWorkspaces(workspaces, workspaceProvider)
-
-      // Refresh workspace list after cleanup
-      workspaces = await getWorkspaces() || []
+      // Filter out code-sample workspaces - these should never be used or displayed
+      workspaces = allWorkspaces.filter(ws => !isCodeSampleWorkspace(ws.name))
       dispatch(setWorkspaces(workspaces))
+
+      // Clean up temporary code-sample workspaces from previous sessions (non-blocking)
+      cleanupCodeSampleWorkspaces(allWorkspaces, workspaceProvider)
     }
     if (params.gist) {
       const name = 'gist ' + params.gist
