@@ -90,6 +90,7 @@ export class NudgePlugin extends Plugin {
         this.on('auth', 'authStateChanged', (state: { isAuthenticated: boolean }) => {
             if (state?.isAuthenticated) {
                 this.engine_.fire('user:logged_in')
+                this._checkBetaMembership()
             } else {
                 this.engine_.fire('user:not_logged_in')
             }
@@ -155,11 +156,25 @@ export class NudgePlugin extends Plugin {
             const isAuth = await this.call('auth' as any, 'isAuthenticated')
             if (isAuth) {
                 this.engine_.fire('user:logged_in')
+                this._checkBetaMembership()
             } else {
                 this.engine_.fire('user:not_logged_in')
             }
         } catch {
             // Auth not ready yet — we'll catch it via the event listener
+        }
+    }
+
+    private async _checkBetaMembership(): Promise<void> {
+        try {
+            const permissions = await this.call('auth' as any, 'getAllPermissions')
+            console.log('User permissions:', permissions)
+            const groups = permissions?.feature_groups || []
+            if (groups.some((g: any) => g.name === 'beta')) {
+                this.engine_.fire('user:logged_in_beta')
+            }
+        } catch {
+            // Permissions not available — skip beta check
         }
     }
 
@@ -210,7 +225,7 @@ export class NudgePlugin extends Plugin {
         // Beta welcome — first thing a beta tester sees after logging in
         this.engine_.addRule({
             id: 'beta-welcome',
-            condition: 'user:logged_in',
+            condition: 'user:logged_in_beta',
             action: {
                 type: 'widget',
                 title: 'Welcome to Remix Beta',
@@ -228,7 +243,7 @@ export class NudgePlugin extends Plugin {
         // Premium AI models — triggers when user opens the AI chat
         this.engine_.addRule({
             id: 'try-opus-model',
-            condition: all('user:logged_in', 'ai:chat_opened'),
+            condition: all('user:logged_in_beta', 'ai:chat_opened'),
             action: {
                 type: 'widget',
                 title: 'Try a premium model',
@@ -246,7 +261,7 @@ export class NudgePlugin extends Plugin {
         // Cloud Workspaces — triggers when user switches workspaces
         this.engine_.addRule({
             id: 'try-cloud-workspaces',
-            condition: all('user:logged_in', 'workspace:switched'),
+            condition: all('user:logged_in_beta', 'workspace:switched'),
             action: {
                 type: 'widget',
                 title: 'Try Cloud Workspaces',
@@ -264,7 +279,7 @@ export class NudgePlugin extends Plugin {
         // MCP tools — triggers when user opens AI chat (they'll likely want on-chain data)
         this.engine_.addRule({
             id: 'try-mcp-tools',
-            condition: all('user:logged_in', 'ai:chat_opened'),
+            condition: all('user:logged_in_beta', 'ai:chat_opened'),
             action: {
                 type: 'widget',
                 title: 'AI with superpowers',
@@ -282,7 +297,7 @@ export class NudgePlugin extends Plugin {
         // QuickDapp — triggers when user compiles a contract successfully
         this.engine_.addRule({
             id: 'try-quickdapp',
-            condition: all('user:logged_in', 'contract:compiled'),
+            condition: all('user:logged_in_beta', 'contract:compiled'),
             action: {
                 type: 'widget',
                 title: 'Try QuickDapp',
@@ -300,7 +315,7 @@ export class NudgePlugin extends Plugin {
         // Cloud Workspaces — persistent nudge for local-only users
         this.engine_.addRule({
             id: 'try-cloud-toggle',
-            condition: all('user:logged_in', 'workspace:local_only', 'lifecycle:APP_LOADED'),
+            condition: all('user:logged_in_beta', 'workspace:local_only', 'lifecycle:APP_LOADED'),
             action: {
                 type: 'widget',
                 title: 'Cloud Workspaces',
@@ -316,7 +331,7 @@ export class NudgePlugin extends Plugin {
         // Solidity-specific hint — when editing a .sol file, suggest the AI for help
         this.engine_.addRule({
             id: 'hint-ai-for-solidity',
-            condition: all('user:logged_in', 'editor:solidity_active'),
+            condition: all('user:logged_in_beta', 'editor:solidity_active'),
             action: {
                 type: 'widget',
                 title: 'AI knows Solidity',
@@ -334,7 +349,7 @@ export class NudgePlugin extends Plugin {
         // Deployment nudge — after deploying a contract, suggest QuickDapp
         this.engine_.addRule({
             id: 'quickdapp-after-deploy',
-            condition: all('user:logged_in', 'contract:deployed'),
+            condition: all('user:logged_in_beta', 'contract:deployed'),
             action: {
                 type: 'widget',
                 title: 'Build a dApp from this',

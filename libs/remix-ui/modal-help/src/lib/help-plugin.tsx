@@ -1,6 +1,7 @@
 import { ViewPlugin } from '@remixproject/engine-web'
 import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { useAuth } from '@remix-ui/app'
 import * as packageJson from '../../../../../package.json'
 
 export type HelpTopic = 'beta-reel' | 'beta-info' | 'mcp' | 'cloud' | 'quickdapp'
@@ -21,7 +22,6 @@ const profile = {
 
 export class HelpPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
-  private _isBeta = false
   private _activeModal: HelpTopic | null = null
 
   constructor() {
@@ -31,33 +31,7 @@ export class HelpPlugin extends ViewPlugin {
   /* ─── Lifecycle ─── */
 
   async onActivation(): Promise<void> {
-    // Check if the user is a beta user
-    try {
-      this._isBeta = await this.call('auth', 'checkPermission', 'beta')
-    } catch {
-      this._isBeta = false
-    }
-
-    // Listen for auth changes
-    this.on('auth', 'authStateChanged', async (state: { isAuthenticated: boolean }) => {
-      if (!state?.isAuthenticated) {
-        this._isBeta = false
-        this.renderComponent()
-        return
-      }
-      try {
-        this._isBeta = await this.call('auth', 'checkPermission', 'beta')
-      } catch {
-        this._isBeta = false
-      }
-      this.renderComponent()
-    })
-
     this.renderComponent()
-  }
-
-  onDeactivation(): void {
-    this.off('auth', 'authStateChanged')
   }
 
   /* ─── Public API ─── */
@@ -83,10 +57,6 @@ export class HelpPlugin extends ViewPlugin {
 
   getTopics(): { id: HelpTopic; title: string; description: string }[] {
     return TOPICS
-  }
-
-  get isBeta(): boolean {
-    return this._isBeta
   }
 
   get activeModal(): HelpTopic | null {
@@ -193,7 +163,8 @@ const TOPICS: TopicDef[] = [
 import './help-panel.css'
 
 const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
-  const isBeta = plugin.isBeta
+  const { featureGroups } = useAuth()
+  const isBeta = featureGroups?.some(fg => fg.name === 'beta')
   const activeModal = plugin.activeModal
 
   if (!isBeta) {
