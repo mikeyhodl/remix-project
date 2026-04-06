@@ -392,8 +392,8 @@ const StepPreview: React.FC = () => (
     <DetailRow
       iconColor={c.cy} iconBg="rgba(47,191,177,0.1)"
       icon={<DownSmall color={c.cy} />}
-      name="Deploy to IPFS"
-      desc="One click to publish your DApp permanently. Get a shareable link anyone can use."
+      name="Deploy to IPFS and register it under an ENS subdomain"
+      desc="One click to publish your DApp permanently. Get a shareable link anyone can use, then register it under an ENS subdomain."
     />
     {/* Mini preview mockup */}
     <div

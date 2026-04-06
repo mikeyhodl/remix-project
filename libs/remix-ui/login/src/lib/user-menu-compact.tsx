@@ -299,6 +299,25 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 Documentation
               </button>
 
+              {/* Help & Guides */}
+              <button
+                className="dropdown-item user-menu-item"
+                onClick={async () => {
+                  if (plugin) {
+                    try {
+                      await plugin.call('menuicons', 'select', 'helpPlugin')
+                    } catch (error) {
+                      console.error('Failed to open Help & Guides:', error)
+                    }
+                  }
+                  trackEvent('openHelpGuides')
+                  setShowDropdown(false)
+                }}
+              >
+                <i className="fas fa-circle-question user-menu-item-icon"></i>
+                Help &amp; Guides
+              </button>
+
               <div className="dropdown-divider user-menu-divider"></div>
 
               {/* Theme Selection */}
