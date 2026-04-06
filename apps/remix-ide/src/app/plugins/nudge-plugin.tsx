@@ -117,19 +117,30 @@ export class NudgePlugin extends Plugin {
             }
         })
 
-        // Contract deployed
-        this.on('udapp', 'newTransaction', () => {
-            this.engine_.fire('contract:deployed')
+        // Contract deployed or interacted with
+        // Using 'blockchain' plugin directly — 'udapp' newTransaction only fires after RunTabUI mounts
+        this.on('blockchain', 'transactionExecuted', (_error: any, _from: string, to: string) => {
+            
+                this.engine_.fire('contract:deployed')
+
         })
 
         // Workspace dropdown opened
-        this.on('filePanel', 'setWorkspace', () => {
-            this.engine_.fire('workspace:switched')
+        this.on('filePanel', 'setWorkspace', (workspace: { name: string }) => {
+            if (workspace.name !== 'default_workspace')
+                this.engine_.fire('workspace:switched')
         })
 
-        // AI chat panel opened (side panel focus)
-        this.on('layout', 'maximiseRightSidePanel', () => {
-            this.engine_.fire('ai:chat_opened')
+        // AI chat panel opened
+        this.on('sidePanel', 'focusChanged', (name: string) => {
+            if (name === 'remixaiassistant') {
+                this.engine_.fire('ai:chat_opened')
+            }
+        })
+
+        // AI model changed
+        this.on('remixAI', 'modelChanged', (modelId: string) => {
+            this.engine_.fire('ai:model_changed')
         })
     }
 

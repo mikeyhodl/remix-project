@@ -276,6 +276,35 @@ const SquareIcon: React.FC<{ color: string }> = ({ color }) => (
     </svg>
 );
 
+const AllFeaturesButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <button
+            onClick={onClick}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: hovered ? "#fff" : c.cy,
+                background: hovered ? c.cy : "rgba(47,191,177,0.1)",
+                border: `1px solid ${hovered ? c.cy : "rgba(47,191,177,0.3)"}`,
+                padding: "6px 16px",
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                fontFamily: "'DM Sans', sans-serif",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+            }}
+        >
+            <i className="fas fa-chevron-left" style={{ fontSize: 9 }}></i>
+            All features
+        </button>
+    );
+};
+
 // ─── Main component ──────────────────────────────────────────────
 
 const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
@@ -671,13 +700,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                     >
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             {onShowReel && (
-                                <span
-                                    onClick={onShowReel}
-                                    style={{ fontSize: 11, color: c.cy, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-                                >
-                                    <i className="fas fa-chevron-left" style={{ fontSize: 9 }}></i>
-                                    All features
-                                </span>
+                                <AllFeaturesButton onClick={onShowReel} />
                             )}
                             <span style={{ fontSize: 11, color: c.td, display: "flex", alignItems: "center", gap: 6 }}>
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={c.td} strokeWidth="1.5">
