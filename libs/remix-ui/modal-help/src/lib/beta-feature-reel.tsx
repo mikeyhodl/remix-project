@@ -518,6 +518,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
             {/* Dismiss */}
             {dismissible && (
               <div
+                data-id="beta-reel-dismiss-btn"
                 onClick={handleDismiss}
                 style={{
                   width: 20,

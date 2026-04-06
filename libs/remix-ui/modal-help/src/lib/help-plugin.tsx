@@ -298,10 +298,12 @@ const HelpModalOverlay: React.FC<{
   return (
     <div
       className="help-modal-backdrop"
+      data-id="help-modal-backdrop"
       onClick={onClose}
     >
       <div
         className="help-modal-container"
+        data-id="help-modal-container"
         onClick={(e) => e.stopPropagation()}
       >
         {renderContent()}
