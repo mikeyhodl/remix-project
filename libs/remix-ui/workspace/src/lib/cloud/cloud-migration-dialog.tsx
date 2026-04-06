@@ -590,7 +590,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
               <strong>{summary.done}</strong> migrated successfully
               {summary.failed > 0 && <>, <strong className="text-danger">{summary.failed}</strong> failed</>}
               {summary.skipped > 0 && <>, <strong>{summary.skipped}</strong> skipped</>}
-              {summary.done > 0 && <span className="text-muted"> — your cloud workspaces are ready to use.</span>}
+              {summary.done > 0 && <span className="text-muted"> — your Cloud Workspaces are ready to use.</span>}
             </span>
           </div>
         )}

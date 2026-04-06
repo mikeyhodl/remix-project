@@ -496,7 +496,7 @@ const McpHelpModal: React.FC<McpHelpModalProps> = ({
                 <circle cx="10" cy="10" r="8" />
                 <path d="M10 6v4l2.5 2.5" />
               </svg>
-              MCP integrations
+              MCP Integrations
               <span
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",

@@ -526,7 +526,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                                     color: c.cy,
                                 }}
                             >
-                                This toggle activates cloud workspaces
+                                This toggle activates Cloud Workspaces
                             </span>
                         </div>
                         <div style={{ fontSize: 10, color: c.td, marginTop: 8, lineHeight: 1.4 }}>
@@ -595,7 +595,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                                 <ActionRow
                                     icon={<PlusBoxIcon color={c.bl} />}
                                     iconBg="rgba(91,156,245,0.1)"
-                                    name="Create new cloud workspaces"
+                                    name="Create new Cloud Workspaces"
                                     desc="When cloud is enabled, you can create new workspaces directly in the cloud."
                                     right={<></>
                                     }

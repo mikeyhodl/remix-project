@@ -61,7 +61,7 @@ const FEATURES: Feature[] = [
     visual: "models",
   },
   {
-    tag: "MCP integrations",
+    tag: "MCP Integrations",
     tagColor: "#5b9cf5",
     vizBg: "linear-gradient(135deg, #1a2640, #1a1a30)",
     headline: "Alchemy, Etherscan, The Graph, ethSkills",

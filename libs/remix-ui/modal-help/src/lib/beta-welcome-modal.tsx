@@ -80,7 +80,7 @@ const FEATURES: FeatureConfig[] = [
   },
   {
     key: "mcp",
-    name: "MCP integrations",
+    name: "MCP Integrations",
     desc: "Alchemy, Etherscan, The Graph, ethSkills",
     iconColor: c.bl,
     iconBg: "rgba(91,156,245,0.1)",

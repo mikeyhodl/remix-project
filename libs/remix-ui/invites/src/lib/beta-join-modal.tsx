@@ -98,7 +98,7 @@ const FEATURES: FeatureChip[] = [
     ),
   },
   {
-    name: "MCP integrations",
+    name: "MCP Integrations",
     desc: "Alchemy, Etherscan, The Graph",
     iconColor: c.bl,
     iconBg: "rgba(91,156,245,0.1)",

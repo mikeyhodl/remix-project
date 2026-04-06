@@ -176,7 +176,7 @@ export class NudgePlugin extends Plugin {
             action: {
                 type: 'widget',
                 title: 'Unlock the full experience',
-                message: 'Create a free account to access AI code assistance, cloud workspaces, premium models, and more.',
+                message: 'Create a free account to access AI code assistance, Cloud Workspaces, premium models, and more.',
                 actionLabel: 'Sign up',
                 actionTarget: 'membershipRequest::showRequestForm::beta',
                 icon: 'fas fa-user-plus',
@@ -194,7 +194,7 @@ export class NudgePlugin extends Plugin {
             action: {
                 type: 'widget',
                 title: 'Join the Beta program',
-                message: 'Get early access to advanced AI models, cloud workspaces, MCP integrations, and QuickDapp — free for beta testers.',
+                message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDapp — free for beta testers.',
                 actionLabel: 'Apply for access',
                 actionTarget: 'membershipRequest::showRequestForm::beta',
                 icon: 'fas fa-rocket',
@@ -214,7 +214,7 @@ export class NudgePlugin extends Plugin {
             action: {
                 type: 'widget',
                 title: 'Welcome to Remix Beta',
-                message: 'You\'ve unlocked premium AI models, MCP integrations, cloud sync, and QuickDapp. Tap to take a quick tour.',
+                message: 'You\'ve unlocked premium AI models, MCP Integrations, cloud sync, and QuickDapp. Tap to take a quick tour.',
                 actionLabel: 'Take the tour',
                 actionTarget: 'helpPlugin::showModal::beta-reel',
                 icon: 'fas fa-sparkles',
@@ -249,7 +249,7 @@ export class NudgePlugin extends Plugin {
             condition: all('user:logged_in', 'workspace:switched'),
             action: {
                 type: 'widget',
-                title: 'Try cloud workspaces',
+                title: 'Try Cloud Workspaces',
                 message: 'Your projects are only stored locally. Enable cloud sync to access them from any device, anytime.',
                 actionLabel: 'Learn more',
                 actionTarget: 'helpPlugin::showModal::cloud',
