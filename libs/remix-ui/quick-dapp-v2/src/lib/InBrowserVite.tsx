@@ -12,7 +12,6 @@ const IMPORTS_MAP: Record<string, string> = {
   'react-dom/client': 'https://esm.sh/react-dom@18.2.0/client',
   'react-dom': 'https://esm.sh/react-dom@18.2.0',
   'ethers': 'https://esm.sh/ethers@6.11.1',
-  '@farcaster/miniapp-sdk': 'https://esm.sh/@farcaster/miniapp-sdk@0.2.1',
 };
 
 let globalInitPromise: Promise<void> | null = null;
@@ -299,7 +298,7 @@ export class InBrowserVite {
               return { contents: jsContent, loader: 'js' };
             }
           }
-          return { contents: `throw new Error('File not found: ${args.path}')`, loader: 'js' };
+          return { errors: [{ text: `CSS file not found: ${args.path}. Check that the file exists in your workspace.` }]};
         });
 
         // load local files
@@ -319,7 +318,7 @@ export class InBrowserVite {
             }
           }
 
-          return { contents: `throw new Error('File not found in virtual filesystem: ${args.path}')`, loader: 'js' };
+          return { errors: [{ text: `File not found: ${args.path}. This file is imported but does not exist in the workspace.` }]};
         });
 
       }

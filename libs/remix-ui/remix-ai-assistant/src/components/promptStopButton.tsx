@@ -10,7 +10,7 @@ export function PromptStopButton(props: PromptStopButtonProps) {
 
   return (
     <button
-      className={`btn btn-sm ${props.isStreaming ? 'bg-danger' : ''}`}
+      className={`btn btn-sm d-flex align-items-center justify-content-center ${props.isStreaming ? 'bg-danger' : ''}`}
       style={{ backgroundColor: props.isStreaming ? undefined : props.backgroundColor }}
       data-id="remix-ai-composer-send-btn"
       onClick={() => {

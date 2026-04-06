@@ -31,23 +31,23 @@ export class MainPanel extends AbstractPanel {
     this.renderComponent()
   }
 
-  focus(name) {
+  focus(name: string) {
     this.emit('focusChanged', name)
     super.focus(name)
     this.renderComponent()
   }
 
-  addView(profile, view) {
+  addView(profile: any, view: any) {
     super.addView(profile, view)
     this.renderComponent()
   }
 
-  removeView(profile) {
+  removeView(profile: any) {
     super.removeView(profile)
     this.renderComponent()
   }
 
-  async showContent(name) {
+  async showContent(name: any) {
     super.showContent(name)
     this.renderComponent()
   }

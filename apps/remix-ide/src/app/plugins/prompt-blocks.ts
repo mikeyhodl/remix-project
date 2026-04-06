@@ -86,13 +86,9 @@ export const invariants = {
 
   /** index.html template with import map */
   indexHtmlTemplate: (ctx: PromptContext): string => {
-    const baseMiniAppImport = ctx.isBaseMiniApp
-      ? `,\n              "@farcaster/miniapp-sdk": "https://esm.sh/@farcaster/miniapp-sdk@0.0.14"`
-      : ''
-
-    const baseMiniAppMeta = ctx.isBaseMiniApp
-      ? `\n    <meta property="fc:frame" content="vNext" />\n    <meta name="fc:miniapp" content='{"version":"next","imageUrl":"https://github.com/remix-project-org.png","button":{"title":"Launch","action":{"type":"launch_miniapp","name":"App","url":"https://google.com"}}}' />`
-      : ''
+    // Farcaster SDK and fc: meta tags removed — Base App now uses standard web app model (April 2026)
+    const baseMiniAppImport = ''
+    const baseMiniAppMeta = ''
 
     return `
 **INDEX.HTML TEMPLATE (COPY THIS STRUCTURE):**
@@ -406,17 +402,14 @@ The Remix IDE preview automatically provides \`window.ethereum\` connected to th
 
 export const platform = {
 
-  /** Base Mini App (Farcaster) requirements */
+  /** Base App requirements — standard web app model (Farcaster SDK deprecated April 2026) */
   baseMiniApp: (): string => `
-**BASE MINI APP REQUIREMENTS (MANDATORY):**
-1. **Farcaster SDK:** Import \`sdk\` from \`@farcaster/miniapp-sdk\`.
-2. **Initialization:** Call \`sdk.actions.ready()\` inside a \`useEffect\` in \`src/App.jsx\`:
-   \`\`\`javascript
-   import { sdk } from '@farcaster/miniapp-sdk';
-   useEffect(() => { sdk.actions.ready(); }, []);
-   \`\`\`
-3. **Meta Tags:** The \`fc:frame\` and \`fc:miniapp\` meta tags MUST be in \`index.html\` (already included in the template above).
-4. **Base Network:** Default to Base Mainnet (8453) or Base Sepolia (84532) based on contract chain ID.
+**BASE APP REQUIREMENTS (MANDATORY):**
+1. **NO Farcaster SDK:** Do NOT import \`@farcaster/miniapp-sdk\`. It is deprecated and will cause errors.
+2. **NO fc: meta tags:** Do NOT include \`fc:frame\` or \`fc:miniapp\` meta tags in index.html.
+3. **ready() NOT NEEDED:** The app is considered ready when it loads. Do NOT call \`sdk.actions.ready()\`.
+4. **Wallet:** Use the same wallet pattern as standard DApps (\`window.__qdapp_getProvider\` or \`window.ethereum\`).
+5. **Base Network:** Default to Base Mainnet (8453) or Base Sepolia (84532) based on contract chain ID.
 `,
 
   /** Figma-to-React transformation rules */
@@ -576,11 +569,11 @@ ${descText}
 ${currentFiles}
 
 **RULES:**
-1. Return ONLY the files that need changes using START_TITLE format. Do NOT return files that are unmodified.
+1. Return ALL modified files AND all NEW files using START_TITLE format. Do NOT return files that are completely unmodified.
 2. Do NOT provide explanations — only code blocks.
-3. You are allowed to create NEW files if the request requires new features.
+3. **CRITICAL:** If you add an import for a new file (e.g. \`import Foo from './components/Foo.jsx'\`), you MUST also generate that file in your response. Missing files will crash the app.
 4. If \`App.jsx\` is getting too large, refactor parts into \`src/components/\`.
-5. When returning a modified file, return the COMPLETE file content — not just the changed portion.
+5. When returning a file, return the COMPLETE file content — not just the changed portion.
 `
   },
 

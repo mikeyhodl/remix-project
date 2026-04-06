@@ -101,7 +101,7 @@ export class AIDappGenerator extends Plugin {
 
     trackMatomoEvent(this, { category: 'quick-dapp-v2', action: 'generate_figma', name: 'start', isClick: true });
     await this.call('notification', 'toast', 'Analyzing Figma Design... (This may take time)')
-    this.emit('generationProgress', { status: 'started', address: options.address })
+    this.emit('generationProgress', { status: 'preparing', address: options.address, slug: options.slug })
 
     const context = this.getOrCreateContext(options.address)
 
@@ -124,8 +124,10 @@ export class AIDappGenerator extends Plugin {
       const startTime = Date.now();
 
       // const FIGMA_BACKEND_URL = "http://localhost:4000/figma/generate";
+      // const FIGMA_BACKEND_URL = "http://localhost:4000/figma/generate";
       const FIGMA_BACKEND_URL = "https://quickdapp-figma.api.remix.live/generate";
 
+      this.emit('generationProgress', { status: 'calling_llm', address: options.address, slug: options.slug })
       const { content: htmlContent, meta: figmaMeta } = await this.callFigmaAPI(FIGMA_BACKEND_URL, {
         figmaToken: options.figmaToken,
         figmaUrl: options.figmaUrl,
@@ -138,6 +140,7 @@ export class AIDappGenerator extends Plugin {
       const duration = (Date.now() - startTime) / 1000;
 
       const pages = parsePages(htmlContent);
+      this.emit('generationProgress', { status: 'parsing', address: options.address, slug: options.slug, fileCount: Object.keys(pages).length })
 
       if (Object.keys(pages).length === 0) {
         console.error('[DEBUG-AI] ❌ CRITICAL: No files parsed from Figma generation');
@@ -224,7 +227,54 @@ export class AIDappGenerator extends Plugin {
         throw new Error(`Figma Backend Error: ${errText}`)
       }
 
-      const json = await response.json();
+      // Detect response type: SSE stream or legacy JSON
+      const contentType = response.headers.get('content-type') || '';
+      let json: any = null;
+
+      if (contentType.includes('text/event-stream')) {
+        // Parse SSE stream from backend
+        if (!response.body) throw new Error('Response body is null');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '';
+        let reading = true;
+
+        while (reading) {
+          const { done, value } = await reader.read();
+          if (done) { reading = false; break; }
+          sseBuffer += decoder.decode(value, { stream: true });
+
+          const events = sseBuffer.split('\n\n');
+          sseBuffer = events.pop() || '';
+
+          for (const event of events) {
+            if (!event.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(event.slice(6));
+              if (data.type === 'file_start') {
+                console.log(`[AI-DAPP] 📄 Figma generating: ${data.filename}`);
+                this.emit('generationProgress', {
+                  status: 'generating_file',
+                  filename: data.filename
+                });
+              } else if (data.type === 'done') {
+                json = data;
+              } else if (data.type === 'error') {
+                throw new Error(data.error || 'Figma backend stream error');
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) continue;
+              throw e;
+            }
+          }
+        }
+      } else {
+        // Legacy JSON response (production backend without SSE)
+        json = await response.json();
+        console.log('[AI-DAPP] Using legacy Figma JSON response (no SSE)');
+      }
+
+      if (!json) throw new Error('No response received from Figma backend');
       return { content: json.content, meta: json.meta };
 
     } catch (error) {
@@ -238,9 +288,7 @@ export class AIDappGenerator extends Plugin {
       const hasImage = !!options.image;
 
       this.call('notification', 'toast', 'Generating... (Logs in console)').catch(() => {})
-      try {
-        this.emit('generationProgress', { status: 'started', address: options.address })
-      } catch (_) {}
+      this.emit('generationProgress', { status: 'preparing', address: options.address, slug: options.slug })
 
       const context = this.getOrCreateContext(options.address)
 
@@ -262,17 +310,21 @@ export class AIDappGenerator extends Plugin {
 
       const startTime = Date.now();
 
+      this.emit('generationProgress', { status: 'calling_llm', address: options.address, slug: options.slug })
       const htmlContent = await this.callLLMAPI(messagesToSend, systemPrompt, hasImage);
 
       const duration = (Date.now() - startTime) / 1000;
 
       let pages = parsePages(htmlContent);
 
+      this.emit('generationProgress', { status: 'parsing', address: options.address, slug: options.slug, fileCount: Object.keys(pages).length })
+
       if (Object.keys(pages).length === 0) {
         console.error('[AI-DAPP] parsePages returned empty object. Response length:', htmlContent?.length);
         throw new Error("AI generated empty content. Please try again.");
       }
 
+      this.emit('generationProgress', { status: 'validating', address: options.address, slug: options.slug })
       pages = await this.validateAndRetryMissingFiles(
         pages, htmlContent, messagesToSend, systemPrompt, hasImage
       );
@@ -334,6 +386,8 @@ export class AIDappGenerator extends Plugin {
     }
     const systemPrompt = buildSystemPrompt(ctx)
 
+    this.emit('generationProgress', { status: 'preparing', address, slug })
+
     const msgOptions: BuildUserMessageOptions = {
       description,
       currentFiles,
@@ -345,18 +399,51 @@ export class AIDappGenerator extends Plugin {
     const messages = [{ role: 'user', content: userMessage }];
 
     try {
+      this.emit('generationProgress', { status: 'calling_llm', address, slug })
       const htmlContent = await this.callLLMAPI(messages, systemPrompt, hasImage, true);
 
       const patchedPages = parsePages(htmlContent);
+      this.emit('generationProgress', { status: 'parsing', address, slug, fileCount: Object.keys(patchedPages).length })
 
       if (Object.keys(patchedPages).length === 0) {
         throw new Error("AI failed to return valid file structure.");
       }
 
-      // Merge: start with current files, overwrite only the ones LLM returned
-      const mergedPages: Record<string, string> = { ...currentFiles };
+      // Normalize all paths: strip leading '/' to match parsePages output
+      const normalizeKey = (k: string) => k.startsWith('/') ? k.substring(1) : k;
+
+      const normalizedCurrent: Record<string, string> = {};
+      for (const [file, content] of Object.entries(currentFiles)) {
+        normalizedCurrent[normalizeKey(file)] = content as string;
+      }
+
+      // Merge: current (normalized) + patched (already normalized by parsePages)
+      const mergedPages: Record<string, string> = { ...normalizedCurrent };
       for (const [file, content] of Object.entries(patchedPages)) {
-        mergedPages[file] = content;
+        mergedPages[normalizeKey(file)] = content;
+      }
+
+      // Detect missing imports: files referenced via import but not in mergedPages
+      const missingImports = findMissingImports(mergedPages);
+      if (missingImports.length > 0) {
+        this.emit('generationProgress', { status: 'validating', address, slug, missingFiles: missingImports })
+        try {
+          const retryMessages = [
+            ...messages,
+            { role: 'assistant', content: htmlContent },
+            {
+              role: 'user',
+              content: `The following files are imported in the code but were not included in your response:\n${missingImports.map(f => `- ${f}`).join('\n')}\n\nPlease generate ONLY these missing files using the START_TITLE format. Do not regenerate files that were already provided.`
+            }
+          ];
+          const additionalContent = await this.callLLMAPI(retryMessages, systemPrompt, false, true);
+          const additionalPages = parsePages(additionalContent);
+          for (const [file, content] of Object.entries(additionalPages)) {
+            mergedPages[normalizeKey(file)] = content;
+          }
+        } catch (retryErr: any) {
+          console.warn('[AI-DAPP] Retry for missing imports failed:', retryErr.message);
+        }
       }
 
       this.pendingResults.set(slug, { address, content: mergedPages, isUpdate: true })
@@ -542,7 +629,55 @@ export class AIDappGenerator extends Plugin {
         throw new Error(`Backend Error: ${errText}`)
       }
 
-      const json = await response.json();
+      // Detect response type: SSE stream or legacy JSON
+      const contentType = response.headers.get('content-type') || '';
+      let json: any = null;
+
+      if (contentType.includes('text/event-stream')) {
+        // Parse SSE stream from backend
+        if (!response.body) throw new Error('Response body is null');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '';
+        let reading = true;
+
+        while (reading) {
+          const { done, value } = await reader.read();
+          if (done) { reading = false; break; }
+          sseBuffer += decoder.decode(value, { stream: true });
+
+          // SSE events are separated by \n\n
+          const events = sseBuffer.split('\n\n');
+          sseBuffer = events.pop() || ''; // keep incomplete event
+
+          for (const event of events) {
+            if (!event.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(event.slice(6));
+              if (data.type === 'file_start') {
+                console.log(`[AI-DAPP] 📄 Generating: ${data.filename}`);
+                this.emit('generationProgress', {
+                  status: 'generating_file',
+                  filename: data.filename
+                });
+              } else if (data.type === 'done') {
+                json = data;
+              } else if (data.type === 'error') {
+                throw new Error(data.error || 'Backend stream error');
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) continue; // skip malformed JSON
+              throw e;
+            }
+          }
+        }
+      } else {
+        // Legacy JSON response (production backend without SSE)
+        json = await response.json();
+        console.log('[AI-DAPP] Using legacy JSON response (no SSE)');
+      }
+
+      if (!json) throw new Error('No response received from backend');
 
       const usage = json.meta?.usage;
       const promptTokens = usage?.prompt_tokens ?? Math.ceil(systemPrompt.length / 4);
@@ -631,6 +766,47 @@ const cleanFileContent = (content: string, filename: string): string => {
   }
 
   return cleaned.trim()
+}
+
+/**
+ * Scan all JS/JSX/TS/TSX files for relative imports and find ones that
+ * point to files not present in the file set.
+ */
+const findMissingImports = (pages: Record<string, string>): string[] => {
+  const allFiles = new Set(Object.keys(pages).map(f =>
+    f.startsWith('/') ? f : '/' + f
+  ));
+  const missing: string[] = [];
+
+  for (const [filename, content] of Object.entries(pages)) {
+    if (!filename.match(/\.(js|jsx|ts|tsx)$/)) continue;
+
+    // Match: import ... from './path' or require('./path')
+    const importRegex = /(?:import\s+[\s\S]*?\s+from\s+['"]|require\s*\(\s*['"])(\.\.?\/[^'"]+)['"]/g;
+    let match;
+    while ((match = importRegex.exec(content)) !== null) {
+      const importPath = match[1];
+      const fileDir = '/' + filename.replace(/\\/g, '/').replace(/[^/]+$/, '');
+      const resolved = resolveRelativePath(fileDir, importPath);
+
+      // Try with common extensions
+      const candidates = [resolved, resolved + '.jsx', resolved + '.js', resolved + '.tsx', resolved + '.ts'];
+      if (!candidates.some(c => allFiles.has(c))) {
+        missing.push(resolved);
+      }
+    }
+  }
+  return [...new Set(missing)];
+}
+
+/** Resolve a relative path against a directory */
+const resolveRelativePath = (base: string, relative: string): string => {
+  const parts = base.split('/').filter(Boolean);
+  for (const part of relative.split('/')) {
+    if (part === '..') parts.pop();
+    else if (part !== '.') parts.push(part);
+  }
+  return '/' + parts.join('/');
 }
 
 // Helper function to ensure HTML has complete structure

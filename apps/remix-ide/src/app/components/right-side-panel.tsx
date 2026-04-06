@@ -20,12 +20,12 @@ const rightSidePanel = {
 
 export class RightSidePanel extends AbstractPanel {
   dispatch: React.Dispatch<any> = () => {}
-  loggedState: Record<string, any>
-  rightSidePanelState: Record<string, any> // pluginProfile, isHidden
-  highlightStamp: number
-  hiddenPlugin: any
-  isHidden: boolean
-  isMaximized: boolean
+  loggedState: Record<string, any> = {}
+  rightSidePanelState: Record<string, any> = {} // pluginProfile, isHidden
+  highlightStamp: number = 0
+  hiddenPlugin: any = null
+  isHidden: boolean = true
+  isMaximized: boolean = false
   maximizedState: { leftPanelHidden: boolean, terminalPanelHidden: boolean }
 
   constructor() {
@@ -60,7 +60,7 @@ export class RightSidePanel extends AbstractPanel {
       }
     }
 
-    this.on('sidePanel', 'pluginDisabled', (name) => {
+    this.on('sidePanel', 'pluginDisabled', (name: string) => {
       if (this.plugins[name] && this.plugins[name].active) {
         this.emit('unPinnedPlugin', name)
         this.events.emit('unPinnedPlugin', name)
@@ -146,7 +146,7 @@ export class RightSidePanel extends AbstractPanel {
     }
   }
 
-  async pinView (profile, view) {
+  async pinView (profile: any, view: any) {
     const activePlugin = this.currentFocus()
 
     if (activePlugin === profile.name) throw new Error(`Plugin ${profile.name} already pinned`)
@@ -191,7 +191,7 @@ export class RightSidePanel extends AbstractPanel {
     this.emit('pinnedPlugin', profile, this.isHidden)
   }
 
-  async unPinView (profile) {
+  async unPinView (profile: any) {
     const activePlugin = this.currentFocus()
 
     if (activePlugin !== profile.name) throw new Error(`Plugin ${profile.name} is not pinned`)
@@ -253,7 +253,6 @@ export class RightSidePanel extends AbstractPanel {
 
     // Check if no plugin is pinned
     if (!pluginProfile) {
-      this.call('notification', 'toast', 'No plugin pinned on the Right Side Panel.')
       // Ensure the panel is hidden and toggle icon is off
       if (!this.isHidden) {
         this.isHidden = true

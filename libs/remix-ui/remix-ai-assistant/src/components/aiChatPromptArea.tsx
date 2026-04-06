@@ -71,7 +71,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
     <section
       id="remix-ai-prompt-area"
       className="ai-assistant-prompt-bg"
-      style={{ flexShrink: 0, minHeight: '140px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') }}
+      style={{ flexShrink: 0, minHeight: '110px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') as any }}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
       {props.showModelSelector && (
@@ -120,7 +120,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
             setChoice={props.handleOllamaModelSelection}
             setShowOptions={props.setShowOllamaModelSelector}
             choice={props.selectedOllamaModel}
-            groupList={props.ollamaModels.map(model => ({
+            groupList={props.ollamaModels.map((model: any) => ({
               label: model,
               bodyText: `Use ${model} model`,
               icon: 'fa-solid fa-check',
@@ -156,7 +156,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         modelSelectorBtnRef={props.modelSelectorBtnRef}
         stopRequest={props.stopRequest}
       />
-      <span className="mb-4 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
+      <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
   )
 }
