@@ -20,6 +20,22 @@ module.exports = {
     browser
       .pause(5000)
       .refreshPage()
+      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 60000)
+      .pause(3000) // Allow time for URL parameter processing
+      .perform((done: VoidFunction) => {
+        // Check if the file tab exists, if not wait longer
+        browser.isVisible({
+          selector: 'div[data-path="default_workspace/contracts/3_Ballot.sol"]',
+          suppressNotFoundErrors: true
+        }, (result) => {
+          if (!result.value) {
+            browser.pause(5000)
+          }
+          done()
+        })
+      })
+      .waitForElementVisible('div[data-path="default_workspace/contracts/3_Ballot.sol"]', 60000)
+      .pause(2000)
       .waitForElementVisible('#editorView', 60000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf('contract Ballot {') !== -1, 'content includes Ballot contract')
