@@ -117,7 +117,9 @@ let requiredModules = [
   'udappTransactions',
   'txRunner',
   'betaCornerWidget',
-  'lifecycle'
+  'lifecycle',
+  'nudgePlugin',
+  'helpPlugin'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)
