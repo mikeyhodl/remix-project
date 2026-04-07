@@ -389,7 +389,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                   border: "0.5px solid rgba(91,156,245,0.25)",
                 }}
               >
-                                Beta perk
+                                Beta Perk
               </span>
             </h2>
             <CloseButton onClick={onClose} />
@@ -397,7 +397,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
 
           {/* ── Subtitle ── */}
           <div style={{ padding: "10px 24px 0", fontSize: 13, color: c.tm, lineHeight: 1.6 }}>
-                        Remix now has two kinds of Workspaces. You can use both — they live side by side.
+                        Remix now has two kinds of Workspaces. You can use both — they live side-by-side.
           </div>
 
           {/* ── Dual cards ── */}
@@ -559,7 +559,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
               </span>
             </div>
             <div style={{ fontSize: 10, color: c.td, marginTop: 8, lineHeight: 1.4 }}>
-                            When the toggle is on, new workspaces will be created in the cloud by default.
+                            When the toggle is on, new Workspaces will be created in the cloud by default.
             </div>
           </div>
           {/* ── Detail panels ── */}
@@ -580,7 +580,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                   icon={<UploadIcon color={c.bl} />}
                   iconBg="rgba(91,156,245,0.1)"
                   name="Migrate to the cloud"
-                  desc="To move this workspace to the cloud, enable the cloud toggle and use the action in the workspace dropdown to migrate. This moves the workspace to the cloud, it does not keep a local copy."
+                  desc="To move this Workspace to the cloud, enable the cloud toggle and use the action in the Workspace dropdown to migrate. This moves the workspace to the cloud, it does not keep a local copy."
                   right={<></>
                   }
                 />
