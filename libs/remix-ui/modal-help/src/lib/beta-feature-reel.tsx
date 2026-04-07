@@ -597,33 +597,33 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
               <div style={{ fontSize: 13, color: "#8888aa", lineHeight: 1.5, whiteSpace: "normal", wordWrap: "break-word", overflowWrap: "break-word" }}>{feat.desc}</div>
               <div style={{ marginTop: 8 }}>
                 {feat.btn && (
-                <button
-                  onClick={() => onAction?.(feat.visual)}
-                  style={{
-                    background: "rgba(47,191,177,0.12)",
-                    color: "#2fbfb1",
-                    border: "0.5px solid rgba(47,191,177,0.3)",
-                    padding: "6px 16px",
-                    borderRadius: 6,
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    const btn = e.currentTarget as HTMLButtonElement;
-                    btn.style.background = "rgba(47,191,177,0.25)";
-                    btn.style.borderColor = "#2fbfb1";
-                  }}
-                  onMouseLeave={(e) => {
-                    const btn = e.currentTarget as HTMLButtonElement;
-                    btn.style.background = "rgba(47,191,177,0.12)";
-                    btn.style.borderColor = "rgba(47,191,177,0.3)";
-                  }}
-                >
-                  {feat.btn}
-                </button>
+                  <button
+                    onClick={() => onAction?.(feat.visual)}
+                    style={{
+                      background: "rgba(47,191,177,0.12)",
+                      color: "#2fbfb1",
+                      border: "0.5px solid rgba(47,191,177,0.3)",
+                      padding: "6px 16px",
+                      borderRadius: 6,
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      const btn = e.currentTarget as HTMLButtonElement;
+                      btn.style.background = "rgba(47,191,177,0.25)";
+                      btn.style.borderColor = "#2fbfb1";
+                    }}
+                    onMouseLeave={(e) => {
+                      const btn = e.currentTarget as HTMLButtonElement;
+                      btn.style.background = "rgba(47,191,177,0.12)";
+                      btn.style.borderColor = "rgba(47,191,177,0.3)";
+                    }}
+                  >
+                    {feat.btn}
+                  </button>
                 )}
               </div>
             </div>

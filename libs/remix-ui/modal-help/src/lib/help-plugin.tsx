@@ -32,7 +32,7 @@ export class HelpPlugin extends ViewPlugin {
 
   async onActivation(): Promise<void> {
     this.renderComponent()
-    
+
   }
 
   /* ─── Public API ─── */
@@ -42,7 +42,6 @@ export class HelpPlugin extends ViewPlugin {
     this._activeModal = topic
     this.renderComponent()
     this.emit('modalOpened', topic)
-
 
     // Also focus the side panel on this plugin
     try {
@@ -69,20 +68,20 @@ export class HelpPlugin extends ViewPlugin {
 
   async handleTopicAction(topic: HelpTopic): Promise<void> {
     switch (topic) {
-      case 'mcp':
-        await this.call('menuicons', 'select', 'settings')
-        break
-      case 'cloud':
-        await this.call('menuicons', 'select', 'settings')
-        break
-      case 'quickdapp':
-        await this.call('menuicons', 'select', 'quickDapp')
-        break
-      case 'beta-reel':
-      case 'beta-info':
-        // Opens the reel/info as a modal overlay
-        this.showModal(topic)
-        break
+    case 'mcp':
+      await this.call('menuicons', 'select', 'settings')
+      break
+    case 'cloud':
+      await this.call('menuicons', 'select', 'settings')
+      break
+    case 'quickdapp':
+      await this.call('menuicons', 'select', 'quickDapp')
+      break
+    case 'beta-reel':
+    case 'beta-info':
+      // Opens the reel/info as a modal overlay
+      this.showModal(topic)
+      break
     }
   }
 
@@ -251,49 +250,49 @@ const HelpModalOverlay: React.FC<{
     const showReel = () => plugin.showModal('beta-reel')
 
     switch (topic) {
-      case 'beta-reel':
-        return (
-          <BetaFeatureReel
-            dismissible
-            autoAdvanceMs={5000}
-            onAction={(feature) => {
-              // Switch directly to the corresponding help modal
-              const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp' }
-              const target = map[feature]
-              if (target) {
-                plugin.showModal(target)
-              }
-            }}
-            onDismiss={onClose}
-          />
-        )
-      case 'beta-info':
-        return <BetaWelcomeModal open onClose={onClose}
-          onFeature={(feature) => {
-            const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp', models: 'beta-reel' }
+    case 'beta-reel':
+      return (
+        <BetaFeatureReel
+          dismissible
+          autoAdvanceMs={5000}
+          onAction={(feature) => {
+            // Switch directly to the corresponding help modal
+            const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp' }
             const target = map[feature]
-            if (target) plugin.showModal(target)
-          }}
-          onFeedback={() => {
-            onClose()
-            try { plugin.call('feedback', 'openFeedbackForm') } catch { /* feedback plugin may not be available */ }
-          }}
-          onLink={(link) => {
-            switch (link) {
-              case 'discord': window.open('https://discord.com/invite/9bw6pMWEAw', '_blank'); break
-              case 'docs': window.open('https://remix-ide.readthedocs.io/', '_blank'); break
-              case 'blog': window.open('https://ethereumremix.substack.com/', '_blank'); break
+            if (target) {
+              plugin.showModal(target)
             }
           }}
+          onDismiss={onClose}
         />
-      case 'mcp':
-        return <McpHelpModal open onClose={onClose} onShowReel={showReel} />
-      case 'cloud':
-        return <CloudHelpModal open onClose={onClose} onShowReel={showReel} />
-      case 'quickdapp':
-        return <QuickDAppHelpModal open onClose={onClose} onShowReel={showReel} />
-      default:
-        return null
+      )
+    case 'beta-info':
+      return <BetaWelcomeModal open onClose={onClose}
+        onFeature={(feature) => {
+          const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp', models: 'beta-reel' }
+          const target = map[feature]
+          if (target) plugin.showModal(target)
+        }}
+        onFeedback={() => {
+          onClose()
+          try { plugin.call('feedback', 'openFeedbackForm') } catch { /* feedback plugin may not be available */ }
+        }}
+        onLink={(link) => {
+          switch (link) {
+          case 'discord': window.open('https://discord.com/invite/9bw6pMWEAw', '_blank'); break
+          case 'docs': window.open('https://remix-ide.readthedocs.io/', '_blank'); break
+          case 'blog': window.open('https://ethereumremix.substack.com/', '_blank'); break
+          }
+        }}
+      />
+    case 'mcp':
+      return <McpHelpModal open onClose={onClose} onShowReel={showReel} />
+    case 'cloud':
+      return <CloudHelpModal open onClose={onClose} onShowReel={showReel} />
+    case 'quickdapp':
+      return <QuickDAppHelpModal open onClose={onClose} onShowReel={showReel} />
+    default:
+      return null
     }
   }
 

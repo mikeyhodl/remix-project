@@ -68,7 +68,7 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
           onClick={() => setShowBetaModal(false)}
         >
           <div
-    
+
             onClick={(e) => e.stopPropagation()}
           >
             <BetaFeatureReel
@@ -78,10 +78,10 @@ export const FeatureBadges: React.FC<FeatureBadgesProps> = ({ plugin, onClose })
                 setShowBetaModal(false)
                 if (plugin) {
                   switch (feature) {
-                    case 'models': plugin.call('helpPlugin', 'showModal', 'beta-info'); break
-                    case 'mcp': plugin.call('helpPlugin', 'showModal', 'mcp'); break
-                    case 'cloud': plugin.call('helpPlugin', 'showModal', 'cloud'); break
-                    case 'quickdapp': plugin.call('helpPlugin', 'showModal', 'quickdapp'); break
+                  case 'models': plugin.call('helpPlugin', 'showModal', 'beta-info'); break
+                  case 'mcp': plugin.call('helpPlugin', 'showModal', 'mcp'); break
+                  case 'cloud': plugin.call('helpPlugin', 'showModal', 'cloud'); break
+                  case 'quickdapp': plugin.call('helpPlugin', 'showModal', 'quickdapp'); break
                   }
                 }
               }}

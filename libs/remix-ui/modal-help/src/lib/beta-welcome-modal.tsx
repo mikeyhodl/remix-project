@@ -411,7 +411,7 @@ const BetaWelcomeModal: React.FC<BetaWelcomeModalProps> = ({
             </div>
 
             {/* Hero text */}
-           
+
             <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: c.tm, lineHeight: 1.5 }}>
               These features are unlocked early for you. Explore them, break them, tell us what you think.
             </div>
