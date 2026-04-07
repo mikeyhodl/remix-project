@@ -55,7 +55,7 @@ const FEATURES: Feature[] = [
     tag: "AI models",
     tagColor: "#9b7dff",
     vizBg: "linear-gradient(135deg, #2a1a40, #1a1a3a)",
-    headline: "Advanced AI models — free for Beta Testers",
+    headline: "Advanced AI models — Free for Beta Testers",
     desc: "Claude Sonnet 4.6 is your default. Switch to Opus 4.6 for complex audits or Codestral for fast code generation. All free with fair usage rate limits.",
     btn: "",
     visual: "models",
@@ -73,8 +73,8 @@ const FEATURES: Feature[] = [
     tag: "Cloud storage",
     tagColor: "#5b9cf5",
     vizBg: "linear-gradient(135deg, #1a2a3a, #1a2040)",
-    headline: "Your workspaces, always available",
-    desc: "Projects sync to the cloud automatically. Open any workspace from any device — your contracts, tests, and scripts are always there.",
+    headline: "Your Workspaces, Always Available",
+    desc: "Projects auto-sync to the cloud. Open any Workspace from any device — your contracts, tests, and scripts are always there.",
     btn: "Learn more",
     visual: "cloud",
   },
@@ -486,7 +486,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
                 <path d="M8 2v12M2 8h12" />
               </svg>
             </span>
-            <span>Unlocked for you</span>
+            <span>Unlocked for You</span>
             <span
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
@@ -500,7 +500,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
                 border: "0.5px solid rgba(47,191,177,0.25)",
               }}
             >
-              Beta perk
+              Beta Perk
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
