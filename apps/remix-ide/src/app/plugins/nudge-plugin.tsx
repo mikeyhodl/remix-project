@@ -3,6 +3,7 @@ import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { NudgeEngine, all, any } from '@remix-project/remix-lib'
 import type { NudgeRule, NudgeAction, SerializedNudgeRule } from '@remix-project/remix-lib'
+import { trackMatomoEvent as baseTrackMatomoEvent, NudgeEvent, MatomoEvent } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 import './nudge-widget.css'
 
@@ -55,6 +56,11 @@ export class NudgePlugin extends Plugin {
   private state: NudgePluginState
   debug: boolean
 
+  // Type-safe tracker defaulting to NudgeEvent
+  private trackMatomoEvent = <T extends MatomoEvent = NudgeEvent>(event: T) => {
+    baseTrackMatomoEvent(this, event)
+  }
+
   constructor(options?: { debug?: boolean }) {
     super(profile)
     this.debug = options?.debug || false
@@ -81,6 +87,7 @@ export class NudgePlugin extends Plugin {
         this._enqueue(rule)
       }
       this.emit('nudgeTriggered', { id: rule.id, action: rule.action })
+      this.trackMatomoEvent({ category: 'nudge', action: 'triggered', name: rule.id, isClick: false })
     })
 
     this._setupBuiltinRules()
@@ -247,7 +254,7 @@ export class NudgePlugin extends Plugin {
   private async _checkBetaMembership(): Promise<void> {
     try {
       const permissions = await this.call('auth' as any, 'getAllPermissions')
-      if(this.debug)console.log('User permissions:', permissions)
+      if (this.debug)console.log('User permissions:', permissions)
       const groups = permissions?.feature_groups || []
       if (groups.some((g: any) => g.name === 'beta')) {
         this.engine_.fire('user:logged_in_beta')
@@ -529,6 +536,7 @@ export class NudgePlugin extends Plugin {
     this.state = { ...this.state, animateOut: true }
     this.renderComponent()
     this.emit('nudgeDismissed', { id, permanent: false })
+    this.trackMatomoEvent({ category: 'nudge', action: 'dismissed', name: id, isClick: true })
     setTimeout(() => {
       this._dequeueNext()
     }, 300)
@@ -542,6 +550,7 @@ export class NudgePlugin extends Plugin {
     this.state = { ...this.state, animateOut: true }
     this.renderComponent()
     this.emit('nudgeDismissed', { id, permanent: true })
+    this.trackMatomoEvent({ category: 'nudge', action: 'dismissedPermanent', name: id, isClick: true })
     // Persist in localStorage
     try {
       const key = 'remix_nudge_dismissed_permanent'
@@ -572,6 +581,8 @@ export class NudgePlugin extends Plugin {
   /* ─── CTA handler ─── */
 
   async handleAction(target: string): Promise<void> {
+    const activeId = this.state.activeNudge?.id || 'unknown'
+    this.trackMatomoEvent({ category: 'nudge', action: 'ctaClicked', name: activeId, value: target, isClick: true })
     // Parse actionTarget format: 'pluginName::method::arg1::arg2'
     const parts = target.split('::')
     if (parts.length >= 2) {

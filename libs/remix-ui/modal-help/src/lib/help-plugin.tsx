@@ -2,6 +2,7 @@ import { ViewPlugin } from '@remixproject/engine-web'
 import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { useAuth } from '@remix-ui/app'
+import { trackMatomoEvent as baseTrackMatomoEvent, HelpEvent, MatomoEvent } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 export type HelpTopic = 'beta-reel' | 'beta-info' | 'mcp' | 'cloud' | 'quickdapp'
@@ -24,6 +25,11 @@ export class HelpPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
   private _activeModal: HelpTopic | null = null
 
+  // Type-safe tracker defaulting to HelpEvent
+  private trackMatomoEvent = <T extends MatomoEvent = HelpEvent>(event: T) => {
+    baseTrackMatomoEvent(this, event)
+  }
+
   constructor() {
     super(profile)
   }
@@ -42,6 +48,7 @@ export class HelpPlugin extends ViewPlugin {
     this._activeModal = topic
     this.renderComponent()
     this.emit('modalOpened', topic)
+    this.trackMatomoEvent({ category: 'help', action: 'modalOpened', name: topic, isClick: true })
 
     // Also focus the side panel on this plugin
     try {
@@ -53,7 +60,10 @@ export class HelpPlugin extends ViewPlugin {
     const prev = this._activeModal
     this._activeModal = null
     this.renderComponent()
-    if (prev) this.emit('modalClosed', prev)
+    if (prev) {
+      this.emit('modalClosed', prev)
+      this.trackMatomoEvent({ category: 'help', action: 'modalClosed', name: prev, isClick: true })
+    }
   }
 
   getTopics(): { id: HelpTopic; title: string; description: string }[] {
@@ -67,6 +77,7 @@ export class HelpPlugin extends ViewPlugin {
   /* ─── Action handler — routes CTA clicks to other plugins ─── */
 
   async handleTopicAction(topic: HelpTopic): Promise<void> {
+    this.trackMatomoEvent({ category: 'help', action: 'ctaAction', name: topic, isClick: true })
     switch (topic) {
     case 'mcp':
       await this.call('menuicons', 'select', 'settings')
@@ -168,6 +179,11 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
   const isBeta = featureGroups?.some(fg => fg.name === 'beta')
   const activeModal = plugin.activeModal
 
+  // Type-safe tracker defaulting to HelpEvent
+  const trackMatomoEvent = <T extends MatomoEvent = HelpEvent>(event: T) => {
+    baseTrackMatomoEvent(plugin, event)
+  }
+
   if (!isBeta) {
     return (
       <div className="help-panel help-panel--locked">
@@ -201,7 +217,10 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
           <div
             key={topic.id}
             className="help-panel-card"
-            onClick={() => plugin.showModal(topic.id)}
+            onClick={() => {
+              trackMatomoEvent({ category: 'help', action: 'topicCardClicked', name: topic.id, isClick: true })
+              plugin.showModal(topic.id)
+            }}
             role="button"
             tabIndex={0}
           >
@@ -246,6 +265,11 @@ const HelpModalOverlay: React.FC<{
   onClose: () => void
 }> = ({ topic, plugin, onClose }) => {
 
+  // Type-safe tracker defaulting to HelpEvent
+  const trackMatomoEvent = <T extends MatomoEvent = HelpEvent>(event: T) => {
+    baseTrackMatomoEvent(plugin, event)
+  }
+
   const renderContent = () => {
     const showReel = () => plugin.showModal('beta-reel')
 
@@ -256,6 +280,7 @@ const HelpModalOverlay: React.FC<{
           dismissible
           autoAdvanceMs={5000}
           onAction={(feature) => {
+            trackMatomoEvent({ category: 'help', action: 'reelFeatureClicked', name: feature, isClick: true })
             // Switch directly to the corresponding help modal
             const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp' }
             const target = map[feature]
@@ -263,21 +288,27 @@ const HelpModalOverlay: React.FC<{
               plugin.showModal(target)
             }
           }}
-          onDismiss={onClose}
+          onDismiss={() => {
+            trackMatomoEvent({ category: 'help', action: 'reelDismissed', isClick: true })
+            onClose()
+          }}
         />
       )
     case 'beta-info':
       return <BetaWelcomeModal open onClose={onClose}
         onFeature={(feature) => {
+          trackMatomoEvent({ category: 'help', action: 'betaFeatureClicked', name: feature, isClick: true })
           const map: Record<string, HelpTopic> = { mcp: 'mcp', cloud: 'cloud', quickdapp: 'quickdapp', models: 'beta-reel' }
           const target = map[feature]
           if (target) plugin.showModal(target)
         }}
         onFeedback={() => {
+          trackMatomoEvent({ category: 'help', action: 'betaFeedbackClicked', isClick: true })
           onClose()
           try { plugin.call('feedback', 'openFeedbackForm') } catch { /* feedback plugin may not be available */ }
         }}
         onLink={(link) => {
+          trackMatomoEvent({ category: 'help', action: 'betaLinkClicked', name: link, isClick: true })
           switch (link) {
           case 'discord': window.open('https://discord.com/invite/9bw6pMWEAw', '_blank'); break
           case 'docs': window.open('https://remix-ide.readthedocs.io/', '_blank'); break
