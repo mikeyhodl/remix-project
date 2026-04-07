@@ -295,7 +295,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Join the Beta Program',
-        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDapp — free for Beta Testers.',
+        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDApp — free for Beta Testers.',
         actionLabel: 'Apply for Access',
         actionTarget: 'membershipRequest::showRequestForm::beta',
         icon: 'fas fa-rocket',
@@ -315,7 +315,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Welcome to Remix Beta',
-        message: 'You\'ve unlocked premium AI models, MCP Integrations, cloud sync, and QuickDapp. Tap to take a quick tour.',
+        message: 'You\'ve unlocked premium AI models, MCP Integrations, cloud sync, and QuickDApp. Tap to take a quick tour.',
         actionLabel: 'Take the Tour',
         actionTarget: 'helpPlugin::showModal::beta-reel',
         icon: 'fas fa-sparkles',
@@ -362,7 +362,7 @@ export class NudgePlugin extends Plugin {
       priority: 9
     })
 
-    // MCP tools — triggers when user opens AI chat (they'll likely want on-chain data)
+    // MCP Tools — triggers when user opens AI chat (they'll likely want on-chain data)
     this.engine_.addRule({
       id: 'try-mcp-tools',
       condition: all('user:logged_in_beta', 'ai:chat_opened'),
@@ -380,14 +380,14 @@ export class NudgePlugin extends Plugin {
       priority: 8
     })
 
-    // QuickDapp — triggers when user compiles a contract successfully
+    // QuickDApp — triggers when user compiles a contract successfully
     this.engine_.addRule({
       id: 'try-quickdapp',
       condition: all('user:logged_in_beta', 'contract:compiled'),
       action: {
         type: 'widget',
         title: 'Try QuickDApp',
-        message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no frontend code needed.',
+        message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no front-end code needed.',
         actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::quickdapp',
         icon: 'fas fa-rocket',
@@ -421,7 +421,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'RemixAI Knows Solidity',
-        message: 'Ask the AI assistant to explain, audit, or optimize your contract. It understands your project context through MCP.',
+        message: 'Ask RemixAI to explain, audit, or optimize your contract. It understands your project context through MCP.',
         actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::mcp',
         icon: 'fas fa-robot',
@@ -439,7 +439,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Build a DApp from This',
-        message: 'You just deployed a contract — generate a QuickDApp to get an instant frontend for interacting with it.',
+        message: 'You just deployed a contract — now generate a dApp to get an instant front-end to interact with it.',
         actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::quickdapp',
         icon: 'fas fa-magic',
@@ -497,7 +497,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Quick Tip: Explain Code',
-        message: 'Right-click any code and select "Explain this" — the AI will break it down for you instantly.',
+        message: 'Right-click any code and select "Explain this" — RemixAI will break it down for you instantly.',
         actionLabel: 'Got It',
         actionTarget: '',
         icon: 'fas fa-lightbulb',
