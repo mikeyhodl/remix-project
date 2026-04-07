@@ -18,16 +18,7 @@ module.exports = {
 
   'Editor should be focused on the 3_Ballot.sol #group1': function (browser: NightwatchBrowser) {
     browser
-      .pause(5000)
-      .refreshPage()
-      .waitForElementVisible('*[data-id="remixIdeSidePanel"]', 60000)
-      .clickLaunchIcon('filePanel')
-      .waitForElementVisible('*[data-id="filePanelFileExplorerTree"]', 60000)
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]', 60000)
-      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/3_Ballot.sol"]', 60000)
-      .waitForElementVisible('div[data-path="default_workspace/contracts/3_Ballot.sol"]', 60000)
-      .waitForElementVisible('#editorView', 60000)
-      .pause(2000)
+      .waitForElementVisible('#editorView', 30000)
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf('contract Ballot {') !== -1, 'content includes Ballot contract')
       })

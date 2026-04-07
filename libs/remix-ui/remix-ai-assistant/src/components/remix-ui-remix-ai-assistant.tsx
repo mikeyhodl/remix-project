@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, AIModel } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, getModelById, AIModel } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
 import '../css/color.css'
@@ -231,6 +231,41 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   }, [])
 
   useEffect(() => {
+    // Initialize: fetch current model from plugin on mount
+    const initializeModel = async () => {
+      try {
+        const currentModelId = await props.plugin.call('remixAI', 'getSelectedModel')
+        const model = getModelById(currentModelId)
+        if (model) {
+          setSelectedModelId(currentModelId)
+          setSelectedModel(model)
+          setAssistantChoice(model.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
+        }
+      } catch (error) {
+        console.warn('[RemixAI Assistant UI] Failed to get initial model from plugin:', error)
+      }
+    }
+
+    initializeModel()
+
+    const handleModelChanged = async (modelId: string) => {
+      console.log('[RemixAI Assistant UI] Model changed to:', modelId)
+      const model = getModelById(modelId)
+      if (model) {
+        setSelectedModelId(modelId)
+        setSelectedModel(model)
+        setAssistantChoice(model.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
+      }
+    }
+
+    props.plugin.on('remixAI', 'modelChanged', handleModelChanged)
+
+    return () => {
+      props.plugin.off('remixAI', 'modelChanged')
+    }
+  }, [props.plugin])
+
+  useEffect(() => {
     let refreshTimeout: NodeJS.Timeout | null = null
     let isRefreshing = false // avoid circular calls
 
@@ -260,7 +295,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         }
         await modelAccess.refreshAccess()
         isRefreshing = false
-      }, 2000)
+      }, 500) // Reduced from 2000ms to 500ms for faster UI Update
     }
 
     props.plugin.on('auth', 'authStateChanged', handleAuthStateChanged)
@@ -1070,6 +1105,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   theme={themeTracker?.name}
                   plugin={props.plugin}
                   handleGenerateWorkspace={handleGenerateWorkspace}
+                  allowedMcps={modelAccess.allowedMcps}
                 />
               </section>
             </div>
@@ -1148,6 +1184,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     theme={themeTracker?.name}
                     plugin={props.plugin}
                     handleGenerateWorkspace={handleGenerateWorkspace}
+                    allowedMcps={modelAccess.allowedMcps}
                   />
                 </section>
               </div>

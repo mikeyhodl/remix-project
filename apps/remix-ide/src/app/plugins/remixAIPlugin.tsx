@@ -28,7 +28,13 @@ const profile = {
     'enableMCPEnhancement', 'disableMCPEnhancement', 'isMCPEnabled', 'getIMCPServers',
     'clearCaches', 'cancelRequest'
   ],
-  events: [],
+  events: [
+    'modelChanged',
+    'chatMessageSent', 'chatPipeRequested',
+    'codeExplainRequested', 'errorExplainRequested', 'vulnerabilityCheckRequested',
+    'codeCompletionUsed', 'workspaceGenerated',
+    'mcpEnabled', 'mcpDisabled'
+  ],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
   kind: '',
@@ -74,27 +80,7 @@ export class RemixAIPlugin extends Plugin {
 
   async onActivation(): Promise<void> {
     // check access
-    let hasBasicMcp = false
-    try {
-      const token = localStorage.getItem('remix_access_token')
-      if (token) {
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-        const response = await fetch(`${endpointUrls.permissions}`, {
-          credentials: 'include',
-          headers
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.features) {
-            // Check each AI feature and map to provider
-            hasBasicMcp = data.features['mcp:basicExternal']?.is_enabled
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(e)
-    }
+    const { hasBasicMcp, isBetaUser } = await this.checkMCPAccess()
 
     // IMPORTANT: Must await initialize() before loading MCP servers
     // to ensure remixMCPServer is created first (race condition fix)
@@ -104,6 +90,12 @@ export class RemixAIPlugin extends Plugin {
     this.codeExpAgent = new CodeExplainAgent(this)
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
+
+    // Switch to claude-sonnet-4-6 for beta users
+    if (isBetaUser) {
+      console.log('[RemixAI Plugin] Beta user detected, switching to claude-sonnet-4-6')
+      await this.setModel('claude-sonnet-4-6')
+    }
 
     // Initialize MCP servers with defaults (after initialize() completes)
     this.mcpServers = [...mcpDefaultServersConfig.defaultServers, ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])]
@@ -125,6 +117,11 @@ export class RemixAIPlugin extends Plugin {
         this.emit('mcpServersLoaded');
       }
     }
+
+    // Listen to auth state changes to refresh MCP servers based on user permissions
+    this.on('auth', 'authStateChanged', async (authState: any) => {
+      await this.refreshMCPServersOnAuthChange(authState);
+    });
   }
 
   async initialize(remoteModel?:IRemoteModel){
@@ -173,6 +170,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_completion(prompt: string, promptAfter: string, params:IParams=CompletionParams): Promise<any> {
+    this.emit('codeCompletionUsed')
     if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
     params.provider = 'mistralai' // default provider for code completion
     const currentFileName = await this.call('fileManager', 'getCurrentFile')
@@ -181,7 +179,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
-
+    this.emit('chatMessageSent')
     let newPrompt = await this.codeExpAgent.chatCommand(prompt)
     // add workspace context
     newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
@@ -196,6 +194,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
+    this.emit('codeExplainRequested')
     let result
     if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.code_explaining(prompt, context, params)
@@ -207,6 +206,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    this.emit('errorExplainRequested')
     let localFilesImports = ""
 
     // Get local imports from the workspace restrict to 5 most relevant files
@@ -223,6 +223,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    this.emit('vulnerabilityCheckRequested')
     const result = await this.remoteInferencer.vulnerability_check(prompt, params)
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
@@ -273,6 +274,7 @@ export class RemixAIPlugin extends Plugin {
     this.setAssistantProvider(await this.getAssistantProvider())
     if (genResult.includes('No payload')) return genResult
     await this.call('menuicons', 'select', 'filePanel')
+    this.emit('workspaceGenerated')
     return genResult
   }
 
@@ -314,7 +316,9 @@ export class RemixAIPlugin extends Plugin {
     const result = await this.remoteInferencer.generateWorkspace(userPrompt, params)
 
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.applyingChanges'))
-    return (result !== undefined) ? this.workspaceAgent.writeGenerationResults(result, statusCallback) : "### No Changes applied!"
+    const finalResult = (result !== undefined) ? this.workspaceAgent.writeGenerationResults(result, statusCallback) : "### No Changes applied!"
+    this.emit('workspaceGenerated')
+    return finalResult
   }
 
   async fixWorspaceErrors(): Promise<any> {
@@ -354,6 +358,7 @@ export class RemixAIPlugin extends Plugin {
       console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'remixAI_chat', isClick: false })
+    this.emit('chatPipeRequested', fn)
   }
 
   async ProcessChatRequestBuffer(params:IParams=GenerationParams){
@@ -405,7 +410,6 @@ export class RemixAIPlugin extends Plugin {
 
   async setModel(modelId: string) {
     let model = getModelById(modelId)
-    console.log('setting model:', model)
     if (!model) {
       model = getDefaultModel()
       modelId = model.id
@@ -646,6 +650,7 @@ export class RemixAIPlugin extends Plugin {
 
   async enableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = true;
+    this.emit('mcpEnabled')
 
     if (!this.mcpServers || this.mcpServers.length === 0) {
       return;
@@ -670,6 +675,7 @@ export class RemixAIPlugin extends Plugin {
 
   async disableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = false;
+    this.emit('mcpDisabled')
   }
 
   isMCPEnabled(): boolean {
@@ -691,6 +697,136 @@ export class RemixAIPlugin extends Plugin {
       this.mcpInferencer.cancelRequest()
     } else if (this.remoteInferencer) {
       (this.remoteInferencer as RemoteInferencer).cancelRequest()
+    }
+  }
+
+  private async refreshMCPServersOnAuthChange(authState: any): Promise<void> {
+    try {
+      const isAuthenticated = authState?.isAuthenticated || false;
+
+      if (!isAuthenticated) { // logged out or no user
+        console.log('[RemixAI Plugin] User logged out, resetting to default model and MCP servers');
+        const defaultModel = getDefaultModel();
+        await this.setModel(defaultModel.id);
+        await this.resetMCPServersToDefault();
+        return;
+      }
+
+      const { hasBasicMcp, isBetaUser } = await this.checkMCPAccess();
+
+      // Switch to claude-sonnet-4-6 for beta users
+      if (isBetaUser) {
+        console.log('[RemixAI Plugin] Beta user logged in, switching to claude-sonnet-4-6');
+        await this.setModel('claude-sonnet-4-6');
+      } else {
+        const defaultModel = getDefaultModel();
+        console.log(`[RemixAI Plugin] Non-beta user logged in, using default model: ${defaultModel.id}`);
+        await this.setModel(defaultModel.id);
+      }
+
+      const newServerList = [
+        ...mcpDefaultServersConfig.defaultServers,
+        ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])
+      ];
+      const currentServerNames = this.mcpServers.map(s => s.name).sort().join(',');
+      const newServerNames = newServerList.map(s => s.name).sort().join(',');
+
+      if (currentServerNames !== newServerNames) {
+        this.mcpServers = newServerList;
+
+        if (this.remixMCPServer) {
+          if (this.mcpInferencer) {
+            for (const server of this.mcpServers) {
+              try {
+                await this.mcpInferencer.removeMCPServer(server.name);
+              } catch (err) {
+              }
+            }
+          }
+
+          this.mcpInferencer = new MCPInferencer(
+            this.mcpServers,
+            undefined,
+            undefined,
+            this.remixMCPServer,
+            this.remoteInferencer
+          );
+
+          this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+            console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
+          });
+          this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+            console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
+          });
+
+          const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
+          if (enabledServers.length > 0) {
+            await this.mcpInferencer.connectAllServers();
+            this.emit('mcpServersLoaded');
+            console.log('[RemixAI Plugin] MCP servers refreshed and connected');
+          }
+        }
+      } else {
+      }
+    } catch (error) {
+      console.error('[RemixAI Plugin] Failed to refresh MCP servers on auth change:', error);
+    }
+  }
+
+  private async checkMCPAccess(): Promise<{ hasBasicMcp: boolean; isBetaUser: boolean }> {
+    try {
+      const token = localStorage.getItem('remix_access_token');
+      if (!token) return { hasBasicMcp: false, isBetaUser: false };
+
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const response = await fetch(`${endpointUrls.permissions}`, {
+        credentials: 'include',
+        headers
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        const hasBasicMcp = data.features?.['mcp:basicExternal']?.is_enabled || false;
+        const isBetaUser = data.feature_groups?.some((group: any) => group.name === 'beta') || false;
+
+        return { hasBasicMcp, isBetaUser };
+      }
+      return { hasBasicMcp: false, isBetaUser: false };
+    } catch (error) {
+      console.error('[RemixAI Plugin] Failed to check MCP access:', error);
+      return { hasBasicMcp: false, isBetaUser: false };
+    }
+  }
+
+  private async resetMCPServersToDefault(): Promise<void> {
+    try {
+      this.mcpServers = [...mcpDefaultServersConfig.defaultServers];
+
+      if (this.remixMCPServer) {
+        this.mcpInferencer = new MCPInferencer(
+          this.mcpServers,
+          undefined,
+          undefined,
+          this.remixMCPServer,
+          this.remoteInferencer
+        );
+
+        this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
+          console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
+        });
+        this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
+          console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
+        });
+
+        const enabledServers = this.mcpServers.filter((s: IMCPServer) => s.enabled);
+        if (enabledServers.length > 0) {
+          await this.mcpInferencer.connectAllServers();
+          this.emit('mcpServersLoaded');
+        }
+      }
+    } catch (error) {
+      console.error('[RemixAI Plugin] Failed to reset MCP servers to default:', error);
     }
   }
 }

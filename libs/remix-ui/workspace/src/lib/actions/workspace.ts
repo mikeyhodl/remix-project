@@ -87,8 +87,14 @@ class WorkspaceOperationQueue {
   private _depth = 0
   private _nextOpId = 0
   private _queuedCount = 0
+  private _debug: boolean
+
+  constructor(options?: { debug?: boolean }) {
+    this._debug = options?.debug ?? false
+  }
 
   private _log(tag: string, opId: number, label: string, extra?: string) {
+    if (!this._debug) return
     console.log(
       `%c[WorkspaceQueue]%c %c${tag}%c %c${label}%c #${opId} depth=${this._depth} queued=${this._queuedCount}${extra ? ' ' + extra : ''}`,
       'color:#e57a00;font-weight:bold', '',

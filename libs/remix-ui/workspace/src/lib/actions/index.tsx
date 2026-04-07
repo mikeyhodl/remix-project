@@ -8,7 +8,7 @@ import { displayNotification, displayPopUp, fetchDirectoryError, fetchDirectoryR
 import { listenOnPluginEvents, listenOnProviderEvents } from './events'
 import { createWorkspaceTemplate, getWorkspaces, loadWorkspacePreset, setPlugin, workspaceExists, createWorkspace } from './workspace'
 import { setCloudPlugin, setCreateDefaultCloudWorkspaceFn } from '../cloud/cloud-workspace-actions'
-import { QueryParams, Registry } from '@remix-project/remix-lib'
+import { QueryParams, Registry, all } from '@remix-project/remix-lib'
 import { fetchContractFromEtherscan, fetchContractFromBlockscout } from '@remix-project/core-plugin' // eslint-disable-line
 import JSZip from 'jszip'
 import { Actions, FileTree } from '../types'
@@ -124,18 +124,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
     const localhostProvider = filePanelPlugin.fileProviders.localhost
     const electrOnProvider = filePanelPlugin.fileProviders.electron
     const params = queryParams.get() as UrlParametersType
-    let editorMounted = false
-    let filePathToOpen = null
+    const lifecycle = Registry.getInstance().get('lifecycle').api
     let workspaces = []
-    plugin.on('editor', 'editorMounted', async () => {
-      editorMounted = true
-      if (filePathToOpen){
-        setTimeout(async () => {
-          await plugin.fileManager.openFile(filePathToOpen)
-          filePathToOpen = null
-        }, 1000)
-      }
-    })
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
       const allWorkspaces = await getWorkspaces() || []
 
@@ -158,13 +148,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: workspaceName, isGitRepo: false }))
       const filePath = await loadWorkspacePreset('code-template')
-      plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-        if (editorMounted){
-          setTimeout(async () => {
-            await plugin.fileManager.openFile(filePath)}, 1000)
-        } else {
-          filePathToOpen = filePath
-        }
+      lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+        await plugin.fileManager.openFile(filePath)
       })
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
@@ -187,13 +172,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
           for (filePath in data.compilationTargets)
             await workspaceProvider.set(filePath, data.compilationTargets[filePath]['content'])
 
-          plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-            if (editorMounted){
-              setTimeout(async () => {
-                await plugin.fileManager.openFile(filePath)}, 1000)
-            } else {
-              filePathToOpen = filePath
-            }
+          lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+            await plugin.fileManager.openFile(filePath)
           })
           plugin.call('notification', 'toast', `Added ${count} verified contract${count === 1 ? '' : 's'} from ${blockscoutUrl} network for contract address ${contractAddress} !!`)
         } catch (error) {
@@ -230,13 +210,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
             await workspaceProvider.set('compiler_config.json', JSON.stringify(data.config, null, '\t'))
           }
 
-          plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-            if (editorMounted){
-              setTimeout(async () => {
-                await plugin.fileManager.openFile(filePath)}, 1000)
-            } else {
-              filePathToOpen = filePath
-            }
+          lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+            await plugin.fileManager.openFile(filePath)
           })
           plugin.call('notification', 'toast', `Added ${count} verified contract${count === 1 ? '' : 's'} from ${foundOnNetworks.join(',')} network${foundOnNetworks.length === 1 ? '' : 's'} of Etherscan for contract address ${contractAddress} !!`)
         } catch (error) {
@@ -298,18 +273,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
     const localhostProvider = plugin.fileProviders.localhost
     const electrOnProvider = plugin.fileProviders.electron
     const params = queryParams.get() as UrlParametersType
-    let editorMounted = false
-    let filePathToOpen = null
+    const lifecycle = Registry.getInstance().get('lifecycle').api
     let workspaces = []
-    plugin.on('editor', 'editorMounted', async () => {
-      editorMounted = true
-      if (filePathToOpen){
-        setTimeout(async () => {
-          await plugin.fileManager.openFile(filePathToOpen)
-          filePathToOpen = null
-        }, 1000)
-      }
-    })
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
       const allWorkspaces = await getWorkspaces() || []
 
@@ -332,6 +297,9 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
       dispatch(setCurrentWorkspace({ name: workspaceName, isGitRepo: false }))
       const filePath = await loadWorkspacePreset('code-template')
+      lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+        await plugin.fileManager.openFile(filePath)
+      })
     } else if (params.address && params.blockscout) {
       if (params.address.startsWith('0x') && params.address.length === 42 && params.blockscout.length > 0) {
         const contractAddress = params.address
@@ -353,13 +321,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
           for (filePath in data.compilationTargets)
             await workspaceProvider.set(filePath, data.compilationTargets[filePath]['content'])
 
-          plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-            if (editorMounted){
-              setTimeout(async () => {
-                await plugin.fileManager.openFile(filePath)}, 1000)
-            } else {
-              filePathToOpen = filePath
-            }
+          lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+            await plugin.fileManager.openFile(filePath)
           })
           plugin.call('notification', 'toast', `Added ${count} verified contract${count === 1 ? '' : 's'} from ${blockscoutUrl} network for contract address ${contractAddress} !!`)
         } catch (error) {
@@ -396,13 +359,8 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
             await workspaceProvider.set('compiler_config.json', JSON.stringify(data.config, null, '\t'))
           }
 
-          plugin.on('filePanel', 'workspaceInitializationCompleted', async () => {
-            if (editorMounted){
-              setTimeout(async () => {
-                await plugin.fileManager.openFile(filePath)}, 1000)
-            } else {
-              filePathToOpen = filePath
-            }
+          lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
+            await plugin.fileManager.openFile(filePath)
           })
           plugin.call('notification', 'toast', `Added ${count} verified contract${count === 1 ? '' : 's'} from ${foundOnNetworks.join(',')} network${foundOnNetworks.length === 1 ? '' : 's'} of Etherscan for contract address ${contractAddress} !!`)
         } catch (error) {
