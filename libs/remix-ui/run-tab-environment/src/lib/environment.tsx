@@ -113,6 +113,7 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
 
     plugin.on('blockchain', 'networkStatus', async (networkStatus: any) => {
       dispatch({ type: 'SET_NETWORK_STATUS', payload: { chainId: networkStatus.network.id, name: networkStatus.network.name } })
+      await getAccountsList(plugin, dispatch)
     })
 
     plugin.on('udappDeployedContracts', 'deployedInstanceUpdated', async (deployedInstances: any[]) => {
