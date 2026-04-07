@@ -378,7 +378,7 @@ const StepGenerate: React.FC = () => (
       iconColor={c.bl} iconBg="rgba(91,156,245,0.1)"
       icon={<CircleSmall color={c.bl} />}
       name="Creates a new Workspace"
-      desc="A dedicated Workspace is created for your DApp with all generated files — HTML, JS, CSS, everything."
+      desc="A dedicated Workspace is created for your dApp with all generated files — HTML, JS, CSS, everything."
     />
     <Separator />
     <DetailRow
@@ -624,7 +624,7 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
                   border: "0.5px solid rgba(107,219,138,0.25)",
                 }}
               >
-                Beta perk
+                Beta Perk
               </span>
             </h2>
             <CloseButton onClick={handleClose} />
