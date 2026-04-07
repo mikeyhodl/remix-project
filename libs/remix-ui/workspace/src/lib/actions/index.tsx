@@ -22,6 +22,16 @@ const queryParams = new QueryParams()
 
 let plugin, dispatch: React.Dispatch<Actions>
 
+// Generate an 8-letter random suffix for temporary workspace names
+const generateRandomSuffix = (): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
 export type UrlParametersType = {
   gist: string,
   code: string,
@@ -33,6 +43,54 @@ export type UrlParametersType = {
   ghfolder: string
   endpoint: string
   remaps: string
+}
+
+// Helper function to check if a workspace name matches the code-sample pattern
+const isCodeSampleWorkspace = (name: string): boolean => {
+  // Matches 'code-sample' or 'code-sample-xxxxxxxx' where x is alphanumeric (8 chars)
+  return /^code-sample(-[a-z0-9]{8})?$/.test(name)
+}
+
+// Clean up all temporary code-sample workspaces
+// Runs on every page load but optimized to be non-blocking and fast
+const cleanupCodeSampleWorkspaces = (workspaces: { name: string; isGitRepo: boolean; }[], workspaceProvider) => {
+  try {
+    // Quick synchronous check: if no workspace names match the pattern, return immediately
+    const codeSampleWorkspaces = workspaces.filter(ws => isCodeSampleWorkspace(ws.name))
+
+    if (codeSampleWorkspaces.length === 0) {
+      return // Nothing to clean, exit fast
+    }
+
+    // Background cleanup - doesn't block initialization
+    const browserProvider = plugin.fileProviders.browser
+    const workspacesPath = workspaceProvider.workspacesPath
+
+    // Fire and forget - delete all temporary workspaces in parallel
+    const cleanupPromises = codeSampleWorkspaces.map(ws =>
+      browserProvider.remove(workspacesPath + '/' + ws.name)
+        .then(() => {
+          console.log(`[Cleanup] Deleted temporary workspace: ${ws.name}`)
+          return ws.name
+        })
+        .catch((error) => {
+          console.error(`[Cleanup] Failed to delete workspace ${ws.name}:`, error)
+          return null
+        })
+    )
+
+    // Log results when done (in background, no need to update state as it's already filtered)
+    Promise.all(cleanupPromises).then((results) => {
+      const cleanedCount = results.filter(r => r !== null).length
+      if (cleanedCount > 0) {
+        console.log(`[Cleanup] Cleaned up ${cleanedCount} temporary workspace(s)`)
+      }
+    }).catch((error) => {
+      console.error('[Cleanup] Error during cleanup:', error)
+    })
+  } catch (error) {
+    console.error('[Cleanup] Error during cleanup:', error)
+  }
 }
 
 const basicWorkspaceInit = async (workspaces: { name: string; isGitRepo: boolean; }[], workspaceProvider) => {
@@ -69,8 +127,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
     const lifecycle = Registry.getInstance().get('lifecycle').api
     let workspaces = []
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
-      workspaces = await getWorkspaces() || []
+      const allWorkspaces = await getWorkspaces() || []
+
+      // Filter out code-sample workspaces - these should never be used or displayed
+      workspaces = allWorkspaces.filter(ws => !isCodeSampleWorkspace(ws.name))
       dispatch(setWorkspaces(workspaces))
+
+      // Clean up temporary code-sample workspaces from previous sessions (non-blocking)
+      cleanupCodeSampleWorkspaces(allWorkspaces, workspaceProvider)
     }
     if (params.gist) {
       const name = 'gist ' + params.gist
@@ -79,9 +143,10 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
       await loadWorkspacePreset('gist-template')
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
-      await createWorkspaceTemplate('code-sample', 'code-template')
-      plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
-      dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
+      const workspaceName = `code-sample-${generateRandomSuffix()}`
+      await createWorkspaceTemplate(workspaceName, 'code-template')
+      plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
+      dispatch(setCurrentWorkspace({ name: workspaceName, isGitRepo: false }))
       const filePath = await loadWorkspacePreset('code-template')
       lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
         await plugin.fileManager.openFile(filePath)
@@ -94,7 +159,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         let data
         let count = 0
         try {
-          const workspaceName = 'code-sample'
+          const workspaceName = `code-sample-${generateRandomSuffix()}`
           let filePath
           const target = `/${blockscoutUrl}/${contractAddress}`
 
@@ -124,7 +189,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         try {
           let etherscanKey = await plugin.call('config', 'getAppParameter', 'etherscan-access-token')
           if (!etherscanKey) etherscanKey = '2HKUX5ZVASZIKWJM8MIQVCRUVZ6JAWT531'
-          const workspaceName = 'code-sample'
+          const workspaceName = `code-sample-${generateRandomSuffix()}`
           let filePath
           const foundOnNetworks = []
           const endpoint = params.endpoint || 'api.etherscan.io'
@@ -211,8 +276,14 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
     const lifecycle = Registry.getInstance().get('lifecycle').api
     let workspaces = []
     if (!(Registry.getInstance().get('platform').api.isDesktop())) {
-      workspaces = await getWorkspaces() || []
+      const allWorkspaces = await getWorkspaces() || []
+
+      // Filter out code-sample workspaces - these should never be used or displayed
+      workspaces = allWorkspaces.filter(ws => !isCodeSampleWorkspace(ws.name))
       dispatch(setWorkspaces(workspaces))
+
+      // Clean up temporary code-sample workspaces from previous sessions (non-blocking)
+      cleanupCodeSampleWorkspaces(allWorkspaces, workspaceProvider)
     }
     if (params.gist) {
       const name = 'gist ' + params.gist
@@ -221,9 +292,10 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
       dispatch(setCurrentWorkspace({ name, isGitRepo: false }))
       await loadWorkspacePreset('gist-template')
     } else if (params.code || params.url || params.shareCode || params.ghfolder) {
-      await createWorkspaceTemplate('code-sample', 'code-template')
-      plugin.setWorkspace({ name: 'code-sample', isLocalhost: false })
-      dispatch(setCurrentWorkspace({ name: 'code-sample', isGitRepo: false }))
+      const workspaceName = `code-sample-${generateRandomSuffix()}`
+      await createWorkspaceTemplate(workspaceName, 'code-template')
+      plugin.setWorkspace({ name: workspaceName, isLocalhost: false })
+      dispatch(setCurrentWorkspace({ name: workspaceName, isGitRepo: false }))
       const filePath = await loadWorkspacePreset('code-template')
       lifecycle.when(all('EDITOR_MOUNTED', 'WORKSPACE_INITIALIZED'), async () => {
         await plugin.fileManager.openFile(filePath)
@@ -236,7 +308,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         let data
         let count = 0
         try {
-          const workspaceName = 'code-sample'
+          const workspaceName = `code-sample-${generateRandomSuffix()}`
           let filePath
           const target = `/${blockscoutUrl}/${contractAddress}`
 
@@ -266,7 +338,7 @@ export const initWorkspace = (filePanelPlugin) => async (reducerDispatch: React.
         try {
           let etherscanKey = await plugin.call('config', 'getAppParameter', 'etherscan-access-token')
           if (!etherscanKey) etherscanKey = '2HKUX5ZVASZIKWJM8MIQVCRUVZ6JAWT531'
-          const workspaceName = 'code-sample'
+          const workspaceName = `code-sample-${generateRandomSuffix()}`
           let filePath
           const foundOnNetworks = []
           const endpoint = params.endpoint || 'api.etherscan.io'
