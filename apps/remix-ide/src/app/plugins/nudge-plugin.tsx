@@ -276,9 +276,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:not_logged_in', 'config:registration_open', 'config:login_enabled'),
       action: {
         type: 'widget',
-        title: 'Unlock the full experience',
+        title: 'Unlock the Full Experience',
         message: 'Create a free account to access AI code assistance, Cloud Workspaces, premium models, and more.',
-        actionLabel: 'Sign up',
+        actionLabel: 'Sign Up',
         actionTarget: 'membershipRequest::showRequestForm::beta',
         icon: 'fas fa-user-plus',
         widgetColor: '#3498db',
@@ -294,9 +294,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:not_logged_in', 'config:invite_only', 'config:login_enabled'),
       action: {
         type: 'widget',
-        title: 'Join the Beta program',
-        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDapp — free for beta testers.',
-        actionLabel: 'Apply for access',
+        title: 'Join the Beta Program',
+        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDApp — free for Beta Testers.',
+        actionLabel: 'Apply for Access',
         actionTarget: 'membershipRequest::showRequestForm::beta',
         icon: 'fas fa-rocket',
         widgetColor: '#2fbfb1',
@@ -315,8 +315,8 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Welcome to Remix Beta',
-        message: 'You\'ve unlocked premium AI models, MCP Integrations, cloud sync, and QuickDapp. Tap to take a quick tour.',
-        actionLabel: 'Take the tour',
+        message: 'You\'ve unlocked premium AI models, MCP Integrations, cloud sync, and QuickDApp. Tap to take a quick tour.',
+        actionLabel: 'Take the Tour',
         actionTarget: 'helpPlugin::showModal::beta-reel',
         icon: 'fas fa-sparkles',
         widgetColor: '#2fbfb1',
@@ -332,9 +332,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:logged_in_beta', 'ai:chat_opened'),
       action: {
         type: 'widget',
-        title: 'Try a premium model',
+        title: 'Try a Premium Model',
         message: 'You have access to Claude Opus — it excels at complex Solidity patterns and audits.',
-        actionLabel: 'Learn more',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::beta-info',
         icon: CLAUDE_SVG,
         widgetColor: '#7289da',
@@ -352,7 +352,7 @@ export class NudgePlugin extends Plugin {
         type: 'widget',
         title: 'Try Cloud Workspaces',
         message: 'Your projects are only stored locally. Enable cloud sync to access them from any device, anytime.',
-        actionLabel: 'Learn more',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::cloud',
         icon: 'fas fa-cloud-upload-alt',
         widgetColor: '#1abc9c',
@@ -362,15 +362,15 @@ export class NudgePlugin extends Plugin {
       priority: 9
     })
 
-    // MCP tools — triggers when user opens AI chat (they'll likely want on-chain data)
+    // MCP Tools — triggers when user opens AI chat (they'll likely want on-chain data)
     this.engine_.addRule({
       id: 'try-mcp-tools',
       condition: all('user:logged_in_beta', 'ai:chat_opened'),
       action: {
         type: 'widget',
-        title: 'AI with superpowers',
+        title: 'AI with Superpowers',
         message: 'Your AI assistant connects to Alchemy, Etherscan, The Graph, and more through MCP — ask it to fetch on-chain data or verify contracts directly in chat.',
-        actionLabel: 'Learn more',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::mcp',
         icon: MCP_SVG,
         widgetColor: '#8b5cf6',
@@ -380,15 +380,15 @@ export class NudgePlugin extends Plugin {
       priority: 8
     })
 
-    // QuickDapp — triggers when user compiles a contract successfully
+    // QuickDApp — triggers when user compiles a contract successfully
     this.engine_.addRule({
       id: 'try-quickdapp',
       condition: all('user:logged_in_beta', 'contract:compiled'),
       action: {
         type: 'widget',
-        title: 'Try QuickDapp',
-        message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no frontend code needed.',
-        actionLabel: 'Learn more',
+        title: 'Try QuickDApp',
+        message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no front-end code needed.',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::quickdapp',
         icon: 'fas fa-rocket',
         widgetColor: '#e67e22',
@@ -406,7 +406,7 @@ export class NudgePlugin extends Plugin {
         type: 'widget',
         title: 'Cloud Workspaces',
         message: 'Your projects are only stored locally. Enable cloud sync to access them anywhere.',
-        actionLabel: 'Learn more',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::cloud',
         icon: 'fas fa-cloud-upload-alt'
       },
@@ -420,9 +420,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:logged_in_beta', 'editor:solidity_active'),
       action: {
         type: 'widget',
-        title: 'AI knows Solidity',
-        message: 'Ask the AI assistant to explain, audit, or optimize your contract. It understands your project context through MCP.',
-        actionLabel: 'Learn more',
+        title: 'RemixAI Knows Solidity',
+        message: 'Ask RemixAI to explain, audit, or optimize your contract. It understands your project context through MCP.',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::mcp',
         icon: 'fas fa-robot',
         widgetColor: '#27ae60',
@@ -438,9 +438,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:logged_in_beta', 'contract:deployed'),
       action: {
         type: 'widget',
-        title: 'Build a dApp from this',
-        message: 'You just deployed a contract — generate a QuickDapp to get an instant frontend for interacting with it.',
-        actionLabel: 'Learn more',
+        title: 'Build a DApp from This',
+        message: 'You just deployed a contract — now generate a dApp to get an instant front-end to interact with it.',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::quickdapp',
         icon: 'fas fa-magic',
         widgetColor: '#9b59b6',
@@ -458,9 +458,9 @@ export class NudgePlugin extends Plugin {
       condition: all('ai:chat_while_logged_out', 'config:invite_only'),
       action: {
         type: 'widget',
-        title: 'Unlock premium AI models',
+        title: 'Unlock Premium AI Models',
         message: 'You\'re using the free tier. Sign up to access Claude Opus, GPT-4, and MCP-powered tools for deeper contract analysis.',
-        actionLabel: 'Sign up free',
+        actionLabel: 'Sign Up Free',
         actionTarget: 'membershipRequest::showRequestForm::beta',
         icon: CLAUDE_SVG,
         widgetColor: '#7289da',
@@ -478,9 +478,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:logged_in_beta', 'ai:workspace_generated'),
       action: {
         type: 'widget',
-        title: 'Save this to the cloud',
+        title: 'Save This to the Cloud',
         message: 'Your AI-generated workspace is local only. Did you know you can sync it to the cloud and access it from anywhere?',
-        actionLabel: 'Learn more',
+        actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::cloud',
         icon: 'fas fa-cloud-upload-alt',
         widgetColor: '#1abc9c',
@@ -496,9 +496,9 @@ export class NudgePlugin extends Plugin {
       condition: all('user:logged_in_beta', 'ai:chat_message', 'editor:solidity_active'),
       action: {
         type: 'widget',
-        title: 'Quick tip: Explain code',
-        message: 'Right-click any code and select "Explain this" — the AI will break it down for you instantly.',
-        actionLabel: 'Got it',
+        title: 'Quick Tip: Explain Code',
+        message: 'Right-click any code and select "Explain this" — RemixAI will break it down for you instantly.',
+        actionLabel: 'Got It',
         actionTarget: '',
         icon: 'fas fa-lightbulb',
         widgetColor: '#f39c12',

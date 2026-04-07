@@ -86,7 +86,7 @@ interface FeatureChip {
 
 const FEATURES: FeatureChip[] = [
   {
-    name: "Advanced AI models",
+    name: "Advanced AI Models",
     desc: "Sonnet 4.6, Opus, Codestral — free",
     iconColor: c.pu,
     iconBg: "rgba(155,125,255,0.1)",
@@ -110,7 +110,7 @@ const FEATURES: FeatureChip[] = [
     ),
   },
   {
-    name: "QuickDApp builder",
+    name: "QuickDApp Builder",
     desc: "AI frontend + IPFS hosting",
     iconColor: c.gn,
     iconBg: "rgba(107,219,138,0.1)",
@@ -123,7 +123,7 @@ const FEATURES: FeatureChip[] = [
   },
   {
     name: "Cloud Workspaces",
-    desc: "Sync, access from any device",
+    desc: "Sync and access from any device",
     iconColor: c.cy,
     iconBg: "rgba(47,191,177,0.1)",
     icon: (
@@ -147,7 +147,7 @@ interface WhyCard {
 
 const WHY_CARDS: WhyCard[] = [
   {
-    title: "First access",
+    title: "First Access",
     desc: "Try features before anyone else",
     iconColor: c.cy,
     iconBg: "rgba(47,191,177,0.1)",
@@ -158,7 +158,7 @@ const WHY_CARDS: WhyCard[] = [
     ),
   },
   {
-    title: "Direct line",
+    title: "Direct Line",
     desc: "Feedback goes to the core team",
     iconColor: c.pu,
     iconBg: "rgba(155,125,255,0.1)",
@@ -380,7 +380,7 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
                 fontSize: 24, fontWeight: 500, color: c.tx, lineHeight: 1.25, marginBottom: 8,
               }}
             >
-              Help us build the{" "}
+              Help Us Build the{" "}
               <span
                 style={{
                   background: `linear-gradient(90deg, ${c.cy}, ${c.bl}, ${c.pu}, ${c.cy})`,
@@ -390,11 +390,11 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
                   animation: "bjShimmer 4s linear infinite",
                 }}
               >
-                future of Web3 tooling
+                Future of Web3 Tooling
               </span>
             </div>
             <div style={{ position: "relative", zIndex: 2, fontSize: 14, color: c.tm, lineHeight: 1.5 }}>
-              Join the Remix v2 private beta. Be the first to test new features, break things, and tell us what to build next.
+              Join the Remix v2 Private Beta. Be the first to test new features, break things, and tell us what to build next.
             </div>
           </div>
 
@@ -546,7 +546,7 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
               </div>
             )}
             <div style={{ textAlign: "center", fontSize: 11, color: c.td, marginTop: 10, lineHeight: 1.4 }}>
-              Free to join. Free to leave anytime. About a month of testing.
+              Free to join. Free to leave anytime. Around a month of testing.
             </div>
           </div>
 

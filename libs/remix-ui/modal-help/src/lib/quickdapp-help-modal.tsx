@@ -262,7 +262,7 @@ const StepDeploy: React.FC = () => (
       iconColor={c.bl} iconBg="rgba(91,156,245,0.1)"
       icon={<ClockSmall color={c.bl} />}
       name="Already deployed?"
-      desc='Click "Create a dapp with your contracts" in the editor banner — it detects your deployed contracts automatically.'
+      desc='Click "Create a dApp with your contracts" in the editor banner — it detects your deployed contracts automatically.'
     />
     <Separator />
     <DetailRow
@@ -377,8 +377,8 @@ const StepGenerate: React.FC = () => (
     <DetailRow
       iconColor={c.bl} iconBg="rgba(91,156,245,0.1)"
       icon={<CircleSmall color={c.bl} />}
-      name="Creates a new workspace"
-      desc="A dedicated workspace is created for your DApp with all generated files — HTML, JS, CSS, everything."
+      name="Creates a new Workspace"
+      desc="A dedicated Workspace is created for your dApp with all generated files — HTML, JS, CSS, everything."
     />
     <Separator />
     <DetailRow
@@ -392,7 +392,7 @@ const StepGenerate: React.FC = () => (
       iconColor={c.am} iconBg="rgba(240,160,48,0.1)"
       icon={<WarnSmall color={c.am} />}
       name="Can take up to 2 minutes"
-      desc='The AI model builds the full frontend. You&apos;ll see "Calling AI model..." while it works.'
+      desc='The AI model builds the full front-end. You&apos;ll see "Calling AI model..." while it works.'
     />
   </div>
 );
@@ -403,7 +403,7 @@ const StepPreview: React.FC = () => (
       iconColor={c.gn} iconBg="rgba(107,219,138,0.1)"
       icon={<BoxSmall color={c.gn} />}
       name="Live preview with wallet connection"
-      desc="Interact with your DApp right inside Remix. Connect a wallet and test transactions."
+      desc="Interact with your dApp right inside Remix. Connect a wallet and test transactions."
     />
     <Separator />
     <DetailRow
@@ -417,7 +417,7 @@ const StepPreview: React.FC = () => (
       iconColor={c.cy} iconBg="rgba(47,191,177,0.1)"
       icon={<DownSmall color={c.cy} />}
       name="Deploy to IPFS and register it under an ENS subdomain"
-      desc="One click to publish your DApp permanently. Get a shareable link anyone can use, then register it under an ENS subdomain."
+      desc="One click to publish your dApp permanently. Get a shareable link anyone can use, then register it under an ENS subdomain."
     />
     {/* Mini preview mockup */}
     <div
@@ -624,7 +624,7 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
                   border: "0.5px solid rgba(107,219,138,0.25)",
                 }}
               >
-                Beta perk
+                Beta Perk
               </span>
             </h2>
             <CloseButton onClick={handleClose} />
@@ -632,7 +632,7 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
 
           {/* ── Subtitle ── */}
           <div style={{ padding: "10px 24px 0", fontSize: 13, color: c.tm, lineHeight: 1.6 }}>
-            Turn any deployed contract into a full DApp UI. AI generates the frontend — you just describe what you want.
+            Turn any deployed contract into a full dApp UI. RemixAI generates the front-end — you just describe what you want.
           </div>
 
           {/* ── Pipeline ── */}
@@ -724,7 +724,7 @@ const QuickDAppHelpModal: React.FC<QuickDAppHelpModalProps> = ({
                   <rect x="3" y="3" width="10" height="10" rx="2" />
                   <path d="M7 7l3 2-3 2" />
                 </svg>
-                Contract to DApp in minutes
+                Contract to dApp in minutes
               </span>
             </div>
             <GotItButton onClick={handleGotIt} />

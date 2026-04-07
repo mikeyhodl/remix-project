@@ -284,7 +284,7 @@ const SuccessModal: React.FC<{
                 <>
                   <p className="invite-modal-success-message" style={{ fontSize: '0.92rem', lineHeight: 1.6 }}>
                     You've been selected to join the <strong>Remix v2 Private Beta Testing Program</strong>!
-                    You are now part of an exclusive group of developers who will shape the future of Remix.
+                    You are now part of an exclusive group of builders who will shape the future of Remix.
                   </p>
                   <div className="invite-modal-section">
                     <h6 className="invite-modal-section-label">WHAT'S NOW UNLOCKED FOR YOU</h6>
@@ -299,7 +299,7 @@ const SuccessModal: React.FC<{
                       </div>
                       <div className="invite-modal-perk">
                         <i className="fas fa-palette invite-modal-perk-icon"></i>
-                        <span>QuickDapp Builder</span>
+                        <span>QuickDApp Builder</span>
                       </div>
                       <div className="invite-modal-perk">
                         <i className="fas fa-rocket invite-modal-perk-icon"></i>
@@ -312,8 +312,8 @@ const SuccessModal: React.FC<{
                       <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
                     </div>
                     <div className="invite-modal-walkthrough-text">
-                      <strong>You're special!</strong>
-                      <span>As a beta tester your feedback will directly influence the product. Thank you for helping us build the future of Remix!</span>
+                      <strong>You're needed here!</strong>
+                      <span>As a Beta Tester your feedback will directly influence the product. Thank you for helping us build the future of Remix!</span>
                     </div>
                   </div>
                 </>

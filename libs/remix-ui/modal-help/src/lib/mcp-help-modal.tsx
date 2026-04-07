@@ -102,7 +102,7 @@ const SERVICES: ServiceConfig[] = [
     desc: "Interactive Solidity lessons — learn by deploying and calling real contracts step by step.",
     example: '"Start a lesson on ERC-721 basics"',
     prompt:
-      "Start an ethSkills lesson on ERC-721 NFT basics — walk me through creating and minting my first NFT contract",
+      "Start an ethSkills lesson on ERC-721 NFT basics. Walk me through creating and minting my first NFT contract",
     mockReply:
       'Loading <span class="hlc">ERC-721 lesson</span> from ethSkills...\n\n' +
       "Lesson 1: Your first NFT contract\n\n" +
@@ -570,7 +570,7 @@ const McpHelpModal: React.FC<McpHelpModalProps> = ({
 
           {/* ── Subtitle ── */}
           <div style={{ padding: "8px 24px 0", fontSize: 13, color: c.tm, lineHeight: 1.6 }}>
-            Your AI assistant can now query on-chain data, verify contracts, and search subgraphs in real time. Click any service below to try it.
+            The RemixAI Assistant can now query on-chain data, verify contracts, and search subgraphs in real time. Click any service below to try it.
           </div>
 
           {/* ── Flow diagram ── */}
