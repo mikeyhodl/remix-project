@@ -222,7 +222,7 @@ tape('NudgeEngine: addRulesFromJSON deserializes and activates', (t) => {
 
   engine.addRulesFromJSON([{
     id: 'from-api',
-    condition: { all: ['user:logged_in', 'feature:new_compiler'] },
+    condition: { all: ['user:logged_in', 'feature:new_compiler']},
     action: { type: 'modal', message: 'New compiler available!', actionLabel: 'Try it' },
     showOnce: false
   }])
