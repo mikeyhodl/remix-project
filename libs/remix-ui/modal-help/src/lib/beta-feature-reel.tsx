@@ -65,7 +65,7 @@ const FEATURES: Feature[] = [
     tagColor: "#5b9cf5",
     vizBg: "linear-gradient(135deg, #1a2640, #1a1a30)",
     headline: "Alchemy, Etherscan, The Graph, ethSkills",
-    desc: "MCP-connected tools bring on-chain data, verification, subgraph queries, and interactive Solidity lessons directly into your workflow.",
+    desc: "MCP-connected tools bring on-chain data, verification, Subgraph queries, and interactive Solidity lessons directly into your workflow.",
     btn: "Explore MCP plugins",
     visual: "mcp",
   },
