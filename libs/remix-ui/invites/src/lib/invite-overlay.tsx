@@ -313,7 +313,7 @@ const SuccessModal: React.FC<{
                     </div>
                     <div className="invite-modal-walkthrough-text">
                       <strong>You're special!</strong>
-                      <span>As a beta tester your feedback will directly influence the product. Thank you for helping us build the future of Remix!</span>
+                      <span>As a Beta Tester your feedback will directly influence the product. Thank you for helping us build the future of Remix!</span>
                     </div>
                   </div>
                 </>

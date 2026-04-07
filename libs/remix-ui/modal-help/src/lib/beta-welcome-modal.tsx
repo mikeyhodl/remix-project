@@ -93,7 +93,7 @@ const FEATURES: FeatureConfig[] = [
   },
   {
     key: "quickdapp",
-    name: "QuickDApp builder",
+    name: "QuickDApp Builder",
     desc: "Contract to frontend in minutes",
     iconColor: c.gn,
     iconBg: "rgba(107,219,138,0.1)",
@@ -534,7 +534,7 @@ const BetaWelcomeModal: React.FC<BetaWelcomeModalProps> = ({
               <svg width="14" height="14" viewBox="0 0 16 16" fill={c.pk} stroke="none">
                 <path d="M8 14s-5.5-3.5-5.5-7A3 3 0 018 5a3 3 0 015.5 2c0 3.5-5.5 7-5.5 7z" />
               </svg>
-              Thank you for being a beta tester
+              Thank you for being a Beta Tester
             </div>
           </div>
         </div>

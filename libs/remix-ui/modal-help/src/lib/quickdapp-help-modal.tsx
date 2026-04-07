@@ -377,8 +377,8 @@ const StepGenerate: React.FC = () => (
     <DetailRow
       iconColor={c.bl} iconBg="rgba(91,156,245,0.1)"
       icon={<CircleSmall color={c.bl} />}
-      name="Creates a new workspace"
-      desc="A dedicated workspace is created for your DApp with all generated files — HTML, JS, CSS, everything."
+      name="Creates a new Workspace"
+      desc="A dedicated Workspace is created for your DApp with all generated files — HTML, JS, CSS, everything."
     />
     <Separator />
     <DetailRow

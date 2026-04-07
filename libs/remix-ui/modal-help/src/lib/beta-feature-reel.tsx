@@ -55,7 +55,7 @@ const FEATURES: Feature[] = [
     tag: "AI models",
     tagColor: "#9b7dff",
     vizBg: "linear-gradient(135deg, #2a1a40, #1a1a3a)",
-    headline: "Advanced AI models — free for beta testers",
+    headline: "Advanced AI models — free for Beta tTsters",
     desc: "Claude Sonnet 4.6 is your default. Switch to Opus 4.6 for complex audits or Codestral for fast code generation. All free with fair usage rate limits.",
     btn: "",
     visual: "models",

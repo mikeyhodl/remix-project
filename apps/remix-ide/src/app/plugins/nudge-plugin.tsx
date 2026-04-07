@@ -295,7 +295,7 @@ export class NudgePlugin extends Plugin {
       action: {
         type: 'widget',
         title: 'Join the Beta program',
-        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDapp — free for beta testers.',
+        message: 'Get early access to advanced AI models, Cloud Workspaces, MCP Integrations, and QuickDapp — free for Beta Testers.',
         actionLabel: 'Apply for access',
         actionTarget: 'membershipRequest::showRequestForm::beta',
         icon: 'fas fa-rocket',

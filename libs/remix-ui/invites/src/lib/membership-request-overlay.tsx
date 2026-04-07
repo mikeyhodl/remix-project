@@ -284,7 +284,7 @@ const RequestFormModal: React.FC<{
                 <h5>Remix v2 Private Beta Testing Program Enrollment</h5>
                 <p className="invite-modal-muted mb-0">
                   Get early access to new Remix premium AI features, big updates to Deploy &amp; Run, and the new AI-assisted Debugger.
-                  Your participation as a beta tester will directly influence and help shape the future of Remix.
+                  Your participation as a Beta Tester will directly influence and help shape the future of Remix.
                   After this program ends, some features in this release will become part of Remix's paid subscription levels.
                 </p>
               </div>
@@ -347,7 +347,7 @@ const RequestFormModal: React.FC<{
                       <i className="fas fa-gift"></i>
                     </div>
                     <div className="invite-modal-walkthrough-text">
-                      <strong>Beta tester perk</strong>
+                      <strong>Beta Tester Perk</strong>
                       <span>Beta testers will get significant product discounts after this program concludes.</span>
                     </div>
                   </div>

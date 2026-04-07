@@ -570,7 +570,7 @@ const McpHelpModal: React.FC<McpHelpModalProps> = ({
 
           {/* ── Subtitle ── */}
           <div style={{ padding: "8px 24px 0", fontSize: 13, color: c.tm, lineHeight: 1.6 }}>
-            Your AI assistant can now query on-chain data, verify contracts, and search subgraphs in real time. Click any service below to try it.
+            The RemixAI Assistant can now query on-chain data, verify contracts, and search subgraphs in real time. Click any service below to try it.
           </div>
 
           {/* ── Flow diagram ── */}

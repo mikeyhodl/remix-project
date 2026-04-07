@@ -397,7 +397,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
 
           {/* ── Subtitle ── */}
           <div style={{ padding: "10px 24px 0", fontSize: 13, color: c.tm, lineHeight: 1.6 }}>
-                        Remix now has two kinds of workspaces. You can use both — they live side by side.
+                        Remix now has two kinds of Workspaces. You can use both — they live side by side.
           </div>
 
           {/* ── Dual cards ── */}
@@ -625,7 +625,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                   icon={<PlusBoxIcon color={c.bl} />}
                   iconBg="rgba(91,156,245,0.1)"
                   name="Create new Cloud Workspaces"
-                  desc="When cloud is enabled, you can create new workspaces directly in the cloud."
+                  desc="When cloud is enabled, you can create new Workspaces directly in the cloud."
                   right={<></>
                   }
                 />
@@ -633,7 +633,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                   icon={<UploadIcon color={c.bl} />}
                   iconBg="rgba(91,156,245,0.1)"
                   name="Migrate local workspaces"
-                  desc="Enable the cloud and use the option in the workspace dropdown to migrate anytime."
+                  desc="Enable the cloud and use the option in the Workspace dropdown to migrate anytime."
                   right={<></>
                   }
                 />
@@ -642,7 +642,7 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
                   icon={<DownloadIcon color={c.am} />}
                   iconBg="rgba(240,160,48,0.1)"
                   name="Download snapshots"
-                  desc="Save a point-in-time backup of any cloud workspace as a zip. Use the workspace dropdown to download."
+                  desc="Save a point-in-time backup of any Cloud Workspace as a zip. Use the Workspace dropdown to download."
                   right={<></>
                   }
                 />
@@ -680,8 +680,8 @@ const CloudHelpModal: React.FC<CloudHelpModalProps> = ({
             </svg>
             <span>
               <strong style={{ color: c.am, fontWeight: 500 }}>You can mix and match.</strong> Keep some
-                            workspaces local, make others cloud — it&apos;s up to you. Migration is always optional and can
-                            be done anytime from the workspace dropdown.
+                            Workspaces local, make others cloud — it&apos;s up to you. Migration is always optional and can
+                            be done anytime from the Workspace dropdown.
             </span>
           </div>
 
