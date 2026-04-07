@@ -208,7 +208,7 @@ class AppComponent {
       name: 'platform'
     })
     this.appManager = new RemixAppManager()
-    this.lifecycle = new AppLifecycle({ debug: true })
+    this.lifecycle = new AppLifecycle({ debug: false })
     this.lifecyclePlugin = new LifecyclePlugin(this.lifecycle)
     Registry.getInstance().put({ api: this.lifecycle, name: 'lifecycle' })
     this.queryParams = new QueryParams()
@@ -647,7 +647,7 @@ class AppComponent {
     this.invitationManager = new InvitationManagerPlugin()
     this.membershipRequest = new MembershipRequestPlugin()
     this.betaCornerWidget = new BetaCornerWidgetPlugin()
-    this.nudgePlugin = new NudgePlugin({ debug: true })
+    this.nudgePlugin = new NudgePlugin({ debug: false })
     this.helpPlugin = new HelpPlugin()
     const feedbackPlugin = new FeedbackPlugin()
 

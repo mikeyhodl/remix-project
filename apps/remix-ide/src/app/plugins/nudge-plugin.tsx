@@ -6,6 +6,10 @@ import type { NudgeRule, NudgeAction, SerializedNudgeRule } from '@remix-project
 import * as packageJson from '../../../../../package.json'
 import './nudge-widget.css'
 
+declare global {
+  interface Window { __IS_E2E_TEST__?: boolean }
+}
+
 /* ─── Inline SVG icons (avoids FA version issues) ─── */
 const MCP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="4.5" r="2"/><circle cx="19.5" cy="4.5" r="2"/><circle cx="4.5" cy="19.5" r="2"/><circle cx="19.5" cy="19.5" r="2"/><line x1="6.3" y1="6.3" x2="10" y2="10"/><line x1="17.7" y1="6.3" x2="14" y2="10"/><line x1="6.3" y1="17.7" x2="10" y2="14"/><line x1="17.7" y1="17.7" x2="14" y2="14"/></svg>`
 
@@ -49,10 +53,12 @@ export class NudgePlugin extends Plugin {
   dispatch: React.Dispatch<any> = () => { }
   engine_: NudgeEngine
   private state: NudgePluginState
+  debug: boolean
 
   constructor(options?: { debug?: boolean }) {
     super(profile)
-    this.engine_ = new NudgeEngine({ debug: options?.debug })
+    this.debug = options?.debug || false
+    this.engine_ = new NudgeEngine({ debug: this.debug })
     this.state = {
       activeNudge: null,
       queue: [],
@@ -65,7 +71,7 @@ export class NudgePlugin extends Plugin {
 
   async onActivation(): Promise<void> {
     // Skip all nudge logic during E2E tests — nudges overlay UI and block selectors
-    if (window['__IS_E2E_TEST__']) return
+    if (window.__IS_E2E_TEST__) return
 
     // Subscribe to nudge triggers from the engine
     this.engine_.onNudge((rule) => {
@@ -241,7 +247,7 @@ export class NudgePlugin extends Plugin {
   private async _checkBetaMembership(): Promise<void> {
     try {
       const permissions = await this.call('auth' as any, 'getAllPermissions')
-      console.log('User permissions:', permissions)
+      if(this.debug)console.log('User permissions:', permissions)
       const groups = permissions?.feature_groups || []
       if (groups.some((g: any) => g.name === 'beta')) {
         this.engine_.fire('user:logged_in_beta')
@@ -664,7 +670,7 @@ export class NudgePlugin extends Plugin {
   }
 
   render(): JSX.Element {
-    if (window['__IS_E2E_TEST__']) return null
+    if (window.__IS_E2E_TEST__) return <></>
     return (
       <div id="nudge-widget-container">
         <PluginViewWrapper plugin={this} />

@@ -304,7 +304,7 @@ export class AppLifecycle {
         try {
           listener(phase)
         } catch (e) {
-          console.error('[AppLifecycle] Listener error:', e)
+          if (this.debug) console.error('[AppLifecycle] Listener error:', e)
         }
       }
     })

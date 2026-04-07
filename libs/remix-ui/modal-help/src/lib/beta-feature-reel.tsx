@@ -370,6 +370,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
   const [animating, setAnimating] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [autoStopped, setAutoStopped] = useState(false);
 
   const count = FEATURES.length;
 
@@ -391,38 +392,43 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
 
   // Auto-advance
   useEffect(() => {
-    if (autoAdvanceMs <= 0) return;
+    if (autoAdvanceMs <= 0 || autoStopped) return;
     autoRef.current = setInterval(next, autoAdvanceMs);
     return () => {
       if (autoRef.current) clearInterval(autoRef.current);
     };
-  }, [next, autoAdvanceMs]);
+  }, [next, autoAdvanceMs, autoStopped]);
+
+  const stopAuto = useCallback(() => {
+    if (autoRef.current) clearInterval(autoRef.current);
+    setAutoStopped(true);
+  }, []);
 
   const pauseAuto = useCallback(() => {
     if (autoRef.current) clearInterval(autoRef.current);
   }, []);
 
   const resumeAuto = useCallback(() => {
-    if (autoAdvanceMs <= 0) return;
+    if (autoAdvanceMs <= 0 || autoStopped) return;
     if (autoRef.current) clearInterval(autoRef.current);
     autoRef.current = setInterval(next, autoAdvanceMs);
-  }, [next, autoAdvanceMs]);
+  }, [next, autoAdvanceMs, autoStopped]);
 
   // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") {
-        pauseAuto();
+        stopAuto();
         next();
       }
       if (e.key === "ArrowLeft") {
-        pauseAuto();
+        stopAuto();
         prev();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [next, prev, pauseAuto]);
+  }, [next, prev, stopAuto]);
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
@@ -503,7 +509,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
               {FEATURES.map((_, i) => (
                 <div
                   key={i}
-                  onClick={() => goTo(i)}
+                  onClick={() => { stopAuto(); goTo(i); }}
                   style={{
                     width: i === current ? 28 : 20,
                     height: 3,
@@ -632,7 +638,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
 
         {/* ── Navigation ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <NavArrow direction="left" onClick={prev} />
+          <NavArrow direction="left" onClick={() => { stopAuto(); prev(); }} />
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
@@ -642,7 +648,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
           >
             {current + 1} / {count}
           </span>
-          <NavArrow direction="right" onClick={next} />
+          <NavArrow direction="right" onClick={() => { stopAuto(); next(); }} />
         </div>
       </div>
     </>
