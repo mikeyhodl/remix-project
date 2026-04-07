@@ -115,12 +115,8 @@ module.exports = {
       .waitForElementNotPresent('*[data-shared="tooltipPopup"]', 10000)
       .click('*[data-id="github-dropdown-toggle"]')
     
-      .waitForElementPresent('*[data-id="github-dropdown-item-publish-to-gist"]')
-      .click('*[data-id="github-dropdown-item-publish-to-gist"]')
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]')
-      .assert.containsText('[data-id="fileSystemModalDialogModalBody-react"]', 'Remix requires an access token (which includes gists creation permission). Please go to the settings tab to create one.')
-      .waitForElementPresent('[data-id="fileSystemModalDialogModalFooter-react"] .modal-ok')
-      .click('[data-id="fileSystemModalDialogModalFooter-react"] .modal-ok')
+      .waitForElementNotPresent('*[data-id="github-dropdown-item-publish-to-gist"]')
+
   },
 
   'Import From Gist For Valid Gist ID #group2': '' + function (browser: NightwatchBrowser) {
