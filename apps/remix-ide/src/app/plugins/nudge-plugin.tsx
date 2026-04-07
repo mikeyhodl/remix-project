@@ -64,6 +64,9 @@ export class NudgePlugin extends Plugin {
     /* ─── Lifecycle ─── */
 
     async onActivation(): Promise<void> {
+        // Skip all nudge logic during E2E tests — nudges overlay UI and block selectors
+        if (window['__IS_E2E_TEST__']) return
+
         // Subscribe to nudge triggers from the engine
         this.engine_.onNudge((rule) => {
             if (rule.action.type === 'hint') {
@@ -141,6 +144,65 @@ export class NudgePlugin extends Plugin {
         // AI model changed
         this.on('remixAI', 'modelChanged', (modelId: string) => {
             this.engine_.fire('ai:model_changed')
+        })
+
+        // User sent a chat message
+        this.on('remixAI', 'chatMessageSent', () => {
+            this.engine_.fire('ai:chat_message')
+            // Fire a real-time auth check event for unauthenticated nudges
+            // (can't rely on accumulated 'user:not_logged_in' — it fires on load before auth resolves)
+            this.call('auth' as any, 'isAuthenticated').then((isAuth: boolean) => {
+                if (!isAuth) this.engine_.fire('ai:chat_while_logged_out')
+            }).catch(() => {})
+        })
+
+        // User requested code explanation (right-click → "Explain")
+        this.on('remixAI', 'codeExplainRequested', () => {
+            this.engine_.fire('ai:code_explain')
+        })
+
+        // User requested error explanation
+        this.on('remixAI', 'errorExplainRequested', () => {
+            this.engine_.fire('ai:error_explain')
+        })
+
+        // User ran a vulnerability / security check
+        this.on('remixAI', 'vulnerabilityCheckRequested', () => {
+            this.engine_.fire('ai:security_check')
+        })
+
+        // AI-generated workspace created
+        this.on('remixAI', 'workspaceGenerated', () => {
+            this.engine_.fire('ai:workspace_generated')
+        })
+
+        // MCP toggled on/off
+        this.on('remixAI', 'mcpEnabled', () => {
+            this.engine_.fire('ai:mcp_enabled')
+        })
+        this.on('remixAI', 'mcpDisabled', () => {
+            this.engine_.fire('ai:mcp_disabled')
+        })
+
+        // Git operations
+        this.on('dgitApi' as any, 'commit', () => {
+            this.engine_.fire('git:committed')
+        })
+        this.on('dgitApi' as any, 'clone', () => {
+            this.engine_.fire('git:cloned')
+        })
+        this.on('dgitApi' as any, 'init', () => {
+            this.engine_.fire('git:initialized')
+        })
+
+        // File saved
+        this.on('fileManager', 'fileSaved', (path: string) => {
+            this.engine_.fire('file:saved')
+        })
+
+        // Credits updated
+        this.on('auth' as any, 'creditsUpdated', () => {
+            this.engine_.fire('user:credits_updated')
         })
     }
 
@@ -375,6 +437,64 @@ export class NudgePlugin extends Plugin {
             priority: 8
         })
 
+        /* ─── Unauthenticated AI nudges — show login prompt after AI engagement ─── */
+
+        // User chatted but isn't logged in — nudge to sign up for better models
+        this.engine_.addRule({
+            id: 'signup-after-chat',
+            condition: all('ai:chat_while_logged_out', 'config:invite_only'),
+            action: {
+                type: 'widget',
+                title: 'Unlock premium AI models',
+                message: 'You\'re using the free tier. Sign up to access Claude Opus, GPT-4, and MCP-powered tools for deeper contract analysis.',
+                actionLabel: 'Sign up free',
+                actionTarget: 'membershipRequest::showRequestForm::beta',
+                icon: CLAUDE_SVG,
+                widgetColor: '#7289da',
+                widgetBg: 'rgba(114, 137, 218, 0.1)'
+            },
+            showOnce: true,
+            priority: 13
+        })
+
+        /* ─── Authenticated — AI engagement nudges ─── */
+
+        // After AI generates a workspace, suggest cloud sync
+        this.engine_.addRule({
+            id: 'cloud-after-ai-workspace',
+            condition: all('user:logged_in_beta', 'ai:workspace_generated'),
+            action: {
+                type: 'widget',
+                title: 'Save this to the cloud',
+                message: 'Your AI-generated workspace is local only. Did you know you can sync it to the cloud and access it from anywhere?',
+                actionLabel: 'Learn more',
+                actionTarget: 'helpPlugin::showModal::cloud',
+                icon: 'fas fa-cloud-upload-alt',
+                widgetColor: '#1abc9c',
+                widgetBg: 'rgba(26, 188, 156, 0.1)'
+            },
+            showOnce: true,
+            priority: 8
+        })
+
+        // After chatting a few times, hint about code explain shortcut
+        this.engine_.addRule({
+            id: 'hint-code-explain',
+            condition: all('user:logged_in_beta', 'ai:chat_message', 'editor:solidity_active'),
+            action: {
+                type: 'widget',
+                title: 'Quick tip: Explain code',
+                message: 'Right-click any code and select "Explain this" — the AI will break it down for you instantly.',
+                actionLabel: 'Got it',
+                actionTarget: '',
+                icon: 'fas fa-lightbulb',
+                widgetColor: '#f39c12',
+                widgetBg: 'rgba(243, 156, 18, 0.08)'
+            },
+            showOnce: true,
+            priority: 5
+        })
+
         /* ─── Hint decorations (pulsating dots / glows on UI elements) ─── */
 
     }
@@ -590,7 +710,7 @@ function NudgeWidgetUI({ state, onAction, onDismiss, onDismissPermanent, onDecor
 
                     <div
                         className="nudge-widget-body"
-                        onClick={() => nudge.action.actionTarget && onAction(nudge.action.actionTarget)}
+                        onClick={() => onAction(nudge.action.actionTarget || '')}
                     >
                         {nudge.action.icon && (
                             <div className="nudge-widget-illustration">

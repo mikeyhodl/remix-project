@@ -32,6 +32,7 @@ export class HelpPlugin extends ViewPlugin {
 
   async onActivation(): Promise<void> {
     this.renderComponent()
+    
   }
 
   /* ─── Public API ─── */
@@ -41,6 +42,7 @@ export class HelpPlugin extends ViewPlugin {
     this._activeModal = topic
     this.renderComponent()
     this.emit('modalOpened', topic)
+
 
     // Also focus the side panel on this plugin
     try {
