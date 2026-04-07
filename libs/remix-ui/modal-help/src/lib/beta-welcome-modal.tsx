@@ -67,7 +67,7 @@ interface FeatureConfig {
 const FEATURES: FeatureConfig[] = [
   {
     key: "models",
-    name: "Advanced AI models",
+    name: "Advanced AI Models",
     desc: "Sonnet 4.6 (default), Opus, Codestral — free with rate limits",
     iconColor: c.pu,
     iconBg: "rgba(155,125,255,0.1)",
