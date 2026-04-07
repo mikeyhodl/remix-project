@@ -123,7 +123,7 @@ const FEATURES: FeatureChip[] = [
   },
   {
     name: "Cloud Workspaces",
-    desc: "Sync, access from any device",
+    desc: "Sync and access from any device",
     iconColor: c.cy,
     iconBg: "rgba(47,191,177,0.1)",
     icon: (
@@ -546,7 +546,7 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
               </div>
             )}
             <div style={{ textAlign: "center", fontSize: 11, color: c.td, marginTop: 10, lineHeight: 1.4 }}>
-              Free to join. Free to leave anytime. About a month of testing.
+              Free to join. Free to leave anytime. Around a month of testing.
             </div>
           </div>
 
