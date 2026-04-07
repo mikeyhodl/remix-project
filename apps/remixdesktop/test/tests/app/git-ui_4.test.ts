@@ -67,7 +67,7 @@ const tests = {
             .setValue('*[data-id="githubEmail"]', 'git@example.com')
             .pause(1000)
             .click('*[data-id="saveGitHubCredentials"]')
-            .pause(1000)r')
+            .pause(1000)
 
     },
 
