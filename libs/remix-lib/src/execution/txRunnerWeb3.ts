@@ -106,7 +106,7 @@ export class TxRunnerWeb3 {
   }
 
   async broadcastTx (tx, resp, isCreation: boolean, isUserOp, contractAddress) {
-    this._api.emit('transactionBroadcasted', [resp, isUserOp])
+    this._api.emit('transactionBroadcasted', resp, isUserOp)
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       try {
