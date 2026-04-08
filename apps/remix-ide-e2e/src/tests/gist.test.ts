@@ -8,9 +8,7 @@ const testData = {
 }
 // 99266d6da54cc12f37f11586e8171546c7700d67
 
-module.exports = {}
-
-const test = {
+module.exports = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
     init(browser, done)
