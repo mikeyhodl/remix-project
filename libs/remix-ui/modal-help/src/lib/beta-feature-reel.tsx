@@ -70,7 +70,7 @@ const FEATURES: Feature[] = [
     visual: "mcp",
   },
   {
-    tag: "Cloud storage",
+    tag: "Cloud Storage",
     tagColor: "#5b9cf5",
     vizBg: "linear-gradient(135deg, #1a2a3a, #1a2040)",
     headline: "Your Workspaces, Always Available",
@@ -581,7 +581,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
               }}
             >
               <i className="fab fa-discord" style={{ fontSize: 13, color: '#5865F2' }} />
-              Joins the Discord Beta Feedback Channel
+              Join the Discord Beta Feedback Channel
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
