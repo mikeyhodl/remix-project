@@ -206,10 +206,20 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
           <span className="help-panel-header-dot" />
           Beta Guides
         </div>
-        <p className="help-panel-header-sub">
-          Deep dives into every feature unlocked for you.
-        </p>
+        <button
+          className="help-panel-discord-btn"
+          onClick={() => {
+            trackMatomoEvent({ category: 'help', action: 'betaLinkClicked', name: 'discord', isClick: true })
+            window.open('https://discord.gg/TWfKkZVwJW', '_blank')
+          }}
+        >
+          <i className="fab fa-discord"></i>
+          Beta Feedback
+        </button>
       </div>
+      <p className="help-panel-header-sub">
+        Deep dives into every feature unlocked for you.
+      </p>
 
       {/* Topic cards */}
       <div className="help-panel-topics">

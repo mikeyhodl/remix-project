@@ -15,6 +15,9 @@
 .help-panel-header {
   padding: 20px 16px 12px;
   border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .help-panel-header-badge {
@@ -47,9 +50,37 @@
 
 .help-panel-header-sub {
   margin: 8px 0 0;
+  padding: 0 16px;
   font-size: 12px;
   color: var(--secondary, #8888aa);
   line-height: 1.5;
+}
+
+.help-panel-discord-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 0.5px solid rgba(88, 101, 242, 0.3);
+  background: rgba(88, 101, 242, 0.1);
+  color: #b8bfff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.help-panel-discord-btn:hover {
+  background: rgba(88, 101, 242, 0.22);
+  border-color: rgba(88, 101, 242, 0.5);
+  color: #fff;
+}
+
+.help-panel-discord-btn i {
+  font-size: 13px;
+  color: #5865F2;
 }
 
 /* ── Topic cards ── */
