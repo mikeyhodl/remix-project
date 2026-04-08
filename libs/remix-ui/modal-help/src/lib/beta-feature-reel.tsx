@@ -330,8 +330,6 @@ const QuickDAppVisual: React.FC = () => (
   </div>
 );
 
-
-
 const CommunityVisual: React.FC = () => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, position: "relative" }}>
     {/* Central Discord icon */}
