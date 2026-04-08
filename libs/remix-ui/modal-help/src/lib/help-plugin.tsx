@@ -310,7 +310,7 @@ const HelpModalOverlay: React.FC<{
         onLink={(link) => {
           trackMatomoEvent({ category: 'help', action: 'betaLinkClicked', name: link, isClick: true })
           switch (link) {
-          case 'discord': window.open('https://discord.com/invite/9bw6pMWEAw', '_blank'); break
+          case 'discord': window.open('https://discord.gg/TWfKkZVwJW', '_blank'); break
           case 'docs': window.open('https://remix-ide.readthedocs.io/', '_blank'); break
           case 'blog': window.open('https://ethereumremix.substack.com/', '_blank'); break
           }

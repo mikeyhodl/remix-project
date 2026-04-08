@@ -318,6 +318,21 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
                 Help &amp; Guides
               </button>
 
+              {/* Beta Discord Channel */}
+              {hasBeta && (
+                <button
+                  className="dropdown-item user-menu-item user-menu-item--discord"
+                  onClick={() => {
+                    window.open('https://discord.gg/TWfKkZVwJW', '_blank')
+                    trackEvent('betaDiscord')
+                    setShowDropdown(false)
+                  }}
+                >
+                  <i className="fab fa-discord user-menu-item-icon" style={{ color: '#5865F2' }}></i>
+                  Beta Feedback Channel
+                </button>
+              )}
+
               <div className="dropdown-divider user-menu-divider"></div>
 
               {/* Theme Selection */}
