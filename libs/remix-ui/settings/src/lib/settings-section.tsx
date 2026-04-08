@@ -97,7 +97,7 @@ export const SettingsSectionUI: React.FC<SettingsSectionUIProps> = ({ plugin, se
   }
 
   const handleButtonClick = (buttonOptions: ButtonOptions) => {
-    if (buttonOptions.action === 'link') {
+    if (buttonOptions && buttonOptions.action === 'link') {
       window.open(buttonOptions.link, '_blank')
     }
   }
