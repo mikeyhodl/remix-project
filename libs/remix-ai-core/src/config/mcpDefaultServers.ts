@@ -29,7 +29,7 @@ export const mcpBasicServersConfig: MCPDefaultServersConfig = {
     },
     {
       name: 'The Graph API',
-      description: 'The Graph API (subgraph and token API)',
+      description: 'The Graph API (Subgraph and token API)',
       transport: 'http',
       url: endpointUrls.mcpCorsProxy + '/thegraph/mcp',
       autoStart: true,
