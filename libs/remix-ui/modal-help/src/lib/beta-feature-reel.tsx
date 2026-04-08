@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
-type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp";
+type FeatureKey = "models" | "mcp" | "cloud" | "quickdapp" | "community";
 
 interface Feature {
   tag: string;
@@ -70,7 +70,7 @@ const FEATURES: Feature[] = [
     visual: "mcp",
   },
   {
-    tag: "Cloud storage",
+    tag: "Cloud Storage",
     tagColor: "#5b9cf5",
     vizBg: "linear-gradient(135deg, #1a2a3a, #1a2040)",
     headline: "Your Workspaces, Always Available",
@@ -87,6 +87,15 @@ const FEATURES: Feature[] = [
     btn: "Learn more",
     visual: "quickdapp",
   },
+  {
+    tag: "Share your Feedback",
+    tagColor: "#5865F2",
+    vizBg: "linear-gradient(135deg, #1a1a3a, #1e1640)",
+    headline: "",
+    desc: "Join our Discord beta channel to share feedback, report issues, and shape the future of Remix — directly with the team.",
+    btn: "Join the Discord Beta Feedback Channel",
+    visual: "community",
+  },
 ];
 
 // ─── Keyframe styles (injected once) ─────────────────────────────
@@ -98,6 +107,9 @@ const KEYFRAMES = `
   @keyframes betaReelCloudBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
   @keyframes betaReelFileRise { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
   @keyframes betaReelArrowSlide { 0%, 100% { transform: translateX(0); opacity: 0.5; } 50% { transform: translateX(4px); opacity: 1; } }
+  @keyframes betaReelOrbit { 0% { transform: rotate(0deg) translateX(50px) rotate(0deg); opacity: 1; } 100% { transform: rotate(360deg) translateX(50px) rotate(-360deg); opacity: 1; } }
+  @keyframes betaReelPing { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.3); opacity: 1; } }
+  @keyframes betaReelWave { 0%, 100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-3px) rotate(8deg); } 75% { transform: translateY(2px) rotate(-4deg); } }
 `;
 
 // ─── Visual sub-components ───────────────────────────────────────
@@ -318,11 +330,52 @@ const QuickDAppVisual: React.FC = () => (
   </div>
 );
 
+const CommunityVisual: React.FC = () => (
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, position: "relative" }}>
+    {/* Central Discord icon */}
+    <div style={{ position: "relative", width: 140, height: 140, display: "flex", alignItems: "center", justifyContent: "center" }}>
+
+      {/* Center hub */}
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 16,
+          background: "rgba(88,101,242,0.15)",
+          border: "1px solid rgba(88,101,242,0.35)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          zIndex: 2,
+          animation: "betaReelPing 3s ease-in-out infinite",
+        }}
+      >
+        <i className="fab fa-discord" style={{ fontSize: 26, color: "#5865F2" }} />
+      </div>
+      {/* Glow ring */}
+      <div
+        style={{
+          position: "absolute",
+          width: 110,
+          height: 110,
+          borderRadius: "50%",
+          border: "1px dashed rgba(88,101,242,0.15)",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+      />
+    </div>
+  </div>
+);
+
 const VISUALS: Record<FeatureKey, React.FC> = {
   models: ModelsVisual,
   mcp: McpVisual,
   cloud: CloudVisual,
   quickdapp: QuickDAppVisual,
+  community: CommunityVisual,
 };
 
 // ─── NavArrow ────────────────────────────────────────────────────
@@ -502,6 +555,34 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
             >
               Beta Perk
             </span>
+            <div
+              onClick={() => window.open('https://discord.gg/TWfKkZVwJW', '_blank')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '3px 10px',
+                borderRadius: 6,
+                background: 'rgba(88,101,242,0.12)',
+                border: '0.5px solid rgba(88,101,242,0.3)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: 11,
+                fontWeight: 500,
+                color: '#b8bfff',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background = 'rgba(88,101,242,0.25)';
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(88,101,242,0.5)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background = 'rgba(88,101,242,0.12)';
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(88,101,242,0.3)';
+              }}
+            >
+              <i className="fab fa-discord" style={{ fontSize: 13, color: '#5865F2' }} />
+              Join the Discord Beta Feedback Channel
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Progress dots */}
@@ -602,7 +683,41 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
               <div style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.3, marginBottom: 4, whiteSpace: "normal", wordWrap: "break-word", overflowWrap: "break-word" }}>{feat.headline}</div>
               <div style={{ fontSize: 13, color: "#8888aa", lineHeight: 1.5, whiteSpace: "normal", wordWrap: "break-word", overflowWrap: "break-word" }}>{feat.desc}</div>
               <div style={{ marginTop: 8 }}>
-                {feat.btn && (
+                {feat.btn && feat.visual === "community" ? (
+                  <button
+                    onClick={() => window.open('https://discord.gg/TWfKkZVwJW', '_blank')}
+                    style={{
+                      background: "rgba(88,101,242,0.15)",
+                      color: "#b8bfff",
+                      border: "0.5px solid rgba(88,101,242,0.4)",
+                      padding: "8px 20px",
+                      borderRadius: 8,
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                    onMouseEnter={(e) => {
+                      const btn = e.currentTarget as HTMLButtonElement;
+                      btn.style.background = "rgba(88,101,242,0.3)";
+                      btn.style.borderColor = "#5865F2";
+                      btn.style.color = "#fff";
+                    }}
+                    onMouseLeave={(e) => {
+                      const btn = e.currentTarget as HTMLButtonElement;
+                      btn.style.background = "rgba(88,101,242,0.15)";
+                      btn.style.borderColor = "rgba(88,101,242,0.4)";
+                      btn.style.color = "#b8bfff";
+                    }}
+                  >
+                    <i className="fab fa-discord" style={{ fontSize: 15 }} />
+                    {feat.btn}
+                  </button>
+                ) : feat.btn ? (
                   <button
                     onClick={() => onAction?.(feat.visual)}
                     style={{
@@ -630,7 +745,7 @@ const BetaFeatureReel: React.FC<BetaFeatureReelProps> = ({
                   >
                     {feat.btn}
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

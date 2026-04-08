@@ -206,10 +206,20 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
           <span className="help-panel-header-dot" />
           Beta Guides
         </div>
-        <p className="help-panel-header-sub">
-          Deep dives into every feature unlocked for you.
-        </p>
+        <button
+          className="help-panel-discord-btn"
+          onClick={() => {
+            trackMatomoEvent({ category: 'help', action: 'betaLinkClicked', name: 'discord', isClick: true })
+            window.open('https://discord.gg/TWfKkZVwJW', '_blank')
+          }}
+        >
+          <i className="fab fa-discord"></i>
+          Beta Feedback
+        </button>
       </div>
+      <p className="help-panel-header-sub">
+        Deep dives into every feature unlocked for you.
+      </p>
 
       {/* Topic cards */}
       <div className="help-panel-topics">
@@ -310,7 +320,7 @@ const HelpModalOverlay: React.FC<{
         onLink={(link) => {
           trackMatomoEvent({ category: 'help', action: 'betaLinkClicked', name: link, isClick: true })
           switch (link) {
-          case 'discord': window.open('https://discord.com/invite/9bw6pMWEAw', '_blank'); break
+          case 'discord': window.open('https://discord.gg/TWfKkZVwJW', '_blank'); break
           case 'docs': window.open('https://remix-ide.readthedocs.io/', '_blank'); break
           case 'blog': window.open('https://ethereumremix.substack.com/', '_blank'); break
           }
