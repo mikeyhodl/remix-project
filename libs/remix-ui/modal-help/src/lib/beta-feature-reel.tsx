@@ -88,7 +88,7 @@ const FEATURES: Feature[] = [
     visual: "quickdapp",
   },
   {
-    tag: "Share your feedback",
+    tag: "Share your Feedback",
     tagColor: "#5865F2",
     vizBg: "linear-gradient(135deg, #1a1a3a, #1e1640)",
     headline: "",
