@@ -424,7 +424,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
             {/* Sidebar */}
             <div
               className="flex-column bg-transparent p-0 px-3 remix-settings-sidebar overflow-auto flex-shrink-0"
-              style={{ width: '25em', minWidth: '16em', height: '100%' }}
+              style={{ width: '15em', minWidth: '16em', height: '100%' }}
               data-id="settings-sidebar-nav"
             >
               <ul className="list-unstyled" data-id="settings-sidebar-nav-ul">
