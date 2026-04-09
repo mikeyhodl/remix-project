@@ -101,6 +101,8 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
     setLoadingWorkspace(null)
   }
 
+  return null
+
   return (
     <div className="justify-content-start d-flex flex-column my-5" id="hTFileSection">
       <div className="d-flex flex-column mb-5 remixui_recentworkspace">
