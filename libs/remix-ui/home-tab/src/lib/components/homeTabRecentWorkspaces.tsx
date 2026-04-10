@@ -100,7 +100,7 @@ function HomeTabRecentWorkspaces({ plugin }: HomeTabFileProps) {
     }
     setLoadingWorkspace(null)
   }
-
+  // This needs to be refactored to be compatible with cloud workspaces
   return null
 
   return (
