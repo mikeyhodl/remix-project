@@ -518,7 +518,7 @@ const BetaJoinModal: React.FC<BetaJoinModalProps> = ({
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M2 8l5 5L14 3" />
                     </svg>
-                    Join the Beta
+                    Start Using Remix Beta
                   </>
                 )}
               </button>

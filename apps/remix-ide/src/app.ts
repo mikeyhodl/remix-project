@@ -214,6 +214,32 @@ class AppComponent {
     this.queryParams = new QueryParams()
     this.params = this.queryParams.get()
     this.desktopClientMode = this.params && this.params.activate && this.params.activate.split(',').includes('desktopClient')
+
+    // Capture invite token from URL params or hash early, before any plugin strips it
+    const urlParams = new URLSearchParams(window.location.search)
+    let inviteToken = urlParams.get('invite') || urlParams.get('invite_token') || null
+    if (!inviteToken) {
+      const hashMatch = window.location.hash.match(/[#&]invite=([A-Za-z0-9_-]+)/)
+      if (hashMatch) inviteToken = hashMatch[1]
+    }
+    if (inviteToken) {
+      Registry.getInstance().put({ api: inviteToken, name: 'inviteToken' })
+
+      // Clean invite params from URL now that they're stored in the Registry
+      urlParams.delete('invite')
+      urlParams.delete('invite_token')
+      const newSearch = urlParams.toString()
+
+      // Remove invite=TOKEN from hash, then ensure remaining hash is well-formed
+      let cleanHash = window.location.hash
+        .replace(/([#&])invite=[A-Za-z0-9_-]+&?/, '$1') // remove invite param
+        .replace(/[#&]$/, '') // trim trailing # or &
+      if (cleanHash && !cleanHash.startsWith('#')) cleanHash = '#' + cleanHash
+
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + cleanHash
+      window.history.replaceState(null, '', newUrl)
+    }
+
     this._components = {} as Components
     // setup storage
     const configStorage = new Storage('config-v0.8:')
