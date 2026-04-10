@@ -233,7 +233,7 @@ class AppComponent {
       // Remove invite=TOKEN from hash, then ensure remaining hash is well-formed
       let cleanHash = window.location.hash
         .replace(/([#&])invite=[A-Za-z0-9_-]+&?/, '$1') // remove invite param
-        .replace(/[#&]$/, '')                             // trim trailing # or &
+        .replace(/[#&]$/, '') // trim trailing # or &
       if (cleanHash && !cleanHash.startsWith('#')) cleanHash = '#' + cleanHash
 
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + cleanHash
