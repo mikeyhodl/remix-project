@@ -606,6 +606,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
     case 'loading':
       return 'Loading…'
     case 'select':
+      if (items.length === 0) return 'Close'
       return selectedCount > 0
         ? `Migrate ${selectedCount} workspace${selectedCount !== 1 ? 's' : ''}`
         : 'Migrate'
@@ -622,6 +623,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
   }
 
   const getOkFn = () => {
+    if (phase === 'select' && items.length === 0) return handleHide
     if (phase === 'select' && selectedCount > 0) return startMigration
     if (phase === 'done') return handleHide
     return undefined
@@ -642,7 +644,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
       okLabel={getOkLabel()}
       okFn={getOkFn()}
       okBtnClass={phase === 'done' ? 'btn-success' : (phase === 'migrating' ? 'btn-secondary disabled' : 'btn-primary')}
-      cancelLabel={phase === 'migrating' ? undefined : (phase === 'done' ? undefined : 'Skip')}
+      cancelLabel={phase === 'migrating' || phase === 'done' || (phase === 'select' && items.length === 0) ? undefined : 'Skip'}
       cancelFn={phase === 'migrating' ? undefined : handleHide}
       showCancelIcon={phase !== 'migrating'}
       modalParentClass="modal-dialog-centered"
