@@ -280,7 +280,7 @@ export class InvitationManagerPlugin extends Plugin {
     let queryToken: string | null = null
     try {
       const entry = Registry.getInstance().get('inviteToken')
-      console.log('[InvitationManager] Invite token from Registry on URL check:', entry)
+      this.log('[InvitationManager] Invite token from Registry on URL check:', entry)
       if (entry && entry.api) queryToken = entry.api as string
     } catch {}
     if (!queryToken) {
