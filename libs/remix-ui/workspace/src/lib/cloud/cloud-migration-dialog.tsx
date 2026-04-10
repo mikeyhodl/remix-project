@@ -17,6 +17,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ModalDialog } from '@remix-ui/modal-dialog'
 import {
   discoverLocalWorkspaces,
@@ -626,7 +627,7 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
     return undefined
   }
 
-  return (
+  return createPortal(
     <ModalDialog
       id="cloud-migration-dialog"
       title={
@@ -646,8 +647,9 @@ export const CloudMigrationDialog: React.FC<CloudMigrationDialogProps> = ({
       showCancelIcon={phase !== 'migrating'}
       modalParentClass="modal-dialog-centered"
       donotHideOnOkClick={phase === 'select' || phase === 'migrating'}
-      preventBlur={phase === 'migrating'}
-    />
+      preventBlur={true}
+    />,
+    document.body
   )
 }
 
