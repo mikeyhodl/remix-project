@@ -563,23 +563,6 @@ module.exports = {
       .assert.textContains('*[data-id="no-conversations-msg"]', 'No')
   },
 
-  // ==================== GROUP 4: Regression — Off-by-One Pair Alignment in loadConversation ====================
-
-  /**
-   * Regression test for: "Off-by-One Pair Alignment in loadConversation"
-   *
-   * Root cause: loadConversation used messages.slice(-queueSize) where queueSize=7 (odd).
-   * Messages are stored as individual records (user + assistant = 2 per turn), so
-   * slice(-7) on ≥8 messages always starts at an assistant message, causing every
-   * pair check to fail and chatEntries to stay empty — history loaded from IndexedDB
-   * was never sent to the AI endpoint.
-   *
-   * Fix: messages.slice(-(queueSize * 2)) — slices by individual message count, not pairs.
-   *
-   * This test seeds 8 user/assistant pairs (16 messages) into IndexedDB, reloads the
-   * page, loads that conversation, then intercepts window.fetch to assert that the
-   * chatHistory field sent to the AI endpoint is non-empty.
-   */
   'Should send loaded history to AI endpoint when conversation exceeds queueSize pairs #group4': function (browser: NightwatchBrowser) {
     // Static UUID so we can target the conversation item by data-id after reload
     const convId = 'b0e1f2a3-c4d5-6789-abcd-ef0123456789'
@@ -591,8 +574,6 @@ module.exports = {
         locateStrategy: 'xpath',
         timeout: 60000
       })
-      // Seed 8 user/assistant pairs (16 individual messages) — exceeds queueSize of 7
-      // so the old slice(-7) would have started on an assistant message, dropping everything
       .executeAsync(function (convId, done) {
         const request = indexedDB.open('RemixAIChatHistory', 1)
         request.onerror = () => done(false)
@@ -656,8 +637,6 @@ module.exports = {
         locateStrategy: 'xpath',
         timeout: 60000
       })
-      // Intercept window.fetch to capture the chatHistory field sent to the AI endpoint.
-      // Must be set up before the conversation is loaded and the message is sent.
       .execute(function () {
         const originalFetch = window.fetch;
         (window as any)._capturedChatHistory = undefined
@@ -690,8 +669,6 @@ module.exports = {
         timeout: 120000
       })
       // Assert: chatHistory in the intercepted request must be non-empty.
-      // Before the fix, loadConversation dropped all entries when messages > queueSize,
-      // so chatHistory would have been []. After the fix it should contain up to 7 pairs (14 entries).
       .execute(function () {
         return (window as any)._capturedChatHistory
       }, [], function (result) {
