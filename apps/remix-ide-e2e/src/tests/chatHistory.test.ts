@@ -562,4 +562,161 @@ module.exports = {
       .waitForElementVisible('*[data-id="no-conversations-msg"]', 5000)
       .assert.textContains('*[data-id="no-conversations-msg"]', 'No')
   },
+
+  // ==================== GROUP 4: Regression — Off-by-One Pair Alignment in loadConversation ====================
+
+  /**
+   * Regression test for: "Off-by-One Pair Alignment in loadConversation"
+   *
+   * Root cause: loadConversation used messages.slice(-queueSize) where queueSize=7 (odd).
+   * Messages are stored as individual records (user + assistant = 2 per turn), so
+   * slice(-7) on ≥8 messages always starts at an assistant message, causing every
+   * pair check to fail and chatEntries to stay empty — history loaded from IndexedDB
+   * was never sent to the AI endpoint.
+   *
+   * Fix: messages.slice(-(queueSize * 2)) — slices by individual message count, not pairs.
+   *
+   * This test seeds 8 user/assistant pairs (16 messages) into IndexedDB, reloads the
+   * page, loads that conversation, then intercepts window.fetch to assert that the
+   * chatHistory field sent to the AI endpoint is non-empty.
+   */
+  'Should send loaded history to AI endpoint when conversation exceeds queueSize pairs #group4': function (browser: NightwatchBrowser) {
+    // Static UUID so we can target the conversation item by data-id after reload
+    const convId = 'b0e1f2a3-c4d5-6789-abcd-ef0123456789'
+
+    browser
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-assistant-ready']",
+        locateStrategy: 'xpath',
+        timeout: 60000
+      })
+      // Seed 8 user/assistant pairs (16 individual messages) — exceeds queueSize of 7
+      // so the old slice(-7) would have started on an assistant message, dropping everything
+      .executeAsync(function (convId, done) {
+        const request = indexedDB.open('RemixAIChatHistory', 1)
+        request.onerror = () => done(false)
+        request.onsuccess = () => {
+          const db = request.result
+          const now = Date.now()
+          const messages = []
+          for (let i = 0; i < 8; i++) {
+            messages.push({
+              id: convId + '-user-' + i,
+              role: 'user',
+              content: 'User question number ' + (i + 1),
+              timestamp: now + (i * 2),
+              conversationId: convId
+            })
+            messages.push({
+              id: convId + '-assistant-' + i,
+              role: 'assistant',
+              content: 'Assistant answer number ' + (i + 1),
+              timestamp: now + (i * 2) + 1,
+              conversationId: convId
+            })
+          }
+          const tx = db.transaction(['conversations', 'messages'], 'readwrite')
+          tx.objectStore('conversations').put({
+            id: convId,
+            title: 'Off-by-one regression test conversation',
+            preview: 'User question number 1',
+            createdAt: now,
+            updatedAt: now,
+            lastAccessedAt: now,
+            messageCount: 16,
+            archived: false
+          })
+          const msgStore = tx.objectStore('messages')
+          messages.forEach(function (m) { msgStore.put(m) })
+          tx.oncomplete = function () { done(true) }
+          tx.onerror = function () { done(false) }
+        }
+        request.onupgradeneeded = function (event: any) {
+          const db = event.target.result
+          if (!db.objectStoreNames.contains('conversations')) {
+            const store = db.createObjectStore('conversations', { keyPath: 'id' })
+            store.createIndex('createdAt', 'createdAt', { unique: false })
+            store.createIndex('archived', 'archived', { unique: false })
+            store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false })
+          }
+          if (!db.objectStoreNames.contains('messages')) {
+            const msgStore = db.createObjectStore('messages', { keyPath: 'id' })
+            msgStore.createIndex('conversationId', 'conversationId', { unique: false })
+            msgStore.createIndex('timestamp', 'timestamp', { unique: false })
+          }
+        }
+      }, [convId], function (result) {
+        browser.assert.equal(result.value, true, '8-pair (16-message) conversation seeded into IndexedDB')
+      })
+      .refreshPage()
+      .clickLaunchIcon('remixaiassistant')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-assistant-ready']",
+        locateStrategy: 'xpath',
+        timeout: 60000
+      })
+      // Intercept window.fetch to capture the chatHistory field sent to the AI endpoint.
+      // Must be set up before the conversation is loaded and the message is sent.
+      .execute(function () {
+        const originalFetch = window.fetch;
+        (window as any)._capturedChatHistory = undefined
+        window.fetch = function (input, init) {
+          if (init && init.body && typeof init.body === 'string') {
+            try {
+              const body = JSON.parse(init.body)
+              if (Array.isArray(body.chatHistory)) {
+                (window as any)._capturedChatHistory = body.chatHistory
+              }
+            } catch (e) { /* non-JSON body, ignore */ }
+          }
+          return originalFetch.call(this, input, init)
+        }
+      })
+      // Open history sidebar and load the seeded conversation
+      .waitForElementVisible('*[data-id="toggle-history-btn"]')
+      .click('*[data-id="toggle-history-btn"]')
+      .pause(1000)
+      .waitForElementVisible(`*[data-id="conversation-item-${convId}"]`, 5000)
+      .click(`*[data-id="conversation-item-${convId}"]`)
+      .pause(1000)
+      // Send a new message to trigger the AI fetch request
+      .waitForElementVisible('*[data-id="remix-ai-prompt-input"]')
+      .setValue('*[data-id="remix-ai-prompt-input"]', 'What was the last thing we discussed?')
+      .click('*[data-id="remix-ai-composer-send-btn"]')
+      .waitForElementPresent({
+        selector: "//*[@data-id='remix-ai-streaming' and @data-streaming='false']",
+        locateStrategy: 'xpath',
+        timeout: 120000
+      })
+      // Assert: chatHistory in the intercepted request must be non-empty.
+      // Before the fix, loadConversation dropped all entries when messages > queueSize,
+      // so chatHistory would have been []. After the fix it should contain up to 7 pairs (14 entries).
+      .execute(function () {
+        return (window as any)._capturedChatHistory
+      }, [], function (result) {
+        const history = result.value as Array<{ role: string; content: string }>
+        browser
+          .assert.ok(
+            Array.isArray(history) && history.length > 0,
+            'chatHistory sent to AI is non-empty — history was correctly rebuilt from IndexedDB (regression: off-by-one pair alignment)'
+          )
+          // queueSize=7 pairs × 2 messages = 14 individual entries max
+          .assert.ok(
+            (history || []).length <= 14,
+            `chatHistory respects queueSize cap: got ${(history || []).length} entries, expected ≤ 14`
+          )
+          // Spot-check that entries alternate user/assistant
+          .assert.equal(
+            history[0]?.role,
+            'user',
+            'First chatHistory entry is a user message (pairs are correctly aligned)'
+          )
+          .assert.equal(
+            history[1]?.role,
+            'assistant',
+            'Second chatHistory entry is an assistant message (pairs are correctly aligned)'
+          )
+      })
+  },
 }

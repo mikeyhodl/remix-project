@@ -58,8 +58,10 @@ export abstract class ChatHistory{
 
     // Rebuild chatEntries from last N messages for context
     this.chatEntries = []
-    const contextMessages = messages.slice(-this.queueSize)
-
+    if (this.queueSize === 0) return // zero means no history context; slice(-0) would load everything
+    const sliced = messages.slice(-(this.queueSize * 2)) // Get last N user-assistant pairs (2 messages per pair)
+    const startIdx = sliced[0]?.role === 'assistant' ? 1 : 0 // Ensure we start with a user message
+    const contextMessages = sliced.slice(startIdx) // Skip the first message if it's an assistant message without a preceding user message
     // Convert messages to ChatEntry tuples (prompt, result pairs)
     for (let i = 0; i < contextMessages.length; i += 2) {
       const userMsg = contextMessages[i]

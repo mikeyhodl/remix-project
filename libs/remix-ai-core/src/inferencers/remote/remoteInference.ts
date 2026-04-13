@@ -81,6 +81,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
         if (result.status === 200) {
           if (result.data?.error) return result.data?.error
           const resultText = result.data.generatedText
+          ChatHistory.pushHistory(payload.prompt, resultText)
           return resultText
         } else {
           return defaultErrorMessage
