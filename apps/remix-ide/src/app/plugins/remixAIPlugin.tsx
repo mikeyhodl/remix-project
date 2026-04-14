@@ -187,7 +187,7 @@ export class RemixAIPlugin extends Plugin {
     if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.answer(prompt, params)
     } else {
-      result = await this.remoteInferencer.answer(newPrompt)
+      result = await this.remoteInferencer.answer(newPrompt, params)
     }
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result

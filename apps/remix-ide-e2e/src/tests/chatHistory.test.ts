@@ -563,7 +563,7 @@ module.exports = {
       .assert.textContains('*[data-id="no-conversations-msg"]', 'No')
   },
 
-  'Should send loaded history to AI endpoint when conversation exceeds queueSize pairs #group4': function (browser: NightwatchBrowser) {
+  'Should embed loaded history into the prompt sent to the AI endpoint for long conversations #group4': function (browser: NightwatchBrowser) {
     // Static UUID so we can target the conversation item by data-id after reload
     const convId = 'b0e1f2a3-c4d5-6789-abcd-ef0123456789'
 
@@ -639,13 +639,13 @@ module.exports = {
       })
       .execute(function () {
         const originalFetch = window.fetch;
-        (window as any)._capturedChatHistory = undefined
+        (window as any)._capturedPrompt = undefined
         window.fetch = function (input, init) {
           if (init && init.body && typeof init.body === 'string') {
             try {
               const body = JSON.parse(init.body)
-              if (Array.isArray(body.chatHistory)) {
-                (window as any)._capturedChatHistory = body.chatHistory
+              if (typeof body.prompt === 'string') {
+                (window as any)._capturedPrompt = body.prompt
               }
             } catch (e) { /* non-JSON body, ignore */ }
           }
@@ -668,31 +668,36 @@ module.exports = {
         locateStrategy: 'xpath',
         timeout: 120000
       })
-      // Assert: chatHistory in the intercepted request must be non-empty.
+      .pause()
+      // Assert: the intercepted prompt explicitly embeds the seeded conversation.
       .execute(function () {
-        return (window as any)._capturedChatHistory
+        return (window as any)._capturedPrompt
       }, [], function (result) {
-        const history = result.value as Array<{ role: string; content: string }>
+        const prompt = result.value as string
         browser
           .assert.ok(
-            Array.isArray(history) && history.length > 0,
-            'chatHistory sent to AI is non-empty — history was correctly rebuilt from IndexedDB (regression: off-by-one pair alignment)'
+            typeof prompt === 'string' && prompt.length > 0,
+            'Prompt sent to AI is captured'
           )
-          // queueSize=7 pairs × 2 messages = 14 individual entries max
           .assert.ok(
-            (history || []).length <= 14,
-            `chatHistory respects queueSize cap: got ${(history || []).length} entries, expected ≤ 14`
+            prompt.includes('Previous conversation:'),
+            'Prompt contains the embedded conversation header'
           )
-          // Spot-check that entries alternate user/assistant
-          .assert.equal(
-            history[0]?.role,
-            'user',
-            'First chatHistory entry is a user message (pairs are correctly aligned)'
+          .assert.ok(
+            prompt.includes('User: User question number 1'),
+            'Prompt contains the oldest seeded user message'
           )
-          .assert.equal(
-            history[1]?.role,
-            'assistant',
-            'Second chatHistory entry is an assistant message (pairs are correctly aligned)'
+          .assert.ok(
+            prompt.includes('Assistant: Assistant answer number 8'),
+            'Prompt contains the newest seeded assistant message'
+          )
+          .assert.ok(
+            prompt.includes('Current user request:'),
+            'Prompt contains the current request section after the embedded history'
+          )
+          .assert.ok(
+            prompt.includes('What was the last thing we discussed?'),
+            'Prompt contains the current user request content'
           )
       })
   },
