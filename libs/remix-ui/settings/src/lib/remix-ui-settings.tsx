@@ -443,7 +443,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
                         setFilteredSection(section)
                       }}
                     >
-                      <h5 className={`fw-semibold mb-2 ${selected === section.key ? state.themeQuality.name === 'dark' ? 'active text-white' : 'active text-black' : 'text-secondary'}`} style={{ fontSize: '1.1rem' }} data-id={`settings-sidebar-${section.key}-h5`}><FormattedMessage id={section.label} /></h5>
+                      <h5 className={`fw-semibold mb-2 ${selected === section.key ? state.themeQuality.name === 'dark' ? 'active text-white' : 'active text-black' : 'text-secondary'}`} style={{ fontSize: '0.9rem' }} data-id={`settings-sidebar-${section.key}-h5`}><FormattedMessage id={section.label} /></h5>
                     </a>
                   </li>
                 ))}
