@@ -444,7 +444,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
                       }}
                     >
                       <h5 className={`fw-semibold mb-2 ${selected === section.key ? state.themeQuality.name === 'dark' ? 'active text-white' : 'active text-black' : 'text-secondary'}`} style={{ fontSize: '1.1rem' }} data-id={`settings-sidebar-${section.key}-h5`}><FormattedMessage id={section.label} /></h5>
-                      {selected !== section.key && <span style={{ fontSize: '0.85rem' }} data-id={`settings-sidebar-${section.key}-description`}><FormattedMessage id={section.description} /></span>}
+                      {/* {selected !== section.key && <span style={{ fontSize: '0.85rem' }} data-id={`settings-sidebar-${section.key}-description`}><FormattedMessage id={section.description} /></span>} */}
                     </a>
                   </li>
                 ))}
