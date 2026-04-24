@@ -15,9 +15,9 @@ import { DependencyResolvingCompiler } from '../lib/dependency-resolving-compile
 const remixConfigPath = 'remix.config.json'
 const profile = {
   name: 'solidity',
-  displayName: 'Solidity compiler',
+  displayName: 'Solidity Compiler',
   icon: 'assets/img/solidity.webp',
-  description: 'Compile solidity contracts',
+  description: 'Compile Solidity contracts',
   kind: 'compiler',
   permission: true,
   location: 'sidePanel',

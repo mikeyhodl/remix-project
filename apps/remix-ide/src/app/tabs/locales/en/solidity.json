@@ -1,5 +1,5 @@
 {
-  "solidity.displayName": "Solidity compiler",
+  "solidity.displayName": "Solidity Compiler",
   "solidity.openaigptMessage": "solidity code: {content}\n error message: {messageText}\n explain why the error occurred and how to fix it.",
 
   "solidity._comment_compiler-container.tsx": "libs/remix-ui/solidity-compiler/src/lib/compiler-container.tsx",
