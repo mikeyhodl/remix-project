@@ -148,7 +148,7 @@ const defaultUrls: EndpointUrls = {
 };
 
 // --- Resolution ---
-const prefix = process.env.NX_ENDPOINTS_URL;
+const prefix = 'https://tokens.staging.remix.live/';
 
 const resolvedUrls: EndpointUrls = prefix
   ? buildUrls(prefix)
