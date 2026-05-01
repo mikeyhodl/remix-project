@@ -11,17 +11,40 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle'],
-  events: ['opened', 'closed'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult'],
+  events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
   version: packageJson.version,
   maintainedBy: 'Remix'
 }
 
+/**
+ * Outcome of a Paddle checkout, surfaced as an in-overlay screen so the user
+ * lands somewhere meaningful after the Paddle modal closes.
+ * - 'processing' : modal closed, webhook still pending (optimistic state)
+ * - 'success'    : checkout.completed, plan/credits applied
+ * - 'closed'     : checkout.closed without completion (no charge)
+ * - 'error'      : checkout.error / payment declined / 3DS failed
+ */
+export type CheckoutResultKind = 'processing' | 'success' | 'closed' | 'error'
+
+export interface CheckoutResult {
+  kind: CheckoutResultKind
+  /** What was being purchased — drives copy. */
+  intent: 'subscription' | 'topup' | 'feature'
+  /** Human-readable summary, e.g. "Builder plan" or "50,000 credits". */
+  itemLabel?: string
+  /** Error message from Paddle, if kind === 'error'. */
+  errorMessage?: string
+  /** Optional Paddle transaction id for support reference. */
+  transactionId?: string
+}
+
 export class PlanManagerPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
   private _isOpen = false
+  private _checkoutResult: CheckoutResult | null = null
 
   constructor() {
     super(profile)
@@ -53,6 +76,28 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   get isOpen(): boolean {
     return this._isOpen
+  }
+
+  /**
+   * Surface a Paddle checkout outcome inside the overlay. Auto-opens the panel
+   * if it isn't already, so the user always sees the result.
+   * Pass null to clear the screen.
+   */
+  setCheckoutResult(result: CheckoutResult | null): void {
+    this._checkoutResult = result
+    if (result) this.open()
+    else this.renderComponent()
+    this.emit('checkoutResultChanged', result)
+  }
+
+  get checkoutResult(): CheckoutResult | null {
+    return this._checkoutResult
+  }
+
+  /** Internal: clear without re-emitting open/close. */
+  clearCheckoutResult(): void {
+    this._checkoutResult = null
+    this.renderComponent()
   }
 
   setDispatch(dispatch: React.Dispatch<any>): void {
@@ -295,6 +340,10 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
   // 'ready' is the default for the mocked layer so dev preview keeps working.
   const [dataState, setDataState] = useState<'loading' | 'error' | 'ready'>('ready')
 
+  // Read the current checkout result directly off the plugin. setCheckoutResult()
+  // triggers a re-dispatch on the plugin, which re-renders this component.
+  const checkoutResult = plugin.checkoutResult
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
     window.addEventListener('keydown', onKey)
@@ -373,6 +422,32 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
                 >{k}</button>
               ))}
             </div>
+            <div className="pm-scenario" title="Dev: preview checkout result">
+              <i className="fas fa-credit-card"></i>
+              <button
+                className={`pm-scenario__btn ${!checkoutResult ? 'is-active' : ''}`}
+                onClick={() => plugin.setCheckoutResult(null)}
+              >none</button>
+              {([
+                { kind: 'processing', label: 'processing', intent: 'subscription', itemLabel: 'Builder plan' },
+                { kind: 'success',    label: 'success',    intent: 'topup',        itemLabel: '50,000 credits', transactionId: 'txn_01H8…' },
+                { kind: 'closed',     label: 'closed',     intent: 'subscription', itemLabel: 'Builder plan' },
+                { kind: 'error',      label: 'error',      intent: 'topup',        itemLabel: '50,000 credits',
+                  errorMessage: 'Your card was declined (insufficient funds).', transactionId: 'txn_01H9…' },
+              ] as const).map(s => (
+                <button
+                  key={s.kind}
+                  className={`pm-scenario__btn ${checkoutResult?.kind === s.kind ? 'is-active' : ''}`}
+                  onClick={() => plugin.setCheckoutResult({
+                    kind: s.kind,
+                    intent: s.intent,
+                    itemLabel: s.itemLabel,
+                    errorMessage: 'errorMessage' in s ? s.errorMessage : undefined,
+                    transactionId: 'transactionId' in s ? s.transactionId : undefined,
+                  })}
+                >{s.label}</button>
+              ))}
+            </div>
           </div>
 
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
@@ -380,9 +455,18 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           </button>
         </header>
 
-        {dataState === 'loading' && <PlanManagerSkeleton />}
-        {dataState === 'error' && <PlanManagerError onRetry={() => setDataState('ready')} />}
-        {dataState === 'ready' && <>
+        {checkoutResult && (
+          <CheckoutResultScreen
+            result={checkoutResult}
+            onDismiss={() => plugin.setCheckoutResult(null)}
+            onViewPlans={() => { plugin.setCheckoutResult(null); setActiveSection('plans') }}
+            onViewTopUps={() => { plugin.setCheckoutResult(null); setActiveSection('topup') }}
+          />
+        )}
+
+        {!checkoutResult && dataState === 'loading' && <PlanManagerSkeleton />}
+        {!checkoutResult && dataState === 'error' && <PlanManagerError onRetry={() => setDataState('ready')} />}
+        {!checkoutResult && dataState === 'ready' && <>
 
         {/* Beta transition (highest priority for beta users) */}
         {showBetaAlert && (
@@ -887,3 +971,132 @@ const PlanManagerError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
     </div>
   </div>
 )
+
+/* ─── Checkout result screen ─── */
+
+const CHECKOUT_COPY: Record<CheckoutResultKind, {
+  eyebrow: string
+  icon: string
+  title: (intent: string, itemLabel?: string) => string
+  body: (intent: string, itemLabel?: string) => string
+}> = {
+  processing: {
+    eyebrow: 'Processing',
+    icon: 'fas fa-spinner fa-spin',
+    title: () => 'Confirming your payment…',
+    body: (_intent, item) =>
+      `We're waiting for confirmation from the payment processor${item ? ` for ${item}` : ''}. This usually takes a few seconds — feel free to keep this open or close it; we'll notify you when it lands.`
+  },
+  success: {
+    eyebrow: 'Payment confirmed',
+    icon: 'fas fa-check',
+    title: (intent, item) =>
+      intent === 'topup' ? `${item || 'Credits'} added to your account` :
+      intent === 'subscription' ? `Welcome to ${item || 'your new plan'}` :
+      'Purchase confirmed',
+    body: (intent) =>
+      intent === 'topup'
+        ? 'Your balance has been updated. AI workflows are ready to go.'
+        : intent === 'subscription'
+          ? 'Your plan is active. New limits, integrations, and credits are available now.'
+          : 'You can start using your new entitlements right away.'
+  },
+  closed: {
+    eyebrow: 'Checkout cancelled',
+    icon: 'fas fa-arrow-left',
+    title: () => 'No payment was made',
+    body: (intent) =>
+      intent === 'topup'
+        ? 'You closed the checkout before completing the purchase. No card was charged. Pick a top-up amount whenever you\'re ready.'
+        : 'You closed the checkout before completing the upgrade. Your current plan is unchanged. Take another look at the options below when you\'re ready.'
+  },
+  error: {
+    eyebrow: 'Payment failed',
+    icon: 'fas fa-circle-exclamation',
+    title: () => 'We couldn\'t complete your payment',
+    body: (intent) =>
+      intent === 'topup'
+        ? 'Your top-up didn\'t go through. No credits were added and no card was charged.'
+        : 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
+  }
+}
+
+const CheckoutResultScreen: React.FC<{
+  result: CheckoutResult
+  onDismiss: () => void
+  onViewPlans: () => void
+  onViewTopUps: () => void
+}> = ({ result, onDismiss, onViewPlans, onViewTopUps }) => {
+  const copy = CHECKOUT_COPY[result.kind]
+  const tryAgain = result.intent === 'topup' ? onViewTopUps : onViewPlans
+  const tryAgainLabel = result.intent === 'topup' ? 'Choose a top-up' : 'Back to plans'
+
+  return (
+    <section className={`pm-result pm-result--${result.kind}`}>
+      <div className={`pm-result__halo pm-result__halo--${result.kind}`} aria-hidden />
+
+      <div className={`pm-result__icon pm-result__icon--${result.kind}`}>
+        <i className={copy.icon}></i>
+      </div>
+
+      <div className="pm-result__eyebrow">{copy.eyebrow}</div>
+      <h2 className="pm-result__title">{copy.title(result.intent, result.itemLabel)}</h2>
+      <p className="pm-result__body">{copy.body(result.intent, result.itemLabel)}</p>
+
+      {result.kind === 'error' && result.errorMessage && (
+        <div className="pm-result__detail">
+          <i className="fas fa-info-circle"></i>
+          <span>{result.errorMessage}</span>
+        </div>
+      )}
+
+      {result.transactionId && (
+        <div className="pm-result__txn">
+          <span className="pm-result__txn-label">Reference</span>
+          <code className="pm-result__txn-id">{result.transactionId}</code>
+        </div>
+      )}
+
+      <div className="pm-result__actions">
+        {result.kind === 'success' && (
+          <button className="pm-result__btn pm-result__btn--primary" onClick={onDismiss}>
+            <i className="fas fa-arrow-right"></i> Continue
+          </button>
+        )}
+
+        {result.kind === 'closed' && (
+          <>
+            <button className="pm-result__btn pm-result__btn--primary" onClick={tryAgain}>
+              <i className="fas fa-arrow-left"></i> {tryAgainLabel}
+            </button>
+            <button className="pm-result__btn pm-result__btn--ghost" onClick={onDismiss}>
+              Dismiss
+            </button>
+          </>
+        )}
+
+        {result.kind === 'error' && (
+          <>
+            <button className="pm-result__btn pm-result__btn--primary" onClick={tryAgain}>
+              <i className="fas fa-rotate-right"></i> Try again
+            </button>
+            <a
+              className="pm-result__btn pm-result__btn--ghost"
+              href="https://discord.gg/TWfKkZVwJW"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <i className="fas fa-life-ring"></i> Contact support
+            </a>
+          </>
+        )}
+
+        {result.kind === 'processing' && (
+          <button className="pm-result__btn pm-result__btn--ghost" onClick={onDismiss}>
+            Close — I'll wait
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
