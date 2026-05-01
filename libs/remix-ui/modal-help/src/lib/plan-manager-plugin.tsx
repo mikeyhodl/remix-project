@@ -170,6 +170,45 @@ const MOCK_BALANCE = {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Credit state — derived severity
+   ───────────────────────────────────────────────────────────────────────── */
+
+type CreditState = 'healthy' | 'low' | 'critical' | 'empty'
+
+const LOW_THRESHOLD = 0.20      // <20% remaining → "low"
+const CRITICAL_THRESHOLD = 0.05 // <5% remaining → "critical"
+
+interface CreditStatus {
+  state: CreditState
+  remaining: number
+  total: number
+  used: number
+  usedPct: number
+  remainingPct: number
+}
+
+function deriveCreditStatus(total: number, used: number): CreditStatus {
+  const remaining = Math.max(0, total - used)
+  const remainingPct = total > 0 ? remaining / total : 0
+  const usedPct = Math.min(100, total > 0 ? (used / total) * 100 : 0)
+
+  let state: CreditState = 'healthy'
+  if (remaining <= 0) state = 'empty'
+  else if (remainingPct < CRITICAL_THRESHOLD) state = 'critical'
+  else if (remainingPct < LOW_THRESHOLD) state = 'low'
+
+  return { state, remaining, total, used, usedPct, remainingPct }
+}
+
+/* Dev preview — cycle through balance scenarios */
+const MOCK_SCENARIOS: Record<string, { total: number; used: number; label: string }> = {
+  healthy:  { total: 50_000, used: 27_390, label: 'Healthy' },
+  low:      { total: 50_000, used: 42_500, label: 'Low (15%)' },
+  critical: { total: 50_000, used: 49_100, label: 'Critical (1.8%)' },
+  empty:    { total: 50_000, used: 50_000, label: 'Empty' }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    UI
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -193,6 +232,7 @@ const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) =>
 
 const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
   const [activeSection, setActiveSection] = useState<'plans' | 'topup' | 'usage'>('plans')
+  const [scenario, setScenario] = useState<keyof typeof MOCK_SCENARIOS>('healthy')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
@@ -200,9 +240,11 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
     return () => window.removeEventListener('keydown', onKey)
   }, [plugin])
 
-  const balance = MOCK_BALANCE
-  const usedPct = Math.min(100, (balance.used / balance.total) * 100)
-  const remaining = balance.total - balance.used
+  const live = MOCK_SCENARIOS[scenario]
+  const status = deriveCreditStatus(live.total, live.used)
+  const { remaining, used, total, usedPct, state } = status
+  const refreshDate = MOCK_BALANCE.refreshDate
+  const canUpgrade = true // current plan is 'beta', so upgrade is available
 
   const totalUsageCredits = useMemo(
     () => MOCK_USAGE.reduce((s, u) => s + u.credits, 0),
@@ -211,7 +253,7 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
 
   return (
     <div className="pm-backdrop" onClick={() => plugin.close()}>
-      <div className="pm-shell" onClick={(e) => e.stopPropagation()}>
+      <div className={`pm-shell pm-shell--${state}`} onClick={(e) => e.stopPropagation()}>
         {/* Atmospheric background */}
         <div className="pm-atmosphere" aria-hidden>
           <div className="pm-atmosphere__orb pm-atmosphere__orb--a" />
@@ -229,13 +271,37 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
             <span className="pm-topbar__sep">/</span>
             <span className="pm-topbar__title">Plan&nbsp;&amp;&nbsp;Credits</span>
           </div>
+
+          {/* Dev scenario switcher — remove when wiring real API */}
+          <div className="pm-scenario" title="Dev: preview credit states">
+            <i className="fas fa-flask"></i>
+            {(Object.keys(MOCK_SCENARIOS) as Array<keyof typeof MOCK_SCENARIOS>).map(k => (
+              <button
+                key={k}
+                className={`pm-scenario__btn ${scenario === k ? 'is-active' : ''}`}
+                onClick={() => setScenario(k)}
+              >{MOCK_SCENARIOS[k].label}</button>
+            ))}
+          </div>
+
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
             <i className="fas fa-times"></i>
           </button>
         </header>
 
+        {/* Low / critical / empty alert banner */}
+        {state !== 'healthy' && (
+          <CreditAlert
+            status={status}
+            refreshDate={refreshDate}
+            canUpgrade={canUpgrade}
+            onTopUp={() => setActiveSection('topup')}
+            onUpgrade={() => setActiveSection('plans')}
+          />
+        )}
+
         {/* Hero — credits balance */}
-        <section className="pm-hero">
+        <section className={`pm-hero pm-hero--${state}`}>
           <div className="pm-hero__left">
             <div className="pm-hero__eyebrow">Credit balance</div>
             <div className="pm-hero__amount">
@@ -243,11 +309,11 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
               <span className="pm-hero__unit">credits</span>
             </div>
             <div className="pm-hero__sub">
-              <span className="pm-hero__used">{balance.used.toLocaleString()} used</span>
+              <span className="pm-hero__used">{used.toLocaleString()} used</span>
               <span className="pm-hero__div">·</span>
-              <span>{balance.total.toLocaleString()} included this cycle</span>
+              <span>{total.toLocaleString()} included this cycle</span>
               <span className="pm-hero__div">·</span>
-              <span>refreshes <em>{balance.refreshDate}</em></span>
+              <span>refreshes <em>{refreshDate}</em></span>
             </div>
 
             <div className="pm-hero__bar">
@@ -442,5 +508,68 @@ const UsageSection: React.FC<{ totalCredits: number }> = ({ totalCredits }) => {
         })}
       </div>
     </div>
+  )
+}
+
+/* ─── Credit alert banner ─── */
+
+const ALERT_COPY: Record<Exclude<CreditState, 'healthy'>, {
+  eyebrow: string
+  title: (n: number) => string
+  body: (refresh: string) => string
+  icon: string
+}> = {
+  low: {
+    eyebrow: 'Running low',
+    title: (n) => `${n.toLocaleString()} credits left`,
+    body: (r) => `You'll likely run out before your refill on ${r}. Top up or upgrade to keep your AI workflows uninterrupted.`,
+    icon: 'fas fa-exclamation'
+  },
+  critical: {
+    eyebrow: 'Almost out',
+    title: (n) => `Only ${n.toLocaleString()} credits remain`,
+    body: (r) => `Your next AI request may not complete. Add credits now or upgrade your plan — refill is on ${r}.`,
+    icon: 'fas fa-exclamation-triangle'
+  },
+  empty: {
+    eyebrow: 'Out of credits',
+    title: () => 'You\'ve used all your credits',
+    body: (r) => `AI features are paused until you top up, upgrade your plan, or your free allowance refills on ${r}.`,
+    icon: 'fas fa-bolt'
+  }
+}
+
+const CreditAlert: React.FC<{
+  status: CreditStatus
+  refreshDate: string
+  canUpgrade: boolean
+  onTopUp: () => void
+  onUpgrade: () => void
+}> = ({ status, refreshDate, canUpgrade, onTopUp, onUpgrade }) => {
+  if (status.state === 'healthy') return null
+  const copy = ALERT_COPY[status.state]
+
+  return (
+    <section className={`pm-alert pm-alert--${status.state}`}>
+      <div className="pm-alert__glow" aria-hidden />
+      <div className="pm-alert__icon">
+        <i className={copy.icon}></i>
+      </div>
+      <div className="pm-alert__body">
+        <div className="pm-alert__eyebrow">{copy.eyebrow}</div>
+        <div className="pm-alert__title">{copy.title(status.remaining)}</div>
+        <p className="pm-alert__desc">{copy.body(refreshDate)}</p>
+      </div>
+      <div className="pm-alert__actions">
+        {canUpgrade && (
+          <button className="pm-alert__btn pm-alert__btn--ghost" onClick={onUpgrade}>
+            <i className="fas fa-arrow-up"></i> Upgrade plan
+          </button>
+        )}
+        <button className="pm-alert__btn pm-alert__btn--solid" onClick={onTopUp}>
+          <i className="fas fa-bolt"></i> Buy credits
+        </button>
+      </div>
+    </section>
   )
 }
