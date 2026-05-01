@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { BillingManagerProps, CreditPackage, SubscriptionPlan, UserSubscription, Credits, FeatureAccessProduct, UserFeatureMembership } from './types'
 import { BillingApiService, ApiClient } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
@@ -68,6 +68,30 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
   const [paddleLoading, setPaddleLoading] = useState(false)
   const [paddleError, setPaddleError] = useState<string | null>(null)
 
+  // Tracks the intent of the most recent Paddle checkout open (subscription /
+  // topup / feature) plus a human label. Captured at click-time so the panel
+  // can describe what the user just paid for.
+  const checkoutIntentRef = useRef<{
+    intent: 'subscription' | 'topup' | 'feature'
+    itemLabel?: string
+  } | null>(null)
+
+  /**
+   * Bridge to the planManager plugin for surfacing checkout outcomes.
+   * Best-effort — the plugin is optional, so failures are swallowed.
+   */
+  const reportCheckoutResult = useCallback(async (result: {
+    kind: 'processing' | 'success' | 'closed' | 'error'
+    intent: 'subscription' | 'topup' | 'feature'
+    itemLabel?: string
+    errorMessage?: string
+    transactionId?: string
+  }) => {
+    try {
+      await plugin?.call('planManager', 'setCheckoutResult', result)
+    } catch { /* planManager unavailable */ }
+  }, [plugin])
+
   // Initialize Paddle
   useEffect(() => {
     if (!paddleClientToken) {
@@ -101,28 +125,47 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
   // Listen for Paddle checkout events
   useEffect(() => {
     const handlePaddleEvent = (event: PaddleEventData) => {
+      const intentRecord = checkoutIntentRef.current
+      const intent = intentRecord?.intent ?? 'subscription'
+      const itemLabel = intentRecord?.itemLabel
+      // Paddle's transaction id lives at event.data.transaction_id; types are
+      // loose so we read it defensively.
+      const transactionId = (event as any)?.data?.transaction_id as string | undefined
+
       if (event.name === 'checkout.completed') {
         console.log('[BillingManager] Checkout completed')
         setPurchasing(false)
         setSubscribing(false)
         setPurchasingFeature(false)
+        // Optimistic processing screen — promotes to 'success' once the
+        // webhook lands and the data refresh confirms.
+        void reportCheckoutResult({ kind: 'processing', intent, itemLabel, transactionId })
         // Refresh user data
         setTimeout(() => {
           loadUserData()
           onPurchaseComplete?.()
           onSubscriptionChange?.()
+          void reportCheckoutResult({ kind: 'success', intent, itemLabel, transactionId })
         }, 1500) // Give webhook time to process
       } else if (event.name === 'checkout.closed') {
         console.log('[BillingManager] Checkout closed')
         setPurchasing(false)
         setSubscribing(false)
         setPurchasingFeature(false)
+        void reportCheckoutResult({ kind: 'closed', intent, itemLabel })
+      } else if (event.name === 'checkout.payment.failed' || (event.name as string) === 'checkout.error') {
+        console.warn('[BillingManager] Checkout payment failed', event)
+        setPurchasing(false)
+        setSubscribing(false)
+        setPurchasingFeature(false)
+        const errorMessage = (event as any)?.error?.message || (event as any)?.data?.error?.message
+        void reportCheckoutResult({ kind: 'error', intent, itemLabel, errorMessage, transactionId })
       }
     }
 
     onPaddleEvent(handlePaddleEvent)
     return () => offPaddleEvent(handlePaddleEvent)
-  }, [onPurchaseComplete, onSubscriptionChange])
+  }, [onPurchaseComplete, onSubscriptionChange, reportCheckoutResult])
 
   // Check authentication status
   useEffect(() => {
@@ -291,6 +334,15 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     }
 
     setPurchasing(true)
+    // Capture intent + label so the planManager checkout-result screen can
+    // describe what was being purchased.
+    {
+      const pkg = packages.find(p => p.id === packageId)
+      checkoutIntentRef.current = {
+        intent: 'topup',
+        itemLabel: pkg ? `${pkg.credits.toLocaleString()} credits (${pkg.name})` : packageId
+      }
+    }
     try {
       // Always call backend API first to create transaction with customData (userId)
       const response = await billingApi.purchaseCredits(packageId, 'paddle')
@@ -340,6 +392,13 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     }
 
     setSubscribing(true)
+    {
+      const plan = plans.find(p => p.id === planId)
+      checkoutIntentRef.current = {
+        intent: 'subscription',
+        itemLabel: plan?.name ?? planId
+      }
+    }
     try {
       // Always call backend API first to create transaction with customData (userId)
       const response = await billingApi.subscribe(planId, 'paddle')
@@ -389,6 +448,13 @@ export const BillingManager: React.FC<BillingManagerProps> = ({
     }
 
     setPurchasingFeature(true)
+    {
+      const product = featureProducts.find(p => p.slug === productSlug)
+      checkoutIntentRef.current = {
+        intent: 'feature',
+        itemLabel: product?.name ?? productSlug
+      }
+    }
     try {
       // Call backend API to create transaction
       const response = await billingApi.purchaseFeatureAccess(productSlug, 'paddle')

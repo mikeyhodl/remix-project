@@ -42,7 +42,7 @@ export const Preload = (props: PreloadProps) => {
   )
 
   function loadAppComponent() {
-    initEndpoints('https://tokens.staging.remix.live').then(() => import('../../app'))
+    initEndpoints().then(() => import('../../app'))
       .then((AppComponent) => {
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {

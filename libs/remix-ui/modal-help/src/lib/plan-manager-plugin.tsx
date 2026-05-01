@@ -1,7 +1,44 @@
+/**
+ * PlanManagerPlugin — Remix `sidePanel` ViewPlugin for the
+ * "Plan & Credits" experience.
+ *
+ * The plugin is a thin shell around `PlanManagerStore` (XState v5 actor).
+ * All UI state lives in the machine; the plugin's job is to:
+ *   - bridge auth-plugin events → `AUTH_CHANGED`
+ *   - fetch account data (credits, subscription, permissions) → `DATA_LOADED`
+ *   - fetch the public catalog (plans, packages) → `CATALOG_LOADED`
+ *   - bridge Paddle checkout events → `CHECKOUT_*`
+ *   - expose `reportCreditsExhausted()` so any plugin that hits a 402 can
+ *     ask the panel to refresh + reveal itself
+ *   - render the React tree, which subscribes to the store
+ *
+ * The plugin owns NO derived state — every visible string is a selector.
+ */
+
 import { ViewPlugin } from '@remixproject/engine-web'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import * as packageJson from '../../../../../package.json'
+
+import {
+  PlanManagerStore,
+  type PlanManagerSnapshot,
+  type CheckoutResult,
+  type CheckoutResultKind,
+  type CheckoutIntent,
+  type PlanState,
+  type CreditStatus,
+  type CreditState,
+  type PlanLifecycle,
+  type ActiveAlert,
+  selectActiveAlert,
+  selectPlanState,
+  selectCreditStatus,
+  selectVisiblePlans,
+  selectVisiblePackages,
+  selectCanUpgrade,
+  selectCheckoutResult
+} from './plan-manager-machine'
 
 import './plan-manager.css'
 
@@ -11,7 +48,7 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh'],
   events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
@@ -19,85 +56,208 @@ const profile = {
   maintainedBy: 'Remix'
 }
 
-/**
- * Outcome of a Paddle checkout, surfaced as an in-overlay screen so the user
- * lands somewhere meaningful after the Paddle modal closes.
- * - 'processing' : modal closed, webhook still pending (optimistic state)
- * - 'success'    : checkout.completed, plan/credits applied
- * - 'closed'     : checkout.closed without completion (no charge)
- * - 'error'      : checkout.error / payment declined / 3DS failed
- */
-export type CheckoutResultKind = 'processing' | 'success' | 'closed' | 'error'
-
-export interface CheckoutResult {
-  kind: CheckoutResultKind
-  /** What was being purchased — drives copy. */
-  intent: 'subscription' | 'topup' | 'feature'
-  /** Human-readable summary, e.g. "Builder plan" or "50,000 credits". */
-  itemLabel?: string
-  /** Error message from Paddle, if kind === 'error'. */
-  errorMessage?: string
-  /** Optional Paddle transaction id for support reference. */
-  transactionId?: string
-}
+// Re-export public types for other packages.
+export type { CheckoutResult, CheckoutResultKind, CheckoutIntent }
 
 export class PlanManagerPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
-  private _isOpen = false
-  private _checkoutResult: CheckoutResult | null = null
+  readonly store: PlanManagerStore
+
+  // Memo to detect repeated AUTH events (auth-plugin re-emits a lot).
+  private lastAuthSig = ''
 
   constructor() {
     super(profile)
+    this.store = new PlanManagerStore({ debug: false })
+
+    // Surface checkout results as a plugin event so external listeners
+    // (e.g. analytics) can react without subscribing to the store.
+    let lastResult: CheckoutResult | null = null
+    this.store.subscribe(() => {
+      const next = this.store.getSnapshot().checkoutResult
+      if (next !== lastResult) {
+        lastResult = next
+        this.emit('checkoutResultChanged', next)
+      }
+    })
+
+    // Same for overlay open/closed.
+    let wasOpen = false
+    this.store.subscribe(() => {
+      const open = this.store.getSnapshot().isOpen
+      if (open !== wasOpen) {
+        wasOpen = open
+        this.emit(open ? 'opened' : 'closed')
+        this.renderComponent()
+      }
+    })
   }
 
   async onActivation(): Promise<void> {
     this.renderComponent()
+
+    // Catalog is public — load it eagerly so plan/package cards are ready
+    // even before the user signs in.
+    this.store.send({ type: 'CATALOG_LOAD' })
+    void this.loadCatalog()
+
+    // Bridge auth events. Re-fired on token refresh so we tolerate noise.
+    const onAuthChange = (s: { isAuthenticated: boolean; token?: string; user?: { id?: number } }) => {
+      const sig = `${s.isAuthenticated}|${s.token ?? ''}`
+      if (sig === this.lastAuthSig) return
+      this.lastAuthSig = sig
+      this.store.send({
+        type: 'AUTH_CHANGED',
+        isAuthenticated: !!s.isAuthenticated,
+        token: s.token ?? null,
+        userId: s.user?.id ?? null
+      })
+      if (s.isAuthenticated) void this.loadAccountData()
+    }
+    try {
+      this.on('auth', 'authStateChanged', onAuthChange as any)
+      this.on('auth', 'creditsUpdated', () => { void this.loadAccountData() })
+      // Initial sync — auth might already be settled by the time we activate.
+      const user = await this.call('auth', 'getUser').catch(() => null)
+      if (user) {
+        const token = await this.call('auth', 'getToken').catch(() => null)
+        onAuthChange({ isAuthenticated: true, token, user })
+      } else {
+        this.store.send({ type: 'AUTH_CHANGED', isAuthenticated: false })
+      }
+    } catch (err) {
+      console.warn('[PlanManager] auth bridge failed', err)
+    }
   }
 
+  /** Public API — called by the menu icon and by feature-badges.tsx. */
   async open(): Promise<void> {
-    this._isOpen = true
-    this.renderComponent()
-    this.emit('opened')
+    this.store.send({ type: 'OPEN_OVERLAY' })
     try {
       await this.call('menuicons', 'select', 'planManager')
     } catch { /* noop */ }
   }
 
   close(): void {
-    this._isOpen = false
-    this.renderComponent()
-    this.emit('closed')
+    this.store.send({ type: 'CLOSE_OVERLAY' })
   }
 
   toggle(): void {
-    if (this._isOpen) this.close()
-    else this.open()
-  }
-
-  get isOpen(): boolean {
-    return this._isOpen
+    this.store.send({ type: 'TOGGLE_OVERLAY' })
   }
 
   /**
-   * Surface a Paddle checkout outcome inside the overlay. Auto-opens the panel
-   * if it isn't already, so the user always sees the result.
-   * Pass null to clear the screen.
+   * Set or clear the checkout result screen. Auto-opens the panel when
+   * a result is supplied so the user always sees the outcome.
+   *
+   * Today this maps onto the machine's CHECKOUT_* events for backwards
+   * compatibility with billing-manager.tsx — once that file is updated to
+   * emit CHECKOUT_* directly, this method becomes redundant.
    */
   setCheckoutResult(result: CheckoutResult | null): void {
-    this._checkoutResult = result
-    if (result) this.open()
-    else this.renderComponent()
-    this.emit('checkoutResultChanged', result)
+    if (!result) {
+      this.store.send({ type: 'CHECKOUT_RESULT_DISMISS' })
+      return
+    }
+    // We weren't told the intent up-front, so capture it now from the result.
+    this.store.send({
+      type: 'CHECKOUT_INTENT',
+      intent: result.intent,
+      itemLabel: result.itemLabel
+    })
+    switch (result.kind) {
+    case 'processing':
+    case 'success':
+      this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId: result.transactionId })
+      // Trigger a refresh so 'processing' promotes to 'success' once data
+      // confirms (the machine handles the promotion in its DATA_LOADED action).
+      void this.loadAccountData()
+      break
+    case 'closed':
+      this.store.send({ type: 'CHECKOUT_CLOSED' })
+      break
+    case 'error':
+      this.store.send({
+        type: 'CHECKOUT_ERROR',
+        message: result.errorMessage,
+        transactionId: result.transactionId
+      })
+      break
+    }
   }
 
-  get checkoutResult(): CheckoutResult | null {
-    return this._checkoutResult
+  /**
+   * Called by other plugins (e.g. AI chat) when an upstream API call
+   * returned "insufficient credits" / 402. The machine refreshes its
+   * data and reveals the panel — the API stays the source of truth.
+   */
+  reportCreditsExhausted(): void {
+    this.store.send({ type: 'CREDITS_EXHAUSTED' })
+    void this.loadAccountData()
   }
 
-  /** Internal: clear without re-emitting open/close. */
-  clearCheckoutResult(): void {
-    this._checkoutResult = null
-    this.renderComponent()
+  /** Manual refresh — called from the error state's retry button. */
+  async refresh(): Promise<void> {
+    this.store.send({ type: 'REFRESH' })
+    await this.loadAccountData()
+  }
+
+  // ─── Internals ──────────────────────────────────────────────────
+
+  private async loadCatalog(): Promise<void> {
+    try {
+      const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+      if (!billingApi) {
+        this.store.send({ type: 'CATALOG_FAILED', message: 'Billing API unavailable' })
+        return
+      }
+      const [plansResp, packagesResp] = await Promise.all([
+        billingApi.getSubscriptionPlans(),
+        billingApi.getCreditPackages()
+      ])
+      if (!plansResp?.ok || !packagesResp?.ok) {
+        this.store.send({
+          type: 'CATALOG_FAILED',
+          message: plansResp?.error || packagesResp?.error || 'Failed to load catalog'
+        })
+        return
+      }
+      this.store.send({
+        type: 'CATALOG_LOADED',
+        plans: plansResp.data?.plans ?? [],
+        packages: packagesResp.data?.packages ?? []
+      })
+    } catch (err: any) {
+      this.store.send({ type: 'CATALOG_FAILED', message: err?.message ?? 'Catalog load failed' })
+    }
+  }
+
+  private async loadAccountData(): Promise<void> {
+    try {
+      const [credits, subResp, permissions] = await Promise.all([
+        this.call('auth', 'getCredits').catch(() => null) as Promise<any>,
+        (async () => {
+          const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+          if (!billingApi) return null
+          const r = await billingApi.getSubscription()
+          return r?.ok ? r.data : null
+        })(),
+        (async () => {
+          const permissionsApi: any = await this.call('auth', 'getPermissionsApi').catch(() => null)
+          if (!permissionsApi) return null
+          const r = await permissionsApi.getPermissions()
+          return r?.ok ? r.data : null
+        })()
+      ])
+      this.store.send({
+        type: 'DATA_LOADED',
+        credits: credits ?? null,
+        subscription: subResp?.subscription ?? null,
+        permissions: permissions ?? null
+      })
+    } catch (err: any) {
+      this.store.send({ type: 'DATA_FAILED', message: err?.message ?? 'Failed to load account data' })
+    }
   }
 
   setDispatch(dispatch: React.Dispatch<any>): void {
@@ -123,200 +283,22 @@ export class PlanManagerPlugin extends ViewPlugin {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   MOCK DATA — to be replaced with real billing/usage APIs
+   React glue
    ───────────────────────────────────────────────────────────────────────── */
 
-interface PlanDef {
-  id: string
-  name: string
-  tagline: string
-  priceLabel: string
-  cadence: string
-  features: string[]
-  highlight?: string
-  accent: string
-  recommended?: boolean
+/** Subscribe a component to the store via `useSyncExternalStore`. */
+function useStoreSnapshot(plugin: PlanManagerPlugin): PlanManagerSnapshot {
+  return useSyncExternalStore(
+    plugin.store.subscribe,
+    plugin.store.getSnapshot,
+    plugin.store.getSnapshot
+  )
 }
-
-const MOCK_PLANS: PlanDef[] = [
-  {
-    id: 'beta',
-    name: 'Beta Tester',
-    tagline: 'You — shaping the future of Remix',
-    priceLabel: 'Free',
-    cadence: 'while in beta',
-    accent: '#2fbfb1',
-    features: [
-      'Early access to every new module',
-      '50 000 AI credits / month included',
-      'Priority feedback channel',
-      'Cloud workspaces (limited)'
-    ],
-    highlight: 'Current plan'
-  },
-  {
-    id: 'pro',
-    name: 'Builder',
-    tagline: 'For solo devs shipping production contracts',
-    priceLabel: '$19',
-    cadence: 'per month',
-    accent: '#5b9cf5',
-    features: [
-      '250 000 AI credits / month',
-      'Unlimited cloud workspaces',
-      'All MCP integrations',
-      'Standard support'
-    ],
-    recommended: true
-  },
-  {
-    id: 'studio',
-    name: 'Studio',
-    tagline: 'Teams that need higher throughput',
-    priceLabel: '$79',
-    cadence: 'per month',
-    accent: '#9b7dff',
-    features: [
-      '1 500 000 AI credits / month',
-      'Seats for up to 5 collaborators',
-      'Frontier model access (GPT-4 / Claude Opus)',
-      'Slack & priority support'
-    ]
-  }
-]
-
-const MOCK_TOPUPS = [
-  { id: 'tu-25', credits: 25_000, price: '$5', perK: '0.20' },
-  { id: 'tu-100', credits: 100_000, price: '$15', perK: '0.15', popular: true },
-  { id: 'tu-500', credits: 500_000, price: '$60', perK: '0.12' }
-]
-
-interface ModelUsage {
-  id: string
-  label: string
-  vendor: string
-  credits: number
-  tokens: number
-  color: string
-}
-
-const MOCK_USAGE: ModelUsage[] = [
-  { id: 'gpt-4o', label: 'GPT-4o', vendor: 'OpenAI', credits: 12_400, tokens: 4_120_000, color: '#10a37f' },
-  { id: 'claude-sonnet', label: 'Claude 3.5 Sonnet', vendor: 'Anthropic', credits: 8_950, tokens: 2_770_000, color: '#d97757' },
-  { id: 'mistral-large', label: 'Mistral Large', vendor: 'Mistral', credits: 4_120, tokens: 1_980_000, color: '#ff6f3c' },
-  { id: 'llama-3-70b', label: 'Llama 3 70B', vendor: 'Meta', credits: 1_380, tokens: 1_540_000, color: '#1877f2' },
-  { id: 'gemini-pro', label: 'Gemini 1.5 Pro', vendor: 'Google', credits: 540, tokens: 410_000, color: '#fbbc04' }
-]
-
-const MOCK_BALANCE = {
-  total: 50_000,
-  used: 27_390,
-  refreshDate: 'May 14, 2026'
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Credit state — derived severity
-   ───────────────────────────────────────────────────────────────────────── */
-
-type CreditState = 'healthy' | 'low' | 'critical' | 'empty'
-
-const LOW_THRESHOLD = 0.20      // <20% remaining → "low"
-const CRITICAL_THRESHOLD = 0.05 // <5% remaining → "critical"
-
-interface CreditStatus {
-  state: CreditState
-  remaining: number
-  total: number
-  used: number
-  usedPct: number
-  remainingPct: number
-}
-
-function deriveCreditStatus(total: number, used: number): CreditStatus {
-  const remaining = Math.max(0, total - used)
-  const remainingPct = total > 0 ? remaining / total : 0
-  const usedPct = Math.min(100, total > 0 ? (used / total) * 100 : 0)
-
-  let state: CreditState = 'healthy'
-  if (remaining <= 0) state = 'empty'
-  else if (remainingPct < CRITICAL_THRESHOLD) state = 'critical'
-  else if (remainingPct < LOW_THRESHOLD) state = 'low'
-
-  return { state, remaining, total, used, usedPct, remainingPct }
-}
-
-/* Dev preview — cycle through balance scenarios */
-const MOCK_SCENARIOS: Record<string, { total: number; used: number; label: string }> = {
-  healthy:  { total: 50_000, used: 27_390, label: 'Healthy' },
-  low:      { total: 50_000, used: 42_500, label: 'Low (15%)' },
-  critical: { total: 50_000, used: 49_100, label: 'Critical (1.8%)' },
-  empty:    { total: 50_000, used: 50_000, label: 'Empty' }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Plan lifecycle state
-   ───────────────────────────────────────────────────────────────────────── */
-
-type PlanLifecycle = 'active' | 'expiring' | 'expired'
-
-const EXPIRING_DAYS = 7 // ≤ 7 days → 'expiring'
-
-interface PlanContext {
-  planId: string
-  planName: string
-  isBeta: boolean
-  isCancelled: boolean   // user already cancelled, will not auto-renew
-  daysUntilExpiry: number  // negative means already expired
-  expiresOn: string
-  lifecycle: PlanLifecycle
-}
-
-function derivePlanLifecycle(daysUntilExpiry: number): PlanLifecycle {
-  if (daysUntilExpiry < 0) return 'expired'
-  if (daysUntilExpiry <= EXPIRING_DAYS) return 'expiring'
-  return 'active'
-}
-
-/* Dev preview — plan lifecycle scenarios */
-const MOCK_PLAN_SCENARIOS: Record<string, Omit<PlanContext, 'lifecycle'>> = {
-  'beta-active': {
-    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
-    daysUntilExpiry: 42, expiresOn: 'Jun 12, 2026'
-  },
-  'beta-ending': {
-    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
-    daysUntilExpiry: 5, expiresOn: 'May 6, 2026'
-  },
-  'beta-ended': {
-    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
-    daysUntilExpiry: -3, expiresOn: 'Apr 28, 2026'
-  },
-  'paid-active': {
-    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: false,
-    daysUntilExpiry: 28, expiresOn: 'May 29, 2026'
-  },
-  'paid-expiring': {
-    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: true,
-    daysUntilExpiry: 4, expiresOn: 'May 5, 2026'
-  },
-  'paid-expired': {
-    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: true,
-    daysUntilExpiry: -2, expiresOn: 'Apr 29, 2026'
-  }
-}
-
-function buildPlanContext(key: keyof typeof MOCK_PLAN_SCENARIOS): PlanContext {
-  const base = MOCK_PLAN_SCENARIOS[key]
-  return { ...base, lifecycle: derivePlanLifecycle(base.daysUntilExpiry) }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   UI
-   ───────────────────────────────────────────────────────────────────────── */
 
 const PlanManagerUI: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
-  if (!plugin.isOpen) return <PlanManagerStub plugin={plugin} />
-  return <PlanManagerOverlay plugin={plugin} />
+  const snap = useStoreSnapshot(plugin)
+  if (!snap.isOpen) return <PlanManagerStub plugin={plugin} />
+  return <PlanManagerOverlay plugin={plugin} snap={snap} />
 }
 
 const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => (
@@ -332,47 +314,37 @@ const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) =>
   </div>
 )
 
-const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
-  const [activeSection, setActiveSection] = useState<'plans' | 'topup' | 'usage'>('plans')
-  const [scenario, setScenario] = useState<keyof typeof MOCK_SCENARIOS>('healthy')
-  const [planScenario, setPlanScenario] = useState<keyof typeof MOCK_PLAN_SCENARIOS>('beta-active')
-  // Data fetch state. When wiring real APIs, drive this from the actual fetch lifecycle.
-  // 'ready' is the default for the mocked layer so dev preview keeps working.
-  const [dataState, setDataState] = useState<'loading' | 'error' | 'ready'>('ready')
+/* ─────────────────────────────────────────────────────────────────────────────
+   Overlay
+   ───────────────────────────────────────────────────────────────────────── */
 
-  // Read the current checkout result directly off the plugin. setCheckoutResult()
-  // triggers a re-dispatch on the plugin, which re-renders this component.
-  const checkoutResult = plugin.checkoutResult
+const PlanManagerOverlay: React.FC<{
+  plugin: PlanManagerPlugin
+  snap: PlanManagerSnapshot
+}> = ({ plugin, snap }) => {
+  const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage'>('plans')
 
+  // Close-on-Escape — UI concern, stays in React.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [plugin])
 
-  const live = MOCK_SCENARIOS[scenario]
-  const status = deriveCreditStatus(live.total, live.used)
-  const planCtx = useMemo(() => buildPlanContext(planScenario), [planScenario])
-  const { remaining, used, total, usedPct, state } = status
-  const refreshDate = MOCK_BALANCE.refreshDate
-  const canUpgrade = planCtx.planId !== 'studio' // top tier can't upgrade further
+  // Pure derivations — every render reads fresh from the snapshot.
+  const planCtx = useMemo(() => selectPlanState(snap), [snap])
+  const status = useMemo(() => selectCreditStatus(snap), [snap])
+  const activeAlert: ActiveAlert = useMemo(() => selectActiveAlert(snap), [snap])
+  const visiblePlans = useMemo(() => selectVisiblePlans(snap), [snap])
+  const visiblePackages = useMemo(() => selectVisiblePackages(snap), [snap])
+  const canUpgrade = useMemo(() => selectCanUpgrade(snap), [snap])
+  const checkoutResult = selectCheckoutResult(snap)
 
-  // Severity hierarchy decides which alert wins (only one shown at top).
-  // Plan-level (expired/expiring) outranks credit-level for paid users; for beta we always
-  // show the beta-transition card when the beta is ending or ended.
-  const showBetaAlert = planCtx.isBeta && planCtx.lifecycle !== 'active'
-  const showPlanAlert = !planCtx.isBeta && planCtx.lifecycle !== 'active'
-  const showCreditAlert = !showBetaAlert && !showPlanAlert && status.state !== 'healthy'
-
-  const totalUsageCredits = useMemo(
-    () => MOCK_USAGE.reduce((s, u) => s + u.credits, 0),
-    []
-  )
+  const refreshDate = formatDate(status.refreshDate)
 
   return (
     <div className="pm-backdrop" onClick={() => plugin.close()}>
-      <div className={`pm-shell pm-shell--${state}`} onClick={(e) => e.stopPropagation()}>
-        {/* Atmospheric background */}
+      <div className={`pm-shell pm-shell--${status.state}`} onClick={(e) => e.stopPropagation()}>
         <div className="pm-atmosphere" aria-hidden>
           <div className="pm-atmosphere__orb pm-atmosphere__orb--a" />
           <div className="pm-atmosphere__orb pm-atmosphere__orb--b" />
@@ -381,7 +353,6 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           <div className="pm-atmosphere__grain" />
         </div>
 
-        {/* Top bar */}
         <header className="pm-topbar">
           <div className="pm-topbar__brand">
             <span className="pm-topbar__dot" />
@@ -390,65 +361,7 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
             <span className="pm-topbar__title">Plan&nbsp;&amp;&nbsp;Credits</span>
           </div>
 
-          {/* Dev scenario switchers — remove when wiring real API */}
-          <div className="pm-scenario-stack">
-            <div className="pm-scenario" title="Dev: preview credit states">
-              <i className="fas fa-coins"></i>
-              {(Object.keys(MOCK_SCENARIOS) as Array<keyof typeof MOCK_SCENARIOS>).map(k => (
-                <button
-                  key={k}
-                  className={`pm-scenario__btn ${scenario === k ? 'is-active' : ''}`}
-                  onClick={() => setScenario(k)}
-                >{MOCK_SCENARIOS[k].label}</button>
-              ))}
-            </div>
-            <div className="pm-scenario" title="Dev: preview plan lifecycle">
-              <i className="fas fa-calendar-alt"></i>
-              {(Object.keys(MOCK_PLAN_SCENARIOS) as Array<keyof typeof MOCK_PLAN_SCENARIOS>).map(k => (
-                <button
-                  key={k}
-                  className={`pm-scenario__btn ${planScenario === k ? 'is-active' : ''}`}
-                  onClick={() => setPlanScenario(k)}
-                >{k}</button>
-              ))}
-            </div>
-            <div className="pm-scenario" title="Dev: preview data fetch state">
-              <i className="fas fa-cloud-download-alt"></i>
-              {(['ready', 'loading', 'error'] as const).map(k => (
-                <button
-                  key={k}
-                  className={`pm-scenario__btn ${dataState === k ? 'is-active' : ''}`}
-                  onClick={() => setDataState(k)}
-                >{k}</button>
-              ))}
-            </div>
-            <div className="pm-scenario" title="Dev: preview checkout result">
-              <i className="fas fa-credit-card"></i>
-              <button
-                className={`pm-scenario__btn ${!checkoutResult ? 'is-active' : ''}`}
-                onClick={() => plugin.setCheckoutResult(null)}
-              >none</button>
-              {([
-                { kind: 'processing', label: 'processing', intent: 'subscription', itemLabel: 'Builder plan' },
-                { kind: 'success',    label: 'success',    intent: 'topup',        itemLabel: '50,000 credits', transactionId: 'txn_01H8…' },
-                { kind: 'closed',     label: 'closed',     intent: 'subscription', itemLabel: 'Builder plan' },
-                { kind: 'error',      label: 'error',      intent: 'topup',        itemLabel: '50,000 credits',
-                  errorMessage: 'Your card was declined (insufficient funds).', transactionId: 'txn_01H9…' },
-              ] as const).map(s => (
-                <button
-                  key={s.kind}
-                  className={`pm-scenario__btn ${checkoutResult?.kind === s.kind ? 'is-active' : ''}`}
-                  onClick={() => plugin.setCheckoutResult({
-                    kind: s.kind,
-                    intent: s.intent,
-                    itemLabel: s.itemLabel,
-                    errorMessage: 'errorMessage' in s ? s.errorMessage : undefined,
-                    transactionId: 'transactionId' in s ? s.transactionId : undefined,
-                  })}
-                >{s.label}</button>
-              ))}
-            </div>
-          </div>
+          <DevSwitchers plugin={plugin} snap={snap} />
 
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
             <i className="fas fa-times"></i>
@@ -464,119 +377,82 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           />
         )}
 
-        {!checkoutResult && dataState === 'loading' && <PlanManagerSkeleton />}
-        {!checkoutResult && dataState === 'error' && <PlanManagerError onRetry={() => setDataState('ready')} />}
-        {!checkoutResult && dataState === 'ready' && <>
-
-        {/* Beta transition (highest priority for beta users) */}
-        {showBetaAlert && (
-          <BetaTransitionAlert
-            planCtx={planCtx}
-            onUpgrade={() => setActiveSection('plans')}
-            onTopUp={() => setActiveSection('topup')}
+        {!checkoutResult && snap.dataState === 'loading' && <PlanManagerSkeleton />}
+        {!checkoutResult && snap.dataState === 'error' && (
+          <PlanManagerError
+            message={snap.errorMessage}
+            onRetry={() => plugin.refresh()}
           />
         )}
+        {!checkoutResult && snap.dataState === 'ready' && <>
 
-        {/* Plan lifecycle alert (paid users) */}
-        {showPlanAlert && (
-          <PlanLifecycleAlert
-            planCtx={planCtx}
-            onRenew={() => setActiveSection('plans')}
-            onUpgrade={() => setActiveSection('plans')}
-          />
-        )}
+          {activeAlert === 'beta-transition' && (
+            <BetaTransitionAlert
+              planCtx={planCtx}
+              onUpgrade={() => setActiveSection('plans')}
+              onTopUp={() => setActiveSection('topup')}
+            />
+          )}
 
-        {/* Credit alert (when no plan-level alert is active) */}
-        {showCreditAlert && (
-          <CreditAlert
+          {activeAlert === 'plan-lifecycle' && (
+            <PlanLifecycleAlert
+              planCtx={planCtx}
+              onRenew={() => setActiveSection('plans')}
+              onUpgrade={() => setActiveSection('plans')}
+            />
+          )}
+
+          {activeAlert === 'credit' && (
+            <CreditAlert
+              status={status}
+              refreshDate={refreshDate}
+              canUpgrade={canUpgrade}
+              onTopUp={() => setActiveSection('topup')}
+              onUpgrade={() => setActiveSection('plans')}
+            />
+          )}
+
+          <Hero
             status={status}
             refreshDate={refreshDate}
-            canUpgrade={canUpgrade}
+            heroCompact={activeAlert === 'beta-transition' || activeAlert === 'plan-lifecycle'}
             onTopUp={() => setActiveSection('topup')}
-            onUpgrade={() => setActiveSection('plans')}
           />
-        )}
 
-        {/* Hero — credits balance. Collapses to a slim strip when a top-level alert is shown. */}
-        {(() => {
-          const heroCompact = showBetaAlert || showPlanAlert
-          return (
-            <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
-              <div className="pm-hero__left">
-                <div className="pm-hero__eyebrow">Credit balance</div>
-                <div className="pm-hero__amount">
-                  <span className="pm-hero__num">{remaining.toLocaleString()}</span>
-                  <span className="pm-hero__unit">credits</span>
-                </div>
-                <div className="pm-hero__sub">
-                  <span className="pm-hero__used">{used.toLocaleString()} used</span>
-                  <span className="pm-hero__div">·</span>
-                  <span>{total.toLocaleString()} included this cycle</span>
-                  {!heroCompact && <>
-                    <span className="pm-hero__div">·</span>
-                    <span>refreshes <em>{refreshDate}</em></span>
-                  </>}
-                </div>
+          <nav className="pm-nav">
+            {([
+              { id: 'plans', label: 'Plans', icon: 'fas fa-layer-group' },
+              { id: 'topup', label: 'Top up', icon: 'fas fa-bolt' },
+              { id: 'usage', label: 'Usage breakdown', icon: 'fas fa-chart-bar' }
+            ] as const).map(s => (
+              <button
+                key={s.id}
+                className={`pm-nav__item ${activeSection === s.id ? 'is-active' : ''}`}
+                onClick={() => setActiveSection(s.id)}
+              >
+                <i className={s.icon}></i>
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </nav>
 
-                {!heroCompact && (
-                  <div className="pm-hero__bar">
-                    <div className="pm-hero__bar-fill" style={{ width: `${usedPct}%` }} />
-                    <div className="pm-hero__bar-marker" style={{ left: `${usedPct}%` }} />
-                  </div>
-                )}
-              </div>
-
-              <div className="pm-hero__right">
-                {!heroCompact && (
-                  <div className="pm-ring" style={{ '--pm-pct': `${usedPct}` } as React.CSSProperties}>
-                    <div className="pm-ring__inner">
-                      <div className="pm-ring__pct">{Math.round(usedPct)}<span>%</span></div>
-                      <div className="pm-ring__caption">consumed</div>
-                    </div>
-                  </div>
-                )}
-                <button
-                  className="pm-cta"
-                  onClick={() => setActiveSection('topup')}
-                >
-                  <i className="fas fa-bolt"></i> Top&nbsp;up
-                </button>
-              </div>
-            </section>
-          )
-        })()}
-
-        {/* Section nav */}
-        <nav className="pm-nav">
-          {([
-            { id: 'plans', label: 'Plans', icon: 'fas fa-layer-group' },
-            { id: 'topup', label: 'Top up', icon: 'fas fa-bolt' },
-            { id: 'usage', label: 'Usage breakdown', icon: 'fas fa-chart-bar' }
-          ] as const).map(s => (
-            <button
-              key={s.id}
-              className={`pm-nav__item ${activeSection === s.id ? 'is-active' : ''}`}
-              onClick={() => setActiveSection(s.id)}
-            >
-              <i className={s.icon}></i>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* Sections */}
-        <main className="pm-main">
-          {activeSection === 'plans' && <PlansSection />}
-          {activeSection === 'topup' && <TopUpSection />}
-          {activeSection === 'usage' && <UsageSection totalCredits={totalUsageCredits} />}
-        </main>
+          <main className="pm-main">
+            {activeSection === 'plans' && (
+              <PlansSection plans={visiblePlans} currentPlanId={planCtx.planId} />
+            )}
+            {activeSection === 'topup' && (
+              <TopUpSection packages={visiblePackages} />
+            )}
+            {activeSection === 'usage' && <UsageSection />}
+          </main>
 
         </>}
 
-        {/* Footer */}
         <footer className="pm-footer">
           <div className="pm-footer__legal">
-            Mocked view · Wire to <code>billing</code> &amp; <code>usage</code> APIs to go live
+            {snap.isAuthenticated
+              ? <>Signed in · billing data live</>
+              : <>Catalog only · sign in to manage your subscription</>}
           </div>
           <div className="pm-footer__links">
             <a href="https://remix-ide.readthedocs.io/" target="_blank" rel="noreferrer">Docs</a>
@@ -588,169 +464,361 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
   )
 }
 
-/* ─── Plans section ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hero
+   ───────────────────────────────────────────────────────────────────────── */
 
-const PlansSection: React.FC = () => (
-  <div className="pm-plans">
-    {MOCK_PLANS.map(plan => {
-      const isCurrent = !!plan.highlight
-      return (
-        <article
-          key={plan.id}
-          className={`pm-plan ${isCurrent ? 'is-current' : ''} ${plan.recommended ? 'is-recommended' : ''}`}
-          style={{ '--pm-accent': plan.accent } as React.CSSProperties}
-        >
-          {plan.recommended && <div className="pm-plan__ribbon">Recommended</div>}
-          {isCurrent && <div className="pm-plan__current">Current</div>}
-
-          <header className="pm-plan__head">
-            <div className="pm-plan__name">{plan.name}</div>
-            <div className="pm-plan__tag">{plan.tagline}</div>
-          </header>
-
-          <div className="pm-plan__price">
-            <span className="pm-plan__price-num">{plan.priceLabel}</span>
-            <span className="pm-plan__price-cad">{plan.cadence}</span>
-          </div>
-
-          <ul className="pm-plan__features">
-            {plan.features.map(f => (
-              <li key={f}>
-                <i className="fas fa-check"></i>
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
-
-          <button
-            className={`pm-plan__btn ${isCurrent ? 'is-disabled' : ''}`}
-            disabled={isCurrent}
-          >
-            {isCurrent ? 'Active' : `Switch to ${plan.name}`}
-          </button>
-        </article>
-      )
-    })}
-  </div>
-)
-
-/* ─── Top-up section ─── */
-
-const TopUpSection: React.FC = () => (
-  <div className="pm-topup">
-    <div className="pm-topup__intro">
-      <h3>One-off credits</h3>
-      <p>Top up without changing your plan. Credits never expire.</p>
-    </div>
-    <div className="pm-topup__grid">
-      {MOCK_TOPUPS.map(t => (
-        <button key={t.id} className={`pm-topup__card ${t.popular ? 'is-popular' : ''}`}>
-          {t.popular && <div className="pm-topup__pop">Best value</div>}
-          <div className="pm-topup__credits">
-            <span className="pm-topup__credits-num">{t.credits.toLocaleString()}</span>
-            <span className="pm-topup__credits-unit">credits</span>
-          </div>
-          <div className="pm-topup__price">{t.price}</div>
-          <div className="pm-topup__perk">${t.perK} per 1k credits</div>
-          <span className="pm-topup__buy">
-            Buy <i className="fas fa-arrow-right"></i>
-          </span>
-        </button>
-      ))}
-    </div>
-    <div className="pm-topup__custom">
-      <span>Need a custom amount?</span>
-      <a href="mailto:remix@ethereum.org">Contact us</a>
-    </div>
-  </div>
-)
-
-/* ─── Usage section ─── */
-
-const UsageSection: React.FC<{ totalCredits: number }> = ({ totalCredits }) => {
-  const max = Math.max(...MOCK_USAGE.map(u => u.credits))
+const Hero: React.FC<{
+  status: CreditStatus
+  refreshDate: string | null
+  heroCompact: boolean
+  onTopUp: () => void
+}> = ({ status, refreshDate, heroCompact, onTopUp }) => {
+  const { remaining, used, total, usedPct, state } = status
 
   return (
-    <div className="pm-usage">
-      <div className="pm-usage__intro">
-        <div>
-          <h3>Per-model breakdown</h3>
-          <p>Credits and tokens consumed by each model in this billing cycle.</p>
+    <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
+      <div className="pm-hero__left">
+        <div className="pm-hero__eyebrow">Credit balance</div>
+        <div className="pm-hero__amount">
+          <span className="pm-hero__num">{remaining.toLocaleString()}</span>
+          <span className="pm-hero__unit">credits</span>
         </div>
-        <div className="pm-usage__total">
-          <span className="pm-usage__total-num">{totalCredits.toLocaleString()}</span>
-          <span className="pm-usage__total-lbl">credits used</span>
+        <div className="pm-hero__sub">
+          <span className="pm-hero__used">{used.toLocaleString()} used</span>
+          <span className="pm-hero__div">·</span>
+          <span>{total.toLocaleString()} included this cycle</span>
+          {!heroCompact && refreshDate && <>
+            <span className="pm-hero__div">·</span>
+            <span>refreshes <em>{refreshDate}</em></span>
+          </>}
         </div>
+
+        {!heroCompact && (
+          <div className="pm-hero__bar">
+            <div className="pm-hero__bar-fill" style={{ width: `${usedPct}%` }} />
+            <div className="pm-hero__bar-marker" style={{ left: `${usedPct}%` }} />
+          </div>
+        )}
       </div>
 
-      <div className="pm-usage__list">
-        {MOCK_USAGE.map(u => {
-          const pct = (u.credits / max) * 100
-          const sharePct = (u.credits / totalCredits) * 100
-          return (
-            <div key={u.id} className="pm-usage__row" style={{ '--pm-bar': u.color } as React.CSSProperties}>
-              <div className="pm-usage__meta">
-                <div className="pm-usage__model">
-                  <span className="pm-usage__swatch" />
-                  <span className="pm-usage__name">{u.label}</span>
-                  <span className="pm-usage__vendor">{u.vendor}</span>
-                </div>
-                <div className="pm-usage__nums">
-                  <span className="pm-usage__credits">{u.credits.toLocaleString()}</span>
-                  <span className="pm-usage__credits-lbl">credits</span>
-                  <span className="pm-usage__share">{sharePct.toFixed(1)}%</span>
-                </div>
-              </div>
-              <div className="pm-usage__bar">
-                <div className="pm-usage__bar-fill" style={{ width: `${pct}%` }} />
-              </div>
-              <div className="pm-usage__tokens">
-                {u.tokens.toLocaleString()} tokens
-              </div>
+      <div className="pm-hero__right">
+        {!heroCompact && (
+          <div className="pm-ring" style={{ '--pm-pct': `${usedPct}` } as React.CSSProperties}>
+            <div className="pm-ring__inner">
+              <div className="pm-ring__pct">{Math.round(usedPct)}<span>%</span></div>
+              <div className="pm-ring__caption">consumed</div>
             </div>
-          )
-        })}
+          </div>
+        )}
+        <button className="pm-cta" onClick={onTopUp}>
+          <i className="fas fa-bolt"></i> Top&nbsp;up
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dev switchers — inject scenarios via DEV_INJECT events
+   ───────────────────────────────────────────────────────────────────────── */
+
+const SCENARIOS = {
+  credit: {
+    label: 'Credits',
+    icon: 'fas fa-coins',
+    options: [
+      { key: 'healthy',  label: 'Healthy',         credits: { balance: 800,  free_credits: 800,  paid_credits: 0 } },
+      { key: 'low',      label: 'Low (15%)',       credits: { balance: 150,  free_credits: 150,  paid_credits: 0 } },
+      { key: 'critical', label: 'Critical (1.8%)', credits: { balance: 18,   free_credits: 18,   paid_credits: 0 } },
+      { key: 'empty',    label: 'Empty',           credits: { balance: 0,    free_credits: 0,    paid_credits: 0 } }
+    ] as Array<{ key: string; label: string; credits: any }>
+  },
+  plan: {
+    label: 'Plan',
+    icon: 'fas fa-calendar-alt',
+    options: [
+      { key: 'beta-active',    permissions: makeBetaPermissions(null), subscription: null },
+      { key: 'beta-ending',    permissions: makeBetaPermissions(daysFromNow(5)), subscription: null },
+      { key: 'beta-ended',     permissions: makeBetaPermissions(daysFromNow(-3)), subscription: null },
+      { key: 'paid-active',    permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 28, false) },
+      { key: 'paid-expiring',  permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 4, true) },
+      { key: 'paid-expired',   permissions: { feature_groups: [], features: {} }, subscription: makeSub('canceled', -2, true) }
+    ] as Array<{ key: string; permissions: any; subscription: any }>
+  }
+}
+
+function daysFromNow(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString()
+}
+
+function makeBetaPermissions(expiresAt: string | null) {
+  return {
+    user_id: 1, group_id: 1, is_authenticated: true, is_admin: false, is_blocked: false,
+    feature_groups: [{
+      name: 'beta', display_name: 'Beta Testers', description: 'Early access',
+      priority: 5, source_type: 'admin_grant',
+      starts_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+      expires_at: expiresAt, is_recurring: false, grant_reason: null,
+      created_at: new Date(Date.now() - 30 * 86_400_000).toISOString()
+    }],
+    features: {}
+  }
+}
+
+function makeSub(status: string, daysToEnd: number, cancelled: boolean) {
+  const endsAt = daysFromNow(daysToEnd)
+  return {
+    id: 'sub_dev', status, customerId: 'cus_dev',
+    currentBillingPeriod: { startsAt: daysFromNow(daysToEnd - 30), endsAt },
+    scheduledChange: cancelled ? { action: 'cancel', effectiveAt: endsAt } : null,
+    items: [{ priceId: 'pri_pro', productId: 'pro_pro', description: 'Pro plan',
+      quantity: 1, unitPrice: { amount: '2900', currencyCode: 'USD' },
+      billingCycle: { interval: 'month', frequency: 1 },
+      product: { id: 'pro_pro', name: 'Pro', description: 'Builder', imageUrl: null }
+    }],
+    nextBilledAt: endsAt, createdAt: '', updatedAt: '', firstBilledAt: '',
+    discount: null, collectionMode: 'automatic', billingDetails: null,
+    currencyCode: 'USD', planId: 'pro', creditsPerMonth: 1000
+  }
+}
+
+const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnapshot }> = ({ plugin, snap }) => {
+  // Show the dev switchers only in non-production builds. The check is the
+  // env hook used elsewhere in the project (NX_NODE_ENV / NODE_ENV).
+  // Keep them on for now while we wire real flows; flip to a feature flag
+  // once we ship.
+  return (
+    <div className="pm-scenario-stack">
+      <div className="pm-scenario" title="Dev: inject credit scenario">
+        <i className={SCENARIOS.credit.icon}></i>
+        {SCENARIOS.credit.options.map(o => (
+          <button
+            key={o.key}
+            className="pm-scenario__btn"
+            onClick={() => plugin.store.send({ type: 'DEV_INJECT', partial: { credits: o.credits } })}
+          >{o.label}</button>
+        ))}
+      </div>
+      <div className="pm-scenario" title="Dev: inject plan scenario">
+        <i className={SCENARIOS.plan.icon}></i>
+        {SCENARIOS.plan.options.map(o => (
+          <button
+            key={o.key}
+            className="pm-scenario__btn"
+            onClick={() => plugin.store.send({
+              type: 'DEV_INJECT',
+              partial: { permissions: o.permissions, subscription: o.subscription }
+            })}
+          >{o.key}</button>
+        ))}
+      </div>
+      <div className="pm-scenario" title="Dev: inject data state">
+        <i className="fas fa-cloud-download-alt"></i>
+        <button className="pm-scenario__btn" onClick={() => plugin.refresh()}>refresh</button>
+        <button
+          className="pm-scenario__btn"
+          onClick={() => plugin.store.send({ type: 'DATA_FAILED', message: 'Simulated failure' })}
+        >error</button>
+      </div>
+      <div className="pm-scenario" title="Dev: inject checkout result">
+        <i className="fas fa-credit-card"></i>
+        <button
+          className={`pm-scenario__btn ${!snap.checkoutResult ? 'is-active' : ''}`}
+          onClick={() => plugin.setCheckoutResult(null)}
+        >none</button>
+        {([
+          { kind: 'processing', label: 'processing', intent: 'subscription', itemLabel: 'Builder plan' },
+          { kind: 'success',    label: 'success',    intent: 'topup',        itemLabel: '50,000 credits', transactionId: 'txn_01H8…' },
+          { kind: 'closed',     label: 'closed',     intent: 'subscription', itemLabel: 'Builder plan' },
+          { kind: 'error',      label: 'error',      intent: 'topup',        itemLabel: '50,000 credits',
+            errorMessage: 'Your card was declined (insufficient funds).', transactionId: 'txn_01H9…' }
+        ] as const).map(s => (
+          <button
+            key={s.kind}
+            className={`pm-scenario__btn ${snap.checkoutResult?.kind === s.kind ? 'is-active' : ''}`}
+            onClick={() => plugin.setCheckoutResult({
+              kind: s.kind, intent: s.intent, itemLabel: s.itemLabel,
+              errorMessage: 'errorMessage' in s ? s.errorMessage : undefined,
+              transactionId: 'transactionId' in s ? s.transactionId : undefined
+            })}
+          >{s.label}</button>
+        ))}
       </div>
     </div>
   )
 }
 
-/* ─── Credit alert banner ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sections
+   ───────────────────────────────────────────────────────────────────────── */
 
-const ALERT_COPY: Record<Exclude<CreditState, 'healthy'>, {
+const PlansSection: React.FC<{
+  plans: any[]
+  currentPlanId: string | null
+}> = ({ plans, currentPlanId }) => {
+  if (plans.length === 0) {
+    return (
+      <div className="pm-empty">
+        <p>No plans available right now.</p>
+      </div>
+    )
+  }
+  // Sort cheap → expensive so the upgrade path reads left-to-right.
+  const sorted = [...plans].sort((a, b) => (a.priceUsd ?? 0) - (b.priceUsd ?? 0))
+  // The mid-priced plan is the "recommended" by default (matches typical SaaS pricing pages).
+  const recommendedId = sorted.length >= 3 ? sorted[1].id : null
+
+  return (
+    <div className="pm-plans">
+      {sorted.map(plan => {
+        const isCurrent = plan.id === currentPlanId
+        const isRecommended = plan.id === recommendedId
+        const accent = pickAccent(plan.id)
+        const priceLabel = plan.priceUsd === 0 ? 'Free' : `$${(plan.priceUsd / 100).toFixed(0)}`
+        const cadence = plan.priceUsd === 0
+          ? 'forever'
+          : plan.billingInterval === 'year' ? 'per year' : 'per month'
+        return (
+          <article
+            key={plan.id}
+            className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''}`}
+            style={{ '--pm-accent': accent } as React.CSSProperties}
+          >
+            {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
+            {isCurrent && <div className="pm-plan__current">Current</div>}
+
+            <header className="pm-plan__head">
+              <div className="pm-plan__name">{plan.name}</div>
+              <div className="pm-plan__tag">{plan.description}</div>
+            </header>
+
+            <div className="pm-plan__price">
+              <span className="pm-plan__price-num">{priceLabel}</span>
+              <span className="pm-plan__price-cad">{cadence}</span>
+            </div>
+
+            <ul className="pm-plan__features">
+              <li>
+                <i className="fas fa-check"></i>
+                <span>{plan.creditsPerMonth.toLocaleString()} credits / month</span>
+              </li>
+              {(plan.features ?? []).map((f: string) => (
+                <li key={f}>
+                  <i className="fas fa-check"></i>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              className={`pm-plan__btn ${isCurrent ? 'is-disabled' : ''}`}
+              disabled={isCurrent}
+              // TODO: wire to billingApi.subscribe() + paddle checkout when
+              // we move the purchase flow inside this plugin.
+            >
+              {isCurrent ? 'Active' : `Switch to ${plan.name}`}
+            </button>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
+const TopUpSection: React.FC<{ packages: any[] }> = ({ packages }) => {
+  if (packages.length === 0) {
+    return (
+      <div className="pm-empty">
+        <p>No top-up packages available right now.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="pm-topup">
+      <div className="pm-topup__intro">
+        <h3>One-off credits</h3>
+        <p>Top up without changing your plan. Credits never expire.</p>
+      </div>
+      <div className="pm-topup__grid">
+        {packages.map(t => {
+          const price = `$${(t.priceUsd / 100).toFixed(0)}`
+          const perK = ((t.priceUsd / 100) / (t.credits / 1000)).toFixed(2)
+          return (
+            <button key={t.id} className={`pm-topup__card ${t.popular ? 'is-popular' : ''}`}>
+              {t.popular && <div className="pm-topup__pop">Best value</div>}
+              <div className="pm-topup__credits">
+                <span className="pm-topup__credits-num">{t.credits.toLocaleString()}</span>
+                <span className="pm-topup__credits-unit">credits</span>
+              </div>
+              <div className="pm-topup__price">{price}</div>
+              <div className="pm-topup__perk">${perK} per 1k credits</div>
+              <span className="pm-topup__buy">
+                Buy <i className="fas fa-arrow-right"></i>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="pm-topup__custom">
+        <span>Need a custom amount?</span>
+        <a href="mailto:remix@ethereum.org">Contact us</a>
+      </div>
+    </div>
+  )
+}
+
+const UsageSection: React.FC = () => (
+  <div className="pm-empty">
+    <div className="pm-empty__icon">
+      <i className="fas fa-chart-bar"></i>
+    </div>
+    <div className="pm-empty__title">Per-model usage coming soon</div>
+    <p className="pm-empty__body">
+      We're working on a detailed breakdown of credits and tokens per model. For
+      now, total consumption is shown in the credit balance hero above.
+    </p>
+  </div>
+)
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Alerts
+   ───────────────────────────────────────────────────────────────────────── */
+
+const ALERT_COPY: Record<Exclude<CreditState, 'healthy' | 'unknown'>, {
   eyebrow: string
   title: (n: number) => string
-  body: (refresh: string) => string
+  body: (refresh: string | null) => string
   icon: string
 }> = {
   low: {
     eyebrow: 'Running low',
     title: (n) => `${n.toLocaleString()} credits left`,
-    body: (r) => `You'll likely run out before your refill on ${r}. Top up or upgrade to keep your AI workflows uninterrupted.`,
+    body: (r) => `You'll likely run out${r ? ` before your refill on ${r}` : ''}. Top up or upgrade to keep your AI workflows uninterrupted.`,
     icon: 'fas fa-exclamation'
   },
   critical: {
     eyebrow: 'Almost out',
     title: (n) => `Only ${n.toLocaleString()} credits remain`,
-    body: (r) => `Your next AI request may not complete. Add credits now or upgrade your plan — refill is on ${r}.`,
+    body: (r) => `Your next AI request may not complete. Add credits now or upgrade your plan${r ? ` — refill is on ${r}` : ''}.`,
     icon: 'fas fa-exclamation-triangle'
   },
   empty: {
     eyebrow: 'Out of credits',
     title: () => 'You\'ve used all your credits',
-    body: (r) => `AI features are paused until you top up, upgrade your plan, or your free allowance refills on ${r}.`,
+    body: (r) => `AI features are paused until you top up, upgrade your plan${r ? `, or your free allowance refills on ${r}` : ''}.`,
     icon: 'fas fa-bolt'
   }
 }
 
 const CreditAlert: React.FC<{
   status: CreditStatus
-  refreshDate: string
+  refreshDate: string | null
   canUpgrade: boolean
   onTopUp: () => void
   onUpgrade: () => void
 }> = ({ status, refreshDate, canUpgrade, onTopUp, onUpgrade }) => {
-  if (status.state === 'healthy') return null
+  if (status.state === 'healthy' || status.state === 'unknown') return null
   const copy = ALERT_COPY[status.state]
 
   return (
@@ -777,8 +845,6 @@ const CreditAlert: React.FC<{
     </section>
   )
 }
-
-/* ─── Plan lifecycle alert (paid plans) ─── */
 
 const PLAN_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
   eyebrow: string
@@ -807,13 +873,13 @@ const PLAN_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
 }
 
 const PlanLifecycleAlert: React.FC<{
-  planCtx: PlanContext
+  planCtx: PlanState
   onRenew: () => void
   onUpgrade: () => void
 }> = ({ planCtx, onRenew, onUpgrade }) => {
   if (planCtx.lifecycle === 'active') return null
   const copy = PLAN_ALERT_COPY[planCtx.lifecycle]
-  const variant = planCtx.lifecycle // 'expiring' | 'expired'
+  const variant = planCtx.lifecycle
 
   return (
     <section className={`pm-alert pm-alert--plan pm-alert--plan-${variant}`}>
@@ -828,8 +894,7 @@ const PlanLifecycleAlert: React.FC<{
         </div>
         <p className="pm-alert__desc">
           {copy.body(planCtx.planName, planCtx.daysUntilExpiry, planCtx.isCancelled)}
-          {' '}
-          <span className="pm-alert__meta">Expired on {planCtx.expiresOn}.</span>
+          {planCtx.expiresOn && <> <span className="pm-alert__meta">Expired on {formatDate(planCtx.expiresOn)}.</span></>}
         </p>
       </div>
       <div className="pm-alert__actions">
@@ -845,12 +910,10 @@ const PlanLifecycleAlert: React.FC<{
   )
 }
 
-/* ─── Beta transition alert (special, gracious tone) ─── */
-
 const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
   eyebrow: string
   title: string
-  lede: (days: number, expiresOn: string) => string
+  lede: (days: number, expiresOn: string | null) => string
   body: string
   primary: string
   secondary: string
@@ -859,7 +922,7 @@ const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
     eyebrow: 'Beta program',
     title: 'Thanks for shaping Remix.',
     lede: (days, expiresOn) =>
-      `The free beta wraps up ${days <= 1 ? 'tomorrow' : `in ${days} days`} (${expiresOn}). Your feedback got us here — now it's time to pick a plan that fits how you build.`,
+      `The free beta wraps up ${days <= 1 ? 'tomorrow' : `in ${days} days`}${expiresOn ? ` (${formatDate(expiresOn)})` : ''}. Your feedback got us here — now it's time to pick a plan that fits how you build.`,
     body: 'Pick any paid tier before your beta ends and your projects, history, and AI credits keep flowing without a hiccup. As a thank-you, your first month carries over a bonus credit pack.',
     primary: 'See paid plans',
     secondary: 'Top up credits'
@@ -868,7 +931,7 @@ const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
     eyebrow: 'Beta has ended',
     title: 'You helped build this. Let\'s keep going.',
     lede: (days, expiresOn) =>
-      `The beta ended ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago (${expiresOn}). AI features are paused while you choose a plan — your workspaces and history are safe and waiting.`,
+      `The beta ended ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago${expiresOn ? ` (${formatDate(expiresOn)})` : ''}. AI features are paused while you choose a plan — your workspaces and history are safe and waiting.`,
     body: 'Pick a paid plan to switch everything back on. Beta testers get a one-time bonus credit pack on their first paid month — our way of saying thanks for being early.',
     primary: 'Choose a plan',
     secondary: 'Top up credits'
@@ -876,7 +939,7 @@ const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
 }
 
 const BetaTransitionAlert: React.FC<{
-  planCtx: PlanContext
+  planCtx: PlanState
   onUpgrade: () => void
   onTopUp: () => void
 }> = ({ planCtx, onUpgrade, onTopUp }) => {
@@ -913,7 +976,9 @@ const BetaTransitionAlert: React.FC<{
   )
 }
 
-/* ─── Loading skeleton ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Loading + error
+   ───────────────────────────────────────────────────────────────────────── */
 
 const PlanManagerSkeleton: React.FC = () => (
   <div className="pm-skeleton" aria-busy="true" aria-label="Loading billing information">
@@ -944,17 +1009,16 @@ const PlanManagerSkeleton: React.FC = () => (
   </div>
 )
 
-/* ─── Error state ─── */
-
-const PlanManagerError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+const PlanManagerError: React.FC<{ message?: string | null; onRetry: () => void }> = ({ message, onRetry }) => (
   <div className="pm-empty pm-empty--error">
     <div className="pm-empty__icon">
       <i className="fas fa-cloud-exclamation"></i>
     </div>
     <div className="pm-empty__title">We couldn't load your billing details</div>
     <p className="pm-empty__body">
-      The billing service didn't respond. Your plan and credits are safe — this is
-      just a display issue. Try again in a moment, or check your connection.
+      {message
+        ? <>The billing service responded with: <code>{message}</code>. Your plan and credits are safe — this is just a display issue.</>
+        : <>The billing service didn't respond. Your plan and credits are safe — this is just a display issue. Try again in a moment, or check your connection.</>}
     </p>
     <div className="pm-empty__actions">
       <button className="pm-empty__btn pm-empty__btn--primary" onClick={onRetry}>
@@ -972,7 +1036,9 @@ const PlanManagerError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
   </div>
 )
 
-/* ─── Checkout result screen ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Checkout result screen
+   ───────────────────────────────────────────────────────────────────────── */
 
 const CHECKOUT_COPY: Record<CheckoutResultKind, {
   eyebrow: string
@@ -992,8 +1058,8 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
     icon: 'fas fa-check',
     title: (intent, item) =>
       intent === 'topup' ? `${item || 'Credits'} added to your account` :
-      intent === 'subscription' ? `Welcome to ${item || 'your new plan'}` :
-      'Purchase confirmed',
+        intent === 'subscription' ? `Welcome to ${item || 'your new plan'}` :
+          'Purchase confirmed',
     body: (intent) =>
       intent === 'topup'
         ? 'Your balance has been updated. AI workflows are ready to go.'
@@ -1099,4 +1165,22 @@ const CheckoutResultScreen: React.FC<{
       </div>
     </section>
   )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────────────────────────────────── */
+
+function formatDate(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return null
+  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const PLAN_ACCENTS = ['#2fbfb1', '#5b9cf5', '#9b7dff', '#f59f5b', '#e75b89']
+function pickAccent(planId: string): string {
+  let h = 0
+  for (let i = 0; i < planId.length; i++) h = (h * 31 + planId.charCodeAt(i)) >>> 0
+  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
 }
