@@ -209,6 +209,63 @@ const MOCK_SCENARIOS: Record<string, { total: number; used: number; label: strin
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Plan lifecycle state
+   ───────────────────────────────────────────────────────────────────────── */
+
+type PlanLifecycle = 'active' | 'expiring' | 'expired'
+
+const EXPIRING_DAYS = 7 // ≤ 7 days → 'expiring'
+
+interface PlanContext {
+  planId: string
+  planName: string
+  isBeta: boolean
+  isCancelled: boolean   // user already cancelled, will not auto-renew
+  daysUntilExpiry: number  // negative means already expired
+  expiresOn: string
+  lifecycle: PlanLifecycle
+}
+
+function derivePlanLifecycle(daysUntilExpiry: number): PlanLifecycle {
+  if (daysUntilExpiry < 0) return 'expired'
+  if (daysUntilExpiry <= EXPIRING_DAYS) return 'expiring'
+  return 'active'
+}
+
+/* Dev preview — plan lifecycle scenarios */
+const MOCK_PLAN_SCENARIOS: Record<string, Omit<PlanContext, 'lifecycle'>> = {
+  'beta-active': {
+    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
+    daysUntilExpiry: 42, expiresOn: 'Jun 12, 2026'
+  },
+  'beta-ending': {
+    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
+    daysUntilExpiry: 5, expiresOn: 'May 6, 2026'
+  },
+  'beta-ended': {
+    planId: 'beta', planName: 'Beta Tester', isBeta: true, isCancelled: false,
+    daysUntilExpiry: -3, expiresOn: 'Apr 28, 2026'
+  },
+  'paid-active': {
+    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: false,
+    daysUntilExpiry: 28, expiresOn: 'May 29, 2026'
+  },
+  'paid-expiring': {
+    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: true,
+    daysUntilExpiry: 4, expiresOn: 'May 5, 2026'
+  },
+  'paid-expired': {
+    planId: 'pro', planName: 'Builder', isBeta: false, isCancelled: true,
+    daysUntilExpiry: -2, expiresOn: 'Apr 29, 2026'
+  }
+}
+
+function buildPlanContext(key: keyof typeof MOCK_PLAN_SCENARIOS): PlanContext {
+  const base = MOCK_PLAN_SCENARIOS[key]
+  return { ...base, lifecycle: derivePlanLifecycle(base.daysUntilExpiry) }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    UI
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -233,6 +290,7 @@ const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) =>
 const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
   const [activeSection, setActiveSection] = useState<'plans' | 'topup' | 'usage'>('plans')
   const [scenario, setScenario] = useState<keyof typeof MOCK_SCENARIOS>('healthy')
+  const [planScenario, setPlanScenario] = useState<keyof typeof MOCK_PLAN_SCENARIOS>('beta-active')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
@@ -242,9 +300,17 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
 
   const live = MOCK_SCENARIOS[scenario]
   const status = deriveCreditStatus(live.total, live.used)
+  const planCtx = useMemo(() => buildPlanContext(planScenario), [planScenario])
   const { remaining, used, total, usedPct, state } = status
   const refreshDate = MOCK_BALANCE.refreshDate
-  const canUpgrade = true // current plan is 'beta', so upgrade is available
+  const canUpgrade = planCtx.planId !== 'studio' // top tier can't upgrade further
+
+  // Severity hierarchy decides which alert wins (only one shown at top).
+  // Plan-level (expired/expiring) outranks credit-level for paid users; for beta we always
+  // show the beta-transition card when the beta is ending or ended.
+  const showBetaAlert = planCtx.isBeta && planCtx.lifecycle !== 'active'
+  const showPlanAlert = !planCtx.isBeta && planCtx.lifecycle !== 'active'
+  const showCreditAlert = !showBetaAlert && !showPlanAlert && status.state !== 'healthy'
 
   const totalUsageCredits = useMemo(
     () => MOCK_USAGE.reduce((s, u) => s + u.credits, 0),
@@ -272,16 +338,28 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
             <span className="pm-topbar__title">Plan&nbsp;&amp;&nbsp;Credits</span>
           </div>
 
-          {/* Dev scenario switcher — remove when wiring real API */}
-          <div className="pm-scenario" title="Dev: preview credit states">
-            <i className="fas fa-flask"></i>
-            {(Object.keys(MOCK_SCENARIOS) as Array<keyof typeof MOCK_SCENARIOS>).map(k => (
-              <button
-                key={k}
-                className={`pm-scenario__btn ${scenario === k ? 'is-active' : ''}`}
-                onClick={() => setScenario(k)}
-              >{MOCK_SCENARIOS[k].label}</button>
-            ))}
+          {/* Dev scenario switchers — remove when wiring real API */}
+          <div className="pm-scenario-stack">
+            <div className="pm-scenario" title="Dev: preview credit states">
+              <i className="fas fa-coins"></i>
+              {(Object.keys(MOCK_SCENARIOS) as Array<keyof typeof MOCK_SCENARIOS>).map(k => (
+                <button
+                  key={k}
+                  className={`pm-scenario__btn ${scenario === k ? 'is-active' : ''}`}
+                  onClick={() => setScenario(k)}
+                >{MOCK_SCENARIOS[k].label}</button>
+              ))}
+            </div>
+            <div className="pm-scenario" title="Dev: preview plan lifecycle">
+              <i className="fas fa-calendar-alt"></i>
+              {(Object.keys(MOCK_PLAN_SCENARIOS) as Array<keyof typeof MOCK_PLAN_SCENARIOS>).map(k => (
+                <button
+                  key={k}
+                  className={`pm-scenario__btn ${planScenario === k ? 'is-active' : ''}`}
+                  onClick={() => setPlanScenario(k)}
+                >{k}</button>
+              ))}
+            </div>
           </div>
 
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
@@ -289,8 +367,26 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           </button>
         </header>
 
-        {/* Low / critical / empty alert banner */}
-        {state !== 'healthy' && (
+        {/* Beta transition (highest priority for beta users) */}
+        {showBetaAlert && (
+          <BetaTransitionAlert
+            planCtx={planCtx}
+            onUpgrade={() => setActiveSection('plans')}
+            onTopUp={() => setActiveSection('topup')}
+          />
+        )}
+
+        {/* Plan lifecycle alert (paid users) */}
+        {showPlanAlert && (
+          <PlanLifecycleAlert
+            planCtx={planCtx}
+            onRenew={() => setActiveSection('plans')}
+            onUpgrade={() => setActiveSection('plans')}
+          />
+        )}
+
+        {/* Credit alert (when no plan-level alert is active) */}
+        {showCreditAlert && (
           <CreditAlert
             status={status}
             refreshDate={refreshDate}
@@ -300,49 +396,54 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           />
         )}
 
-        {/* Hero — credits balance */}
-        <section className={`pm-hero pm-hero--${state}`}>
-          <div className="pm-hero__left">
-            <div className="pm-hero__eyebrow">Credit balance</div>
-            <div className="pm-hero__amount">
-              <span className="pm-hero__num">{remaining.toLocaleString()}</span>
-              <span className="pm-hero__unit">credits</span>
-            </div>
-            <div className="pm-hero__sub">
-              <span className="pm-hero__used">{used.toLocaleString()} used</span>
-              <span className="pm-hero__div">·</span>
-              <span>{total.toLocaleString()} included this cycle</span>
-              <span className="pm-hero__div">·</span>
-              <span>refreshes <em>{refreshDate}</em></span>
-            </div>
+        {/* Hero — credits balance. Collapses to a slim strip when a top-level alert is shown. */}
+        {(() => {
+          const heroCompact = showBetaAlert || showPlanAlert
+          return (
+            <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
+              <div className="pm-hero__left">
+                <div className="pm-hero__eyebrow">Credit balance</div>
+                <div className="pm-hero__amount">
+                  <span className="pm-hero__num">{remaining.toLocaleString()}</span>
+                  <span className="pm-hero__unit">credits</span>
+                </div>
+                <div className="pm-hero__sub">
+                  <span className="pm-hero__used">{used.toLocaleString()} used</span>
+                  <span className="pm-hero__div">·</span>
+                  <span>{total.toLocaleString()} included this cycle</span>
+                  {!heroCompact && <>
+                    <span className="pm-hero__div">·</span>
+                    <span>refreshes <em>{refreshDate}</em></span>
+                  </>}
+                </div>
 
-            <div className="pm-hero__bar">
-              <div
-                className="pm-hero__bar-fill"
-                style={{ width: `${usedPct}%` }}
-              />
-              <div
-                className="pm-hero__bar-marker"
-                style={{ left: `${usedPct}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="pm-hero__right">
-            <div className="pm-ring" style={{ '--pm-pct': `${usedPct}` } as React.CSSProperties}>
-              <div className="pm-ring__inner">
-                <div className="pm-ring__pct">{Math.round(usedPct)}<span>%</span></div>
-                <div className="pm-ring__caption">consumed</div>
+                {!heroCompact && (
+                  <div className="pm-hero__bar">
+                    <div className="pm-hero__bar-fill" style={{ width: `${usedPct}%` }} />
+                    <div className="pm-hero__bar-marker" style={{ left: `${usedPct}%` }} />
+                  </div>
+                )}
               </div>
-            </div>
-            <button
-              className="pm-cta"
-              onClick={() => setActiveSection('topup')}
-            >
-              <i className="fas fa-bolt"></i> Top&nbsp;up
-            </button>
-          </div>
-        </section>
+
+              <div className="pm-hero__right">
+                {!heroCompact && (
+                  <div className="pm-ring" style={{ '--pm-pct': `${usedPct}` } as React.CSSProperties}>
+                    <div className="pm-ring__inner">
+                      <div className="pm-ring__pct">{Math.round(usedPct)}<span>%</span></div>
+                      <div className="pm-ring__caption">consumed</div>
+                    </div>
+                  </div>
+                )}
+                <button
+                  className="pm-cta"
+                  onClick={() => setActiveSection('topup')}
+                >
+                  <i className="fas fa-bolt"></i> Top&nbsp;up
+                </button>
+              </div>
+            </section>
+          )
+        })()}
 
         {/* Section nav */}
         <nav className="pm-nav">
@@ -569,6 +670,141 @@ const CreditAlert: React.FC<{
         <button className="pm-alert__btn pm-alert__btn--solid" onClick={onTopUp}>
           <i className="fas fa-bolt"></i> Buy credits
         </button>
+      </div>
+    </section>
+  )
+}
+
+/* ─── Plan lifecycle alert (paid plans) ─── */
+
+const PLAN_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
+  eyebrow: string
+  title: (planName: string, days: number) => string
+  body: (planName: string, days: number, isCancelled: boolean) => string
+  icon: string
+}> = {
+  expiring: {
+    eyebrow: 'Renewal needed',
+    title: (plan, days) =>
+      days <= 1 ? `${plan} ends tomorrow` : `${plan} ends in ${days} days`,
+    body: (_plan, _days, isCancelled) =>
+      isCancelled
+        ? 'Your subscription is set to cancel. Renew now to keep your AI credits, project history, and team access without interruption.'
+        : 'Your billing cycle is closing. Confirm your plan or step up to a higher tier before access pauses.',
+    icon: 'fas fa-hourglass-half'
+  },
+  expired: {
+    eyebrow: 'Plan expired',
+    title: (plan, days) =>
+      `${plan} ended ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago`,
+    body: () =>
+      'AI features and premium tooling are paused. Renew to pick up where you left off, or upgrade to unlock more credits and capacity.',
+    icon: 'fas fa-circle-exclamation'
+  }
+}
+
+const PlanLifecycleAlert: React.FC<{
+  planCtx: PlanContext
+  onRenew: () => void
+  onUpgrade: () => void
+}> = ({ planCtx, onRenew, onUpgrade }) => {
+  if (planCtx.lifecycle === 'active') return null
+  const copy = PLAN_ALERT_COPY[planCtx.lifecycle]
+  const variant = planCtx.lifecycle // 'expiring' | 'expired'
+
+  return (
+    <section className={`pm-alert pm-alert--plan pm-alert--plan-${variant}`}>
+      <div className="pm-alert__glow" aria-hidden />
+      <div className="pm-alert__icon">
+        <i className={copy.icon}></i>
+      </div>
+      <div className="pm-alert__body">
+        <div className="pm-alert__eyebrow">{copy.eyebrow}</div>
+        <div className="pm-alert__title">
+          {copy.title(planCtx.planName, planCtx.daysUntilExpiry)}
+        </div>
+        <p className="pm-alert__desc">
+          {copy.body(planCtx.planName, planCtx.daysUntilExpiry, planCtx.isCancelled)}
+          {' '}
+          <span className="pm-alert__meta">Expired on {planCtx.expiresOn}.</span>
+        </p>
+      </div>
+      <div className="pm-alert__actions">
+        <button className="pm-alert__btn pm-alert__btn--ghost" onClick={onUpgrade}>
+          <i className="fas fa-arrow-up"></i> Upgrade plan
+        </button>
+        <button className="pm-alert__btn pm-alert__btn--solid" onClick={onRenew}>
+          <i className="fas fa-rotate-right"></i>
+          {planCtx.lifecycle === 'expired' ? ' Renew plan' : ' Keep my plan'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/* ─── Beta transition alert (special, gracious tone) ─── */
+
+const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
+  eyebrow: string
+  title: string
+  lede: (days: number, expiresOn: string) => string
+  body: string
+  primary: string
+  secondary: string
+}> = {
+  expiring: {
+    eyebrow: 'Beta program',
+    title: 'Thanks for shaping Remix.',
+    lede: (days, expiresOn) =>
+      `The free beta wraps up ${days <= 1 ? 'tomorrow' : `in ${days} days`} (${expiresOn}). Your feedback got us here — now it's time to pick a plan that fits how you build.`,
+    body: 'Pick any paid tier before your beta ends and your projects, history, and AI credits keep flowing without a hiccup. As a thank-you, your first month carries over a bonus credit pack.',
+    primary: 'See paid plans',
+    secondary: 'Top up credits'
+  },
+  expired: {
+    eyebrow: 'Beta has ended',
+    title: 'You helped build this. Let\'s keep going.',
+    lede: (days, expiresOn) =>
+      `The beta ended ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago (${expiresOn}). AI features are paused while you choose a plan — your workspaces and history are safe and waiting.`,
+    body: 'Pick a paid plan to switch everything back on. Beta testers get a one-time bonus credit pack on their first paid month — our way of saying thanks for being early.',
+    primary: 'Choose a plan',
+    secondary: 'Top up credits'
+  }
+}
+
+const BetaTransitionAlert: React.FC<{
+  planCtx: PlanContext
+  onUpgrade: () => void
+  onTopUp: () => void
+}> = ({ planCtx, onUpgrade, onTopUp }) => {
+  if (planCtx.lifecycle === 'active') return null
+  const copy = BETA_ALERT_COPY[planCtx.lifecycle]
+  const variant = planCtx.lifecycle
+
+  return (
+    <section className={`pm-beta-alert pm-beta-alert--${variant}`}>
+      <div className="pm-beta-alert__aurora" aria-hidden />
+      <div className="pm-beta-alert__sparkles" aria-hidden>
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div className="pm-beta-alert__inner">
+        <div className="pm-beta-alert__badge">
+          <i className="fas fa-seedling"></i>
+          <span>{copy.eyebrow}</span>
+        </div>
+        <h2 className="pm-beta-alert__title">{copy.title}</h2>
+        <p className="pm-beta-alert__lede">
+          {copy.lede(planCtx.daysUntilExpiry, planCtx.expiresOn)}
+        </p>
+        <p className="pm-beta-alert__body">{copy.body}</p>
+        <div className="pm-beta-alert__actions">
+          <button className="pm-beta-alert__btn pm-beta-alert__btn--primary" onClick={onUpgrade}>
+            <i className="fas fa-arrow-right"></i> {copy.primary}
+          </button>
+          <button className="pm-beta-alert__btn pm-beta-alert__btn--ghost" onClick={onTopUp}>
+            <i className="fas fa-bolt"></i> {copy.secondary}
+          </button>
+        </div>
       </div>
     </section>
   )
