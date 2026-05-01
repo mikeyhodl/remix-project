@@ -53,7 +53,7 @@ import { InvitationManagerPlugin } from './app/plugins/invitation-manager-plugin
 import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin'
 import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
 import { NudgePlugin } from './app/plugins/nudge-plugin'
-import { HelpPlugin } from '@remix-ui/modal-help'
+import { HelpPlugin, PlanManagerPlugin } from '@remix-ui/modal-help'
 import { AccountPlugin } from './app/plugins/account-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
@@ -184,6 +184,7 @@ class AppComponent {
   betaCornerWidget: BetaCornerWidgetPlugin
   nudgePlugin: NudgePlugin
   helpPlugin: HelpPlugin
+  planManager: PlanManagerPlugin
   accountPlugin: AccountPlugin
   lifecycle: AppLifecycle
   lifecyclePlugin: LifecyclePlugin
@@ -675,6 +676,7 @@ class AppComponent {
     this.betaCornerWidget = new BetaCornerWidgetPlugin()
     this.nudgePlugin = new NudgePlugin({ debug: false })
     this.helpPlugin = new HelpPlugin()
+    this.planManager = new PlanManagerPlugin()
     const feedbackPlugin = new FeedbackPlugin()
 
     this.engine.register([
@@ -694,6 +696,7 @@ class AppComponent {
       this.betaCornerWidget,
       this.nudgePlugin,
       this.helpPlugin,
+      this.planManager,
       this.accountPlugin,
       feedbackPlugin
     ])
@@ -784,7 +787,7 @@ class AppComponent {
     await this.appManager.activatePlugin(['feedback'])
     await this.appManager.activatePlugin(['settings'])
 
-    await this.appManager.activatePlugin(['storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit', 'helpPlugin'])
+    await this.appManager.activatePlugin(['storage', 'storageMonitor', 'search', 'compileAndRun', 'dgitApi', 'dgit', 'helpPlugin', 'planManager'])
     await this.appManager.activatePlugin(['solidity-script', 'remix-templates'])
 
     if (isElectron()) {

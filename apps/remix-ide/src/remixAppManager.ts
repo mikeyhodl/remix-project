@@ -119,7 +119,8 @@ let requiredModules = [
   'betaCornerWidget',
   'lifecycle',
   'nudgePlugin',
-  'helpPlugin'
+  'helpPlugin',
+  'planManager'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)
