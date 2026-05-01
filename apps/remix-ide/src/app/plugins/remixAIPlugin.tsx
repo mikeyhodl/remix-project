@@ -78,6 +78,36 @@ export class RemixAIPlugin extends Plugin {
     }
   }
 
+  /**
+   * Guard for user-initiated AI requests. When the user has zero credits remaining,
+   * opens the Plan & Credits overlay and aborts the request. Silent no-op if auth
+   * isn't ready, credits API is unavailable, or the user is on a local model
+   * (Ollama / MCP runs without credits).
+   *
+   * Intentionally NOT called from background paths like `code_completion` —
+   * popping a modal mid-typing would be hostile.
+   */
+  private async requireCredits(): Promise<void> {
+    // Local inferencers don't consume credits; skip the check.
+    if (!this.useRemoteInferencer) return
+    try {
+      const credits: any = await this.call('auth', 'getCredits')
+      if (!credits) return // not authenticated or API unavailable — let downstream handle it
+      const remaining = typeof credits.remaining === 'number'
+        ? credits.remaining
+        : (typeof credits.total === 'number' && typeof credits.used === 'number'
+            ? credits.total - credits.used
+            : null)
+      if (remaining !== null && remaining <= 0) {
+        try { await this.call('planManager', 'open') } catch (_) { /* plugin not active yet */ }
+        throw new Error('Out of AI credits — top up or upgrade your plan to continue.')
+      }
+    } catch (e) {
+      // Re-throw the friendly out-of-credits error; swallow only API/transport failures.
+      if (e && (e as Error).message && (e as Error).message.startsWith('Out of AI credits')) throw e
+    }
+  }
+
   async onActivation(): Promise<void> {
     // check access
     const { hasBasicMcp, isBetaUser } = await this.checkMCPAccess()
@@ -162,6 +192,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
+    await this.requireCredits()
     if (this.mcpEnabled && this.mcpInferencer){
       return this.mcpInferencer.code_generation(prompt, params)
     } else {
@@ -179,6 +210,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    await this.requireCredits()
     this.emit('chatMessageSent')
     let newPrompt = await this.codeExpAgent.chatCommand(prompt)
     // add workspace context
@@ -194,6 +226,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
+    await this.requireCredits()
     this.emit('codeExplainRequested')
     let result
     if (this.mcpEnabled && this.mcpInferencer){
@@ -206,6 +239,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    await this.requireCredits()
     this.emit('errorExplainRequested')
     let localFilesImports = ""
 
@@ -223,6 +257,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
+    await this.requireCredits()
     this.emit('vulnerabilityCheckRequested')
     const result = await this.remoteInferencer.vulnerability_check(prompt, params)
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
@@ -238,6 +273,7 @@ export class RemixAIPlugin extends Plugin {
    * - If `useRag` is `true`, the function fetches additional context from a RAG API and prepends it to the user prompt.
    */
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
+    await this.requireCredits()
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = 'anthropic' // enforce all generation to be only on anthropic
@@ -284,6 +320,7 @@ export class RemixAIPlugin extends Plugin {
    *
    */
   async generateWorkspace (userPrompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
+    await this.requireCredits()
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = this.selectedModel.provider

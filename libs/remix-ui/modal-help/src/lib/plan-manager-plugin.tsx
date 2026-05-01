@@ -291,6 +291,9 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
   const [activeSection, setActiveSection] = useState<'plans' | 'topup' | 'usage'>('plans')
   const [scenario, setScenario] = useState<keyof typeof MOCK_SCENARIOS>('healthy')
   const [planScenario, setPlanScenario] = useState<keyof typeof MOCK_PLAN_SCENARIOS>('beta-active')
+  // Data fetch state. When wiring real APIs, drive this from the actual fetch lifecycle.
+  // 'ready' is the default for the mocked layer so dev preview keeps working.
+  const [dataState, setDataState] = useState<'loading' | 'error' | 'ready'>('ready')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
@@ -360,12 +363,26 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
                 >{k}</button>
               ))}
             </div>
+            <div className="pm-scenario" title="Dev: preview data fetch state">
+              <i className="fas fa-cloud-download-alt"></i>
+              {(['ready', 'loading', 'error'] as const).map(k => (
+                <button
+                  key={k}
+                  className={`pm-scenario__btn ${dataState === k ? 'is-active' : ''}`}
+                  onClick={() => setDataState(k)}
+                >{k}</button>
+              ))}
+            </div>
           </div>
 
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
             <i className="fas fa-times"></i>
           </button>
         </header>
+
+        {dataState === 'loading' && <PlanManagerSkeleton />}
+        {dataState === 'error' && <PlanManagerError onRetry={() => setDataState('ready')} />}
+        {dataState === 'ready' && <>
 
         {/* Beta transition (highest priority for beta users) */}
         {showBetaAlert && (
@@ -469,6 +486,8 @@ const PlanManagerOverlay: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin })
           {activeSection === 'topup' && <TopUpSection />}
           {activeSection === 'usage' && <UsageSection totalCredits={totalUsageCredits} />}
         </main>
+
+        </>}
 
         {/* Footer */}
         <footer className="pm-footer">
@@ -809,3 +828,62 @@ const BetaTransitionAlert: React.FC<{
     </section>
   )
 }
+
+/* ─── Loading skeleton ─── */
+
+const PlanManagerSkeleton: React.FC = () => (
+  <div className="pm-skeleton" aria-busy="true" aria-label="Loading billing information">
+    <div className="pm-skeleton__hero">
+      <div className="pm-skel pm-skel--eyebrow" />
+      <div className="pm-skel pm-skel--num" />
+      <div className="pm-skel pm-skel--sub" />
+      <div className="pm-skel pm-skel--bar" />
+    </div>
+    <div className="pm-skeleton__nav">
+      <div className="pm-skel pm-skel--tab" />
+      <div className="pm-skel pm-skel--tab" />
+      <div className="pm-skel pm-skel--tab" />
+    </div>
+    <div className="pm-skeleton__cards">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="pm-skeleton__card">
+          <div className="pm-skel pm-skel--title" />
+          <div className="pm-skel pm-skel--line" />
+          <div className="pm-skel pm-skel--price" />
+          <div className="pm-skel pm-skel--line pm-skel--short" />
+          <div className="pm-skel pm-skel--line pm-skel--short" />
+          <div className="pm-skel pm-skel--line pm-skel--short" />
+          <div className="pm-skel pm-skel--btn" />
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
+/* ─── Error state ─── */
+
+const PlanManagerError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div className="pm-empty pm-empty--error">
+    <div className="pm-empty__icon">
+      <i className="fas fa-cloud-exclamation"></i>
+    </div>
+    <div className="pm-empty__title">We couldn't load your billing details</div>
+    <p className="pm-empty__body">
+      The billing service didn't respond. Your plan and credits are safe — this is
+      just a display issue. Try again in a moment, or check your connection.
+    </p>
+    <div className="pm-empty__actions">
+      <button className="pm-empty__btn pm-empty__btn--primary" onClick={onRetry}>
+        <i className="fas fa-rotate-right"></i> Try again
+      </button>
+      <a
+        className="pm-empty__btn pm-empty__btn--ghost"
+        href="https://status.remix-project.org"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <i className="fas fa-arrow-up-right-from-square"></i> Service status
+      </a>
+    </div>
+  </div>
+)
