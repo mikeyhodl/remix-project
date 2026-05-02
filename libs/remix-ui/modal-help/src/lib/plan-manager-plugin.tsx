@@ -18,6 +18,8 @@
 import { ViewPlugin } from '@remixproject/engine-web'
 import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from '@remix-ui/billing'
+import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -37,7 +39,8 @@ import {
   selectVisiblePlans,
   selectVisiblePackages,
   selectCanUpgrade,
-  selectCheckoutResult
+  selectCheckoutResult,
+  selectPurchasingProductId
 } from './plan-manager-machine'
 
 import './plan-manager.css'
@@ -48,7 +51,7 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan'],
   events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
@@ -65,6 +68,11 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   // Memo to detect repeated AUTH events (auth-plugin re-emits a lot).
   private lastAuthSig = ''
+  // Paddle wiring is owned by the plugin so the panel can drive checkout
+  // end-to-end without a host shell. The instance is shared via the
+  // paddle-singleton, so it's safe to also have BillingManager around.
+  private paddle: Paddle | null = null
+  private paddleEventHandler: ((e: PaddleEventData) => void) | null = null
 
   constructor() {
     super(profile)
@@ -101,6 +109,17 @@ export class PlanManagerPlugin extends ViewPlugin {
     this.store.send({ type: 'CATALOG_LOAD' })
     void this.loadCatalog()
 
+    // Init Paddle once (singleton). Token comes from the auth backend so
+    // we never bake it into the build.
+    void this.initPaddleSingleton()
+
+    // Bridge Paddle checkout events directly into the machine. The
+    // singleton fan-outs to all subscribers, so legacy BillingManager can
+    // still receive them too — but it must NOT also forward to us, or
+    // we'd double-fire.
+    this.paddleEventHandler = (event: PaddleEventData) => this.handlePaddleEvent(event)
+    onPaddleEvent(this.paddleEventHandler)
+
     // Bridge auth events. Re-fired on token refresh so we tolerate noise.
     const onAuthChange = (s: { isAuthenticated: boolean; token?: string; user?: { id?: number } }) => {
       const sig = `${s.isAuthenticated}|${s.token ?? ''}`
@@ -127,6 +146,13 @@ export class PlanManagerPlugin extends ViewPlugin {
       }
     } catch (err) {
       console.warn('[PlanManager] auth bridge failed', err)
+    }
+  }
+
+  onDeactivation(): void {
+    if (this.paddleEventHandler) {
+      offPaddleEvent(this.paddleEventHandler)
+      this.paddleEventHandler = null
     }
   }
 
@@ -202,7 +228,145 @@ export class PlanManagerPlugin extends ViewPlugin {
     await this.loadAccountData()
   }
 
+  /**
+   * Purchase a credit top-up package. Drives the entire flow:
+   *   1. Capture intent in the machine (CHECKOUT_INTENT) — disables the card.
+   *   2. Make sure the user is signed in (Paddle needs customData=userId).
+   *   3. POST /billing/purchase-credits → backend returns Paddle transactionId.
+   *   4. Open Paddle overlay (or fall back to the hosted checkout URL).
+   * Paddle's events feed back through the singleton listener installed in
+   * `onActivation`, which dispatches CHECKOUT_COMPLETED / CLOSED / ERROR.
+   */
+  async purchaseCredits(packageId: string): Promise<void> {
+    const snap = this.store.getSnapshot()
+    const pkg = snap.catalogPackages.find(p => p.id === packageId)
+    const itemLabel = pkg ? `${pkg.credits.toLocaleString()} credits${pkg.name ? ` (${pkg.name})` : ''}` : packageId
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'topup', itemLabel, productId: packageId })
+    await this.runCheckout('topup', itemLabel, async (api) => api.purchaseCredits(packageId, 'paddle'))
+  }
+
+  /**
+   * Subscribe to a plan. Identical control flow to `purchaseCredits`, but
+   * hits POST /billing/subscribe.
+   */
+  async subscribeToPlan(planId: string): Promise<void> {
+    const snap = this.store.getSnapshot()
+    const plan = snap.catalogPlans.find(p => p.id === planId)
+    const itemLabel = plan?.name ?? planId
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
+    await this.runCheckout('subscription', itemLabel, async (api) => api.subscribe(planId, 'paddle'))
+  }
+
   // ─── Internals ──────────────────────────────────────────────────
+
+  /** Init the Paddle singleton with config fetched from the auth backend. */
+  private async initPaddleSingleton(): Promise<void> {
+    try {
+      // Singleton already up — fast path.
+      const existing = getPaddle()
+      if (existing) {
+        this.paddle = existing
+        return
+      }
+      const config = await this.call('auth', 'getPaddleConfig').catch(() => null) as
+        { clientToken: string | null; environment: 'sandbox' | 'production' } | null
+      if (!config?.clientToken) {
+        console.log('[PlanManager] No Paddle client token from auth — checkout will fall back to hosted URL.')
+        return
+      }
+      this.paddle = await initPaddle(config.clientToken, config.environment)
+    } catch (err) {
+      console.warn('[PlanManager] Paddle init failed', err)
+    }
+  }
+
+  /**
+   * Shared checkout driver. Calls the supplied billing API method (which
+   * must POST to the backend and receive `{ transactionId, checkoutUrl }`),
+   * then opens Paddle. On API failure, dispatches CHECKOUT_ERROR; the
+   * Paddle event handler takes it from there for the success path.
+   */
+  private async runCheckout(
+    intent: CheckoutIntent,
+    itemLabel: string,
+    apiCall: (api: any) => Promise<{ ok: boolean; data?: { transactionId?: string; checkoutUrl?: string }; error?: string }>
+  ): Promise<void> {
+    // Auth gate — Paddle expects customData.userId, which the backend
+    // attaches based on the bearer token.
+    if (!this.store.getSnapshot().isAuthenticated) {
+      try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
+      this.store.send({ type: 'CHECKOUT_ERROR', message: 'Please sign in to complete the purchase.' })
+      return
+    }
+    try {
+      const billingApi = await this.call('auth', 'getBillingApi').catch(() => null) as any
+      if (!billingApi) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
+        return
+      }
+      const response = await apiCall(billingApi)
+      if (!response?.ok || !response.data) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: response?.error || 'Could not start checkout.' })
+        return
+      }
+      const { transactionId, checkoutUrl } = response.data
+      const paddleInstance = this.paddle ?? getPaddle()
+      if (paddleInstance && transactionId) {
+        // Paddle.js overlay — events come back via the singleton handler.
+        openCheckoutWithTransaction(paddleInstance, transactionId, {
+          settings: { displayMode: 'overlay', theme: 'light' }
+        })
+        this.store.send({ type: 'CHECKOUT_OPENED' })
+      } else if (checkoutUrl) {
+        // Hosted-checkout fallback — we won't get Paddle events back, so
+        // surface a "processing" state immediately and trust the next
+        // data refresh / webhook to confirm.
+        window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
+        this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
+        // Best-effort confirmation refresh — the webhook may not have
+        // landed yet, so this might still show 'processing' for a beat.
+        setTimeout(() => { void this.loadAccountData() }, 5_000)
+      } else {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Backend returned no checkout reference.' })
+      }
+    } catch (err: any) {
+      console.error('[PlanManager] Checkout failed', err)
+      this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected checkout error.' })
+    }
+    // Touch unused param to satisfy strict mode — `intent`/`itemLabel` are
+    // already captured by CHECKOUT_INTENT before we get here. Keeping them
+    // in the signature is forward-compat for richer error messages.
+    void intent; void itemLabel
+  }
+
+  /** Translate Paddle SDK events into machine events. */
+  private handlePaddleEvent(event: PaddleEventData): void {
+    const transactionId = (event as any)?.data?.transaction_id as string | undefined
+    switch (event.name) {
+    case 'checkout.completed':
+      this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
+      // Promote 'processing' → 'success' once data refresh confirms.
+      setTimeout(() => { void this.loadAccountData() }, 1500)
+      break
+    case 'checkout.closed':
+      this.store.send({ type: 'CHECKOUT_CLOSED' })
+      break
+    // Paddle uses dot-separated names in TS, but the runtime payload may
+    // also be `checkout.payment.failed`; handle both spellings.
+    case 'checkout.payment.failed' as any:
+    case 'checkout.error' as any: {
+      const message = (event as any)?.error?.message
+        || (event as any)?.data?.error?.message
+        || 'Payment failed'
+      this.store.send({ type: 'CHECKOUT_ERROR', message, transactionId })
+      break
+    }
+    default:
+      // Other events (loaded, customer.created, items.updated, etc.) are
+      // not interesting for the panel right now.
+      break
+    }
+  }
 
   private async loadCatalog(): Promise<void> {
     try {
@@ -339,6 +503,7 @@ const PlanManagerOverlay: React.FC<{
   const visiblePackages = useMemo(() => selectVisiblePackages(snap), [snap])
   const canUpgrade = useMemo(() => selectCanUpgrade(snap), [snap])
   const checkoutResult = selectCheckoutResult(snap)
+  const purchasingProductId = selectPurchasingProductId(snap)
 
   const refreshDate = formatDate(status.refreshDate)
 
@@ -438,10 +603,19 @@ const PlanManagerOverlay: React.FC<{
 
           <main className="pm-main">
             {activeSection === 'plans' && (
-              <PlansSection plans={visiblePlans} currentPlanId={planCtx.planId} />
+              <PlansSection
+                plans={visiblePlans}
+                currentPlanId={planCtx.planId}
+                purchasingId={purchasingProductId}
+                onSubscribe={(planId) => plugin.subscribeToPlan(planId)}
+              />
             )}
             {activeSection === 'topup' && (
-              <TopUpSection packages={visiblePackages} />
+              <TopUpSection
+                packages={visiblePackages}
+                purchasingId={purchasingProductId}
+                onPurchase={(packageId) => plugin.purchaseCredits(packageId)}
+              />
             )}
             {activeSection === 'usage' && <UsageSection />}
           </main>
@@ -656,7 +830,9 @@ const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnaps
 const PlansSection: React.FC<{
   plans: any[]
   currentPlanId: string | null
-}> = ({ plans, currentPlanId }) => {
+  purchasingId: string | null
+  onSubscribe: (planId: string) => void
+}> = ({ plans, currentPlanId, purchasingId, onSubscribe }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -668,21 +844,26 @@ const PlansSection: React.FC<{
   const sorted = [...plans].sort((a, b) => (a.priceUsd ?? 0) - (b.priceUsd ?? 0))
   // The mid-priced plan is the "recommended" by default (matches typical SaaS pricing pages).
   const recommendedId = sorted.length >= 3 ? sorted[1].id : null
+  const anyPurchasing = purchasingId !== null
 
   return (
     <div className="pm-plans">
       {sorted.map(plan => {
         const isCurrent = plan.id === currentPlanId
         const isRecommended = plan.id === recommendedId
+        const isPurchasing = purchasingId === plan.id
         const accent = pickAccent(plan.id)
         const priceLabel = plan.priceUsd === 0 ? 'Free' : `$${(plan.priceUsd / 100).toFixed(0)}`
         const cadence = plan.priceUsd === 0
           ? 'forever'
           : plan.billingInterval === 'year' ? 'per year' : 'per month'
+        // Free plans don't go through Paddle — disable the CTA for now.
+        const isFree = plan.priceUsd === 0
+        const disabled = isCurrent || isFree || anyPurchasing
         return (
           <article
             key={plan.id}
-            className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''}`}
+            className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
             style={{ '--pm-accent': accent } as React.CSSProperties}
           >
             {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
@@ -712,12 +893,14 @@ const PlansSection: React.FC<{
             </ul>
 
             <button
-              className={`pm-plan__btn ${isCurrent ? 'is-disabled' : ''}`}
-              disabled={isCurrent}
-              // TODO: wire to billingApi.subscribe() + paddle checkout when
-              // we move the purchase flow inside this plugin.
+              className={`pm-plan__btn ${disabled ? 'is-disabled' : ''}`}
+              disabled={disabled}
+              onClick={() => { if (!disabled) onSubscribe(plan.id) }}
             >
-              {isCurrent ? 'Active' : `Switch to ${plan.name}`}
+              {isCurrent ? 'Active'
+                : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>
+                  : isFree ? 'Always free'
+                    : `Switch to ${plan.name}`}
             </button>
           </article>
         )
@@ -726,7 +909,11 @@ const PlansSection: React.FC<{
   )
 }
 
-const TopUpSection: React.FC<{ packages: any[] }> = ({ packages }) => {
+const TopUpSection: React.FC<{
+  packages: any[]
+  purchasingId: string | null
+  onPurchase: (packageId: string) => void
+}> = ({ packages, purchasingId, onPurchase }) => {
   if (packages.length === 0) {
     return (
       <div className="pm-empty">
@@ -734,6 +921,7 @@ const TopUpSection: React.FC<{ packages: any[] }> = ({ packages }) => {
       </div>
     )
   }
+  const anyPurchasing = purchasingId !== null
   return (
     <div className="pm-topup">
       <div className="pm-topup__intro">
@@ -744,8 +932,15 @@ const TopUpSection: React.FC<{ packages: any[] }> = ({ packages }) => {
         {packages.map(t => {
           const price = `$${(t.priceUsd / 100).toFixed(0)}`
           const perK = ((t.priceUsd / 100) / (t.credits / 1000)).toFixed(2)
+          const isPurchasing = purchasingId === t.id
+          const disabled = anyPurchasing
           return (
-            <button key={t.id} className={`pm-topup__card ${t.popular ? 'is-popular' : ''}`}>
+            <button
+              key={t.id}
+              className={`pm-topup__card ${t.popular ? 'is-popular' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
+              disabled={disabled}
+              onClick={() => { if (!disabled) onPurchase(t.id) }}
+            >
               {t.popular && <div className="pm-topup__pop">Best value</div>}
               <div className="pm-topup__credits">
                 <span className="pm-topup__credits-num">{t.credits.toLocaleString()}</span>
@@ -754,7 +949,9 @@ const TopUpSection: React.FC<{ packages: any[] }> = ({ packages }) => {
               <div className="pm-topup__price">{price}</div>
               <div className="pm-topup__perk">${perK} per 1k credits</div>
               <span className="pm-topup__buy">
-                Buy <i className="fas fa-arrow-right"></i>
+                {isPurchasing
+                  ? <><i className="fas fa-spinner fa-spin"></i> Opening…</>
+                  : <>Buy <i className="fas fa-arrow-right"></i></>}
               </span>
             </button>
           )

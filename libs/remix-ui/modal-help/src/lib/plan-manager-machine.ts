@@ -67,6 +67,8 @@ export interface PlanManagerSnapshot {
   catalogPlans: SubscriptionPlan[]
   catalogPackages: CreditPackage[]
   checkoutResult: CheckoutResult | null
+  /** Set while a Paddle checkout is being prepared/open (no result yet). */
+  pendingCheckout: CheckoutIntentRecord | null
   errorMessage: string | null
 }
 
@@ -445,6 +447,7 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     catalogPlans: ctx.catalogPlans,
     catalogPackages: ctx.catalogPackages,
     checkoutResult: ctx.checkoutResult,
+    pendingCheckout: ctx.pendingCheckout,
     errorMessage: ctx.lastError
   }
 }
@@ -654,6 +657,20 @@ export function selectCanUpgrade(snap: PlanManagerSnapshot): boolean {
 export function selectCheckoutResult(snap: PlanManagerSnapshot): CheckoutResult | null {
   return snap.checkoutResult
 }
+
+/**
+ * The product id (plan slug or package slug) currently being purchased, or
+ * `null` if no purchase is in flight. Used to render per-card busy state on
+ * the buy buttons. Active only while we're between CHECKOUT_INTENT and the
+ * first CHECKOUT_* result event.
+ */
+export function selectPurchasingProductId(snap: PlanManagerSnapshot): string | null {
+  if (!snap.pendingCheckout) return null
+  if (snap.checkoutResult) return null
+  return snap.pendingCheckout.productId ?? null
+}
+
+export type { CheckoutIntentRecord }
 
 // ─── Facade ─────────────────────────────────────────────────────────
 
