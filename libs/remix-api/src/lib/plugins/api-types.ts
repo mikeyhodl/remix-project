@@ -457,6 +457,13 @@ export interface SubscriptionPlan {
   billingInterval: 'month' | 'year'
   features: string[]
   popular?: boolean
+  /** Length of the free trial. 0 / null → plan has no trial. */
+  trialPeriodDays?: number | null
+  trialPeriodFrequency?: number | null
+  trialPeriodInterval?: 'day' | 'week' | 'month' | 'year' | null
+  /** Credits granted up-front for the trial. */
+  trialCredits?: number | null
+  defaultProrationBillingMode?: string
   providers: ProductProvider[]  // Available payment providers
   paddlePriceId?: string | null // Legacy: prefer providers array
   source?: 'database' | 'config' | 'provider'
@@ -492,8 +499,8 @@ export interface SubscriptionItem {
 export interface UserSubscription {
   id: string
   status: 'active' | 'paused' | 'canceled' | 'past_due' | 'trialing'
-  customerId: string
-  currentBillingPeriod: {
+  customerId?: string
+  currentBillingPeriod?: {
     startsAt: string
     endsAt: string
   }
@@ -501,21 +508,37 @@ export interface UserSubscription {
     action: string
     effectiveAt: string
   } | null
-  items: SubscriptionItem[]
+  items?: SubscriptionItem[]
   nextBilledAt: string | null
   createdAt: string
-  updatedAt: string
-  firstBilledAt: string
-  discount: unknown | null
-  collectionMode: string
-  billingDetails: unknown | null
-  currencyCode: string
+  updatedAt?: string
+  firstBilledAt?: string
+  discount?: unknown | null
+  collectionMode?: string
+  billingDetails?: unknown | null
+  currencyCode?: string
+  // Backend-flattened fields (from /billing/subscription)
+  productId?: number
+  planSlug?: string
+  planName?: string
+  priceCents?: number
+  currency?: string
+  billingInterval?: 'month' | 'year'
+  creditsPerPeriod?: number
+  startedAt?: string
+  pausedAt?: string | null
+  // Trial fields
+  trialStart?: string | null
+  trialEnd?: string | null
+  isInTrial?: boolean
+  trialDaysRemaining?: number | null
+  trialTotalDays?: number | null
   // Legacy fields for backwards compatibility
   planId?: string
   creditsPerMonth?: number
   currentPeriodStart?: string
   currentPeriodEnd?: string
-  cancelAtPeriodEnd?: boolean
+  cancelAtPeriodEnd?: boolean | 0 | 1
 }
 
 /**
@@ -539,6 +562,8 @@ export interface UserSubscriptionResponse {
   userId: number
   hasActiveSubscription: boolean
   subscription: UserSubscription | null
+  /** True when the user has never used a free trial and is eligible for one. */
+  isTrialEligible?: boolean
 }
 
 /**

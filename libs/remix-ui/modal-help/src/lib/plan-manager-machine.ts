@@ -36,7 +36,7 @@ import type {
 // ─── Public types ───────────────────────────────────────────────────
 
 export type CreditState = 'unknown' | 'healthy' | 'low' | 'critical' | 'empty'
-export type PlanLifecycle = 'active' | 'expiring' | 'expired'
+export type PlanLifecycle = 'active' | 'trial' | 'expiring' | 'expired'
 export type PlanKind = 'no_subscription' | 'beta' | 'paid'
 export type DataState = 'loading' | 'error' | 'ready'
 export type ActiveAlert =
@@ -63,6 +63,8 @@ export interface PlanManagerSnapshot {
   isOpen: boolean
   credits: Credits | null
   subscription: UserSubscription | null
+  /** Whether the user can still claim a free trial (never used one before). */
+  isTrialEligible: boolean
   permissions: PermissionsResponse | null
   catalogPlans: SubscriptionPlan[]
   catalogPackages: CreditPackage[]
@@ -94,6 +96,8 @@ interface MachineContext {
   // account data
   credits: Credits | null
   subscription: UserSubscription | null
+  /** Mirrors the top-level `isTrialEligible` flag from /billing/subscription. */
+  isTrialEligible: boolean
   permissions: PermissionsResponse | null
   // catalog
   catalogPlans: SubscriptionPlan[]
@@ -111,7 +115,7 @@ export type PlanManagerEvent =
   | { type: 'LOGOUT' }
   // account data
   | { type: 'REFRESH' }
-  | { type: 'DATA_LOADED'; credits: Credits | null; subscription: UserSubscription | null; permissions: PermissionsResponse | null }
+  | { type: 'DATA_LOADED'; credits: Credits | null; subscription: UserSubscription | null; permissions: PermissionsResponse | null; isTrialEligible?: boolean }
   | { type: 'DATA_FAILED'; message: string }
   // catalog
   | { type: 'CATALOG_LOAD' }
@@ -138,6 +142,7 @@ const initialContext: MachineContext = {
   userId: null,
   credits: null,
   subscription: null,
+  isTrialEligible: false,
   permissions: null,
   catalogPlans: [],
   catalogPackages: [],
@@ -171,6 +176,7 @@ export const planManagerMachine = setup({
       context.credits = null
       context.subscription = null
       context.permissions = null
+      context.isTrialEligible = false
       context.lastError = null
     },
     setData: ({ context, event }) => {
@@ -178,6 +184,7 @@ export const planManagerMachine = setup({
       context.credits = event.credits
       context.subscription = event.subscription
       context.permissions = event.permissions
+      context.isTrialEligible = !!event.isTrialEligible
       context.lastError = null
     },
     setDataError: ({ context, event }) => {
@@ -448,7 +455,8 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     catalogPackages: ctx.catalogPackages,
     checkoutResult: ctx.checkoutResult,
     pendingCheckout: ctx.pendingCheckout,
-    errorMessage: ctx.lastError
+    errorMessage: ctx.lastError,
+    isTrialEligible: ctx.isTrialEligible
   }
 }
 
@@ -462,6 +470,11 @@ export interface PlanState {
   daysUntilExpiry: number      // negative → already expired
   expiresOn: string | null     // ISO date string
   lifecycle: PlanLifecycle
+  // Trial info — only meaningful when lifecycle === 'trial'.
+  isInTrial: boolean
+  trialDaysRemaining: number | null
+  trialTotalDays: number | null
+  trialEndsOn: string | null
 }
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -506,7 +519,11 @@ export function selectPlanState(snap: PlanManagerSnapshot, now: number = Date.no
       isCancelled: false,
       daysUntilExpiry: Number.isFinite(days) ? days : Number.POSITIVE_INFINITY,
       expiresOn: expiresIso ?? null,
-      lifecycle: expiresIso ? lifecycle : 'active'
+      lifecycle: expiresIso ? lifecycle : 'active',
+      isInTrial: false,
+      trialDaysRemaining: null,
+      trialTotalDays: null,
+      trialEndsOn: null
     }
   }
 
@@ -519,7 +536,11 @@ export function selectPlanState(snap: PlanManagerSnapshot, now: number = Date.no
       isCancelled: false,
       daysUntilExpiry: Number.POSITIVE_INFINITY,
       expiresOn: null,
-      lifecycle: 'active'
+      lifecycle: 'active',
+      isInTrial: false,
+      trialDaysRemaining: null,
+      trialTotalDays: null,
+      trialEndsOn: null
     }
   }
 
@@ -529,30 +550,55 @@ export function selectPlanState(snap: PlanManagerSnapshot, now: number = Date.no
   const isCancelled =
     sub.scheduledChange?.action === 'cancel' ||
     sub.cancelAtPeriodEnd === true ||
+    sub.cancelAtPeriodEnd === 1 ||
     sub.status === 'canceled'
 
-  // For active auto-renewing subs the period end is just the next bill date,
-  // not a "lifecycle event". Only mark expiring/expired when the user has
-  // cancelled or the status itself signals it.
-  const lifecycle =
-    sub.status === 'active' && !isCancelled ? 'active'
-      : sub.status === 'past_due' ? 'expiring'
-        : deriveLifecycle(days)
+  // Trial: backend exposes `isInTrial` + days remaining; we also infer from
+  // status==='trialing' + trialEnd as a fallback.
+  const isInTrial =
+    sub.isInTrial === true ||
+    (sub.status === 'trialing' && !!sub.trialEnd)
+  const trialEndsOn = sub.trialEnd ?? null
+  const trialDaysRemaining =
+    typeof sub.trialDaysRemaining === 'number' ? sub.trialDaysRemaining
+      : isInTrial && trialEndsOn ? Math.max(0, daysBetween(now, trialEndsOn))
+        : null
+  const trialTotalDays =
+    typeof sub.trialTotalDays === 'number' ? sub.trialTotalDays : null
+
+  // Lifecycle precedence:
+  //   1. trialing + cancelled                     → 'expiring' (the trial will end without conversion)
+  //   2. trialing                                 → 'trial'
+  //   3. active && !cancelled                     → 'active'
+  //   4. past_due                                 → 'expiring'
+  //   5. otherwise derive from days-until-end
+  const lifecycle: PlanLifecycle =
+    isInTrial && isCancelled ? 'expiring'
+      : isInTrial ? 'trial'
+        : sub.status === 'active' && !isCancelled ? 'active'
+          : sub.status === 'past_due' ? 'expiring'
+            : deriveLifecycle(days)
 
   const planName =
+    sub.planName ||
     sub.items?.[0]?.product?.name ||
     sub.planId ||
+    sub.planSlug ||
     'Subscription'
 
   return {
     kind: 'paid',
-    planId: sub.planId ?? sub.items?.[0]?.priceId ?? null,
+    planId: sub.planSlug ?? sub.planId ?? sub.items?.[0]?.priceId ?? null,
     planName,
     isBeta: false,
     isCancelled,
     daysUntilExpiry: Number.isFinite(days) ? days : Number.POSITIVE_INFINITY,
     expiresOn: endsAt,
-    lifecycle
+    lifecycle,
+    isInTrial,
+    trialDaysRemaining,
+    trialTotalDays,
+    trialEndsOn
   }
 }
 
@@ -616,7 +662,7 @@ export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
 /**
  * Severity hierarchy — only ONE alert ever shows at the top.
  *   1. beta-transition (beta tester whose access is ending/ended)
- *   2. plan-lifecycle  (paid user with cancelled / past_due / expired)
+ *   2. plan-lifecycle  (paid user with cancelled / past_due / expired / trialing)
  *   3. credit          (any non-healthy credit state)
  * Returns null when the panel is calm.
  */

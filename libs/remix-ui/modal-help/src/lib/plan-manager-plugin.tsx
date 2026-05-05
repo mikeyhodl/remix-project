@@ -417,7 +417,10 @@ export class PlanManagerPlugin extends ViewPlugin {
         type: 'DATA_LOADED',
         credits: credits ?? null,
         subscription: subResp?.subscription ?? null,
-        permissions: permissions ?? null
+        permissions: permissions ?? null,
+        // Backend exposes this top-level on the subscription response; defaults
+        // to false when absent so the UI doesn't promise a trial we can't grant.
+        isTrialEligible: !!subResp?.isTrialEligible
       })
     } catch (err: any) {
       this.store.send({ type: 'DATA_FAILED', message: err?.message ?? 'Failed to load account data' })
@@ -606,6 +609,7 @@ const PlanManagerOverlay: React.FC<{
               <PlansSection
                 plans={visiblePlans}
                 currentPlanId={planCtx.planId}
+                isTrialEligible={snap.isTrialEligible}
                 purchasingId={purchasingProductId}
                 onSubscribe={(planId) => plugin.subscribeToPlan(planId)}
               />
@@ -830,9 +834,11 @@ const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnaps
 const PlansSection: React.FC<{
   plans: any[]
   currentPlanId: string | null
+  /** True when the user has never used a trial — enables "Start free trial" CTAs. */
+  isTrialEligible: boolean
   purchasingId: string | null
   onSubscribe: (planId: string) => void
-}> = ({ plans, currentPlanId, purchasingId, onSubscribe }) => {
+}> = ({ plans, currentPlanId, isTrialEligible, purchasingId, onSubscribe }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -859,6 +865,11 @@ const PlansSection: React.FC<{
           : plan.billingInterval === 'year' ? 'per year' : 'per month'
         // Free plans don't go through Paddle — disable the CTA for now.
         const isFree = plan.priceUsd === 0
+        // Plan offers a trial AND the user can still claim it AND they're not
+        // already on this plan AND it's a paid plan. Treats `null`/missing as 0.
+        const trialDays = Number(plan.trialPeriodDays) || 0
+        const showTrial = trialDays > 0 && isTrialEligible && !isCurrent && !isFree
+        const trialCredits = Number(plan.trialCredits) || 0
         const disabled = isCurrent || isFree || anyPurchasing
         return (
           <article
@@ -868,6 +879,12 @@ const PlansSection: React.FC<{
           >
             {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
             {isCurrent && <div className="pm-plan__current">Current</div>}
+            {showTrial && (
+              <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
+                <i className="fas fa-gift"></i>
+                <span>{trialDays}-day free trial</span>
+              </div>
+            )}
 
             <header className="pm-plan__head">
               <div className="pm-plan__name">{plan.name}</div>
@@ -893,14 +910,16 @@ const PlansSection: React.FC<{
             </ul>
 
             <button
-              className={`pm-plan__btn ${disabled ? 'is-disabled' : ''}`}
+              className={`pm-plan__btn ${disabled ? 'is-disabled' : ''} ${showTrial ? 'is-trial' : ''}`}
               disabled={disabled}
               onClick={() => { if (!disabled) onSubscribe(plan.id) }}
             >
               {isCurrent ? 'Active'
                 : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>
                   : isFree ? 'Always free'
-                    : `Switch to ${plan.name}`}
+                    : showTrial
+                      ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
+                      : `Switch to ${plan.name}`}
             </button>
           </article>
         )
@@ -1049,6 +1068,18 @@ const PLAN_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
   body: (planName: string, days: number, isCancelled: boolean) => string
   icon: string
 }> = {
+  trial: {
+    eyebrow: 'Free trial',
+    title: (plan, days) =>
+      days <= 0 ? `${plan} trial ends today`
+        : days === 1 ? `${plan} trial ends tomorrow`
+          : `${plan} trial — ${days} days left`,
+    body: (plan, _days, isCancelled) =>
+      isCancelled
+        ? `Your ${plan} trial is set to end and won’t convert. Re-enable auto-renewal to keep your credits and features after the trial.`
+        : `You're trying ${plan} on us. We’ll start billing automatically when the trial ends so you don’t lose access. Cancel any time before then — no charge.`,
+    icon: 'fas fa-flask'
+  },
   expiring: {
     eyebrow: 'Renewal needed',
     title: (plan, days) =>
@@ -1077,6 +1108,12 @@ const PlanLifecycleAlert: React.FC<{
   if (planCtx.lifecycle === 'active') return null
   const copy = PLAN_ALERT_COPY[planCtx.lifecycle]
   const variant = planCtx.lifecycle
+  const isTrial = variant === 'trial'
+  // For trial conversions we use a dedicated days field if the backend
+  // provided one (more accurate than the derived currentPeriodEnd diff).
+  const daysShown = isTrial && typeof planCtx.trialDaysRemaining === 'number'
+    ? planCtx.trialDaysRemaining
+    : planCtx.daysUntilExpiry
 
   return (
     <section className={`pm-alert pm-alert--plan pm-alert--plan-${variant}`}>
@@ -1087,27 +1124,44 @@ const PlanLifecycleAlert: React.FC<{
       <div className="pm-alert__body">
         <div className="pm-alert__eyebrow">{copy.eyebrow}</div>
         <div className="pm-alert__title">
-          {copy.title(planCtx.planName, planCtx.daysUntilExpiry)}
+          {copy.title(planCtx.planName, daysShown)}
         </div>
         <p className="pm-alert__desc">
-          {copy.body(planCtx.planName, planCtx.daysUntilExpiry, planCtx.isCancelled)}
-          {planCtx.expiresOn && <> <span className="pm-alert__meta">Expired on {formatDate(planCtx.expiresOn)}.</span></>}
+          {copy.body(planCtx.planName, daysShown, planCtx.isCancelled)}
+          {isTrial && planCtx.trialEndsOn && (
+            <> <span className="pm-alert__meta">First charge on {formatDate(planCtx.trialEndsOn)}.</span></>
+          )}
+          {!isTrial && variant === 'expired' && planCtx.expiresOn && (
+            <> <span className="pm-alert__meta">Expired on {formatDate(planCtx.expiresOn)}.</span></>
+          )}
         </p>
       </div>
       <div className="pm-alert__actions">
-        <button className="pm-alert__btn pm-alert__btn--ghost" onClick={onUpgrade}>
-          <i className="fas fa-arrow-up"></i> Upgrade plan
-        </button>
-        <button className="pm-alert__btn pm-alert__btn--solid" onClick={onRenew}>
-          <i className="fas fa-rotate-right"></i>
-          {planCtx.lifecycle === 'expired' ? ' Renew plan' : ' Keep my plan'}
-        </button>
+        {isTrial ? <>
+          <button className="pm-alert__btn pm-alert__btn--ghost" onClick={onUpgrade}>
+            <i className="fas fa-layer-group"></i> See all plans
+          </button>
+          {/* Solid CTA only matters when the trial is set to cancel. */}
+          {planCtx.isCancelled && (
+            <button className="pm-alert__btn pm-alert__btn--solid" onClick={onRenew}>
+              <i className="fas fa-rotate-right"></i> Keep subscription
+            </button>
+          )}
+        </> : <>
+          <button className="pm-alert__btn pm-alert__btn--ghost" onClick={onUpgrade}>
+            <i className="fas fa-arrow-up"></i> Upgrade plan
+          </button>
+          <button className="pm-alert__btn pm-alert__btn--solid" onClick={onRenew}>
+            <i className="fas fa-rotate-right"></i>
+            {variant === 'expired' ? ' Renew plan' : ' Keep my plan'}
+          </button>
+        </>}
       </div>
     </section>
   )
 }
 
-const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active'>, {
+const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active' | 'trial'>, {
   eyebrow: string
   title: string
   lede: (days: number, expiresOn: string | null) => string
@@ -1140,7 +1194,7 @@ const BetaTransitionAlert: React.FC<{
   onUpgrade: () => void
   onTopUp: () => void
 }> = ({ planCtx, onUpgrade, onTopUp }) => {
-  if (planCtx.lifecycle === 'active') return null
+  if (planCtx.lifecycle === 'active' || planCtx.lifecycle === 'trial') return null
   const copy = BETA_ALERT_COPY[planCtx.lifecycle]
   const variant = planCtx.lifecycle
 
