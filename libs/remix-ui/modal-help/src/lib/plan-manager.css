@@ -1830,3 +1830,178 @@
     animation: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sign-in prompt — shown when the user opens the panel without an account.
+   Mirrors the beta-alert look (aurora glow + atmospheric inner card) but
+   leans warmer to feel inviting rather than transactional.
+   ───────────────────────────────────────────────────────────────────────── */
+.pm-signin {
+  position: relative;
+  margin: 24px 28px 32px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 100% at 50% -20%, rgba(123, 104, 238, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(20, 22, 38, 0.92), rgba(14, 16, 28, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  isolation: isolate;
+}
+.pm-signin__halo {
+  position: absolute;
+  inset: -40% -20% auto -20%;
+  height: 110%;
+  background:
+    radial-gradient(45% 55% at 30% 30%, rgba(123, 104, 238, 0.35), transparent 70%),
+    radial-gradient(55% 65% at 75% 40%, rgba(64, 196, 255, 0.28), transparent 70%),
+    radial-gradient(40% 50% at 50% 80%, rgba(255, 138, 76, 0.18), transparent 75%);
+  filter: blur(40px);
+  opacity: 0.85;
+  z-index: 0;
+  pointer-events: none;
+  animation: pm-signin-drift 18s ease-in-out infinite alternate;
+}
+@keyframes pm-signin-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(1.05); }
+}
+.pm-signin__inner {
+  position: relative;
+  z-index: 1;
+  padding: 36px 40px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: left;
+}
+.pm-signin__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(123, 104, 238, 0.18);
+  border: 1px solid rgba(123, 104, 238, 0.45);
+  color: #cfc4ff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pm-signin__badge i { font-size: 11px; }
+.pm-signin__title {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #f5f6fb;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.pm-signin__lede {
+  margin: 0;
+  max-width: 60ch;
+  color: rgba(229, 231, 246, 0.78);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.pm-signin__perks {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+}
+.pm-signin__perks li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(229, 231, 246, 0.88);
+}
+.pm-signin__perks i {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #b6c4ff;
+  font-size: 11px;
+}
+.pm-signin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.pm-signin__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+.pm-signin__btn:hover { transform: translateY(-1px); }
+.pm-signin__btn:disabled { opacity: 0.6; cursor: progress; transform: none; }
+.pm-signin__btn--primary {
+  background: linear-gradient(135deg, #7b68ee 0%, #5a4dd1 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 22px rgba(123, 104, 238, 0.35);
+}
+.pm-signin__btn--primary:hover {
+  background: linear-gradient(135deg, #8c7af0 0%, #6757db 100%);
+  box-shadow: 0 10px 26px rgba(123, 104, 238, 0.45);
+}
+.pm-signin__btn--github {
+  background: #1f2330;
+  color: #f5f6fb;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.pm-signin__btn--github:hover { background: #272c3c; }
+.pm-signin__btn--google {
+  background: #ffffff;
+  color: #1f2330;
+}
+.pm-signin__btn--google:hover { background: #f1f3f9; }
+.pm-signin__btn--ghost {
+  background: transparent;
+  color: rgba(229, 231, 246, 0.85);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.pm-signin__btn--ghost:hover { background: rgba(255, 255, 255, 0.06); }
+.pm-signin__legal {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(229, 231, 246, 0.55);
+}
+.pm-signin__legal a {
+  color: rgba(229, 231, 246, 0.78);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-underline-offset: 2px;
+}
+.pm-signin__legal a:hover { color: #f5f6fb; }
+
+@media (max-width: 720px) {
+  .pm-signin { margin: 16px; }
+  .pm-signin__inner { padding: 28px 24px 24px; }
+  .pm-signin__title { font-size: 22px; }
+  .pm-signin__perks { grid-template-columns: 1fr; }
+  .pm-signin__actions { flex-direction: column; align-items: stretch; }
+  .pm-signin__btn { justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-signin__halo { animation: none; }
+}

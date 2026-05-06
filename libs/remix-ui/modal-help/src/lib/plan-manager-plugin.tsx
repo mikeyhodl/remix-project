@@ -42,6 +42,7 @@ import {
   selectCheckoutResult,
   selectPurchasingProductId
 } from './plan-manager-machine'
+import { LoginModal, startSignInFlow } from '@remix-ui/login'
 
 import './plan-manager.css'
 
@@ -545,14 +546,24 @@ const PlanManagerOverlay: React.FC<{
           />
         )}
 
-        {!checkoutResult && snap.dataState === 'loading' && <PlanManagerSkeleton />}
-        {!checkoutResult && snap.dataState === 'error' && (
+        {/*
+          Auth gate. Remix AI requires an account, so when the user is not
+          signed in we hide everything else (catalog, hero, alerts) and show
+          a focused sign-up prompt. This takes precedence over the data state
+          since none of the data-driven UI is meaningful without a user.
+        */}
+        {!checkoutResult && !snap.isAuthenticated && (
+          <SignInPromptScreen plugin={plugin} />
+        )}
+
+        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'loading' && <PlanManagerSkeleton />}
+        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'error' && (
           <PlanManagerError
             message={snap.errorMessage}
             onRetry={() => plugin.refresh()}
           />
         )}
-        {!checkoutResult && snap.dataState === 'ready' && <>
+        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready' && <>
 
           {activeAlert === 'beta-transition' && (
             <BetaTransitionAlert
@@ -1259,6 +1270,79 @@ const PlanManagerSkeleton: React.FC = () => (
     </div>
   </div>
 )
+
+/**
+ * Sign-in prompt shown when the user opens the panel without an account.
+ * Remix AI now requires authentication, so the panel pivots from "manage
+ * your plan" to "create your account" — anything plan- or catalog-related
+ * is hidden by `PlanManagerOverlay` until `isAuthenticated` flips to true.
+ *
+ * Re-uses the same auth entry-point as the topbar Sign-In button:
+ * `startSignInFlow` handles desktop (system browser) vs web (in-app modal),
+ * and `LoginModal` is the shared provider-picker UI.
+ */
+const SignInPromptScreen: React.FC<{
+  plugin: any
+}> = ({ plugin }) => {
+  const [showLoginModal, setShowLoginModal] = React.useState(false)
+  const [pending, setPending] = React.useState(false)
+
+  const handleSignIn = () => {
+    setPending(true)
+    Promise.resolve(startSignInFlow(plugin, () => setShowLoginModal(true), 'PlanManager Sign In'))
+      .finally(() => setPending(false))
+  }
+
+  return (
+    <>
+      <section className="pm-signin">
+        <div className="pm-signin__halo" aria-hidden />
+        <div className="pm-signin__inner">
+          <div className="pm-signin__badge">
+            <i className="fas fa-sparkles"></i>
+            <span>Account required</span>
+          </div>
+          <h2 className="pm-signin__title">Create a free account to use Remix&nbsp;AI</h2>
+          <p className="pm-signin__lede">
+            The AI assistant, your project history, and your credit balance all
+            live with your account. Sign in to get a free monthly credit pack and
+            unlock AI explanations, completions, and security checks.
+          </p>
+
+          <ul className="pm-signin__perks">
+            <li><i className="fas fa-bolt"></i> Free monthly AI credits, no card required</li>
+            <li><i className="fas fa-robot"></i> Solidity assistant, completions &amp; security audit</li>
+            <li><i className="fas fa-cloud"></i> Sync workspaces &amp; preferences across devices</li>
+            <li><i className="fas fa-lock"></i> Auth via your existing identity — we never see your password</li>
+          </ul>
+
+          <div className="pm-signin__actions">
+            <button
+              className="pm-signin__btn pm-signin__btn--primary"
+              onClick={handleSignIn}
+              disabled={pending}
+              data-id="planManagerSignIn"
+            >
+              {pending
+                ? <><i className="fas fa-spinner fa-spin"></i> Opening sign-in…</>
+                : <><i className="fas fa-right-to-bracket"></i> Sign in to Remix</>}
+            </button>
+          </div>
+
+          <p className="pm-signin__legal">
+            By continuing you agree to the&nbsp;
+            <a href="https://remix-project.org/terms" target="_blank" rel="noreferrer">Terms</a>
+            &nbsp;and&nbsp;
+            <a href="https://remix-project.org/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+          </p>
+        </div>
+      </section>
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} plugin={plugin} />
+      )}
+    </>
+  )
+}
 
 const PlanManagerError: React.FC<{ message?: string | null; onRetry: () => void }> = ({ message, onRetry }) => (
   <div className="pm-empty pm-empty--error">
