@@ -738,12 +738,12 @@ export class PlanManagerStore {
           if (ev.type === '@xstate.event') {
              
             console.log('%c[PlanManager] event %c%s',
-              'color:#8be9fd', 'color:#50fa7b;font-weight:bold',
+              'color:#1f4b99', 'color:#0b6b3a;font-weight:bold',
               JSON.stringify(ev.event))
           } else if (ev.type === '@xstate.snapshot') {
              
             console.log('%c[PlanManager] state %c%s',
-              'color:#8be9fd', 'color:#f1fa8c',
+              'color:#1f4b99', 'color:#7a5200',
               JSON.stringify(ev.snapshot?.value))
           }
         }

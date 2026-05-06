@@ -221,15 +221,30 @@ export class NudgePlugin extends Plugin {
 
   private async _fetchConfigEvents(): Promise<void> {
     try {
-      const regMode = await this.call('auth' as any, 'getRegistrationMode')
-      if (regMode === 'open') {
+      const appConfig = await this.call('auth' as any, 'getAppConfig')
+      console.log('[NudgePlugin] App config:', appConfig)
+
+      const getConfigValue = (key: string): any => {
+        if (Array.isArray(appConfig)) {
+          const item = appConfig.find((entry: any) => entry?.key === key)
+          return item?.value
+        }
+        return appConfig?.[key]
+      }
+
+      // Prefer unified access policy from app config, with legacy fallback support.
+      let accessPolicy = getConfigValue('auth.access_policy')
+      if (!accessPolicy) accessPolicy = getConfigValue('auth.registration_mode')
+      if (!accessPolicy) accessPolicy = await this.call('auth' as any, 'getRegistrationMode')
+
+      console.log('[NudgePlugin] Access policy:', accessPolicy)
+      if (accessPolicy === 'open') {
         this.engine_.fire('config:registration_open')
-      } else if (regMode === 'invite_required' || regMode === 'invite_only') {
+      } else if (accessPolicy === 'invite_required' || accessPolicy === 'invite_only') {
         this.engine_.fire('config:invite_only')
       }
 
-      const appConfig = await this.call('auth' as any, 'getAppConfig')
-      if (appConfig?.['auth.sign_in_button_mode'] !== 'hidden') {
+      if (getConfigValue('auth.sign_in_button_mode') !== 'hidden') {
         this.engine_.fire('config:login_enabled')
       }
     } catch {

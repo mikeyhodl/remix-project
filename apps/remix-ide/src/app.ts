@@ -677,7 +677,7 @@ class AppComponent {
     this.invitationManager = new InvitationManagerPlugin()
     this.membershipRequest = new MembershipRequestPlugin()
     this.betaCornerWidget = new BetaCornerWidgetPlugin()
-    this.nudgePlugin = new NudgePlugin({ debug: false })
+    this.nudgePlugin = new NudgePlugin({ debug: true })
     this.helpPlugin = new HelpPlugin()
     this.planManager = new PlanManagerPlugin()
     const feedbackPlugin = new FeedbackPlugin()

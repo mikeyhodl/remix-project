@@ -76,7 +76,7 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   constructor() {
     super(profile)
-    this.store = new PlanManagerStore({ debug: false })
+    this.store = new PlanManagerStore({ debug: true })
 
     // Surface checkout results as a plugin event so external listeners
     // (e.g. analytics) can react without subscribing to the store.
