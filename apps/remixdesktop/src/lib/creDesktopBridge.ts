@@ -23,7 +23,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import * as fs from 'fs'
 import * as path from 'path'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, dialog } from 'electron'
 
 export const CRE_BRIDGE_PORT = 27182
 
@@ -65,15 +65,32 @@ function ack(ws: WebSocket, result: CREImportAck) {
 }
 
 /**
+ * Resolve a non-clashing workspace directory name.
+ * If `<workspaceRoot>/<name>` already exists, tries `<name>-1`, `<name>-2`, …
+ */
+function resolveUniqueProjectDir(workspaceRoot: string, baseName: string): { dir: string; name: string } {
+  let name = baseName
+  let dir = path.resolve(workspaceRoot, name)
+  let counter = 1
+  while (fs.existsSync(dir)) {
+    name = `${baseName}-${counter}`
+    dir = path.resolve(workspaceRoot, name)
+    counter++
+  }
+  return { dir, name }
+}
+
+/**
  * Write all files from the CRE payload into the given workspace root.
  * Intermediate directories are created automatically.
+ * Returns the resolved project directory path and the (possibly suffixed) name.
  */
 function writeProjectFiles(
   workspaceRoot: string,
   projectName: string,
   files: Record<string, string>
-): string {
-  const projectDir = path.resolve(workspaceRoot, projectName)
+): { projectDir: string; resolvedName: string } {
+  const { dir: projectDir, name: resolvedName } = resolveUniqueProjectDir(workspaceRoot, projectName)
   fs.mkdirSync(projectDir, { recursive: true })
 
   for (const [filePath, content] of Object.entries(files)) {
@@ -88,17 +105,33 @@ function writeProjectFiles(
     fs.writeFileSync(fullPath, content, 'utf-8')
   }
 
-  return projectDir
+  return { projectDir, resolvedName }
 }
 
 /**
- * Notify the Remix renderer that a new CRE project has been imported
- * so it can refresh the file explorer and open the workspace.
+ * Show a native dialog asking whether to switch to the newly imported
+ * CRE workspace. If the user confirms, switch the active window to it.
  */
-function notifyRenderer(projectName: string, projectDir: string) {
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    win.webContents.send('cre:project-imported', { projectName, projectDir })
+async function promptSwitchWorkspace(projectName: string, projectDir: string): Promise<void> {
+  const focusedWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  if (!focusedWindow) return
+
+  const { response } = await dialog.showMessageBox(focusedWindow, {
+    type: 'question',
+    title: 'Chainlink CRE Project Imported',
+    message: `"${projectName}" has been imported from Scaffold CRE.`,
+    detail: 'Would you like to switch to this workspace now?',
+    buttons: ['Switch Workspace', 'Keep Current'],
+    defaultId: 0,
+    cancelId: 1,
+  })
+
+  if (response === 0) {
+    // Switch the current window to the new workspace in-place
+    focusedWindow.webContents.send('cre:project-imported', { projectName, projectDir, switchWorkspace: true })
+  } else {
+    // Just notify the renderer without switching (e.g. refresh recent list)
+    focusedWindow.webContents.send('cre:project-imported', { projectName, projectDir, switchWorkspace: false })
   }
 }
 
@@ -133,10 +166,14 @@ function handleMessage(ws: WebSocket, raw: string) {
 
   try {
     const workspaceRoot = resolveWorkspaceRoot()
-    writeProjectFiles(workspaceRoot, payload.projectName, payload.files)
-    notifyRenderer(payload.projectName, path.join(workspaceRoot, payload.projectName))
-    ack(ws, { type: 'cre:import:ack', success: true, workspace: payload.projectName })
-    console.log(`[CRE Bridge] Imported project "${payload.projectName}" (${Object.keys(payload.files).length} files)`)
+    const { projectDir, resolvedName } = writeProjectFiles(workspaceRoot, payload.projectName, payload.files)
+    // ACK immediately so CRE doesn't time out while the user reads the dialog
+    ack(ws, { type: 'cre:import:ack', success: true, workspace: resolvedName })
+    console.log(`[CRE Bridge] Imported project "${resolvedName}" (${Object.keys(payload.files).length} files) → ${projectDir}`)
+    // Prompt async — don't block the WS handler
+    promptSwitchWorkspace(resolvedName, projectDir).catch((err) =>
+      console.error('[CRE Bridge] Dialog error:', err)
+    )
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[CRE Bridge] Failed to write project files:', msg)
