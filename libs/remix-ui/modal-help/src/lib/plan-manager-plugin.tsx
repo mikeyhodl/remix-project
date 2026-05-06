@@ -1303,16 +1303,9 @@ const SignInPromptScreen: React.FC<{
             <span>Account required</span>
           </div>
           <h2 className="pm-signin__title">Create a free account to use Remix&nbsp;AI</h2>
-          <p className="pm-signin__lede">
-            The AI assistant, your project history, and your credit balance all
-            live with your account. Sign in to get a free monthly credit pack and
-            unlock AI explanations, completions, and security checks.
-          </p>
 
           <ul className="pm-signin__perks">
-            <li><i className="fas fa-bolt"></i> Free monthly AI credits, no card required</li>
             <li><i className="fas fa-robot"></i> Solidity assistant, completions &amp; security audit</li>
-            <li><i className="fas fa-cloud"></i> Sync workspaces &amp; preferences across devices</li>
             <li><i className="fas fa-lock"></i> Auth via your existing identity — we never see your password</li>
           </ul>
 
