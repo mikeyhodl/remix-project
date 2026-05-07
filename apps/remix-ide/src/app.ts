@@ -66,6 +66,7 @@ import { ripgrepPlugin } from './app/plugins/electron/ripgrepPlugin'
 import { compilerLoaderPlugin, compilerLoaderPluginDesktop } from './app/plugins/electron/compilerLoaderPlugin'
 import { appUpdaterPlugin } from './app/plugins/electron/appUpdaterPlugin'
 import { RemixAIPlugin } from './app/plugins/remixAIPlugin'
+import { AssistantStatePlugin } from './app/plugins/assistant-state-plugin'
 import { SlitherHandleDesktop } from './app/plugins/electron/slitherPlugin'
 import { SlitherHandle } from './app/files/slither-handle'
 import { FoundryHandle } from './app/files/foundry-handle'
@@ -402,6 +403,7 @@ class AppComponent {
 
     // ----------------- AI --------------------------------------
     const remixAI = new RemixAIPlugin()
+    const assistantState = new AssistantStatePlugin()
     const quickDappV2 = new QuickDappV2()
     this.remixAiAssistant = new RemixAIAssistant()
 
@@ -570,6 +572,7 @@ class AppComponent {
       templateSelection,
       scriptRunnerUI,
       remixAI,
+      assistantState,
       quickDappV2,
       walletConnect,
       amp,
@@ -777,7 +780,8 @@ class AppComponent {
       'gistHandler',
       'compilerloader',
       'remixAI',
-      'remixaiassistant'
+      'remixaiassistant',
+      'assistantState'
     ])
 
     await this.appManager.activatePlugin(['auth'])

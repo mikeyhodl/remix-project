@@ -7,6 +7,7 @@ import { MCPInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
+import { aiErrorFromException, parseAIErrorEnvelope } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 
@@ -195,11 +196,29 @@ export class RemixAIPlugin extends Plugin {
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('codeExplainRequested')
+    // Gate via assistantState — opens planManager with the right reason
+    // when the user is anonymous, unverified, or feature-gated.
+    try {
+      const ready = await this.call('assistantState' as any, 'requireReady', { feature: 'ai:solcoder' })
+      if (!ready) return null
+    } catch { /* assistantState not yet active — fall through (legacy path) */ }
+    try {
+      await this.call('assistantState' as any, 'reportRequestStarted')
+    } catch { /* noop */ }
     let result
-    if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.code_explaining(prompt, context, params)
-    } else {
-      result = await this.remoteInferencer.code_explaining(prompt, context, params)
+    try {
+      if (this.mcpEnabled && this.mcpInferencer){
+        result = await this.mcpInferencer.code_explaining(prompt, context, params)
+      } else {
+        result = await this.remoteInferencer.code_explaining(prompt, context, params)
+      }
+      try { await this.call('assistantState' as any, 'reportRequestSucceeded') } catch { /* noop */ }
+    } catch (e: any) {
+      const status = e?.response?.status ?? e?.status ?? 0
+      const body = e?.response?.data ?? e?.data ?? e
+      const aiError = body ? parseAIErrorEnvelope(body, status) : aiErrorFromException(e)
+      try { await this.call('assistantState' as any, 'reportError', aiError) } catch { /* noop */ }
+      throw e
     }
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
@@ -337,7 +356,15 @@ export class RemixAIPlugin extends Plugin {
     return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
   }
 
-  chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
+  async chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
+    // Gate before we pipe anything to the chat — otherwise the user bubble
+    // appears for a request we already know we won't honor (and the
+    // downstream null result crashes the chat with "cannot read body").
+    try {
+      const ready = await this.call('assistantState' as any, 'requireReady', { feature: 'ai:solcoder' })
+      if (!ready) return
+    } catch { /* assistantState not active — fall through to legacy path */ }
+
     if (this.chatRequestBuffer == null){
       this.chatRequestBuffer = {
         fn_name: fn,
