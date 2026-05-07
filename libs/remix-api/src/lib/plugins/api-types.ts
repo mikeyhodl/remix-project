@@ -387,6 +387,40 @@ export interface PermissionsResponse {
   is_admin?: boolean
   feature_groups?: FeatureGroup[]
   features: Permission[] | Record<string, any>
+  /** True when the user has a confirmed email address on file. */
+  email_verified?: boolean
+  /** ISO timestamp of when the email was verified, or null if never verified. */
+  email_verified_date?: string | null
+  /** True when the user has any email address on file (verified or not). */
+  has_email?: boolean
+}
+
+/** Request body for POST /sso/email/send-verification. Omit `email` to verify the on-file address. */
+export interface SendEmailVerificationRequest {
+  email?: string
+}
+
+/** Response from POST /sso/email/send-verification. */
+export interface SendEmailVerificationResponse {
+  success: true
+  /** Code TTL in seconds (typically 600). Absent when `already_verified` is true. */
+  expires_in?: number
+  /** Returned when the supplied email is already verified for this account \u2014 no code was sent. */
+  already_verified?: true
+}
+
+/** Request body for POST /sso/email/verify-verification. */
+export interface VerifyEmailVerificationRequest {
+  code: string
+  email?: string
+}
+
+/** Response from POST /sso/email/verify-verification on success. */
+export interface VerifyEmailVerificationResponse {
+  success: true
+  email_verified: true
+  email_verified_date: string
+  email: string
 }
 
 export interface FeatureCheckRequest {

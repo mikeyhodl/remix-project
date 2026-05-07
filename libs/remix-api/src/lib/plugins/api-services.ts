@@ -63,7 +63,11 @@ import {
   PoolReleaseResponse,
   PoolStatusResponse,
   PoolAccountsResponse,
-  PoolReleaseAllResponse
+  PoolReleaseAllResponse,
+  SendEmailVerificationRequest,
+  SendEmailVerificationResponse,
+  VerifyEmailVerificationRequest,
+  VerifyEmailVerificationResponse
 } from './api-types'
 
 /**
@@ -194,6 +198,49 @@ export class SSOApiService {
    */
   async linkSiwe(request: SiweVerifyRequest): Promise<ApiResponse<SiweVerifyResponse>> {
     return this.apiClient.post<SiweVerifyResponse>('/siwe/link', request)
+  }
+
+  // ==================== Email Verification ====================
+  // These endpoints gate access to features (e.g. Remix AI) by requiring a
+  // confirmed email address on the account. Distinct from /email/send-code +
+  // /email/verify-code which are the OTP-login flow on /sso/email/.
+  //
+  // Server constants: 6-digit numeric code, 10-min TTL, 60s resend cooldown,
+  // 5 max wrong attempts (then code is invalidated and user must request new).
+  // After a successful verify, the caller MUST refetch /permissions/ \u2014 the
+  // JWT is not refreshed.
+
+  /**
+   * Send a verification code to the user's email.
+   *  \u2022 Omit `email` to verify the on-file address (SSO users).
+   *  \u2022 Provide `email` to add a new address (SIWE users) or change the existing one.
+   *
+   * Possible non-2xx responses:
+   *  \u2022 400 Invalid email format / NO_EMAIL_ON_FILE
+   *  \u2022 409 EMAIL_IN_USE
+   *  \u2022 429 cooldown active \u2014 inspect `retry_after` (seconds)
+   */
+  async sendEmailVerification(
+    request: SendEmailVerificationRequest = {}
+  ): Promise<ApiResponse<SendEmailVerificationResponse>> {
+    return this.apiClient.post<SendEmailVerificationResponse>('/email/send-verification', request)
+  }
+
+  /**
+   * Confirm the verification code emailed to the user.
+   *
+   * Possible non-2xx responses:
+   *  \u2022 400 Invalid code (response includes `attempts_remaining`) or expired
+   *  \u2022 409 EMAIL_IN_USE (race condition with another account)
+   *  \u2022 429 too many wrong attempts \u2014 code invalidated, user must request a new one
+   *
+   * On success, the caller should call PermissionsApiService.getPermissions()
+   * to refresh `email_verified` / `email_verified_date` / `has_email`.
+   */
+  async verifyEmailVerification(
+    request: VerifyEmailVerificationRequest
+  ): Promise<ApiResponse<VerifyEmailVerificationResponse>> {
+    return this.apiClient.post<VerifyEmailVerificationResponse>('/email/verify-verification', request)
   }
 }
 

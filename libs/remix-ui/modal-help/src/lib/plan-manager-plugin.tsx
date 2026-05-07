@@ -42,7 +42,7 @@ import {
   selectCheckoutResult,
   selectPurchasingProductId
 } from './plan-manager-machine'
-import { LoginModal, startSignInFlow } from '@remix-ui/login'
+import { LoginModal, startSignInFlow, OtpDigitInput, OtpDigitInputHandle } from '@remix-ui/login'
 
 import './plan-manager.css'
 
@@ -563,7 +563,26 @@ const PlanManagerOverlay: React.FC<{
             onRetry={() => plugin.refresh()}
           />
         )}
-        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready' && <>
+        {/*
+          Email verification gate. The backend now blocks AI access until the
+          user has a confirmed email on file (so we don't burn free credits on
+          burner addresses, and so SIWE-only accounts can recover their plan).
+          When `email_verified` is false (or `has_email` is false for SIWE
+          users) we hide the catalog/hero/alerts and show a focused verify
+          flow. Re-fetching permissions after a successful verify naturally
+          unlocks the rest of the UI.
+        */}
+        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready'
+          && snap.permissions
+          && (snap.permissions.has_email === false || snap.permissions.email_verified === false) && (
+          <EmailVerificationScreen
+            plugin={plugin}
+            permissions={snap.permissions}
+          />
+        )}
+        {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready'
+          && (!snap.permissions
+            || (snap.permissions.has_email !== false && snap.permissions.email_verified !== false)) && <>
 
           {activeAlert === 'beta-transition' && (
             <BetaTransitionAlert
@@ -1334,6 +1353,354 @@ const SignInPromptScreen: React.FC<{
         <LoginModal onClose={() => setShowLoginModal(false)} plugin={plugin} />
       )}
     </>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Email-verification gate
+   ─────────────────────────────────────────────────────────────────────────────
+   Two visual modes, decided from /permissions/:
+     • has_email === false        → email input + "Send code" (SIWE users)
+     • email_verified === false   → on-file email shown + "Send code" (SSO users)
+   Both modes converge on the same OTP confirmation step.
+
+   We talk straight to SSOApiService (auth.getSSOApi) — the same service the
+   login modal uses — and on success ask the auth plugin to refresh
+   permissions, which re-runs loadAccountData() and naturally hides this gate.
+   ───────────────────────────────────────────────────────────────────────── */
+
+type VerifyStep = 'request' | 'code'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const formatVerifyTimer = (seconds: number): string => {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+const EmailVerificationScreen: React.FC<{
+  plugin: any
+  permissions: { has_email?: boolean; email_verified?: boolean } | null
+}> = ({ plugin, permissions }) => {
+  // SSO users get `has_email: true` with a known address; SIWE users get
+  // `has_email: false` and must supply one. We only consult `auth.getUser()`
+  // for display when the address is on file — never echo a user-typed value
+  // back as "your email".
+  const isAddMode = permissions?.has_email === false
+
+  const [onFileEmail, setOnFileEmail] = React.useState<string | null>(null)
+  const [emailValue, setEmailValue] = React.useState('')
+  const [step, setStep] = React.useState<VerifyStep>('request')
+  const [otpDigits, setOtpDigits] = React.useState<string[]>(['', '', '', '', '', ''])
+  const [sending, setSending] = React.useState(false)
+  const [verifying, setVerifying] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [info, setInfo] = React.useState<string | null>(null)
+  const [cooldown, setCooldown] = React.useState(0)
+  const [expiresIn, setExpiresIn] = React.useState(0)
+  const [attemptsRemaining, setAttemptsRemaining] = React.useState<number | null>(null)
+  const otpRef = React.useRef<OtpDigitInputHandle>(null)
+  const verifyingRef = React.useRef(false)
+
+  // Pull the on-file email lazily so we can show "we'll send a code to alice@…"
+  // before the first network round-trip.
+  React.useEffect(() => {
+    if (isAddMode) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const user = await plugin.call('auth', 'getUser')
+        if (!cancelled && user?.email) setOnFileEmail(user.email)
+      } catch { /* getUser is best-effort here — the verify call itself doesn't need it */ }
+    })()
+    return () => { cancelled = true }
+  }, [isAddMode, plugin])
+
+  // Resend cooldown ticker — 60s per backend contract.
+  React.useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000)
+    return () => clearInterval(t)
+  }, [cooldown])
+
+  // Code expiry ticker — 10min per backend contract.
+  React.useEffect(() => {
+    if (expiresIn <= 0) return
+    const t = setInterval(() => setExpiresIn((c) => Math.max(0, c - 1)), 1000)
+    return () => clearInterval(t)
+  }, [expiresIn])
+
+  const targetEmail = isAddMode ? emailValue.trim() : onFileEmail
+  const targetEmailMasked = (() => {
+    if (!targetEmail) return ''
+    const at = targetEmail.indexOf('@')
+    if (at <= 0) return targetEmail
+    const local = targetEmail.slice(0, at)
+    const visible = local.slice(0, Math.min(2, local.length))
+    return `${visible}***${targetEmail.slice(at)}`
+  })()
+
+  const handleSend = async (resend = false) => {
+    setError(null)
+    setInfo(null)
+    if (sending || cooldown > 0) return
+
+    if (isAddMode) {
+      const email = emailValue.trim()
+      if (!EMAIL_RE.test(email)) {
+        setError('Please enter a valid email address')
+        return
+      }
+    }
+
+    setSending(true)
+    try {
+      const sso: any = await plugin.call('auth', 'getSSOApi')
+      // Omit `email` for the on-file flow so the server uses the address it
+      // already has — sending a stale value would risk a 409 race.
+      const r = await sso.sendEmailVerification(isAddMode ? { email: emailValue.trim() } : {})
+
+      if (r.ok) {
+        if (r.data?.already_verified) {
+          // Server says we're already done — just re-pull permissions and the
+          // gate will close on the next render.
+          setInfo('Your email is already verified.')
+          await plugin.call('auth', 'refreshPermissions').catch(() => {})
+          await plugin.refresh()
+          return
+        }
+        setStep('code')
+        setExpiresIn(r.data?.expires_in ?? 600)
+        setCooldown(60)
+        setOtpDigits(['', '', '', '', '', ''])
+        setAttemptsRemaining(null)
+        if (resend) setInfo('A new code is on its way.')
+        setTimeout(() => otpRef.current?.focus(), 100)
+        return
+      }
+
+      // Map known error codes to friendly copy.
+      const code = r.error
+      if (r.status === 429) {
+        // Backend may include retry_after — but ApiResponse only surfaces the
+        // error string. Fall back to 60s, which is the documented cooldown.
+        setCooldown(60)
+        setError('Please wait a moment before requesting another code.')
+      } else if (code === 'EMAIL_IN_USE' || r.status === 409) {
+        setError('That address is already linked to another account.')
+      } else if (code === 'NO_EMAIL_ON_FILE') {
+        setError('No email is on file for this account. Please enter one below.')
+      } else if (code === 'Invalid email format') {
+        setError('That email address looks invalid.')
+      } else {
+        setError(code || 'We couldn\'t send the verification code.')
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Network error — please try again.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleVerify = async (code?: string) => {
+    if (verifyingRef.current) return
+    const otp = code || otpDigits.join('')
+    if (otp.length !== 6) return
+
+    verifyingRef.current = true
+    setVerifying(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const sso: any = await plugin.call('auth', 'getSSOApi')
+      const r = await sso.verifyEmailVerification(
+        isAddMode ? { code: otp, email: emailValue.trim() } : { code: otp }
+      )
+
+      if (r.ok) {
+        setInfo('Email verified — unlocking Remix AI…')
+        // Per the backend brief the JWT is NOT refreshed; we MUST re-pull
+        // /permissions/ so `email_verified` flips to true.
+        await plugin.call('auth', 'refreshPermissions').catch(() => {})
+        await plugin.refresh()
+        return
+      }
+
+      const codeErr = r.error
+      if (r.status === 429) {
+        setError('Too many wrong attempts. Please request a new code.')
+        setOtpDigits(['', '', '', '', '', ''])
+        setAttemptsRemaining(0)
+        setExpiresIn(0)
+      } else if (r.status === 409 || codeErr === 'EMAIL_IN_USE') {
+        setError('That address is already linked to another account.')
+      } else if (codeErr?.toLowerCase().includes('expired')) {
+        setError('Code expired — please request a new one.')
+        setExpiresIn(0)
+        setOtpDigits(['', '', '', '', '', ''])
+      } else {
+        // attempts_remaining isn't surfaced by ApiClient as a field; show the
+        // best message we can. The user gets at most 5 tries server-side.
+        setError(codeErr || 'Invalid code. Please try again.')
+        setOtpDigits(['', '', '', '', '', ''])
+        setTimeout(() => otpRef.current?.focus(), 100)
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Network error — please try again.')
+    } finally {
+      verifyingRef.current = false
+      setVerifying(false)
+    }
+  }
+
+  return (
+    <section className="pm-verify pm-signin">
+      <div className="pm-signin__halo" aria-hidden />
+      <div className="pm-signin__inner">
+        <div className="pm-signin__badge">
+          <i className="fas fa-envelope-circle-check"></i>
+          <span>Verify your email</span>
+        </div>
+
+        {step === 'request' && (
+          <>
+            <h2 className="pm-signin__title">
+              {isAddMode
+                ? 'Add an email to use Remix\u00a0AI'
+                : 'Confirm your email to use Remix\u00a0AI'}
+            </h2>
+            <p className="pm-signin__lede">
+              {isAddMode
+                ? 'You signed in with a wallet, so we don\'t have an email on file. We need a verified address before unlocking AI features — it\'s how we keep free credits out of the hands of throwaway accounts and how you\'ll recover your plan if you ever lose your wallet.'
+                : (<>
+                  We\'ll email a 6-digit code to{' '}
+                  <strong className="pm-verify__email">{targetEmailMasked || 'your address on file'}</strong>.
+                  This is a one-time check to keep free credits out of throwaway accounts.
+                </>)}
+            </p>
+
+            {isAddMode && (
+              <div className="pm-verify__field">
+                <label className="pm-verify__label" htmlFor="pm-verify-email">Email address</label>
+                <input
+                  id="pm-verify-email"
+                  type="email"
+                  className="pm-verify__input"
+                  placeholder="you@example.com"
+                  value={emailValue}
+                  onChange={(e) => setEmailValue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleSend() }}
+                  autoComplete="email"
+                  disabled={sending}
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="pm-verify__alert pm-verify__alert--error" role="alert">
+                <i className="fas fa-circle-exclamation"></i>{' '}{error}
+              </div>
+            )}
+            {info && !error && (
+              <div className="pm-verify__alert pm-verify__alert--info" role="status">
+                <i className="fas fa-circle-info"></i>{' '}{info}
+              </div>
+            )}
+
+            <div className="pm-signin__actions">
+              <button
+                className="pm-signin__btn pm-signin__btn--primary"
+                onClick={() => void handleSend()}
+                disabled={sending || cooldown > 0 || (isAddMode && !emailValue.trim())}
+                data-id="planManagerSendVerification"
+              >
+                {sending
+                  ? <><i className="fas fa-spinner fa-spin"></i> Sending…</>
+                  : cooldown > 0
+                    ? <><i className="fas fa-clock"></i> Resend in {cooldown}s</>
+                    : <><i className="fas fa-paper-plane"></i> Send verification code</>}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'code' && (
+          <>
+            <h2 className="pm-signin__title">Enter the 6-digit code</h2>
+            <p className="pm-signin__lede">
+              We sent it to <strong className="pm-verify__email">{targetEmailMasked}</strong>.
+              The code expires in {formatVerifyTimer(expiresIn)}.
+            </p>
+
+            {error && (
+              <div className="pm-verify__alert pm-verify__alert--error" role="alert">
+                <i className="fas fa-circle-exclamation"></i>{' '}{error}
+              </div>
+            )}
+            {info && !error && (
+              <div className="pm-verify__alert pm-verify__alert--info" role="status">
+                <i className="fas fa-circle-info"></i>{' '}{info}
+              </div>
+            )}
+
+            <div className="pm-verify__otp">
+              <OtpDigitInput
+                ref={otpRef}
+                value={otpDigits}
+                onChange={setOtpDigits}
+                onComplete={(c) => void handleVerify(c)}
+                onSubmit={() => void handleVerify()}
+                disabled={verifying}
+              />
+            </div>
+
+            <div className="pm-signin__actions">
+              <button
+                className="pm-signin__btn pm-signin__btn--primary"
+                onClick={() => void handleVerify()}
+                disabled={verifying || otpDigits.join('').length !== 6}
+                data-id="planManagerVerifyCode"
+              >
+                {verifying
+                  ? <><i className="fas fa-spinner fa-spin"></i> Verifying…</>
+                  : <><i className="fas fa-check"></i> Verify email</>}
+              </button>
+              <button
+                className="pm-signin__btn pm-signin__btn--ghost"
+                onClick={() => void handleSend(true)}
+                disabled={sending || cooldown > 0}
+              >
+                {cooldown > 0
+                  ? <>Resend in {cooldown}s</>
+                  : <><i className="fas fa-rotate-right"></i> Resend code</>}
+              </button>
+              <button
+                className="pm-signin__btn pm-signin__btn--ghost"
+                onClick={() => {
+                  setStep('request')
+                  setOtpDigits(['', '', '', '', '', ''])
+                  setError(null)
+                  setInfo(null)
+                  setExpiresIn(0)
+                  setAttemptsRemaining(null)
+                }}
+                disabled={verifying}
+              >
+                <i className="fas fa-pen"></i> {isAddMode ? 'Change email' : 'Use a different email'}
+              </button>
+            </div>
+          </>
+        )}
+
+        <p className="pm-signin__legal">
+          We never share your email. By verifying you agree to the&nbsp;
+          <a href="https://remix-project.org/terms" target="_blank" rel="noreferrer">Terms</a>
+          &nbsp;and&nbsp;
+          <a href="https://remix-project.org/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+        </p>
+      </div>
+    </section>
   )
 }
 
