@@ -33,6 +33,8 @@ import type { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
 import { RemixTSCompletionProvider } from './providers/tsCompletionProvider'
+import { TooltipPopOver } from './tooltipPopOver'
+
 const _paq = (window._paq = window._paq || []) // eslint-disable-line
 
 // Key for localStorage
@@ -228,6 +230,9 @@ export const EditorUI = (props: EditorUIProps) => {
   const currentUrlRef = useRef('')
   const currentDecoratorListCollectionRef = useRef({})
   const inlineCompletionProviderRef = useRef<RemixInLineCompletionProvider|null>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastHoverPositionRef = useRef<monacoTypes.IPosition | null>(null)
+  const [tooltipData, setTooltipData] = useState<{keyword: string, position: {x: number, y: number}, line: string, context: {above: string, below: string}} | null>(null)
 
   // const currentDecorations = useRef({ sourceAnnotationsPerFile: {}, markerPerFile: {} }) // decorations that are currently in use by the editor
   // const registeredDecorations = useRef({}) // registered decorations
@@ -972,6 +977,49 @@ export const EditorUI = (props: EditorUIProps) => {
       }
     });
 
+    // Add hover detection with 3-second delay
+    editor.onMouseMove((e) => {
+      const position = e.target?.position
+      if (position) {
+        // Check if position changed
+        const positionChanged = !lastHoverPositionRef.current || 
+          lastHoverPositionRef.current.lineNumber !== position.lineNumber || 
+          lastHoverPositionRef.current.column !== position.column
+
+        if (positionChanged) {
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+            hoverTimeoutRef.current = null
+          }
+          lastHoverPositionRef.current = position
+          
+          // Start new timeout for this position
+          hoverTimeoutRef.current = setTimeout(() => {
+            checkForWeb3Keywords(position)
+          }, 2500) // 2.5 seconds
+        }
+      }
+    })
+
+    // Clear timeout when mouse leaves the editor (with delay to allow tooltip interaction)
+    editor.onMouseLeave(() => {
+      // Add a longer delay to allow moving mouse to tooltip
+      setTimeout(() => {
+        // Check if mouse is over tooltip before closing
+        const tooltipElement = document.querySelector('.web3-tooltip-popup')
+        const isMouseOverTooltip = tooltipElement && tooltipElement.matches(':hover')
+        
+        if (!isMouseOverTooltip) {
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+            hoverTimeoutRef.current = null
+          }
+          lastHoverPositionRef.current = null
+          closeTooltip()
+        }
+      }, 300) // Longer delay to allow reaching tooltip
+    })
+
     editor.onDidPaste(async (e) => {
       const shouldShowWarning = localStorage.getItem(HIDE_PASTE_WARNING_KEY) !== 'true';
       // Only show the modal if the user hasn't opted out
@@ -1384,6 +1432,71 @@ export const EditorUI = (props: EditorUIProps) => {
     const loadedElement = document.createElement('span')
     loadedElement.setAttribute('data-id', 'editorloaded')
     document.body.appendChild(loadedElement)
+  }
+
+  const checkForWeb3Keywords = (position: monacoTypes.IPosition) => {
+    if (!editorRef.current || !currentFileRef.current) return
+    const model = editorRef.current.getModel()
+    if (!model) return
+
+    // Get the word at the current position
+    const wordAtPosition = model.getWordAtPosition(position)
+    let hoveredExpression = ''
+    
+    if (wordAtPosition) {
+      // Get the line content to check for multi-character expressions like "msg.sender"
+      const lineContent = model.getLineContent(position.lineNumber)
+      const startColumn = wordAtPosition.startColumn
+      const endColumn = wordAtPosition.endColumn
+      
+      // Check for dot notation expressions (like msg.sender, tx.origin, block.timestamp)
+      let expandedStart = startColumn - 1
+      let expandedEnd = endColumn - 1
+      
+      // Expand backwards to include preceding word and dot
+      while (expandedStart > 0 && /[a-zA-Z0-9_.]/.test(lineContent[expandedStart - 1])) {
+        expandedStart--
+      }
+      
+      // Expand forwards to include following dot and word  
+      while (expandedEnd < lineContent.length && /[a-zA-Z0-9_.]/.test(lineContent[expandedEnd])) {
+        expandedEnd++
+      }
+      
+      hoveredExpression = lineContent.substring(expandedStart, expandedEnd)
+      
+      // Get context lines (line above and below)
+      const lineAbove = position.lineNumber > 1 
+        ? model.getLineContent(position.lineNumber - 1)
+        : ''
+      const lineBelow = position.lineNumber < model.getLineCount()
+        ? model.getLineContent(position.lineNumber + 1)
+        : ''
+      
+      // Get screen position for tooltip
+      const editorElement = editorRef.current.getDomNode()
+      const editorRect = editorElement?.getBoundingClientRect()
+      
+      if (editorRect && monacoRef.current) {
+        const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+        const x = editorRect.left + (position.column - 1) * 8 // Approximate character width
+        const y = editorRect.top + (position.lineNumber - 1) * lineHeight + lineHeight
+        
+        setTooltipData({
+          keyword: hoveredExpression,
+          position: { x, y },
+          line: lineContent,
+          context: {
+            above: lineAbove,
+            below: lineBelow
+          }
+        })
+      }
+    }
+  }
+
+  const closeTooltip = () => {
+    setTooltipData(null)
   }
 
   function handleEditorWillMount(monaco) {
@@ -1867,6 +1980,19 @@ export const EditorUI = (props: EditorUIProps) => {
             }}
           />
         </span>
+      )}
+      
+      {/* Web3 Keyword Tooltip */}
+      {tooltipData && (
+        <TooltipPopOver
+          keyword={tooltipData.keyword}
+          position={tooltipData.position}
+          onClose={closeTooltip}
+          visible={true}
+          plugin={props.plugin}
+          line={tooltipData.line}
+          context={tooltipData.context}
+        />
       )}
     </div>
   )
