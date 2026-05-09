@@ -72,6 +72,29 @@ export interface PlanManagerSnapshot {
   /** Set while a Paddle checkout is being prepared/open (no result yet). */
   pendingCheckout: CheckoutIntentRecord | null
   errorMessage: string | null
+  /**
+   * Why the panel was opened. Set on the most recent OPEN_OVERLAY when a
+   * caller passes an intent (e.g. AI assistant routing a gate to the right
+   * screen). `null` when the user opened the panel from the menu icon.
+   */
+  openIntent: OpenIntent | null
+}
+
+/** Reason a non-UI plugin asked to open the panel. */
+export type OpenReason =
+  | 'auth-required'
+  | 'email-unverified'
+  | 'feature-required'
+  | 'quota-exhausted'
+  | 'manual'
+
+/** Payload accepted by `OPEN_OVERLAY`. All fields are optional. */
+export interface OpenIntent {
+  reason?: OpenReason
+  /** Feature key (e.g. 'ai:Anthropic') that triggered a 'feature-required' gate. */
+  requiredFeature?: string
+  /** Section to focus when the panel transitions to ready. */
+  initialSection?: 'plans' | 'topup' | 'usage'
 }
 
 // ─── Machine context + events ───────────────────────────────────────
@@ -105,6 +128,8 @@ interface MachineContext {
   // checkout
   pendingCheckout: CheckoutIntentRecord | null
   checkoutResult: CheckoutResult | null
+  // overlay routing
+  openIntent: OpenIntent | null
   // diagnostics
   lastError: string | null
 }
@@ -131,9 +156,9 @@ export type PlanManagerEvent =
   // External signal — e.g. AI plugin received a 402 from upstream.
   | { type: 'CREDITS_EXHAUSTED' }
   // overlay
-  | { type: 'OPEN_OVERLAY' }
+  | { type: 'OPEN_OVERLAY'; intent?: OpenIntent }
   | { type: 'CLOSE_OVERLAY' }
-  | { type: 'TOGGLE_OVERLAY' }
+  | { type: 'TOGGLE_OVERLAY'; intent?: OpenIntent }
   // dev — inject a synthetic snapshot for the side-panel scenario buttons.
   | { type: 'DEV_INJECT'; partial: Partial<MachineContext> }
 
@@ -148,6 +173,7 @@ const initialContext: MachineContext = {
   catalogPackages: [],
   pendingCheckout: null,
   checkoutResult: null,
+  openIntent: null,
   lastError: null
 }
 
@@ -245,6 +271,13 @@ export const planManagerMachine = setup({
     },
     clearCheckoutResult: ({ context }) => {
       context.checkoutResult = null
+    },
+    setOpenIntent: ({ context, event }) => {
+      if (event.type !== 'OPEN_OVERLAY' && event.type !== 'TOGGLE_OVERLAY') return
+      context.openIntent = event.intent ?? null
+    },
+    clearOpenIntent: ({ context }) => {
+      context.openIntent = null
     },
     devInject: ({ context, event }) => {
       if (event.type !== 'DEV_INJECT') return
@@ -406,14 +439,17 @@ export const planManagerMachine = setup({
       states: {
         closed: {
           on: {
-            OPEN_OVERLAY: 'open',
-            TOGGLE_OVERLAY: 'open'
+            OPEN_OVERLAY: { target: 'open', actions: ['setOpenIntent'] },
+            TOGGLE_OVERLAY: { target: 'open', actions: ['setOpenIntent'] }
           }
         },
         open: {
           on: {
-            CLOSE_OVERLAY: 'closed',
-            TOGGLE_OVERLAY: 'closed'
+            // Re-opening while already open just updates the intent so the
+            // panel can re-route (e.g. AI plugin opens for a different gate).
+            OPEN_OVERLAY: { actions: ['setOpenIntent'] },
+            CLOSE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent'] },
+            TOGGLE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent'] }
           }
         }
       }
@@ -456,7 +492,8 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     checkoutResult: ctx.checkoutResult,
     pendingCheckout: ctx.pendingCheckout,
     errorMessage: ctx.lastError,
-    isTrialEligible: ctx.isTrialEligible
+    isTrialEligible: ctx.isTrialEligible,
+    openIntent: ctx.openIntent
   }
 }
 

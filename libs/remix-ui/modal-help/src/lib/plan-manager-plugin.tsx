@@ -33,6 +33,8 @@ import {
   type CreditState,
   type PlanLifecycle,
   type ActiveAlert,
+  type OpenIntent,
+  type OpenReason,
   selectActiveAlert,
   selectPlanState,
   selectCreditStatus,
@@ -61,7 +63,7 @@ const profile = {
 }
 
 // Re-export public types for other packages.
-export type { CheckoutResult, CheckoutResultKind, CheckoutIntent }
+export type { CheckoutResult, CheckoutResultKind, CheckoutIntent, OpenIntent, OpenReason }
 
 export class PlanManagerPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
@@ -157,9 +159,14 @@ export class PlanManagerPlugin extends ViewPlugin {
     }
   }
 
-  /** Public API — called by the menu icon and by feature-badges.tsx. */
-  async open(): Promise<void> {
-    this.store.send({ type: 'OPEN_OVERLAY' })
+  /**
+   * Public API — called by the menu icon, by feature-badges.tsx, and by
+   * other plugins (notably `assistantState`) routing a gate to the right
+   * screen. Pass an `intent` to pre-select a section and/or surface the
+   * feature key that triggered the open.
+   */
+  async open(intent?: OpenIntent): Promise<void> {
+    this.store.send({ type: 'OPEN_OVERLAY', intent })
     try {
       await this.call('menuicons', 'select', 'planManager')
     } catch { /* noop */ }
@@ -492,6 +499,22 @@ const PlanManagerOverlay: React.FC<{
 }> = ({ plugin, snap }) => {
   const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage'>('plans')
 
+  // When a non-UI plugin opens us with an intent, follow its routing
+  // hint. We track the intent identity (reference) so a fresh OPEN_OVERLAY
+  // re-applies even if the user has since navigated away.
+  const intent = snap.openIntent
+  const lastIntentRef = React.useRef<OpenIntent | null>(null)
+  useEffect(() => {
+    if (!intent || intent === lastIntentRef.current) return
+    lastIntentRef.current = intent
+    if (intent.initialSection) {
+      setActiveSection(intent.initialSection)
+    } else if (intent.reason === 'feature-required' || intent.reason === 'quota-exhausted') {
+      // Sensible defaults when the caller didn't pin a section.
+      setActiveSection(intent.reason === 'quota-exhausted' ? 'topup' : 'plans')
+    }
+  }, [intent])
+
   // Close-on-Escape — UI concern, stays in React.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') plugin.close() }
@@ -641,6 +664,7 @@ const PlanManagerOverlay: React.FC<{
                 currentPlanId={planCtx.planId}
                 isTrialEligible={snap.isTrialEligible}
                 purchasingId={purchasingProductId}
+                requiredFeature={intent?.requiredFeature ?? null}
                 onSubscribe={(planId) => plugin.subscribeToPlan(planId)}
               />
             )}
@@ -867,8 +891,10 @@ const PlansSection: React.FC<{
   /** True when the user has never used a trial — enables "Start free trial" CTAs. */
   isTrialEligible: boolean
   purchasingId: string | null
+  /** Feature key (e.g. 'ai:Anthropic') that triggered the open, if any. Surfaced as a banner. */
+  requiredFeature: string | null
   onSubscribe: (planId: string) => void
-}> = ({ plans, currentPlanId, isTrialEligible, purchasingId, onSubscribe }) => {
+}> = ({ plans, currentPlanId, isTrialEligible, purchasingId, requiredFeature, onSubscribe }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -884,6 +910,15 @@ const PlansSection: React.FC<{
 
   return (
     <div className="pm-plans">
+      {requiredFeature && (
+        <div className="pm-plans__required" role="status">
+          <i className="fas fa-bolt" aria-hidden></i>
+          <span>
+            Your current plan doesn't include <code>{requiredFeature}</code>.
+            Choose a plan below that does to unlock it.
+          </span>
+        </div>
+      )}
       {sorted.map(plan => {
         const isCurrent = plan.id === currentPlanId
         const isRecommended = plan.id === recommendedId

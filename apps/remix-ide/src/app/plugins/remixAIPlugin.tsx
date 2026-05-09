@@ -258,6 +258,37 @@ export class RemixAIPlugin extends Plugin {
     return true
   }
 
+  /**
+   * Wrap an AI inferencer call with the assistant-state lifecycle:
+   *   - `requireReady({feature})` — opens planManager with the right reason
+   *      when the user is anonymous, unverified, feature-gated or in cooldown.
+   *      Returns `null` from the AI method when the gate refuses.
+   *   - `reportRequestStarted` before the call.
+   *   - `reportRequestSucceeded` on success.
+   *   - `reportError(parsedAIError)` on failure (then re-throws).
+   *
+   * `assistantState` calls are individually try/catch-wrapped so the legacy
+   * path keeps working when the plugin is disabled (e.g. tests).
+   */
+  private async withAssistantGate<T>(feature: string, run: () => Promise<T>): Promise<T | null> {
+    try {
+      const ready = await this.call('assistantState' as any, 'requireReady', { feature })
+      if (!ready) return null
+    } catch { /* assistantState not active — fall through */ }
+    try { await this.call('assistantState' as any, 'reportRequestStarted') } catch { /* noop */ }
+    try {
+      const result = await run()
+      try { await this.call('assistantState' as any, 'reportRequestSucceeded') } catch { /* noop */ }
+      return result
+    } catch (e: any) {
+      const status = e?.response?.status ?? e?.status ?? 0
+      const body = e?.response?.data ?? e?.data ?? e
+      const aiError = body ? parseAIErrorEnvelope(body, status) : aiErrorFromException(e)
+      try { await this.call('assistantState' as any, 'reportError', aiError) } catch { /* noop */ }
+      throw e
+    }
+  }
+
   async basic_prompt(prompt: string) {
     const option = { ...GenerationParams }
     option.stream = false
@@ -267,93 +298,85 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
-    if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      return this.deepAgentInferencer.code_generation(prompt, params)
-    } else if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.code_generation(prompt, params)
-    } else {
-      return await this.remoteInferencer.code_generation(prompt, params)
-    }
+    return this.withAssistantGate('ai:solcoder', async () => {
+      if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return this.deepAgentInferencer.code_generation(prompt, params)
+      } else if (this.mcpEnabled && this.mcpInferencer){
+        return this.mcpInferencer.code_generation(prompt, params)
+      } else {
+        return await this.remoteInferencer.code_generation(prompt, params)
+      }
+    })
   }
 
   async code_completion(prompt: string, promptAfter: string, params:IParams=CompletionParams): Promise<any> {
     this.emit('codeCompletionUsed')
-    if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
-    params.provider = 'mistralai' // default provider for code completion
-    const currentFileName = await this.call('fileManager', 'getCurrentFile')
-    const contextfiles = await this.completionAgent.getContextFiles(prompt)
-    return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
+    return this.withAssistantGate('ai:completion', async () => {
+      if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
+      params.provider = 'mistralai' // default provider for code completion
+      const currentFileName = await this.call('fileManager', 'getCurrentFile')
+      const contextfiles = await this.completionAgent.getContextFiles(prompt)
+      return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
+    })
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('chatMessageSent')
-    let newPrompt = await this.codeExpAgent.chatCommand(prompt)
-    // add workspace context
-    newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
-    let result
-    if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      result = await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
-    } else if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.answer(prompt, params)
-    } else {
-      result = await this.remoteInferencer.answer(newPrompt, params)
-    }
+    const result = await this.withAssistantGate('ai:solcoder', async () => {
+      let newPrompt = await this.codeExpAgent.chatCommand(prompt)
+      // add workspace context
+      newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
+      if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
+      } else if (this.mcpEnabled && this.mcpInferencer){
+        return await this.mcpInferencer.answer(prompt, params)
+      } else {
+        return await this.remoteInferencer.answer(newPrompt, params)
+      }
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('codeExplainRequested')
-    // Gate via assistantState — opens planManager with the right reason
-    // when the user is anonymous, unverified, or feature-gated.
-    try {
-      const ready = await this.call('assistantState' as any, 'requireReady', { feature: 'ai:solcoder' })
-      if (!ready) return null
-    } catch { /* assistantState not yet active — fall through (legacy path) */ }
-    try {
-      await this.call('assistantState' as any, 'reportRequestStarted')
-    } catch { /* noop */ }
-    let result
-    try {
+    const result = await this.withAssistantGate('ai:solcoder', async () => {
       if (this.deepAgentEnabled && this.deepAgentInferencer) {
-        result = await this.deepAgentInferencer.code_explaining(prompt, context, params)
+        return await this.deepAgentInferencer.code_explaining(prompt, context, params)
       } else if (this.mcpEnabled && this.mcpInferencer){
-        result = await this.mcpInferencer.code_explaining(prompt, context, params)
+        return await this.mcpInferencer.code_explaining(prompt, context, params)
       } else {
-        result = await this.remoteInferencer.code_explaining(prompt, context, params)
+        return await this.remoteInferencer.code_explaining(prompt, context, params)
       }
-      try { await this.call('assistantState' as any, 'reportRequestSucceeded') } catch { /* noop */ }
-    } catch (e: any) {
-      const status = e?.response?.status ?? e?.status ?? 0
-      const body = e?.response?.data ?? e?.data ?? e
-      const aiError = body ? parseAIErrorEnvelope(body, status) : aiErrorFromException(e)
-      try { await this.call('assistantState' as any, 'reportError', aiError) } catch { /* noop */ }
-      throw e
-    }
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('errorExplainRequested')
-    let localFilesImports = ""
+    const result = await this.withAssistantGate('ai:solcoder', async () => {
+      let localFilesImports = ""
 
-    // Get local imports from the workspace restrict to 5 most relevant files
-    const relevantFiles = this.workspaceAgent.getRelevantLocalFiles(prompt, 5);
+      // Get local imports from the workspace restrict to 5 most relevant files
+      const relevantFiles = this.workspaceAgent.getRelevantLocalFiles(prompt, 5);
 
-    for (const file in relevantFiles) {
-      localFilesImports += `\n\nFileName: ${file}\n\n${relevantFiles[file]}`
-    }
-    localFilesImports = localFilesImports + "\n End of local files imports.\n\n"
-    prompt = localFilesImports ? `Using the following local imports: ${localFilesImports}\n\n` + prompt : prompt
-    const result = await this.remoteInferencer.error_explaining(prompt, params)
+      for (const file in relevantFiles) {
+        localFilesImports += `\n\nFileName: ${file}\n\n${relevantFiles[file]}`
+      }
+      localFilesImports = localFilesImports + "\n End of local files imports.\n\n"
+      const finalPrompt = localFilesImports ? `Using the following local imports: ${localFilesImports}\n\n` + prompt : prompt
+      return await this.remoteInferencer.error_explaining(finalPrompt, params)
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('vulnerabilityCheckRequested')
-    const result = await this.remoteInferencer.vulnerability_check(prompt, params)
+    const result = await this.withAssistantGate('ai:solcoder', async () => {
+      return await this.remoteInferencer.vulnerability_check(prompt, params)
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
@@ -458,12 +481,14 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_insertion(msg_pfx: string, msg_sfx: string, params:IParams=CompletionParams): Promise<any> {
-    if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
+    return this.withAssistantGate('ai:completion', async () => {
+      if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
 
-    params.provider = 'mistralai' // default provider for code completion
-    const currentFileName = await this.call('fileManager', 'getCurrentFile')
-    const contextfiles = await this.completionAgent.getContextFiles(msg_pfx)
-    return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
+      params.provider = 'mistralai' // default provider for code completion
+      const currentFileName = await this.call('fileManager', 'getCurrentFile')
+      const contextfiles = await this.completionAgent.getContextFiles(msg_pfx)
+      return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
+    })
   }
 
   async chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
