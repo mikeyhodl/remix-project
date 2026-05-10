@@ -1,5 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useContext } from 'react'
 import { RISK_CONFIG } from './web3Keywords'
+import { AIEvent } from '@remix-api'
+import type { IPosition } from 'monaco-editor'
+//@ts-ignore
+import { TrackingContext } from '@remix-ide/tracking'
 
 export interface TooltipPopOverProps {
   keyword: string
@@ -18,6 +22,83 @@ interface KeywordData {
   riskLabel: string
 }
 
+// Utility function to open contextual tooltip
+export const openContextualTooltip = (
+  position: IPosition,
+  editorRef: any,
+  monacoRef: any,
+  setTooltipData: (data: any) => void,
+  trackMatomoEvent: (event: any) => void
+) => {
+  if (!editorRef.current) return
+  const model = editorRef.current.getModel()
+  if (!model) return
+
+  // Get the word at the current position
+  const wordAtPosition = model.getWordAtPosition(position)
+  let hoveredExpression = ''
+  
+  if (wordAtPosition) {
+    // Get the line content to check for multi-character expressions like "msg.sender"
+    const lineContent = model.getLineContent(position.lineNumber)
+    const startColumn = wordAtPosition.startColumn
+    const endColumn = wordAtPosition.endColumn
+    
+    // Check for dot notation expressions (like msg.sender, tx.origin, block.timestamp)
+    let expandedStart = startColumn - 1
+    let expandedEnd = endColumn - 1
+    
+    // Expand backwards to include preceding word and dot
+    while (expandedStart > 0 && /[a-zA-Z0-9_.]/.test(lineContent[expandedStart - 1])) {
+      expandedStart--
+    }
+    
+    // Expand forwards to include following dot and word  
+    while (expandedEnd < lineContent.length && /[a-zA-Z0-9_.]/.test(lineContent[expandedEnd])) {
+      expandedEnd++
+    }
+    
+    hoveredExpression = lineContent.substring(expandedStart, expandedEnd)
+    
+    // Get context lines (line above and below)
+    const lineAbove = position.lineNumber > 1 
+      ? model.getLineContent(position.lineNumber - 1)
+      : ''
+    const lineBelow = position.lineNumber < model.getLineCount()
+      ? model.getLineContent(position.lineNumber + 1)
+      : ''
+    
+    // Get screen position for tooltip
+    const editorElement = editorRef.current.getDomNode()
+    const editorRect = editorElement?.getBoundingClientRect()
+    
+    if (editorRect && monacoRef.current) {
+      const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+      const x = editorRect.left + (position.column - 1) * 8 // Approximate character width
+      const y = editorRect.top + (position.lineNumber - 1) * lineHeight + lineHeight
+      
+      setTooltipData({
+        keyword: hoveredExpression,
+        position: { x, y },
+        line: lineContent,
+        context: {
+          above: lineAbove,
+          below: lineBelow
+        }
+      })
+      
+      // Track popup appearance
+      trackMatomoEvent({ 
+        category: 'ai', 
+        action: 'remixAI', 
+        name: 'contextual_popup_shown', 
+        isClick: false,
+        value: hoveredExpression 
+      })
+    }
+  }
+}
+
 export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   keyword,
   position,
@@ -27,6 +108,11 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   line,
   context
 }) => {
+  //@ts-ignore
+  const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends AIEvent = AIEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const popRef = useRef<HTMLDivElement>(null)
   const [adjustedPosition, setAdjustedPosition] = useState(position)
   const [data, setData] = useState<KeywordData | null>(null)
@@ -193,6 +279,15 @@ Focus on security implications and provide practical guidance for smart contract
                     e.stopPropagation()
                     if (plugin && data) {
                       try {
+                        // Track button click
+                        trackMatomoEvent({ 
+                          category: 'ai', 
+                          action: 'remixAI', 
+                          name: 'contextual_popup_open_remixai_clicked', 
+                          isClick: true,
+                          value: keyword 
+                        })
+                        
                         const deeperPrompt = `Go deeper into this specific concept: ${data.body}. Give me other examples, and if applicable, suggest Learneth tutorials I can do.`
                         
                         // Open RemixAI panel and show it
