@@ -393,6 +393,21 @@ export interface PermissionsResponse {
   email_verified_date?: string | null
   /** True when the user has any email address on file (verified or not). */
   has_email?: boolean
+  /** Per-user AI model catalogue with availability + locking metadata. */
+  ai_models?: Array<{
+    id: string
+    provider: string
+    display_name: string
+    description?: string
+    category?: string
+    capabilities?: string[]
+    is_default?: boolean
+    requires_auth?: boolean
+    required_feature?: string | null
+    available?: boolean
+    reason?: string
+    sort_order?: number
+  }>
 }
 
 /** Request body for POST /sso/email/send-verification. Omit `email` to verify the on-file address. */

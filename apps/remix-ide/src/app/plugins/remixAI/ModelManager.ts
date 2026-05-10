@@ -31,8 +31,23 @@ export class ModelManager {
 
   async setModel(modelId: string, allowedModels: string[] = []): Promise<void> {
     const plugin = this.deps.plugin
-    let model = getModelById(modelId)
+    // The static `getModelById` only knows the anonymous fallback list
+    // (placeholder + ollama). Real model metadata lives in the
+    // assistantState plugin, fed by /permissions.ai_models. Look it up
+    // there first; only fall back to the static helper for the bootstrap
+    // / ollama cases.
+    let model: AIModel | undefined
+    try {
+      const dynamic: AIModel[] = await plugin.call('assistantState', 'getAvailableModels')
+      if (Array.isArray(dynamic)) {
+        model = dynamic.find(m => m.id === modelId)
+      }
+    } catch (e) {
+      console.warn('[ModelManager] assistantState.getAvailableModels failed', e)
+    }
+    if (!model) model = getModelById(modelId)
     if (!model) {
+      console.warn(`[ModelManager] model "${modelId}" not found in any catalogue, falling back to default`)
       model = getDefaultModel()
       modelId = model.id
     }

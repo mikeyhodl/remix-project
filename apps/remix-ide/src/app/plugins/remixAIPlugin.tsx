@@ -6,7 +6,7 @@ import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDe
 import { MCPInferencer, DeepAgentInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
-import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
+import { AIModel, getDefaultModel } from '@remix/remix-ai-core';
 import { aiErrorFromException, parseAIErrorEnvelope } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
@@ -139,10 +139,21 @@ export class RemixAIPlugin extends Plugin {
 
     if (isBetaUser) {
       console.log('[RemixAI Plugin] Beta user detected at startup, using claude-sonnet-4-6')
-      const betaModel = getModelById('claude-sonnet-4-6')
-      if (betaModel) {
-        this.selectedModelId = 'claude-sonnet-4-6'
-        this.selectedModel = betaModel
+      // Backend may not advertise the beta model in /permissions yet; build a
+      // minimal AIModel inline so we don't depend on the picker catalogue.
+      this.selectedModelId = 'claude-sonnet-4-6'
+      this.selectedModel = {
+        id: 'claude-sonnet-4-6',
+        provider: 'anthropic',
+        displayName: 'Claude Sonnet 4.6',
+        description: 'Beta model',
+        category: 'coding',
+        capabilities: ['chat', 'code', 'completion'],
+        isDefault: false,
+        requiresAuth: true,
+        requiredFeature: 'ai:Anthropic',
+        available: true,
+        sortOrder: 0
       }
     } else {
       console.log('[RemixAI Plugin] Non-beta user at startup, using default model')

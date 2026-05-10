@@ -131,7 +131,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               >
                 <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
                   <span className="text-nowrap">
-                    {autoModeEnabled ? 'Auto Mode' : (selectedModel?.name || 'Select Model')}
+                    {autoModeEnabled ? 'Auto Mode' : (selectedModel?.displayName || 'Select Model')}
                   </span>
                   <span className={showModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                 </div>
@@ -145,7 +145,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   data-assist-btn="assistant-selector-btn"
                 >
                   <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
-                    <span>{selectedModel?.name || 'Select Model'}</span>
+                    <span>{selectedModel?.displayName || 'Select Model'}</span>
                     <span className={showOllamaModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                   </div>
                 </button>

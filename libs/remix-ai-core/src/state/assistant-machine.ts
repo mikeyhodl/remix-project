@@ -19,6 +19,7 @@
 
 import { setup, createActor, type AnyActorRef } from 'xstate'
 import type { PermissionsResponse } from '@remix-api'
+import { ANONYMOUS_FALLBACK_MODELS, parseAIModelsFromPermissions, type AIModel } from '../types/models'
 
 // ─── Public types ───────────────────────────────────────────────────
 
@@ -552,6 +553,22 @@ export function selectCanAskAI(snap: AssistantSnapshot): boolean {
   return snap.availability === 'available' && snap.cooldown === 'none'
 }
 
+/**
+ * Generic feature-flag check against `permissions.features`. Returns true
+ * iff the named flag is present AND `is_enabled !== false`. Anonymous
+ * users (no permissions yet) get `false` for everything.
+ *
+ * Use this for capability toggles that aren't tied to a specific model
+ * row, e.g. `ai:auto`, `ai:ollama`, `ai:completion`.
+ */
+export function selectFeatureEnabled(snap: AssistantSnapshot, key: string): boolean {
+  const features = snap.permissions?.features as Record<string, AIFeatureFlag> | undefined
+  if (!features) return false
+  const flag = features[key]
+  if (!flag) return false
+  return flag.is_enabled !== false
+}
+
 /** Map the snapshot to a plan-manager hand-off, or null if no action needed. */
 export function selectPlanManagerHandoff(snap: AssistantSnapshot): PlanManagerHandoff | null {
   if (!snap.gateReason) return null
@@ -616,6 +633,25 @@ export function selectCooldownRemaining(snap: AssistantSnapshot, now: number = D
 export function selectAllowedProvidersFromError(snap: AssistantSnapshot): string[] | null {
   if (snap.lastError?.code !== 'PROVIDER_DENIED') return null
   return snap.lastError.details?.allowedProviders ?? null
+}
+
+/**
+ * The model catalogue the picker should render.
+ *
+ *   1. authenticated + permissions loaded → backend `ai_models` (parsed),
+ *      Ollama appended client-side.
+ *   2. otherwise → ANONYMOUS_FALLBACK_MODELS (the "sign-in" placeholder
+ *      row + Ollama). The placeholder is marked `available: false` so
+ *      the picker greys it out and clicking opens planManager(auth-required).
+ *
+ * The selector is pure derivation over the snapshot — no caching.
+ */
+export function selectAvailableModels(snap: AssistantSnapshot): AIModel[] {
+  if (snap.isAuthenticated && snap.permissions) {
+    const parsed = parseAIModelsFromPermissions(snap.permissions)
+    if (parsed && parsed.length > 0) return parsed
+  }
+  return ANONYMOUS_FALLBACK_MODELS
 }
 
 /**

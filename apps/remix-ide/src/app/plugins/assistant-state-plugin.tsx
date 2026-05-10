@@ -5,15 +5,16 @@ import {
   snapshotFromActor,
   selectCanAskAI,
   selectPlanManagerHandoff,
-  selectAllowedModelIds,
+  selectAvailableModels,
+  selectFeatureEnabled,
   selectCooldownRemaining,
   selectCooldownDisplay,
   type AssistantSnapshot,
   type AIError,
+  type AIModel,
   type CooldownDisplay,
   type PlanManagerHandoff
 } from '@remix/remix-ai-core'
-import { AVAILABLE_MODELS } from '@remix/remix-ai-core'
 
 /**
  * AssistantStatePlugin — owns the AssistantMachine actor and exposes a
@@ -48,6 +49,8 @@ const profile = {
     'canAskAI',
     'requireReady',
     'getAllowedModels',
+    'getAvailableModels',
+    'hasFeature',
     'getCooldownRemaining',
     'getCooldownDisplay',
     'reportRequestStarted',
@@ -85,28 +88,55 @@ export class AssistantStatePlugin extends Plugin {
     // re-render. Snapshot is recomputed lazily via getSnapshot().
     this.actor.subscribe(() => {
       this.cachedSnapshot = snapshotFromActor(this.actor)
+      // eslint-disable-next-line no-console
+      console.log('[assistantState] transition →', {
+        availability: this.cachedSnapshot.availability,
+        permissionsState: this.cachedSnapshot.permissionsState,
+        isAuthenticated: this.cachedSnapshot.isAuthenticated,
+        cooldown: this.cachedSnapshot.cooldown,
+        gateReason: this.cachedSnapshot.gateReason,
+        ai_models: Array.isArray((this.cachedSnapshot.permissions as any)?.ai_models)
+          ? (this.cachedSnapshot.permissions as any).ai_models.length
+          : 'absent'
+      })
       this.maintainCooldownTicker()
       this.emit('stateChanged', this.cachedSnapshot)
     })
   }
 
   async onActivation(): Promise<void> {
+    // eslint-disable-next-line no-console
+    console.log('[assistantState] onActivation')
     // The auth plugin re-emits `authStateChanged` after refreshPermissions(),
     // so a single listener covers both login/logout and entitlement changes.
     this.on('auth' as any, 'authStateChanged', (s: { isAuthenticated: boolean }) => {
       const isAuthed = !!s?.isAuthenticated
-      this.actor.send({ type: 'AUTH_CHANGED', isAuthenticated: isAuthed })
+      // eslint-disable-next-line no-console
+      console.log('[assistantState] auth.authStateChanged', { isAuthed, raw: s })
+      this.dispatch({ type: 'AUTH_CHANGED', isAuthenticated: isAuthed })
       if (isAuthed) void this.refreshPermissions()
-      else this.actor.send({ type: 'PERMISSIONS_LOADED', permissions: null })
+      else this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: null })
     })
 
     // Best-effort initial probe — if the user is already signed in by the
     // time we activate (cached JWT), pull permissions now.
     try {
       const isAuthed = await this.call('auth' as any, 'isAuthenticated')
-      this.actor.send({ type: 'AUTH_CHANGED', isAuthenticated: !!isAuthed })
+      // eslint-disable-next-line no-console
+      console.log('[assistantState] initial auth.isAuthenticated →', isAuthed)
+      this.dispatch({ type: 'AUTH_CHANGED', isAuthenticated: !!isAuthed })
       if (isAuthed) void this.refreshPermissions()
-    } catch { /* auth not ready yet — auth events will catch us up */ }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[assistantState] initial auth probe failed', e)
+    }
+  }
+
+  /** Logging wrapper around actor.send so every event is visible. */
+  private dispatch(event: any): void {
+    // eslint-disable-next-line no-console
+    console.log('[assistantState] dispatch', event.type, event)
+    this.actor.send(event)
   }
 
   async onDeactivation(): Promise<void> {
@@ -137,10 +167,27 @@ export class AssistantStatePlugin extends Plugin {
     return selectCanAskAI(this.cachedSnapshot)
   }
 
-  /** Filtered AIModel[] driven by the user's `ai:*` feature flags. */
-  getAllowedModels() {
-    const ids = new Set(selectAllowedModelIds(this.cachedSnapshot, AVAILABLE_MODELS))
-    return AVAILABLE_MODELS.filter((m) => ids.has(m.id))
+  /** @deprecated use getAvailableModels(). Kept for legacy callers. */
+  getAllowedModels(): AIModel[] {
+    return this.getAvailableModels().filter((m) => m.available)
+  }
+
+  /**
+   * Full model catalogue for the picker. Each entry carries `available`
+   * (false → render locked + open planManager on click) and `requiredFeature`
+   * for the upgrade prompt.
+   */
+  getAvailableModels(): AIModel[] {
+    return selectAvailableModels(this.cachedSnapshot)
+  }
+
+  /**
+   * Generic capability gate. Use for ai:* feature flags that aren't
+   * tied to a specific model row, e.g. ai:auto, ai:ollama.
+   * Returns false for anonymous users (no permissions loaded).
+   */
+  hasFeature(key: string): boolean {
+    return selectFeatureEnabled(this.cachedSnapshot, key)
   }
 
   getCooldownRemaining(): number | null {
@@ -192,13 +239,13 @@ export class AssistantStatePlugin extends Plugin {
   // ─── Write API (called by remixAIPlugin) ─────────────────────────
 
   reportRequestStarted(): void {
-    this.actor.send({ type: 'REQUEST_STARTED' })
+    this.dispatch({ type: 'REQUEST_STARTED' })
   }
   reportStreamStarted(): void {
-    this.actor.send({ type: 'STREAM_STARTED' })
+    this.dispatch({ type: 'STREAM_STARTED' })
   }
   reportRequestSucceeded(): void {
-    this.actor.send({ type: 'REQUEST_SUCCEEDED' })
+    this.dispatch({ type: 'REQUEST_SUCCEEDED' })
   }
   /** Alias for symmetry — some call sites prefer the shorter name. */
   reportSuccess(): void {
@@ -206,10 +253,10 @@ export class AssistantStatePlugin extends Plugin {
   }
   /** Caller must pass an already-parsed AIError envelope. */
   reportError(error: AIError): void {
-    this.actor.send({ type: 'ERROR_RECEIVED', error })
+    this.dispatch({ type: 'ERROR_RECEIVED', error })
   }
   resetSession(): void {
-    this.actor.send({ type: 'RESET_SESSION' })
+    this.dispatch({ type: 'RESET_SESSION' })
   }
 
   // ─── Internal ────────────────────────────────────────────────────
@@ -218,21 +265,26 @@ export class AssistantStatePlugin extends Plugin {
   async refreshPermissions(): Promise<void> {
     if (this.permissionsRefreshing) return this.permissionsRefreshing
     this.permissionsRefreshing = (async () => {
-      this.actor.send({ type: 'PERMISSIONS_LOADING' })
+      this.dispatch({ type: 'PERMISSIONS_LOADING' })
       try {
         const api: any = await this.call('auth' as any, 'getPermissionsApi')
         if (!api) {
-          this.actor.send({ type: 'PERMISSIONS_LOADED', permissions: null })
+          console.warn('[assistantState] auth.getPermissionsApi returned null')
+          this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: null })
           return
         }
         const r = await api.getPermissions()
         if (r?.ok) {
-          this.actor.send({ type: 'PERMISSIONS_LOADED', permissions: r.data })
+          console.log('[assistantState] /permissions loaded; ai_models =',
+            Array.isArray(r.data?.ai_models) ? r.data.ai_models.length : 'absent')
+          this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: r.data })
         } else {
-          this.actor.send({ type: 'PERMISSIONS_FAILED', message: r?.error ?? 'Failed to load permissions' })
+          console.warn('[assistantState] /permissions failed', r)
+          this.dispatch({ type: 'PERMISSIONS_FAILED', message: r?.error ?? 'Failed to load permissions' })
         }
       } catch (e: any) {
-        this.actor.send({ type: 'PERMISSIONS_FAILED', message: e?.message ?? 'Failed to load permissions' })
+        console.warn('[assistantState] /permissions threw', e)
+        this.dispatch({ type: 'PERMISSIONS_FAILED', message: e?.message ?? 'Failed to load permissions' })
       } finally {
         this.permissionsRefreshing = null
       }

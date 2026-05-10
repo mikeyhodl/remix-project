@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, getModelById, AIModel } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, getDefaultModel, AIModel, ANONYMOUS_FALLBACK_MODELS } from '@remix/remix-ai-core'
 import { ToolApprovalRequest } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -94,6 +94,20 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     baseTrackEvent?.<T>(event)
   }
   const modelAccess = useModelAccess()
+  // Live AI model catalogue, sourced from the assistantState plugin (which
+  // owns the /permissions response). Picker `isLocked` is derived from
+  // each entry's `available` flag — we no longer cross-check provider
+  // features here. Anonymous users see ANONYMOUS_FALLBACK_MODELS until
+  // assistantState reports otherwise.
+  const [availableModels, setAvailableModels] = useState<AIModel[]>(ANONYMOUS_FALLBACK_MODELS)
+  // ai:auto feature flag — gates the Auto Mode option in the model picker.
+  // Sourced from assistantState.hasFeature('ai:auto') and refreshed on
+  // every stateChanged event. Anonymous users get false.
+  const [autoModeAvailable, setAutoModeAvailable] = useState(false)
+  // Tracks whether we've applied the "auto is the default for logged-in
+  // users" rule in the current session. Reset when ai:auto flips back to
+  // false (logout) so the next login re-applies the default.
+  const autoDefaultAppliedRef = useRef(false)
   const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
   const menuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
@@ -283,7 +297,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const initializeModel = async () => {
       try {
         const currentModelId = await props.plugin.call('remixAI', 'getSelectedModel')
-        const model = getModelById(currentModelId)
+        const model = availableModels.find(m => m.id === currentModelId)
         if (model) {
           setSelectedModelId(currentModelId)
           setSelectedModel(model)
@@ -299,7 +313,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     const handleModelChanged = async (modelId: string) => {
       console.log('[RemixAI Assistant UI] Model changed to:', modelId)
-      const model = getModelById(modelId)
+      const model = availableModels.find(m => m.id === modelId)
       if (model) {
         setSelectedModelId(modelId)
         setSelectedModel(model)
@@ -312,7 +326,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     return () => {
       props.plugin.off('remixAI', 'modelChanged')
     }
-  }, [props.plugin])
+  }, [props.plugin, availableModels])
 
   useEffect(() => {
     let refreshTimeout: NodeJS.Timeout | null = null
@@ -613,10 +627,41 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         setCooldownDisplay(display)
       } catch { /* assistantState not active — ignore */ }
     }
-    props.plugin.on('assistantState' as any, 'stateChanged', refreshCooldown)
-    // Initial probe — covers the case where a cooldown was already in
-    // effect before the chat panel mounted.
+    // Refresh the model catalogue from the assistantState plugin. Same
+    // pattern as the cooldown display — the plugin re-emits stateChanged
+    // whenever permissions land or auth flips, so the picker stays in sync.
+    const refreshModels = async () => {
+      try {
+        const models = await props.plugin.call('assistantState' as any, 'getAvailableModels')
+        console.log('[remix-ai-assistant] getAvailableModels →',
+          Array.isArray(models) ? models.map((m: any) => `${m.id}(${m.available ? 'on' : 'off'})`).join(', ') : models)
+        if (Array.isArray(models) && models.length > 0) setAvailableModels(models)
+      } catch (e) { console.warn('[remix-ai-assistant] getAvailableModels failed', e) }
+    }
+    const refreshFeatures = async () => {
+      try {
+        const auto = await props.plugin.call('assistantState' as any, 'hasFeature', 'ai:auto')
+        setAutoModeAvailable(!!auto)
+      } catch { /* assistantState not active — ignore */ }
+    }
+    const onAssistantStateChange = (snap: any) => {
+      console.log('[remix-ai-assistant] stateChanged event received', {
+        availability: snap?.availability,
+        permissionsState: snap?.permissionsState,
+        isAuthenticated: snap?.isAuthenticated,
+        cooldown: snap?.cooldown,
+        ai_models_len: Array.isArray(snap?.permissions?.ai_models) ? snap.permissions.ai_models.length : 'absent'
+      })
+      void refreshCooldown()
+      void refreshModels()
+      void refreshFeatures()
+    }
+    props.plugin.on('assistantState' as any, 'stateChanged', onAssistantStateChange)
+    // Initial probe — covers the case where the panel mounts after
+    // permissions have already loaded.
     void refreshCooldown()
+    void refreshModels()
+    void refreshFeatures()
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
@@ -672,6 +717,27 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useEffect(() => {
     props.onMessagesChange?.(messages)
   }, [messages, props.onMessagesChange])
+
+  // Auto Mode is the default for every logged-in user. Once `ai:auto`
+  // becomes available (after /permissions resolves), enable it. When it
+  // flips back off (logout), reset both the toggle and the
+  // "already-applied" guard so the next login re-applies the default.
+  useEffect(() => {
+    if (autoModeAvailable) {
+      if (!autoDefaultAppliedRef.current) {
+        autoDefaultAppliedRef.current = true
+        setAutoModeEnabled(true)
+        void props.plugin.call('remixAI', 'setAutoMode', true).catch(() => { /* noop */ })
+      }
+    } else {
+      autoDefaultAppliedRef.current = false
+      if (autoModeEnabled) {
+        setAutoModeEnabled(false)
+        void props.plugin.call('remixAI', 'setAutoMode', false).catch(() => { /* noop */ })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoModeAvailable])
 
   // Smart auto-scroll: only scroll to bottom if:
   useEffect(() => {
@@ -1597,19 +1663,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
-    const model = AVAILABLE_MODELS.find(m => m.id === modelId)
+    const model = availableModels.find(m => m.id === modelId)
     if (!model) return
 
-    // Check access
-    if (!modelAccess.checkAccess(modelId)) {
-      // Show login/upgrade prompt
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `**Authentication Required**\n\nThe model "${model.name}" requires authentication. Please sign in to access premium models.`,
-        timestamp: Date.now(),
-        sentiment: 'none'
-      }])
+    // Check access — backend's `available` flag is the source of truth.
+    if (!model.available) {
+      handleLockedModelClick(model.id, model.displayName)
       return
     }
 
@@ -1641,17 +1700,25 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   }, [props.plugin, modelAccess])
 
   const handleLockedModelClick = useCallback((modelId: string, modelName: string) => {
-    setMessages(prev => [...prev, {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: `**Join the Beta Program for ${modelName}**\n\nThis model is currently in beta and requires special access.\n\n**How to get access:**\nUse the *Sign in BETA* or *Join Remix Beta* buttons to join Beta Program\nYou'll directly have access to all beta models\n\n*Beta models include the latest AI capabilities for smart contract development, including advanced code analysis, MCP integrations and generation features.*`,
-      timestamp: Date.now(),
-      sentiment: 'none'
-    }])
-    props.plugin.call('betaCornerWidget', 'show').catch(() => {
+    // The model entry carries `requiredFeature` and a `reason` string
+    // (e.g. 'auth_required', 'feature_required'). We translate those
+    // into one of the four plan-manager hand-off reasons — see the
+    // assistant-machine docs for the full table.
+    const model = availableModels.find(m => m.id === modelId)
+    let reason: 'auth-required' | 'email-unverified' | 'feature-required' | 'quota-exhausted' = 'feature-required'
+    let requiredFeature: string | null = null
+    if (model?.reason === 'auth_required' || modelId === '__signin__') {
+      reason = 'auth-required'
+    } else if (model?.requiredFeature) {
+      reason = 'feature-required'
+      requiredFeature = model.requiredFeature
+    }
+    props.plugin.call('planManager' as any, 'open', { reason, requiredFeature }).catch(() => {
+      // planManager not active (e.g. tests) — fall back to legacy beta widget
+      props.plugin.call('betaCornerWidget', 'show').catch(() => { /* noop */ })
     })
-    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'beta_model_click', value: modelId, isClick: true })
-  }, [props.plugin])
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'locked_model_click', value: modelId, isClick: true })
+  }, [props.plugin, availableModels])
 
   const modalMessage = () => {
     return (
@@ -2041,9 +2108,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               mcpEnabled={mcpEnabled}
               mcpEnhanced={mcpEnhanced}
               setMcpEnhanced={setMcpEnhanced}
-              availableModels={AVAILABLE_MODELS}
+              availableModels={availableModels}
               selectedModel={selectedModel}
               autoModeEnabled={autoModeEnabled}
+              autoModeAvailable={autoModeAvailable}
               handleModelSelection={handleModelSelection}
               onLockedModelClick={handleLockedModelClick}
               input={input}
@@ -2066,7 +2134,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showOllamaModelSelector={showOllamaModelSelector}
               showModelSelector={showModelSelector}
               setShowModelSelector={setShowModelSelector}
-              modelAccess={modelAccess}
               selectedModelId={selectedModelId}
               handleOllamaModelSelection={handleModelSelection}
               selectedOllamaModel={selectedOllamaModel}
@@ -2085,9 +2152,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               mcpEnabled={mcpEnabled}
               mcpEnhanced={mcpEnhanced}
               setMcpEnhanced={setMcpEnhanced}
-              availableModels={AVAILABLE_MODELS}
+              availableModels={availableModels}
               selectedModel={selectedModel}
               autoModeEnabled={autoModeEnabled}
+              autoModeAvailable={autoModeAvailable}
               handleModelSelection={handleModelSelection}
               onLockedModelClick={handleLockedModelClick}
               input={input}
@@ -2110,7 +2178,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showOllamaModelSelector={showOllamaModelSelector}
               showModelSelector={showModelSelector}
               setShowModelSelector={setShowModelSelector}
-              modelAccess={modelAccess}
               selectedModelId={selectedModelId}
               handleOllamaModelSelection={handleModelSelection}
               selectedOllamaModel={selectedOllamaModel}
