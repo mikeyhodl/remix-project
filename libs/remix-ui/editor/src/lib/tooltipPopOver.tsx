@@ -13,6 +13,7 @@ export interface TooltipPopOverProps {
   plugin?: any
   line?: string
   context?: { above: string; below: string }
+  isSelectedText?: boolean
 }
 
 interface KeywordData {
@@ -34,64 +35,103 @@ export const openContextualTooltip = (
   const model = editorRef.current.getModel()
   if (!model) return
 
-  // Get the word at the current position
-  const wordAtPosition = model.getWordAtPosition(position)
+  // Check if there's selected text first
+  const selection = editorRef.current.getSelection()
+  const selectedText = selection && !selection.isEmpty() 
+    ? model.getValueInRange(selection)
+    : null
+
   let hoveredExpression = ''
+  let isSelectedText = false
+  let lineContent = ''
+  let lineAbove = ''
+  let lineBelow = ''
   
-  if (wordAtPosition) {
-    // Get the line content to check for multi-character expressions like "msg.sender"
-    const lineContent = model.getLineContent(position.lineNumber)
-    const startColumn = wordAtPosition.startColumn
-    const endColumn = wordAtPosition.endColumn
+  if (selectedText && selectedText.trim().length > 0) {
+    // Use selected text if available
+    hoveredExpression = selectedText.trim()
+    isSelectedText = true
     
-    // Check for dot notation expressions (like msg.sender, tx.origin, block.timestamp)
-    let expandedStart = startColumn - 1
-    let expandedEnd = endColumn - 1
+    // For selected text, use the line where selection starts (no context needed)
+    const selectionStartLine = selection.getStartPosition().lineNumber
+    lineContent = model.getLineContent(selectionStartLine)
+  } else {
+    // Fall back to word at position
+    const wordAtPosition = model.getWordAtPosition(position)
     
-    // Expand backwards to include preceding word and dot
-    while (expandedStart > 0 && /[a-zA-Z0-9_.]/.test(lineContent[expandedStart - 1])) {
-      expandedStart--
+    if (wordAtPosition) {
+      // Get the line content to check for multi-character expressions like "msg.sender"
+      lineContent = model.getLineContent(position.lineNumber)
+      const startColumn = wordAtPosition.startColumn
+      const endColumn = wordAtPosition.endColumn
+      
+      // Check for dot notation expressions (like msg.sender, tx.origin, block.timestamp)
+      let expandedStart = startColumn - 1
+      let expandedEnd = endColumn - 1
+      
+      // Expand backwards to include preceding word and dot
+      while (expandedStart > 0 && /[a-zA-Z0-9_.]/.test(lineContent[expandedStart - 1])) {
+        expandedStart--
+      }
+      
+      // Expand forwards to include following dot and word  
+      while (expandedEnd < lineContent.length && /[a-zA-Z0-9_.]/.test(lineContent[expandedEnd])) {
+        expandedEnd++
+      }
+      
+      hoveredExpression = lineContent.substring(expandedStart, expandedEnd)
+      
+      // Get context lines (line above and below)
+      lineAbove = position.lineNumber > 1 
+        ? model.getLineContent(position.lineNumber - 1)
+        : ''
+      lineBelow = position.lineNumber < model.getLineCount()
+        ? model.getLineContent(position.lineNumber + 1)
+        : ''
     }
-    
-    // Expand forwards to include following dot and word  
-    while (expandedEnd < lineContent.length && /[a-zA-Z0-9_.]/.test(lineContent[expandedEnd])) {
-      expandedEnd++
-    }
-    
-    hoveredExpression = lineContent.substring(expandedStart, expandedEnd)
-    
-    // Get context lines (line above and below)
-    const lineAbove = position.lineNumber > 1 
-      ? model.getLineContent(position.lineNumber - 1)
-      : ''
-    const lineBelow = position.lineNumber < model.getLineCount()
-      ? model.getLineContent(position.lineNumber + 1)
-      : ''
-    
+  }
+  
+  // Only proceed if we have something to show
+  if (hoveredExpression) {
     // Get screen position for tooltip
     const editorElement = editorRef.current.getDomNode()
     const editorRect = editorElement?.getBoundingClientRect()
     
     if (editorRect && monacoRef.current) {
       const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
-      const x = editorRect.left + (position.column - 1) * 8 // Approximate character width
-      const y = editorRect.top + (position.lineNumber - 1) * lineHeight + lineHeight
+      let x, y
+      
+      if (isSelectedText) {
+        // For selected text, position tooltip at the center of the selection
+        const selectionStartPos = selection.getStartPosition()
+        const selectionEndPos = selection.getEndPosition()
+        const startColumn = (selectionStartPos.column + selectionEndPos.column) / 2
+        const startLine = selectionStartPos.lineNumber
+        
+        x = editorRect.left + (startColumn - 1) * 8
+        y = editorRect.top + (startLine - 1) * lineHeight + lineHeight
+      } else {
+        // For keyword hover, use the original positioning
+        x = editorRect.left + (position.column - 1) * 8 // Approximate character width
+        y = editorRect.top + (position.lineNumber - 1) * lineHeight + lineHeight
+      }
       
       setTooltipData({
         keyword: hoveredExpression,
         position: { x, y },
         line: lineContent,
-        context: {
+        context: isSelectedText ? undefined : {
           above: lineAbove,
           below: lineBelow
-        }
+        },
+        isSelectedText
       })
       
-      // Track popup appearance
+      // Track popup appearance with different names for selected text vs keyword
       trackMatomoEvent({ 
         category: 'ai', 
         action: 'remixAI', 
-        name: 'contextual_popup_shown', 
+        name: isSelectedText ? 'contextual_popup_selected_text_shown' : 'contextual_popup_keyword_shown', 
         isClick: false,
         value: hoveredExpression 
       })
@@ -106,7 +146,8 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   visible,
   plugin,
   line,
-  context
+  context,
+  isSelectedText = false
 }) => {
   //@ts-ignore
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
@@ -122,7 +163,6 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   // Fetch keyword data from remixAI
   useEffect(() => {
     if (!visible || !plugin || !keyword) return
-
     const fetchKeywordInfo = async () => {
       setLoading(true)
       try {
@@ -130,7 +170,21 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
           ? `${context.above ? `Line above: ${context.above}` : ''}\nCurrent line: ${line || ''}\n${context.below ? `Line below: ${context.below}` : ''}`
           : line || ''
         
-        const prompt = `Analyze the Web3/Solidity keyword "${keyword}" in the context of this code:
+        const prompt = isSelectedText 
+          ? `Analyze this Web3/Solidity code snippet:
+
+${keyword}
+
+Return a JSON response with the following structure:
+{
+  "title": "Code Analysis",
+  "body": "Brief explanation of what this code does and any security implications",
+  "risk": "high|medium|low",
+  "riskLabel": "Short risk description"
+}
+
+Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 50 words.`
+          : `Analyze the Web3/Solidity keyword "${keyword}" in the context of this code:
 
 ${contextLines}
 
@@ -217,9 +271,29 @@ Focus on security implications and provide practical guidance for smart contract
     if (y < margin) {
       y = position.y + 25 // Position closer below cursor
     }
-
     setAdjustedPosition({ x, y })
   }, [position, visible, data])
+
+  // Add click outside listener for selected text tooltips
+  useEffect(() => {
+    if (!visible || !isSelectedText) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popRef.current && !popRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    // Add delay to avoid immediate closing when tooltip appears
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 200)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [visible, isSelectedText, onClose])
 
   if (!visible) return null
 
@@ -235,10 +309,13 @@ Focus on security implications and provide practical guidance for smart contract
         pointerEvents: 'auto', // Enable pointer events for button interactions
       }}
       onMouseLeave={() => {
-        // Close tooltip when mouse leaves the tooltip area
-        setTimeout(() => {
-          onClose()
-        }, 100)
+        // For selected text, don't close automatically on mouse leave
+        // User needs to click elsewhere or press Escape to close
+        if (!isSelectedText) {
+          setTimeout(() => {
+            onClose()
+          }, 100)
+        }
       }}
     >
         <div className="web3-tooltip-inner">
@@ -247,12 +324,27 @@ Focus on security implications and provide practical guidance for smart contract
               <div className="spinner-border spinner-border-sm" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
-              <span style={{ fontSize: "0.8rem" }}>Analyzing {keyword}...</span>
+              <span style={{ fontSize: "0.8rem" }}>
+                Analyzing {isSelectedText && keyword.length > 20 
+                  ? `${keyword.substring(0, 20)}...` 
+                  : keyword
+                }...
+              </span>
             </div>
           ) : data ? (
             <>
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <code className="web3-tooltip-title">{data.title}</code>
+                <code className="web3-tooltip-title" style={{ 
+                  maxWidth: isSelectedText ? '200px' : 'auto',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {isSelectedText && data.title.length > 30 
+                    ? `${data.title.substring(0, 30)}...` 
+                    : data.title
+                  }
+                </code>
                 {risk && (
                   <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
                     style={{ fontSize: "0.65rem", fontWeight: 600 }}>
@@ -263,10 +355,6 @@ Focus on security implications and provide practical guidance for smart contract
               </div>
               <p className="web3-tooltip-body mb-2">{data.body}</p>
               <div className="d-flex align-items-center justify-content-between">
-                <span className="web3-tooltip-link" style={{ fontSize: "0.72rem", color: "var(--bs-secondary)" }}>
-                  <i className="fas fa-robot me-1" style={{ fontSize: "0.7rem" }}></i>
-                  Powered by AI
-                </span>
                 <button
                   className="btn btn-link p-0"
                   style={{ 
@@ -301,7 +389,7 @@ Focus on security implications and provide practical guidance for smart contract
                             await plugin.call('rightSidePanel', 'togglePanel')
                           }
                           // Call RemixAI answer function
-                          await plugin.call('remixAI', 'chatPipe', deeperPrompt)
+                          await plugin.call('remixaiassitant', 'chatPipe', deeperPrompt)
                         }, 500)
                         
                         // Close the tooltip

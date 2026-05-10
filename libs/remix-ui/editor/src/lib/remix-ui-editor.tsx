@@ -232,7 +232,7 @@ export const EditorUI = (props: EditorUIProps) => {
   const inlineCompletionProviderRef = useRef<RemixInLineCompletionProvider|null>(null)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastHoverPositionRef = useRef<monacoTypes.IPosition | null>(null)
-  const [tooltipData, setTooltipData] = useState<{keyword: string, position: {x: number, y: number}, line: string, context: {above: string, below: string}} | null>(null)
+  const [tooltipData, setTooltipData] = useState<{keyword: string, position: {x: number, y: number}, line: string, context?: {above: string, below: string}, isSelectedText?: boolean} | null>(null)
 
   // const currentDecorations = useRef({ sourceAnnotationsPerFile: {}, markerPerFile: {} }) // decorations that are currently in use by the editor
   // const registeredDecorations = useRef({}) // registered decorations
@@ -407,6 +407,14 @@ export const EditorUI = (props: EditorUIProps) => {
       if (file + '-ai' !== currentDiffFile) {
         removeAllWidgets()
       }
+      // Clear tooltip when switching files
+      setTooltipData(null)
+      // Clear any pending hover timeouts
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+        hoverTimeoutRef.current = null
+      }
+      lastHoverPositionRef.current = null
     })
   }, [])
 
@@ -472,6 +480,15 @@ export const EditorUI = (props: EditorUIProps) => {
 
   useEffect(() => {
     if (!(editorRef.current || diffEditorRef.current ) || !props.currentFile) return
+    
+    // Clear tooltip when file changes
+    setTooltipData(null)
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    lastHoverPositionRef.current = null
+    
     currentFileRef.current = props.currentFile
     props.plugin.call('fileManager', 'getUrlFromPath', currentFileRef.current).then((url) => (currentUrlRef.current = url.file))
 
@@ -1001,6 +1018,7 @@ export const EditorUI = (props: EditorUIProps) => {
       }
     })
 
+
     // Clear timeout when mouse leaves the editor (with delay to allow tooltip interaction)
     editor.onMouseLeave(() => {
       // Add a longer delay to allow moving mouse to tooltip
@@ -1009,7 +1027,11 @@ export const EditorUI = (props: EditorUIProps) => {
         const tooltipElement = document.querySelector('.web3-tooltip-popup')
         const isMouseOverTooltip = tooltipElement && tooltipElement.matches(':hover')
         
-        if (!isMouseOverTooltip) {
+        // Check if there's currently selected text (don't close tooltip for selected text)
+        const selection = editor.getSelection()
+        const hasSelectedText = selection && !selection.isEmpty()
+        
+        if (!isMouseOverTooltip && !hasSelectedText) {
           if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = null
@@ -1932,6 +1954,7 @@ export const EditorUI = (props: EditorUIProps) => {
           plugin={props.plugin}
           line={tooltipData.line}
           context={tooltipData.context}
+          isSelectedText={tooltipData.isSelectedText}
         />
       )}
     </div>
