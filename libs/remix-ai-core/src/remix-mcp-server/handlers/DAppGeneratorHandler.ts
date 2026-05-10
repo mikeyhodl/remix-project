@@ -7,6 +7,7 @@
 
 import { IMCPToolResult } from '../../types/mcp'
 import { endpointUrls } from '@remix-endpoints-helper'
+import { getRemixAuthHeader } from '../../inferencers/auth'
 import { BaseToolHandler } from '../registry/RemixToolRegistry'
 import { ToolCategory, RemixToolDefinition } from '../types/mcpTools'
 import { Plugin } from '@remixproject/engine'
@@ -345,7 +346,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01'
+            'anthropic-version': '2023-06-01',
+            ...getRemixAuthHeader()
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal
@@ -423,7 +425,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01'
+          'anthropic-version': '2023-06-01',
+          ...getRemixAuthHeader()
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
@@ -905,7 +908,8 @@ export class UpdateDAppHandler extends BaseToolHandler {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01'
+          'anthropic-version': '2023-06-01',
+          ...getRemixAuthHeader()
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal
