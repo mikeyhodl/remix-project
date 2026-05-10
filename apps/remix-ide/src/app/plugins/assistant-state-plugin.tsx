@@ -7,8 +7,10 @@ import {
   selectPlanManagerHandoff,
   selectAllowedModelIds,
   selectCooldownRemaining,
+  selectCooldownDisplay,
   type AssistantSnapshot,
   type AIError,
+  type CooldownDisplay,
   type PlanManagerHandoff
 } from '@remix/remix-ai-core'
 import { AVAILABLE_MODELS } from '@remix/remix-ai-core'
@@ -47,6 +49,7 @@ const profile = {
     'requireReady',
     'getAllowedModels',
     'getCooldownRemaining',
+    'getCooldownDisplay',
     'reportRequestStarted',
     'reportStreamStarted',
     'reportRequestSucceeded',
@@ -144,6 +147,11 @@ export class AssistantStatePlugin extends Plugin {
     return selectCooldownRemaining(this.cachedSnapshot)
   }
 
+  /** Rich cooldown view: countdown, expiresAt, message, terminal flag, feature… */
+  getCooldownDisplay(): CooldownDisplay | null {
+    return selectCooldownDisplay(this.cachedSnapshot)
+  }
+
   /**
    * Gate helper. Returns true if the caller may proceed; returns false
    * AND opens the plan manager with the right reason if not.
@@ -156,6 +164,11 @@ export class AssistantStatePlugin extends Plugin {
     const snap = this.cachedSnapshot
     if (selectCanAskAI(snap)) return true
 
+    // Cooldown-only block (rate-limit / blocked) → DO NOT open the plan
+    // manager. The chat UI shows a countdown banner; the user waits or
+    // contacts support. Plan upgrades don't lift rate-limits.
+    if (snap.cooldown !== 'none' && !snap.gateReason) return false
+
     // Decide the hand-off reason. If the snapshot already carries a
     // gate, use it. If there's no gate but cooldown is active, we don't
     // open the planManager — the UI shows a countdown and the user waits.
@@ -163,7 +176,7 @@ export class AssistantStatePlugin extends Plugin {
     if (!handoff && snap.availability === 'gated' && !snap.isAuthenticated) {
       handoff = { reason: 'auth-required' }
     }
-    if (!handoff && opts.feature) {
+    if (!handoff && opts.feature && snap.availability !== 'available') {
       handoff = { reason: 'feature-required', requiredFeature: opts.feature }
     }
     if (handoff) {

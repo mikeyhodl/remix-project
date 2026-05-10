@@ -21,6 +21,7 @@ import ChatHistoryHeading from './chatHistoryHeading'
 import { ChatHistorySidebar } from './chatHistorySidebar'
 import AiChatPromptAreaForHistory from './aiChatPromptAreaForHistory'
 import AiChatPromptArea from './aiChatPromptArea'
+import { CooldownBanner } from './cooldownBanner'
 import { useModelAccess } from '../hooks/useModelAccess'
 import { ToolApprovalModal } from './ToolApprovalModal'
 
@@ -113,6 +114,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const wasInitializingRef = useRef(props.isInitializing)
   const streamingAssistantIdRef = useRef<string | null>(null)
   if (props.isInitializing) wasInitializingRef.current = true
+
+  // Cooldown UI state — driven by the assistantState plugin's `stateChanged`
+  // event. When non-null, we render a banner above the prompt area and
+  // disable the Send button. The plugin already runs a 1s ticker that
+  // re-emits stateChanged so the countdown re-renders without local timers.
+  const [cooldownDisplay, setCooldownDisplay] = useState<any | null>(null)
 
   // Audio transcription hook
   const {
@@ -598,6 +605,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     props.plugin.on('remixAI', 'onAgentError', handleAgentError)
     props.plugin.on('remixAI', 'onApiError', handleApiError)
 
+    // Subscribe to the assistant-state machine so the cooldown banner
+    // can render a live countdown when the AI service rate-limits us.
+    const refreshCooldown = async () => {
+      try {
+        const display = await props.plugin.call('assistantState' as any, 'getCooldownDisplay')
+        setCooldownDisplay(display)
+      } catch { /* assistantState not active — ignore */ }
+    }
+    props.plugin.on('assistantState' as any, 'stateChanged', refreshCooldown)
+    // Initial probe — covers the case where a cooldown was already in
+    // effect before the chat panel mounted.
+    void refreshCooldown()
+
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
       setPendingApprovals(prev => [...prev, request])
@@ -644,6 +664,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('remixAI', 'onApiError')
       props.plugin.off('remixAI', 'onToolApprovalRequired')
       props.plugin.off('remixAI', 'onDappUpdateCompleted')
+      try { props.plugin.off('assistantState' as any, 'stateChanged') } catch { /* noop */ }
     }
   }, [props.plugin])
 
@@ -1401,6 +1422,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           return
         }
 
+        // If the backend returned a structured AIError envelope, the
+        // assistant-state plugin has already reacted (cooldown banner,
+        // upgrade prompt, etc.). Don't double up with a generic error
+        // bubble in the chat — the banner is the user-visible signal.
+        const envelopeCode = error?.response?.data?.error?.code
+          ?? error?.data?.error?.code
+        if (envelopeCode) {
+          return
+        }
+
         // Add error message to chat history
         setMessages(prev => [
           ...prev,
@@ -1418,9 +1449,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   )
 
   const handleSend = useCallback(async () => {
+    // Hard gate: cooldown active → ignore the send. The banner is
+    // already telling the user what's happening; the underlying
+    // requireReady() in sendPrompt would also block, but doing the
+    // check here also keeps the input from clearing.
+    if (cooldownDisplay) return
     await sendPrompt(input)
     setInput('')
-  }, [input, sendPrompt])
+  }, [input, sendPrompt, cooldownDisplay])
 
   useEffect(() => {
     const handleMCPToggle = async () => {
@@ -1991,6 +2027,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           )}
         </div>
 
+        {cooldownDisplay && <CooldownBanner display={cooldownDisplay} />}
         {
           messages.length > 0 ? (
             <AiChatPromptAreaForHistory

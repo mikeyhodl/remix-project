@@ -45,6 +45,9 @@ export interface AIError {
   status: number
   retryAfter?: number
   resetAt?: string | null
+  /** RATE_LIMITED metadata: numeric quota cap (e.g. 10) and window (e.g. "hour"). */
+  limit?: number
+  window?: string
   details?: {
     feature?: string
     allowedProviders?: string[]
@@ -613,6 +616,61 @@ export function selectCooldownRemaining(snap: AssistantSnapshot, now: number = D
 export function selectAllowedProvidersFromError(snap: AssistantSnapshot): string[] | null {
   if (snap.lastError?.code !== 'PROVIDER_DENIED') return null
   return snap.lastError.details?.allowedProviders ?? null
+}
+
+/**
+ * One-stop derivation for cooldown UI: countdown chip / banner copy / disable
+ * the Send button. Returns null when the assistant is free to take requests.
+ *
+ *   active        – any cooldown is in effect (rate-limit OR terminal block)
+ *   isTerminal    – IP_BLOCKED / ABUSE_BLOCKED — never lifts on its own
+ *   remainingMs   – ms until lift; Number.POSITIVE_INFINITY for terminal
+ *   remainingSec  – ceil(remainingMs / 1000)
+ *   expiresAt     – epoch-ms or null (terminal)
+ *   feature       – for per-feature RATE_LIMITED, the feature_name
+ *   limit / window – informational ("10 / hour"), pulled from the error envelope
+ *   message       – the human-readable backend message
+ *   code          – the AIError code that triggered the cooldown
+ */
+export interface CooldownDisplay {
+  active: boolean
+  isTerminal: boolean
+  remainingMs: number
+  remainingSec: number
+  expiresAt: number | null
+  feature: string | null
+  limit: number | null
+  window: string | null
+  message: string
+  code: string
+}
+
+export function selectCooldownDisplay(
+  snap: AssistantSnapshot,
+  now: number = Date.now()
+): CooldownDisplay | null {
+  if (snap.cooldown === 'none') return null
+  const err = snap.lastError
+  const isTerminal = snap.cooldown === 'blocked'
+  const remainingMs = isTerminal
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, (snap.cooldownExpiresAt ?? now) - now)
+  const remainingSec = isTerminal ? Number.POSITIVE_INFINITY : Math.ceil(remainingMs / 1000)
+  const details: any = err?.details ?? {}
+  return {
+    active: true,
+    isTerminal,
+    remainingMs,
+    remainingSec,
+    expiresAt: isTerminal ? null : snap.cooldownExpiresAt,
+    feature: typeof details.feature === 'string' ? details.feature : null,
+    limit: typeof err?.limit === 'number' ? err.limit
+      : typeof details.limit === 'number' ? details.limit : null,
+    window: typeof err?.window === 'string' ? err.window
+      : typeof details.window === 'string' ? details.window : null,
+    message: err?.message || 'Rate limit reached. Please wait a moment.',
+    code: err?.code || 'RATE_LIMITED'
+  }
 }
 
 // ─── Actor factory ──────────────────────────────────────────────────

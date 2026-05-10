@@ -61,6 +61,8 @@ function normalize(raw: Partial<AIError>, fallbackStatus: number): AIError {
     status: typeof raw.status === 'number' ? raw.status : fallbackStatus,
     retryAfter: typeof raw.retryAfter === 'number' ? raw.retryAfter : undefined,
     resetAt: typeof raw.resetAt === 'string' ? raw.resetAt : null,
+    limit: typeof raw.limit === 'number' ? raw.limit : undefined,
+    window: typeof raw.window === 'string' ? raw.window : undefined,
     details: raw.details && typeof raw.details === 'object' ? raw.details : undefined
   }
 }
