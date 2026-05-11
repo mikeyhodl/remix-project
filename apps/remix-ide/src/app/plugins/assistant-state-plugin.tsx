@@ -71,6 +71,8 @@ const profile = {
 
 type Unsubscribe = () => void
 
+let __assistantStateInstanceCounter = 0
+
 export class AssistantStatePlugin extends Plugin {
   // The XState actor. Created in the constructor so methods are safe to
   // call before onActivation completes.
@@ -79,40 +81,28 @@ export class AssistantStatePlugin extends Plugin {
   private cooldownTimer: ReturnType<typeof setInterval> | null = null
   // Single in-flight permissions fetch — auth events can fire in bursts.
   private permissionsRefreshing: Promise<void> | null = null
+  private instanceId: number = ++__assistantStateInstanceCounter
 
   constructor() {
     super(profile)
+    // eslint-disable-next-line no-console
+    console.log('[assistantState] CONSTRUCT plugin#' + this.instanceId)
     this.actor.start()
     this.cachedSnapshot = snapshotFromActor(this.actor)
     // Re-emit `stateChanged` on every transition so React subscribers
     // re-render. Snapshot is recomputed lazily via getSnapshot().
     this.actor.subscribe(() => {
       this.cachedSnapshot = snapshotFromActor(this.actor)
-      // eslint-disable-next-line no-console
-      console.log('[assistantState] transition →', {
-        availability: this.cachedSnapshot.availability,
-        permissionsState: this.cachedSnapshot.permissionsState,
-        isAuthenticated: this.cachedSnapshot.isAuthenticated,
-        cooldown: this.cachedSnapshot.cooldown,
-        gateReason: this.cachedSnapshot.gateReason,
-        ai_models: Array.isArray((this.cachedSnapshot.permissions as any)?.ai_models)
-          ? (this.cachedSnapshot.permissions as any).ai_models.length
-          : 'absent'
-      })
       this.maintainCooldownTicker()
       this.emit('stateChanged', this.cachedSnapshot)
     })
   }
 
   async onActivation(): Promise<void> {
-    // eslint-disable-next-line no-console
-    console.log('[assistantState] onActivation')
     // The auth plugin re-emits `authStateChanged` after refreshPermissions(),
     // so a single listener covers both login/logout and entitlement changes.
     this.on('auth' as any, 'authStateChanged', (s: { isAuthenticated: boolean }) => {
       const isAuthed = !!s?.isAuthenticated
-      // eslint-disable-next-line no-console
-      console.log('[assistantState] auth.authStateChanged', { isAuthed, raw: s })
       this.dispatch({ type: 'AUTH_CHANGED', isAuthenticated: isAuthed })
       if (isAuthed) void this.refreshPermissions()
       else this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: null })
@@ -122,29 +112,36 @@ export class AssistantStatePlugin extends Plugin {
     // time we activate (cached JWT), pull permissions now.
     try {
       const isAuthed = await this.call('auth' as any, 'isAuthenticated')
-      // eslint-disable-next-line no-console
-      console.log('[assistantState] initial auth.isAuthenticated →', isAuthed)
       this.dispatch({ type: 'AUTH_CHANGED', isAuthenticated: !!isAuthed })
       if (isAuthed) void this.refreshPermissions()
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('[assistantState] initial auth probe failed', e)
+      // Auth not yet active — the authStateChanged listener above will
+      // catch the next state change. No-op.
     }
   }
 
-  /** Logging wrapper around actor.send so every event is visible. */
+  /** Send an event into the actor. */
   private dispatch(event: any): void {
-    // eslint-disable-next-line no-console
-    console.log('[assistantState] dispatch', event.type, event)
     this.actor.send(event)
   }
 
   async onDeactivation(): Promise<void> {
+    // IMPORTANT: do NOT stop the XState actor here.
+    //
+    // The Remix engine auto-toggles inactive plugins when another plugin
+    // calls them (e.g. remixAIPlugin.onActivation → PermissionChecker →
+    // call('assistantState', 'getSnapshot') happens BEFORE assistantState
+    // is activated in the app.ts batch). The engine's toggle path is
+    // activate → run call → deactivate, which lands here. If we stop()
+    // the actor, every subsequent dispatch silently no-ops with the
+    // "sent to stopped actor" warning and the UI never reacts to login.
+    //
+    // The actor lives as long as the plugin instance does — there is
+    // nothing to clean up other than the cooldown timer.
     if (this.cooldownTimer) {
       clearInterval(this.cooldownTimer)
       this.cooldownTimer = null
     }
-    this.actor.stop()
   }
 
   // ─── Read API ─────────────────────────────────────────────────────
@@ -269,21 +266,16 @@ export class AssistantStatePlugin extends Plugin {
       try {
         const api: any = await this.call('auth' as any, 'getPermissionsApi')
         if (!api) {
-          console.warn('[assistantState] auth.getPermissionsApi returned null')
           this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: null })
           return
         }
         const r = await api.getPermissions()
         if (r?.ok) {
-          console.log('[assistantState] /permissions loaded; ai_models =',
-            Array.isArray(r.data?.ai_models) ? r.data.ai_models.length : 'absent')
           this.dispatch({ type: 'PERMISSIONS_LOADED', permissions: r.data })
         } else {
-          console.warn('[assistantState] /permissions failed', r)
           this.dispatch({ type: 'PERMISSIONS_FAILED', message: r?.error ?? 'Failed to load permissions' })
         }
       } catch (e: any) {
-        console.warn('[assistantState] /permissions threw', e)
         this.dispatch({ type: 'PERMISSIONS_FAILED', message: e?.message ?? 'Failed to load permissions' })
       } finally {
         this.permissionsRefreshing = null

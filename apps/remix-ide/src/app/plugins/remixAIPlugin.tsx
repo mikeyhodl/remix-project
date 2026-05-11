@@ -84,7 +84,7 @@ export class RemixAIPlugin extends Plugin {
     super(profile)
     this.eventBridge = new DeepAgentEventBridge()
     this.mcpManager = new MCPServerManager(this as any)
-    this.permissionChecker = new PermissionChecker()
+    this.permissionChecker = new PermissionChecker(this as any)
     this.deepAgentEnabled = true
 
     this.modelManager = new ModelManager({

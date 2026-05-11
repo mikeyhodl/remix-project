@@ -81,9 +81,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
   const [isMaximized, setIsMaximized] = useState(false)
-  const mcpEnabled = true
+  // MCP Enhancement is gated by the `mcp:basicExternal` feature flag.
+  // Anonymous users have no permissions, so the section stays hidden.
+  // Refreshed in the same `refreshFeatures` block as `ai:auto`.
+  const [mcpEnabled, setMcpEnabled] = useState(false)
 
-  const [mcpEnhanced, setMcpEnhanced] = useState(mcpEnabled)
+  const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
   const approvalQueueRef = useRef<ToolApprovalRequest[]>([])
   // Tracks which approval requests are currently being reviewed in the editor via showCustomDiff
@@ -642,6 +645,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       try {
         const auto = await props.plugin.call('assistantState' as any, 'hasFeature', 'ai:auto')
         setAutoModeAvailable(!!auto)
+        const mcp = await props.plugin.call('assistantState' as any, 'hasFeature', 'mcp:basicExternal')
+        setMcpEnabled(!!mcp)
+        // When the section gets hidden, also collapse the inner toggle so
+        // we don't leave MCP enhancement "on" for a user who can no longer
+        // see or control it.
+        if (!mcp) setMcpEnhanced(false)
       } catch { /* assistantState not active — ignore */ }
     }
     const onAssistantStateChange = (snap: any) => {

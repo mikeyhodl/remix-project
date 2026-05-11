@@ -774,9 +774,9 @@ class AppComponent {
       'contentImport',
       'gistHandler',
       'compilerloader',
+      'assistantState',
       'remixAI',
-      'remixaiassistant',
-      'assistantState'
+      'remixaiassistant'
     ])
 
     await this.appManager.activatePlugin(['auth'])
