@@ -24,6 +24,41 @@ import {
 } from '../../inferencers/deepagent/DAppGeneratorPrompts'
 
 // ──────────────────────────────────────────────
+// Backend-driven task resolvers
+// ──────────────────────────────────────────────
+// All AI model choices are sourced from /permissions via the assistantState
+// plugin. NO literal model ids in this file. If the backend hasn't advertised
+// a task assignment we throw loud — the regression must be visible.
+
+async function resolveTaskModel(plugin: Plugin, taskId: string): Promise<string> {
+  let modelId: string | null = null
+  try {
+    modelId = await plugin.call('assistantState' as any, 'getModelForTask', taskId)
+  } catch (e) {
+    throw new Error(`[DAppGenerator] assistantState.getModelForTask("${taskId}") failed: ${(e as Error)?.message ?? e}. The assistantState plugin must be active and /permissions must include task_models.${taskId}.`)
+  }
+  if (!modelId) {
+    throw new Error(`[DAppGenerator] No model advertised for task "${taskId}". Backend must include /permissions.task_models.${taskId} \u2014 there are no client-side model defaults.`)
+  }
+  return modelId
+}
+
+async function resolveTaskParam<T extends number | string | boolean>(
+  plugin: Plugin,
+  taskId: string,
+  key: string,
+  fallback: T
+): Promise<T> {
+  try {
+    const v = await plugin.call('assistantState' as any, 'getTaskParam', taskId, key)
+    if (v !== null && v !== undefined) return v as T
+  } catch (e) {
+    console.warn(`[DAppGenerator] assistantState.getTaskParam(${taskId}, ${key}) failed, using documented fallback ${String(fallback)}:`, e)
+  }
+  return fallback
+}
+
+// ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
 
@@ -308,8 +343,11 @@ export class GenerateDAppHandler extends BaseToolHandler {
     // re-entrant plugin call blocking. The handler runs inside a DeepAgent tool,
     // which is inside remixAI.answer(). Calling remixAI again would deadlock.
     const PROXY_URL = endpointUrls.langchain
-    const DAPP_MODEL = 'claude-sonnet-4-5'
-    const DAPP_MAX_TOKENS = 16384
+    // Backend-driven: model + max_tokens come from /permissions.task_models
+    // and /permissions.task_params. NO literal fallback — throw loud if the
+    // backend hasn't advertised them, so the regression is visible.
+    const DAPP_MODEL = await resolveTaskModel(plugin, 'dapp_generator')
+    const DAPP_MAX_TOKENS = await resolveTaskParam<number>(plugin, 'dapp_generator', 'max_tokens', 16384)
 
     console.log(`[GenerateDApp] callAIModel → ${PROXY_URL}/v1/messages (model: ${DAPP_MODEL}, max_tokens: ${DAPP_MAX_TOKENS})`)
 
@@ -421,6 +459,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
       // Direct Anthropic API call (same approach as callAIModel — no plugin.call)
       const retryProxyUrl = endpointUrls.langchain
+      const retryModel = await resolveTaskModel(plugin, 'dapp_generator')
+      const retryMaxTokens = await resolveTaskParam<number>(plugin, 'dapp_generator', 'retry_max_tokens', 8192)
       const response = await fetch(`${retryProxyUrl}/v1/messages`, {
         method: 'POST',
         headers: {
@@ -429,8 +469,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
           ...getRemixAuthHeader()
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 8192,
+          model: retryModel,
+          max_tokens: retryMaxTokens,
           temperature: 0.7,
           system: systemPrompt,
           messages: [
@@ -766,7 +806,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       plugin.emit('generationProgress', { status: 'preparing', contractAddress: contractResolved.address, slug: targetWorkspace })
       plugin.emit('generationProgress', { status: 'calling_llm', contractAddress: contractResolved.address, slug: targetWorkspace })
 
-      const response = await this.callAIModelDirect(systemPrompt, userMessage, hasImage)
+      const response = await this.callAIModelDirect(plugin, systemPrompt, userMessage, hasImage)
       console.log('[QuickDapp] LLM response received, length:', response?.length || 0)
 
       // Parse and write files
@@ -868,13 +908,15 @@ export class UpdateDAppHandler extends BaseToolHandler {
    * Same pattern as GenerateDAppHandler.callAIModel().
    */
   private async callAIModelDirect(
+    plugin: Plugin,
     systemPrompt: string,
     userMessage: string | any[],
     hasImage: boolean
   ): Promise<string> {
     const PROXY_URL = endpointUrls.langchain
-    const DAPP_MODEL = 'claude-sonnet-4-5'
-    const DAPP_MAX_TOKENS = 16384
+    // Backend-driven \u2014 see GenerateDAppHandler.callAIModel for rationale.
+    const DAPP_MODEL = await resolveTaskModel(plugin, 'dapp_generator')
+    const DAPP_MAX_TOKENS = await resolveTaskParam<number>(plugin, 'dapp_generator', 'max_tokens', 16384)
     const TIMEOUT_MS = 120_000 // 2 minute timeout
 
     // Sanitize userContent — prevent undefined from propagating

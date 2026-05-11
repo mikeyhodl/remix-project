@@ -655,6 +655,57 @@ export function selectAvailableModels(snap: AssistantSnapshot): AIModel[] {
 }
 
 /**
+ * The chat-default model — the row the backend marks `is_default: true`
+ * in `permissions.ai_models[]`. There is NO client-side fallback: when
+ * permissions haven't loaded or no row is flagged, this returns null
+ * and the caller must wait (or reject loudly).
+ */
+export function selectDefaultModel(snap: AssistantSnapshot): AIModel | null {
+  const models = selectAvailableModels(snap)
+  if (!models.length) return null
+  // Prefer an `available` default; only fall back to the unavailable one
+  // (e.g. anonymous placeholder) if nothing else is marked default.
+  const availableDefault = models.find((m) => m.isDefault && m.available)
+  if (availableDefault) return availableDefault
+  const anyDefault = models.find((m) => m.isDefault)
+  if (anyDefault) return anyDefault
+  // No is_default flag anywhere — pick the first available row.
+  return models.find((m) => m.available) ?? models[0] ?? null
+}
+
+/**
+ * Backend-driven model assignment for a named task (e.g. 'dapp_generator',
+ * 'completion'). Source: `permissions.task_models[taskId]`. Returns null
+ * when the task isn't advertised — callers MUST throw rather than guess.
+ */
+export function selectModelForTask(snap: AssistantSnapshot, taskId: string): string | null {
+  const tm = (snap.permissions as any)?.task_models as Record<string, string> | undefined
+  if (!tm || typeof tm[taskId] !== 'string' || !tm[taskId]) return null
+  return tm[taskId]
+}
+
+/**
+ * Backend-driven numeric/boolean param for a named task (e.g.
+ * `selectTaskParam(snap, 'dapp_generator', 'max_tokens')`). Returns null
+ * when the task or key isn't advertised.
+ */
+export function selectTaskParam(
+  snap: AssistantSnapshot,
+  taskId: string,
+  key: string
+): number | string | boolean | null {
+  const tp = (snap.permissions as any)?.task_params as Record<string, Record<string, any>> | undefined
+  const row = tp?.[taskId]
+  if (!row || row[key] === undefined || row[key] === null) return null
+  return row[key]
+}
+
+/** Sugar over selectFeatureEnabled — Auto Mode is just `ai:auto`. */
+export function selectAutoModeEnabled(snap: AssistantSnapshot): boolean {
+  return selectFeatureEnabled(snap, 'ai:auto')
+}
+
+/**
  * One-stop derivation for cooldown UI: countdown chip / banner copy / disable
  * the Send button. Returns null when the assistant is free to take requests.
  *

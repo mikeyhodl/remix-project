@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, getDefaultModel, AIModel, ANONYMOUS_FALLBACK_MODELS } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS } from '@remix/remix-ai-core'
 import { ToolApprovalRequest } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -79,7 +79,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [isAiChatMaximized, setIsAiChatMaximized] = useState(false)
   const [showOllamaModelSelector, setShowOllamaModelSelector] = useState(false)
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | null>(null)
-  const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel().id)
+  const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [isMaximized, setIsMaximized] = useState(false)
   // MCP Enhancement is gated by the `mcp:basicExternal` feature flag.
   // Anonymous users have no permissions, so the section stays hidden.
@@ -114,7 +114,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
   const menuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
-  const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [autoModeEnabled, setAutoModeEnabled] = useState(false)
   const [themeTracker, setThemeTracker] = useState<{ name: string } | null>(() => ({ name: getSystemThemeFallback() }))
@@ -347,17 +347,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         if (authState.isAuthenticated) {
           console.log('Auth state changed to authenticated, refreshing model access...')
         } else {
-          console.log('Auth state changed to logged out, refreshing model access and switching to default model...')
-          // Switch back to default model on logout
-          const defaultModel = getDefaultModel()
-          setSelectedModelId(defaultModel.id)
-          setSelectedModel(defaultModel)
-          setAssistantChoice(defaultModel.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
-          try {
-            await props.plugin.call('remixAI', 'setModel', defaultModel.id)
-          } catch (error) {
-            console.warn('Failed to set default model on logout:', error)
-          }
+          console.log('Auth state changed to logged out, refreshing model access. Model selection will clear until /permissions resolves.')
+          // No literal default to switch to — clear the selection. The
+          // picker shows ANONYMOUS_FALLBACK_MODELS while logged out.
+          setSelectedModelId('')
+          setSelectedModel(null)
+          setAssistantChoice('mistralai')
         }
         await modelAccess.refreshAccess()
         isRefreshing = false
@@ -1564,7 +1559,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Fetch available Ollama models when Ollama model is selected
   useEffect(() => {
     const fetchOllamaModels = async () => {
-      if (selectedModel.provider === 'ollama') {
+      if (selectedModel?.provider === 'ollama') {
         try {
           const available = await isOllamaAvailable()
           if (available) {
@@ -1587,7 +1582,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 // Sync the default model with the backend
                 try {
                   await props.plugin.call('remixAI', 'setModel', defaultModel)
-                  setAssistantChoice(selectedModel.provider)
+                  setAssistantChoice(selectedModel?.provider ?? 'ollama')
                   setMessages(prev => [...prev, {
                     id: crypto.randomUUID(),
                     role: 'assistant',
@@ -1614,10 +1609,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_unavailable', value: 'switching_to_default', isClick: false })
             // Set failure flag before switching back to prevent success message
             setIsOllamaFailureFallback(true)
-            // Automatically switch back to default model
-            const defaultModel = getDefaultModel()
-            setSelectedModelId(defaultModel.id)
-            setSelectedModel(defaultModel)
+            // Fall back to the API-resolved chat default (no literal id).
+            try {
+              const def: AIModel | null = await props.plugin.call('assistantState' as any, 'getDefaultModel')
+              if (def && def.id) {
+                setSelectedModelId(def.id)
+                setSelectedModel(def)
+              } else {
+                console.warn('[RemixAI Assistant UI] Ollama unavailable and no API default model yet — leaving picker empty')
+                setSelectedModelId('')
+                setSelectedModel(null)
+              }
+            } catch (e) {
+              console.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama fallback', e)
+              setSelectedModelId('')
+              setSelectedModel(null)
+            }
           }
         } catch (error: any) {
           console.warn('Failed to fetch Ollama models:', error)
@@ -1633,10 +1640,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_connection_error', value: `${error.message || 'unknown'}|switching_to_default`, isClick: false })
           // Set failure flag before switching back to prevent success message
           setIsOllamaFailureFallback(true)
-          // Switch back to default model on error
-          const defaultModel = getDefaultModel()
-          setSelectedModelId(defaultModel.id)
-          setSelectedModel(defaultModel)
+          // Fall back to the API-resolved chat default (no literal id).
+          try {
+            const def: AIModel | null = await props.plugin.call('assistantState' as any, 'getDefaultModel')
+            if (def && def.id) {
+              setSelectedModelId(def.id)
+              setSelectedModel(def)
+            } else {
+              console.warn('[RemixAI Assistant UI] Ollama errored and no API default model yet — leaving picker empty')
+              setSelectedModelId('')
+              setSelectedModel(null)
+            }
+          } catch (e) {
+            console.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama error fallback', e)
+            setSelectedModelId('')
+            setSelectedModel(null)
+          }
         }
       } else {
         setOllamaModels([])
@@ -1644,7 +1663,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
     fetchOllamaModels()
-  }, [selectedModel.provider, selectedOllamaModel])
+  }, [selectedModel?.provider, selectedOllamaModel])
 
   const handleSetModel = useCallback(() => {
     dispatchActivity('button', 'setModel')

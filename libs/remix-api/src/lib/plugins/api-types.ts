@@ -408,6 +408,17 @@ export interface PermissionsResponse {
     reason?: string
     sort_order?: number
   }>
+  /**
+   * Per-task model assignments. The backend tells the client which model to
+   * use for each named task — there are NO client-side defaults. Examples:
+   *   { dapp_generator: 'claude-sonnet-4-5', dapp_generator_max_tokens: 16384 }
+   * Numeric task hints (max_tokens, temperature) live in `task_params`.
+   * Callers must throw if the requested task is missing — never fall back
+   * to a hardcoded model id.
+   */
+  task_models?: Record<string, string>
+  /** Per-task numeric/boolean parameter overrides (max_tokens, temperature, …). */
+  task_params?: Record<string, Record<string, number | string | boolean>>
 }
 
 /** Request body for POST /sso/email/send-verification. Omit `email` to verify the on-file address. */

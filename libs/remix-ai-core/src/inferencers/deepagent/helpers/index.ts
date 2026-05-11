@@ -13,6 +13,5 @@ export {
 } from './promptAnalysis'
 
 export {
-  selectOptimalModel,
-  getDefaultModelSelection
+  selectOptimalModel
 } from './modelSelection'

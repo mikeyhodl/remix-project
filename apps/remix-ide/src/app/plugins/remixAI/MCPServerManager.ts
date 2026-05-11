@@ -1,4 +1,4 @@
-import { MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig, getDefaultModel } from '@remix/remix-ai-core'
+import { MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig } from '@remix/remix-ai-core'
 import type { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { PermissionChecker } from './PermissionChecker'
@@ -216,10 +216,12 @@ export class MCPServerManager {
       const isAuthenticated = authState?.isAuthenticated || false
 
       if (!isAuthenticated) {
-        // User logged out - reset to defaults
-        console.log('[RemixAI Plugin] User logged out, resetting to default model and MCP servers')
-        const defaultModel = getDefaultModel()
-        await this.deps.setModel(defaultModel.id)
+        // User logged out — clear the in-memory model selection and reset
+        // MCP servers. The next /permissions response (after re-login) will
+        // re-populate selectedModel via assistantState. No literal default.
+        console.log('[RemixAI Plugin] User logged out, clearing model selection and resetting MCP servers')
+        this.plugin.selectedModel = null
+        this.plugin.selectedModelId = ''
         await this.resetToDefaultWithReinit()
         return
       }

@@ -6,7 +6,7 @@ import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDe
 import { MCPInferencer, DeepAgentInferencer } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
-import { AIModel, getDefaultModel } from '@remix/remix-ai-core';
+import { AIModel } from '@remix/remix-ai-core';
 import { aiErrorFromException, parseAIErrorEnvelope } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
@@ -59,8 +59,12 @@ export class RemixAIPlugin extends Plugin {
   contractor: ContractAgent | null = null
   workspaceAgent: workspaceAgent | null = null
   modelAccess: any
-  selectedModel: AIModel = getDefaultModel() // default model
-  selectedModelId: string = getDefaultModel().id
+  // Model selection is API-driven — sourced from /permissions via the
+  // assistantState plugin. Starts null; the activation hook subscribes
+  // to `assistantState.stateChanged` and populates with the row flagged
+  // `is_default: true`. Never substitute a literal model id here.
+  selectedModel: AIModel | null = null
+  selectedModelId: string = ''
   assistantThreadId: string = ''
   useRemoteInferencer:boolean = true
   completionAgent: CodeCompletionAgent | null = null
@@ -135,32 +139,50 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async onActivation(): Promise<void> {
-    const { hasBasicMcp, isBetaUser } = await this.checkMCPAccess()
+    const { hasBasicMcp } = await this.checkMCPAccess()
 
-    if (isBetaUser) {
-      console.log('[RemixAI Plugin] Beta user detected at startup, using claude-sonnet-4-6')
-      // Backend may not advertise the beta model in /permissions yet; build a
-      // minimal AIModel inline so we don't depend on the picker catalogue.
-      this.selectedModelId = 'claude-sonnet-4-6'
-      this.selectedModel = {
-        id: 'claude-sonnet-4-6',
-        provider: 'anthropic',
-        displayName: 'Claude Sonnet 4.6',
-        description: 'Beta model',
-        category: 'coding',
-        capabilities: ['chat', 'code', 'completion'],
-        isDefault: false,
-        requiresAuth: true,
-        requiredFeature: 'ai:Anthropic',
-        available: true,
-        sortOrder: 0
+    // Resolve the initial model from /permissions — NO client-side defaults
+    // and NO beta-user hardcode. The backend's `is_default: true` row wins.
+    // If permissions haven't loaded yet, subscribe and wait; downstream
+    // calls (DeepAgent enable, completion, etc.) all gate on `selectedModel`.
+    const applyDefaultFromState = async (): Promise<void> => {
+      try {
+        const def: AIModel | null = await this.call('assistantState' as any, 'getDefaultModel')
+        if (def && def.id) {
+          // Only apply if the user hasn't already explicitly picked something
+          // (i.e. selectedModelId is still empty).
+          if (!this.selectedModelId) {
+            console.log('[RemixAI Plugin] Initial model from /permissions:', def.provider, def.id)
+            this.selectedModel = def
+            this.selectedModelId = def.id
+            this.emit('modelChanged', def.id)
+            // Push the new selection through the standard setModel flow so
+            // GenerationParams/CompletionParams pick up the provider+model
+            // and DeepAgent (if enabled) reinitialises.
+            try {
+              await this.setModel(def.id)
+            } catch (e) {
+              console.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
+            }
+            // If DeepAgent is intended-on but wasn't initialised at startup
+            // because selectedModel was null, do it now.
+            if (this.deepAgentEnabled && !this.deepAgentInferencer && this.remixMCPServer) {
+              try {
+                await this.deepAgentManager.enable()
+              } catch (e) {
+                console.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
+              }
+            }
+          }
+        } else {
+          console.log('[RemixAI Plugin] /permissions has no default model yet — waiting for stateChanged')
+        }
+      } catch (e) {
+        console.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
       }
-    } else {
-      console.log('[RemixAI Plugin] Non-beta user at startup, using default model')
-      const defaultModel = getDefaultModel()
-      this.selectedModelId = defaultModel.id
-      this.selectedModel = defaultModel
     }
+    await applyDefaultFromState()
+    this.on('assistantState' as any, 'stateChanged', () => { void applyDefaultFromState() })
 
     await this.initialize()
     this.completionAgent = new CodeCompletionAgent(this)
@@ -203,7 +225,7 @@ export class RemixAIPlugin extends Plugin {
     const allTools = await this.mcpInferencer?.getAllTools();
     console.log('[RemixAI Plugin] MCP tools available after wait:', allTools);
 
-    if (this.deepAgentEnabled && this.remixMCPServer) {
+    if (this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId) {
       try {
         console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
         console.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
@@ -250,7 +272,14 @@ export class RemixAIPlugin extends Plugin {
       this.isInferencing = false
     })
 
-    await this.setModel(this.selectedModelId)
+    // Only push the model to the inference layer once /permissions has
+    // resolved one. Without an id the picker is empty and downstream
+    // setModel would throw — we let the assistantState subscription do it.
+    if (this.selectedModelId) {
+      await this.setModel(this.selectedModelId)
+    } else {
+      console.log('[RemixAI Plugin] initialize: no selectedModelId yet, deferring setModel until /permissions loads')
+    }
 
     this.aiIsActivated = true
 
@@ -449,6 +478,9 @@ export class RemixAIPlugin extends Plugin {
   async generateWorkspace (userPrompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
+    if (!this.selectedModel) {
+      throw new Error('[remixAIPlugin.generateWorkspace] No selectedModel — wait for /permissions to load before invoking the workspace agent.')
+    }
     params.provider = this.selectedModel.provider
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
@@ -563,6 +595,9 @@ export class RemixAIPlugin extends Plugin {
 
   async getAssistantProvider(){
     // Legacy method for backwards compatibility
+    if (!this.selectedModel) {
+      throw new Error('[remixAIPlugin.getAssistantProvider] No selectedModel \u2014 /permissions has not resolved a default model yet.')
+    }
     return this.selectedModel.provider
   }
 
@@ -585,8 +620,9 @@ export class RemixAIPlugin extends Plugin {
   async getModelAccess(): Promise<string[]> {
     const models = await this.permissionChecker.getModelAccess()
     if (models.length > 0) return models
-    // Fallback: default model + ollama
-    return [getDefaultModel().id, 'ollama']
+    // No literal fallback. Empty list is a valid signal: the picker will
+    // show locked rows and clicking opens the planManager.
+    return []
   }
 
   async getOllamaModels(): Promise<string[]> {

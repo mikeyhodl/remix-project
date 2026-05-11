@@ -271,9 +271,10 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
     if (action.payload.name === 'deepagent-memory-backend') {
       localStorage.setItem('deepagent_memory_backend', String(action.payload.value))
     }
-    if (action.payload.name === 'deepagent-config') {
-      localStorage.setItem('deepagent_enabled', action.payload.value ? 'true' : 'false')
-    }
+    // `deepagent-config` (DeepAgent enabled flag) is no longer persisted in
+    // localStorage \u2014 it is derived from /permissions (`ai:solcoder`). The
+    // setting toggle, if reintroduced, must call assistantState/remixAI
+    // directly rather than write a flag here.
 
     return { ...state, [action.payload.name]: { ...state[action.payload.name], value: action.payload.value, isLoading: false } }
   case 'SET_LOADING':

@@ -80,33 +80,19 @@ export const ANONYMOUS_FALLBACK_MODELS: AIModel[] = [
 ]
 
 /**
- * Bootstrap default — used by the AI plugin to initialise its
- * `selectedModel`/`selectedModelId` BEFORE `/permissions` has loaded.
- * Must be a model id the backend recognises so completion / streaming
- * doesn't crash if it fires before the picker syncs. Mistral Medium
- * is the free-tier default that the backend always allows.
+ * NO bootstrap default model. The chat-default is whichever row the
+ * backend marks `is_default: true` in `permissions.ai_models[]`. Read
+ * it via `assistantState.getDefaultModel()` (or `selectDefaultModel(snap)`).
  *
- * The chat picker DOES NOT use this — it derives its list from
- * `selectAvailableModels(snap)` which falls back to the
- * `ANONYMOUS_FALLBACK_MODELS` placeholder list for anonymous users.
+ * If you find yourself wanting a literal model id here, you have a bug:
+ *   - For "user just opened the app" \u2192 selectedModel should be `null`
+ *     until /permissions resolves. Render a "Loading\u2026" state.
+ *   - For "task X needs model Y" \u2192 backend advertises that via
+ *     `permissions.task_models[X]`. Read with `assistantState.getModelForTask('X')`.
+ *   - For "Ollama / anonymous fallback" \u2192 ANONYMOUS_FALLBACK_MODELS.
+ *
+ * Anything else MUST throw rather than silently substitute.
  */
-const BOOTSTRAP_DEFAULT_MODEL: AIModel = {
-  id: 'mistral-medium-latest',
-  provider: 'mistralai',
-  displayName: 'Mistral Medium',
-  description: 'Default Mistral model.',
-  category: 'general',
-  capabilities: ['chat', 'code'],
-  isDefault: true,
-  requiresAuth: false,
-  requiredFeature: null,
-  available: true,
-  sortOrder: 0
-}
-
-export function getDefaultModel(): AIModel {
-  return BOOTSTRAP_DEFAULT_MODEL
-}
 
 export function getModelById(id: string, list: ReadonlyArray<AIModel> = ANONYMOUS_FALLBACK_MODELS): AIModel | undefined {
   return list.find(m => m.id === id)
@@ -187,6 +173,7 @@ const GenerationParams:IParams = {
 }
 
 const AssistantParams:IParams = GenerationParams
-AssistantParams.provider = 'mistralai' // default provider
+// Provider is set by ModelManager when the user's model is resolved
+// from /permissions. No literal default \u2014 backend drives it.
 
 export { CompletionParams, InsertionParams, GenerationParams, AssistantParams }

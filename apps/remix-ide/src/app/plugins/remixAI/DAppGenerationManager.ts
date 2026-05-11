@@ -53,14 +53,37 @@ export class DAppGenerationManager {
         }
       }
 
+      // Backend-driven model assignment for the DApp generator. Pulled from
+      // /permissions.task_models.dapp_generator via assistantState. NO literal
+      // fallback \u2014 throw loud if the backend hasn't advertised it.
+      let dappModelId: string | null = null
+      try {
+        dappModelId = await plugin.call('assistantState' as any, 'getModelForTask', 'dapp_generator')
+      } catch (e) {
+        throw new Error(`[DAppGenerationManager] assistantState.getModelForTask("dapp_generator") failed: ${(e as Error)?.message ?? e}`)
+      }
+      if (!dappModelId) {
+        throw new Error('[DAppGenerationManager] No model advertised for task "dapp_generator". Backend must include /permissions.task_models.dapp_generator.')
+      }
+      // Provider is also backend-driven \u2014 derive from the available models
+      // catalogue rather than assuming Anthropic.
+      let dappProvider = 'anthropic'
+      try {
+        const catalogue: any[] = await plugin.call('assistantState' as any, 'getAvailableModels')
+        const row = Array.isArray(catalogue) ? catalogue.find((m) => m.id === dappModelId) : null
+        if (row?.provider) dappProvider = row.provider
+      } catch (e) {
+        console.warn('[DAppGenerationManager] could not resolve provider for dapp model, defaulting to anthropic', e)
+      }
+
       // Call DeepAgent with DApp Generator context
       const generationParams: IParams = {
         ...GenerationParams,
         stream: false,
         stream_result: false,
         return_stream_response: false,
-        provider: 'anthropic',
-        model: 'claude-sonnet-4-5'
+        provider: dappProvider,
+        model: dappModelId
       }
 
       // Use DeepAgent answer method with the custom system prompt

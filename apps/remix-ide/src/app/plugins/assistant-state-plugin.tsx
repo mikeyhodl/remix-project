@@ -9,6 +9,10 @@ import {
   selectFeatureEnabled,
   selectCooldownRemaining,
   selectCooldownDisplay,
+  selectDefaultModel,
+  selectModelForTask,
+  selectTaskParam,
+  selectAutoModeEnabled,
   type AssistantSnapshot,
   type AIError,
   type AIModel,
@@ -50,6 +54,10 @@ const profile = {
     'requireReady',
     'getAllowedModels',
     'getAvailableModels',
+    'getDefaultModel',
+    'getModelForTask',
+    'getTaskParam',
+    'isAutoModeEnabled',
     'hasFeature',
     'getCooldownRemaining',
     'getCooldownDisplay',
@@ -176,6 +184,38 @@ export class AssistantStatePlugin extends Plugin {
    */
   getAvailableModels(): AIModel[] {
     return selectAvailableModels(this.cachedSnapshot)
+  }
+
+  /**
+   * The chat-default model the backend marks `is_default: true`. Returns
+   * null when permissions haven't loaded — callers MUST handle null and
+   * never substitute a hardcoded model id.
+   */
+  getDefaultModel(): AIModel | null {
+    return selectDefaultModel(this.cachedSnapshot)
+  }
+
+  /**
+   * Backend-driven model id for a named task (e.g. 'dapp_generator').
+   * Returns null when the task isn't advertised in `permissions.task_models`;
+   * callers MUST throw rather than fall back to a literal model id.
+   */
+  getModelForTask(taskId: string): string | null {
+    return selectModelForTask(this.cachedSnapshot, taskId)
+  }
+
+  /**
+   * Backend-driven param value for a named task (e.g. max_tokens). Returns
+   * null when the value isn't advertised; callers may apply a documented
+   * default ONLY at the call site, not via shared constants.
+   */
+  getTaskParam(taskId: string, key: string): number | string | boolean | null {
+    return selectTaskParam(this.cachedSnapshot, taskId, key)
+  }
+
+  /** Sugar — Auto Mode is `ai:auto`. */
+  isAutoModeEnabled(): boolean {
+    return selectAutoModeEnabled(this.cachedSnapshot)
   }
 
   /**

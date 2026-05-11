@@ -86,11 +86,18 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.fallbackInferencer = fallbackInferencer
     this.streamEventHandler = new StreamEventHandler(this.event)
 
-    // Store model selection (default to mistral-medium-latest which is the system default)
-    this.modelSelection = modelSelection || {
-      provider: 'mistralai',
-      modelId: 'mistral-medium-latest'
+    // The model selection MUST come from the caller (resolved from
+    // /permissions \u2014 either the user's pick or assistantState.getDefaultModel()).
+    // No literal fallback: if it's missing we have a wiring bug, not a
+    // recoverable situation. Throw loudly so the regression is visible.
+    if (!modelSelection || !modelSelection.provider || !modelSelection.modelId) {
+      throw new Error(
+        '[DeepAgentInferencer] modelSelection is required. ' +
+        'Resolve it from assistantState.getDefaultModel() (or the user\'s explicit pick) ' +
+        'after /permissions has loaded \u2014 no literal model defaults are allowed.'
+      )
     }
+    this.modelSelection = modelSelection
 
     // Default configuration (API key handled by proxy)
     this.config = {
@@ -101,13 +108,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       timeout: config?.timeout || 300000, // 5 minutes
       enableSubagents: config?.enableSubagents !== false,
       enablePlanning: config?.enablePlanning !== false,
-      autoMode: config?.autoMode || {
-        enabled: false,
-        fallbackModel: {
-          provider: 'mistralai',
-          modelId: 'mistral-medium-latest'
-        }
-      }
+      // Auto Mode: caller decides on/off based on assistantState.isAutoModeEnabled().
+      // No fallbackModel field \u2014 selectOptimalModel uses the current selection
+      // and the structural Sonnet-substitution safety net in answer().
+      autoMode: config?.autoMode || { enabled: false }
     }
 
     // Initialize filesystem backend with shared EventEmitter for approval
