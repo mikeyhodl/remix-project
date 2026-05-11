@@ -15,7 +15,8 @@ import {
   DEBUG_SPECIALIST_SUBAGENT_PROMPT,
   SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
   WEB_SEARCH_SUBAGENT_PROMPT,
-  CIRCLE_SUBAGENT_PROMPT
+  CIRCLE_SUBAGENT_PROMPT,
+  QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT
 } from './prompts/system/lightPrompts'
 import {
   getBasicMcpToolsForSecurityAuditor,
@@ -29,7 +30,8 @@ import {
   getEtherscanToolsForEtherscanSpecialist,
   getAlchemyToolsForAlchemySpecialist,
   getTheGraphToolsForTheGraphSpecialist,
-  getCircleToolsForCircleSpecialist
+  getCircleToolsForCircleSpecialist,
+  getQuickDappToolsForQuickDappSpecialist
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -114,7 +116,14 @@ export function buildSubagentConfigs(
       systemPrompt: FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
       model,
       tools: [],
-      description: 'Specializes in frontend development and user interface design.'
+      description: 'Specializes in frontend development, UI design, and Web3 integration.'
+    },
+    {
+      name: 'QuickDapp Specialist',
+      systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
+      model,
+      tools: getQuickDappToolsForQuickDappSpecialist(tools),
+      description: 'Specializes in generating and updating React-based DApp frontends using file_write tools.'
     },
     {
       name: 'Etherscan Specialist',

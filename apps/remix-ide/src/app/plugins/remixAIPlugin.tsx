@@ -28,8 +28,7 @@ const profile = {
     'respondToToolApproval',
     'setAutoMode', 'getAutoModeStatus',
     'clearCaches', 'cancelRequest',
-    'getAllowedModels', 'setModelAccess',
-    'generateDAppContent', 'fetchFigmaDesign', 'generateDAppFromFigma'
+    'getAllowedModels', 'setModelAccess'
   ],
   events: [
     'modelChanged',
@@ -645,32 +644,9 @@ export class RemixAIPlugin extends Plugin {
     }
   }
 
-  async generateDAppContent(params: {
-    messages: any[];
-    systemPrompt: string;
-    hasImage?: boolean;
-    isUpdate?: boolean;
-    hasFigma?: boolean;
-  }): Promise<string> {
-    return this.dappManager.generateDAppContent(params)
-  }
-
-  async fetchFigmaDesign(params: {
-    figmaUrl: string;
-    figmaToken: string;
-  }): Promise<{ success: boolean; fileName?: string; rawJson?: string; fileKey?: string; message?: string }> {
-    return this.dappManager.fetchFigmaDesign(params)
-  }
-
-  async generateDAppFromFigma(params: {
-    figmaUrl: string;
-    figmaToken: string;
-    description?: string;
-    systemPrompt: string;
-    isBaseMiniApp?: boolean;
-  }): Promise<string> {
-    return this.dappManager.generateDAppFromFigma(params)
-  }
+  // NOTE: generateDAppContent, fetchFigmaDesign, generateDAppFromFigma
+  // have been removed. DApp generation is now handled by the QuickDapp
+  // Specialist subagent via generate_dapp/update_dapp MCP tools.
 
   private async refreshMCPServersOnAuthChange(authState: any): Promise<void> {
     return this.mcpManager.refreshOnAuthChange(authState)
