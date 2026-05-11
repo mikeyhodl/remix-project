@@ -293,8 +293,45 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       if (this.config.autoMode?.enabled) {
-        const optimalModel = selectOptimalModel(prompt, context, this.config.autoMode, this.modelSelection, (this.plugin as any).getAllowedModels())
+        const allowed = (this.plugin as any).getAllowedModels?.() || []
+        console.log('[DeepAgent.answer] autoMode=ENABLED', {
+          currentModelSelection: this.modelSelection,
+          allowedModels: allowed,
+          allowedCount: allowed.length,
+          allowedHasSonnet: allowed.some((m: string) => m.includes('sonnet'))
+        })
+        const optimalModel = selectOptimalModel(prompt, context, this.config.autoMode, this.modelSelection, allowed)
+        console.log('[DeepAgent.answer] selectOptimalModel →', optimalModel)
         await this.updateAgentModel(optimalModel)
+        console.log('[DeepAgent.answer] after updateAgentModel, this.modelSelection=', this.modelSelection)
+      } else {
+        console.log('[DeepAgent.answer] autoMode=DISABLED, using static model:', this.modelSelection)
+      }
+
+      // Structural safety net: the deepagents middleware injects content blocks
+      // (memory, skills, filesystem state, optional cache_control breakpoints)
+      // into every model call. ChatMistralAI's converter throws on any block
+      // whose `type` is not "text" or "image_url" — manifesting as:
+      //   `Mistral only supports types "text" or "image_url" for complex
+      //    message types.`
+      // So Mistral is structurally incompatible with the agent flow, regardless
+      // of whether Auto Mode is on. If the active agent model is Mistral but
+      // Sonnet (or any Anthropic model) is permitted for this user, swap to it
+      // *before* runAgent fires the first model invocation.
+      if (this.modelSelection.provider === 'mistralai') {
+        const allowed = (this.plugin as any).getAllowedModels?.() || []
+        const sonnetId = allowed.find((m: string) => m.includes('sonnet'))
+          || allowed.find((m: string) => m.includes('claude'))
+        if (sonnetId) {
+          console.warn(
+            `[DeepAgent.answer] Mistral cannot run with deepagents middleware; substituting Anthropic ${sonnetId}`
+          )
+          await this.updateAgentModel({ provider: 'anthropic', modelId: sonnetId })
+        } else {
+          console.error(
+            '[DeepAgent.answer] Mistral selected for agent flow but no Anthropic model permitted — request will fail.'
+          )
+        }
       }
 
       const mcpContext = undefined //await this.gatherMCPResourcesContext(prompt)
