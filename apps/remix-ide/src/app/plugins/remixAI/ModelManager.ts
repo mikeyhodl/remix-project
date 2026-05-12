@@ -88,7 +88,8 @@ export class ModelManager {
         undefined,
         undefined,
         plugin.remixMCPServer,
-        plugin.remoteInferencer
+        plugin.remoteInferencer,
+        plugin.getMcpAuthToken
       )
       plugin.mcpInferencer.event.on('mcpServerConnected', (_serverName: string) => {
         // Handle server connected
@@ -216,7 +217,8 @@ export class ModelManager {
         undefined,
         undefined,
         plugin.remixMCPServer,
-        plugin.remoteInferencer
+        plugin.remoteInferencer,
+        plugin.getMcpAuthToken
       )
       await plugin.mcpInferencer.connectAllServers()
     }

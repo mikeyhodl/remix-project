@@ -73,6 +73,21 @@ export class RemixAIPlugin extends Plugin {
   mcpEnabled: boolean = false
   remixMCPServer: RemixMCPServer | null = null
   deepAgentInferencer: DeepAgentInferencer | null = null
+
+  /**
+   * Bound bearer-token provider for MCPInferencer / MCPClient. Returns
+   * the user's current JWT (refreshed on every call) or null when the
+   * user is anonymous. We pass the bound function — not the raw
+   * `this.call` — so MCPClient stays plugin-engine-agnostic.
+   */
+  public readonly getMcpAuthToken = async (): Promise<string | null> => {
+    try {
+      const token = await this.call('auth' as any, 'getToken')
+      return typeof token === 'string' && token.length > 0 ? token : null
+    } catch {
+      return null
+    }
+  }
   deepAgentEnabled: boolean = false
   private pendingDeepAgentThreadId: string | null = null
 
@@ -205,7 +220,7 @@ export class RemixAIPlugin extends Plugin {
 
     // Initialize MCP inferencer if we have servers and remixMCPServer exists
     if (this.mcpServers.length > 0 && this.remixMCPServer) {
-      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer, this.getMcpAuthToken);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
         console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
       });
@@ -711,7 +726,7 @@ export class RemixAIPlugin extends Plugin {
     }
 
     if (!this.mcpInferencer) {
-      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer, this.getMcpAuthToken);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
       })
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {

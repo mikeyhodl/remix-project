@@ -173,7 +173,8 @@ export class MCPServerManager {
       undefined,
       undefined,
       remixMCPServer,
-      remoteInferencer
+      remoteInferencer,
+      this.plugin.getMcpAuthToken
     )
 
     mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
@@ -277,7 +278,8 @@ export class MCPServerManager {
       undefined,
       undefined,
       this.plugin.remixMCPServer,
-      this.plugin.remoteInferencer
+      this.plugin.remoteInferencer,
+      this.plugin.getMcpAuthToken
     )
 
     this.plugin.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
