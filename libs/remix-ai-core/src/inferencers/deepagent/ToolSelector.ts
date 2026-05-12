@@ -412,9 +412,9 @@ export class ToolSelector {
       description: 'Call any available tool by name with the provided arguments. Use get_tool_schema first to understand the required arguments.',
       schema: z.object({
         toolName: z.string().describe('Name of the tool to call'),
-        arguments: z.record(z.string(), z.any()).describe('Arguments to pass to the tool as a JSON object')
+        arguments: z.any().describe('Arguments to pass to the tool as a JSON object. Must be an object, not a stringified JSON.')
       }),
-      func: async (input: { toolName: string; arguments: Record<string, any> }) => {
+      func: async (input: { toolName: string; arguments: any }) => {
         const toolDoc = this.toolDocuments.find((td: ToolDocument) => td.tool.name === input.toolName)
         if (!toolDoc) {
           const availableTools = this.toolDocuments.map(td => td.tool.name).join(', ')
@@ -422,9 +422,26 @@ export class ToolSelector {
         }
 
         try {
-          // Call the actual tool with provided arguments
-          // Note: Validation is handled by the tool itself
-          const validatedArgs = input.arguments
+          // Some models (e.g. Sonnet) occasionally serialize the arguments
+          // field as a JSON string instead of an object. Coerce it back.
+          let validatedArgs: Record<string, any>
+          if (typeof input.arguments === 'string') {
+            const trimmed = input.arguments.trim()
+            if (trimmed === '') {
+              validatedArgs = {}
+            } else {
+              try {
+                const parsed = JSON.parse(trimmed)
+                validatedArgs = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {}
+              } catch {
+                return `Error: 'arguments' for tool '${input.toolName}' was a string but not valid JSON. Pass an object.`
+              }
+            }
+          } else if (input.arguments && typeof input.arguments === 'object' && !Array.isArray(input.arguments)) {
+            validatedArgs = input.arguments
+          } else {
+            validatedArgs = {}
+          }
 
           // Call the actual tool
           console.log(`[ToolSelector] Calling tool '${input.toolName}' with args:`, validatedArgs)

@@ -150,7 +150,12 @@ export class DeepAgentManager {
     const plugin = this.deps.plugin
 
     if (plugin.deepAgentInferencer) {
-      plugin.deepAgentInferencer.getEventEmitter().emit('onToolApprovalResponse', response)
+      const emitter = plugin.deepAgentInferencer.getEventEmitter()
+      const listenerCount = emitter.listenerCount('onToolApprovalResponse')
+      console.log('[DeepAgentManager] respondToToolApproval', response.requestId, 'approved=', response.approved, 'listeners=', listenerCount)
+      emitter.emit('onToolApprovalResponse', response)
+    } else {
+      console.warn('[DeepAgentManager] respondToToolApproval: no deepAgentInferencer')
     }
   }
 

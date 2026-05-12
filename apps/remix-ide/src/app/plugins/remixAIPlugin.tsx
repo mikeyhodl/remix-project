@@ -209,6 +209,13 @@ export class RemixAIPlugin extends Plugin {
     await applyDefaultFromState()
     this.on('assistantState' as any, 'stateChanged', () => { void applyDefaultFromState() })
 
+    // Listen for tool-approval responses forwarded by the assistant UI as engine events.
+    // The UI cannot use plugin.call() here because remixAI's request queue is busy with
+    // the in-flight answer() call that is awaiting this very approval.
+    this.on('remixaiassistant' as any, 'toolApprovalResponse', (response: { requestId: string; approved: boolean; modifiedArgs?: Record<string, any>; timedOut?: boolean }) => {
+      this.deepAgentManager.respondToToolApproval(response)
+    })
+
     await this.initialize()
     this.completionAgent = new CodeCompletionAgent(this)
     this.securityAgent = new SecurityAgent(this)

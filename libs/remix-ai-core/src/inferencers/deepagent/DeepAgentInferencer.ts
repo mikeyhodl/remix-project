@@ -297,8 +297,25 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
+      // Resolve the live, backend-driven list of model ids the user is
+      // allowed to use. Source of truth is the assistantState plugin's
+      // `getAvailableModels()` (which reads `permissions.ai_models`).
+      // The legacy `plugin.getAllowedModels()` reads `this.modelAccess`,
+      // which nothing in the codebase ever populates — querying it returns
+      // [] and makes us misclassify users as "no Anthropic permitted".
+      const resolveAllowedIds = async (): Promise<string[]> => {
+        try {
+          const models = await (this.plugin as any).call?.('assistantState', 'getAvailableModels')
+          if (Array.isArray(models)) {
+            return models.filter((m: any) => m?.available).map((m: any) => m.id)
+          }
+        } catch { /* assistantState not active — fall through */ }
+        // Last-resort legacy path. Almost certainly returns [].
+        return (this.plugin as any).getAllowedModels?.() || []
+      }
+
       if (this.config.autoMode?.enabled) {
-        const allowed = (this.plugin as any).getAllowedModels?.() || []
+        const allowed = await resolveAllowedIds()
         console.log('[DeepAgent.answer] autoMode=ENABLED', {
           currentModelSelection: this.modelSelection,
           allowedModels: allowed,
@@ -324,7 +341,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       // Sonnet (or any Anthropic model) is permitted for this user, swap to it
       // *before* runAgent fires the first model invocation.
       if (this.modelSelection.provider === 'mistralai') {
-        const allowed = (this.plugin as any).getAllowedModels?.() || []
+        const allowed = await resolveAllowedIds()
         const sonnetId = allowed.find((m: string) => m.includes('sonnet'))
           || allowed.find((m: string) => m.includes('claude'))
         if (sonnetId) {
@@ -333,8 +350,12 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           )
           await this.updateAgentModel({ provider: 'anthropic', modelId: sonnetId })
         } else {
-          console.error(
-            '[DeepAgent.answer] Mistral selected for agent flow but no Anthropic model permitted — request will fail.'
+          // Hard-fail rather than burning tokens on a request that will stall
+          // mid-stream when ChatMistralAI's converter trips on the first
+          // non-text content block.
+          throw new DeepAgentError(
+            'DeepAgent requires an Anthropic model. The currently selected Mistral model cannot run the agent flow, and no Anthropic model is permitted for your plan. Please switch to a Claude model or disable DeepAgent.',
+            DeepAgentErrorType.INVALID_REQUEST
           )
         }
       }

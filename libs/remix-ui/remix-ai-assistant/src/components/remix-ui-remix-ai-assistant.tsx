@@ -247,10 +247,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // 1. Reject all pending approvals so DeepAgent's approvalGate unblocks
     setPendingApprovals(prev => {
       for (const approval of prev) {
-        props.plugin.call('remixAI', 'respondToToolApproval', {
-          requestId: approval.requestId,
-          approved: false
-        }).catch(() => { /* best-effort */ })
+        try {
+          ;(props.plugin as any).respondToToolApproval({
+            requestId: approval.requestId,
+            approved: false
+          })
+        } catch { /* best-effort */ }
       }
       return []
     })
@@ -695,6 +697,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
+      console.log('[Assistant UI] approval requested', request.toolName, request.requestId)
       setPendingApprovals(prev => [...prev, request])
     }
     props.plugin.on('remixAI', 'onToolApprovalRequired', handleToolApproval)
@@ -887,7 +890,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
       // Send approval with the final content as modifiedArgs
       const modifiedArgs = finalContent ? { content: finalContent } : undefined
-      props.plugin.call('remixAI', 'respondToToolApproval', {
+      ;(props.plugin as any).respondToToolApproval({
         requestId: pending.requestId,
         approved: true,
         modifiedArgs
@@ -900,7 +903,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const pending = pendingDiffApprovalRef.current
       if (!pending) return
 
-      props.plugin.call('remixAI', 'respondToToolApproval', {
+      ;(props.plugin as any).respondToToolApproval({
         requestId: pending.requestId,
         approved: false
       })
@@ -919,6 +922,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, modifiedArgs?: Record<string, any>) => {
     if (!approval) return
+    console.log('[Assistant UI] handleApproveToolAction', approval.toolName, approval.requestId)
 
     // Close DiffEditor tab if the user had opened a Review
     if (reviewingApprovals.has(approval.requestId)) {
@@ -932,11 +936,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
-    props.plugin.call('remixAI', 'respondToToolApproval', {
-      requestId: approval.requestId,
-      approved: true,
-      modifiedArgs
-    })
+    try {
+      ;(props.plugin as any).respondToToolApproval({
+        requestId: approval.requestId,
+        approved: true,
+        modifiedArgs
+      })
+      console.log('[Assistant UI] respondToToolApproval emitted', approval.requestId)
+    } catch (err) {
+      console.error('[Assistant UI] respondToToolApproval threw', approval.requestId, err)
+    }
     removeApproval(approval.requestId)
   }, [props.plugin, removeApproval, reviewingApprovals])
 
@@ -955,7 +964,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
-    props.plugin.call('remixAI', 'respondToToolApproval', {
+    ;(props.plugin as any).respondToToolApproval({
       requestId: approval.requestId,
       approved: false
     })
@@ -964,7 +973,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   const handleTimeoutToolAction = useCallback(async (approval: ToolApprovalRequest) => {
     if (!approval) return
-    props.plugin.call('remixAI', 'respondToToolApproval', {
+    ;(props.plugin as any).respondToToolApproval({
       requestId: approval.requestId,
       approved: false,
       timedOut: true
@@ -988,7 +997,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     const approvals = [...pendingApprovals]
     for (const approval of approvals) {
-      props.plugin.call('remixAI', 'respondToToolApproval', {
+      ;(props.plugin as any).respondToToolApproval({
         requestId: approval.requestId,
         approved: true
       })
@@ -1013,7 +1022,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     const approvals = [...pendingApprovals]
     for (const approval of approvals) {
-      props.plugin.call('remixAI', 'respondToToolApproval', {
+      ;(props.plugin as any).respondToToolApproval({
         requestId: approval.requestId,
         approved: false
       })
