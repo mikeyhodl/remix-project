@@ -393,10 +393,12 @@ export class RemixAIPlugin extends Plugin {
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
     return this.withAssistantGate('ai:solcoder', async () => {
-      if (this.deepAgentEnabled && this.deepAgentInferencer) {
-        return this.deepAgentInferencer.code_generation(prompt, params)
-      } else if (this.mcpEnabled && this.mcpInferencer){
+      // Explicit MCP toggle wins over DeepAgent — the user opted in to the
+      // MCP-enriched solcoder path and that's what they expect to run.
+      if (this.mcpEnabled && this.mcpInferencer){
         return this.mcpInferencer.code_generation(prompt, params)
+      } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return this.deepAgentInferencer.code_generation(prompt, params)
       } else {
         return await this.remoteInferencer.code_generation(prompt, params)
       }
@@ -424,9 +426,12 @@ export class RemixAIPlugin extends Plugin {
       // `/solcoder` = simple chat, `/langchain` = DeepAgent (multi-POST),
       // `mcp` = MCP-enriched solcoder. Without this it's nearly impossible
       // to tell from DevTools which path produced any given error.
-      const route = (this.deepAgentEnabled && this.deepAgentInferencer)
-        ? 'deepagent'
-        : (this.mcpEnabled && this.mcpInferencer ? 'mcp' : 'remote')
+      // Explicit MCP toggle wins over DeepAgent — when the user flips the
+      // MCP Enhancement checkbox they expect the MCP-enriched solcoder
+      // route, not the langchain DeepAgent flow.
+      const route = (this.mcpEnabled && this.mcpInferencer)
+        ? 'mcp'
+        : ((this.deepAgentEnabled && this.deepAgentInferencer) ? 'deepagent' : 'remote')
       console.log(`[answer] route=${route} provider=${this.selectedModel?.provider ?? '?'} model=${this.selectedModel?.id ?? '?'}`)
       if (route === 'deepagent') {
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
@@ -443,10 +448,11 @@ export class RemixAIPlugin extends Plugin {
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('codeExplainRequested')
     const result = await this.withAssistantGate('ai:solcoder', async () => {
-      if (this.deepAgentEnabled && this.deepAgentInferencer) {
-        return await this.deepAgentInferencer.code_explaining(prompt, context, params)
-      } else if (this.mcpEnabled && this.mcpInferencer){
+      // Explicit MCP toggle wins over DeepAgent — see answer() for rationale.
+      if (this.mcpEnabled && this.mcpInferencer){
         return await this.mcpInferencer.code_explaining(prompt, context, params)
+      } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return await this.deepAgentInferencer.code_explaining(prompt, context, params)
       } else {
         return await this.remoteInferencer.code_explaining(prompt, context, params)
       }
