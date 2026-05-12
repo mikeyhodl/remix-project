@@ -9,7 +9,37 @@ import { IMCPToolResult } from '../../types/mcp'
 import { BaseToolHandler } from '../registry/RemixToolRegistry'
 import { ToolCategory, RemixToolDefinition } from '../types/mcpTools'
 import { Plugin } from '@remixproject/engine'
-import { isLocalVMChainId } from '../../inferencers/deepagent/DAppGeneratorPrompts'
+
+const isLocalVMChainId = (chainId: number | string): boolean => {
+  const n = Number(chainId)
+  return Number.isNaN(n) || n === 0 || n === 1337 || n === 31337 || n === 5777
+}
+
+// Common build rules injected into every QuickDapp delegation message
+const QUICKDAPP_BUILD_RULES =
+  `IMPORT RULES (CRITICAL - violations crash the build):\n` +
+  `- Use BARE SPECIFIERS: import React from 'react'; import { ethers } from 'ethers'. The index.html import map resolves these.\n` +
+  `- NEVER use full URLs in imports (e.g. import React from 'https://esm.sh/react@18'). This crashes the bundler.\n` +
+  `- ALWAYS include .jsx extension in local imports: import App from './App.jsx' (not './App')\n` +
+  `- NEVER repeat src/ in relative paths inside src/: import App from './App.jsx' NOT './src/App.jsx'\n` +
+  `- EVERY .jsx file using JSX MUST import React from 'react' at the top.\n` +
+  `- EVERY file using ethers MUST have its own import { ethers } from 'ethers' at the top.\n` +
+  `- Do NOT use react-router-dom. Use hash-based routing: useState(window.location.hash).\n\n` +
+  `FILE STRUCTURE (minimum required):\n` +
+  `- index.html: import map (react, react-dom/client, ethers via esm.sh), Tailwind CDN, window.__QUICK_DAPP_CONFIG__ init, <script type="module" src="./src/main.jsx">\n` +
+  `- src/main.jsx: React entry with ReactDOM.createRoot\n` +
+  `- src/App.jsx: Main component with contract integration\n` +
+  `- src/index.css: Custom styles\n\n` +
+  `INDEX.HTML IMPORT MAP (must include):\n` +
+  `<script type="importmap">{ "imports": { "react": "https://esm.sh/react@18.2.0", "react-dom/client": "https://esm.sh/react-dom@18.2.0/client", "ethers": "https://esm.sh/ethers@6.11.1" } }</script>\n\n` +
+  `ETHERS.JS RULES:\n` +
+  `- MUST use ethers.BrowserProvider with wallet provider for both reading and writing.\n` +
+  `- NEVER use JsonRpcProvider, InfuraProvider, AlchemyProvider, or any RPC URL.\n` +
+  `- NEVER generate placeholders like 'YOUR_INFURA_KEY'.\n` +
+  `- Write functions need a signer: const signer = await provider.getSigner(); const contract = new ethers.Contract(addr, abi, signer);\n\n` +
+  `DYNAMIC CONTENT:\n` +
+  `- Use window.__QUICK_DAPP_CONFIG__ for title/logo/details. Do NOT hardcode app names or logos.\n` +
+  `- Fallback: config.title || 'My DApp'\n`
 
 // ──────────────────────────────────────────────
 // Types
@@ -178,7 +208,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
         .join('\n')
 
       const isLocalVM = isLocalVMChainId(args.chainId)
-
       // Build optional Figma context line for subagent
       const figmaLine = (args.figmaUrl && args.figmaToken)
         ? `\nFIGMA: Use fetch_figma_design tool with figmaUrl="${args.figmaUrl}" and figmaToken="${args.figmaToken}" to get the design data before generating files.\n`
@@ -198,14 +227,38 @@ export class GenerateDAppHandler extends BaseToolHandler {
           `CONTRACT: ${args.contractName} at ${args.contractAddress} on chain ${args.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
           `FUNCTIONS:\n${abiSummary}\n\n` +
           `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
-          `${args.isBaseMiniApp ? 'Generate as Base Mini App with Coinbase SDK.\n' : ''}` +
+          (args.isBaseMiniApp
+            ? `\nBASE APP RULES:\n` +
+              `- Do NOT import @farcaster/miniapp-sdk (deprecated). Do NOT include fc:frame or fc:miniapp meta tags.\n` +
+              `- Use standard wallet pattern (window.__qdapp_getProvider or window.ethereum).\n` +
+              `- Default to Base Mainnet (8453) or Base Sepolia (84532).\n`
+            : '') +
           `${figmaLine}` +
-          `\nCRITICAL PATH RULES:\n` +
+          (args.figmaUrl
+            ? `\nFIGMA DESIGN RULES:\n` +
+              `- Use max-w-7xl mx-auto px-4 instead of fixed widths. Use flex-wrap for mobile responsiveness.\n` +
+              `- Avoid position: absolute. Create separate component files for distinct sections.\n` +
+              `- Adapt Figma dimensions to fluid/responsive code.\n`
+            : '') +
+          `\n${QUICKDAPP_BUILD_RULES}\n` +
+          `CRITICAL PATH RULES:\n` +
           `- All file paths are relative to workspace root. Use /index.html, /src/App.jsx etc.\n` +
           `- NEVER include workspace name "${workspaceSlug}" in paths. Wrong: ${workspaceSlug}/src/App.jsx. Correct: /src/App.jsx\n\n` +
           `STEPS:\n` +
           `1. Write files using file_write: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css, /src/components/*.jsx\n` +
           `2. Use ethers.js v6 (BrowserProvider, Contract). Embed full ABI and contract address in code.\n` +
+          (isLocalVM
+            ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
+              `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
+              `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
+              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks. The provider is always available and on the correct network.\n` +
+              `- Simply connect: const provider = new ethers.BrowserProvider(window.ethereum); await provider.send("eth_requestAccounts", []); const signer = await provider.getSigner();\n`
+            : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
+              `- The contract is deployed on chain ${args.chainId}. Set TARGET_CHAIN_ID = ${args.chainId} in the generated code.\n` +
+              `- For wallet_switchEthereumChain, use chainId: '0x${Number(args.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
+              `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+              `- Store raw provider in a React ref for reuse in network switching.\n` +
+              `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
           `3. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
           `---\n\n` +
           `Do NOT attempt to write files directly -- let the subagent handle it.`
@@ -448,6 +501,8 @@ export class UpdateDAppHandler extends BaseToolHandler {
       const fileList = fileNames.join('\n')
       const description = typeof args.description === 'string' ? args.description : JSON.stringify(args.description)
 
+      const isLocalVM = isLocalVMChainId(contractResolved.chainId)
+
       return this.createSuccessResult({
         success: true,
         slug: targetWorkspace,
@@ -459,14 +514,31 @@ export class UpdateDAppHandler extends BaseToolHandler {
           `---\n` +
           `TASK: Modify the DApp in workspace "${targetWorkspace}"\n` +
           `USER REQUEST: ${description}\n` +
-          `CONTRACT ADDRESS: ${contractResolved.address}\n` +
+          `CONTRACT ADDRESS: ${contractResolved.address} on chain ${contractResolved.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
           `FILES IN WORKSPACE:\n${fileList}\n\n` +
+          `${QUICKDAPP_BUILD_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
           `- All file paths are relative to workspace root. Use /src/App.jsx, NOT ${targetWorkspace}/src/App.jsx\n` +
           `- NEVER include workspace name in paths.\n\n` +
+          `LOGIC PRESERVATION (MANDATORY):\n` +
+          `- NEVER remove existing ethers.js contract integrations, useState, useEffect, or ABI calls.\n` +
+          `- NEVER remove wallet connection code or window.__QUICK_DAPP_CONFIG__ integration.\n` +
+          `- You MAY restructure JSX layout, change CSS classes, and add new features.\n` +
+          `- When returning a file, return the COMPLETE file content — not just the changed portion.\n\n` +
           `STEPS:\n` +
           `1. Use file_read to read the files you need to modify\n` +
           `2. Modify only the relevant files using file_write\n` +
+          (isLocalVM
+            ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
+              `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
+              `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
+              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n`
+            : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
+              `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
+              `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
+              `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+              `- Store raw provider in a React ref for reuse in network switching.\n` +
+              `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
           `3. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
           `---\n\n` +
           `Do NOT attempt to read or write files directly — let the subagent handle it.`

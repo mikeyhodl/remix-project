@@ -19,35 +19,6 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
       timestamp: new Date().toISOString()
     })
     
-    // === PAYLOAD SIZE DIAGNOSTICS ===
-    try {
-      const messagesJson = JSON.stringify(request?.messages || [])
-      const toolsJson = JSON.stringify(request?.tools || [])
-      const totalSize = messagesJson.length + toolsJson.length
-      
-      console.log(`[Payload-Size] Messages: ${(messagesJson.length / 1024).toFixed(1)}KB (${request?.messages?.length || 0} msgs)`)
-      console.log(`[Payload-Size] Tools: ${(toolsJson.length / 1024).toFixed(1)}KB (${request?.tools?.length || 0} tools)`)
-      console.log(`[Payload-Size] TOTAL: ${(totalSize / 1024).toFixed(1)}KB`)
-      
-      // Log individual large messages (>5KB)
-      if (request?.messages) {
-        for (let i = 0; i < request.messages.length; i++) {
-          const msgSize = JSON.stringify(request.messages[i]).length
-          if (msgSize > 5000) {
-            const msg = request.messages[i] as any
-            const role = msg._getType?.() || msg.constructor?.name || 'unknown'
-            const contentPreview = typeof msg.content === 'string' 
-              ? msg.content.substring(0, 100) 
-              : (Array.isArray(msg.content) ? `[array:${msg.content.length}]` : typeof msg.content)
-            console.log(`[Payload-Size] Large msg[${i}]: ${(msgSize / 1024).toFixed(1)}KB, type=${role}, preview="${contentPreview}..."`)
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Payload-Size] Failed to measure:', e?.message)
-    }
-    // === END DIAGNOSTICS ===
-    
     removePeviousContextFromMessages(request)
     shortenToolDescription(request)
 

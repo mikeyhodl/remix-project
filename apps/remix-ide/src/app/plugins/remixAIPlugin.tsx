@@ -9,7 +9,7 @@ import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
-import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, DAppGenerationManager, ChatRequestBuffer } from './remixAI'
+import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, ChatRequestBuffer } from './remixAI'
 
 const profile = {
   name: 'remixAI',
@@ -76,7 +76,6 @@ export class RemixAIPlugin extends Plugin {
   private permissionChecker: PermissionChecker
   private modelManager: ModelManager
   private deepAgentManager: DeepAgentManager
-  private dappManager: DAppGenerationManager
 
   constructor() {
     super(profile)
@@ -96,7 +95,6 @@ export class RemixAIPlugin extends Plugin {
       mcpManager: this.mcpManager,
       setupDeepAgentEventListeners: () => this.setupDeepAgentEventListeners()
     })
-    this.dappManager = new DAppGenerationManager({ plugin: this as any })
     // Set up MCP manager deps after all managers are created
     this.mcpManager.setDeps({
       plugin: this as any,
@@ -644,9 +642,6 @@ export class RemixAIPlugin extends Plugin {
     }
   }
 
-  // NOTE: generateDAppContent, fetchFigmaDesign, generateDAppFromFigma
-  // have been removed. DApp generation is now handled by the QuickDapp
-  // Specialist subagent via generate_dapp/update_dapp MCP tools.
 
   private async refreshMCPServersOnAuthChange(authState: any): Promise<void> {
     return this.mcpManager.refreshOnAuthChange(authState)

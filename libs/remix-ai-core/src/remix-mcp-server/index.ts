@@ -29,7 +29,6 @@ export { createMathUtilsTools } from './handlers/MathUtilsHandler';
 export { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 export { createCoordinationTools } from './handlers/CoordinationHandler';
 export { createDAppGeneratorTools } from './handlers/DAppGeneratorHandler';
-export { createFigmaTools } from './handlers/FigmaHandler';
 
 // Resource Providers
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';

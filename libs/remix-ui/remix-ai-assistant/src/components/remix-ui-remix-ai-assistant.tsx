@@ -100,6 +100,23 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [autoModeEnabled, setAutoModeEnabled] = useState(false)
+
+  // HITL Auto-Accept: skip approval modals when enabled (persistent via localStorage)
+  const HITL_AUTO_ACCEPT_KEY = 'remix_hitl_auto_accept'
+  const [hitlAutoAccept, setHitlAutoAccept] = useState<boolean>(
+    () => localStorage.getItem(HITL_AUTO_ACCEPT_KEY) === 'true'
+  )
+  const hitlAutoAcceptRef = useRef(hitlAutoAccept)
+  useEffect(() => { hitlAutoAcceptRef.current = hitlAutoAccept }, [hitlAutoAccept])
+
+  const toggleHitlAutoAccept = useCallback(() => {
+    setHitlAutoAccept(prev => {
+      const next = !prev
+      localStorage.setItem(HITL_AUTO_ACCEPT_KEY, String(next))
+      console.log(`[HITL] Auto-accept mode ${next ? 'ENABLED' : 'DISABLED'}`)
+      return next
+    })
+  }, [])
   const [themeTracker, setThemeTracker] = useState<{ name: string } | null>(() => ({ name: getSystemThemeFallback() }))
   const historyRef = useRef<HTMLDivElement | null>(null)
   const modelBtnRef = useRef(null)
@@ -183,7 +200,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [isTranscribing])
 
-  useOnClickOutside([modelBtnRef], () => setShowModelSelector(false))
+  useOnClickOutside([modelBtnRef, menuRef], () => setShowModelSelector(false))
   useOnClickOutside([modelSelectorBtnRef], () => setShowOllamaModelSelector(false))
 
   const chatCmdParser = new ChatCommandParser(props.plugin)
@@ -601,6 +618,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
+      if (hitlAutoAcceptRef.current) {
+        props.plugin.call('remixAI', 'respondToToolApproval', {
+          requestId: request.requestId,
+          approved: true
+        }).catch((err: any) => console.error('[HITL][AutoAccept] Failed to auto-approve:', err))
+        return
+      }
       setPendingApprovals(prev => [...prev, request])
     }
     props.plugin.on('remixAI', 'onToolApprovalRequired', handleToolApproval)
@@ -2037,6 +2061,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
+              hitlAutoAccept={hitlAutoAccept}
+              onToggleHitlAutoAccept={toggleHitlAutoAccept}
             />
           ) : (
             <AiChatPromptArea
@@ -2082,6 +2108,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
+              hitlAutoAccept={hitlAutoAccept}
+              onToggleHitlAutoAccept={toggleHitlAutoAccept}
             />
           )
         }

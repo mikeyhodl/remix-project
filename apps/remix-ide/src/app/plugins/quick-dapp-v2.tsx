@@ -252,6 +252,20 @@ export class QuickDappV2 extends ViewPlugin {
         if (stateExists) {
           vmStateSnapshot = await this.call('fileManager', 'readFile', statePath) as string;
         }
+
+        if (!vmStateSnapshot) {
+          try {
+            const directState = await Promise.race([
+              this.call('blockchain' as any, 'getStateDetails'),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+            ]) as string;
+            if (directState && directState.length > 2) {
+              vmStateSnapshot = directState;
+            }
+          } catch (e2) {
+            console.warn('[QuickDapp] getStateDetails fallback also failed:', e2);
+          }
+        }
       } catch (e) {
         console.warn('[QuickDapp] VM state capture failed (non-critical):', e);
       }
@@ -300,6 +314,13 @@ export class QuickDappV2 extends ViewPlugin {
         try { await this.call('fileManager', 'mkdir', '.states'); } catch (_) {}
         try { await this.call('fileManager', 'mkdir', `.states/${vmProviderName}`); } catch (_) {}
         await this.call('fileManager', 'writeFile', `.states/${vmProviderName}/state.json`, vmStateSnapshot);
+
+        // Explicitly reload VM state into memory.
+        try {
+          await this.call('blockchain' as any, 'loadContext', vmProviderName);
+        } catch (e2) {
+          console.warn('[QuickDapp] loadContext after state restore failed (non-critical):', e2);
+        }
       } catch (e) {
         console.warn('[QuickDapp] VM state restore failed (non-critical):', e);
       }

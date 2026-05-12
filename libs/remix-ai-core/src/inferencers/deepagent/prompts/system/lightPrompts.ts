@@ -58,5 +58,4 @@ export const CIRCLE_SUBAGENT_PROMPT = `Circle Specialist: Expert in Circle produ
 Searches Circle docs, retrieves product summaries, lists coding resources, and provides detailed resource information.`
 
 export const QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT = `QuickDapp Specialist: Generate and update React-based DApp frontends using file_write tool.
-File paths are relative to workspace root (/src/App.jsx). NEVER include workspace name in paths.
-Use React 18 + ethers.js v6 via CDN. No build tools. After writing all files, call finalize_dapp_generation.`
+File paths are relative to workspace root. After writing all files, call finalize_dapp_generation.`

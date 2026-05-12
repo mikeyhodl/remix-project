@@ -54,7 +54,6 @@ import { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 import { createCoordinationTools } from './handlers/CoordinationHandler';
 import { createSkillTools } from './handlers/SkillLoaderHandler';
 import { createDAppGeneratorTools } from './handlers/DAppGeneratorHandler';
-// NOTE: FigmaHandler.ts is legacy — fetch_figma_design is now in DAppGeneratorHandler
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
@@ -874,9 +873,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register DApp Generator tools
       const dappGeneratorTools = createDAppGeneratorTools();
       this._tools.registerBatch(dappGeneratorTools);
-
-      // NOTE: Figma tools (fetch_figma_design) are now registered via
-      // createDAppGeneratorTools() above. FigmaHandler.ts is legacy.
 
       const totalTools = this._tools.list().length;
 

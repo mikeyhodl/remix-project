@@ -370,11 +370,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  // NOTE: answerWithCustomSystemPrompt() has been removed.
-  // DApp generation now uses the QuickDapp Specialist subagent via
-  // generate_dapp/update_dapp MCP tools (see DAppGeneratorHandler.ts).
-
-
   /**
    * Code completion method (not supported by DeepAgent, falls back)
    */
