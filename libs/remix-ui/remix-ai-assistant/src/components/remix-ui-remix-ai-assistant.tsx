@@ -131,6 +131,17 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const uiToolCallbackRef = useRef<((isExecuting: boolean, toolName?: string, toolArgs?: Record<string, any>) => void) | null>(null)
   const wasInitializingRef = useRef(props.isInitializing)
   const streamingAssistantIdRef = useRef<string | null>(null)
+  // Active subagent bubble. When a chunk arrives with `isSubagent: true`,
+  // we render it into a SEPARATE bubble (keyed by subagent name) so the
+  // Comprehensive Auditor / Planner / etc. doesn't append into the main
+  // agent's growing message and push the Task Plan off-screen. Reset on
+  // onSubagentComplete and at the end of every turn.
+  const streamingSubagentBubbleRef = useRef<{ id: string; name: string } | null>(null)
+  // Set true the moment a stream chunk lazily creates a bubble, or when
+  // onStreamComplete fires. Tells the post-`await answer()` branch below
+  // that the response was already painted by the streaming pipeline, so
+  // we must NOT create a second bubble with the full text.
+  const streamConsumedThisTurnRef = useRef<boolean>(false)
   if (props.isInitializing) wasInitializingRef.current = true
 
   // Cooldown UI state — driven by the assistantState plugin's `stateChanged`
@@ -384,27 +395,96 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const handleStreamChunk = (data: string | { content: string; isIntermediate?: boolean; source?: string; isSubagent?: boolean; subagentName?: string }) => {
       const chunk = typeof data === 'string' ? data : data.content
       const isIntermediate = typeof data === 'object' ? data.isIntermediate : false
-      const isSubagent = typeof data === 'object' ? data.isSubagent : false
-      const subagentName = typeof data === 'object' ? data.subagentName : undefined
+      const isSubagent = typeof data === 'object' ? !!data.isSubagent : false
+      const subagentName = typeof data === 'object' ? (data.subagentName || '') : ''
 
-      if (streamingAssistantIdRef.current) {
+      streamConsumedThisTurnRef.current = true
+      if (!isStreaming) setIsStreaming(true)
+
+      // ── SUBAGENT CHUNK ──────────────────────────────────────────────
+      // Each subagent gets its OWN bubble. Otherwise its prose appends
+      // into the main agent's message and pushes the Task Plan offscreen.
+      // A new bubble is created on first subagent chunk OR when the
+      // subagent name changes (Auditor → Gas Optimizer, etc.).
+      if (isSubagent) {
+        const current = streamingSubagentBubbleRef.current
+        if (!current || current.name !== subagentName) {
+          const subId = crypto.randomUUID()
+          streamingSubagentBubbleRef.current = { id: subId, name: subagentName }
+          setMessages(prev => [
+            ...prev,
+            {
+              id: subId,
+              role: 'assistant',
+              content: chunk,
+              timestamp: Date.now(),
+              sentiment: 'none',
+              isIntermediateContent: isIntermediate,
+              isSubagentStreaming: true,
+              streamingSubagentName: subagentName
+            }
+          ])
+          return
+        }
         setMessages(prev =>
           prev.map(m =>
-            m.id === streamingAssistantIdRef.current
+            m.id === current.id
               ? {
                 ...m,
                 content: m.content + chunk,
                 isIntermediateContent: isIntermediate,
-                isSubagentStreaming: isSubagent,
+                isSubagentStreaming: true,
                 streamingSubagentName: subagentName
               }
               : m
           )
         )
+        return
       }
+
+      // ── MAIN AGENT CHUNK ────────────────────────────────────────────
+      // Lazy-create the main bubble on first chunk (DeepAgent's `answer()`
+      // is now awaited so we can't rely on its empty-string return as the
+      // "create bubble" trigger).
+      if (!streamingAssistantIdRef.current) {
+        const assistantId = crypto.randomUUID()
+        streamingAssistantIdRef.current = assistantId
+        setMessages(prev => [
+          ...prev,
+          {
+            id: assistantId,
+            role: 'assistant',
+            content: chunk,
+            timestamp: Date.now(),
+            sentiment: 'none',
+            isIntermediateContent: isIntermediate,
+            isSubagentStreaming: false,
+            streamingSubagentName: undefined
+          }
+        ])
+        return
+      }
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === streamingAssistantIdRef.current
+            ? {
+              ...m,
+              content: m.content + chunk,
+              isIntermediateContent: isIntermediate,
+              isSubagentStreaming: false,
+              streamingSubagentName: undefined
+            }
+            : m
+        )
+      )
     }
 
     const handleStreamComplete = (finalText: string) => {
+      // Mark consumed even if there was no streaming bubble (e.g. an empty
+      // turn that finished before the first chunk) so the post-await
+      // branch in sendPrompt doesn't paint the full text again.
+      streamConsumedThisTurnRef.current = true
       // Save to chat history when streaming completes
       if (streamingAssistantIdRef.current) {
         const assistantId = streamingAssistantIdRef.current
@@ -436,6 +516,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
       setIsStreaming(false)
       streamingAssistantIdRef.current = null
+      // Subagent bubble (if any) is finalized in handleSubagentComplete,
+      // but clear the ref defensively in case the stream ended without a
+      // matching complete event.
+      streamingSubagentBubbleRef.current = null
     }
 
     // Handle tool call events from DeepAgent
@@ -484,6 +568,25 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number }) => {
       console.log('[RemixAI Assistant] Subagent completed:', data)
+      // Finalize the subagent's own bubble: clear streaming flags so the
+      // "Comprehensive Auditor is responding…" indicator goes away.
+      const sub = streamingSubagentBubbleRef.current
+      if (sub) {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === sub.id
+              ? {
+                ...m,
+                isSubagentStreaming: false,
+                streamingSubagentName: undefined,
+                isIntermediateContent: false
+              }
+              : m
+          )
+        )
+        streamingSubagentBubbleRef.current = null
+      }
+      // Also clear any subagent annotations stamped on the main bubble.
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -491,9 +594,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ? {
                 ...m,
                 activeSubagent: undefined,
-                subagentTask: undefined,
-                isSubagentStreaming: false,
-                streamingSubagentName: undefined
+                subagentTask: undefined
               }
               : m
           )
@@ -1217,6 +1318,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
       dispatchActivity('promptSend', trimmed)
 
+      // Reset the per-turn "stream consumed" flag — it gates the
+      // post-await duplicate-bubble guard further down.
+      streamConsumedThisTurnRef.current = false
+      // Clear any leftover subagent bubble ref from a previous turn so
+      // the next subagent chunk creates a fresh bubble.
+      streamingSubagentBubbleRef.current = null
+
       // optimistic user message
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -1306,6 +1414,19 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
         // Handle langchain/deepagent mode: response is plain text
         if (typeof response === 'string') {
+          // The DeepAgent path now awaits runAgent (so withAssistantGate
+          // can see envelope errors). That means by the time `answer()`
+          // returns, the entire stream has already played out via
+          // onStreamResult/onStreamComplete and the bubble is fully
+          // painted. Skip the legacy create-bubble-from-final-text branch
+          // — otherwise we paint the response a second time below the
+          // streaming bubble.
+          if (streamConsumedThisTurnRef.current) {
+            setIsStreaming(false)
+            streamingAssistantIdRef.current = null
+            return
+          }
+
           const assistantId = crypto.randomUUID()
 
           // If response is empty, this is a streaming response

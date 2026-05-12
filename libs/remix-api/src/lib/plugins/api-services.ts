@@ -370,6 +370,76 @@ export class StorageApiService {
 /**
  * Permissions API Service - Query user feature permissions
  */
+// TEMP: hardcoded ai_models catalogue. Backend doesn't currently surface
+// this for all users on /permissions; remove once it does.
+const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
+  {
+    id: 'mistral-small-latest',
+    provider: 'mistralai',
+    display_name: 'Mistral Small',
+    description: 'Fast and efficient for basic tasks',
+    category: 'general',
+    capabilities: ['chat', 'code'],
+    is_default: true,
+    requires_auth: true,
+    required_feature: 'ai:mistral-small',
+    available: true,
+    sort_order: 10
+  },
+  {
+    id: 'mistral-medium-latest',
+    provider: 'mistralai',
+    display_name: 'Mistral Medium',
+    description: 'Fast and efficient for basic tasks',
+    category: 'general',
+    capabilities: ['chat', 'code'],
+    is_default: false,
+    requires_auth: true,
+    required_feature: 'ai:mistral-medium',
+    available: true,
+    sort_order: 20
+  },
+  {
+    id: 'codestral-latest',
+    provider: 'mistralai',
+    display_name: 'Codestral',
+    description: 'Specialized for code generation',
+    category: 'coding',
+    capabilities: ['code', 'completion'],
+    is_default: false,
+    requires_auth: true,
+    required_feature: 'ai:codestral',
+    available: true,
+    sort_order: 30
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    provider: 'anthropic',
+    display_name: 'Claude Sonnet 4.6',
+    description: 'Balanced performance and speed',
+    category: 'coding',
+    capabilities: ['chat', 'code', 'completion'],
+    is_default: false,
+    requires_auth: true,
+    required_feature: 'ai:sonnet-4.6',
+    available: true,
+    sort_order: 40
+  },
+  {
+    id: 'claude-opus-4-6',
+    provider: 'anthropic',
+    display_name: 'Claude Opus 4.6',
+    description: 'Best for complex web3 contracts',
+    category: 'coding',
+    capabilities: ['chat', 'code', 'completion'],
+    is_default: false,
+    requires_auth: true,
+    required_feature: 'ai:opus-4.6',
+    available: true,
+    sort_order: 50
+  }
+]
+
 export class PermissionsApiService {
   constructor(private apiClient: IApiClient) {}
 
@@ -391,7 +461,14 @@ export class PermissionsApiService {
    * Get all permissions for the current user
    */
   async getPermissions(): Promise<ApiResponse<PermissionsResponse>> {
-    return this.apiClient.get<PermissionsResponse>('/')
+    const res = await this.apiClient.get<PermissionsResponse>('/')
+    // TEMP: hardcode ai_models on the /permissions response while the backend
+    // catches up. Remove once /permissions returns the model catalogue
+    // server-side for all users.
+    if (res?.ok && res.data) {
+      res.data.ai_models = HARDCODED_AI_MODELS
+    }
+    return res
   }
   
   /**
