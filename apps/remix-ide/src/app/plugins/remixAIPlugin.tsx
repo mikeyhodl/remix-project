@@ -148,34 +148,44 @@ export class RemixAIPlugin extends Plugin {
     const applyDefaultFromState = async (): Promise<void> => {
       try {
         const def: AIModel | null = await this.call('assistantState' as any, 'getDefaultModel')
-        if (def && def.id) {
-          // Only apply if the user hasn't already explicitly picked something
-          // (i.e. selectedModelId is still empty).
-          if (!this.selectedModelId) {
-            console.log('[RemixAI Plugin] Initial model from /permissions:', def.provider, def.id)
-            this.selectedModel = def
-            this.selectedModelId = def.id
-            this.emit('modelChanged', def.id)
-            // Push the new selection through the standard setModel flow so
-            // GenerationParams/CompletionParams pick up the provider+model
-            // and DeepAgent (if enabled) reinitialises.
-            try {
-              await this.setModel(def.id)
-            } catch (e) {
-              console.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
-            }
-            // If DeepAgent is intended-on but wasn't initialised at startup
-            // because selectedModel was null, do it now.
-            if (this.deepAgentEnabled && !this.deepAgentInferencer && this.remixMCPServer) {
-              try {
-                await this.deepAgentManager.enable()
-              } catch (e) {
-                console.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
-              }
-            }
+        // The anonymous placeholder (id: '__signin__') is marked
+        // `available: false` — it exists only so the picker can render a
+        // "Sign in" row. The plugin must NEVER commit to it; otherwise
+        // we end up sending `model: "__signin__"` to the backend.
+        if (!def || !def.id || def.available === false) {
+          console.log('[RemixAI Plugin] /permissions has no usable default model yet — waiting for stateChanged', { id: def?.id, available: def?.available })
+          return
+        }
+        // Re-apply when:
+        //   - we don't have a selection yet, OR
+        //   - the current selection is the anonymous placeholder / an
+        //     unavailable row (e.g. permissions just flipped from anon
+        //     → authed and we still hold '__signin__').
+        // Don't clobber a real user pick.
+        const currentIsUsable = !!this.selectedModel && this.selectedModel.available !== false
+        if (this.selectedModelId && currentIsUsable) {
+          return
+        }
+        console.log('[RemixAI Plugin] Initial/refreshed default model from /permissions:', def.provider, def.id)
+        this.selectedModel = def
+        this.selectedModelId = def.id
+        this.emit('modelChanged', def.id)
+        // Push the new selection through the standard setModel flow so
+        // GenerationParams/CompletionParams pick up the provider+model
+        // and DeepAgent (if enabled) reinitialises.
+        try {
+          await this.setModel(def.id)
+        } catch (e) {
+          console.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
+        }
+        // If DeepAgent is intended-on but wasn't initialised at startup
+        // because selectedModel was null, do it now.
+        if (this.deepAgentEnabled && !this.deepAgentInferencer && this.remixMCPServer) {
+          try {
+            await this.deepAgentManager.enable()
+          } catch (e) {
+            console.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
           }
-        } else {
-          console.log('[RemixAI Plugin] /permissions has no default model yet — waiting for stateChanged')
         }
       } catch (e) {
         console.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
