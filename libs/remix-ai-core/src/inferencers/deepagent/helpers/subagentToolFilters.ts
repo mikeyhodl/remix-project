@@ -20,8 +20,7 @@ export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[])
 
 export function getCoordinationToolsForComprehensiveAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const coordinationToolNames: string[] = [
-    'auditor_analyse',
-    'slither_scan',
+    'auditor_analyse'
   ]
 
   const coordinationTools = tools.filter(tool =>

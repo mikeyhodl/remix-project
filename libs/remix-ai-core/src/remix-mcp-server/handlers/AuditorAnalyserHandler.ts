@@ -17,9 +17,7 @@ import { CompilerAbstract } from "@remix-project/remix-solidity";
 import {
   getChecklistCategories,
   filterChecklist,
-  toPromptSnippet,
-  SlitherFinding,
-  ChecklistItem
+  Category
 } from './helpers/SlitherAnalisysMapping'
 
 export interface SlitherDetector {
@@ -46,12 +44,11 @@ export interface AuditorAnalysisResult {
   success: boolean;
   fileName: string;
   analysisCompletedAt: string;
-  slitherReport: SlitherAnalysisResult;
+  slitherReport: SlitherAnalysisResult | null;
   auditChecklist: {
     totalFindings: number;
     relevantCategories: string[];
-    checklistItems: ChecklistItem[];
-    promptSnippet: string;
+    checklistItems: Category[];
   };
 }
 
@@ -149,20 +146,27 @@ export class AuditorAnalyserHandler extends BaseToolHandler {
       });
 
       if (!slitherResponse.ok) {
-        throw new Error(`Slither analysis failed: HTTP ${slitherResponse.status}`);
+        return this.createErrorResult(`Auditor analysis failed: Slither analysis request failed with status ${slitherResponse.status}`);
       }
 
-      const slitherReport: SlitherAnalysisResult = await slitherResponse.json();
+      const slitherResponseJSON = await slitherResponse.json();
 
+      console.log('Slither analysis completed:', slitherResponseJSON);
+
+      let slitherReport: SlitherAnalysisResult | null = null;
+      try {
+        slitherReport = JSON.parse(slitherResponseJSON.analysis);
+      } catch (e) {
+        console.error('Failed to parse Slither analysis:', e);
+      }
       // Process Slither results if successful
       let auditChecklist = {
         totalFindings: 0,
         relevantCategories: [] as string[],
-        checklistItems: [] as ChecklistItem[],
-        promptSnippet: ''
+        checklistItems: [] as Category[],
       };
 
-      if (slitherReport.success && slitherReport.results?.detectors) {
+      if (slitherReport && slitherReport.success && slitherReport.results?.detectors) {
         let findings = slitherReport.results.detectors;
 
         // Filter by minimum severity if specified
@@ -189,14 +193,10 @@ export class AuditorAnalyserHandler extends BaseToolHandler {
             // Filter checklist to relevant items
             const filteredItems = filterChecklist(checklistJson, categories);
             
-            // Generate prompt snippet for LLM
-            const promptSnippet = toPromptSnippet(filteredItems);
-
             auditChecklist = {
               totalFindings: findings.length,
               relevantCategories: Array.from(categories),
               checklistItems: filteredItems,
-              promptSnippet: promptSnippet
             };
           }
         } catch (checklistError) {

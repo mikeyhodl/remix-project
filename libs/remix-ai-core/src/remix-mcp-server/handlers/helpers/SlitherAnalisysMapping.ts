@@ -17,82 +17,144 @@
 const SLITHER_TO_CHECKLIST = {
 
   // ─── Reentrancy ────────────────────────────────────────────────────────────
-  "reentrancy-eth":            ["Attacker's Mindset > Reentrancy Attack", "Basics > External Call"],
+  "reentrancy-eth":            ["Attacker's Mindset > Reentrancy Attack", "External Call"],
   "reentrancy-no-eth":         ["Attacker's Mindset > Reentrancy Attack"],
   "reentrancy-benign":         ["Attacker's Mindset > Reentrancy Attack"],
   "reentrancy-events":         ["Attacker's Mindset > Reentrancy Attack"],
   "reentrancy-unlimited-gas":  ["Attacker's Mindset > Reentrancy Attack"],
+  "reentrancy-balance":        ["Attacker's Mindset > Reentrancy Attack"],
 
   // ─── Access control ────────────────────────────────────────────────────────
   "suicidal":                  ["Basics > Access Control"],
-  "unprotected-upgrade":       ["Basics > Access Control"],
+  "unprotected-upgrade":       ["Basics > Access Control", "Basics > Proxy/Upgradable"],
   "tx-origin":                 ["Basics > Access Control"],
-  "arbitrary-send-eth":        ["Basics > Access Control"],
-  "arbitrary-send-erc20":      ["Basics > Access Control"],
-  "arbitrary-send-erc20-permit": ["Basics > Access Control"],
-  "controlled-delegatecall":   ["Basics > Access Control"],
+  "arbitrary-send-eth":        ["Basics > Access Control", "Basics > Payment"],
+  "arbitrary-send-erc20":      ["Basics > Access Control", "Token > Fungible : ERC20"],
+  "arbitrary-send-erc20-permit": ["Basics > Access Control", "Token > Fungible : ERC20"],
+  "controlled-delegatecall":   ["Basics > Access Control", "Low Level"],
+  "controlled-array-length":   ["Basics > Access Control", "Basics > Array / Loop"],
   "missing-zero-check":        ["Basics > Access Control"],
-  "shadowing-state":           ["Basics > Access Control"],
-  "shadowing-local":           ["Basics > Access Control"],
-  "uninitialized-state":       ["Basics > Access Control"],
-  "uninitialized-local":       ["Basics > Access Control"],
-  "uninitialized-storage":     ["Basics > Access Control"],
+  "shadowing-state":           ["Basics > Access Control", "Heuristics"],
+  "shadowing-local":           ["Heuristics"],
+  "shadowing-abstract":        ["Basics > Inheritance", "Heuristics"],
+  "shadowing-builtin":         ["Heuristics"],
+  "uninitialized-state":       ["Basics > Access Control", "Basics > Initialization"],
+  "uninitialized-local":       ["Basics > Initialization"],
+  "uninitialized-storage":     ["Basics > Access Control", "Basics > Initialization"],
+  "uninitialized-fptr-cst":    ["Basics > Initialization", "Basics > Function"],
   "protected-vars":            ["Basics > Access Control"],
 
-  // ─── Arithmetic ────────────────────────────────────────────────────────────
-  "divide-before-multiply":    ["Basics > Arithmetic"],
-  "tautology":                 ["Basics > Arithmetic"],
-  "incorrect-equality":        ["Basics > Arithmetic"],
-  "integer-overflow":          ["Basics > Arithmetic"],
-  "variable-scope":            ["Basics > Arithmetic"],
-  "abiencoderv2-array":        ["Basics > Arithmetic"],
-  "storage-array":             ["Basics > Arithmetic"],
-  "msg-value-loop":            ["Basics > Arithmetic", "Attacker's Mindset > Denial-Of-Service(DOS) Attack"],
+  // ─── Math / Arithmetic ─────────────────────────────────────────────────────
+  "divide-before-multiply":    ["Basics > Math"],
+  "tautology":                 ["Basics > Math", "Heuristics"],
+  "tautological-compare":      ["Basics > Math", "Heuristics"],
+  "incorrect-equality":        ["Basics > Math"],
+  "integer-overflow":          ["Basics > Math"],
+  "variable-scope":            ["Basics > Function", "Heuristics"],
+  "abiencoderv2-array":        ["Basics > Type", "Basics > Version Issues"],
+  "storage-array":             ["Basics > Type", "Basics > Version Issues"],
+  "msg-value-loop":            ["Basics > Payment", "Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Basics > Array / Loop"],
+  "array-by-reference":        ["Basics > Array / Loop", "Basics > Type"],
+  "encode-packed-collision":   ["Hash / Merkle Tree", "Basics > Type"],
 
   // ─── External calls ────────────────────────────────────────────────────────
-  "unchecked-lowlevel":        ["Basics > External Call"],
-  "unchecked-send":            ["Basics > External Call"],
-  "unchecked-transfer":        ["Basics > External Call"],
-  "low-level-calls":           ["Basics > External Call"],
+  "unchecked-lowlevel":        ["External Call", "Low Level"],
+  "unchecked-send":            ["External Call", "Basics > Payment"],
+  "unchecked-transfer":        ["External Call", "Token > Fungible : ERC20"],
+  "low-level-calls":           ["External Call", "Low Level"],
+  "unused-return":             ["External Call", "Heuristics"],
 
   // ─── Denial of service ─────────────────────────────────────────────────────
-  "calls-loop":                ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Basics > Array / Loop"],
-  "delegatecall-loop":         ["Attacker's Mindset > Denial-Of-Service(DOS) Attack"],
-  "locked-ether":              ["Attacker's Mindset > Denial-Of-Service(DOS) Attack"],
-  "block-other-senders":       ["Attacker's Mindset > Denial-Of-Service(DOS) Attack"],
+  "calls-loop":                ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Basics > Array / Loop", "External Call"],
+  "delegatecall-loop":         ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Low Level"],
+  "locked-ether":              ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Basics > Payment"],
+  "return-bomb":               ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "External Call"],
+  "costly-loop":               ["Attacker's Mindset > Denial-Of-Service(DOS) Attack", "Basics > Array / Loop"],
 
   // ─── Miner / timestamp manipulation ───────────────────────────────────────
   "weak-prng":                 ["Attacker's Mindset > Miner Attack"],
   "timestamp":                 ["Attacker's Mindset > Miner Attack"],
-  "incorrect-exp":             ["Attacker's Mindset > Miner Attack"],
+  "incorrect-exp":             ["Basics > Math", "Heuristics"],
 
   // ─── Front-running ─────────────────────────────────────────────────────────
   "race-condition":            ["Attacker's Mindset > Front-running Attack"],
 
   // ─── Price manipulation ────────────────────────────────────────────────────
-  "price-manipulation":        ["Attacker's Mindset > Price Manipulation Attack"],
+  "price-manipulation":        ["Attacker's Mindset > Price Manipulation Attack", "Defi > Oracle"],
 
   // ─── Events ────────────────────────────────────────────────────────────────
   "events-maths":              ["Basics > Event"],
   "events-access":             ["Basics > Event", "Basics > Access Control"],
   "missing-events-arithmetic": ["Basics > Event"],
   "missing-events-access":     ["Basics > Event", "Basics > Access Control"],
+  "erc20-indexed":             ["Basics > Event", "Token > Fungible : ERC20"],
+  "unindexed-event-address":   ["Basics > Event"],
 
   // ─── Array / loop ──────────────────────────────────────────────────────────
-  "incorrect-shift":           ["Basics > Array / Loop"],
-  "write-after-write":         ["Basics > Array / Loop"],
+  "incorrect-shift":           ["Basics > Array / Loop", "Low Level"],
+  "write-after-write":         ["Basics > Array / Loop", "Heuristics"],
+  "cache-array-length":        ["Basics > Array / Loop", "Heuristics"],
 
-  // ─── Contract design ───────────────────────────────────────────────────────
-  "incorrect-modifier":        ["Basics > Code Quality"],
-  "dead-code":                 ["Basics > Code Quality"],
-  "unused-return":             ["Basics > External Call"],
-  "boolean-cst":               ["Basics > Code Quality"],
-  "redundant-statements":      ["Basics > Code Quality"],
-  "constable-states":          ["Basics > Code Quality"],
-  "immutable-states":          ["Basics > Code Quality"],
-  "similar-names":             ["Basics > Code Quality"],
-  "too-many-digits":           ["Basics > Code Quality"],
-  "cyclomatic-complexity":     ["Basics > Code Quality"],
+  // ─── Function / Contract design ───────────────────────────────────────────
+  "incorrect-modifier":        ["Basics > Function"],
+  "dead-code":                 ["Heuristics"],
+  "boolean-cst":               ["Heuristics"],
+  "redundant-statements":      ["Heuristics"],
+  "constable-states":          ["Heuristics"],
+  "immutable-states":          ["Heuristics"],
+  "external-function":         ["Basics > Function", "Heuristics"],
+  "var-read-using-this":       ["Heuristics"],
+  "similar-names":             ["Heuristics"],
+  "too-many-digits":           ["Heuristics"],
+  "cyclomatic-complexity":     ["Heuristics"],
+  "multiple-constructors":     ["Basics > Function", "Basics > Version Issues"],
+  "name-reused":               ["Heuristics"],
+  "void-cst":                  ["Basics > Function"],
+  "reused-constructor":        ["Basics > Inheritance"],
+  "boolean-equal":             ["Heuristics"],
+  "incorrect-unary":           ["Heuristics"],
+  "assembly":                  ["Low Level"],
+  "assert-state-change":       ["Basics > Function"],
+  "deprecated-standards":      ["Basics > Version Issues"],
+  "function-init-state":       ["Basics > Function", "Basics > Initialization"],
+  "incorrect-using-for":       ["Basics > Function"],
+  "missing-inheritance":       ["Basics > Inheritance"],
+  "naming-convention":         ["Heuristics"],
+  "pragma":                    ["Basics > Version Issues"],
+  "solc-version":              ["Basics > Version Issues"],
+  "unimplemented-functions":   ["Basics > Function", "Basics > Inheritance"],
+  "unused-state":              ["Heuristics"],
+
+  // ─── Interface / Standards ─────────────────────────────────────────────────
+  "erc20-interface":           ["Token > Fungible : ERC20"],
+  "erc721-interface":          ["Token > Non-fungible : ERC721/1155"],
+  "domain-separator-collision": ["Token > Fungible : ERC20", "Signature"],
+  "enum-conversion":           ["Basics > Type", "Basics > Version Issues"],
+
+  // ─── Assembly / Low-level ──────────────────────────────────────────────────
+  "return-leave":              ["Low Level"],
+  "incorrect-return":          ["Low Level"],
+  "constant-function-asm":     ["Low Level", "Basics > Function", "Basics > Version Issues"],
+  "constant-function-state":   ["Basics > Function", "Basics > Version Issues"],
+
+  // ─── Data structures ───────────────────────────────────────────────────────
+  "mapping-deletion":          ["Basics > Map"],
+  "public-mappings-nested":    ["Basics > Map", "Basics > Version Issues"],
+
+  // ─── Security / Encoding ───────────────────────────────────────────────────
+  "rtlo":                      ["Heuristics"],
+
+  // ─── Oracle / External Data ────────────────────────────────────────────────
+  "pyth-deprecated-functions":    ["Defi > Oracle", "Integrations > Chainlink"],
+  "pyth-unchecked-confidence":    ["Defi > Oracle"],
+  "pyth-unchecked-publishtime":   ["Defi > Oracle"],
+  "chronicle-unchecked-price":    ["Defi > Oracle"],
+  "chainlink-feed-registry":      ["Defi > Oracle", "Integrations > Chainlink"],
+
+  // ─── Platform-specific ─────────────────────────────────────────────────────
+  "optimism-deprecation":         ["Basics > Version Issues", "Multi-chain/Cross-chain"],
+  "out-of-order-retryable":       ["Multi-chain/Cross-chain"],
+  "gelato-unprotected-randomness": ["Basics > Access Control"],
 
 };
 
@@ -118,6 +180,11 @@ export function getChecklistCategories(findings: SlitherFinding[]): Set<string> 
   return categories;
 }
 
+export interface Category {
+  category: string;
+  data: Category[] | ChecklistItem[];
+  description: string;
+}
 
 export interface ChecklistItem {
   id: string;
@@ -132,44 +199,21 @@ export interface ChecklistItem {
  * Filters the full checklist.json down to only the entries relevant
  * to the triggered categories.
  */
-export function filterChecklist(checklistJson: any[], categories: Set<string>): ChecklistItem[] {
-  const results: ChecklistItem[] = [];
+export function filterChecklist(checklistJson: any[], categories: Set<string>): Category[] {
+  const results: Category[] = [];
 
   for (const topLevel of checklistJson) {
+    if (categories.has(topLevel.category)) {
+      results.push(topLevel);
+    }
     for (const subCategory of topLevel.data) {
       const path = `${topLevel.category} > ${subCategory.category}`;
       if (!categories.has(path)) continue;
-
-      for (const item of subCategory.data) {
-        results.push({
-          id:           item.id,
-          question:     item.question,
-          description:  item.description,
-          remediation:  item.remediation,
-          references:   item.references,
-          categoryPath: path,
-        });
-      }
+      results.push(subCategory)
     }
   }
-
   return results;
 }
-
-
-/**
- * Serialises the filtered checklist items into a compact string
- * suitable for injection into an LLM system prompt.
- * Keeps token usage low — omits references, trims whitespace.
- */
-export function toPromptSnippet(items: ChecklistItem[]): string {
-  return items.map(item =>
-    `[${item.id}] ${item.question}\n` +
-    `Description: ${item.description}\n` +
-    `Remediation: ${item.remediation}`
-  ).join("\n\n");
-}
-
 
 // ─── Example usage ────────────────────────────────────────────────────────────
 //
@@ -187,8 +231,3 @@ export function toPromptSnippet(items: ChecklistItem[]): string {
 // 4. Filter and build prompt context:
 //    const categories  = getChecklistCategories(findings);
 //    const items       = filterChecklist(checklistJson, categories);
-//    const promptChunk = toPromptSnippet(items);
-//
-// 5. Call LLM with:
-//    system: `You are a smart contract auditor. Known vulnerabilities relevant to this contract:\n\n${promptChunk}`
-//    user:   `<slither output>\n\n<contract source>`
