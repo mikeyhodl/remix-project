@@ -9,6 +9,7 @@ import {
   selectFeatureEnabled,
   selectCooldownRemaining,
   selectCooldownDisplay,
+  selectChatNotice,
   selectDefaultModel,
   selectModelForTask,
   selectTaskParam,
@@ -16,6 +17,7 @@ import {
   type AssistantSnapshot,
   type AIError,
   type AIModel,
+  type ChatNotice,
   type CooldownDisplay,
   type PlanManagerHandoff
 } from '@remix/remix-ai-core'
@@ -61,6 +63,8 @@ const profile = {
     'hasFeature',
     'getCooldownRemaining',
     'getCooldownDisplay',
+    'getChatNotice',
+    'dismissChatNotice',
     'reportRequestStarted',
     'reportStreamStarted',
     'reportRequestSucceeded',
@@ -86,7 +90,6 @@ export class AssistantStatePlugin extends Plugin {
   // call before onActivation completes.
   private actor = createAssistantActor()
   private cachedSnapshot: AssistantSnapshot
-  private cooldownTimer: ReturnType<typeof setInterval> | null = null
   // Single in-flight permissions fetch — auth events can fire in bursts.
   private permissionsRefreshing: Promise<void> | null = null
   private instanceId: number = ++__assistantStateInstanceCounter
@@ -101,7 +104,6 @@ export class AssistantStatePlugin extends Plugin {
     // re-render. Snapshot is recomputed lazily via getSnapshot().
     this.actor.subscribe(() => {
       this.cachedSnapshot = snapshotFromActor(this.actor)
-      this.maintainCooldownTicker()
       this.emit('stateChanged', this.cachedSnapshot)
     })
   }
@@ -144,12 +146,8 @@ export class AssistantStatePlugin extends Plugin {
     // the actor, every subsequent dispatch silently no-ops with the
     // "sent to stopped actor" warning and the UI never reacts to login.
     //
-    // The actor lives as long as the plugin instance does — there is
-    // nothing to clean up other than the cooldown timer.
-    if (this.cooldownTimer) {
-      clearInterval(this.cooldownTimer)
-      this.cooldownTimer = null
-    }
+    // The actor lives as long as the plugin instance does — nothing
+    // to clean up here.
   }
 
   // ─── Read API ─────────────────────────────────────────────────────
@@ -237,6 +235,23 @@ export class AssistantStatePlugin extends Plugin {
   }
 
   /**
+   * In-chat notice for any error that ISN'T already covered by the
+   * cooldown banner or plan-manager hand-off. PROVIDER_DENIED, server
+   * errors, validation errors, unknown codes — returns a typed
+   * `{ severity, code, title, message, actionable, allowedProviders? }`.
+   * Returns null when no notice should be shown (success, cooldown
+   * already showing, plan-manager already opening).
+   */
+  getChatNotice(): ChatNotice | null {
+    return selectChatNotice(this.cachedSnapshot)
+  }
+
+  /** Clear the current chat notice. Cooldown / gate state untouched. */
+  dismissChatNotice(): void {
+    this.dispatch({ type: 'NOTICE_DISMISSED' })
+  }
+
+  /**
    * Gate helper. Returns true if the caller may proceed; returns false
    * AND opens the plan manager with the right reason if not.
    *
@@ -248,10 +263,12 @@ export class AssistantStatePlugin extends Plugin {
     const snap = this.cachedSnapshot
     if (selectCanAskAI(snap)) return true
 
-    // Cooldown-only block (rate-limit / blocked) → DO NOT open the plan
-    // manager. The chat UI shows a countdown banner; the user waits or
-    // contacts support. Plan upgrades don't lift rate-limits.
-    if (snap.cooldown !== 'none' && !snap.gateReason) return false
+    // Cooldown-only block (rate-limit / blocked) → still allow the call.
+    // The banner is informational; if the user wants to retry while
+    // rate-limited, that's their choice and the backend will reject it
+    // with a fresh error envelope. Plan upgrades don't lift rate-limits,
+    // so there's nothing to gate.
+    if (snap.cooldown !== 'none' && !snap.gateReason) return true
 
     // Decide the hand-off reason. If the snapshot already carries a
     // gate, use it. If there's no gate but cooldown is active, we don't
@@ -322,21 +339,5 @@ export class AssistantStatePlugin extends Plugin {
       }
     })()
     return this.permissionsRefreshing
-  }
-
-  /**
-   * The 1-second ticker keeps `selectCooldownRemaining` re-evaluating so
-   * countdown chips re-render. Self-stops once cooldown clears.
-   */
-  private maintainCooldownTicker(): void {
-    const needsTicker = this.cachedSnapshot.cooldown === 'rate-limited'
-    if (needsTicker && !this.cooldownTimer) {
-      this.cooldownTimer = setInterval(() => {
-        this.actor.send({ type: 'COOLDOWN_TICK' })
-      }, 1000)
-    } else if (!needsTicker && this.cooldownTimer) {
-      clearInterval(this.cooldownTimer)
-      this.cooldownTimer = null
-    }
   }
 }

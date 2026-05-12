@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException } from '@remix/remix-ai-core'
 import { ToolApprovalRequest } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -22,6 +22,7 @@ import { ChatHistorySidebar } from './chatHistorySidebar'
 import AiChatPromptAreaForHistory from './aiChatPromptAreaForHistory'
 import AiChatPromptArea from './aiChatPromptArea'
 import { CooldownBanner } from './cooldownBanner'
+import { ChatNoticeStrip, type ChatNoticeDisplay } from './chatNoticeStrip'
 import { useModelAccess } from '../hooks/useModelAccess'
 import { ToolApprovalModal } from './ToolApprovalModal'
 
@@ -133,10 +134,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   if (props.isInitializing) wasInitializingRef.current = true
 
   // Cooldown UI state — driven by the assistantState plugin's `stateChanged`
-  // event. When non-null, we render a banner above the prompt area and
-  // disable the Send button. The plugin already runs a 1s ticker that
-  // re-emits stateChanged so the countdown re-renders without local timers.
+  // event. When non-null, we render a banner above the prompt area. The
+  // banner is informational only and the user can dismiss it; we remember
+  // the dismissed key (code+expiresAt) in a ref so re-emits don't bring it
+  // back until a new cooldown starts.
   const [cooldownDisplay, setCooldownDisplay] = useState<any | null>(null)
+  const dismissedCooldownKeyRef = useRef<string | null>(null)
+  // Chat-notice state — covers every AIError that ISN'T a cooldown and
+  // ISN'T a plan-manager hand-off (PROVIDER_DENIED, server errors,
+  // validation, unknown codes). Non-blocking: input stays editable.
+  const [chatNotice, setChatNotice] = useState<ChatNoticeDisplay | null>(null)
 
   // Audio transcription hook
   const {
@@ -622,7 +629,24 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const refreshCooldown = async () => {
       try {
         const display = await props.plugin.call('assistantState' as any, 'getCooldownDisplay')
+        if (display) {
+          const key = `${display.code}:${display.expiresAt ?? ''}`
+          if (dismissedCooldownKeyRef.current === key) {
+            return // user dismissed this exact cooldown — don't bring it back
+          }
+        } else {
+          dismissedCooldownKeyRef.current = null
+        }
         setCooldownDisplay(display)
+      } catch { /* assistantState not active — ignore */ }
+    }
+    // Same pattern as cooldown: ask the plugin for the typed notice for
+    // any pending error that's NOT already covered by the cooldown banner
+    // or plan-manager hand-off. Re-ran on every stateChanged.
+    const refreshChatNotice = async () => {
+      try {
+        const notice = await props.plugin.call('assistantState' as any, 'getChatNotice')
+        setChatNotice(notice ?? null)
       } catch { /* assistantState not active — ignore */ }
     }
     // Refresh the model catalogue from the assistantState plugin. Same
@@ -659,6 +683,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       void refreshCooldown()
       void refreshModels()
       void refreshFeatures()
+      void refreshChatNotice()
     }
     props.plugin.on('assistantState' as any, 'stateChanged', onAssistantStateChange)
     // Initial probe — covers the case where the panel mounts after
@@ -666,6 +691,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     void refreshCooldown()
     void refreshModels()
     void refreshFeatures()
+    void refreshChatNotice()
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
@@ -1492,23 +1518,75 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           return
         }
 
-        // If the backend returned a structured AIError envelope, the
-        // assistant-state plugin has already reacted (cooldown banner,
-        // upgrade prompt, etc.). Don't double up with a generic error
-        // bubble in the chat — the banner is the user-visible signal.
-        const envelopeCode = error?.response?.data?.error?.code
-          ?? error?.data?.error?.code
-        if (envelopeCode) {
+        // Pull the structured AIError envelope (HTTP body, SSE error frame,
+        // or stamped by withAssistantGate / DeepAgent.handleError). The
+        // assistant-state plugin has already routed it to the cooldown
+        // banner / plan-manager / chat-notice strip as appropriate.
+        let envelope = error?.aiError ?? error?.response?.data?.error ?? error?.data?.error
+        // Last-ditch: re-parse the error here. Different SDKs throw
+        // different shapes (Anthropic gives clean .message; Mistral SDK
+        // throws "API error occurred: Status 429 ... Body: {json}";
+        // langchain wraps as "<status> {json}"). aiErrorFromException
+        // knows about all of them — running it locally guarantees we
+        // never dump raw JSON in the chat bubble even if upstream
+        // stamping was lost (frozen error object, missed code path…).
+        if (!envelope?.code) {
+          try {
+            const parsed = aiErrorFromException(error)
+            if (parsed && parsed.code && parsed.code !== 'INTERNAL_ERROR') {
+              envelope = parsed
+            } else if (parsed && parsed.code === 'INTERNAL_ERROR' && parsed.message && parsed.message !== (error?.message ?? '')) {
+              // Scanner extracted a JSON body's `message` field but no
+              // recognised code — still a cleaner message than the raw
+              // SDK string, so use it.
+              envelope = parsed
+            }
+          } catch { /* ignore */ }
+        }
+        const envelopeCode: string | undefined = envelope?.code
+        const envelopeMsg: string | undefined = envelope?.message
+
+        // The streaming bubble may contain pollution: model SSE error
+        // frames, raw HTTP bodies that langchain emits as `on_chat_model_stream`
+        // events, or partial output that was invalidated by the error.
+        // If we have a structured envelope, replace the bubble's content
+        // with a single-line trace so the user knows WHICH prompt failed
+        // without seeing the raw JSON. If there's no envelope, we keep
+        // whatever partial content was streamed (it's the only signal).
+        const streamingId = streamingAssistantIdRef.current
+        if (streamingId && envelopeCode) {
+          setMessages(prev => prev.map(m =>
+            m.id === streamingId
+              ? { ...m, content: `${envelopeCode}: ${envelopeMsg ?? 'AI service error'}`, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined }
+              : m
+          ))
+          streamingAssistantIdRef.current = null
           return
         }
 
-        // Add error message to chat history
+        // No envelope — likely a network failure, abort, or unknown shape.
+        // The notice strip won't render (assistantState classifies it as
+        // INTERNAL_ERROR but the strip suppresses generic messages without
+        // a real backend code). Surface a single chat bubble so the user
+        // never sees a silent failure.
+        const fallbackText = `Error: ${error?.message ?? 'Something went wrong'}`
+        if (streamingId) {
+          setMessages(prev => prev.map(m =>
+            m.id === streamingId
+              ? (m.content && m.content.trim().length > 0
+                ? { ...m, content: m.content + `\n\n${fallbackText}`, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined }
+                : { ...m, content: fallbackText, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined })
+              : m
+          ))
+          streamingAssistantIdRef.current = null
+          return
+        }
         setMessages(prev => [
           ...prev,
           {
             id: crypto.randomUUID(),
             role: 'assistant',
-            content: `Error: ${error.message}`,
+            content: fallbackText,
             timestamp: Date.now(),
             sentiment: 'none'
           }
@@ -1519,14 +1597,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   )
 
   const handleSend = useCallback(async () => {
-    // Hard gate: cooldown active → ignore the send. The banner is
-    // already telling the user what's happening; the underlying
-    // requireReady() in sendPrompt would also block, but doing the
-    // check here also keeps the input from clearing.
-    if (cooldownDisplay) return
+    // We do NOT hard-gate on cooldownDisplay — the banner is informational
+    // only. If the user wants to retry while rate-limited, that's their
+    // call; the backend will reject it and we surface the error normally.
     await sendPrompt(input)
     setInput('')
-  }, [input, sendPrompt, cooldownDisplay])
+  }, [input, sendPrompt])
 
   useEffect(() => {
     const handleMCPToggle = async () => {
@@ -2144,7 +2220,24 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           )}
         </div>
 
-        {cooldownDisplay && <CooldownBanner display={cooldownDisplay} />}
+        {cooldownDisplay && (
+          <CooldownBanner
+            display={cooldownDisplay}
+            onDismiss={() => {
+              dismissedCooldownKeyRef.current = `${cooldownDisplay.code}:${cooldownDisplay.expiresAt ?? ''}`
+              setCooldownDisplay(null)
+            }}
+          />
+        )}
+        {chatNotice && (
+          <ChatNoticeStrip
+            notice={chatNotice}
+            onDismiss={() => {
+              setChatNotice(null)
+              try { void props.plugin.call('assistantState' as any, 'dismissChatNotice') } catch { /* noop */ }
+            }}
+          />
+        )}
         {
           messages.length > 0 ? (
             <AiChatPromptAreaForHistory

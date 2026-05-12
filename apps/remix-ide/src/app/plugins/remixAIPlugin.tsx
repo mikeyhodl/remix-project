@@ -332,9 +332,31 @@ export class RemixAIPlugin extends Plugin {
       return result
     } catch (e: any) {
       const status = e?.response?.status ?? e?.status ?? 0
-      const body = e?.response?.data ?? e?.data ?? e
-      const aiError = body ? parseAIErrorEnvelope(body, status) : aiErrorFromException(e)
+      const responseBody = e?.response?.data ?? e?.data
+      // Only run parseAIErrorEnvelope on an actual response body. If we
+      // don't have one (e.g. plain Error from langchain with the body
+      // stringified into .message as "403 {json}"), aiErrorFromException
+      // is the right tool — it knows how to peel that wrapper apart.
+      const aiError = responseBody && typeof responseBody === 'object'
+        ? parseAIErrorEnvelope(responseBody, status)
+        : aiErrorFromException(e)
       try { await this.call('assistantState' as any, 'reportError', aiError) } catch { /* noop */ }
+      // Stamp the parsed envelope on the thrown error so the UI catch
+      // block (and any other consumer) doesn't need to re-parse the raw
+      // response. Critical for inferencer paths that throw plain Errors
+      // (MCP tool failures, SSE error frames, network down) — without
+      // this the UI saw `error.message` and showed nothing useful.
+      try {
+        if (e && typeof e === 'object') {
+          ;(e as any).aiError = aiError
+          // Also synthesise the .response.data.error shape that legacy
+          // catch sites look for, so they don't accidentally swallow
+          // the error as "no envelope, ignore".
+          if (!(e as any).response) (e as any).response = { status: aiError.status, data: { error: aiError } }
+          else if (!(e as any).response.data) (e as any).response.data = { error: aiError }
+          else if (!(e as any).response.data.error) (e as any).response.data.error = aiError
+        }
+      } catch { /* defensive — never let stamping crash error propagation */ }
       throw e
     }
   }
@@ -376,9 +398,17 @@ export class RemixAIPlugin extends Plugin {
       let newPrompt = await this.codeExpAgent.chatCommand(prompt)
       // add workspace context
       newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
-      if (this.deepAgentEnabled && this.deepAgentInferencer) {
+      // Single source of truth for which backend handled this turn.
+      // `/solcoder` = simple chat, `/langchain` = DeepAgent (multi-POST),
+      // `mcp` = MCP-enriched solcoder. Without this it's nearly impossible
+      // to tell from DevTools which path produced any given error.
+      const route = (this.deepAgentEnabled && this.deepAgentInferencer)
+        ? 'deepagent'
+        : (this.mcpEnabled && this.mcpInferencer ? 'mcp' : 'remote')
+      console.log(`[answer] route=${route} provider=${this.selectedModel?.provider ?? '?'} model=${this.selectedModel?.id ?? '?'}`)
+      if (route === 'deepagent') {
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
-      } else if (this.mcpEnabled && this.mcpInferencer){
+      } else if (route === 'mcp'){
         return await this.mcpInferencer.answer(prompt, params)
       } else {
         return await this.remoteInferencer.answer(newPrompt, params)

@@ -164,6 +164,12 @@ export function createModelInstance(
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
+      // Disable langchain's automatic retry. Otherwise a single user
+      // turn produces 5-6 silent retries on 429 (or any 5xx), each
+      // doubling the delay before the cooldown banner can show. We
+      // want the FIRST envelope error to surface immediately so
+      // assistantState can gate the next attempt.
+      maxRetries: 0,
       serverURL: `${endpointUrls.langchain}/mistral`,
       httpClient: createAuthedMistralHttpClient()
     }), `mistralai/${modelId}`)
@@ -178,6 +184,10 @@ export function createModelInstance(
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
+      // See note in mistralai branch — langchain auto-retry hides
+      // 429s behind exponential backoff and produces a cluster of
+      // red requests in DevTools before the user sees anything.
+      maxRetries: 0,
       clientOptions: {
         baseURL: endpointUrls.langchain,
         fetch: authedFetch

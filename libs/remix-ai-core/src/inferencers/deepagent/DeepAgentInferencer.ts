@@ -19,6 +19,7 @@ import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
 import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection } from '../../types/deepagent'
 import { ToolRegistry } from '../../remix-mcp-server/types/mcpTools'
 import { classifyApiError, getErrorMessage } from './ApiErrorHandler'
+import { aiErrorFromException } from '../../state/ai-error'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
@@ -345,35 +346,59 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const messages = [
         { role: 'user', content: enrichedContext ? `Context:\n${enrichedContext}\n\nQuestion: ${prompt}` : prompt }
       ]
-      const responsePromise = this.runAgent(messages, params)
 
-      responsePromise.then(response => {
+      // We MUST await runAgent so withAssistantGate sees rejections (and
+      // gets the AIError envelope routed to assistantState → cooldown
+      // banner / plan-manager / notice strip). Previous fire-and-forget
+      // pattern emitted onApiError + onAgentError directly, which painted
+      // the chat bubble twice and bypassed every gate.
+      try {
+        const response = await this.runAgent(messages, params)
         this.event.emit('onStreamComplete', response)
         this.event.emit('onInferenceDone')
-      }).catch(error => {
+        return response
+      } catch (error: any) {
+        this.event.emit('onInferenceDone')
         if (error?.name === 'AbortError' || error?.message?.includes('cancelled')) {
           console.log('[DeepAgentInferencer] Answer request was cancelled')
-        } else {
-          console.error('[DeepAgentInferencer] Answer error:', error)
-          const { type: errorType, retryable, retryAfter } = classifyApiError(error)
-          const userMessage = getErrorMessage(errorType, error, retryAfter)
-
-          this.event.emit('onApiError', {
-            type: errorType,
-            message: userMessage,
-            retryable,
-            retryAfter,
-            originalError: error?.message,
-            timestamp: Date.now()
-          })
-
-          // Emit error to update todo list with failed status
-          this.emitErrorToTodos(new Error(userMessage))
+          return ''
         }
-        this.event.emit('onInferenceDone')
-      })
+        console.error('[DeepAgentInferencer] Answer error:', error)
 
-      return ''
+        // If the error carries a structured AIError envelope (or one
+        // can be parsed out of it), stamp it on and propagate so
+        // withAssistantGate can route through assistantState. NEVER emit
+        // onApiError/onAgentError for envelope errors — those are owned
+        // by the cooldown banner / plan-manager / notice strip.
+        const envelope = aiErrorFromException(error)
+        if (envelope && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0) {
+          try {
+            error.aiError = envelope
+            if (!error.response) {
+              error.response = { status: envelope.status, data: { error: envelope } }
+            }
+            if (typeof error.status !== 'number') error.status = envelope.status
+            if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+              error.message = envelope.message
+            }
+          } catch { /* ignore */ }
+          throw error
+        }
+
+        // Truly unstructured error — fall through to legacy UI handlers.
+        const { type: errorType, retryable, retryAfter } = classifyApiError(error)
+        const userMessage = getErrorMessage(errorType, error, retryAfter)
+        this.event.emit('onApiError', {
+          type: errorType,
+          message: userMessage,
+          retryable,
+          retryAfter,
+          originalError: error?.message,
+          timestamp: Date.now()
+        })
+        this.emitErrorToTodos(new Error(userMessage))
+        throw error
+      }
     } catch (error) {
       this.event.emit('onInferenceDone')
       console.error(`[DeepAgentInferencer] Error in answer method:`, error)
@@ -658,6 +683,25 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       }
 
+      // If the error carries a backend AIError envelope, propagate it
+      // unchanged so withAssistantGate / assistantState can route it
+      // (notice strip + plan-manager hand-off). DO NOT emit onApiError —
+      // that would cause the UI to dump the raw body into the chat bubble.
+      const envelope = aiErrorFromException(error)
+      if (envelope && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0) {
+        try {
+          error.aiError = envelope
+          if (!error.response) {
+            error.response = { status: envelope.status, data: { error: envelope } }
+          }
+          if (typeof error.status !== 'number') error.status = envelope.status
+          if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+            error.message = envelope.message
+          }
+        } catch { /* ignore */ }
+        throw error
+      }
+
       // Classify and handle API errors
       const { type: errorType, retryable, retryAfter } = classifyApiError(error)
       const userMessage = getErrorMessage(errorType, error, retryAfter)
@@ -769,10 +813,38 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   /**
-   * Handle errors with fallback strategy
+   * Handle errors with fallback strategy.
+   *
+   * IMPORTANT: when the underlying error is a backend AIError envelope
+   * (FEATURE_DENIED / PROVIDER_DENIED / EMAIL_NOT_VERIFIED / RATE_LIMITED /
+   * IP_BLOCKED / ABUSE_BLOCKED / BAD_REQUEST / ...), we MUST NOT
+   *   - emit `onApiError` (UI handler would dump the raw body into the chat bubble), or
+   *   - fall back to RemoteInferencer (it will hit the same envelope error again).
+   * Instead we re-throw the error with the envelope stamped on it so
+   * `withAssistantGate` can route it through assistantState and the
+   * notice strip / plan-manager hand-off render the right thing.
    */
   private async handleError(error: any, method: string, prompt: string, params: IParams): Promise<string> {
     console.error(`[DeepAgentInferencer] Error in ${method}:`, error)
+
+    // Try to extract a structured AIError envelope first.
+    const envelope = aiErrorFromException(error)
+    const isBackendEnvelope = envelope && envelope.code && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0
+    if (isBackendEnvelope) {
+      try {
+        error.aiError = envelope
+        if (!error.response) {
+          error.response = { status: envelope.status, data: { error: envelope } }
+        }
+        if (typeof error.status !== 'number') error.status = envelope.status
+        // Replace the noisy "<status> {body}" message with the envelope's message.
+        // Also matches Mistral SDK's "API error occurred: Status NNN ... Body: {json}" shape.
+        if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+          error.message = envelope.message
+        }
+      } catch { /* read-only error object — ignore */ }
+      throw error
+    }
 
     const { type: errorType, retryable, retryAfter } = classifyApiError(error)
     const userMessage = getErrorMessage(errorType, error, retryAfter)
@@ -813,6 +885,21 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       } catch (fallbackError: any) {
         console.error('[DeepAgentInferencer] Fallback also failed:', fallbackError)
+        // If the fallback failed with a backend envelope, propagate it so the
+        // gate can react instead of dumping the raw body into the chat.
+        const fbEnvelope = aiErrorFromException(fallbackError)
+        if (fbEnvelope && fbEnvelope.code !== 'INTERNAL_ERROR' && fbEnvelope.status > 0) {
+          try {
+            fallbackError.aiError = fbEnvelope
+            if (!fallbackError.response) {
+              fallbackError.response = { status: fbEnvelope.status, data: { error: fbEnvelope } }
+            }
+            if (typeof fallbackError.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(fallbackError.message.trim())) {
+              fallbackError.message = fbEnvelope.message
+            }
+          } catch { /* ignore */ }
+          throw fallbackError
+        }
         const fallbackClassification = classifyApiError(fallbackError)
         const fallbackMessage = getErrorMessage(fallbackClassification.type, fallbackError, fallbackClassification.retryAfter)
         return `${fallbackMessage}`

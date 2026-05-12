@@ -167,6 +167,10 @@ export type AssistantEvent =
   | { type: 'COOLDOWN_CLEARED' }
   // operator/dev resets
   | { type: 'RESET_SESSION' }
+  // Caller (UI) acknowledged the chat notice for the current `lastError`
+  // — clears `lastError` so `selectChatNotice` returns null. Does NOT
+  // touch cooldown / gate state, those are independently managed.
+  | { type: 'NOTICE_DISMISSED' }
 
 // ─── Error → state mapping ──────────────────────────────────────────
 //
@@ -186,9 +190,17 @@ const COOLDOWN_RATE_LIMITED_CODES = new Set(['RATE_LIMITED', 'RATE_LIMITED_GLOBA
  *  We treat any RATE_LIMITED carrying `details.feature` as quota-exhausted
  *  IFF it has no `retryAfter`/`resetAt` (i.e. it's not a rolling window).
  *  RATE_LIMITED_GLOBAL never opens the plan manager. */
+/** Backend uses `required_feature` (snake_case); legacy callers send `feature`. */
+function extractFeatureName(err: AIError): string | null {
+  const d = err.details as Record<string, unknown> | undefined
+  if (!d) return null
+  const f = (d.feature ?? d.required_feature ?? d.requiredFeature)
+  return typeof f === 'string' ? f : null
+}
+
 function isQuotaExhausted(err: AIError): boolean {
   if (err.code !== 'RATE_LIMITED') return false
-  if (!err.details?.feature) return false
+  if (!extractFeatureName(err)) return false
   return !err.retryAfter && !err.resetAt
 }
 
@@ -303,7 +315,7 @@ export const assistantMachine = setup({
         // Per-feature quota exhaustion (no retryAfter) → also gate for upgrade.
         if (isQuotaExhausted(err)) {
           context.gateReason = 'quota-exhausted'
-          context.requiredFeature = err.details?.feature ?? null
+          context.requiredFeature = extractFeatureName(err)
         }
         return
       }
@@ -315,7 +327,7 @@ export const assistantMachine = setup({
         return
       }
       if (err.code === 'FEATURE_DENIED') {
-        const feature = err.details?.feature
+        const feature = extractFeatureName(err)
         if (feature === 'ai:solcoder') {
           // assistant fully off — no upgrade prompt makes sense, but the plan
           // manager can still show sign-in for anonymous users.
@@ -342,6 +354,13 @@ export const assistantMachine = setup({
       context.cooldownExpiresAt = null
     },
     resetSession: ({ context }) => {
+      context.lastError = null
+      context.allowedProviders = null
+    },
+    dismissNotice: ({ context }) => {
+      // The chat notice is purely a `lastError`-driven view. Clear the
+      // error so the strip disappears — cooldown / gate state remain
+      // intact (they have their own clear paths).
       context.lastError = null
       context.allowedProviders = null
     }
@@ -415,7 +434,8 @@ export const assistantMachine = setup({
     session: {
       initial: 'idle',
       on: {
-        RESET_SESSION: { target: '.idle', actions: ['resetSession'] }
+        RESET_SESSION: { target: '.idle', actions: ['resetSession'] },
+        NOTICE_DISMISSED: { actions: ['dismissNotice'] }
       },
       states: {
         idle: {
@@ -632,7 +652,8 @@ export function selectCooldownRemaining(snap: AssistantSnapshot, now: number = D
 /** When PROVIDER_DENIED arrives, this is the list the picker should switch to. */
 export function selectAllowedProvidersFromError(snap: AssistantSnapshot): string[] | null {
   if (snap.lastError?.code !== 'PROVIDER_DENIED') return null
-  return snap.lastError.details?.allowedProviders ?? null
+  const d = (snap.lastError.details ?? {}) as Record<string, any>
+  return d.allowedProviders ?? d.allowed_providers ?? null
 }
 
 /**
@@ -757,6 +778,156 @@ export function selectCooldownDisplay(
       : typeof details.window === 'string' ? details.window : null,
     message: err?.message || 'Rate limit reached. Please wait a moment.',
     code: err?.code || 'RATE_LIMITED'
+  }
+}
+
+// ─── Chat-notice derivation ─────────────────────────────────────────
+//
+// The cooldown banner covers RATE_LIMITED / IP_BLOCKED / ABUSE_BLOCKED.
+// The plan-manager hand-off covers EMAIL_NOT_VERIFIED / FEATURE_DENIED
+// (non-solcoder) / quota-exhausted RATE_LIMITED.
+//
+// Everything ELSE that lands in `lastError` — PROVIDER_DENIED, server
+// errors, validation errors, client-bug codes, and unknown codes — has
+// no other UI signal. `selectChatNotice` returns a typed view of that
+// remainder so the chat surface can render a non-blocking strip and an
+// in-chat error bubble. Returning null means "no further UI needed —
+// either we're fine, or another surface (banner/plan-manager) already
+// has the user's attention."
+//
+// `severity` drives the strip colour:
+//   - 'warning'  → recoverable, user can retry or change something
+//   - 'error'    → server-side / unrecoverable on this attempt
+//   - 'info'     → purely informational (currently unused, future hook)
+//
+// `actionable` flags whether retrying the SAME prompt is likely to help.
+// PROVIDER_DENIED + transient upstream → true. Validation / client-bug → false.
+
+export type ChatNoticeSeverity = 'info' | 'warning' | 'error'
+
+export interface ChatNotice {
+  severity: ChatNoticeSeverity
+  /** AIError.code, verbatim. UI can use it as a stable id / data-attribute. */
+  code: string
+  /** Short headline, e.g. "Provider not allowed". */
+  title: string
+  /** The backend's `message`, lightly smoothed. */
+  message: string
+  /** True if retrying the same prompt may succeed (server transient,
+   *  or after the user changes the model picker). False for validation
+   *  / client-bug codes — UI can hide the retry hint. */
+  actionable: boolean
+  /** PROVIDER_DENIED only — the providers the user IS allowed to use. */
+  allowedProviders?: string[]
+}
+
+/** Codes that are fully handled by the cooldown banner — no extra notice. */
+const COOLDOWN_OWNED_CODES = new Set([
+  'RATE_LIMITED', 'RATE_LIMITED_GLOBAL', 'IP_BLOCKED', 'ABUSE_BLOCKED'
+])
+
+/** Codes that are fully handled by the plan-manager hand-off — no extra notice. */
+const GATE_OWNED_CODES = new Set([
+  'EMAIL_NOT_VERIFIED'
+  // FEATURE_DENIED handled imperatively below — only "owned" when it produces
+  // a gateReason. ai:solcoder + already-anonymous still wants a notice.
+])
+
+export function selectChatNotice(snap: AssistantSnapshot): ChatNotice | null {
+  const err = snap.lastError
+  if (!err) return null
+  if (COOLDOWN_OWNED_CODES.has(err.code)) return null
+  // Per-feature quota exhaustion — plan-manager already opens.
+  if (snap.gateReason === 'quota-exhausted') return null
+  if (GATE_OWNED_CODES.has(err.code) && snap.gateReason) return null
+  if (err.code === 'FEATURE_DENIED' && snap.gateReason === 'feature-required') return null
+
+  switch (err.code) {
+  case 'PROVIDER_DENIED': {
+    const d = (err.details ?? {}) as Record<string, any>
+    const allowed: string[] = d.allowedProviders ?? d.allowed_providers ?? []
+    const tried: string | undefined = d.provider
+    const allowedText = allowed.length ? allowed.join(', ') : 'a different provider'
+    return {
+      severity: 'warning',
+      code: err.code,
+      title: tried ? `${tried} is not enabled for your account` : 'Provider not allowed',
+      message: `Switch the model picker to ${allowedText} and try again.`,
+      actionable: true,
+      allowedProviders: allowed
+    }
+  }
+  case 'UPSTREAM_ERROR':
+  case 'STREAM_ERROR':
+  case 'INTERNAL_ERROR':
+  case 'SERVICE_NOT_CONFIGURED':
+    return {
+      severity: 'error',
+      code: err.code,
+      title: 'AI service error',
+      message: err.message || 'The AI service ran into an issue. Please try again.',
+      actionable: true
+    }
+  case 'BAD_REQUEST':
+  case 'MISSING_ENDPOINT':
+  case 'PROVIDER_NOT_SPECIFIED':
+  case 'UNAUTHORIZED_ORIGIN':
+    return {
+      severity: 'error',
+      code: err.code,
+      title: 'Request rejected',
+      message: err.message || 'The request was malformed. Please report this if it keeps happening.',
+      actionable: false
+    }
+  case 'PAYLOAD_TOO_LARGE':
+    return {
+      severity: 'warning',
+      code: err.code,
+      title: 'Input too large',
+      message: err.message || 'Shorten your prompt or context and try again.',
+      actionable: true
+    }
+  case 'MISSING_FIGMA_INPUT':
+  case 'INVALID_FIGMA_URL':
+    return {
+      severity: 'warning',
+      code: err.code,
+      title: 'Invalid input',
+      message: err.message || 'Check the Figma input and try again.',
+      actionable: true
+    }
+  case 'EMAIL_NOT_VERIFIED':
+    // gate didn't fire (e.g. plan-manager declined to open) — still tell the user.
+    return {
+      severity: 'warning',
+      code: err.code,
+      title: 'Email verification required',
+      message: err.message || 'Verify your email address to use the AI assistant.',
+      actionable: false
+    }
+  case 'FEATURE_DENIED': {
+    const d = (err.details ?? {}) as Record<string, any>
+    const feat: string | undefined = d.feature ?? d.required_feature ?? d.requiredFeature
+    const model: string | undefined = d.model
+    const featLabel = feat ? ` (${feat})` : ''
+    const modelLabel = model ? ` for model "${model}"` : ''
+    return {
+      severity: 'warning',
+      code: err.code,
+      title: `Feature not available on your plan${featLabel}`,
+      message: err.message || `This feature${modelLabel} is not enabled for your account.`,
+      actionable: false
+    }
+  }
+  default:
+    // Unknown code — surface verbatim so devtools/Sentry / users see it.
+    return {
+      severity: 'error',
+      code: err.code || 'UNKNOWN',
+      title: 'Unexpected error',
+      message: err.message || 'The AI service returned an error we don\u2019t recognise.',
+      actionable: true
+    }
   }
 }
 

@@ -152,13 +152,12 @@ export class RemoteInferencer implements ICompletions, IGeneration {
     } catch (e) {
       ChatHistory.clearHistory()
       console.error('Error making request to Inference server:', e.message)
-      // For chat (GENERAL) requests, propagate the error so the
-      // assistant-state gate can parse the AIError envelope and emit a
-      // user-visible reaction (cooldown banner, upgrade prompt, …).
-      // Completion requests stay silent — a tooltip flashing "failed" in
-      // the editor is worse than nothing.
-      if (rType === AIRequestType.GENERAL) throw e
-      return ""
+      // Always propagate so withAssistantGate can parse the AIError
+      // envelope and report it to assistantState (cooldown banner,
+      // plan-manager hand-off, notice strip). Completion callers (the
+      // editor's inline-completion provider) already swallow errors
+      // silently — they only ever cared about the resolved string.
+      throw e
     }
     finally {
       this.event.emit("onInferenceDone")

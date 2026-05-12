@@ -70,12 +70,83 @@ function normalize(raw: Partial<AIError>, fallbackStatus: number): AIError {
 /**
  * Catch-all wrapper for fetch failures (network down, CORS, JSON.parse) —
  * keeps the error shape uniform so the machine sees AIError every time.
+ *
+ * Also recognises the `<status> <jsonBody>` format that langchain (and a
+ * few other HTTP clients) use to stringify non-2xx responses into the
+ * Error message. We unwrap that so callers don't surface raw JSON in chat.
  */
 export function aiErrorFromException(e: unknown): AIError {
-  const message = e instanceof Error ? e.message : String(e)
+  const anyErr = e as any
+  const status: number =
+    (typeof anyErr?.status === 'number' && anyErr.status) ||
+    (typeof anyErr?.response?.status === 'number' && anyErr.response.status) ||
+    (typeof anyErr?.statusCode === 'number' && anyErr.statusCode) ||
+    0
+
+  // 1. Structured shape stamped by buildAIErrorFromResponse / withAssistantGate
+  //    or already-parsed body on common HTTP-client error objects.
+  const structuredCandidates: any[] = [
+    anyErr?.aiError,
+    anyErr?.response?.data,
+    anyErr?.data,
+    anyErr?.body,
+    anyErr?.error
+  ].filter(v => v && typeof v === 'object')
+  for (const cand of structuredCandidates) {
+    if (typeof cand.code === 'string' && typeof cand.message === 'string') {
+      return normalize(cand as Partial<AIError>, status || (typeof cand.status === 'number' ? cand.status : 0))
+    }
+    if (cand.error && typeof cand.error === 'object' && typeof (cand.error as any).code === 'string') {
+      return parseAIErrorEnvelope(cand, status || (typeof (cand.error as any).status === 'number' ? (cand.error as any).status : 0))
+    }
+  }
+
+  const rawMessage = e instanceof Error ? e.message : String(e ?? '')
+  const messageCandidates: string[] = [
+    rawMessage,
+    typeof anyErr?.error_description === 'string' ? anyErr.error_description : '',
+    typeof anyErr?.responseText === 'string' ? anyErr.responseText : ''
+  ].filter(Boolean)
+
+  for (const text of messageCandidates) {
+    // 2. Look for the FIRST balanced `{...}` substring that JSON-parses
+    //    into an envelope. Handles every wrapping style we've seen:
+    //      "403 {body}"
+    //      "BadRequestError: 403 status code (no body) {body}"
+    //      "Error from upstream: {body}"
+    //      "{body}" (bare)
+    const trimmed = text.trim()
+    const start = trimmed.indexOf('{')
+    if (start < 0) continue
+    // Try progressively shorter slices from the end so we find the
+    // largest balanced object. Cheap because messages are < a few KB.
+    for (let end = trimmed.length; end > start + 1; end--) {
+      if (trimmed[end - 1] !== '}') continue
+      const slice = trimmed.slice(start, end)
+      try {
+        const body = JSON.parse(slice)
+        // Status: prefer the one embedded in the message ("403 ...") if present.
+        const statusMatch = /(\d{3})/.exec(trimmed.slice(0, start))
+        const embeddedStatus = statusMatch ? parseInt(statusMatch[1], 10) : 0
+        const parsed = parseAIErrorEnvelope(body, status || embeddedStatus)
+        if (parsed.code !== FALLBACK_CODE) return parsed
+        // If the body wasn't an envelope but we DID parse JSON, prefer
+        // its `message` over the noisy raw string.
+        if (typeof (body as any)?.message === 'string') {
+          return {
+            code: FALLBACK_CODE,
+            message: (body as any).message,
+            status: status || embeddedStatus
+          }
+        }
+        break
+      } catch { /* keep shrinking */ }
+    }
+  }
+
   return {
     code: FALLBACK_CODE,
-    message,
-    status: 0
+    message: rawMessage || 'AI service error',
+    status
   }
 }
