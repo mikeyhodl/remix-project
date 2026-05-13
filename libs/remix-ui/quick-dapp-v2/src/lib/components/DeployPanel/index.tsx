@@ -138,10 +138,28 @@ function DeployPanel(): JSX.Element {
 
       if (filesMap.size === 0) throw new Error("No DApp files found");
 
-      const jsResult = await builder.build(filesMap, '/src/main.jsx');
+      // Detect inline mode and set correct paths
+      const isInlineMode = (activeDapp as any)?.inlineMode === true;
+      const basePath = isInlineMode ? '/frontend' : undefined;
+      const entryPoint = isInlineMode ? '/frontend/src/main.jsx' : '/src/main.jsx';
+
+      const jsResult = await builder.build(filesMap, entryPoint, basePath);
       if (!jsResult.success) throw new Error(`Build failed: ${jsResult.error}`);
 
-      const indexHtmlContent = filesMap.get('/index.html') || '';
+      // Check for index.html in correct location
+      const indexHtmlPaths = isInlineMode
+        ? ['/frontend/index.html', 'frontend/index.html']
+        : ['/index.html', 'index.html'];
+
+      let indexHtmlContent = '';
+      for (const path of indexHtmlPaths) {
+        if (filesMap.has(path)) {
+          indexHtmlContent = filesMap.get(path) || '';
+          break;
+        }
+      }
+
+      if (!indexHtmlContent) throw new Error("index.html not found");
 
       let logoDataUrl = '';
       if (logo && typeof logo === 'string' && logo.startsWith('data:image')) {
@@ -215,11 +233,21 @@ function DeployPanel(): JSX.Element {
       if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n    ${ogTags}\n</head>`);
       else modifiedHtml = `<html><head>${injectionScript}\n${ogTags}</head>${modifiedHtml}</html>`;
 
-      console.log("[IPFS Deploy] indexHtml length:", indexHtmlContent.length, "scriptRegexTest:", /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent));
-      if (!/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent)) { console.log("[IPFS Deploy] Script tags:", indexHtmlContent.match(/<script[^>]*>/g)); console.log("[IPFS Deploy] HTML head:", indexHtmlContent.substring(0, 500)); }
+      // Build regex patterns that work for both workspace and inline modes
+      const scriptRegex = isInlineMode
+        ? /<script type="module"[^>]*src="(?:\/|\.\/)?(?:frontend\/)?src\/main\.jsx"[^>]*><\/script>/
+        : /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/;
+
+      const cssRegex = isInlineMode
+        ? /<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?(?:frontend\/)?src\/index\.css"[^>]*>/
+        : /<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/;
+
+      console.log("[IPFS Deploy] indexHtml length:", indexHtmlContent.length, "scriptRegexTest:", scriptRegex.test(indexHtmlContent), "isInlineMode:", isInlineMode);
+      if (!scriptRegex.test(indexHtmlContent)) { console.log("[IPFS Deploy] Script tags:", indexHtmlContent.match(/<script[^>]*>/g)); console.log("[IPFS Deploy] HTML head:", indexHtmlContent.substring(0, 500)); }
+
       const inlineScript = `<script type="module">\n${jsResult.js}\n</script>`;
-      modifiedHtml = modifiedHtml.replace(/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, inlineScript);
-      modifiedHtml = modifiedHtml.replace(/<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/, '');
+      modifiedHtml = modifiedHtml.replace(scriptRegex, inlineScript);
+      modifiedHtml = modifiedHtml.replace(cssRegex, '');
 
       // Step 3: Final IPFS deploy with HTML + screenshot
       const formData = new FormData();
