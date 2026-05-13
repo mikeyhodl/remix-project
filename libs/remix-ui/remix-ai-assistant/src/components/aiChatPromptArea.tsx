@@ -83,8 +83,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
   return (
     <section
       id="remix-ai-prompt-area"
-      className="ai-assistant-prompt-bg"
-      style={{ flexShrink: 0, minHeight: '110px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') as any }}
+      className={props.messages.length === 0 && !props.showHistorySidebar ? 'ai-assistant-prompt-bg' : 'ai-assistant-prompt-flat'}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
       {props.showModelSelector && (

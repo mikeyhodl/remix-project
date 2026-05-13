@@ -1779,6 +1779,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [])
 
+  const autoAcceptBannerEl = hitlAutoAccept && pendingApprovals.length === 0 && (
+    <div
+      className="hitl-auto-accept-banner"
+      data-id="hitl-auto-accept-banner"
+    >
+      <span className="hitl-auto-accept-banner__text">Auto-accepting all tool changes</span>
+      <button
+        onClick={toggleHitlAutoAccept}
+        className="hitl-auto-accept-banner__btn"
+        data-id="hitl-auto-accept-disable"
+      >
+        Disable
+      </button>
+    </div>
+  )
+
   return (
     props.isInitializing ? (
       <div
@@ -1799,7 +1815,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       <div
         className="d-flex flex-column w-100 h-100"
         ref={aiChatRef}
-        style={{ overflow: 'hidden' }}
+        style={{ overflow: 'hidden', backgroundColor: 'var(--bs-body-bg)' }}
         data-theme={themeTracker && themeTracker?.name.toLowerCase()}
         data-was-loading={wasInitializingRef.current ? 'true' : undefined}
       >
@@ -1827,7 +1843,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
           {/* Maximized Mode: Always show chat area */}
           {props.isMaximized ? (
-            <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+            <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : 'ai-chat-area-flat'}`} style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
               <ChatHistoryHeading
                 onNewChat={props.onNewConversation || (() => {})}
                 onToggleHistory={props.onToggleHistorySidebar || (() => {})}
@@ -1864,43 +1880,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   onDappReviewRevertAll={handleDappReviewRevertAll}
                   onDappReviewViewDiff={handleDappReviewViewDiff}
                 />
-                {/* Auto-accept active banner */}
-                {hitlAutoAccept && pendingApprovals.length === 0 && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '6px 12px',
-                      margin: '0 12px 8px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      color: 'var(--bs-body-color, #ccc)',
-                      background: 'color-mix(in srgb, var(--bs-warning, #e67e22) 12%, transparent)',
-                      border: '1px solid color-mix(in srgb, var(--bs-warning, #e67e22) 25%, transparent)',
-                    }}
-                    data-id="hitl-auto-accept-banner"
-                  >
-                    <span style={{ opacity: 0.85 }}>Auto-accepting all tool changes</span>
-                    <button
-                      onClick={toggleHitlAutoAccept}
-                      style={{
-                        background: 'none',
-                        border: '1px solid color-mix(in srgb, var(--bs-body-color, #ccc) 30%, transparent)',
-                        borderRadius: '4px',
-                        padding: '2px 10px',
-                        fontSize: '11px',
-                        color: 'var(--bs-body-color, #ccc)',
-                        cursor: 'pointer',
-                      }}
-                      data-id="hitl-auto-accept-disable"
-                    >
-                      Disable
-                    </button>
-                  </div>
-                )}
                 {pendingApprovals.length > 1 && (
-                  <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
+                  <div className="hitl-pending-summary">
                     <div className="d-flex justify-content-between align-items-center">
                       <span className="fw-bold">Multiple Changes Pending ({pendingApprovals.length})</span>
                       <div className="d-flex gap-2">
@@ -1935,15 +1916,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   </div>
                 ))}
               </section>
+              {autoAcceptBannerEl}
             </div>
           ) : (
           /* Non-Maximized Mode: Toggle between history view and chat view */
             props.showHistorySidebar && props.isMaximized === false && props.conversations ? (
-              <div className="d-flex flex-column flex-grow-1 ai-assistant-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+              <div className="d-flex flex-column flex-grow-1 ai-history-view-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
                 {/* Back button header */}
                 <div
                   className="p-2 border-bottom"
-                  style={{ backgroundColor: themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5' }}
                 >
                   <button
                     className={`btn btn-sm ${themeTracker?.name.toLowerCase() === 'dark' ? 'btn-dark' : 'btn-light text-light-emphasis'}`}
@@ -1977,10 +1958,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     theme={themeTracker?.name}
                   />
                 </div>
+                {autoAcceptBannerEl}
               </div>
             ) : (
             /* Show chat area when sidebar is closed */
-              <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+              <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : 'ai-chat-area-flat'}`} style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
                 <ChatHistoryHeading
                   onNewChat={props.onNewConversation || (() => {})}
                   onToggleHistory={props.onToggleHistorySidebar || (() => {})}
@@ -2017,43 +1999,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     onDappReviewRevertAll={handleDappReviewRevertAll}
                     onDappReviewViewDiff={handleDappReviewViewDiff}
                   />
-                  {/* Auto-accept active banner */}
-                  {hitlAutoAccept && pendingApprovals.length === 0 && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '6px 12px',
-                        margin: '0 12px 8px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        color: 'var(--bs-body-color, #ccc)',
-                        background: 'color-mix(in srgb, var(--bs-warning, #e67e22) 12%, transparent)',
-                        border: '1px solid color-mix(in srgb, var(--bs-warning, #e67e22) 25%, transparent)',
-                      }}
-                      data-id="hitl-auto-accept-banner"
-                    >
-                      <span style={{ opacity: 0.85 }}>Auto-accepting all tool changes</span>
-                      <button
-                        onClick={toggleHitlAutoAccept}
-                        style={{
-                          background: 'none',
-                          border: '1px solid color-mix(in srgb, var(--bs-body-color, #ccc) 30%, transparent)',
-                          borderRadius: '4px',
-                          padding: '2px 10px',
-                          fontSize: '11px',
-                          color: 'var(--bs-body-color, #ccc)',
-                          cursor: 'pointer',
-                        }}
-                        data-id="hitl-auto-accept-disable"
-                      >
-                        Disable
-                      </button>
-                    </div>
-                  )}
                   {pendingApprovals.length > 1 && (
-                    <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
+                    <div className="hitl-pending-summary">
                       <div className="d-flex justify-content-between align-items-center">
                         <span className="fw-bold">Multiple Changes Pending ({pendingApprovals.length})</span>
                         <div className="d-flex gap-2">
@@ -2088,10 +2035,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     </div>
                   ))}
                 </section>
+                {autoAcceptBannerEl}
               </div>
             )
           )}
         </div>
+
+
 
         {
           messages.length > 0 ? (
