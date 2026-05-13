@@ -125,11 +125,11 @@ export class AuditorAnalyserHandler extends BaseToolHandler {
       const compilerConfig = await plugin.call('solidity' as any, 'getCurrentCompilerConfig');
 
       // Flatten the contract for Slither analysis
-      const flattened = await plugin.call('contractflattener', 'flattenContract', 
-        compilationResult.source, 
-        args.filePath, 
-        compilationResult.data, 
-        compilationResult.input, 
+      const flattened = await plugin.call('contractflattener', 'flattenContract',
+        compilationResult.source,
+        args.filePath,
+        compilationResult.data,
+        compilationResult.input,
         false
       );
 
@@ -189,10 +189,10 @@ export class AuditorAnalyserHandler extends BaseToolHandler {
           const checklistResponse = await fetch('https://raw.githubusercontent.com/Cyfrin/audit-checklist/main/checklist.json');
           if (checklistResponse.ok) {
             const checklistJson = await checklistResponse.json();
-            
+
             // Filter checklist to relevant items
             const filteredItems = filterChecklist(checklistJson, categories);
-            
+
             auditChecklist = {
               totalFindings: findings.length,
               relevantCategories: Array.from(categories),

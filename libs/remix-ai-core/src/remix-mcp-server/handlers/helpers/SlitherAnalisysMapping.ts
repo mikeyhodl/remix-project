@@ -158,7 +158,6 @@ const SLITHER_TO_CHECKLIST = {
 
 };
 
-
 export interface SlitherFinding {
   check: string;
   impact: string;

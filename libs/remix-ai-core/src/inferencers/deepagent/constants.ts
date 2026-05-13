@@ -11,7 +11,6 @@ export const DEFAULT_TIMEOUT_MS = 300000
 /** Maximum tool executions per request */
 export const MAX_TOOL_EXECUTIONS = 10
 
-
 /** Default model provider */
 export const DEFAULT_MODEL_PROVIDER = 'mistralai' as const
 
@@ -71,7 +70,6 @@ export const MAX_CODE_IMPROVEMENTS_PER_FILE = 8
 
 /** Minimum confidence threshold for findings */
 export const MIN_CONFIDENCE_THRESHOLD = 60
-
 
 export const LOCAL_STORAGE_KEYS = {
   DEEPAGENT_ENABLED: 'deepagent_enabled',
