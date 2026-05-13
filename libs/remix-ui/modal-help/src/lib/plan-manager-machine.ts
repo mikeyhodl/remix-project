@@ -78,6 +78,34 @@ export interface PlanManagerSnapshot {
    * screen). `null` when the user opened the panel from the menu icon.
    */
   openIntent: OpenIntent | null
+  /**
+   * In-panel confirm dialog. Set when the plugin requests confirmation
+   * (e.g. plan change preview, cancel subscription). Cleared when the user
+   * picks an action or dismisses. The Promise/resolver lives on the plugin;
+   * only display data is in the snapshot.
+   */
+  confirmDialog: ConfirmDialog | null
+}
+
+/** A button in a confirm dialog. The `value` is what the plugin's promise resolves to. */
+export interface ConfirmAction {
+  value: string
+  label: string
+  variant?: 'primary' | 'danger' | 'ghost'
+  /** Optional Font Awesome icon class, e.g. 'fas fa-times'. */
+  icon?: string
+}
+
+export interface ConfirmDialog {
+  /** Stable id so the React side can key the modal. */
+  id: string
+  title: string
+  /** Body text. May contain newlines; rendered as paragraphs. */
+  message: string
+  /** Action buttons, rendered in order. The dismiss ‘X’ / backdrop resolves to `null`. */
+  actions: ConfirmAction[]
+  /** Visual variant for the modal frame. */
+  variant?: 'default' | 'danger'
 }
 
 /** Reason a non-UI plugin asked to open the panel. */
@@ -130,6 +158,8 @@ interface MachineContext {
   checkoutResult: CheckoutResult | null
   // overlay routing
   openIntent: OpenIntent | null
+  // confirm dialog
+  confirmDialog: ConfirmDialog | null
   // diagnostics
   lastError: string | null
 }
@@ -159,6 +189,9 @@ export type PlanManagerEvent =
   | { type: 'OPEN_OVERLAY'; intent?: OpenIntent }
   | { type: 'CLOSE_OVERLAY' }
   | { type: 'TOGGLE_OVERLAY'; intent?: OpenIntent }
+  // confirm dialog
+  | { type: 'CONFIRM_REQUEST'; dialog: ConfirmDialog }
+  | { type: 'CONFIRM_DISMISS' }
   // dev — inject a synthetic snapshot for the side-panel scenario buttons.
   | { type: 'DEV_INJECT'; partial: Partial<MachineContext> }
 
@@ -174,6 +207,7 @@ const initialContext: MachineContext = {
   pendingCheckout: null,
   checkoutResult: null,
   openIntent: null,
+  confirmDialog: null,
   lastError: null
 }
 
@@ -282,6 +316,13 @@ export const planManagerMachine = setup({
     devInject: ({ context, event }) => {
       if (event.type !== 'DEV_INJECT') return
       Object.assign(context, event.partial)
+    },
+    setConfirmDialog: ({ context, event }) => {
+      if (event.type !== 'CONFIRM_REQUEST') return
+      context.confirmDialog = event.dialog
+    },
+    clearConfirmDialog: ({ context }) => {
+      context.confirmDialog = null
     }
   }
 }).createMachine({
@@ -456,7 +497,9 @@ export const planManagerMachine = setup({
     }
   },
   on: {
-    DEV_INJECT: { actions: ['devInject'] }
+    DEV_INJECT: { actions: ['devInject'] },
+    CONFIRM_REQUEST: { actions: ['setConfirmDialog'] },
+    CONFIRM_DISMISS: { actions: ['clearConfirmDialog'] }
   }
 })
 
@@ -493,7 +536,8 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     pendingCheckout: ctx.pendingCheckout,
     errorMessage: ctx.lastError,
     isTrialEligible: ctx.isTrialEligible,
-    openIntent: ctx.openIntent
+    openIntent: ctx.openIntent,
+    confirmDialog: ctx.confirmDialog
   }
 }
 

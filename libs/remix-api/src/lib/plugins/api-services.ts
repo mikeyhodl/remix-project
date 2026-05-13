@@ -43,6 +43,14 @@ import {
   CreditPackagesResponse,
   SubscriptionPlansResponse,
   AvailableProductsResponse,
+  PurchaseProductRequest,
+  PurchaseProductResponse,
+  PreviewSubscriptionChangeRequest,
+  PreviewSubscriptionChangeResponse,
+  ChangeSubscriptionRequest,
+  ChangeSubscriptionResponse,
+  CancelSubscriptionRequest,
+  CancelSubscriptionResponse,
   UserSubscriptionResponse,
   PurchaseCreditsRequest,
   PurchaseCreditsResponse,
@@ -618,6 +626,48 @@ export class BillingApiService {
     return this.apiClient.post<SubscribeResponse>('/subscribe', body)
   }
 
+  /**
+   * Preview proration for a plan change BEFORE committing it.
+   * POST /billing/subscription/preview-change
+   *
+   * Use the returned `preview` object to show "you'll be charged $X.XX now
+   * (prorated)" or "you'll receive a $Y.YY credit" before the user confirms.
+   * Returns 404 `no_active_subscription` if the user has no paid sub — in
+   * that case fall back to POST /products/purchase.
+   */
+  async previewSubscriptionChange(
+    request: PreviewSubscriptionChangeRequest
+  ): Promise<ApiResponse<PreviewSubscriptionChangeResponse>> {
+    return this.apiClient.post<PreviewSubscriptionChangeResponse>('/subscription/preview-change', request)
+  }
+
+  /**
+   * Commit a plan change (upgrade or downgrade between paid plans).
+   * PATCH /billing/subscription
+   *
+   * Backend revokes the old feature-group membership and grants the new one.
+   * The PATCH response already reflects the new state — safe to update the UI
+   * optimistically. Not for switching to free; use cancel() instead.
+   */
+  async changeSubscription(
+    request: ChangeSubscriptionRequest
+  ): Promise<ApiResponse<ChangeSubscriptionResponse>> {
+    return this.apiClient.request<ChangeSubscriptionResponse>('/subscription', { method: 'PATCH', body: request })
+  }
+
+  /**
+   * Cancel the active subscription.
+   * POST /billing/subscription/cancel
+   *
+   * 'next_billing_period' (default) keeps access until period end.
+   * 'immediately' cancels now — webhook auto-grants the free plan as a fallback.
+   */
+  async cancelSubscription(
+    request: CancelSubscriptionRequest = {}
+  ): Promise<ApiResponse<CancelSubscriptionResponse>> {
+    return this.apiClient.post<CancelSubscriptionResponse>('/subscription/cancel', request)
+  }
+
   // ==================== Helper Methods ====================
 
   /**
@@ -771,12 +821,22 @@ export class ProductsApiService {
   }
 
   /**
-   * Get available products for the current user (subscription plans + packages).
-   * Includes the feature_group each product grants so the caller can detect
-   * whether the user already has access to a plan.
+   * List subscription plans the user can purchase.
+   * GET /products/available/subscriptions
    */
-  async getAvailableProducts(): Promise<ApiResponse<AvailableProductsResponse>> {
-    return this.apiClient.get<AvailableProductsResponse>('/available')
+  async getAvailableSubscriptions(): Promise<ApiResponse<AvailableProductsResponse>> {
+    return this.apiClient.get<AvailableProductsResponse>('/available/subscriptions')
+  }
+
+  /**
+   * Unified purchase endpoint — buys a plan or package (free or paid).
+   * Returns either a checkout URL (paid) or an immediate-grant payload (free).
+   * On 409 ALREADY_SUBSCRIBED the response.data carries the existing
+   * subscription and the caller must route to PATCH /billing/subscription.
+   * POST /products/purchase
+   */
+  async purchaseProduct(request: PurchaseProductRequest): Promise<ApiResponse<PurchaseProductResponse>> {
+    return this.apiClient.post<PurchaseProductResponse>('/purchase', request)
   }
 }
 

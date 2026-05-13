@@ -35,6 +35,8 @@ import {
   type ActiveAlert,
   type OpenIntent,
   type OpenReason,
+  type ConfirmDialog,
+  type ConfirmAction,
   selectActiveAlert,
   selectPlanState,
   selectCreditStatus,
@@ -54,7 +56,7 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'resolveConfirm'],
   events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
@@ -254,15 +256,211 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   /**
-   * Subscribe to a plan. Identical control flow to `purchaseCredits`, but
-   * hits POST /billing/subscribe.
+   * Subscribe to a plan via the unified POST /products/purchase endpoint.
+   * Three response shapes are possible:
+   *   1. Paid plan, no existing sub → { checkoutUrl, transactionId } → open Paddle.
+   *   2. Free plan → { ok: true, immediate: true, ... } → grant is instant; refresh data.
+   *   3. User already has a paid sub → 409 ALREADY_SUBSCRIBED → must use PATCH flow.
    */
   async subscribeToPlan(planId: string): Promise<void> {
     const snap = this.store.getSnapshot()
     const plan = snap.catalogPlans.find(p => p.id === planId)
     const itemLabel = plan?.name ?? planId
+
+    // Pre-flight: if the user already has an active paid subscription and is
+    // picking a *different* paid plan, route to the change-plan flow upfront
+    // (the doc explicitly recommends not relying on the 409 fallback).
+    // The free plan does NOT count as an "active subscription" for this
+    // guard — free → paid still goes through purchase.
+    const planState = selectPlanState(snap)
+    const targetIsFree = (plan?.priceUsd ?? 0) === 0
+    if (planState.kind === 'paid' && !targetIsFree && planState.planId !== planId) {
+      await this.changePlan(planId)
+      return
+    }
+
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
-    await this.runCheckout('subscription', itemLabel, async (api) => api.subscribe(planId, 'paddle'))
+    await this.runCheckout('subscription', itemLabel, async () => {
+      const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
+      if (!productsApi) return { ok: false, error: 'Products API unavailable' }
+      const resp = await productsApi.purchaseProduct({ slug: planId, provider: 'paddle' })
+      if (!resp?.ok) {
+        const err = (resp?.data as any)?.error || resp?.error
+        if (err === 'ALREADY_SUBSCRIBED') {
+          // Defensive fallback — the pre-flight above should normally have
+          // routed us already, but the user's local snapshot might be stale.
+          void this.changePlan(planId)
+          return { ok: false, error: 'You already have an active paid subscription. Switching to the change-plan flow…' }
+        }
+        return { ok: false, error: resp?.error || 'Could not start purchase.' }
+      }
+      const data: any = resp.data
+      // Free / immediate-grant path — no checkout, just refresh.
+      if (data?.immediate === true) {
+        return { ok: true, data: { immediate: true, message: data.message } as any }
+      }
+      // Paid path — standard checkout payload.
+      return { ok: true, data: { transactionId: data?.transactionId, checkoutUrl: data?.checkoutUrl } }
+    })
+  }
+
+  /**
+   * Change the active paid subscription to a different paid plan.
+   * Flow: POST /billing/subscription/preview-change → in-panel confirm with
+   * proration totals → PATCH /billing/subscription → refresh account data.
+   * Proration is always immediate; on payment failure the change is rejected.
+   * Not for switching to free — use cancelSubscription() instead.
+   */
+  async changePlan(planId: string): Promise<void> {
+    const snap = this.store.getSnapshot()
+    const plan = snap.catalogPlans.find(p => p.id === planId)
+    const itemLabel = plan?.name ?? planId
+    const PRORATION = 'prorated_immediately' as const
+    const ON_FAILURE = 'prevent_change' as const
+
+    if (!this.store.getSnapshot().isAuthenticated) {
+      try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
+      return
+    }
+
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
+    try {
+      const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+      if (!billingApi) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
+        return
+      }
+
+      // 1. Preview proration. Best-effort — if it fails (e.g. provider quirk)
+      //    we still let the user attempt the PATCH; the backend will reject
+      //    if it really can't apply.
+      let confirmMessage = `Switch your subscription to ${itemLabel}?`
+      try {
+        const preview = await billingApi.previewSubscriptionChange({ planSlug: planId, prorationBillingMode: PRORATION })
+        if (preview?.ok && preview.data?.preview) {
+          const totals = (preview.data.preview as any)?.update_summary || (preview.data.preview as any)?.totals || {}
+          const charge = totals?.result?.amount ?? totals?.charge?.amount ?? totals?.total ?? null
+          const credit = totals?.credit?.amount ?? null
+          const currency = (preview.data.preview as any)?.currency_code || 'USD'
+          if (charge != null && Number(charge) > 0) {
+            confirmMessage = `Switch to ${itemLabel}? You'll be charged ${formatMoney(charge, currency)} now (prorated).`
+          } else if (credit != null && Number(credit) > 0) {
+            confirmMessage = `Switch to ${itemLabel}? You'll receive a ${formatMoney(credit, currency)} credit on your next invoice.`
+          }
+        }
+      } catch { /* fall through to plain confirm */ }
+
+      const choice = await this.requestConfirm({
+        title: `Switch to ${itemLabel}`,
+        message: confirmMessage,
+        actions: [
+          { value: 'cancel', label: 'Keep current plan', variant: 'ghost' },
+          { value: 'confirm', label: `Switch to ${itemLabel}`, variant: 'primary', icon: 'fas fa-arrow-right' }
+        ]
+      })
+      if (choice !== 'confirm') {
+        this.store.send({ type: 'CHECKOUT_CLOSED' })
+        return
+      }
+
+      // 2. Commit.
+      const resp = await billingApi.changeSubscription({ planSlug: planId, prorationBillingMode: PRORATION, onPaymentFailure: ON_FAILURE })
+      if (!resp?.ok) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not change plan.' })
+        return
+      }
+
+      // 3. PATCH response already reflects new state — mark complete and refresh.
+      this.store.send({ type: 'CHECKOUT_COMPLETED' })
+      setTimeout(() => { void this.loadAccountData() }, 250)
+    } catch (err: any) {
+      console.error('[PlanManager] Plan change failed', err)
+      this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during plan change.' })
+    }
+  }
+
+  /**
+   * Cancel the active paid subscription. The user picks the effective time
+   * from the in-panel modal; "keep" dismisses without action.
+   * 'next_billing_period' keeps access until period end then auto-rolls to free.
+   * 'immediately' cancels now — backend webhook auto-grants the free plan as fallback.
+   */
+  async cancelSubscription(effectiveFrom?: 'next_billing_period' | 'immediately'): Promise<void> {
+    const snap = this.store.getSnapshot()
+    if (!snap.isAuthenticated) return
+    const planState = selectPlanState(snap)
+    if (planState.kind !== 'paid') return
+
+    // If the caller didn't pre-select an option, ask the user.
+    let chosen: 'next_billing_period' | 'immediately' | null = effectiveFrom ?? null
+    if (!chosen) {
+      const periodEndDate = planState.expiresOn ? formatDate(planState.expiresOn) : null
+      const periodEndLabel = periodEndDate
+        ? `Cancel at period end (keeps access until ${periodEndDate})`
+        : 'Cancel at period end'
+      const choice = await this.requestConfirm({
+        title: `Cancel ${planState.planName}?`,
+        message: 'Pick when the cancellation should take effect. After cancellation you\u2019ll keep the Free plan automatically \u2014 no action needed on your part.',
+        variant: 'danger',
+        actions: [
+          { value: 'keep', label: 'Keep subscription', variant: 'ghost' },
+          { value: 'immediately', label: 'Cancel immediately', variant: 'danger', icon: 'fas fa-bolt' },
+          { value: 'next_billing_period', label: periodEndLabel, variant: 'primary', icon: 'fas fa-calendar-check' }
+        ]
+      })
+      if (choice !== 'immediately' && choice !== 'next_billing_period') return
+      chosen = choice
+    }
+
+    try {
+      const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+      if (!billingApi) return
+      const resp = await billingApi.cancelSubscription({ effectiveFrom: chosen })
+      if (!resp?.ok) {
+        console.warn('[PlanManager] Cancel failed', resp?.error)
+        return
+      }
+      // Refresh — immediate cancel triggers webhook to grant free; period-end
+      // cancel just sets cancelAtPeriodEnd, which the next refresh will pick up.
+      setTimeout(() => { void this.loadAccountData() }, 250)
+    } catch (err: any) {
+      console.error('[PlanManager] Cancel subscription failed', err)
+    }
+  }
+
+  // ===== Confirm-dialog plumbing ============================================
+  // The XState snapshot carries the *display* data (title/message/actions),
+  // but the resolver Promise lives here on the plugin since callbacks aren't
+  // serialisable. The React modal calls back into `resolveConfirm` which
+  // resolves the awaiting promise and clears the snapshot.
+
+  private pendingConfirmResolver: ((value: string | null) => void) | null = null
+
+  private requestConfirm(input: { title: string; message: string; actions: ConfirmAction[]; variant?: 'default' | 'danger' }): Promise<string | null> {
+    // Reject any in-flight confirm so we never have two stacked dialogs.
+    if (this.pendingConfirmResolver) {
+      this.pendingConfirmResolver(null)
+      this.pendingConfirmResolver = null
+    }
+    const dialog: ConfirmDialog = {
+      id: `cd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      title: input.title,
+      message: input.message,
+      actions: input.actions,
+      variant: input.variant ?? 'default'
+    }
+    return new Promise<string | null>((resolve) => {
+      this.pendingConfirmResolver = resolve
+      this.store.send({ type: 'CONFIRM_REQUEST', dialog })
+    })
+  }
+
+  /** Called by the React modal when the user clicks an action or dismisses. */
+  resolveConfirm(value: string | null): void {
+    const r = this.pendingConfirmResolver
+    this.pendingConfirmResolver = null
+    this.store.send({ type: 'CONFIRM_DISMISS' })
+    if (r) r(value)
   }
 
   // ─── Internals ──────────────────────────────────────────────────
@@ -317,7 +515,15 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'CHECKOUT_ERROR', message: response?.error || 'Could not start checkout.' })
         return
       }
-      const { transactionId, checkoutUrl } = response.data
+      const { transactionId, checkoutUrl } = response.data as { transactionId?: string; checkoutUrl?: string; immediate?: boolean }
+      // Immediate-grant path (e.g. free plan via /products/purchase) — no
+      // Paddle hand-off; the backend already granted the membership.
+      if ((response.data as any).immediate === true) {
+        this.store.send({ type: 'CHECKOUT_COMPLETED' })
+        // Trigger a fast data refresh so the UI reflects the new plan.
+        setTimeout(() => { void this.loadAccountData() }, 250)
+        return
+      }
       const paddleInstance = this.paddle ?? getPaddle()
       if (paddleInstance && transactionId) {
         // Paddle.js overlay — events come back via the singleton handler.
@@ -385,7 +591,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       }
       const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
       const [productsResp, packagesResp] = await Promise.all([
-        productsApi ? productsApi.getAvailableProducts() : Promise.resolve({ ok: false, error: 'Products API unavailable' }),
+        productsApi ? productsApi.getAvailableSubscriptions() : Promise.resolve({ ok: false, error: 'Products API unavailable' }),
         billingApi.getCreditPackages()
       ])
       if (!productsResp?.ok || !packagesResp?.ok) {
@@ -690,6 +896,8 @@ const PlanManagerOverlay: React.FC<{
                 purchasingId={purchasingProductId}
                 requiredFeature={intent?.requiredFeature ?? null}
                 onSubscribe={(planId) => plugin.subscribeToPlan(planId)}
+                onCancel={() => plugin.cancelSubscription()}
+                cancelledNotice={planCtx.kind === 'paid' && planCtx.isCancelled ? { expiresOn: planCtx.expiresOn } : null}
               />
             )}
             {activeSection === 'topup' && (
@@ -715,6 +923,13 @@ const PlanManagerOverlay: React.FC<{
             <a href="https://discord.gg/TWfKkZVwJW" target="_blank" rel="noreferrer">Support</a>
           </div>
         </footer>
+
+        {snap.confirmDialog && (
+          <ConfirmModal
+            dialog={snap.confirmDialog}
+            onResolve={(value) => plugin.resolveConfirm(value)}
+          />
+        )}
       </div>
     </div>
   )
@@ -922,7 +1137,11 @@ const PlansSection: React.FC<{
   /** Feature key (e.g. 'ai:Anthropic') that triggered the open, if any. Surfaced as a banner. */
   requiredFeature: string | null
   onSubscribe: (planId: string) => void
-}> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe }) => {
+  /** Cancel the active paid subscription. Opens the in-panel chooser. */
+  onCancel: () => void
+  /** When the active paid sub is set to cancel, show "will not renew" copy. */
+  cancelledNotice: { expiresOn: string | null } | null
+}> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -1015,6 +1234,30 @@ const PlansSection: React.FC<{
                       ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
                       : `Switch to ${plan.name}`}
             </button>
+            {/* Cancel affordance — only on the active *paid* plan. Free /
+                beta have no subscription row to cancel. */}
+            {isCurrent && !isFree && (
+              <>
+                {cancelledNotice && (
+                  <div className="pm-plan__cancel-notice" role="status">
+                    <i className="fas fa-circle-exclamation"></i>
+                    <span>
+                      {cancelledNotice.expiresOn
+                        ? <>Active until {formatDate(cancelledNotice.expiresOn)} · will not renew</>
+                        : <>Will not renew</>}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="pm-plan__cancel-link"
+                  onClick={() => onCancel()}
+                  title="Cancel your subscription"
+                >
+                  {cancelledNotice ? 'Manage cancellation' : 'Cancel subscription'}
+                </button>
+              </>
+            )}
           </article>
         )
       })}
@@ -1930,11 +2173,95 @@ const CheckoutResultScreen: React.FC<{
    Helpers
    ───────────────────────────────────────────────────────────────────────── */
 
+/**
+ * In-panel confirm modal. Driven by `snap.confirmDialog` and resolved through
+ * `plugin.resolveConfirm()`. Backdrop click and Escape both resolve to `null`.
+ *
+ * Declared as a `function` (not `const`) so the call site at the top of the
+ * file resolves via hoisting \u2014 the modal lives next to the other helpers.
+ */
+function ConfirmModal({ dialog, onResolve }: {
+  dialog: ConfirmDialog
+  onResolve: (value: string | null) => void
+}): JSX.Element {
+  // ESC dismiss. Re-runs whenever the active dialog id changes.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onResolve(null)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+    // dialog.id intentionally in deps so each new dialog gets its own listener
+  }, [dialog.id, onResolve])
+
+  return (
+    <div className="pm-modal__backdrop" onClick={() => onResolve(null)} role="presentation">
+      <div
+        className={`pm-modal pm-modal--${dialog.variant ?? 'default'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${dialog.id}-title`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="pm-modal__header">
+          <h3 className="pm-modal__title" id={`${dialog.id}-title`}>{dialog.title}</h3>
+          <button
+            type="button"
+            className="pm-modal__close"
+            aria-label="Dismiss"
+            onClick={() => onResolve(null)}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="pm-modal__body">
+          {dialog.message.split('\n').filter(Boolean).map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
+        <div className="pm-modal__actions">
+          {dialog.actions.map((action) => (
+            <button
+              key={action.value}
+              type="button"
+              className={`pm-modal__btn pm-modal__btn--${action.variant ?? 'primary'}`}
+              onClick={() => onResolve(action.value)}
+            >
+              {action.icon && <i className={action.icon}></i>}
+              <span>{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function formatDate(iso: string | null | undefined): string | null {
   if (!iso) return null
   const t = Date.parse(iso)
   if (Number.isNaN(t)) return null
   return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
+ * Format a Paddle proration amount for display. Paddle returns minor units
+ * (cents) as numbers OR strings (e.g. `"199"` for $1.99). Be lenient.
+ */
+function formatMoney(amount: unknown, currency: string = 'USD'): string {
+  const n = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
+  if (!Number.isFinite(n)) return ''
+  // Paddle minor units (cents). Negative values \u2014 e.g. credit \u2014 are surfaced
+  // as their absolute amount; the surrounding copy already conveys the sign.
+  const major = Math.abs(n) / 100
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(major)
+  } catch {
+    return `${currency} ${major.toFixed(2)}`
+  }
 }
 
 const PLAN_ACCENTS = ['#2fbfb1', '#5b9cf5', '#9b7dff', '#f59f5b', '#e75b89']

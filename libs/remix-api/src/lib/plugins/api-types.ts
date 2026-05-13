@@ -548,6 +548,123 @@ export interface AvailableProductsResponse {
 }
 
 /**
+ * Request body for POST /products/purchase — the unified purchase
+ * endpoint for plans, packages, and free-tier grants.
+ */
+export interface PurchaseProductRequest {
+  /** Either slug, product_id, or product_code (one of). */
+  slug?: string
+  product_id?: number
+  product_code?: string
+  /** "paddle" (default) or "crypto". */
+  provider?: 'paddle' | 'crypto'
+  returnUrl?: string
+}
+
+/** Successful checkout-redirect response (paid plans / packages). */
+export interface PurchaseProductCheckoutResponse {
+  checkoutUrl: string
+  transactionId: string
+  provider?: string
+}
+
+/** Immediate-grant response (free plans — no checkout needed). */
+export interface PurchaseProductImmediateResponse {
+  ok: true
+  immediate: true
+  plan: string
+  productId: number
+  membershipId: number
+  isExtension?: boolean
+  message?: string
+}
+
+/** 409 ALREADY_SUBSCRIBED response (must use PATCH instead). */
+export interface PurchaseProductAlreadySubscribedResponse {
+  error: 'ALREADY_SUBSCRIBED'
+  message: string
+  existingSubscription: {
+    id: number
+    providerSlug: string
+    providerSubscriptionId: string
+    status: string
+    currentPeriodEnd: string
+  }
+  hint?: string
+}
+
+export type PurchaseProductResponse =
+  | PurchaseProductCheckoutResponse
+  | PurchaseProductImmediateResponse
+  | PurchaseProductAlreadySubscribedResponse
+
+// ===== Plan change / cancel (POST /billing/subscription/preview-change,
+//        PATCH /billing/subscription, POST /billing/subscription/cancel) =====
+
+export type ProrationBillingMode =
+  | 'prorated_immediately'
+  | 'prorated_next_billing_period'
+  | 'full_immediately'
+  | 'full_next_billing_period'
+  | 'do_not_bill'
+
+export type OnPaymentFailure = 'prevent_change' | 'apply_change'
+
+export interface PreviewSubscriptionChangeRequest {
+  /** One of these three is required. */
+  planSlug?: string
+  productCode?: string
+  priceId?: string
+  prorationBillingMode?: ProrationBillingMode
+}
+
+export interface PreviewSubscriptionChangeResponse {
+  ok: true
+  prorationBillingMode: ProrationBillingMode
+  targetPriceId: string
+  items: any[]
+  /** Provider-specific proration breakdown (Paddle preview payload). */
+  preview: any
+}
+
+export interface ChangeSubscriptionRequest {
+  planSlug?: string
+  productCode?: string
+  priceId?: string
+  prorationBillingMode?: ProrationBillingMode
+  onPaymentFailure?: OnPaymentFailure
+}
+
+export interface ChangeSubscriptionResponse {
+  ok: true
+  prorationBillingMode: ProrationBillingMode
+  subscription: {
+    id: string
+    status: string
+    nextBilledAt: string | null
+    scheduledChange: any | null
+    items: any[]
+    currencyCode: string
+  }
+}
+
+export interface CancelSubscriptionRequest {
+  /** Defaults to 'next_billing_period' if omitted. */
+  effectiveFrom?: 'next_billing_period' | 'immediately'
+}
+
+export interface CancelSubscriptionResponse {
+  ok: true
+  effectiveFrom: 'next_billing_period' | 'immediately'
+  subscription: {
+    id: string
+    status: string
+    scheduledChange: any | null
+    nextBilledAt: string | null
+  }
+}
+
+/**
  * Subscription plan - recurring monthly credit allocation
  */
 export interface SubscriptionPlan {

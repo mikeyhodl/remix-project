@@ -720,6 +720,210 @@
   background: transparent;
 }
 
+/* Cancel link — quiet text-button under the active paid plan card. */
+.pm-plan__cancel-link {
+  margin-top: 8px;
+  padding: 6px 4px;
+  background: transparent;
+  border: 0;
+  color: var(--pm-text-dim);
+  font-family: var(--pm-body);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--pm-text-dim) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: color .15s ease;
+}
+
+.pm-plan__cancel-link:hover {
+  color: #ff7676;
+}
+
+/* "Active until {date} — will not renew" notice on the active card. */
+.pm-plan__cancel-notice {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 159, 91, 0.10);
+  border: 0.5px solid rgba(255, 159, 91, 0.32);
+  color: #ffb27a;
+  font-family: var(--pm-body);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pm-plan__cancel-notice i {
+  flex: none;
+  font-size: 13px;
+}
+
+/* ─── Confirm modal ───────────────────────────────────────────────────── */
+
+.pm-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 14, 18, 0.55);
+  backdrop-filter: blur(6px);
+  animation: pm-modal-fade .12s ease-out;
+}
+
+@keyframes pm-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.pm-modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--pm-card);
+  border: 0.5px solid var(--pm-line-2);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.55);
+  font-family: var(--pm-body);
+  color: var(--pm-text);
+  overflow: hidden;
+  animation: pm-modal-pop .14s ease-out;
+}
+
+.pm-modal--danger {
+  border-color: rgba(231, 91, 137, 0.45);
+  box-shadow: 0 30px 80px -20px rgba(231, 91, 137, 0.35);
+}
+
+@keyframes pm-modal-pop {
+  from { transform: translateY(8px) scale(0.985); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.pm-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 8px;
+}
+
+.pm-modal__title {
+  margin: 0;
+  font-family: var(--pm-display);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  color: var(--pm-text);
+}
+
+.pm-modal__close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--pm-text-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  transition: background .15s ease, color .15s ease;
+}
+
+.pm-modal__close:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--pm-text);
+}
+
+.pm-modal__body {
+  padding: 4px 20px 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pm-text-dim);
+}
+
+.pm-modal__body p {
+  margin: 0 0 8px;
+}
+
+.pm-modal__body p:last-child {
+  margin-bottom: 0;
+}
+
+.pm-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 16px 16px;
+}
+
+@media (min-width: 520px) {
+  .pm-modal__actions {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: 4px 20px 18px;
+  }
+}
+
+.pm-modal__btn {
+  appearance: none;
+  border: 0.5px solid var(--pm-line-2);
+  background: rgba(255,255,255,0.03);
+  color: var(--pm-text);
+  font-family: var(--pm-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease;
+}
+
+.pm-modal__btn:hover { transform: translateY(-1px); }
+.pm-modal__btn:active { transform: translateY(0); }
+
+.pm-modal__btn--primary {
+  background: var(--pm-accent, #2fbfb1);
+  border-color: var(--pm-accent, #2fbfb1);
+  color: #06231f;
+}
+
+.pm-modal__btn--primary:hover {
+  background: color-mix(in srgb, var(--pm-accent, #2fbfb1) 88%, white);
+}
+
+.pm-modal__btn--danger {
+  background: #e75b89;
+  border-color: #e75b89;
+  color: #2a0814;
+}
+
+.pm-modal__btn--danger:hover {
+  background: #ec7099;
+}
+
+.pm-modal__btn--ghost {
+  background: transparent;
+  color: var(--pm-text-dim);
+}
+
+.pm-modal__btn--ghost:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--pm-text);
+}
+
 /* Top up */
 
 .pm-topup__intro {
