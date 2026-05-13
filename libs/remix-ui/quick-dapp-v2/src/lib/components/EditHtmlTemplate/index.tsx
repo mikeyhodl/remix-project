@@ -278,11 +278,16 @@ function EditHtmlTemplate(): JSX.Element {
         return;
       }
 
+      const isInlineMode = (activeDapp as any)?.inlineMode === true;
+      const indexHtmlPaths = isInlineMode
+        ? ['/frontend/index.html', 'frontend/index.html']
+        : ['/index.html', 'index.html'];
+
       for (const [path] of mapFiles.entries()) {
         if (path.match(/\.(js|jsx|ts|tsx)$/)) {
           hasBuildableFiles = true;
         }
-        if (path === '/index.html' || path === 'index.html') {
+        if (indexHtmlPaths.includes(path)) {
           indexHtmlContent = mapFiles.get(path)!;
         }
       }
@@ -384,7 +389,11 @@ window.addEventListener('unhandledrejection', function(e) {
 
     try {
       if (hasBuildableFiles) {
-        const result = await builder.build(mapFiles, '/src/main.jsx');
+        const isInlineMode = (activeDapp as any)?.inlineMode === true;
+        const basePath = isInlineMode ? '/frontend' : undefined;
+        const entryPoint = isInlineMode ? '/frontend/src/main.jsx' : '/src/main.jsx';
+
+        const result = await builder.build(mapFiles, entryPoint, basePath);
         if (!result.success) {
           doc.open();
           doc.write(`<pre style="color: red; white-space: pre-wrap;">${result.error || 'Unknown build error'}</pre>`);

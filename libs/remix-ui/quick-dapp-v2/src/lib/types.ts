@@ -39,6 +39,7 @@ export interface DappConfig {
     isBaseMiniApp?: boolean;
   };
 
+  inlineMode?: boolean;
   thumbnailPath?: string;
 }
 

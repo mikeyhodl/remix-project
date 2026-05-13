@@ -21,6 +21,9 @@ export const AIRequestForm = ({
   const [figmaToken, setFigmaToken] = useState("");
   const [isTokenLocked, setIsTokenLocked] = useState(false);
 
+  // Project Location State - defaults to 'workspace' (new workspace)
+  const [projectLocation, setProjectLocation] = useState<'workspace' | 'frontend'>('workspace');
+
   // Load Token from LocalStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('quickdapp-figma-token');
@@ -45,7 +48,9 @@ export const AIRequestForm = ({
   // Expose values to parent
   useEffect(() => {
     onMount(async () => {
-      // Common return structure
+      // Use 'inline' mode when user selects frontend location, 'workspace' for new workspace
+      const frontendMode = projectLocation === 'frontend' ? 'inline' : 'workspace';
+
       if (mode === 'figma') {
         return {
           mode: 'figma',
@@ -53,18 +58,20 @@ export const AIRequestForm = ({
           figmaToken,
           // Use user instructions as description for context
           text: description,
-          isBaseMiniApp: isBaseMiniApp
+          isBaseMiniApp: isBaseMiniApp,
+          frontendMode
         };
       } else {
         return {
           mode: 'text',
           text: description,
           isBaseMiniApp,
-          image: previewUrl || undefined
+          image: previewUrl || undefined,
+          frontendMode
         };
       }
     });
-  }, [onMount, mode, description, isBaseMiniApp, previewUrl, figmaUrl, figmaToken]);
+  }, [onMount, mode, description, isBaseMiniApp, previewUrl, figmaUrl, figmaToken, projectLocation]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -166,7 +173,7 @@ export const AIRequestForm = ({
             )}
           </div>
 
-          <div className="form-check">
+          <div className="form-check mb-2">
             <input
               className="form-check-input"
               type="checkbox"
@@ -177,6 +184,40 @@ export const AIRequestForm = ({
             <label className="form-check-label" htmlFor="base-miniapp-checkbox">
               <FormattedMessage id="udapp.aiCreateBaseMiniApp" />
             </label>
+          </div>
+
+          <div className="border-top pt-3 mt-3">
+            <label className="form-label small fw-bold mb-2">
+              <FormattedMessage id="udapp.aiProjectLocation" defaultMessage="Project Location" />
+            </label>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="projectLocation"
+                id="location-workspace"
+                value="workspace"
+                checked={projectLocation === 'workspace'}
+                onChange={(e) => setProjectLocation(e.target.value as 'workspace' | 'frontend')}
+              />
+              <label className="form-check-label" htmlFor="location-workspace">
+                <FormattedMessage id="udapp.aiNewWorkspace" defaultMessage="New workspace" />
+              </label>
+            </div>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="projectLocation"
+                id="location-frontend"
+                value="frontend"
+                checked={projectLocation === 'frontend'}
+                onChange={(e) => setProjectLocation(e.target.value as 'workspace' | 'frontend')}
+              />
+              <label className="form-check-label" htmlFor="location-frontend">
+                <FormattedMessage id="udapp.aiFrontendDirectory" defaultMessage="Frontend directory in current workspace (/frontend)" />
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -261,7 +302,7 @@ export const AIRequestForm = ({
               onChange={(e) => setDescription(e.target.value)}
             ></textarea>
           </div>
-          <div className="form-check mt-3 border-top pt-3">
+          <div className="form-check mt-3 border-top pt-3 mb-2">
             <input
               className="form-check-input"
               type="checkbox"
@@ -276,10 +317,47 @@ export const AIRequestForm = ({
               <FormattedMessage id="udapp.aiFigmaIncludesFarcaster" />
             </div>
           </div>
+
+          <div className="border-top pt-3 mt-3">
+            <label className="form-label small fw-bold mb-2">
+              <FormattedMessage id="udapp.aiProjectLocation" defaultMessage="Project Location" />
+            </label>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="projectLocationFigma"
+                id="location-workspace-figma"
+                value="workspace"
+                checked={projectLocation === 'workspace'}
+                onChange={(e) => setProjectLocation(e.target.value as 'workspace' | 'frontend')}
+              />
+              <label className="form-check-label" htmlFor="location-workspace-figma">
+                <FormattedMessage id="udapp.aiNewWorkspace" defaultMessage="New workspace" />
+              </label>
+            </div>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="projectLocationFigma"
+                id="location-frontend-figma"
+                value="frontend"
+                checked={projectLocation === 'frontend'}
+                onChange={(e) => setProjectLocation(e.target.value as 'workspace' | 'frontend')}
+              />
+              <label className="form-check-label" htmlFor="location-frontend-figma">
+                <FormattedMessage id="udapp.aiFrontendDirectory" defaultMessage="Frontend directory in current workspace (/frontend)" />
+              </label>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="mt-2 text-muted small"><FormattedMessage id="udapp.aiMightTakeMinutes" /></div>
+      <div className="alert alert-warning mt-3 py-2 d-flex align-items-center" style={{ fontSize: '0.85rem' }}>
+        <i className="fas fa-info-circle me-2"></i>
+        <FormattedMessage id="udapp.aiMightTakeMinutes" />
+      </div>
     </div>
   );
 };

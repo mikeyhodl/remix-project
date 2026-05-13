@@ -180,24 +180,48 @@ export class DappManager {
 
         try {
           const hasConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, CONFIG_FILENAME);
-          if (!hasConfig) continue;
+          const hasInlineConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
 
+          if (!hasConfig && !hasInlineConfig) continue;
           let content;
-          try {
-            content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, CONFIG_FILENAME);
-          } catch (err) {
-            continue;
+          let isInline = false;
+          if (hasConfig) {
+            try {
+              content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, CONFIG_FILENAME);
+            } catch (err) {
+              if (hasInlineConfig) {
+                try {
+                  content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
+                  isInline = true;
+                } catch (err2) {
+                  continue;
+                }
+              } else {
+                continue;
+              }
+            }
+          } else if (hasInlineConfig) {
+            try {
+              content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
+              isInline = true;
+            } catch (err) {
+              continue;
+            }
           }
 
           if (content) {
             const config = JSON.parse(content);
             config.workspaceName = workspaceName;
-            config.slug = workspaceName;
+            config.slug = config.slug || workspaceName;
+            if (isInline) {
+              config.inlineMode = true;
+            }
 
             try {
-              const hasPreview = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, 'preview.png');
+              const previewPath = isInline ? `frontend/preview.png` : 'preview.png';
+              const hasPreview = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, previewPath);
               if (hasPreview) {
-                const previewContent = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, 'preview.png');
+                const previewContent = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, previewPath);
                 if (previewContent) {
                   config.thumbnailPath = previewContent;
                 }
@@ -703,25 +727,34 @@ export class DappManager {
     const currentWorkspace = await this.getCurrentWorkspace();
 
     try {
-      if (currentWorkspace.name !== workspaceName) {
+      const isInlineSlug = workspaceName.startsWith('inline-');
+      let configPath = CONFIG_FILENAME;
+      let previewPath = 'preview.png';
+
+      if (isInlineSlug) {
+        configPath = `frontend/${CONFIG_FILENAME}`;
+        previewPath = 'frontend/preview.png';
+      } else if (currentWorkspace.name !== workspaceName) {
         await this.switchToWorkspace(workspaceName);
       }
 
-      const content = await this.plugin.call('fileManager', 'readFile', CONFIG_FILENAME);
+      const content = await this.plugin.call('fileManager', 'readFile', configPath);
 
       if (content) {
         const config = JSON.parse(content);
-        config.workspaceName = workspaceName;
-        config.slug = workspaceName;
+        config.workspaceName = isInlineSlug ? currentWorkspace.name : workspaceName;
+        if (!config.slug) {
+          config.slug = workspaceName;
+        }
 
         try {
-          const previewContent = await this.plugin.call('fileManager', 'readFile', 'preview.png');
+          const previewContent = await this.plugin.call('fileManager', 'readFile', previewPath);
           if (previewContent) {
             config.thumbnailPath = previewContent;
           }
         } catch (e) {}
 
-        if (currentWorkspace.name !== workspaceName) {
+        if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
           await this.switchToWorkspace(currentWorkspace.name);
           await this.focusPlugin();
         }
@@ -729,14 +762,15 @@ export class DappManager {
         return this.sanitizeConfig(config);
       }
 
-      if (currentWorkspace.name !== workspaceName) {
+      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
         await this.switchToWorkspace(currentWorkspace.name);
         await this.focusPlugin();
       }
     } catch (e) {
       console.warn(`[DappManager] Failed to read config for ${workspaceName}`, e);
 
-      if (currentWorkspace.name !== workspaceName) {
+      const isInlineSlug = workspaceName.startsWith('inline-');
+      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
         try {
           await this.switchToWorkspace(currentWorkspace.name);
           await this.focusPlugin();
@@ -750,11 +784,18 @@ export class DappManager {
     const currentWorkspace = await this.getCurrentWorkspace();
 
     try {
-      if (currentWorkspace.name !== workspaceName) {
+      const isInlineSlug = workspaceName.startsWith('inline-');
+      let configPath = CONFIG_FILENAME;
+      let actualWorkspace = workspaceName;
+
+      if (isInlineSlug) {
+        configPath = `frontend/${CONFIG_FILENAME}`;
+        actualWorkspace = currentWorkspace.name;
+      } else if (currentWorkspace.name !== workspaceName) {
         await this.switchToWorkspace(workspaceName);
       }
 
-      const content = await this.plugin.call('fileManager', 'readFile', CONFIG_FILENAME);
+      const content = await this.plugin.call('fileManager', 'readFile', configPath);
 
       if (!content) throw new Error('Config file not found');
 
@@ -763,7 +804,7 @@ export class DappManager {
       const newConfig: DappConfig = {
         ...currentConfig,
         ...updates,
-        workspaceName,
+        workspaceName: actualWorkspace,
         config: {
           ...currentConfig.config,
           ...(updates.config || {})
@@ -777,14 +818,14 @@ export class DappManager {
 
       const sanitizedConfig = this.sanitizeConfig(newConfig);
 
-      await (this.plugin as any).call('fileManager', 'writeFile', CONFIG_FILENAME, JSON.stringify(sanitizedConfig, null, 2), { silent: true });
+      await (this.plugin as any).call('fileManager', 'writeFile', configPath, JSON.stringify(sanitizedConfig, null, 2), { silent: true });
 
-      if (currentWorkspace.name !== workspaceName) {
+      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
         await this.switchToWorkspace(currentWorkspace.name);
         await this.focusPlugin();
       }
 
-      if (currentWorkspace.name === workspaceName) {
+      if (currentWorkspace.name === workspaceName || isInlineSlug) {
         await this.focusPlugin();
       }
 
@@ -793,7 +834,8 @@ export class DappManager {
     } catch (e) {
       console.error('[DappManager] Failed to update config:', e);
 
-      if (currentWorkspace.name !== workspaceName) {
+      const isInlineSlug = workspaceName.startsWith('inline-');
+      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
         try {
           await this.switchToWorkspace(currentWorkspace.name);
           await this.focusPlugin();
@@ -806,5 +848,131 @@ export class DappManager {
   async openDappWorkspace(workspaceName: string): Promise<void> {
     await this.switchToWorkspace(workspaceName);
     await this.focusPlugin();
+  }
+
+  async createDappInline(name: string, contractData: any, isBaseMiniApp: boolean = false): Promise<DappConfig> {
+    const currentWs = await this.getCurrentWorkspace();
+
+    // Block creating from within a dapp workspace
+    if (currentWs.name.startsWith(DAPP_WORKSPACE_PREFIX)) {
+      throw new Error(
+        'Cannot create a DApp from within a DApp workspace. ' +
+        'Please switch to the original contract workspace first.'
+      );
+    }
+
+    // Create /frontend directory in current workspace
+    try {
+      await this.plugin.call('fileManager', 'mkdir', 'frontend');
+    } catch (_) { /* folder may already exist */ }
+
+    let existingConfig: DappConfig | null = null;
+    try {
+      const content = await this.plugin.call('fileManager', 'readFile', `frontend/${CONFIG_FILENAME}`);
+      if (content) {
+        existingConfig = JSON.parse(content);
+      }
+    } catch (e) {}
+
+    const timestamp = Date.now();
+    let config: DappConfig;
+
+    if (existingConfig) {
+      config = {
+        ...existingConfig,
+        name,
+        contract: {
+          address: contractData.address,
+          name: contractData.name,
+          abi: contractData.abi,
+          chainId: contractData.chainId,
+          networkName: contractData.networkName || 'Unknown Network'
+        },
+        sourceWorkspace: {
+          name: currentWs.name,
+          filePath: contractData.sourceFilePath || ''
+        },
+        status: 'creating',
+        processingStartedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        config: {
+          ...existingConfig.config,
+          isBaseMiniApp
+        },
+        inlineMode: true
+      } as any;
+    } else {
+      const id = uuidv4();
+      const slug = `inline-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 6)}`;
+
+      config = {
+        _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
+        id,
+        slug,
+        name,
+        workspaceName: currentWs.name,
+        contract: {
+          address: contractData.address,
+          name: contractData.name,
+          abi: contractData.abi,
+          chainId: contractData.chainId,
+          networkName: contractData.networkName || 'Unknown Network'
+        },
+        sourceWorkspace: {
+          name: currentWs.name,
+          filePath: contractData.sourceFilePath || ''
+        },
+        status: 'creating',
+        processingStartedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        config: {
+          title: name,
+          details: 'Generated by AI',
+          isBaseMiniApp
+        },
+        inlineMode: true
+      } as any;
+    }
+
+    await (this.plugin as any).call(
+      'fileManager', 'writeFile',
+      `frontend/${CONFIG_FILENAME}`,
+      JSON.stringify(config, null, 2),
+      { silent: true }
+    );
+
+    return config;
+  }
+
+  async saveGeneratedFilesInline(pages: Record<string, string>): Promise<void> {
+    if (!pages || Object.keys(pages).length === 0) {
+      console.warn('[DappManager] saveGeneratedFilesInline: no pages to save');
+      return;
+    }
+
+    for (const [rawFilename, content] of Object.entries(pages)) {
+      const safeParts = rawFilename.replace(/\\/g, '/')
+        .split('/')
+        .filter(part => part !== '..' && part !== '.' && part !== '');
+
+      if (safeParts.length === 0) continue;
+      const fullPath = `frontend/${safeParts.join('/')}`;
+
+      if (safeParts.length > 1) {
+        let currentPath = 'frontend';
+        for (const folder of safeParts.slice(0, -1)) {
+          currentPath = `${currentPath}/${folder}`;
+          try { await this.plugin.call('fileManager', 'mkdir', currentPath); } catch (_) {}
+        }
+      }
+
+      try {
+        await (this.plugin as any).call('fileManager', 'writeFile', fullPath, content, { silent: true });
+      } catch (e) {
+        console.error(`[DappManager] saveGeneratedFilesInline: failed to write ${fullPath}:`, e);
+      }
+    }
   }
 }

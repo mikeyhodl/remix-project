@@ -13,6 +13,7 @@ import { QuickDappV2PluginApi, DappConfig } from './types';
 import './App.css';
 
 import { getNetworkName } from './utils/networks';
+import { addFrontendPrefix } from '@remix-ui/helper';
 
 export interface RemixUiQuickDappV2Props {
   plugin: QuickDappV2PluginApi;
@@ -74,14 +75,66 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
           sourceFilePath: payload.sourceFilePath || ''
         };
 
-        const newDapp = await dappManager.createDapp(
-          contractData.name,
-          contractData,
-          payload.isBaseMiniApp || false
-        );
+        const isInlineMode = payload.frontendMode === 'inline';
+
+        if (isInlineMode) {
+          try {
+            const frontendExists = await plugin.call('fileManager', 'exists', 'frontend');
+            if (frontendExists) {
+              const frontendFiles = await plugin.call('fileManager', 'readdir', 'frontend');
+              const hasFiles = frontendFiles && Object.keys(frontendFiles).length > 0;
+
+              if (hasFiles) {
+                const userConfirmed = await new Promise<boolean>((resolve) => {
+                  plugin.call('notification', 'modal', {
+                    id: 'chainlink-cre-override-warning',
+                    title: 'Frontend Folder Already Exists',
+                    message: (
+                      <div>
+                        <p><strong>Warning:</strong> The <code>/frontend</code> folder already exists in your workspace and contains files.</p>
+                        <p>Continuing will <strong>override</strong> the existing DApp files. This action <strong>cannot be undone</strong> and you will lose files that are not backed up.</p>
+                        <p><strong>Recommendation:</strong> Back up your existing <code>/frontend</code> folder before proceeding.</p>
+                        <p>Do you want to continue?</p>
+                      </div>
+                    ),
+                    modalType: 'confirm',
+                    okLabel: 'Continue Anyway',
+                    cancelLabel: 'Cancel',
+                    okFn: () => resolve(true),
+                    cancelFn: () => resolve(false),
+                    hideFn: () => resolve(false)
+                  });
+                });
+
+                if (!userConfirmed) {
+                  return; // User cancelled, stop the creation process
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[QuickDapp] Could not check frontend folder:', e);
+          }
+        }
+
+        const newDapp = isInlineMode
+          ? await dappManager.createDappInline(contractData.name, contractData, payload.isBaseMiniApp || false)
+          : await dappManager.createDapp(contractData.name, contractData, payload.isBaseMiniApp || false);
 
         dispatch({ type: 'SET_ACTIVE_DAPP', payload: newDapp });
-        dispatch({ type: 'SET_DAPPS', payload: [newDapp, ...dappsRef.current]});
+
+        // Check if this dapp already exists in the list (for inline mode updates)
+        const existingDappIndex = dappsRef.current.findIndex(
+          (d: DappConfig) => d.id === newDapp.id || (isInlineMode && (d as any)?.inlineMode === true)
+        );
+
+        if (existingDappIndex !== -1) {
+          const updatedDapps = [...dappsRef.current];
+          updatedDapps[existingDappIndex] = newDapp;
+          dispatch({ type: 'SET_DAPPS', payload: updatedDapps });
+        } else {
+          dispatch({ type: 'SET_DAPPS', payload: [newDapp, ...dappsRef.current]});
+        }
+
         dispatch({ type: 'SET_DAPP_PROCESSING', payload: { slug: newDapp.slug, isProcessing: true } });
         dispatch({ type: 'SET_VIEW', payload: 'dashboard' });
 
@@ -237,7 +290,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
         currentWritingFile = data.filename;
         dispatch({ type: 'SET_GENERATION_PROGRESS', payload: {
           ...enrichedData,
-          generatedFiles: [...generatedFilesRef]
+          filename: addFrontendPrefix(data.filename, dappsRef.current, currentSlugRef),
+          generatedFiles: generatedFilesRef.map(f => addFrontendPrefix(f, dappsRef.current, currentSlugRef))
         } });
       } else {
         // On parsing/validating/complete — finalize the last writing file
@@ -247,7 +301,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
         }
         dispatch({ type: 'SET_GENERATION_PROGRESS', payload: {
           ...enrichedData,
-          generatedFiles: [...generatedFilesRef]
+          filename: addFrontendPrefix(enrichedData.filename, dappsRef.current, currentSlugRef),
+          generatedFiles: generatedFilesRef.map(f => addFrontendPrefix(f, dappsRef.current, currentSlugRef))
         } });
       }
     };
