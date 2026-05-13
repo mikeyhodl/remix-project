@@ -825,7 +825,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [props.plugin, removeApproval])
 
-  const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, modifiedArgs?: Record<string, any>) => {
+  const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, options?: { enableAutoAccept?: boolean; modifiedArgs?: Record<string, any> }) => {
     if (!approval) return
 
     // Close DiffEditor tab if the user had opened a Review
@@ -840,10 +840,17 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
+    // Enable auto-accept if the user checked the checkbox in the modal
+    if (options?.enableAutoAccept && !hitlAutoAcceptRef.current) {
+      setHitlAutoAccept(true)
+      localStorage.setItem(HITL_AUTO_ACCEPT_KEY, 'true')
+      console.log('[HITL] Auto-accept ENABLED from approval modal')
+    }
+
     props.plugin.call('remixAI', 'respondToToolApproval', {
       requestId: approval.requestId,
       approved: true,
-      modifiedArgs
+      modifiedArgs: options?.modifiedArgs
     })
     removeApproval(approval.requestId)
   }, [props.plugin, removeApproval, reviewingApprovals])
@@ -1857,6 +1864,41 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   onDappReviewRevertAll={handleDappReviewRevertAll}
                   onDappReviewViewDiff={handleDappReviewViewDiff}
                 />
+                {/* Auto-accept active banner */}
+                {hitlAutoAccept && pendingApprovals.length === 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 12px',
+                      margin: '0 12px 8px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: 'var(--bs-body-color, #ccc)',
+                      background: 'color-mix(in srgb, var(--bs-warning, #e67e22) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--bs-warning, #e67e22) 25%, transparent)',
+                    }}
+                    data-id="hitl-auto-accept-banner"
+                  >
+                    <span style={{ opacity: 0.85 }}>Auto-accepting all tool changes</span>
+                    <button
+                      onClick={toggleHitlAutoAccept}
+                      style={{
+                        background: 'none',
+                        border: '1px solid color-mix(in srgb, var(--bs-body-color, #ccc) 30%, transparent)',
+                        borderRadius: '4px',
+                        padding: '2px 10px',
+                        fontSize: '11px',
+                        color: 'var(--bs-body-color, #ccc)',
+                        cursor: 'pointer',
+                      }}
+                      data-id="hitl-auto-accept-disable"
+                    >
+                      Disable
+                    </button>
+                  </div>
+                )}
                 {pendingApprovals.length > 1 && (
                   <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
                     <div className="d-flex justify-content-between align-items-center">
@@ -1884,7 +1926,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   <div key={approval.requestId} style={{ padding: '0 12px', marginBottom: '8px' }}>
                     <ToolApprovalModal
                       request={approval}
-                      onApprove={(modifiedArgs) => handleApproveToolAction(approval, modifiedArgs)}
+                      onApprove={(options) => handleApproveToolAction(approval, options)}
                       onReject={() => handleRejectToolAction(approval)}
                       onTimeout={() => handleTimeoutToolAction(approval)}
                       onReviewChanges={() => handleReviewChanges(approval)}
@@ -1975,6 +2017,41 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     onDappReviewRevertAll={handleDappReviewRevertAll}
                     onDappReviewViewDiff={handleDappReviewViewDiff}
                   />
+                  {/* Auto-accept active banner */}
+                  {hitlAutoAccept && pendingApprovals.length === 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 12px',
+                        margin: '0 12px 8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: 'var(--bs-body-color, #ccc)',
+                        background: 'color-mix(in srgb, var(--bs-warning, #e67e22) 12%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--bs-warning, #e67e22) 25%, transparent)',
+                      }}
+                      data-id="hitl-auto-accept-banner"
+                    >
+                      <span style={{ opacity: 0.85 }}>Auto-accepting all tool changes</span>
+                      <button
+                        onClick={toggleHitlAutoAccept}
+                        style={{
+                          background: 'none',
+                          border: '1px solid color-mix(in srgb, var(--bs-body-color, #ccc) 30%, transparent)',
+                          borderRadius: '4px',
+                          padding: '2px 10px',
+                          fontSize: '11px',
+                          color: 'var(--bs-body-color, #ccc)',
+                          cursor: 'pointer',
+                        }}
+                        data-id="hitl-auto-accept-disable"
+                      >
+                        Disable
+                      </button>
+                    </div>
+                  )}
                   {pendingApprovals.length > 1 && (
                     <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
                       <div className="d-flex justify-content-between align-items-center">
@@ -2002,7 +2079,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     <div key={approval.requestId} style={{ padding: '0 12px', marginBottom: '8px' }}>
                       <ToolApprovalModal
                         request={approval}
-                        onApprove={(modifiedArgs) => handleApproveToolAction(approval, modifiedArgs)}
+                        onApprove={(options) => handleApproveToolAction(approval, options)}
                         onReject={() => handleRejectToolAction(approval)}
                         onTimeout={() => handleTimeoutToolAction(approval)}
                         onReviewChanges={() => handleReviewChanges(approval)}
@@ -2061,8 +2138,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
-              hitlAutoAccept={hitlAutoAccept}
-              onToggleHitlAutoAccept={toggleHitlAutoAccept}
             />
           ) : (
             <AiChatPromptArea
@@ -2108,8 +2183,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
-              hitlAutoAccept={hitlAutoAccept}
-              onToggleHitlAutoAccept={toggleHitlAutoAccept}
             />
           )
         }

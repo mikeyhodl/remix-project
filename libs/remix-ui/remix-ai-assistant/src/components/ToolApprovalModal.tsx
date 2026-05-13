@@ -3,7 +3,7 @@ import { ToolApprovalRequest } from '@remix/remix-ai-core'
 
 interface ToolApprovalModalProps {
   request: ToolApprovalRequest
-  onApprove: (modifiedArgs?: Record<string, any>) => void
+  onApprove: (options?: { enableAutoAccept?: boolean; modifiedArgs?: Record<string, any> }) => void
   onReject: () => void
   onTimeout: () => void
   /** Triggers showCustomDiff in the editor for line-by-line review */
@@ -14,6 +14,7 @@ interface ToolApprovalModalProps {
 
 export const ToolApprovalModal: React.FC<ToolApprovalModalProps> = ({ request, onApprove, onReject, onTimeout, onReviewChanges, isReviewing }) => {
   const [timeLeft, setTimeLeft] = useState(60)
+  const [autoAcceptChecked, setAutoAcceptChecked] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const dismissedRef = useRef(false)
 
@@ -28,6 +29,7 @@ export const ToolApprovalModal: React.FC<ToolApprovalModalProps> = ({ request, o
   useEffect(() => {
 
     dismissedRef.current = false
+    setAutoAcceptChecked(false)
     stopTimer()
 
     timerRef.current = setInterval(() => {
@@ -60,7 +62,7 @@ export const ToolApprovalModal: React.FC<ToolApprovalModalProps> = ({ request, o
 
     stopTimer()
     dismissedRef.current = true
-    onApprove()
+    onApprove({ enableAutoAccept: autoAcceptChecked })
   }
 
   const handleReject = () => {
@@ -147,40 +149,61 @@ export const ToolApprovalModal: React.FC<ToolApprovalModalProps> = ({ request, o
         </div>
       )}
 
+      {/* Auto-accept checkbox */}
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '11px',
+          color: 'var(--text-muted, #999)',
+          cursor: 'pointer',
+          userSelect: 'none',
+          margin: '0 0 8px 0',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={autoAcceptChecked}
+          onChange={(e) => setAutoAcceptChecked(e.target.checked)}
+          style={{ margin: 0, cursor: 'pointer' }}
+          data-id="hitl-auto-accept-checkbox"
+        />
+        Auto-accept all changes
+      </label>
+
       {/* Action buttons */}
-      {(
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+        <button
+          onClick={handleReject}
+          style={{
+            padding: '5px 14px', borderRadius: '4px', border: 'none',
+            background: '#e74c3c', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+          }}
+        >
+          Reject
+        </button>
+        <button
+          onClick={handleApprove}
+          style={{
+            padding: '5px 14px', borderRadius: '4px', border: 'none',
+            background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+          }}
+        >
+          Approve
+        </button>
+        {canReview && (
           <button
-            onClick={handleReject}
+            onClick={handleReviewChanges}
             style={{
               padding: '5px 14px', borderRadius: '4px', border: 'none',
-              background: '#e74c3c', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+              background: '#3498db', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
             }}
           >
-            Reject
+            Review Changes
           </button>
-          <button
-            onClick={handleApprove}
-            style={{
-              padding: '5px 14px', borderRadius: '4px', border: 'none',
-              background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
-            }}
-          >
-            Approve
-          </button>
-          {canReview && (
-            <button
-              onClick={handleReviewChanges}
-              style={{
-                padding: '5px 14px', borderRadius: '4px', border: 'none',
-                background: '#3498db', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 500
-              }}
-            >
-              Review Changes
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

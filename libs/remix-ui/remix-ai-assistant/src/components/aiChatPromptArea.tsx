@@ -47,8 +47,6 @@ interface AiChatPromptAreaProps {
     setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
     messages: ChatMessage[]
     handleLoadSkills?: () => void
-    hitlAutoAccept?: boolean
-    onToggleHitlAutoAccept?: () => void
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
@@ -123,34 +121,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
               </div>
             </div>
           )}
-          {/* HITL Auto-Accept toggle */}
-          {props.onToggleHitlAutoAccept && (
-            <div className="border-top mt-2 pt-2">
-              <div className="text-uppercase ms-2 mb-2 small">Tool Approval</div>
-              <div className="form-check ms-2 mb-2">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="hitlAutoAcceptToggle"
-                  data-id="hitl-auto-accept-toggle"
-                  checked={props.hitlAutoAccept || false}
-                  onChange={() => props.onToggleHitlAutoAccept()}
-                />
-                <label className="form-check-label small" htmlFor="hitlAutoAcceptToggle">
-                  Auto-accept all changes
-                </label>
-              </div>
-              <div className="small text-muted ms-2 mb-1">
-                Skip approval modals and auto-approve file writes
-              </div>
-              {props.hitlAutoAccept && (
-                <div className="small ms-2 mb-1" style={{ color: '#e67e22' }}>
-                  <i className="fas fa-exclamation-triangle me-1" />
-                  Changes will be applied without review
-                </div>
-              )}
-            </div>
-          )}
+
         </div>
       )}
       {props.showOllamaModelSelector && props.selectedModel?.provider === 'ollama' && (
