@@ -1,5 +1,5 @@
 import { Plugin } from '@remixproject/engine'
-import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, InviteApiService, TestPoolApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, LoginMode, LoginModeResponse, ACCESS_POLICY_ERROR_CODES, AccessPolicy, AccessPolicyResponse, AppConfig, PoolCheckoutResponse, PoolReleaseResponse, PoolStatusResponse } from '@remix-api'
+import { AuthUser, AuthProvider as AuthProviderType, ApiClient, SSOApiService, CreditsApiService, PermissionsApiService, BillingApiService, ProductsApiService, InviteApiService, TestPoolApiService, Credits, InviteValidateResponse, InviteRedeemResponse, RegistrationMode, RegistrationModeResponse, LoginMode, LoginModeResponse, ACCESS_POLICY_ERROR_CODES, AccessPolicy, AccessPolicyResponse, AppConfig, PoolCheckoutResponse, PoolReleaseResponse, PoolStatusResponse } from '@remix-api'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { QueryParams } from '@remix-project/remix-lib'
 import { getAddress } from 'ethers'
@@ -9,7 +9,7 @@ const profile = {
   name: 'auth',
   displayName: 'Authentication',
   description: 'Handles SSO authentication and credits',
-  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'getLoginMode', 'refreshLoginMode', 'getAccessPolicy', 'refreshAccessPolicy', 'notifyEmailOtpLogin', 'getAppConfig', 'refreshAppConfig', 'getAppConfigValue', 'poolCheckout', 'poolRelease', 'poolStatus', 'poolReleaseAll', 'isPoolAvailable'],
+  methods: ['login', 'logout', 'getUser', 'getCredits', 'refreshCredits', 'linkAccount', 'getLinkedAccounts', 'unlinkAccount', 'getApiClient', 'getSSOApi', 'getCreditsApi', 'getPermissionsApi', 'getBillingApi', 'getProductsApi', 'checkPermission', 'hasPermission', 'getAllPermissions', 'refreshPermissions', 'checkPermissions', 'getFeaturesByCategory', 'getFeatureLimit', 'getPaddleConfig', 'fetchGitHubToken', 'disconnectGitHub', 'getInviteApi', 'validateInviteToken', 'redeemInviteToken', 'getPendingInviteToken', 'setPendingInviteToken', 'setPendingInviteValidation', 'clearPendingInviteToken', 'getPendingInviteValidation', 'isAuthenticated', 'getToken', 'getRegistrationMode', 'getLoginMode', 'refreshLoginMode', 'getAccessPolicy', 'refreshAccessPolicy', 'notifyEmailOtpLogin', 'getAppConfig', 'refreshAppConfig', 'getAppConfigValue', 'poolCheckout', 'poolRelease', 'poolStatus', 'poolReleaseAll', 'isPoolAvailable'],
   events: ['authStateChanged', 'creditsUpdated', 'accountLinked', 'gitHubTokenReady', 'inviteTokenDetected', 'inviteTokenRedeemed', 'registrationModeChanged', 'loginModeChanged', 'accessPolicyChanged', 'appConfigChanged']
 }
 
@@ -22,6 +22,7 @@ export class AuthPlugin extends Plugin {
   private creditsApi: CreditsApiService
   private permissionsApi: PermissionsApiService
   private billingApi: BillingApiService
+  private productsApi: ProductsApiService
   private inviteApi: InviteApiService
   private testPoolApi: TestPoolApiService | null = null
   private activePoolSession: { sessionId: string; accountId: string } | null = null
@@ -57,6 +58,10 @@ export class AuthPlugin extends Plugin {
     const billingClient = new ApiClient(endpointUrls.billing)
     this.billingApi = new BillingApiService(billingClient)
 
+    // Products API (separate base URL: /products)
+    const productsClient = new ApiClient(endpointUrls.products)
+    this.productsApi = new ProductsApiService(productsClient)
+
     // Invite API (no auth required for validation, but needed for redemption)
     const inviteClient = new ApiClient(endpointUrls.invite)
     this.inviteApi = new InviteApiService(inviteClient)
@@ -66,6 +71,7 @@ export class AuthPlugin extends Plugin {
     creditsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     permissionsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     billingClient.setTokenRefreshCallback(() => this.refreshAccessToken())
+    productsClient.setTokenRefreshCallback(() => this.refreshAccessToken())
     inviteClient.setTokenRefreshCallback(() => this.refreshAccessToken())
   }
 
@@ -139,6 +145,13 @@ export class AuthPlugin extends Plugin {
    */
   async getBillingApi(): Promise<BillingApiService> {
     return this.billingApi
+  }
+
+  /**
+   * Get the typed Products API service
+   */
+  async getProductsApi(): Promise<ProductsApiService> {
+    return this.productsApi
   }
 
   /**
@@ -1026,6 +1039,7 @@ export class AuthPlugin extends Plugin {
     this.creditsApi.setToken(token)
     this.permissionsApi.setToken(token)
     this.billingApi.setToken(token)
+    this.productsApi.setToken(token)
     this.inviteApi.setToken(token)
   }
 
@@ -1036,6 +1050,7 @@ export class AuthPlugin extends Plugin {
     this.creditsApi.setToken('')
     this.permissionsApi.setToken('')
     this.billingApi.setToken('')
+    this.productsApi.setToken('')
     this.inviteApi.setToken('')
   }
 

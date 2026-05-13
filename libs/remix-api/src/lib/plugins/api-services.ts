@@ -42,6 +42,7 @@ import {
   ProductProvider,
   CreditPackagesResponse,
   SubscriptionPlansResponse,
+  AvailableProductsResponse,
   UserSubscriptionResponse,
   PurchaseCreditsRequest,
   PurchaseCreditsResponse,
@@ -759,6 +760,26 @@ export class BillingApiService {
 /**
  * Invite API Service - Invite token endpoints with full TypeScript typing
  */
+/**
+ * Products API Service — served from the /products base URL
+ */
+export class ProductsApiService {
+  constructor(private apiClient: IApiClient) {}
+
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
+
+  /**
+   * Get available products for the current user (subscription plans + packages).
+   * Includes the feature_group each product grants so the caller can detect
+   * whether the user already has access to a plan.
+   */
+  async getAvailableProducts(): Promise<ApiResponse<AvailableProductsResponse>> {
+    return this.apiClient.get<AvailableProductsResponse>('/available')
+  }
+}
+
 export class InviteApiService {
   constructor(private apiClient: IApiClient) {}
 

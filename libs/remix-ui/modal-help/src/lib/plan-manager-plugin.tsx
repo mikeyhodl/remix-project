@@ -383,20 +383,43 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'CATALOG_FAILED', message: 'Billing API unavailable' })
         return
       }
-      const [plansResp, packagesResp] = await Promise.all([
-        billingApi.getSubscriptionPlans(),
+      const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
+      const [productsResp, packagesResp] = await Promise.all([
+        productsApi ? productsApi.getAvailableProducts() : Promise.resolve({ ok: false, error: 'Products API unavailable' }),
         billingApi.getCreditPackages()
       ])
-      if (!plansResp?.ok || !packagesResp?.ok) {
+      if (!productsResp?.ok || !packagesResp?.ok) {
         this.store.send({
           type: 'CATALOG_FAILED',
-          message: plansResp?.error || packagesResp?.error || 'Failed to load catalog'
+          message: productsResp?.error || packagesResp?.error || 'Failed to load catalog'
         })
         return
       }
+      const plans = (productsResp.data?.data ?? [])
+        .filter((p: any) => p.product_type === 'subscription_plan')
+        .map((p: any) => ({
+          id: p.slug,
+          internalId: p.id,
+          name: p.name,
+          description: p.description ?? '',
+          creditsPerMonth: p.credits_per_month,
+          priceUsd: p.price_cents,
+          currency: p.currency,
+          billingInterval: p.billing_interval,
+          features: p.features ?? [],
+          featureGroupName: p.feature_group?.name ?? null,
+          providers: p.provider_slug ? [{
+            slug: p.provider_slug,
+            name: p.provider_slug,
+            priceId: p.external_price_id ?? null,
+            productId: p.external_product_id ?? null,
+            isActive: true,
+            syncStatus: 'synced' as const
+          }] : []
+        }))
       this.store.send({
         type: 'CATALOG_LOADED',
-        plans: plansResp.data?.plans ?? [],
+        plans,
         packages: packagesResp.data?.packages ?? []
       })
     } catch (err: any) {
@@ -662,6 +685,7 @@ const PlanManagerOverlay: React.FC<{
               <PlansSection
                 plans={visiblePlans}
                 currentPlanId={planCtx.planId}
+                userFeatureGroupNames={snap.permissions?.feature_groups?.map(g => g.name) ?? []}
                 isTrialEligible={snap.isTrialEligible}
                 purchasingId={purchasingProductId}
                 requiredFeature={intent?.requiredFeature ?? null}
@@ -888,13 +912,17 @@ const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnaps
 const PlansSection: React.FC<{
   plans: any[]
   currentPlanId: string | null
+  /** Feature group names the user already has (from permissions). Used to detect
+   * "current" when the subscription record is absent but a feature group was
+   * granted directly (e.g. after purchasing via /products/available). */
+  userFeatureGroupNames: string[]
   /** True when the user has never used a trial — enables "Start free trial" CTAs. */
   isTrialEligible: boolean
   purchasingId: string | null
   /** Feature key (e.g. 'ai:Anthropic') that triggered the open, if any. Surfaced as a banner. */
   requiredFeature: string | null
   onSubscribe: (planId: string) => void
-}> = ({ plans, currentPlanId, isTrialEligible, purchasingId, requiredFeature, onSubscribe }) => {
+}> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -920,11 +948,12 @@ const PlansSection: React.FC<{
         </div>
       )}
       {sorted.map(plan => {
-        const isCurrent = plan.id === currentPlanId
+        const isCurrent = plan.id === currentPlanId ||
+          (plan.featureGroupName != null && userFeatureGroupNames.includes(plan.featureGroupName))
         const isRecommended = plan.id === recommendedId
         const isPurchasing = purchasingId === plan.id
         const accent = pickAccent(plan.id)
-        const priceLabel = plan.priceUsd === 0 ? 'Free' : `$${(plan.priceUsd / 100).toFixed(0)}`
+        const priceLabel = plan.priceUsd === 0 ? 'Free' : `$${(plan.priceUsd / 100).toFixed(2)}`
         const cadence = plan.priceUsd === 0
           ? 'forever'
           : plan.billingInterval === 'year' ? 'per year' : 'per month'
@@ -1014,7 +1043,7 @@ const TopUpSection: React.FC<{
       </div>
       <div className="pm-topup__grid">
         {packages.map(t => {
-          const price = `$${(t.priceUsd / 100).toFixed(0)}`
+          const price = `$${(t.priceUsd / 100).toFixed(2)}`
           const perK = ((t.priceUsd / 100) / (t.credits / 1000)).toFixed(2)
           const isPurchasing = purchasingId === t.id
           const disabled = anyPurchasing

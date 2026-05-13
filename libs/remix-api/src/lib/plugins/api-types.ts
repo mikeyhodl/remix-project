@@ -504,6 +504,50 @@ export interface CreditPackage {
 }
 
 /**
+ * Feature group associated with an available product (from /api/products/available)
+ */
+export interface AvailableProductFeatureGroup {
+  id: number
+  name: string
+  display_name: string
+  description: string
+}
+
+/**
+ * A product returned by /api/products/available (subscription plans and
+ * credit packages unified under one endpoint).
+ */
+export interface AvailableProduct {
+  id: number
+  product_code: string
+  name: string
+  slug: string
+  description: string
+  product_type: 'subscription_plan' | 'credit_package' | string
+  price_cents: number
+  currency: string
+  provider_slug: string | null
+  external_product_id: string | null
+  external_price_id: string | null
+  feature_group: AvailableProductFeatureGroup | null
+  credits_per_month: number
+  billing_interval: 'month' | 'year'
+  features: string[]
+}
+
+export interface AvailableProductsMeta {
+  user_id: number | null
+  provider_filter: string | null
+  type_filter: string | null
+  total: number
+}
+
+export interface AvailableProductsResponse {
+  data: AvailableProduct[]
+  meta: AvailableProductsMeta
+}
+
+/**
  * Subscription plan - recurring monthly credit allocation
  */
 export interface SubscriptionPlan {
@@ -517,6 +561,8 @@ export interface SubscriptionPlan {
   billingInterval: 'month' | 'year'
   features: string[]
   popular?: boolean
+  /** Feature group name this plan grants — from /api/products/available. */
+  featureGroupName?: string | null
   /** Length of the free trial. 0 / null → plan has no trial. */
   trialPeriodDays?: number | null
   trialPeriodFrequency?: number | null

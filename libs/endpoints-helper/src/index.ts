@@ -28,6 +28,7 @@ export type EndpointUrls = {
   gitHubLoginProxy: string;
   sso: string;
   billing: string;
+  products: string;
   credits: string;
   audio: string;
   storage: string;
@@ -67,6 +68,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   gitHubLoginProxy: 'github-login-proxy',
   sso: 'sso',
   billing: 'billing',
+  products: 'products',
   credits: 'credits',
   audio: 'audio',
   storage: 'storage',
@@ -129,6 +131,7 @@ const defaultUrls: EndpointUrls = {
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   sso: 'https://auth.api.remix.live/sso',
   billing: 'https://auth.api.remix.live/billing',
+  products: 'https://auth.api.remix.live/products',
   credits: 'https://auth.api.remix.live/credits',
   audio: 'https://audio.api.remix.live',
   storage: 'https://auth.api.remix.live/storage',
