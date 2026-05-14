@@ -139,6 +139,7 @@ export enum DeepAgentErrorType {
   AUTHENTICATION_FAILED = 'authentication_failed',
   QUOTA_EXCEEDED = 'quota_exceeded',
   MODEL_OVERLOADED = 'model_overloaded',
+  INSUFFICIENT_CREDITS = 'insufficient_credits',
   UNKNOWN = 'unknown'
 }
 

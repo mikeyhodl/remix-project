@@ -238,7 +238,7 @@ export class AssistantStatePlugin extends Plugin {
    * In-chat notice for any error that ISN'T already covered by the
    * cooldown banner or plan-manager hand-off. PROVIDER_DENIED, server
    * errors, validation errors, unknown codes — returns a typed
-   * `{ severity, code, title, message, actionable, allowedProviders? }`.
+    * `{ severity, code, title, message, actionable, allowedProviders?, actions? }`.
    * Returns null when no notice should be shown (success, cooldown
    * already showing, plan-manager already opening).
    */

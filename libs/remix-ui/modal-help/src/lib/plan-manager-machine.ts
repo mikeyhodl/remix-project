@@ -183,6 +183,10 @@ export type PlanManagerEvent =
   | { type: 'CHECKOUT_CLOSED' }
   | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string }
   | { type: 'CHECKOUT_RESULT_DISMISS' }
+  // Plugin-side signal: backend confirmed the purchase + we just refreshed
+  // permissions/credits/sub. Promotes 'processing' → 'success' regardless of
+  // current data substate (DATA_LOADED alone only fires inside `refreshing`).
+  | { type: 'PURCHASE_CONFIRMED' }
   // External signal — e.g. AI plugin received a 402 from upstream.
   | { type: 'CREDITS_EXHAUSTED' }
   // overlay
@@ -283,6 +287,9 @@ export const planManagerMachine = setup({
       // Promotion from 'processing' → 'success' once the data refresh confirms.
       if (context.checkoutResult?.kind !== 'processing') return
       context.checkoutResult = { ...context.checkoutResult, kind: 'success' }
+      // Clear the in-flight intent so per-card "Opening…" / disabled states
+      // reset (selectPurchasingProductId reads from pendingCheckout).
+      context.pendingCheckout = null
     },
     setCheckoutClosed: ({ context }) => {
       const intent = context.pendingCheckout?.intent ?? 'subscription'
@@ -377,6 +384,11 @@ export const planManagerMachine = setup({
         ready: {
           on: {
             REFRESH: 'refreshing',
+            // Out-of-band data refresh (e.g. after pollPaymentConfirmation
+            // calls loadAccountData while we're already in 'ready'). Just
+            // apply the new data; success promotion happens via
+            // PURCHASE_CONFIRMED, not here.
+            DATA_LOADED: { actions: ['setData'] },
             // External signal "I just got a 402 from the API" → re-fetch to
             // sync the UI with reality, but stay 'ready' so the panel doesn't
             // flash the skeleton.
@@ -499,7 +511,8 @@ export const planManagerMachine = setup({
   on: {
     DEV_INJECT: { actions: ['devInject'] },
     CONFIRM_REQUEST: { actions: ['setConfirmDialog'] },
-    CONFIRM_DISMISS: { actions: ['clearConfirmDialog'] }
+    CONFIRM_DISMISS: { actions: ['clearConfirmDialog'] },
+    PURCHASE_CONFIRMED: { actions: ['setCheckoutSuccess'] }
   }
 })
 

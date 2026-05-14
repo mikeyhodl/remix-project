@@ -22,7 +22,7 @@ import { ChatHistorySidebar } from './chatHistorySidebar'
 import AiChatPromptAreaForHistory from './aiChatPromptAreaForHistory'
 import AiChatPromptArea from './aiChatPromptArea'
 import { CooldownBanner } from './cooldownBanner'
-import { ChatNoticeStrip, type ChatNoticeDisplay } from './chatNoticeStrip'
+import { ChatNoticeStrip, type ChatNoticeDisplay, type ChatNoticeActionDisplay } from './chatNoticeStrip'
 import { useModelAccess } from '../hooks/useModelAccess'
 import { ToolApprovalModal } from './ToolApprovalModal'
 
@@ -155,6 +155,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // ISN'T a plan-manager hand-off (PROVIDER_DENIED, server errors,
   // validation, unknown codes). Non-blocking: input stays editable.
   const [chatNotice, setChatNotice] = useState<ChatNoticeDisplay | null>(null)
+
+  const dismissChatNotice = useCallback(() => {
+    setChatNotice(null)
+    try { void props.plugin.call('assistantState' as any, 'dismissChatNotice') } catch { /* noop */ }
+  }, [props.plugin])
+
+  const handleChatNoticeAction = useCallback(async (action: ChatNoticeActionDisplay) => {
+    if (!action?.plugin || !action?.method) return
+    try {
+      const args = Array.isArray(action.args) ? action.args : []
+      await props.plugin.call(action.plugin as any, action.method as any, ...args)
+      if (action.dismissOnClick) dismissChatNotice()
+    } catch (e) {
+      console.warn('[remix-ai-assistant] chat notice action failed', action, e)
+    }
+  }, [dismissChatNotice, props.plugin])
 
   // Audio transcription hook
   const {
@@ -2362,10 +2378,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         {chatNotice && (
           <ChatNoticeStrip
             notice={chatNotice}
-            onDismiss={() => {
-              setChatNotice(null)
-              try { void props.plugin.call('assistantState' as any, 'dismissChatNotice') } catch { /* noop */ }
-            }}
+            onAction={(action) => { void handleChatNoticeAction(action) }}
+            onDismiss={dismissChatNotice}
           />
         )}
         {

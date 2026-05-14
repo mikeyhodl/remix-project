@@ -533,13 +533,12 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'CHECKOUT_OPENED' })
       } else if (checkoutUrl) {
         // Hosted-checkout fallback — we won't get Paddle events back, so
-        // surface a "processing" state immediately and trust the next
-        // data refresh / webhook to confirm.
+        // surface a "processing" state immediately and poll the backend
+        // until the webhook lands.
         window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
         this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
-        // Best-effort confirmation refresh — the webhook may not have
-        // landed yet, so this might still show 'processing' for a beat.
-        setTimeout(() => { void this.loadAccountData() }, 5_000)
+        console.log('[plan-manager:poll] triggered from hosted-url fallback', { intent, transactionId })
+        void this.pollPaymentConfirmation(intent, transactionId)
       } else {
         this.store.send({ type: 'CHECKOUT_ERROR', message: 'Backend returned no checkout reference.' })
       }
@@ -557,11 +556,15 @@ export class PlanManagerPlugin extends ViewPlugin {
   private handlePaddleEvent(event: PaddleEventData): void {
     const transactionId = (event as any)?.data?.transaction_id as string | undefined
     switch (event.name) {
-    case 'checkout.completed':
+    case 'checkout.completed': {
+      const pendingIntent = this.store.getSnapshot().pendingCheckout?.intent ?? 'subscription'
       this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
-      // Promote 'processing' → 'success' once data refresh confirms.
-      setTimeout(() => { void this.loadAccountData() }, 1500)
+      console.log('[plan-manager:poll] triggered from paddle checkout.completed', { intent: pendingIntent, transactionId })
+      // Poll our backend (never Paddle) until the webhook has been processed,
+      // then promote 'processing' → 'success'.
+      void this.pollPaymentConfirmation(pendingIntent, transactionId)
       break
+    }
     case 'checkout.closed':
       this.store.send({ type: 'CHECKOUT_CLOSED' })
       break
@@ -631,6 +634,134 @@ export class PlanManagerPlugin extends ViewPlugin {
     } catch (err: any) {
       this.store.send({ type: 'CATALOG_FAILED', message: err?.message ?? 'Catalog load failed' })
     }
+  }
+
+  /**
+   * Poll our backend after the user finishes a Paddle checkout, until the
+   * webhook has been processed. Per the brief: every 2s for the first 15s,
+   * then every 5s up to a 60s soft cap. Hard ceiling at 5 minutes total.
+   *
+   * For subscriptions we poll `GET /billing/subscription` for
+   * `hasActiveSubscription === true`. For credit packages (which never appear
+   * in /billing/subscription) we poll `GET /billing/transaction/:txnId` and
+   * stop on a terminal status. The 404 + `{ status: 'pending' }` body is the
+   * documented "keep polling" signal — *not* an error.
+   *
+   * On terminal failure (failed/canceled/refunded/disputed) we surface a
+   * CHECKOUT_ERROR; on a soft-timeout we leave the result in 'processing' so
+   * the user sees "Still processing — refresh in a minute" rather than an
+   * incorrect failure.
+   */
+  private async pollPaymentConfirmation(intent: CheckoutIntent, transactionId?: string): Promise<void> {
+    const LOG = '[plan-manager:poll]'
+    const pollId = Math.random().toString(36).slice(2, 8)
+    const tag = (m: string) => `${LOG} ${pollId} ${m}`
+
+    console.log(tag('start'), { intent, transactionId })
+
+    const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+    if (!billingApi) {
+      console.warn(tag('abort: no billing api'))
+      return
+    }
+
+    const start = Date.now()
+    const SOFT_CAP_MS = 60_000
+    const HARD_CAP_MS = 300_000
+    const intervalAt = (elapsed: number) => (elapsed < 15_000 ? 2_000 : 5_000)
+
+    // Subscriptions are confirmed via /billing/subscription. Credit topups
+    // *require* the transactionId since they never appear there.
+    const useTransactionPoll = intent === 'topup'
+    if (useTransactionPoll && !transactionId) {
+      console.warn(tag('topup poll without transactionId — single refresh fallback'))
+      await this.completePurchaseRefresh()
+      return
+    }
+
+    let tick = 0
+    while (Date.now() - start < HARD_CAP_MS) {
+      tick++
+      const elapsed = Date.now() - start
+      try {
+        if (useTransactionPoll && transactionId) {
+          const resp = await billingApi.getTransactionStatus(transactionId)
+          const data: any = resp?.data
+          const status = data?.status
+          console.log(tag(`tick ${tick} transaction`), {
+            elapsedMs: elapsed,
+            httpOk: resp?.ok,
+            httpStatus: resp?.status,
+            txnStatus: status
+          })
+          if (status && status !== 'pending') {
+            if (status === 'completed') {
+              console.log(tag('completed → refreshing account + permissions'))
+              await this.completePurchaseRefresh()
+            } else {
+              const msg =
+                status === 'failed' ? 'Payment failed.'
+                  : status === 'canceled' ? 'Payment was canceled.'
+                    : status === 'refunded' ? 'Payment was refunded.'
+                      : status === 'disputed' ? 'Payment is under dispute.'
+                        : `Payment ${status}.`
+              console.warn(tag(`terminal failure: ${status}`))
+              this.store.send({ type: 'CHECKOUT_ERROR', message: msg, transactionId })
+            }
+            return
+          }
+        } else {
+          const resp = await billingApi.getSubscription()
+          const hasActive = !!resp?.data?.hasActiveSubscription
+          console.log(tag(`tick ${tick} subscription`), {
+            elapsedMs: elapsed,
+            httpOk: resp?.ok,
+            httpStatus: resp?.status,
+            hasActiveSubscription: hasActive,
+            planSlug: resp?.data?.subscription?.planSlug ?? null
+          })
+          if (resp?.ok && hasActive) {
+            console.log(tag('active subscription confirmed → refreshing account + permissions'))
+            await this.completePurchaseRefresh()
+            return
+          }
+        }
+      } catch (err) {
+        console.warn(tag(`tick ${tick} threw — keep polling`), err)
+      }
+
+      if (elapsed >= SOFT_CAP_MS) {
+        console.warn(tag(`soft cap reached at ${elapsed}ms — UI stays in 'processing'`))
+        return
+      }
+      const next = intervalAt(elapsed)
+      console.debug(tag(`waiting ${next}ms before next tick`))
+      await new Promise(r => setTimeout(r, next))
+    }
+    console.error(tag('hard cap reached without confirmation'))
+  }
+
+  /**
+   * After a confirmed purchase / plan change / cancel, refresh everything the
+   * user can see: local plan-manager data, the global access policy, the
+   * permissions cache, and the credits counter. These drive the top-bar
+   * avatar menu and feature-gated UI elsewhere in the IDE.
+   */
+  private async completePurchaseRefresh(): Promise<void> {
+    const LOG = '[plan-manager:refresh]'
+    console.log(LOG, 'start')
+    await Promise.all([
+      this.loadAccountData().catch(err => console.warn(LOG, 'loadAccountData failed', err)),
+      this.call('auth', 'refreshPermissions').catch(err => console.warn(LOG, 'refreshPermissions failed', err)),
+      this.call('auth', 'refreshCredits').catch(err => console.warn(LOG, 'refreshCredits failed', err)),
+      this.call('auth', 'refreshAccessPolicy').catch(err => console.warn(LOG, 'refreshAccessPolicy failed', err))
+    ])
+    // Promote 'processing' → 'success' in the panel. DATA_LOADED alone won't
+    // do it because the data state is usually 'ready' (not 'refreshing') by
+    // the time we get here; PURCHASE_CONFIRMED is handled at machine root.
+    this.store.send({ type: 'PURCHASE_CONFIRMED' })
+    this.emit('purchaseConfirmed')
+    console.log(LOG, 'done')
   }
 
   private async loadAccountData(): Promise<void> {
@@ -708,12 +839,12 @@ const PlanManagerUI: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
 const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => (
   <div className="plan-manager-stub">
     <div className="plan-manager-stub-glyph">
-      <i className="fas fa-bolt"></i>
+      <i className="fas fa-wallet"></i>
     </div>
     <h5>Plan & Credits</h5>
-    <p>Open the manager to inspect plans, top up credits and review your AI usage.</p>
+    <p>Compare plans, top up credits, and track your AI usage in one place.</p>
     <button className="plan-manager-stub-btn" onClick={() => plugin.open()}>
-      Open manager
+      Manage Plan & Credits
     </button>
   </div>
 )

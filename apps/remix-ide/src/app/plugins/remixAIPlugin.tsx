@@ -429,15 +429,67 @@ export class RemixAIPlugin extends Plugin {
       // Explicit MCP toggle wins over DeepAgent — when the user flips the
       // MCP Enhancement checkbox they expect the MCP-enriched solcoder
       // route, not the langchain DeepAgent flow.
-      const route = (this.mcpEnabled && this.mcpInferencer)
+      const mcpRouteCheck = this.mcpEnabled && !!this.mcpInferencer
+      const deepAgentRouteCheck = this.deepAgentEnabled && !!this.deepAgentInferencer
+      const remoteRouteCheck = !!this.remoteInferencer
+      const route = mcpRouteCheck
         ? 'mcp'
-        : ((this.deepAgentEnabled && this.deepAgentInferencer) ? 'deepagent' : 'remote')
-      console.log(`[answer] route=${route} provider=${this.selectedModel?.provider ?? '?'} model=${this.selectedModel?.id ?? '?'}`)
+        : (deepAgentRouteCheck ? 'deepagent' : 'remote')
+      const routeFlow = {
+        selectedRoute: route,
+        checks: [
+          {
+            step: 1,
+            name: 'mcpEnabled && hasMcpInferencer',
+            mcpEnabled: this.mcpEnabled,
+            hasMcpInferencer: !!this.mcpInferencer,
+            passed: mcpRouteCheck
+          },
+          {
+            step: 2,
+            name: 'deepAgentEnabled && hasDeepAgentInferencer',
+            deepAgentEnabled: this.deepAgentEnabled,
+            hasDeepAgentInferencer: !!this.deepAgentInferencer,
+            passed: deepAgentRouteCheck
+          },
+          {
+            step: 3,
+            name: 'hasRemoteInferencer (fallback)',
+            hasRemoteInferencer: remoteRouteCheck,
+            passed: remoteRouteCheck
+          }
+        ],
+        prompt: {
+          originalLength: prompt?.length ?? 0,
+          transformedLength: newPrompt?.length ?? 0,
+          workspaceContextChars: this.workspaceAgent?.ctxFiles?.length ?? 0,
+          hasWorkspaceContext: !!this.workspaceAgent?.ctxFiles
+        },
+        model: {
+          provider: this.selectedModel?.provider ?? '?',
+          id: this.selectedModel?.id ?? '?',
+          requestedProvider: params?.provider ?? '?',
+          requestedModel: params?.model ?? '?'
+        },
+        params: {
+          stream: !!params?.stream,
+          stream_result: !!params?.stream_result,
+          return_stream_response: !!params?.return_stream_response,
+          threadId: params?.threadId ?? ''
+        }
+      }
+      console.log('[answer][route-flow]', routeFlow)
+      if (!remoteRouteCheck && route === 'remote') {
+        console.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
+      }
       if (route === 'deepagent') {
+        console.log('[answer][route-flow] dispatch=deepagent.answer')
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
       } else if (route === 'mcp'){
+        console.log('[answer][route-flow] dispatch=mcp.answer')
         return await this.mcpInferencer.answer(prompt, params)
       } else {
+        console.log('[answer][route-flow] dispatch=remote.answer')
         return await this.remoteInferencer.answer(newPrompt, params)
       }
     })

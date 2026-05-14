@@ -104,6 +104,7 @@ export function extractRetryAfter(error: any): number {
 export function getErrorMessage(errorType: DeepAgentErrorType, error: any, retryAfter?: number): string {
   // Prefer a structured envelope message when one is available — the
   // backend's text is always more accurate than our generic strings.
+  console.log('[Classified error:]', { errorType, error, retryAfter })
   const envelopeMessage: string | undefined =
     error?.aiError?.message ??
     error?.response?.data?.error?.message ??
@@ -150,6 +151,9 @@ export function getErrorMessage(errorType: DeepAgentErrorType, error: any, retry
 
   case DeepAgentErrorType.NETWORK_ERROR:
     return 'Network error. Please check your connection and try again.'
+
+  case DeepAgentErrorType.INSUFFICIENT_CREDITS:
+    return 'Insufficient credits. Please check your billing details or add more credits to continue.'
 
   default:
     return error?.message || 'An unexpected error occurred.'

@@ -51,6 +51,7 @@ import {
   ChangeSubscriptionResponse,
   CancelSubscriptionRequest,
   CancelSubscriptionResponse,
+  TransactionStatusResponse,
   UserSubscriptionResponse,
   PurchaseCreditsRequest,
   PurchaseCreditsResponse,
@@ -666,6 +667,28 @@ export class BillingApiService {
     request: CancelSubscriptionRequest = {}
   ): Promise<ApiResponse<CancelSubscriptionResponse>> {
     return this.apiClient.post<CancelSubscriptionResponse>('/subscription/cancel', request)
+  }
+
+  /**
+   * Poll a specific checkout's status.
+   * GET /billing/transaction/:providerTransactionId
+   *
+   * Use after `POST /products/purchase` returns a `transactionId` — most
+   * importantly for credit packages, which never appear in /billing/subscription.
+   *
+   * Note: while the webhook hasn't fired the backend returns HTTP 404 with a
+   * body of `{ status: 'pending', … }`. The ApiClient surfaces this as
+   * `{ ok: false, status: 404, data: { status: 'pending' } }` — callers should
+   * treat "404 + status:'pending'" as "keep polling", not as an error.
+   *
+   * Terminal statuses to stop on: completed | failed | canceled | refunded | disputed.
+   */
+  async getTransactionStatus(
+    providerTransactionId: string,
+    provider?: string
+  ): Promise<ApiResponse<TransactionStatusResponse>> {
+    const qs = provider ? `?provider=${encodeURIComponent(provider)}` : ''
+    return this.apiClient.get<TransactionStatusResponse>(`/transaction/${encodeURIComponent(providerTransactionId)}${qs}`)
   }
 
   // ==================== Helper Methods ====================

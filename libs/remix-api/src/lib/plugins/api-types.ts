@@ -664,6 +664,49 @@ export interface CancelSubscriptionResponse {
   }
 }
 
+// ===== Transaction polling (GET /billing/transaction/:providerTransactionId) ====
+
+/**
+ * Terminal states stop polling. `pending` is the only non-terminal state —
+ * it's surfaced as HTTP 404 + body with this shape.
+ */
+export type TransactionStatus =
+  | 'pending'
+  | 'completed'
+  | 'failed'
+  | 'canceled'
+  | 'refunded'
+  | 'disputed'
+
+/** 404 response body — "webhook hasn't fired yet, keep polling". */
+export interface TransactionPendingResponse {
+  status: 'pending'
+  provider: string
+  providerTransactionId: string
+  message?: string
+}
+
+/** 200 response body — webhook has been processed. */
+export interface TransactionCompletedResponse {
+  status: Exclude<TransactionStatus, 'pending'>
+  provider: string
+  providerTransactionId: string
+  providerSubscriptionId?: string | null
+  transactionType?: string
+  productType?: string
+  productId?: number
+  productSlug?: string
+  productName?: string
+  currency?: string
+  amountGross?: number
+  amountNet?: number
+  creditsDelivered?: number
+  completedAt?: string
+  createdAt?: string
+}
+
+export type TransactionStatusResponse = TransactionPendingResponse | TransactionCompletedResponse
+
 /**
  * Subscription plan - recurring monthly credit allocation
  */

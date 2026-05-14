@@ -805,6 +805,24 @@ export function selectCooldownDisplay(
 
 export type ChatNoticeSeverity = 'info' | 'warning' | 'error'
 
+export type ChatNoticeActionStyle = 'primary' | 'secondary' | 'link'
+
+export interface ChatNoticeAction {
+  /** Stable id for React keys / test selectors. */
+  id: string
+  /** Button label shown in the notice strip. */
+  label: string
+  /** Visual style hint for the chat UI. */
+  style?: ChatNoticeActionStyle
+  /** Target plugin and method to call when the button is clicked. */
+  plugin: string
+  method: string
+  /** Variadic arguments passed to plugin.call(plugin, method, ...args). */
+  args?: unknown[]
+  /** Auto-dismiss the notice after a successful click action. */
+  dismissOnClick?: boolean
+}
+
 export interface ChatNotice {
   severity: ChatNoticeSeverity
   /** AIError.code, verbatim. UI can use it as a stable id / data-attribute. */
@@ -819,6 +837,8 @@ export interface ChatNotice {
   actionable: boolean
   /** PROVIDER_DENIED only — the providers the user IS allowed to use. */
   allowedProviders?: string[]
+  /** Optional call-to-action buttons shown under the notice message. */
+  actions?: ChatNoticeAction[]
 }
 
 /** Codes that are fully handled by the cooldown banner — no extra notice. */
@@ -919,6 +939,25 @@ export function selectChatNotice(snap: AssistantSnapshot): ChatNotice | null {
       actionable: false
     }
   }
+
+  case 'INSUFFICIENT_CREDITS':
+    return {
+      severity: 'error',
+      code: '',
+      title: 'Insufficient credits',
+      message: 'You do not have enough credits to perform this action. Please check your billing details or add more credits.',
+      actionable: false,
+      actions: [
+        {
+          id: 'topup-credits',
+          label: 'Top up credits',
+          style: 'primary',
+          plugin: 'planManager',
+          method: 'open',
+          args: [{ reason: 'quota-exhausted', initialSection: 'topup' }]
+        }
+      ]
+    }
   default:
     // Unknown code — surface verbatim so devtools/Sentry / users see it.
     return {

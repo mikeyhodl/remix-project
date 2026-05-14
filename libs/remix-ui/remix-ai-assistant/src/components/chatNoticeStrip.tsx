@@ -25,11 +25,25 @@ export interface ChatNoticeDisplay {
   message: string
   actionable: boolean
   allowedProviders?: string[]
+  actions?: ChatNoticeActionDisplay[]
+}
+
+export type ChatNoticeActionStyle = 'primary' | 'secondary' | 'link'
+
+export interface ChatNoticeActionDisplay {
+  id: string
+  label: string
+  style?: ChatNoticeActionStyle
+  plugin: string
+  method: string
+  args?: unknown[]
+  dismissOnClick?: boolean
 }
 
 interface ChatNoticeStripProps {
   notice: ChatNoticeDisplay
   onDismiss: () => void
+  onAction?: (action: ChatNoticeActionDisplay) => void
 }
 
 const SEVERITY_TO_CLASS: Record<ChatNoticeDisplay['severity'], string> = {
@@ -44,10 +58,16 @@ const SEVERITY_TO_ICON: Record<ChatNoticeDisplay['severity'], string> = {
   error: 'fa-circle-exclamation'
 }
 
-export const ChatNoticeStrip: React.FC<ChatNoticeStripProps> = ({ notice, onDismiss }) => {
+const ACTION_STYLE_TO_CLASS: Record<ChatNoticeActionStyle, string> = {
+  primary: 'btn-primary',
+  secondary: 'btn-outline-secondary',
+  link: 'btn-link p-0 text-decoration-none align-baseline'
+}
+
+export const ChatNoticeStrip: React.FC<ChatNoticeStripProps> = ({ notice, onDismiss, onAction }) => {
   return (
     <div
-      className={`alert mb-1 mx-2 py-2 px-3 d-flex align-items-start gap-2 ${SEVERITY_TO_CLASS[notice.severity]}`}
+      className={`alert mb-0 py-2 px-3 d-flex align-items-start gap-2 ${SEVERITY_TO_CLASS[notice.severity]}`}
       role="alert"
       data-id="ai-chat-notice"
       data-error-code={notice.code}
@@ -63,6 +83,24 @@ export const ChatNoticeStrip: React.FC<ChatNoticeStripProps> = ({ notice, onDism
             <span className="ms-2">· You can try sending again.</span>
           )}
         </div>
+        {notice.actions && notice.actions.length > 0 && (
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            {notice.actions.map((action) => {
+              const style = action.style ?? 'secondary'
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  className={`btn btn-sm ${ACTION_STYLE_TO_CLASS[style]}`}
+                  data-id={`ai-chat-notice-action-${action.id}`}
+                  onClick={() => onAction?.(action)}
+                >
+                  {action.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
       <button
         type="button"
