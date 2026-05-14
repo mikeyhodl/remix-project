@@ -207,6 +207,25 @@ const settingsSections: SettingsSection[] = [
           type: 'custom' as const,
           customComponent: 'mcpServerManager'
         }]
+      },
+      {
+        title: 'settings.deepAgentApiKeysSection',
+        options: [{
+          name: 'deepagent-api-keys-config' as keyof typeof initialState,
+          label: 'settings.useOwnApiKeys',
+          description: 'settings.useOwnApiKeysDescription',
+          type: 'toggle' as const,
+          toggleUIOptions: [{
+            name: 'deepagent-anthropic-api-key' as keyof typeof initialState,
+            type: 'password'
+          }, {
+            name: 'deepagent-mistral-api-key' as keyof typeof initialState,
+            type: 'password'
+          }, {
+            name: 'deepagent-openai-api-key' as keyof typeof initialState,
+            type: 'password'
+          }]
+        }]
       }]
   },
   {

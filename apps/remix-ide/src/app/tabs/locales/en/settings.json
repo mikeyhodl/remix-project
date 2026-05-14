@@ -94,5 +94,11 @@
   "settings.credentialsRemoved": "Credentials removed",
   "settings.credentialsUpdated": "Credentials updated",
   "settings.loading": "Loading...",
-  "settings.notLoggedIn": "Not logged in. Please log in with Google, GitHub, Discord, or wallet to manage accounts."
+  "settings.notLoggedIn": "Not logged in. Please log in with Google, GitHub, Discord, or wallet to manage accounts.",
+  "settings.deepAgentApiKeysSection": "DeepAgent API Keys",
+  "settings.useOwnApiKeys": "Use your own API keys",
+  "settings.useOwnApiKeysDescription": "Provide your own API keys instead of using the proxy server",
+  "settings.deepagent-anthropic-api-key": "Anthropic API Key",
+  "settings.deepagent-mistral-api-key": "MistralAI API Key",
+  "settings.deepagent-openai-api-key": "OpenAI API Key"
 }

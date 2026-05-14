@@ -19,6 +19,10 @@ const etherscanAccessToken = config.get('settings/etherscan-access-token') || ''
 const mcpServersEnable = config.get('settings/mcp/servers/enable') || false
 const mcpServerManagement = config.get('settings/mcp-server-management') || false
 const ollamaEndpoint = config.get('settings/ollama-endpoint') || 'http://localhost:11434'
+const deepagentApiKeysConfig = config.get('settings/deepagent-api-keys-config') || false
+const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
+const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
+const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
 
 let githubConfig = config.get('settings/github-config') || false
 let ipfsConfig = config.get('settings/ipfs-config') || false
@@ -228,6 +232,22 @@ export const initialState: SettingsState = {
   },
   'ollama-endpoint': {
     value: ollamaEndpoint,
+    isLoading: false
+  },
+  'deepagent-api-keys-config': {
+    value: deepagentApiKeysConfig,
+    isLoading: false
+  },
+  'deepagent-anthropic-api-key': {
+    value: deepagentAnthropicApiKey,
+    isLoading: false
+  },
+  'deepagent-mistral-api-key': {
+    value: deepagentMistralApiKey,
+    isLoading: false
+  },
+  'deepagent-openai-api-key': {
+    value: deepagentOpenaiApiKey,
     isLoading: false
   },
   toaster: {

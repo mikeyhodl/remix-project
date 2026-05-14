@@ -1,7 +1,8 @@
-import { CONVERSATION_THREAD_PREFIX, DeepAgentInferencer } from '@remix/remix-ai-core'
+import { CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, IUserApiKeyConfig } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin, ToolApprovalResponse } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
 import type { MCPServerManager } from './MCPServerManager'
+import { Registry } from '@remix-project/remix-lib'
 
 export interface DeepAgentManagerDeps {
   plugin: IRemixAIPlugin
@@ -15,6 +16,30 @@ export class DeepAgentManager {
 
   constructor(deps: DeepAgentManagerDeps) {
     this.deps = deps
+  }
+
+  private getUserApiKeysConfig(): IUserApiKeyConfig | undefined {
+    try {
+      const config = Registry.getInstance().get('config').api
+      const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
+      const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
+      const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
+      const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+
+      if (!useOwnKeys) {
+        return undefined
+      }
+
+      return {
+        useOwnKeys,
+        anthropicApiKey,
+        mistralApiKey,
+        openaiApiKey
+      }
+    } catch (error) {
+      console.warn('[DeepAgentManager] Failed to read user API keys config:', error)
+      return undefined
+    }
   }
 
   async enable(): Promise<void> {
@@ -34,6 +59,10 @@ export class DeepAgentManager {
 
       // Create or reinitialize DeepAgentInferencer
       console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
+      const userApiKeys = this.getUserApiKeysConfig()
+      if (userApiKeys?.useOwnKeys) {
+        console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
+      }
       plugin.deepAgentInferencer = new DeepAgentInferencer(
         plugin as any, // Cast to Plugin type
         plugin.remixMCPServer.tools,
@@ -41,6 +70,7 @@ export class DeepAgentManager {
           memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
           enableSubagents: true,
           enablePlanning: true,
+          userApiKeys,
           autoMode: {
             enabled: localStorage.getItem('deepagent_auto_mode') === 'true',
             fallbackModel: {
@@ -51,7 +81,7 @@ export class DeepAgentManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai', modelId: plugin.selectedModelId }
       )
 
       await plugin.deepAgentInferencer.initialize()
@@ -183,17 +213,22 @@ export class DeepAgentManager {
         }
 
         console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
+        const userApiKeys = this.getUserApiKeysConfig()
+        if (userApiKeys?.useOwnKeys) {
+          console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
+        }
         plugin.deepAgentInferencer = new DeepAgentInferencer(
           plugin as any, // Cast to Plugin type
           plugin.remixMCPServer.tools,
           {
             memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
             enableSubagents: true,
-            enablePlanning: true
+            enablePlanning: true,
+            userApiKeys
           },
           plugin.remoteInferencer,
           plugin.mcpInferencer,
-          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai', modelId: plugin.selectedModelId }
         )
         await plugin.deepAgentInferencer.initialize()
         plugin.deepAgentEnabled = true

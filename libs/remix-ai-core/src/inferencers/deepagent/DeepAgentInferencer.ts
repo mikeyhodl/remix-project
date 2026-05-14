@@ -16,7 +16,7 @@ import {
   CODE_EXPLANATION_PROMPT
 } from '../deepagent/prompts/system/lightPrompts'
 import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
-import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection } from '../../types/deepagent'
+import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig } from '../../types/deepagent'
 import { ToolRegistry } from '../../remix-mcp-server/types/mcpTools'
 import { classifyApiError, getErrorMessage } from './ApiErrorHandler'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
@@ -33,7 +33,8 @@ import { createModelInstance } from './ModelFactory'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { langSmithTracing } from './LangSmithTracing'
-import { CONVERSATION_THREAD_PREFIX } from '@remix/remix-ai-core'
+import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
+
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
@@ -52,6 +53,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   private allowedModels: string[] = []
   private sessionThreadId: string = DeepAgentInferencer.generateThreadId()
   private streamEventHandler: StreamEventHandler
+  private userApiKeys?: IUserApiKeyConfig
 
   private static generateThreadId(): string {
     return CONVERSATION_THREAD_PREFIX + `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -99,6 +101,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.config = {
       enabled: true,
       apiKey: 'proxy-handled', // Proxy server handles the API key
+      userApiKeys: config?.userApiKeys,
       memoryBackend: config?.memoryBackend || 'store',
       maxToolExecutions: config?.maxToolExecutions || 10,
       timeout: config?.timeout || 300000, // 5 minutes
@@ -112,6 +115,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       }
     }
+
+    // Store user API keys for model creation
+    this.userApiKeys = config?.userApiKeys
 
     // Initialize filesystem backend with shared EventEmitter for approval
     this.filesystemBackend = new RemixFilesystemBackend(plugin, this.event) as any
@@ -130,7 +136,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       console.log('[DeepAgentInferencer] Initializing DeepAgent with config:', this.config)
       console.log('[DeepAgentInferencer] Model selection:', this.modelSelection)
 
-      this.model = createModelInstance(this.modelSelection)
+      this.model = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
 
       console.log(`[DeepAgentInferencer] Created ${this.modelSelection.provider} model: ${this.modelSelection.modelId}`)
 
@@ -397,7 +403,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      const dappModel = createModelInstance(this.modelSelection)
+      const dappModel = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
       const fullPrompt = `${systemPrompt}\n\n---\n\nUser Request:\n${prompt}`
 
       let langchainMessages: any[]
@@ -713,7 +719,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.modelSelection = selectedModel
 
     // Create new model instance
-    this.model = createModelInstance(selectedModel)
+    this.model = createModelInstance(selectedModel, DAPP_MAX_TOKENS, this.userApiKeys)
 
     if (!this.agent) await this.createAgentWithTools(this.tools)
     else {

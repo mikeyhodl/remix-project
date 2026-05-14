@@ -6,6 +6,16 @@ export interface ModelSelection {
 }
 
 /**
+ * User API key configuration for direct API access
+ */
+export interface IUserApiKeyConfig {
+  useOwnKeys: boolean
+  anthropicApiKey?: string
+  mistralApiKey?: string
+  openaiApiKey?: string
+}
+
+/**
  * Auto model selection configuration
  */
 export interface IAutoModelConfig {
@@ -24,6 +34,7 @@ export interface IAutoModelConfig {
 export interface IDeepAgentConfig {
   enabled: boolean
   apiKey: string // Automatically set to 'proxy-handled' - proxy server manages the real API key
+  userApiKeys?: IUserApiKeyConfig // User-provided API keys for direct API access
   memoryBackend: 'state' | 'store'
   maxToolExecutions: number
   timeout: number
