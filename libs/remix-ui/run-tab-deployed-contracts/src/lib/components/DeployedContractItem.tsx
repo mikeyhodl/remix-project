@@ -416,7 +416,7 @@ contractAddress: ${contract.address}
 chainId: ${chainId}
 contractAbi: ${abiJson}
 
-Before generating, please ask me about my design preferences first.`
+Before generating, please ask me first about my design preferences and my desired location for my frontend (inline or workspace).`
 
       console.log('[QuickDapp] prompt assembled, length:', prompt.length);
 

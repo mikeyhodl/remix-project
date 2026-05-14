@@ -695,7 +695,7 @@ export const TabsUI = (props: TabsUIProps) => {
         `chainId: ${chainId}`,
         `contractAbi: ${JSON.stringify(abi)}`,
         ``,
-        `Before generating, please ask me about my design preferences first.`
+        `Before generating, please ask me first about my design preferences and my desired location for my frontend (inline or workspace).`
       )
     } else if (matchingInstances.length > 1) {
       // Multiple matching contracts — let AI ask the user to choose

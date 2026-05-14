@@ -56,6 +56,8 @@ export interface GenerateDAppArgs {
   figmaUrl?: string
   figmaToken?: string
   workspaceName?: string
+  frontendMode?: 'workspace' | 'inline'
+  confirmOverwrite?: boolean
 }
 
 export interface UpdateDAppArgs {
@@ -124,6 +126,17 @@ export class GenerateDAppHandler extends BaseToolHandler {
       figmaToken: {
         type: 'string',
         description: 'Figma Personal Access Token (required if figmaUrl is provided)'
+      },
+      frontendMode: {
+        type: 'string',
+        description: 'Where to create the DApp: "new workspace" or "inline" (./frontend in current workspace)',
+        enum: ['workspace', 'inline'],
+        default: 'workspace'
+      },
+      confirmOverwrite: {
+        type: 'boolean',
+        description: 'Set to true to confirm overwriting existing /frontend folder (only needed if frontendMode is "inline" and folder exists)',
+        default: false
       }
     },
     required: ['description', 'contractName', 'contractAddress', 'contractAbi', 'chainId']
@@ -162,22 +175,77 @@ export class GenerateDAppHandler extends BaseToolHandler {
   async execute(args: GenerateDAppArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
       const hasImage = !!args.imageBase64
+      const frontendMode = args.frontendMode || 'workspace'
 
       // ── Workspace Setup ──
       let workspaceSlug: string
+      let isInlineMode = false
 
-      try {
-        const wsResult = await plugin.call('quick-dapp-v2' as any, 'createDappWorkspace', {
-          contractName: args.contractName,
-          address: args.contractAddress,
-          abi: args.contractAbi,
-          chainId: args.chainId,
-          isBaseMiniApp: args.isBaseMiniApp
-        })
-        workspaceSlug = wsResult.workspaceName
-      } catch (wsErr: any) {
-        console.error('[QuickDapp] createDappWorkspace failed:', wsErr?.message || wsErr)
-        return this.createErrorResult(`Failed to create DApp workspace: ${wsErr.message}`)
+      if (frontendMode === 'inline') {
+        // Inline mode: use current workspace + /frontend folder
+        isInlineMode = true
+        const currentWs = await plugin.call('filePanel', 'getCurrentWorkspace')
+        workspaceSlug = currentWs?.name || 'default_workspace'
+
+        console.log('[QuickDapp] Using inline mode in workspace:', workspaceSlug)
+
+        // Check if frontend folder exists and has files
+        try {
+          const frontendExists = await plugin.call('fileManager', 'exists', 'frontend')
+          if (frontendExists) {
+            const files = await plugin.call('fileManager', 'readdir', 'frontend')
+            const fileCount = files ? Object.keys(files).length : 0
+
+            if (fileCount > 0) {
+              // Frontend folder has files - check if user confirmed overwrite
+              if (!args.confirmOverwrite) {
+                return this.createErrorResult(
+                  `⚠️ The /frontend folder in workspace "${workspaceSlug}" already exists and contains ${fileCount} file(s).\n\n` +
+                  `**These files will be overwritten if you proceed.**\n\n` +
+                  `Would you like to:\n` +
+                  `1. **Continue and overwrite** the existing /frontend folder?\n` +
+                  `2. **Switch to workspace mode** (creates a new separate workspace for the DApp)?\n` +
+                  `3. **Cancel** this operation?\n\n` +
+                  `To proceed with overwriting, please confirm and I'll call generate_dapp again with confirmOverwrite=true.`
+                )
+              }
+              // User confirmed - proceed with overwrite
+              console.log('[QuickDapp] User confirmed overwrite of', fileCount, 'files in /frontend')
+            }
+          }
+        } catch (checkErr: any) {
+          // Could not check frontend folder - inform user but don't block
+          const errorMsg = checkErr?.message || String(checkErr)
+          console.warn('[QuickDapp] Could not check /frontend folder:', errorMsg)
+          return this.createErrorResult(
+            `⚠️ Unable to verify if /frontend folder exists in workspace "${workspaceSlug}".\n\n` +
+            `Error: ${errorMsg}\n\n` +
+            `This might happen if:\n` +
+            `- There are permission issues\n` +
+            `- The workspace is not properly loaded\n\n` +
+            `Would you like to:\n` +
+            `1. **Try again** (I'll retry the check)\n` +
+            `2. **Switch to workspace mode** (safer option - creates a new workspace)\n` +
+            `3. **Proceed anyway** (risky - might overwrite existing files)\n\n` +
+            `What would you like to do?`
+          )
+        }
+      } else {
+        // Workspace mode: create new workspace (existing behavior)
+        try {
+          const wsResult = await plugin.call('quick-dapp-v2' as any, 'createDappWorkspace', {
+            contractName: args.contractName,
+            address: args.contractAddress,
+            abi: args.contractAbi,
+            chainId: args.chainId,
+            isBaseMiniApp: args.isBaseMiniApp
+          })
+          workspaceSlug = wsResult.workspaceName
+          console.log('[QuickDapp] Created new workspace:', workspaceSlug)
+        } catch (wsErr: any) {
+          console.error('[QuickDapp] createDappWorkspace failed:', wsErr?.message || wsErr)
+          return this.createErrorResult(`Failed to create DApp workspace: ${wsErr.message}`)
+        }
       }
 
       // Open dashboard so React UI is mounted and event listeners are ready
@@ -215,11 +283,12 @@ export class GenerateDAppHandler extends BaseToolHandler {
         slug: workspaceSlug,
         contractAddress: args.contractAddress,
         contractName: args.contractName,
+        isInlineMode,
         workspaceReady: true,
         message: `DApp workspace "${workspaceSlug}" created successfully.\n\n` +
           `Now proceed to generate the DApp files directly using file_write.\n\n` +
           `---\n` +
-          `TASK: Generate a new DApp frontend\n` +
+          `TASK: Generate a new DApp frontend${isInlineMode ? ' in /frontend folder (inline mode)' : ''}\n` +
           `CONTRACT: ${args.contractName} at ${args.contractAddress} on chain ${args.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
           `FUNCTIONS:\n${abiSummary}\n\n` +
           `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
@@ -238,10 +307,10 @@ export class GenerateDAppHandler extends BaseToolHandler {
             : '') +
           `\n${QUICKDAPP_BUILD_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
-          `- All file paths are relative to workspace root. Use /index.html, /src/App.jsx etc.\n` +
-          `- NEVER include workspace name "${workspaceSlug}" in paths. Wrong: ${workspaceSlug}/src/App.jsx. Correct: /src/App.jsx\n\n` +
+          `- All file paths are relative to workspace root. Use ${isInlineMode ? '/frontend/index.html, /frontend/src/App.jsx' : '/index.html, /src/App.jsx'} etc.\n` +
+          `- NEVER include workspace name "${workspaceSlug}" in paths. ${isInlineMode ? 'Correct: /frontend/src/App.jsx' : 'Correct: /src/App.jsx'}\n\n` +
           `STEPS:\n` +
-          `1. Write files using file_write: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css, /src/components/*.jsx\n` +
+          `1. Write files using file_write: ${isInlineMode ? '/frontend/index.html, /frontend/src/main.jsx, /frontend/src/App.jsx, /frontend/src/index.css' : '/index.html, /src/main.jsx, /src/App.jsx, /src/index.css'}\n` +
           `2. Use ethers.js v6 (BrowserProvider, Contract). Embed full ABI and contract address in code.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
