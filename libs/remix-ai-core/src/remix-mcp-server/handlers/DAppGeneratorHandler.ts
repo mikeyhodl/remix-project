@@ -194,8 +194,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
       // Notify React UI that a new DApp is being created (sets processing spinner on card)
       plugin.emit('generationProgress', { status: 'preparing', contractAddress: args.contractAddress, slug: workspaceSlug })
 
-
-
       // Return concise context to the agent for file generation.
       // Do NOT include the full system prompt or file dumps — they cause tool result overflow.
       // The agent/subagent already knows DApp frontend patterns.
@@ -277,7 +275,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
     }
   }
 }
-
 
 // ──────────────────────────────────────────────
 // Update DApp Tool Handler
@@ -487,7 +484,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
       // Auto-resolve contract info from config
       const contractResolved = await this.resolveContractInfo(plugin, targetWorkspace, args)
-
 
       // Emit UI events
       plugin.emit('dappUpdateStart', { slug: targetWorkspace })

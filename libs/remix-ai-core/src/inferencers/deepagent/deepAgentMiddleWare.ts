@@ -18,16 +18,16 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
       messages: request?.messages?.length || 0,
       timestamp: new Date().toISOString()
     })
-    
+
     removePeviousContextFromMessages(request)
     shortenToolDescription(request)
 
     // Call the actual model
     const result = await handler(request as any)
-    
+
     // After model call - log completion
     console.log('[RemixDeepAgentMiddleware] After model call completed')
-    
+
     return result
   }
 }

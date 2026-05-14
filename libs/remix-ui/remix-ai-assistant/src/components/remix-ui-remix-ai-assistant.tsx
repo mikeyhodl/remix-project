@@ -2069,8 +2069,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           )}
         </div>
 
-
-
         {
           messages.length > 0 ? (
             <AiChatPromptAreaForHistory

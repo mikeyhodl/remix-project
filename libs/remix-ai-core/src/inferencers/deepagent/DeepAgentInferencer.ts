@@ -575,7 +575,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const checkpointer = new IndexedDBCheckpointSaver()
-      const generalTools = filterOutFileOperationTools(filterOutSpecialistTools(this.tools)) 
+      const generalTools = filterOutFileOperationTools(filterOutSpecialistTools(this.tools))
 
       // Create agent configuration with selected tools
       const agentConfig: CreateDeepAgentParams = {

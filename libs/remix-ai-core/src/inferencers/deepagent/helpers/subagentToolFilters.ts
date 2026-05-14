@@ -94,7 +94,7 @@ export function getSolidityToolsForSolidityEngineer(tools: DynamicStructuredTool
 export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const webSearchToolNames = [
     'full_web_search',
-    'get_web_search_summaries', 
+    'get_web_search_summaries',
     'get_single_web_page_content'
   ]
 
@@ -206,13 +206,13 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
 export function filterOutFileOperationTools(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const fileOperationToolNames = [
     'directory_list',
-    'read_file_chunk', 
+    'read_file_chunk',
     'grep_file'
   ]
 
   // Filter tools that start with 'file_' or are in the specific list
-  const filteredTools = tools.filter(tool => 
-    !tool.name.startsWith('file_') && 
+  const filteredTools = tools.filter(tool =>
+    !tool.name.startsWith('file_') &&
     !fileOperationToolNames.includes(tool.name)
   )
 
