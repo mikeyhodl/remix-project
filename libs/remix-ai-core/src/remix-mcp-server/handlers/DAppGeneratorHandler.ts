@@ -82,7 +82,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. IMPORTANT: Do NOT call this tool immediately. First, ask the user these 3 questions one at a time: 1) Describe the DApp design you want (free text). 2) Do you have a Figma design URL? (optional). 3) Should it be a Base Mini App? (optional). After collecting answers, call this tool with ALL parameters including the contract details from the user prompt.'
+  description = 'Create a new DApp frontend from a deployed smart contract. IMPORTANT: Do NOT call this tool immediately. First, ask the user ALL 3 of these questions together in a single message: 1) Describe the DApp design you want (free text). 2) Do you have a Figma design URL? (optional). 3) Should it be a Base Mini App? (optional). You MUST ask these questions BEFORE calling this tool, UNLESS the user has explicitly indicated they want to skip preferences (e.g., "just make it", "use defaults", "quickly"). After collecting answers, call this tool with ALL parameters including the contract details from the user prompt.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -543,7 +543,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
     } catch (error: any) {
       console.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
       plugin.emit('dappGenerationError', {
-        address: args.contractAddress || args.workspaceName,
+        slug: args.workspaceName,
         error: error.message
       })
       return this.createErrorResult(`DApp update failed: ${error.message}`)
@@ -650,6 +650,10 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       })
     } catch (error: any) {
       console.error('[QuickDapp] finalize_dapp_generation failed:', error)
+      plugin.emit('dappGenerationError', {
+        slug: workspaceName,
+        error: error.message
+      })
       return this.createErrorResult(`Failed to finalize DApp: ${error.message}`)
     }
   }
