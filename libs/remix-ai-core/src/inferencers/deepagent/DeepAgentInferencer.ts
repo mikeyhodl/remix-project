@@ -626,6 +626,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const userMessage = getErrorMessage(errorType, error, retryAfter)
 
       console.error(`[DeepAgentInferencer] Error during agent execution: ${errorType}`, error)
+      console.error('[DeepAgentInferencer] Original error message:', error)  
 
       // Emit API error event for UI handling
       this.event.emit('onApiError', {
@@ -672,10 +673,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const generalTools = filterOutFileOperationTools(filterOutSpecialistTools(this.tools)) 
 
       // Create agent configuration with selected tools
+      // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
-        tools: generalTools,
-        model: this.model,
+        tools: generalTools as any,
+        model: this.model as any,
         systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
         skills: ["skills/"],
         checkpointer,
@@ -694,7 +696,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         agentConfig.store = this.memoryBackend as any
       }
 
-      this.agent = await createDeepAgent(agentConfig as any)
+      // Cast result to any to handle @langchain/core version mismatch between root and deepagents
+      this.agent = await createDeepAgent(agentConfig as any) as any
 
       console.log(`[DeepAgentInferencer] Recreated agent with ${selectedTools.length} selected tools`)
     } catch (error) {

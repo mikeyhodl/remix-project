@@ -60,6 +60,12 @@ if (!ollamaConfig && ollamaEndpoint !== 'http://localhost:11434') {
   config.set('settings/ollama-config', true)
   ollamaConfig = true
 }
+// Auto-enable deepagent API keys config if any API key is set
+let deepagentApiKeysConfigAuto = deepagentApiKeysConfig
+if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey)) {
+  config.set('settings/deepagent-api-keys-config', true)
+  deepagentApiKeysConfigAuto = true
+}
 if (typeof generateContractMetadata !== 'boolean') {
   config.set('settings/generate-contract-metadata', true)
   generateContractMetadata = true
@@ -235,7 +241,7 @@ export const initialState: SettingsState = {
     isLoading: false
   },
   'deepagent-api-keys-config': {
-    value: deepagentApiKeysConfig,
+    value: deepagentApiKeysConfigAuto,
     isLoading: false
   },
   'deepagent-anthropic-api-key': {

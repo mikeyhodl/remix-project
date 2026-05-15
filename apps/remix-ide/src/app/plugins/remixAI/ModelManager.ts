@@ -10,11 +10,13 @@ import {
   getBestAvailableModel,
   listModels,
   getDefaultModel,
-  getModelById
+  getModelById,
+  IUserApiKeyConfig
 } from '@remix/remix-ai-core'
 import type { AIModel } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
+import { Registry } from '@remix-project/remix-lib'
 
 export interface ModelManagerDeps {
   plugin: IRemixAIPlugin
@@ -27,6 +29,32 @@ export class ModelManager {
 
   constructor(deps: ModelManagerDeps) {
     this.deps = deps
+  }
+
+  private getUserApiKeysConfig(): IUserApiKeyConfig | undefined {
+    try {
+      const config = Registry.getInstance().get('config').api
+      const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
+      const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
+      const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
+      const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+
+      // Auto-enable if any API key is set
+      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey
+      if (!useOwnKeys && !hasAnyKey) {
+        return undefined
+      }
+
+      return {
+        useOwnKeys: useOwnKeys || !!hasAnyKey,
+        anthropicApiKey,
+        mistralApiKey,
+        openaiApiKey
+      }
+    } catch (error) {
+      console.warn('[ModelManager] Failed to read user API keys config:', error)
+      return undefined
+    }
   }
 
   async setModel(modelId: string, allowedModels: string[] = []): Promise<void> {
@@ -156,6 +184,12 @@ export class ModelManager {
       this.deps.eventBridge.teardownListeners(plugin.deepAgentInferencer!)
       await plugin.deepAgentInferencer!.close()
 
+      // Get user API keys config
+      const userApiKeys = this.getUserApiKeysConfig()
+      if (userApiKeys?.useOwnKeys) {
+        console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (model change)')
+      }
+
       // Create new instance with updated model
       plugin.deepAgentInferencer = new DeepAgentInferencer(
         plugin as any, // Cast to Plugin type
@@ -163,11 +197,12 @@ export class ModelManager {
         {
           memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
           enableSubagents: true,
-          enablePlanning: true
+          enablePlanning: true,
+          userApiKeys
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: model.provider as 'anthropic' | 'mistralai', modelId: modelId }
+        { provider: model.provider as 'anthropic' | 'mistralai' | 'openai', modelId: modelId }
       )
       await plugin.deepAgentInferencer.initialize()
 

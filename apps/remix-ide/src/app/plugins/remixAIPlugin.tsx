@@ -210,12 +210,18 @@ export class RemixAIPlugin extends Plugin {
         try {
           const config = Registry.getInstance().get('config').api
           const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
-          if (useOwnKeys) {
+          const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
+          const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
+          const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+
+          // Auto-enable if any API key is set
+          const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey
+          if (useOwnKeys || hasAnyKey) {
             userApiKeys = {
-              useOwnKeys,
-              anthropicApiKey: config.get('settings/deepagent-anthropic-api-key') || '',
-              mistralApiKey: config.get('settings/deepagent-mistral-api-key') || '',
-              openaiApiKey: config.get('settings/deepagent-openai-api-key') || ''
+              useOwnKeys: useOwnKeys || !!hasAnyKey,
+              anthropicApiKey,
+              mistralApiKey,
+              openaiApiKey
             }
             console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
           }

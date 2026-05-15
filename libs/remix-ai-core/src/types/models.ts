@@ -67,6 +67,28 @@ export const AVAILABLE_MODELS: AIModel[] = [
     capabilities: ['code', 'completion']
   },
 
+  // OpenAI models
+  {
+    id: 'gpt-5.4',
+    name: 'GPT-5.4',
+    provider: 'openai',
+    description: 'Latest OpenAI flagship model',
+    requiresAuth: true,
+    isDefault: false,
+    category: 'coding',
+    capabilities: ['chat', 'code', 'completion']
+  },
+  {
+    id: 'gpt-5.4-mini',
+    name: 'GPT-5.4 Mini',
+    provider: 'openai',
+    description: 'Fast and efficient OpenAI model',
+    requiresAuth: true,
+    isDefault: false,
+    category: 'coding',
+    capabilities: ['chat', 'code', 'completion']
+  },
+
   // Special local models entry
   {
     id: 'ollama',

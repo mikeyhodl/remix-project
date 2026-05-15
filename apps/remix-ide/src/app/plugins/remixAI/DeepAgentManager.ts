@@ -26,12 +26,14 @@ export class DeepAgentManager {
       const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
       const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
 
-      if (!useOwnKeys) {
+      // Auto-enable if any API key is set
+      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey
+      if (!useOwnKeys && !hasAnyKey) {
         return undefined
       }
 
       return {
-        useOwnKeys,
+        useOwnKeys: useOwnKeys || !!hasAnyKey,
         anthropicApiKey,
         mistralApiKey,
         openaiApiKey
