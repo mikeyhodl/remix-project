@@ -1,4 +1,4 @@
-import { SubAgent, CompiledSubAgent } from 'deepagents'
+import { SubAgent, CompiledSubAgent, createDeepAgent } from 'deepagents'
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import {
@@ -62,6 +62,24 @@ export function buildSubagentConfigs(
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
 
+  const comprehensiveAuditor = createDeepAgent({
+    systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
+    tools: coordinationTools,
+    subagents: [{
+        name: 'Gas Optimizer',
+        systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
+        model,
+        tools: basicFileTools,
+        description: 'Specializes in optimizing gas usage in smart contracts.'
+      },{
+        name: 'Security Analyst',
+        systemPrompt: SECURITY_ANALYSIS_PROMPT,
+        model,
+        tools: basicMcpTools,
+        description: 'Specializes reviewing code for security vulnerabilities.'
+      }]
+  })
+
   return [
     {
       name: 'Solidity Engineer',
@@ -78,20 +96,6 @@ export function buildSubagentConfigs(
       description: 'Specializes in searching and retrieving information from web sources.'
     },
     {
-      name: 'Security Analyst',
-      systemPrompt: SECURITY_ANALYSIS_PROMPT,
-      model,
-      tools: basicMcpTools,
-      description: 'Specializes reviewing code for security vulnerabilities.'
-    },
-    {
-      name: 'Gas Optimizer',
-      systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
-      model,
-      tools: basicFileTools,
-      description: 'Specializes in optimizing gas usage in smart contracts.'
-    },
-    {
       name: 'Code Reviewer',
       systemPrompt: CODE_REVIEWER_SUBAGENT_PROMPT,
       model,
@@ -102,8 +106,8 @@ export function buildSubagentConfigs(
       name: 'Comprehensive Auditor',
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
       model,
-      tools: coordinationTools,
-      description: 'Specializes in comprehensive auditing and analysis of smart contracts.'
+      description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
+      runnable: comprehensiveAuditor    
     },
     {
       name: 'Web3 Educator',
