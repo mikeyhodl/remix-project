@@ -1,6 +1,6 @@
 import { Registry } from '@remix-project/remix-lib'
 import { SettingsActions, SettingsState } from '../types'
-import { resetOllamaHostOnSettingsChange } from '@remix/remix-ai-core';
+import { resetOllamaHostOnSettingsChange, onDeepAgentApiKeysChanged } from '@remix/remix-ai-core';
 const config = Registry.getInstance().get('config').api
 const settingsConfig = Registry.getInstance().get('settingsConfig').api
 const defaultTheme = config.get('settings/theme') ? settingsConfig.themes.find((theme) => theme.name.toLowerCase() === config.get('settings/theme').toLowerCase()) : settingsConfig.themes[0]
@@ -266,6 +266,18 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
         resetOllamaHostOnSettingsChange();
       } catch (error) {
         // Ignore errors - Ollama functionality is optional
+      }
+    }
+
+    // Reinitialize DeepAgent when API key settings change
+    if (action.payload.name === 'deepagent-api-keys-config' ||
+        action.payload.name === 'deepagent-anthropic-api-key' ||
+        action.payload.name === 'deepagent-mistral-api-key' ||
+        action.payload.name === 'deepagent-openai-api-key') {
+      try {
+        onDeepAgentApiKeysChanged();
+      } catch (error) {
+        // Ignore errors - DeepAgent functionality is optional
       }
     }
 

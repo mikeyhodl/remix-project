@@ -35,7 +35,6 @@ import { StreamEventHandler } from './StreamEventHandler'
 import { langSmithTracing } from './LangSmithTracing'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
-
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
   private config: IDeepAgentConfig

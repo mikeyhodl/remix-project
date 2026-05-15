@@ -196,11 +196,12 @@ export class DeepAgentManager {
 
   /**
    * Reinitialize DeepAgent with current settings.
-   * Used when MCP servers are refreshed or reset.
+   * Used when MCP servers are refreshed, reset, or API key settings change.
    */
   async reinitialize(): Promise<void> {
     const plugin = this.deps.plugin
-    const deepAgentEnabled = localStorage.getItem('deepagent_enabled') === 'true'
+    // Use actual plugin state - default is enabled, localStorage is only set when explicitly changed
+    const deepAgentEnabled = plugin.deepAgentEnabled || plugin.deepAgentInferencer !== null
 
     if (deepAgentEnabled && plugin.remixMCPServer) {
       try {

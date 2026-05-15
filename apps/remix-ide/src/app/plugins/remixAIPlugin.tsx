@@ -3,12 +3,13 @@ import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig } from '@remix/remix-ai-core';
-import { MCPInferencer, DeepAgentInferencer } from '@remix/remix-ai-core';
+import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
-import { AIModel, getDefaultModel, getModelById } from '@remix/remix-ai-core';
+import { AIModel, getDefaultModel, getModelById, IUserApiKeyConfig } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
+import { Registry } from '@remix-project/remix-lib'
 import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, DAppGenerationManager, ChatRequestBuffer } from './remixAI'
 
 const profile = {
@@ -105,6 +106,14 @@ export class RemixAIPlugin extends Plugin {
       setModel: (modelId: string) => this.modelManager.setModel(modelId),
       reinitializeDeepAgent: () => this.deepAgentManager.reinitialize()
     })
+
+    // Listen for API key settings changes and reinitialize DeepAgent
+    onApiKeysChange(() => {
+      console.log('[RemixAI Plugin] API keys changed, reinitializing DeepAgent...')
+      if (this.deepAgentEnabled) {
+        this.deepAgentManager.reinitialize()
+      }
+    })
   }
 
   private setupDeepAgentEventListeners() {
@@ -195,17 +204,37 @@ export class RemixAIPlugin extends Plugin {
       try {
         console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
         console.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
+
+        // Read user API keys from settings
+        let userApiKeys: IUserApiKeyConfig | undefined
+        try {
+          const config = Registry.getInstance().get('config').api
+          const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
+          if (useOwnKeys) {
+            userApiKeys = {
+              useOwnKeys,
+              anthropicApiKey: config.get('settings/deepagent-anthropic-api-key') || '',
+              mistralApiKey: config.get('settings/deepagent-mistral-api-key') || '',
+              openaiApiKey: config.get('settings/deepagent-openai-api-key') || ''
+            }
+            console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
+          }
+        } catch (error) {
+          console.warn('[RemixAI Plugin] Failed to read user API keys config:', error)
+        }
+
         this.deepAgentInferencer = new DeepAgentInferencer(
           this,
           this.remixMCPServer.tools,
           {
             memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
             enableSubagents: true,
-            enablePlanning: true
+            enablePlanning: true,
+            userApiKeys
           },
           this.remoteInferencer,
           this.mcpInferencer, // Pass MCPInferencer to gather external MCP client tools
-          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai', modelId: this.selectedModelId } // Pass selected model
+          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai', modelId: this.selectedModelId } // Pass selected model
         )
         await this.deepAgentInferencer.initialize()
         // Set up DeepAgent event listeners for streaming (once only)
