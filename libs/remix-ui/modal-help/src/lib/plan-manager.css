@@ -293,7 +293,8 @@
 .pm-hero--compact .pm-hero__unit {
   font-size: 11px;
 }
-.pm-hero--compact .pm-hero__sub {
+.pm-hero--compact .pm-hero__sub,
+.pm-hero--compact .pm-hero__meta {
   margin-top: 2px;
   font-size: 11.5px;
 }
@@ -354,35 +355,25 @@
   color: var(--pm-text);
 }
 
-.pm-hero__used { color: var(--pm-accent); font-weight: 500; }
-.pm-hero__div  { color: var(--pm-text-mute); }
-
-.pm-hero__bar {
-  position: relative;
-  height: 6px;
-  width: min(540px, 100%);
-  background: rgba(255,255,255,0.04);
+/* Forward-looking renewal / refill line under the big number.
+   Replaces the old "used / cycle / bar" trio — credits never expire and
+   top-ups stack, so a percent gauge would misrepresent the model. */
+.pm-hero__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 999px;
-  overflow: visible;
+  background: rgba(255,255,255,0.03);
+  border: 0.5px solid var(--pm-line);
+  font-size: 12px;
+  color: var(--pm-text-dim);
 }
 
-.pm-hero__bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--pm-accent), var(--pm-accent-2));
-  box-shadow: 0 0 18px rgba(47,191,177,0.5);
-  transition: width .8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pm-hero__bar-marker {
-  position: absolute;
-  top: 50%;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.12), 0 0 14px rgba(47,191,177,0.6);
-  transition: left .8s cubic-bezier(0.22, 1, 0.36, 1);
+.pm-hero__meta em {
+  font-style: normal;
+  color: var(--pm-text);
+  font-weight: 500;
 }
 
 .pm-hero__right {
@@ -392,64 +383,10 @@
   gap: 16px;
 }
 
-/* Conic-gradient ring */
-.pm-ring {
-  --pm-pct: 0;
-  width: 132px; height: 132px;
-  border-radius: 50%;
-  background:
-    conic-gradient(var(--pm-accent) calc(var(--pm-pct) * 1%), rgba(255,255,255,0.05) 0);
-  display: grid;
-  place-items: center;
-  position: relative;
-  filter: drop-shadow(0 8px 30px rgba(47,191,177,0.2));
-}
-
-.pm-ring::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(47,191,177,0), rgba(47,191,177,0.35), rgba(47,191,177,0));
-  filter: blur(16px);
-  opacity: 0.7;
-  z-index: -1;
-}
-
-.pm-ring__inner {
-  width: 110px; height: 110px;
-  border-radius: 50%;
-  background: var(--pm-bg);
-  border: 0.5px solid var(--pm-line-2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.pm-ring__pct {
-  font-family: var(--pm-display);
-  font-weight: 600;
-  font-size: 32px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.pm-ring__pct span {
-  font-size: 14px;
-  color: var(--pm-text-dim);
-  margin-left: 2px;
-}
-
-.pm-ring__caption {
-  font-family: var(--pm-mono);
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--pm-text-mute);
-}
+/* Conic-gradient ring — removed. The hero no longer shows a "% consumed"
+   gauge because credits never expire and top-ups stack, so a fixed
+   denominator doesn't model the user's actual balance. The state-based
+   color overrides for it lower in this file have been removed too. */
 
 .pm-cta {
   display: inline-flex;
@@ -1460,41 +1397,14 @@
 .pm-shell--critical { --pm-state: #ff7a3d; }
 .pm-shell--empty    { --pm-state: var(--pm-danger); }
 
-/* Hero color shifts */
-.pm-hero--low .pm-hero__bar-fill,
-.pm-hero--critical .pm-hero__bar-fill,
-.pm-hero--empty .pm-hero__bar-fill {
-  background: linear-gradient(90deg, var(--pm-state), color-mix(in srgb, var(--pm-state) 65%, white));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--pm-state) 60%, transparent);
-}
-
-.pm-hero--low .pm-hero__used,
-.pm-hero--critical .pm-hero__used,
-.pm-hero--empty .pm-hero__used {
-  color: var(--pm-state);
-}
-
+/* Hero color shifts — only the headline number gets restyled now that the
+   bar and ring are gone. */
 .pm-hero--critical .pm-hero__num,
 .pm-hero--empty .pm-hero__num {
   background: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--pm-state) 70%, #cdd2dd) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-/* Ring re-color via override */
-.pm-hero--low .pm-ring,
-.pm-hero--critical .pm-ring,
-.pm-hero--empty .pm-ring {
-  background:
-    conic-gradient(var(--pm-state) calc(var(--pm-pct) * 1%), rgba(255,255,255,0.05) 0);
-  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--pm-state) 30%, transparent));
-}
-
-.pm-hero--low .pm-ring::before,
-.pm-hero--critical .pm-ring::before,
-.pm-hero--empty .pm-ring::before {
-  background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--pm-state) 45%, transparent), transparent);
 }
 
 /* ─── Alert banner ─── */

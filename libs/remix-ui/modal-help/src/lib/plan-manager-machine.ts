@@ -725,7 +725,8 @@ export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
   //   3. (free + paid) — gives a sensible baseline when no plan signal exists
   const sub = snap.subscription
   let total = 0
-  if (sub?.creditsPerMonth) total = sub.creditsPerMonth
+  if (sub?.creditsPerPeriod) total = sub.creditsPerPeriod
+  if (!total && sub?.creditsPerMonth) total = sub.creditsPerMonth
   if (!total && sub?.planId) {
     const match = snap.catalogPlans.find(p => p.id === sub.planId)
     if (match) total = match.creditsPerMonth
@@ -748,7 +749,7 @@ export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
   else if (remainingPct < THRESHOLDS.CREDIT_LOW_PCT) state = 'low'
   else state = 'healthy'
 
-  const refreshDate = sub?.currentBillingPeriod?.endsAt ?? sub?.nextBilledAt ?? null
+  const refreshDate = sub?.currentBillingPeriod?.endsAt ?? sub?.currentPeriodEnd ?? sub?.nextBilledAt ?? null
 
   return { state, remaining, total, used, usedPct, remainingPct, refreshDate }
 }

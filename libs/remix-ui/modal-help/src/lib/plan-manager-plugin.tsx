@@ -1094,6 +1094,7 @@ const PlanManagerOverlay: React.FC<{
           <Hero
             status={status}
             refreshDate={refreshDate}
+            planCtx={planCtx}
             heroCompact={activeAlert === 'beta-transition' || activeAlert === 'plan-lifecycle'}
             onTopUp={() => setActiveSection('topup')}
           />
@@ -1171,10 +1172,39 @@ const PlanManagerOverlay: React.FC<{
 const Hero: React.FC<{
   status: CreditStatus
   refreshDate: string | null
+  planCtx: ReturnType<typeof selectPlanState>
   heroCompact: boolean
   onTopUp: () => void
-}> = ({ status, refreshDate, heroCompact, onTopUp }) => {
-  const { remaining, used, total, usedPct, state } = status
+}> = ({ status, refreshDate, planCtx, heroCompact, onTopUp }) => {
+  const { remaining, total, state } = status
+
+  // Credits don't expire and top-ups stack, so a "% of cycle" gauge would
+  // misrepresent the model. We only surface a forward-looking line: when
+  // does the next allowance land, or — for paid plans — when does the next
+  // bill hit. `total` here is the per-cycle allowance from the subscription
+  // (or the catalog plan it maps to). For free / beta / unknown we fall back
+  // to a calmer copy that doesn't imply a quota the user can hit.
+  const renderRenewal = (): React.ReactNode => {
+    if (planCtx.kind === 'paid') {
+      if (planCtx.isCancelled && refreshDate) {
+        return <>Ends <em>{refreshDate}</em> · won't renew</>
+      }
+      if (refreshDate && total > 0) {
+        return <>Renews <em>{refreshDate}</em> · <em>+{total.toLocaleString()}</em> credits</>
+      }
+      if (refreshDate) return <>Renews <em>{refreshDate}</em></>
+    }
+    if (planCtx.kind === 'beta') {
+      return planCtx.expiresOn
+        ? <>Beta access · until <em>{formatDate(planCtx.expiresOn)}</em></>
+        : <>Beta access</>
+    }
+    // Free tier / no subscription
+    if (refreshDate && total > 0) {
+      return <>Refills <em>{refreshDate}</em> · <em>+{total.toLocaleString()}</em> credits</>
+    }
+    return <>Free tier · top up anytime, credits never expire</>
+  }
 
   return (
     <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
@@ -1184,33 +1214,12 @@ const Hero: React.FC<{
           <span className="pm-hero__num">{remaining.toLocaleString()}</span>
           <span className="pm-hero__unit">credits</span>
         </div>
-        <div className="pm-hero__sub">
-          <span className="pm-hero__used">{used.toLocaleString()} used</span>
-          <span className="pm-hero__div">·</span>
-          <span>{total.toLocaleString()} included this cycle</span>
-          {!heroCompact && refreshDate && <>
-            <span className="pm-hero__div">·</span>
-            <span>refreshes <em>{refreshDate}</em></span>
-          </>}
+        <div className="pm-hero__meta">
+          {renderRenewal()}
         </div>
-
-        {!heroCompact && (
-          <div className="pm-hero__bar">
-            <div className="pm-hero__bar-fill" style={{ width: `${usedPct}%` }} />
-            <div className="pm-hero__bar-marker" style={{ left: `${usedPct}%` }} />
-          </div>
-        )}
       </div>
 
       <div className="pm-hero__right">
-        {!heroCompact && (
-          <div className="pm-ring" style={{ '--pm-pct': `${usedPct}` } as React.CSSProperties}>
-            <div className="pm-ring__inner">
-              <div className="pm-ring__pct">{Math.round(usedPct)}<span>%</span></div>
-              <div className="pm-ring__caption">consumed</div>
-            </div>
-          </div>
-        )}
         <button className="pm-cta" onClick={onTopUp}>
           <i className="fas fa-bolt"></i> Top&nbsp;up
         </button>
@@ -1636,7 +1645,7 @@ const TopUpSection: React.FC<{
   if (packages.length === 0) {
     return (
       <div className="pm-empty">
-        <p>No top-up packages available right now.</p>
+        <p>No top-up packages available during the Free plan.</p>
       </div>
     )
   }
