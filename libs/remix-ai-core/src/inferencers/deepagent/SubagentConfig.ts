@@ -30,7 +30,8 @@ import {
   getAlchemyToolsForAlchemySpecialist,
   getTheGraphToolsForTheGraphSpecialist,
   getCircleToolsForCircleSpecialist,
-  getFileOperationTools
+  getFileOperationTools,
+  getToolForClassifierSpecialist
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -61,6 +62,7 @@ export function buildSubagentConfigs(
   const solidityTools = getSolidityToolsForSolidityEngineer(tools)
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
+  const classifierTools = getToolForClassifierSpecialist(tools)
 
   const comprehensiveAuditor = createDeepAgent({
     systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
@@ -81,6 +83,13 @@ export function buildSubagentConfigs(
   })
 
   return [
+    {
+      name: 'Contract Classifier',
+      systemPrompt: 'Contract Classifier: Analyze smart contract structure and classify features (proxy patterns, token standards, DeFi protocols, governance mechanisms). Extract contract skeleton and identify architectural patterns, complexity indicators, and risk factors using structured analysis.',
+      model,
+      tools: classifierTools,
+      description: 'Specializes in analyzing and classifying smart contract features and architectural patterns for targeted analysis.'
+    },
     {
       name: 'Solidity Engineer',
       systemPrompt: SOLIDITY_ENGINEER_SUBAGENT_PROMPT,

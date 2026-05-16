@@ -20,7 +20,7 @@ export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[])
 
 export function getCoordinationToolsForComprehensiveAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const coordinationToolNames: string[] = [
-    'auditor_analyse'
+    'enhanced_audit'
   ]
 
   const coordinationTools = tools.filter(tool =>
@@ -102,6 +102,18 @@ export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructured
   )
 
   return webSearchTools
+}
+
+export function getToolForClassifierSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'classify_contract'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
 }
 
 export function getConversionToolsForConversionSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
