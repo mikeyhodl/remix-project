@@ -128,6 +128,7 @@ export interface SettingsState {
   'deepagent-anthropic-api-key': ConfigState,
   'deepagent-mistral-api-key': ConfigState,
   'deepagent-openai-api-key': ConfigState,
+  'deepagent-moonshot-api-key': ConfigState,
   toaster: ConfigState
 }
 export interface SettingsActionPayloadTypes {

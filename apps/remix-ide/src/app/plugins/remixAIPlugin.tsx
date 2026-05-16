@@ -213,15 +213,17 @@ export class RemixAIPlugin extends Plugin {
           const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
           const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
           const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+          const moonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 
           // Auto-enable if any API key is set
-          const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey
+          const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
           if (useOwnKeys || hasAnyKey) {
             userApiKeys = {
               useOwnKeys: useOwnKeys || !!hasAnyKey,
               anthropicApiKey,
               mistralApiKey,
-              openaiApiKey
+              openaiApiKey,
+              moonshotApiKey
             }
             console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
           }
@@ -240,7 +242,7 @@ export class RemixAIPlugin extends Plugin {
           },
           this.remoteInferencer,
           this.mcpInferencer, // Pass MCPInferencer to gather external MCP client tools
-          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai', modelId: this.selectedModelId } // Pass selected model
+          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: this.selectedModelId } // Pass selected model
         )
         await this.deepAgentInferencer.initialize()
         // Set up DeepAgent event listeners for streaming (once only)

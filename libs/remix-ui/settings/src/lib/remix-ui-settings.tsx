@@ -224,6 +224,9 @@ const settingsSections: SettingsSection[] = [
           }, {
             name: 'deepagent-openai-api-key' as keyof typeof initialState,
             type: 'password'
+          }, {
+            name: 'deepagent-moonshot-api-key' as keyof typeof initialState,
+            type: 'password'
           }]
         }]
       }]

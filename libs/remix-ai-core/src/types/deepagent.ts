@@ -1,4 +1,4 @@
-export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'ollama'
+export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama'
 
 export interface ModelSelection {
   provider: ModelProvider
@@ -13,6 +13,7 @@ export interface IUserApiKeyConfig {
   anthropicApiKey?: string
   mistralApiKey?: string
   openaiApiKey?: string
+  moonshotApiKey?: string
 }
 
 /**

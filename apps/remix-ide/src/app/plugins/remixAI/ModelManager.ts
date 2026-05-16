@@ -38,9 +38,10 @@ export class ModelManager {
       const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
       const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
       const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+      const moonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 
       // Auto-enable if any API key is set
-      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey
+      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
       if (!useOwnKeys && !hasAnyKey) {
         return undefined
       }
@@ -49,7 +50,8 @@ export class ModelManager {
         useOwnKeys: useOwnKeys || !!hasAnyKey,
         anthropicApiKey,
         mistralApiKey,
-        openaiApiKey
+        openaiApiKey,
+        moonshotApiKey
       }
     } catch (error) {
       console.warn('[ModelManager] Failed to read user API keys config:', error)
@@ -202,7 +204,7 @@ export class ModelManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: model.provider as 'anthropic' | 'mistralai' | 'openai', modelId: modelId }
+        { provider: model.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: modelId }
       )
       await plugin.deepAgentInferencer.initialize()
 

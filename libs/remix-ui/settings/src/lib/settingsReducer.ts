@@ -23,6 +23,7 @@ const deepagentApiKeysConfig = config.get('settings/deepagent-api-keys-config') 
 const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
 const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
 const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 
 let githubConfig = config.get('settings/github-config') || false
 let ipfsConfig = config.get('settings/ipfs-config') || false
@@ -62,7 +63,7 @@ if (!ollamaConfig && ollamaEndpoint !== 'http://localhost:11434') {
 }
 // Auto-enable deepagent API keys config if any API key is set
 let deepagentApiKeysConfigAuto = deepagentApiKeysConfig
-if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey)) {
+if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey || deepagentMoonshotApiKey)) {
   config.set('settings/deepagent-api-keys-config', true)
   deepagentApiKeysConfigAuto = true
 }
@@ -256,6 +257,10 @@ export const initialState: SettingsState = {
     value: deepagentOpenaiApiKey,
     isLoading: false
   },
+  'deepagent-moonshot-api-key': {
+    value: deepagentMoonshotApiKey,
+    isLoading: false
+  },
   toaster: {
     value: '',
     isLoading: false
@@ -279,7 +284,8 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
     if (action.payload.name === 'deepagent-api-keys-config' ||
         action.payload.name === 'deepagent-anthropic-api-key' ||
         action.payload.name === 'deepagent-mistral-api-key' ||
-        action.payload.name === 'deepagent-openai-api-key') {
+        action.payload.name === 'deepagent-openai-api-key' ||
+        action.payload.name === 'deepagent-moonshot-api-key') {
       try {
         onDeepAgentApiKeysChanged();
       } catch (error) {
