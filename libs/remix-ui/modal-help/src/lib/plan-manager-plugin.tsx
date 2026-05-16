@@ -248,11 +248,16 @@ export class PlanManagerPlugin extends ViewPlugin {
    * Paddle's events feed back through the singleton listener installed in
    * `onActivation`, which dispatches CHECKOUT_COMPLETED / CLOSED / ERROR.
    */
-  async purchaseCredits(packageId: string): Promise<void> {
+  async purchaseCredits(packageId: string, priceId?: number): Promise<void> {
     const snap = this.store.getSnapshot()
     const pkg = snap.catalogPackages.find(p => p.id === packageId)
     const itemLabel = pkg ? `${pkg.credits.toLocaleString()} credits${pkg.name ? ` (${pkg.name})` : ''}` : packageId
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'topup', itemLabel, productId: packageId })
+    // Credit-package purchases stay on the legacy /billing/purchase-credits
+    // endpoint for now (it already produces a Paddle transaction); the
+    // optional `priceId` is forwarded for multi-price packages once the
+    // backend method gains the parameter. Suppress unused-warning via void.
+    void priceId
     await this.runCheckout('topup', itemLabel, async (api) => api.purchaseCredits(packageId, 'paddle'))
   }
 
@@ -263,10 +268,19 @@ export class PlanManagerPlugin extends ViewPlugin {
    *   2. Free plan → { ok: true, immediate: true, ... } → grant is instant; refresh data.
    *   3. User already has a paid sub → 409 ALREADY_SUBSCRIBED → must use PATCH flow.
    */
-  async subscribeToPlan(planId: string): Promise<void> {
+  async subscribeToPlan(planId: string, priceId?: number): Promise<void> {
     const snap = this.store.getSnapshot()
     const plan = snap.catalogPlans.find(p => p.id === planId)
     const itemLabel = plan?.name ?? planId
+
+    // Resolve the price the user is paying for. If the caller didn't pass
+    // one, fall back to the plan's default price — keeps single-cadence
+    // plans (and older call sites) working unchanged.
+    const resolvedPriceId = (typeof priceId === 'number' && Number.isFinite(priceId))
+      ? priceId
+      : (plan?.prices?.find((pr: any) => pr.is_default)?.id
+        ?? plan?.prices?.[0]?.id
+        ?? undefined)
 
     // Pre-flight: if the user already has an active paid subscription and is
     // picking a *different* paid plan, route to the change-plan flow upfront
@@ -276,7 +290,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     const planState = selectPlanState(snap)
     const targetIsFree = (plan?.priceUsd ?? 0) === 0
     if (planState.kind === 'paid' && !targetIsFree && planState.planId !== planId) {
-      await this.changePlan(planId)
+      await this.changePlan(planId, resolvedPriceId)
       return
     }
 
@@ -284,13 +298,15 @@ export class PlanManagerPlugin extends ViewPlugin {
     await this.runCheckout('subscription', itemLabel, async () => {
       const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
       if (!productsApi) return { ok: false, error: 'Products API unavailable' }
-      const resp = await productsApi.purchaseProduct({ slug: planId, provider: 'paddle' })
+      const req: any = { slug: planId, provider: 'paddle' }
+      if (typeof resolvedPriceId === 'number') req.price_id = resolvedPriceId
+      const resp = await productsApi.purchaseProduct(req)
       if (!resp?.ok) {
         const err = (resp?.data as any)?.error || resp?.error
         if (err === 'ALREADY_SUBSCRIBED') {
           // Defensive fallback — the pre-flight above should normally have
           // routed us already, but the user's local snapshot might be stale.
-          void this.changePlan(planId)
+          void this.changePlan(planId, resolvedPriceId)
           return { ok: false, error: 'You already have an active paid subscription. Switching to the change-plan flow…' }
         }
         return { ok: false, error: resp?.error || 'Could not start purchase.' }
@@ -312,12 +328,19 @@ export class PlanManagerPlugin extends ViewPlugin {
    * Proration is always immediate; on payment failure the change is rejected.
    * Not for switching to free — use cancelSubscription() instead.
    */
-  async changePlan(planId: string): Promise<void> {
+  async changePlan(planId: string, priceId?: number): Promise<void> {
     const snap = this.store.getSnapshot()
     const plan = snap.catalogPlans.find(p => p.id === planId)
     const itemLabel = plan?.name ?? planId
     const PRORATION = 'prorated_immediately' as const
     const ON_FAILURE = 'prevent_change' as const
+
+    // Resolve internal → external price id for the change endpoints, which
+    // take Paddle's external `pri_...` directly (not the unified `price_id`).
+    const resolvedPrice = (typeof priceId === 'number' && Number.isFinite(priceId))
+      ? plan?.prices?.find((pr: any) => pr.id === priceId)
+      : (plan?.prices?.find((pr: any) => pr.is_default) || plan?.prices?.[0])
+    const externalPriceId: string | undefined = resolvedPrice?.providers?.find((pr: any) => pr.slug === 'paddle')?.external_price_id ?? undefined
 
     if (!this.store.getSnapshot().isAuthenticated) {
       try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
@@ -337,7 +360,9 @@ export class PlanManagerPlugin extends ViewPlugin {
       //    if it really can't apply.
       let confirmMessage = `Switch your subscription to ${itemLabel}?`
       try {
-        const preview = await billingApi.previewSubscriptionChange({ planSlug: planId, prorationBillingMode: PRORATION })
+        const previewReq: any = { planSlug: planId, prorationBillingMode: PRORATION }
+        if (externalPriceId) previewReq.priceId = externalPriceId
+        const preview = await billingApi.previewSubscriptionChange(previewReq)
         if (preview?.ok && preview.data?.preview) {
           const totals = (preview.data.preview as any)?.update_summary || (preview.data.preview as any)?.totals || {}
           const charge = totals?.result?.amount ?? totals?.charge?.amount ?? totals?.total ?? null
@@ -365,7 +390,9 @@ export class PlanManagerPlugin extends ViewPlugin {
       }
 
       // 2. Commit.
-      const resp = await billingApi.changeSubscription({ planSlug: planId, prorationBillingMode: PRORATION, onPaymentFailure: ON_FAILURE })
+      const changeReq: any = { planSlug: planId, prorationBillingMode: PRORATION, onPaymentFailure: ON_FAILURE }
+      if (externalPriceId) changeReq.priceId = externalPriceId
+      const resp = await billingApi.changeSubscription(changeReq)
       if (!resp?.ok) {
         this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not change plan.' })
         return
@@ -588,50 +615,103 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   private async loadCatalog(): Promise<void> {
     try {
-      const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
-      if (!billingApi) {
-        this.store.send({ type: 'CATALOG_FAILED', message: 'Billing API unavailable' })
+      const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
+      if (!productsApi || typeof productsApi.getAvailableProducts !== 'function') {
+        this.store.send({ type: 'CATALOG_FAILED', message: 'Products API unavailable' })
         return
       }
-      const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
-      const [productsResp, packagesResp] = await Promise.all([
-        productsApi ? productsApi.getAvailableSubscriptions() : Promise.resolve({ ok: false, error: 'Products API unavailable' }),
-        billingApi.getCreditPackages()
+      // Unified catalog endpoint — one endpoint per product type, each
+      // item carries the full multi-cadence `prices` array.
+      const [plansResp, packagesResp] = await Promise.all([
+        productsApi.getAvailableProducts({ type: 'subscription_plan' }),
+        productsApi.getAvailableProducts({ type: 'credit_package' })
       ])
-      if (!productsResp?.ok || !packagesResp?.ok) {
+      if (!plansResp?.ok || !packagesResp?.ok) {
         this.store.send({
           type: 'CATALOG_FAILED',
-          message: productsResp?.error || packagesResp?.error || 'Failed to load catalog'
+          message: plansResp?.error || packagesResp?.error || 'Failed to load catalog'
         })
         return
       }
-      const plans = (productsResp.data?.data ?? [])
+
+      const mapProviders = (raw: any[]): any[] => (raw ?? []).map((pr: any) => ({
+        slug: pr.slug,
+        name: pr.slug,
+        priceId: pr.external_price_id ?? null,
+        productId: pr.external_product_id ?? null,
+        isActive: pr.is_active !== false,
+        syncStatus: (pr.sync_status as any) ?? 'synced'
+      }))
+
+      const plans = (plansResp.data?.data ?? [])
         .filter((p: any) => p.product_type === 'subscription_plan')
-        .map((p: any) => ({
-          id: p.slug,
-          internalId: p.id,
-          name: p.name,
-          description: p.description ?? '',
-          creditsPerMonth: p.credits_per_month,
-          priceUsd: p.price_cents,
-          currency: p.currency,
-          billingInterval: p.billing_interval,
-          features: p.features ?? [],
-          featureGroupName: p.feature_group?.name ?? null,
-          providers: p.provider_slug ? [{
-            slug: p.provider_slug,
-            name: p.provider_slug,
-            priceId: p.external_price_id ?? null,
-            productId: p.external_product_id ?? null,
-            isActive: true,
-            syncStatus: 'synced' as const
-          }] : []
-        }))
-      this.store.send({
-        type: 'CATALOG_LOADED',
-        plans,
-        packages: packagesResp.data?.packages ?? []
-      })
+        .map((p: any) => {
+          // Pick the "default" price for the legacy single-price fields
+          // so existing selectors keep working unchanged.
+          const prices = Array.isArray(p.prices) ? p.prices : []
+          const defaultPrice = prices.find((pr: any) => pr.is_default) || prices[0] || null
+          const headlinePriceCents = defaultPrice?.price_cents ?? p.price_cents
+          const headlineInterval = defaultPrice?.billing_interval ?? p.billing_interval
+          const headlineCurrency = defaultPrice?.currency ?? p.currency
+          // Top-level providers fall back to the default price's providers,
+          // then to the legacy product-level fields.
+          const topProviders = (p.providers && p.providers.length > 0)
+            ? p.providers
+            : (defaultPrice?.providers ?? (p.provider_slug ? [{
+                slug: p.provider_slug,
+                external_product_id: p.external_product_id ?? null,
+                external_price_id: p.external_price_id ?? null,
+                is_active: true,
+                sync_status: 'synced'
+              }] : []))
+          return {
+            id: p.slug,
+            internalId: p.id,
+            name: p.name,
+            description: p.description ?? '',
+            creditsPerMonth: p.credits_per_month,
+            priceUsd: headlinePriceCents,
+            currency: headlineCurrency,
+            billingInterval: headlineInterval,
+            features: p.features ?? [],
+            featureGroupName: p.feature_group?.name ?? null,
+            providers: mapProviders(topProviders),
+            prices
+          }
+        })
+
+      const packages = (packagesResp.data?.data ?? [])
+        .filter((p: any) => p.product_type === 'credit_package')
+        .map((p: any) => {
+          const prices = Array.isArray(p.prices) ? p.prices : []
+          const defaultPrice = prices.find((pr: any) => pr.is_default) || prices[0] || null
+          const headlinePriceCents = defaultPrice?.price_cents ?? p.price_cents
+          const headlineCurrency = defaultPrice?.currency ?? p.currency
+          const topProviders = (p.providers && p.providers.length > 0)
+            ? p.providers
+            : (defaultPrice?.providers ?? (p.provider_slug ? [{
+                slug: p.provider_slug,
+                external_product_id: p.external_product_id ?? null,
+                external_price_id: p.external_price_id ?? null,
+                is_active: true,
+                sync_status: 'synced'
+              }] : []))
+          return {
+            id: p.slug,
+            internalId: p.id,
+            name: p.name,
+            description: p.description ?? '',
+            // Backend exposes credits-per-month for plans; for one-shot
+            // packages this carries the bundled credit amount.
+            credits: p.credits_per_month,
+            priceUsd: headlinePriceCents,
+            currency: headlineCurrency,
+            providers: mapProviders(topProviders),
+            prices
+          }
+        })
+
+      this.store.send({ type: 'CATALOG_LOADED', plans, packages })
     } catch (err: any) {
       this.store.send({ type: 'CATALOG_FAILED', message: err?.message ?? 'Catalog load failed' })
     }
@@ -1027,7 +1107,7 @@ const PlanManagerOverlay: React.FC<{
                 isTrialEligible={snap.isTrialEligible}
                 purchasingId={purchasingProductId}
                 requiredFeature={intent?.requiredFeature ?? null}
-                onSubscribe={(planId) => plugin.subscribeToPlan(planId)}
+                onSubscribe={(planId, priceId) => plugin.subscribeToPlan(planId, priceId)}
                 onCancel={() => plugin.cancelSubscription()}
                 cancelledNotice={planCtx.kind === 'paid' && planCtx.isCancelled ? { expiresOn: planCtx.expiresOn } : null}
               />
@@ -1268,12 +1348,21 @@ const PlansSection: React.FC<{
   purchasingId: string | null
   /** Feature key (e.g. 'ai:Anthropic') that triggered the open, if any. Surfaced as a banner. */
   requiredFeature: string | null
-  onSubscribe: (planId: string) => void
+  onSubscribe: (planId: string, priceId?: number) => void
   /** Cancel the active paid subscription. Opens the in-panel chooser. */
   onCancel: () => void
   /** When the active paid sub is set to cancel, show "will not renew" copy. */
   cancelledNotice: { expiresOn: string | null } | null
 }> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
+  // Cadence toggle — only meaningful when at least one plan exposes both
+  // a monthly and a yearly price. Default to monthly to match historical UX.
+  const hasYearlyAnywhere = plans.some((p: any) =>
+    Array.isArray(p?.prices) && p.prices.some((pr: any) => pr.billing_interval === 'year' && pr.is_active !== false))
+  const hasMonthlyAnywhere = plans.some((p: any) =>
+    Array.isArray(p?.prices) && p.prices.some((pr: any) => pr.billing_interval === 'month' && pr.is_active !== false))
+  const showCadenceToggle = hasYearlyAnywhere && hasMonthlyAnywhere
+  const [cadence, setCadence] = React.useState<'month' | 'year'>('month')
+
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -1298,18 +1387,54 @@ const PlansSection: React.FC<{
           </span>
         </div>
       )}
+      {showCadenceToggle && (
+        <div className="pm-plans__cadence" role="tablist" aria-label="Billing cadence">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cadence === 'month'}
+            className={`pm-plans__cadence-btn ${cadence === 'month' ? 'is-active' : ''}`}
+            onClick={() => setCadence('month')}
+          >Monthly</button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cadence === 'year'}
+            className={`pm-plans__cadence-btn ${cadence === 'year' ? 'is-active' : ''}`}
+            onClick={() => setCadence('year')}
+          >
+            Yearly
+            <span className="pm-plans__cadence-hint">save with annual</span>
+          </button>
+        </div>
+      )}
       {sorted.map(plan => {
         const isCurrent = plan.id === currentPlanId ||
           (plan.featureGroupName != null && userFeatureGroupNames.includes(plan.featureGroupName))
         const isRecommended = plan.id === recommendedId
         const isPurchasing = purchasingId === plan.id
         const accent = pickAccent(plan.id)
-        const priceLabel = plan.priceUsd === 0 ? 'Free' : `$${(plan.priceUsd / 100).toFixed(2)}`
-        const cadence = plan.priceUsd === 0
+        // Pick which price to display + bill for. Prefer the user-selected
+        // cadence; fall back to the plan's default price; finally fall back
+        // to the legacy single-price fields on `plan`.
+        const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
+        const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
+        const cadencePrice = activePrices.find((pr: any) => pr.billing_interval === cadence)
+        const defaultPrice = activePrices.find((pr: any) => pr.is_default) || activePrices[0]
+        const selectedPrice = cadencePrice || defaultPrice || null
+        const selectedPriceCents: number = selectedPrice?.price_cents ?? plan.priceUsd ?? 0
+        const selectedInterval: string = selectedPrice?.billing_interval ?? plan.billingInterval ?? 'month'
+        const selectedPriceId: number | undefined = typeof selectedPrice?.id === 'number' ? selectedPrice.id : undefined
+        // If the user picked 'year' but this plan only offers monthly, dim the
+        // CTA copy slightly to make the fallback visible.
+        const cadenceMismatch = showCadenceToggle && !cadencePrice && selectedInterval !== cadence
+
+        const priceLabel = selectedPriceCents === 0 ? 'Free' : `$${(selectedPriceCents / 100).toFixed(2)}`
+        const cadenceLabel = selectedPriceCents === 0
           ? 'forever'
-          : plan.billingInterval === 'year' ? 'per year' : 'per month'
+          : selectedInterval === 'year' ? 'per year' : 'per month'
         // Free plans don't go through Paddle — disable the CTA for now.
-        const isFree = plan.priceUsd === 0
+        const isFree = selectedPriceCents === 0
         // Plan offers a trial AND the user can still claim it AND they're not
         // already on this plan AND it's a paid plan. Treats `null`/missing as 0.
         const trialDays = Number(plan.trialPeriodDays) || 0
@@ -1338,7 +1463,10 @@ const PlansSection: React.FC<{
 
             <div className="pm-plan__price">
               <span className="pm-plan__price-num">{priceLabel}</span>
-              <span className="pm-plan__price-cad">{cadence}</span>
+              <span className="pm-plan__price-cad">{cadenceLabel}</span>
+              {cadenceMismatch && (
+                <span className="pm-plan__price-note" title="This plan is only billed monthly">monthly only</span>
+              )}
             </div>
 
             <ul className="pm-plan__features">
@@ -1357,7 +1485,7 @@ const PlansSection: React.FC<{
             <button
               className={`pm-plan__btn ${disabled ? 'is-disabled' : ''} ${showTrial ? 'is-trial' : ''}`}
               disabled={disabled}
-              onClick={() => { if (!disabled) onSubscribe(plan.id) }}
+              onClick={() => { if (!disabled) onSubscribe(plan.id, selectedPriceId) }}
             >
               {isCurrent ? 'Active'
                 : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>

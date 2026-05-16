@@ -501,6 +501,12 @@ export interface CreditPackage {
   providers: ProductProvider[]  // Available payment providers
   paddlePriceId?: string | null // Legacy: prefer providers array
   source?: 'database' | 'config' | 'provider'
+  /**
+   * All billable prices for this package. Today credit packages are
+   * single-price, but the unified API may surface alternates (e.g.
+   * promo SKUs); kept optional for forward-compat.
+   */
+  prices?: AvailableProductPrice[]
 }
 
 /**
@@ -511,6 +517,35 @@ export interface AvailableProductFeatureGroup {
   name: string
   display_name: string
   description: string
+}
+
+/**
+ * Per-provider linkage for a single price (e.g. one Paddle price ID per
+ * billing interval). Returned inside `AvailableProductPrice.providers`
+ * and mirrored at the product level under `AvailableProduct.providers`.
+ */
+export interface AvailableProductPriceProvider {
+  slug: string
+  external_product_id: string | null
+  external_price_id: string | null
+  is_active: boolean
+  sync_status: 'pending' | 'synced' | 'error' | string
+}
+
+/**
+ * A single billable price for an `AvailableProduct`. Subscription plans
+ * may expose multiple prices (e.g. monthly + yearly); credit packages
+ * usually expose a single default price.
+ */
+export interface AvailableProductPrice {
+  id: number
+  billing_interval: 'month' | 'year' | 'one_time' | string
+  price_cents: number
+  currency: string
+  description?: string | null
+  is_default: boolean
+  is_active: boolean
+  providers: AvailableProductPriceProvider[]
 }
 
 /**
@@ -529,6 +564,10 @@ export interface AvailableProduct {
   provider_slug: string | null
   external_product_id: string | null
   external_price_id: string | null
+  /** All available prices for this product (multi-cadence support). */
+  prices?: AvailableProductPrice[]
+  /** Top-level provider linkage (mirrors the default price's providers). */
+  providers?: AvailableProductPriceProvider[]
   feature_group: AvailableProductFeatureGroup | null
   credits_per_month: number
   billing_interval: 'month' | 'year'
@@ -556,6 +595,12 @@ export interface PurchaseProductRequest {
   slug?: string
   product_id?: number
   product_code?: string
+  /**
+   * Optional internal price id (`prices[].id`) — required for products
+   * exposing multiple cadences (e.g. monthly vs yearly subscription).
+   * Omit to fall back to the product's default price.
+   */
+  price_id?: number
   /** "paddle" (default) or "crypto". */
   provider?: 'paddle' | 'crypto'
   returnUrl?: string
@@ -776,6 +821,12 @@ export interface SubscriptionPlan {
   providers: ProductProvider[]  // Available payment providers
   paddlePriceId?: string | null // Legacy: prefer providers array
   source?: 'database' | 'config' | 'provider'
+  /**
+   * All billable prices for this plan, e.g. monthly + yearly. The UI
+   * uses this to render the cadence toggle and pass the user's chosen
+   * `price_id` through to `/products/purchase`.
+   */
+  prices?: AvailableProductPrice[]
 }
 
 /**

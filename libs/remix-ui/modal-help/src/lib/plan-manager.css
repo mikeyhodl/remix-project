@@ -557,6 +557,62 @@
   padding: 1px 6px;
 }
 
+/* Monthly / Yearly cadence toggle — shown only when at least one plan
+   exposes both billing intervals. Lives above the plan grid. */
+.pm-plans__cadence {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-self: center;
+  justify-self: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 0.5px solid var(--pm-line-2);
+  background: var(--pm-card);
+  margin: 4px auto 8px;
+}
+.pm-plans__cadence-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--pm-text-dim, var(--pm-text));
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.pm-plans__cadence-btn:hover {
+  color: var(--pm-text);
+}
+.pm-plans__cadence-btn.is-active {
+  background: var(--pm-card-2);
+  color: var(--pm-text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.pm-plans__cadence-hint {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #b69bff;
+  opacity: 0.9;
+}
+
+.pm-plan__price-note {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pm-text-dim, var(--pm-text));
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
 .pm-plan {
   --pm-accent: #2fbfb1;
   position: relative;

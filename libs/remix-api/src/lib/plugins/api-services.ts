@@ -863,8 +863,32 @@ export class ProductsApiService {
   }
 
   /**
+   * List products of any type from the unified catalog.
+   * GET /products/available?type=&provider=
+   *
+   * Replaces the legacy `getAvailableSubscriptions()` / billing
+   * `getCreditPackages()` helpers — both `subscription_plan` and
+   * `credit_package` products come from the same endpoint, and each
+   * item carries the full multi-cadence `prices` array.
+   */
+  async getAvailableProducts(filters: {
+    type?: 'subscription_plan' | 'credit_package' | string
+    provider?: 'paddle' | 'crypto' | string
+  } = {}): Promise<ApiResponse<AvailableProductsResponse>> {
+    const params = new URLSearchParams()
+    if (filters.type) params.set('type', filters.type)
+    if (filters.provider) params.set('provider', filters.provider)
+    const qs = params.toString()
+    return this.apiClient.get<AvailableProductsResponse>(`/available${qs ? '?' + qs : ''}`)
+  }
+
+  /**
    * List subscription plans the user can purchase.
    * GET /products/available/subscriptions
+   *
+   * @deprecated Use `getAvailableProducts({ type: 'subscription_plan' })`.
+   *   The unified `/products/available` endpoint returns the full
+   *   multi-price catalog and is the path forward.
    */
   async getAvailableSubscriptions(): Promise<ApiResponse<AvailableProductsResponse>> {
     return this.apiClient.get<AvailableProductsResponse>('/available/subscriptions')
