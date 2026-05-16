@@ -18,7 +18,9 @@
 import { ViewPlugin } from '@remixproject/engine-web'
 import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
-import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from '@remix-ui/billing'
+// Paddle singleton lives next to this plugin now — `@remix-ui/billing` was
+// removed when Plan Manager became the sole billing surface.
+import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, UsageReport } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
@@ -76,8 +78,8 @@ export class PlanManagerPlugin extends ViewPlugin {
   // Memo to detect repeated AUTH events (auth-plugin re-emits a lot).
   private lastAuthSig = ''
   // Paddle wiring is owned by the plugin so the panel can drive checkout
-  // end-to-end without a host shell. The instance is shared via the
-  // paddle-singleton, so it's safe to also have BillingManager around.
+  // end-to-end without a host shell. The Paddle singleton lives in
+  // ./paddle-singleton (formerly @remix-ui/billing).
   private paddle: Paddle | null = null
   private paddleEventHandler: ((e: PaddleEventData) => void) | null = null
 
@@ -124,9 +126,8 @@ export class PlanManagerPlugin extends ViewPlugin {
     void this.initPaddleSingleton()
 
     // Bridge Paddle checkout events directly into the machine. The
-    // singleton fan-outs to all subscribers, so legacy BillingManager can
-    // still receive them too — but it must NOT also forward to us, or
-    // we'd double-fire.
+    // singleton fan-outs to all subscribers — we are now the sole
+    // listener since the legacy BillingManager was removed.
     this.paddleEventHandler = (event: PaddleEventData) => this.handlePaddleEvent(event)
     onPaddleEvent(this.paddleEventHandler)
 

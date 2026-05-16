@@ -115,16 +115,6 @@ const settingsSections: SettingsSection[] = [
           type: 'custom' as const,
           customComponent: 'connectedAccounts'
         }]
-      },
-      {
-        title: 'settings.billingSubscriptionsSection',
-        description: 'settings.billingSubscriptionsDescription',
-        options: [{
-          name: 'billing-section',
-          label: '',
-          type: 'custom' as const,
-          customComponent: 'billingSection'
-        }]
       }
     ]
   },

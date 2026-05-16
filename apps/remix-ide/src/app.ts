@@ -54,7 +54,6 @@ import { MembershipRequestPlugin } from './app/plugins/membership-request-plugin
 import { BetaCornerWidgetPlugin } from './app/plugins/beta-corner-widget-plugin'
 import { NudgePlugin } from './app/plugins/nudge-plugin'
 import { HelpPlugin, PlanManagerPlugin } from '@remix-ui/modal-help'
-import { AccountPlugin } from './app/plugins/account-plugin'
 import { RemixGuidePlugin } from './app/plugins/remixGuide'
 import { TemplatesPlugin } from './app/plugins/remix-templates'
 import { fsPlugin } from './app/plugins/electron/fsPlugin'
@@ -186,7 +185,6 @@ class AppComponent {
   nudgePlugin: NudgePlugin
   helpPlugin: HelpPlugin
   planManager: PlanManagerPlugin
-  accountPlugin: AccountPlugin
   lifecycle: AppLifecycle
   lifecyclePlugin: LifecyclePlugin
   params: any
@@ -646,7 +644,6 @@ class AppComponent {
     this.topBar = new Topbar(filePanel, git, this.desktopClientMode)
     const landingPage = new LandingPage(appManager, this.menuicons, fileManager, filePanel, contentImport)
     this.settings = new SettingsTab(Registry.getInstance().get('config').api, editor)//, appManager)
-    this.accountPlugin = new AccountPlugin()
 
     const bottomBarPanel = new BottomBarPanel()
 
@@ -699,7 +696,6 @@ class AppComponent {
       this.nudgePlugin,
       this.helpPlugin,
       this.planManager,
-      this.accountPlugin,
       feedbackPlugin
     ])
     this.engine.register([templateExplorerModal, this.topBar])
@@ -784,7 +780,6 @@ class AppComponent {
     await this.appManager.activatePlugin(['membershipRequest'])
     await this.appManager.activatePlugin(['betaCornerWidget'])
     await this.appManager.activatePlugin(['nudgePlugin'])
-    await this.appManager.activatePlugin(['account'])
     await this.appManager.activatePlugin(['notificationCenter'])
     await this.appManager.activatePlugin(['feedback'])
     await this.appManager.activatePlugin(['settings'])
