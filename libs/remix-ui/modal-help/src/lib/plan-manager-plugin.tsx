@@ -70,6 +70,7 @@ export type { CheckoutResult, CheckoutResultKind, CheckoutIntent, OpenIntent, Op
 
 export class PlanManagerPlugin extends ViewPlugin {
   dispatch: React.Dispatch<any> = () => {}
+  readonly debugUI: boolean
   readonly store: PlanManagerStore
 
   // Memo to detect repeated AUTH events (auth-plugin re-emits a lot).
@@ -82,7 +83,10 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   constructor() {
     super(profile)
-    this.store = new PlanManagerStore({ debug: false })
+    // Dev-only UI controls are hidden by default. Flip this to `true`
+    // locally when you want scenario switchers + machine debug traces.
+    this.debugUI = false
+    this.store = new PlanManagerStore({ debug: this.debugUI })
 
     // Surface checkout results as a plugin event so external listeners
     // (e.g. analytics) can react without subscribing to the store.
@@ -675,6 +679,7 @@ export class PlanManagerPlugin extends ViewPlugin {
             billingInterval: headlineInterval,
             features: p.features ?? [],
             featureGroupName: p.feature_group?.name ?? null,
+            isPopular: p.is_popular === true,
             providers: mapProviders(topProviders),
             prices
           }
@@ -702,10 +707,21 @@ export class PlanManagerPlugin extends ViewPlugin {
             name: p.name,
             description: p.description ?? '',
             // Backend exposes credits-per-month for plans; for one-shot
-            // packages this carries the bundled credit amount.
-            credits: p.credits_per_month,
-            priceUsd: headlinePriceCents,
+            // packages this carries the bundled credit amount. Some payload
+            // shapes use `credit_amount` / `credits` instead — fall back so
+            // a renamed field can't crash the UI.
+            credits: Number(
+              p.credits_per_month
+              ?? (p as any).credit_amount
+              ?? (p as any).credits
+              ?? 0
+            ) || 0,
+            priceUsd: Number(headlinePriceCents ?? 0) || 0,
             currency: headlineCurrency,
+            // Backend curates merchandising via `is_popular`; the topup
+            // card reads either `popular` or `isPopular`, so set both.
+            popular: p.is_popular === true,
+            isPopular: p.is_popular === true,
             providers: mapProviders(topProviders),
             prices
           }
@@ -994,7 +1010,7 @@ const PlanManagerOverlay: React.FC<{
             <span className="pm-topbar__title">Plan&nbsp;&amp;&nbsp;Credits</span>
           </div>
 
-          <DevSwitchers plugin={plugin} snap={snap} />
+          <DevSwitchers plugin={plugin} snap={snap} debug={plugin.debugUI} />
 
           <button className="pm-close" onClick={() => plugin.close()} aria-label="Close">
             <i className="fas fa-times"></i>
@@ -1266,7 +1282,8 @@ function makeSub(status: string, daysToEnd: number, cancelled: boolean) {
   }
 }
 
-const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnapshot }> = ({ plugin, snap }) => {
+const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnapshot; debug?: boolean }> = ({ plugin, snap, debug = false }) => {
+  if (!debug) return null
   // Show the dev switchers only in non-production builds. The check is the
   // env hook used elsewhere in the project (NX_NODE_ENV / NODE_ENV).
   // Keep them on for now while we wire real flows; flip to a feature flag
@@ -1363,6 +1380,25 @@ const PlansSection: React.FC<{
   const showCadenceToggle = hasYearlyAnywhere && hasMonthlyAnywhere
   const [cadence, setCadence] = React.useState<'month' | 'year'>('month')
 
+  // Promo copy — figure out the *best* yearly discount across all plans so
+  // the toggle hint can be specific ("save up to 17%") rather than vague.
+  // Discount per plan = 1 − (yearly / (monthly × 12)).
+  const computeYearlySavings = (p: any): { percent: number; monthsFree: number } | null => {
+    const prices: any[] = Array.isArray(p?.prices) ? p.prices : []
+    const m = prices.find((pr: any) => pr.billing_interval === 'month' && pr.is_active !== false)
+    const y = prices.find((pr: any) => pr.billing_interval === 'year' && pr.is_active !== false)
+    if (!m || !y || !m.price_cents || !y.price_cents) return null
+    const monthlyTotal = m.price_cents * 12
+    if (monthlyTotal <= 0) return null
+    const pct = Math.max(0, Math.round((1 - y.price_cents / monthlyTotal) * 100))
+    const monthsFree = Math.max(0, Math.round((monthlyTotal - y.price_cents) / m.price_cents))
+    return { percent: pct, monthsFree }
+  }
+  const bestYearlySavingsPct = plans.reduce<number>((best, p) => {
+    const s = computeYearlySavings(p)
+    return s && s.percent > best ? s.percent : best
+  }, 0)
+
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -1370,10 +1406,15 @@ const PlansSection: React.FC<{
       </div>
     )
   }
-  // Sort cheap → expensive so the upgrade path reads left-to-right.
-  const sorted = [...plans].sort((a, b) => (a.priceUsd ?? 0) - (b.priceUsd ?? 0))
-  // The mid-priced plan is the "recommended" by default (matches typical SaaS pricing pages).
-  const recommendedId = sorted.length >= 3 ? sorted[1].id : null
+  // Render in the order the API returned them — the backend curates the
+  // sort (free → entry → pro …), so respecting it keeps merchandising in
+  // one place. "Recommended" is now backend-driven via `is_popular`; we
+  // fall back to the middle card only when no plan is flagged.
+  const sorted = plans
+  const popularPlan = sorted.find((p: any) => p.isPopular === true)
+  const recommendedId = popularPlan
+    ? popularPlan.id
+    : (sorted.length >= 3 ? sorted[1].id : null)
   const anyPurchasing = purchasingId !== null
 
   return (
@@ -1404,7 +1445,9 @@ const PlansSection: React.FC<{
             onClick={() => setCadence('year')}
           >
             Yearly
-            <span className="pm-plans__cadence-hint">save with annual</span>
+            <span className="pm-plans__cadence-hint">
+              {bestYearlySavingsPct > 0 ? `save up to ${bestYearlySavingsPct}%` : 'save with annual'}
+            </span>
           </button>
         </div>
       )}
@@ -1426,8 +1469,33 @@ const PlansSection: React.FC<{
         const selectedInterval: string = selectedPrice?.billing_interval ?? plan.billingInterval ?? 'month'
         const selectedPriceId: number | undefined = typeof selectedPrice?.id === 'number' ? selectedPrice.id : undefined
         // If the user picked 'year' but this plan only offers monthly, dim the
-        // CTA copy slightly to make the fallback visible.
-        const cadenceMismatch = showCadenceToggle && !cadencePrice && selectedInterval !== cadence
+        // CTA copy slightly to make the fallback visible. Skip the hint for
+        // free tiers — "monthly only" reads weird next to "Free forever".
+        const cadenceMismatch = showCadenceToggle && !cadencePrice && selectedInterval !== cadence && selectedPriceCents > 0
+
+        // Promo copy per card. Two flavors:
+        //   - On the *yearly* tab, show how much the user is saving vs paying
+        //     monthly for a year ("Save $X / yr · N months free").
+        //   - On the *monthly* tab, tease the yearly discount as a nudge
+        //     toward the better-value option.
+        const planSavings = computeYearlySavings(plan)
+        const monthlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'month')
+        const yearlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'year')
+        let savingsBadge: string | null = null
+        let savingsTease: string | null = null
+        if (planSavings && planSavings.percent > 0 && monthlyPrice && yearlyPrice) {
+          const dollarsSaved = Math.max(0, (monthlyPrice.price_cents * 12 - yearlyPrice.price_cents) / 100)
+          const dollarLabel = dollarsSaved >= 1 ? `$${dollarsSaved.toFixed(dollarsSaved % 1 === 0 ? 0 : 2)}` : null
+          if (cadence === 'year') {
+            const parts: string[] = []
+            if (dollarLabel) parts.push(`Save ${dollarLabel} / yr`)
+            else parts.push(`Save ${planSavings.percent}%`)
+            if (planSavings.monthsFree > 0) parts.push(`${planSavings.monthsFree} months free`)
+            savingsBadge = parts.join(' · ')
+          } else {
+            savingsTease = `Pay yearly → save ${planSavings.percent}%${planSavings.monthsFree > 0 ? ` (${planSavings.monthsFree} months free)` : ''}`
+          }
+        }
 
         const priceLabel = selectedPriceCents === 0 ? 'Free' : `$${(selectedPriceCents / 100).toFixed(2)}`
         const cadenceLabel = selectedPriceCents === 0
@@ -1468,6 +1536,23 @@ const PlansSection: React.FC<{
                 <span className="pm-plan__price-note" title="This plan is only billed monthly">monthly only</span>
               )}
             </div>
+            {savingsBadge && (
+              <div className="pm-plan__savings" title="Compared to paying month-to-month">
+                <i className="fas fa-sparkles" aria-hidden></i>
+                <span>{savingsBadge}</span>
+              </div>
+            )}
+            {savingsTease && (
+              <button
+                type="button"
+                className="pm-plan__savings-tease"
+                onClick={() => setCadence('year')}
+                title="Switch to yearly billing"
+              >
+                <i className="fas fa-arrow-right" aria-hidden></i>
+                <span>{savingsTease}</span>
+              </button>
+            )}
 
             <ul className="pm-plan__features">
               <li>
@@ -1521,6 +1606,23 @@ const PlansSection: React.FC<{
           </article>
         )
       })}
+      {/* Team / Enterprise contact strip — compact one-liner so it doesn't
+          compete visually with the priced cards. */}
+      <a
+        className="pm-enterprise-strip"
+        href="mailto:sales@remix.live?subject=Remix%20Team%20%2F%20Enterprise%20enquiry"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span className="pm-enterprise-strip__label">
+          <i className="fas fa-building" aria-hidden></i>
+          <strong>Team &amp; Enterprise</strong>
+          <span className="pm-enterprise-strip__sub">SSO, pooled credits, custom quotas</span>
+        </span>
+        <span className="pm-enterprise-strip__cta">
+          Contact us <i className="fas fa-arrow-right" aria-hidden></i>
+        </span>
+      </a>
     </div>
   )
 }
@@ -1546,29 +1648,40 @@ const TopUpSection: React.FC<{
       </div>
       <div className="pm-topup__grid">
         {packages.map(t => {
+          // Defensive coercion — a missing/non-numeric `credits` or `priceUsd`
+          // would otherwise throw in `.toLocaleString()` / division below and
+          // take down the entire panel.
+          const credits = Number(t?.credits) || 0
+          const priceCents = Number(t?.priceUsd) || 0
           const isPopular = t.popular === true || t.popular === 1 || t.popular === '1'
-          const price = `$${(t.priceUsd / 100).toFixed(2)}`
-          const perK = ((t.priceUsd / 100) / (t.credits / 1000)).toFixed(2)
+          const price = `$${(priceCents / 100).toFixed(2)}`
+          const perK = credits > 0 ? ((priceCents / 100) / (credits / 1000)).toFixed(2) : '—'
           const isPurchasing = purchasingId === t.id
-          const disabled = anyPurchasing
+          // Disable cards we can't price/buy meaningfully so the click handler
+          // never sends a malformed purchase.
+          const isUnavailable = credits <= 0 || priceCents <= 0
+          const disabled = anyPurchasing || isUnavailable
           return (
             <button
               key={t.id}
               className={`pm-topup__card ${isPopular ? 'is-popular' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
               disabled={disabled}
               onClick={() => { if (!disabled) onPurchase(t.id) }}
+              title={isUnavailable ? 'Pricing not available right now' : undefined}
             >
               {isPopular ? <div className="pm-topup__pop">Best value</div> : null}
               <div className="pm-topup__credits">
-                <span className="pm-topup__credits-num">{t.credits.toLocaleString()}</span>
+                <span className="pm-topup__credits-num">{credits.toLocaleString()}</span>
                 <span className="pm-topup__credits-unit">credits</span>
               </div>
               <div className="pm-topup__price">{price}</div>
-              <div className="pm-topup__perk">${perK} per 1k credits</div>
+              <div className="pm-topup__perk">{credits > 0 ? `$${perK} per 1k credits` : 'Pricing unavailable'}</div>
               <span className="pm-topup__buy">
                 {isPurchasing
                   ? <><i className="fas fa-spinner fa-spin"></i> Opening…</>
-                  : <>Buy <i className="fas fa-arrow-right"></i></>}
+                  : isUnavailable
+                    ? <>Unavailable</>
+                    : <>Buy <i className="fas fa-arrow-right"></i></>}
               </span>
             </button>
           )

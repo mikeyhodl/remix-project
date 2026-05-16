@@ -613,6 +613,106 @@
   opacity: 0.7;
 }
 
+/* Yearly savings badge — shown under the price on the yearly tab when the
+   plan has both cadences. Pulls the eye toward the better-value option. */
+.pm-plan__savings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(123, 91, 255, 0.18) 0%, rgba(123, 91, 255, 0.08) 100%);
+  border: 0.5px solid rgba(182, 155, 255, 0.4);
+  color: #d9c9ff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  width: fit-content;
+}
+.pm-plan__savings i {
+  font-size: 10px;
+  color: #b69bff;
+}
+
+/* Subtler nudge shown on the *monthly* tab — clickable, switches to yearly. */
+.pm-plan__savings-tease {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #b69bff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+.pm-plan__savings-tease:hover {
+  color: #d9c9ff;
+  text-decoration: underline;
+}
+.pm-plan__savings-tease i {
+  font-size: 9px;
+}
+
+/* Quieter price headline — used by promo / contact rows where there's no
+   dollar amount to anchor on. */
+.pm-plan__price-num--quiet {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Team / Enterprise one-liner. Lives inside the .pm-plans grid but spans
+   the full width so it reads as a footer row, not another tier. */
+.pm-enterprise-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 0.5px dashed rgba(182, 155, 255, 0.45);
+  background: linear-gradient(90deg, rgba(123, 91, 255, 0.10) 0%, rgba(123, 91, 255, 0.02) 100%);
+  color: var(--pm-text);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.pm-enterprise-strip:hover {
+  text-decoration: none;
+  border-color: rgba(182, 155, 255, 0.8);
+  background: linear-gradient(90deg, rgba(123, 91, 255, 0.18) 0%, rgba(123, 91, 255, 0.05) 100%);
+}
+.pm-enterprise-strip__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.pm-enterprise-strip__label i {
+  color: #b69bff;
+  align-self: center;
+}
+.pm-enterprise-strip__sub {
+  color: var(--pm-text-dim, var(--pm-text));
+  opacity: 0.75;
+  font-size: 12px;
+}
+.pm-enterprise-strip__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d9c9ff;
+  white-space: nowrap;
+}
+
 .pm-plan {
   --pm-accent: #2fbfb1;
   position: relative;
