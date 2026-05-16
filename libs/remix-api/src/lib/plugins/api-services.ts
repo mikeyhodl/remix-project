@@ -491,11 +491,17 @@ export class PermissionsApiService {
    */
   async getPermissions(): Promise<ApiResponse<PermissionsResponse>> {
     const res = await this.apiClient.get<PermissionsResponse>('/')
-    // TEMP: hardcode ai_models on the /permissions response while the backend
-    // catches up. Remove once /permissions returns the model catalogue
-    // server-side for all users.
+    // TEMP: backfill ai_models from the hardcoded catalogue ONLY when the
+    // backend hasn't shipped one yet for this user. Once /permissions returns
+    // a non-empty array we honour it verbatim so new server-side rows
+    // (additional providers, model swaps, etc.) show up without a client
+    // release. Remove the hardcoded list entirely once every tier returns
+    // ai_models server-side.
     if (res?.ok && res.data) {
-      res.data.ai_models = HARDCODED_AI_MODELS
+      const existing = res.data.ai_models
+      if (!Array.isArray(existing) || existing.length === 0) {
+        res.data.ai_models = HARDCODED_AI_MODELS
+      }
     }
     return res
   }

@@ -58,7 +58,7 @@ export class DeepAgentManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'moonshot', modelId: plugin.selectedModelId }
       )
 
       await plugin.deepAgentInferencer.initialize()
@@ -227,7 +227,7 @@ export class DeepAgentManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'moonshot', modelId: plugin.selectedModelId }
       )
       await plugin.deepAgentInferencer.initialize()
       plugin.deepAgentEnabled = true

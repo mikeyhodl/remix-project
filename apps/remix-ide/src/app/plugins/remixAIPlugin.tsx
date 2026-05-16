@@ -271,7 +271,7 @@ export class RemixAIPlugin extends Plugin {
           },
           this.remoteInferencer,
           this.mcpInferencer, // Pass MCPInferencer to gather external MCP client tools
-          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai', modelId: this.selectedModelId } // Pass selected model
+          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'moonshot', modelId: this.selectedModelId } // Pass selected model
         )
         await this.deepAgentInferencer.initialize()
         // Set up DeepAgent event listeners for streaming (once only)

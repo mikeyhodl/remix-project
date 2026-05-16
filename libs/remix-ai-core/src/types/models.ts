@@ -10,7 +10,7 @@ import { IParams } from './types';
  */
 export interface AIModel {
   id: string
-  provider: 'openai' | 'mistralai' | 'anthropic' | 'ollama'
+  provider: 'openai' | 'mistralai' | 'moonshot' | 'anthropic' | 'ollama'
   /** Display name as the backend wants it shown. */
   displayName: string
   description: string

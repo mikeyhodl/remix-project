@@ -1,4 +1,4 @@
-export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'ollama'
+export type ModelProvider = 'anthropic' | 'mistralai' | 'moonshot' | 'openai' | 'ollama'
 
 export interface ModelSelection {
   provider: ModelProvider

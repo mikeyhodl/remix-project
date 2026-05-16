@@ -1,5 +1,6 @@
 import { ChatAnthropic } from '@langchain/anthropic'
 import { ChatMistralAI } from '@langchain/mistralai'
+import { ChatOpenAI } from '@langchain/openai'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HTTPClient } from '@mistralai/mistralai/lib/http.js'
 import { endpointUrls } from '@remix-endpoints-helper'
@@ -157,7 +158,7 @@ export function createModelInstance(
 
   switch (provider) {
   case 'mistralai': {
-    console.log(`[ModelFactory] Creating MistralAI model: ${modelId}`)
+    console.log(`[ModelFactory] Creating mistralai model: ${modelId}`)
     return wrapModelForDebug(new ChatMistralAI({
       apiKey: 'proxy-handled',
       model: modelId,
@@ -173,6 +174,28 @@ export function createModelInstance(
       serverURL: `${endpointUrls.langchain}/mistral`,
       httpClient: createAuthedMistralHttpClient()
     }), `mistralai/${modelId}`)
+  }
+
+  case 'moonshot': {
+    console.log(`[ModelFactory] Creating moonshot model: ${modelId}`)
+    // Moonshot (Kimi) speaks the OpenAI Chat Completions wire format, so we
+    // use ChatOpenAI rather than the Mistral shim. The backend proxy is
+    // mounted at `${endpointUrls.langchain}/moonshot`; the OpenAI SDK
+    // appends `/chat/completions`, so the baseURL must include `/v1`.
+    return wrapModelForDebug(new ChatOpenAI({
+      apiKey: 'proxy-handled',
+      model: modelId,
+      // Moonshot recommends temperature=1 and currently enforces top_p=0.95.
+      temperature: 1,
+      topP: 0.95,
+      maxTokens: maxTokens,
+      streaming: true,
+      maxRetries: 0,
+      configuration: {
+        baseURL: `${endpointUrls.langchain}/moonshot/v1`,
+        fetch: authedFetch
+      }
+    }), `moonshot/${modelId}`)
   }
 
   case 'anthropic':

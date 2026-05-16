@@ -171,7 +171,7 @@ export class ModelManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: model.provider as 'anthropic' | 'mistralai', modelId: modelId }
+        { provider: model.provider as 'anthropic' | 'mistralai' | 'moonshot', modelId: modelId }
       )
       await plugin.deepAgentInferencer.initialize()
 
