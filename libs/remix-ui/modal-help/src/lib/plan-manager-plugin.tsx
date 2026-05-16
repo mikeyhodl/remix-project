@@ -20,6 +20,7 @@ import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from '@remix-ui/billing'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
+import type { CreditsUsageQuery, UsageReport } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -1038,7 +1039,7 @@ const PlanManagerOverlay: React.FC<{
                 onPurchase={(packageId) => plugin.purchaseCredits(packageId)}
               />
             )}
-            {activeSection === 'usage' && <UsageSection />}
+            {activeSection === 'usage' && <UsageSection plugin={plugin} />}
           </main>
 
         </>}
@@ -1417,6 +1418,7 @@ const TopUpSection: React.FC<{
       </div>
       <div className="pm-topup__grid">
         {packages.map(t => {
+          const isPopular = t.popular === true || t.popular === 1 || t.popular === '1'
           const price = `$${(t.priceUsd / 100).toFixed(2)}`
           const perK = ((t.priceUsd / 100) / (t.credits / 1000)).toFixed(2)
           const isPurchasing = purchasingId === t.id
@@ -1424,11 +1426,11 @@ const TopUpSection: React.FC<{
           return (
             <button
               key={t.id}
-              className={`pm-topup__card ${t.popular ? 'is-popular' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
+              className={`pm-topup__card ${isPopular ? 'is-popular' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
               disabled={disabled}
               onClick={() => { if (!disabled) onPurchase(t.id) }}
             >
-              {t.popular && <div className="pm-topup__pop">Best value</div>}
+              {isPopular ? <div className="pm-topup__pop">Best value</div> : null}
               <div className="pm-topup__credits">
                 <span className="pm-topup__credits-num">{t.credits.toLocaleString()}</span>
                 <span className="pm-topup__credits-unit">credits</span>
@@ -1452,18 +1454,212 @@ const TopUpSection: React.FC<{
   )
 }
 
-const UsageSection: React.FC = () => (
-  <div className="pm-empty">
-    <div className="pm-empty__icon">
-      <i className="fas fa-chart-bar"></i>
+interface UsageDisplayRow {
+  key: string
+  model: string
+  provider: string | null
+  credits: number
+  calls: number
+  totalTokens: number
+  costUsd: number
+  sharePct: number
+  barColor: string
+}
+
+const USAGE_RANGE_PRESETS = [7, 30, 90] as const
+const DEFAULT_USAGE_RANGE_DAYS = 30
+
+const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
+  const [report, setReport] = React.useState<UsageReport | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [reloadKey, setReloadKey] = React.useState(0)
+  const [rangeDays, setRangeDays] = React.useState<number>(DEFAULT_USAGE_RANGE_DAYS)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadUsage = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const creditsApi: any = await plugin.call('auth', 'getCreditsApi').catch(() => null)
+        if (!creditsApi || typeof creditsApi.getUsageReport !== 'function') {
+          throw new Error('Usage reporting is not available yet.')
+        }
+
+        const range = buildUsageRange(rangeDays)
+        const query: CreditsUsageQuery = {
+          from: range.from,
+          to: range.to,
+          groupBy: ['provider', 'model'],
+          limit: 200
+        }
+        const resp = await creditsApi.getUsageReport(query)
+
+        if (cancelled) return
+        if (!resp?.ok || !resp.data) {
+          throw new Error(resp?.error || 'Failed to load usage report.')
+        }
+
+        setReport(resp.data)
+      } catch (err: any) {
+        if (cancelled) return
+        setReport(null)
+        setError(err?.message || 'Failed to load usage report.')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void loadUsage()
+    return () => { cancelled = true }
+  }, [plugin, reloadKey, rangeDays])
+
+  const rows = useMemo(() => buildUsageRows(report), [report])
+
+  const totals = useMemo(() => {
+    const rowTotals = rows.reduce((acc, row) => {
+      acc.credits += row.credits
+      acc.calls += row.calls
+      acc.totalTokens += row.totalTokens
+      acc.costUsd += row.costUsd
+      return acc
+    }, { credits: 0, calls: 0, totalTokens: 0, costUsd: 0 })
+
+    if (!report) return rowTotals
+
+    return {
+      credits: toFiniteNumber(report.totals?.credits) || rowTotals.credits,
+      calls: toFiniteNumber(report.totals?.calls) || rowTotals.calls,
+      totalTokens: toFiniteNumber(report.totals?.total_tokens) || rowTotals.totalTokens,
+      costUsd: toFiniteNumber(report.totals?.cost_usd) || rowTotals.costUsd
+    }
+  }, [report, rows])
+
+  const rangeLabel = useMemo(() => {
+    if (!report?.range?.from || !report.range.to) return `Last ${rangeDays} days`
+    const from = formatDate(report.range.from)
+    const to = formatDate(report.range.to)
+    return from && to ? `${from} - ${to}` : `Last ${rangeDays} days`
+  }, [report, rangeDays])
+
+  if (loading && !report) {
+    return (
+      <div className="pm-empty">
+        <div className="pm-empty__icon">
+          <i className="fas fa-spinner fa-spin"></i>
+        </div>
+        <div className="pm-empty__title">Loading usage breakdown</div>
+        <p className="pm-empty__body">
+          Pulling your latest per-model usage from billing.
+        </p>
+      </div>
+    )
+  }
+
+  if (error && !report) {
+    return (
+      <div className="pm-empty pm-empty--error">
+        <div className="pm-empty__icon">
+          <i className="fas fa-cloud-exclamation"></i>
+        </div>
+        <div className="pm-empty__title">Could not load usage</div>
+        <p className="pm-empty__body">{error}</p>
+        <div className="pm-empty__actions">
+          <button className="pm-empty__btn pm-empty__btn--primary" onClick={() => setReloadKey((v) => v + 1)}>
+            <i className="fas fa-rotate-right"></i> Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="pm-empty">
+        <div className="pm-empty__icon">
+          <i className="fas fa-chart-line"></i>
+        </div>
+        <div className="pm-empty__title">No metered usage in this range</div>
+        <p className="pm-empty__body">
+          We will show per-model spend here as soon as your AI requests are billed.
+        </p>
+        <div className="pm-empty__actions">
+          <button className="pm-empty__btn pm-empty__btn--ghost" onClick={() => setReloadKey((v) => v + 1)}>
+            <i className="fas fa-rotate-right"></i> Refresh
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="pm-usage">
+      <div className="pm-usage__intro">
+        <div>
+          <h3>Usage by model</h3>
+          <p>{rangeLabel} | updates as soon as calls are metered.</p>
+          <div className="pm-usage__presets" role="group" aria-label="Usage date range">
+            {USAGE_RANGE_PRESETS.map((days) => {
+              const isActive = days === rangeDays
+              return (
+                <button
+                  key={days}
+                  type="button"
+                  className={`pm-usage__preset ${isActive ? 'is-active' : ''}`}
+                  onClick={() => setRangeDays(days)}
+                  aria-pressed={isActive}
+                >
+                  {days}d
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="pm-usage__total">
+          <div className="pm-usage__total-num">{formatCreditValue(totals.credits)}</div>
+          <div className="pm-usage__total-lbl">credits billed</div>
+        </div>
+      </div>
+
+      <div className="pm-usage__tokens">
+        {formatCompactNumber(totals.calls)} calls | {formatCompactNumber(totals.totalTokens)} tokens | {formatUsd(totals.costUsd)} provider cost
+      </div>
+
+      <div className="pm-usage__list">
+        {rows.map((row) => {
+          const shareLabel = row.sharePct > 0 && row.sharePct < 0.1 ? '<0.1%' : `${row.sharePct.toFixed(1)}%`
+          return (
+            <article key={row.key} className="pm-usage__row" style={{ '--pm-bar': row.barColor } as React.CSSProperties}>
+              <div className="pm-usage__meta">
+                <div className="pm-usage__model">
+                  <span className="pm-usage__swatch" />
+                  <span className="pm-usage__name">{row.model}</span>
+                  {row.provider && <span className="pm-usage__vendor">{row.provider}</span>}
+                </div>
+
+                <div className="pm-usage__nums">
+                  <span className="pm-usage__credits">{formatCreditValue(row.credits)}</span>
+                  <span className="pm-usage__credits-lbl">credits</span>
+                  <span className="pm-usage__share">{shareLabel}</span>
+                </div>
+              </div>
+
+              <div className="pm-usage__bar">
+                <div className="pm-usage__bar-fill" style={{ width: `${Math.min(100, Math.max(0, row.sharePct))}%` }} />
+              </div>
+
+              <div className="pm-usage__tokens">
+                {formatCompactNumber(row.calls)} calls | {formatCompactNumber(row.totalTokens)} tokens | {formatUsd(row.costUsd)}
+              </div>
+            </article>
+          )
+        })}
+      </div>
     </div>
-    <div className="pm-empty__title">Per-model usage coming soon</div>
-    <p className="pm-empty__body">
-      We're working on a detailed breakdown of credits and tokens per model. For
-      now, total consumption is shown in the credit balance hero above.
-    </p>
-  </div>
-)
+  )
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Alerts
@@ -2400,4 +2596,103 @@ function pickAccent(planId: string): string {
   let h = 0
   for (let i = 0; i < planId.length; i++) h = (h * 31 + planId.charCodeAt(i)) >>> 0
   return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
+}
+
+function buildUsageRange(days: number): { from: string; to: string } {
+  const to = new Date()
+  const from = new Date(to.getTime())
+  from.setUTCDate(from.getUTCDate() - Math.max(0, days - 1))
+  return {
+    from: toIsoDay(from),
+    to: toIsoDay(to)
+  }
+}
+
+function toIsoDay(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function toFiniteNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function pickUsageAccent(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
+}
+
+function buildUsageRows(report: UsageReport | null): UsageDisplayRow[] {
+  if (!report?.rows?.length) return []
+
+  const merged = new Map<string, Omit<UsageDisplayRow, 'key' | 'sharePct' | 'barColor'>>()
+  for (const row of report.rows) {
+    const model = (typeof row.model === 'string' && row.model.trim()) || 'Unknown model'
+    const provider = (typeof row.provider === 'string' && row.provider.trim()) || null
+    const key = `${provider || 'unknown'}:${model}`
+    const prev = merged.get(key)
+    if (prev) {
+      prev.credits += toFiniteNumber(row.credits)
+      prev.calls += toFiniteNumber(row.calls)
+      prev.totalTokens += toFiniteNumber(row.total_tokens)
+      prev.costUsd += toFiniteNumber(row.cost_usd)
+      continue
+    }
+    merged.set(key, {
+      model,
+      provider,
+      credits: toFiniteNumber(row.credits),
+      calls: toFiniteNumber(row.calls),
+      totalTokens: toFiniteNumber(row.total_tokens),
+      costUsd: toFiniteNumber(row.cost_usd)
+    })
+  }
+
+  const rawRows = Array.from(merged.entries()).map(([key, value]) => ({ key, ...value }))
+  const usefulRows = rawRows.filter((row) => row.credits > 0 || row.calls > 0 || row.totalTokens > 0 || row.costUsd > 0)
+  const totalCredits = usefulRows.reduce((sum, row) => sum + row.credits, 0)
+  const totalTokens = usefulRows.reduce((sum, row) => sum + row.totalTokens, 0)
+  const shareBase = totalCredits > 0 ? totalCredits : totalTokens
+
+  return usefulRows
+    .sort((a, b) => b.credits - a.credits || b.totalTokens - a.totalTokens || b.calls - a.calls)
+    .map((row) => {
+      const shareValue = totalCredits > 0 ? row.credits : row.totalTokens
+      return {
+        ...row,
+        sharePct: shareBase > 0 ? (shareValue / shareBase) * 100 : 0,
+        barColor: pickUsageAccent(row.key)
+      }
+    })
+}
+
+function formatCreditValue(value: number): string {
+  if (!Number.isFinite(value)) return '0'
+  const rounded = Math.round(value)
+  if (Math.abs(value - rounded) < 0.01) return rounded.toLocaleString()
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+function formatCompactNumber(value: number): string {
+  if (!Number.isFinite(value)) return '0'
+  if (Math.abs(value) >= 10_000) {
+    return new Intl.NumberFormat(undefined, {
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(value)
+  }
+  return Math.round(value).toLocaleString()
+}
+
+function formatUsd(value: number): string {
+  if (!Number.isFinite(value)) return '$0.00'
+  const abs = Math.abs(value)
+  const fractionDigits = abs > 0 && abs < 0.01 ? 4 : 2
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: fractionDigits
+  }).format(value)
 }

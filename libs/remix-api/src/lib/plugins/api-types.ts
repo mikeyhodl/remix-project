@@ -707,6 +707,49 @@ export interface TransactionCompletedResponse {
 
 export type TransactionStatusResponse = TransactionPendingResponse | TransactionCompletedResponse
 
+// ===== Usage reporting (GET /billing/credits/usage) ==========================
+
+export type UsageGroupByDimension = 'day' | 'service' | 'provider' | 'model' | 'user'
+
+export interface CreditsUsageQuery {
+  from?: string
+  to?: string
+  groupBy?: UsageGroupByDimension[]
+  service?: string
+  provider?: string
+  limit?: number
+}
+
+export interface UsageTotals {
+  calls: number
+  prompt_tokens: number
+  completion_tokens: number
+  cache_creation_tokens: number
+  cache_creation_1h_tokens: number
+  cache_read_tokens: number
+  total_tokens: number
+  cost_usd: number
+  credits: number
+}
+
+export interface UsageRow extends UsageTotals {
+  day?: string
+  service?: string
+  provider?: string
+  model?: string
+  user_id?: number
+}
+
+export interface UsageReport {
+  range: {
+    from: string
+    to: string
+  }
+  group_by: UsageGroupByDimension[]
+  rows: UsageRow[]
+  totals: UsageTotals
+}
+
 /**
  * Subscription plan - recurring monthly credit allocation
  */

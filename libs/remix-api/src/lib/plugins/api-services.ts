@@ -52,6 +52,8 @@ import {
   CancelSubscriptionRequest,
   CancelSubscriptionResponse,
   TransactionStatusResponse,
+  CreditsUsageQuery,
+  UsageReport,
   UserSubscriptionResponse,
   PurchaseCreditsRequest,
   PurchaseCreditsResponse,
@@ -284,6 +286,23 @@ export class CreditsApiService {
     
     const query = params.toString()
     return this.apiClient.get(`/transactions${query ? '?' + query : ''}`)
+  }
+
+  /**
+   * Get aggregated AI usage for the authenticated user.
+   * Endpoint is served by the credits service under /credits/usage.
+   */
+  async getUsageReport(query: CreditsUsageQuery = {}): Promise<ApiResponse<UsageReport>> {
+    const params = new URLSearchParams()
+    if (query.from) params.set('from', query.from)
+    if (query.to) params.set('to', query.to)
+    if (query.groupBy && query.groupBy.length > 0) params.set('group_by', query.groupBy.join(','))
+    if (query.service) params.set('service', query.service)
+    if (query.provider) params.set('provider', query.provider)
+    if (query.limit !== undefined) params.set('limit', query.limit.toString())
+
+    const qs = params.toString()
+    return this.apiClient.get<UsageReport>(`/usage${qs ? '?' + qs : ''}`)
   }
 }
 
