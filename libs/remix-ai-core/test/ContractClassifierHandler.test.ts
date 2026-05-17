@@ -23,12 +23,7 @@ class MockPlugin {
       case 'fileManager.getFile':
         const getFilePath = args[0]
         return this.files[getFilePath] || ''
-        
-      case 'remixaiassistant.prompt':
-        // Mock LLM response for classification
-        const sourceCode = args[0]
-        return this.mockClassificationResponse(sourceCode)
-        
+          
       default:
         throw new Error(`Mock: Unhandled call ${module}.${method}`)
     }
@@ -36,28 +31,6 @@ class MockPlugin {
 
   setFile(path: string, content: string) {
     this.files[path] = content
-  }
-
-  private mockClassificationResponse(sourceCode: string): ContractClassification {
-    // Extract Solidity code from markdown code blocks if present
-    const extractedCode = this.extractSolidityCode(sourceCode)
-    console.log('Mock Classification Response - Original:', sourceCode.substring(0, 100) + '...')
-    console.log('Mock Classification Response - Extracted:', extractedCode.substring(0, 100) + '...')
-    
-    return {
-      has_proxy: extractedCode.includes('upgradeable') || extractedCode.includes('proxy'),
-      has_erc20: extractedCode.includes('ERC20') || extractedCode.includes('transfer') && extractedCode.includes('balanceOf'),
-      has_erc721: extractedCode.includes('ERC721') || extractedCode.includes('tokenId'),
-      has_amm_swap: extractedCode.includes('swap') || extractedCode.includes('addLiquidity'),
-      has_lending: extractedCode.includes('borrow') || extractedCode.includes('lend'),
-      has_oracle: extractedCode.includes('oracle') || extractedCode.includes('priceFeed'),
-      has_governance: extractedCode.includes('governance') || extractedCode.includes('vote'),
-      has_create_opcode: extractedCode.includes('create2') || extractedCode.includes('new '),
-      has_cross_chain: extractedCode.includes('bridge') || extractedCode.includes('crosschain'),
-      has_staking: extractedCode.includes('stake') || extractedCode.includes('delegate'),
-      solidity_version: '0.8.0',
-      oz_version: extractedCode.includes('@openzeppelin') ? 'detected' : 'unknown'
-    }
   }
 
   private extractSolidityCode(input: string): string {
@@ -159,7 +132,6 @@ tape('ContractClassifierHandler', function (t) {
     
     // Execute classification
     const result = await handler.execute({ filePath: 'SimpleStorage.sol' }, mockPlugin as any)
-    console.log('Classification Result:', result)
     st.false(result.isError, 'Should execute successfully')
     st.equal(result.content[0]?.type, 'text', 'Should return text content')
     

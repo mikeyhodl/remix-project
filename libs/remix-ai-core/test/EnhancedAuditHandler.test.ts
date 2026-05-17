@@ -24,12 +24,7 @@ class MockPlugin {
       case 'fileManager.getFile':
         const getFilePath = args[0]
         return this.files[getFilePath] || ''
-        
-      case 'remixaiassistant.prompt':
-        // Mock LLM response for classification
-        const sourceCode = args[0]
-        return this.mockClassificationResponse(sourceCode)
-        
+                
       case 'compilerArtefacts.getCompilerAbstract':
         return this.compilationData
         
@@ -37,7 +32,7 @@ class MockPlugin {
         return { currentVersion: '0.8.19' }
         
       case 'contractflattener.flattenContract':
-        return this.files[`.workspaces/${this.workspace.name}/${args[1]}`] || ''
+        return this.files[args[1]] || ''
         
       default:
         throw new Error(`Mock: Unhandled call ${module}.${method}`)
@@ -56,55 +51,22 @@ class MockPlugin {
     this.slitherResponse = response
   }
 
-  private mockClassificationResponse(sourceCode: string) {
-    // Simple heuristic classification for testing
-    return {
-      has_proxy: sourceCode.includes('upgradeable'),
-      has_erc20: sourceCode.includes('ERC20'),
-      has_erc721: false,
-      has_amm_swap: false,
-      has_lending: false,
-      has_oracle: false,
-      has_governance: false,
-      has_create_opcode: false,
-      has_cross_chain: false,
-      has_staking: false,
-      solidity_version: '0.8.0',
-      oz_version: sourceCode.includes('@openzeppelin') ? 'detected' : 'unknown'
+  private extractSolidityCode(input: string): string {
+    // Look for ```solidity code blocks
+    const solidityBlockRegex = /```solidity\s*\n([\s\S]*?)\n```/g
+    const matches = input.match(solidityBlockRegex)
+    
+    if (matches && matches.length > 0) {
+      // Extract content between ```solidity and ```
+      return matches.map(match => {
+        return match.replace(/```solidity\s*\n/, '').replace(/\n```$/, '')
+      }).join('\n')
     }
-  }
-}
-
-// Mock SlitherHandler
-class MockSlitherHandler {
-  private mockResult: any = null
-
-  setMockResult(result: any) {
-    this.mockResult = result
+    
+    // If no solidity blocks found, return original input
+    return input
   }
 
-  async execute(args: any, plugin: any) {
-    if (this.mockResult?.isError) {
-      return this.mockResult
-    }
-
-    return {
-      isError: false,
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          success: true,
-          fileName: 'test.sol',
-          scanCompletedAt: new Date().toISOString(),
-          analysis_result: {
-            results: {
-              detectors: this.mockResult?.detectors || []
-            }
-          }
-        })
-      }]
-    }
-  }
 }
 
 // Test data
@@ -124,6 +86,35 @@ contract TestToken is ERC20 {
     }
 }
 `
+const STORAGE_SAMPLE_CONTRACT = `// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.8.2 <0.9.0;
+
+/**
+ * @title Storage
+ * @dev Store & retrieve value in a variable
+ * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
+ */
+contract Storage {
+
+    uint256 number;
+
+    /**
+     * @dev Store value in variable
+     * @param num value to store
+     */
+    function store(uint256 num) public {
+        number = num;
+    }
+
+    /**
+     * @dev Return value 
+     * @return value of 'number'
+     */
+    function retrieve() public view returns (uint256){
+        return number;
+    }
+}`
 
 const MOCK_SLITHER_DETECTORS: SlitherDetector[] = [
   {
@@ -182,18 +173,20 @@ tape('EnhancedAuditHandler', function (t) {
     const mockPlugin = new MockPlugin()
     
     // Setup mock data
-    mockPlugin.setFile('TestToken.sol', SAMPLE_CONTRACT)
+    mockPlugin.setFile('TestToken.sol', STORAGE_SAMPLE_CONTRACT)
     mockPlugin.setCompilation({
-      source: { sources: { 'TestToken.sol': { content: SAMPLE_CONTRACT } } },
+      source: { sources: { 'TestToken.sol': { content: STORAGE_SAMPLE_CONTRACT } } },
       data: {},
       input: {}
     })
 
     // Override SlitherHandler to use mock
+    /*
     const mockSlitherHandler = new MockSlitherHandler()
     mockSlitherHandler.setMockResult({ detectors: MOCK_SLITHER_DETECTORS })
-
+    */
     // Mock the SlitherHandler instantiation
+    /*
     const originalHandler = handler as any
     originalHandler.runSlitherAnalysisWithCodeHandler = async () => {
       return {
@@ -204,7 +197,7 @@ tape('EnhancedAuditHandler', function (t) {
           results: { detectors: MOCK_SLITHER_DETECTORS }
         }
       }
-    }
+    }*/
 
     // Execute enhanced audit
     const result = await handler.execute({ 
@@ -213,10 +206,8 @@ tape('EnhancedAuditHandler', function (t) {
       minSeverity: 'Low'
     }, mockPlugin as any)
 
-    console.log('Enhanced Audit Result:', result)
     st.false(result.isError, 'Should execute successfully')
     st.equal(result.content[0]?.type, 'text', 'Should return text content')
-
     
     const data = JSON.parse(result.content[0]?.text || '{}')
     st.true(data.success, 'Should indicate success')

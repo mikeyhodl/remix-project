@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 // Zod schema for structured contract classification output
 export const ContractClassificationSchema = z.object({
+  // Existing DeFi/Protocol patterns
   has_proxy: z.boolean().describe("Contract implements proxy patterns (UUPS, Transparent, etc.)"),
   has_erc20: z.boolean().describe("Contract implements or extends ERC20 token functionality"),
   has_erc721: z.boolean().describe("Contract implements ERC721/NFT functionality"),
@@ -17,6 +18,27 @@ export const ContractClassificationSchema = z.object({
   has_create_opcode: z.boolean().describe("Contract uses CREATE or CREATE2 opcodes for dynamic deployment"),
   has_cross_chain: z.boolean().describe("Contract implements cross-chain or bridge functionality"),
   has_staking: z.boolean().describe("Contract implements staking/delegation mechanisms"),
+  
+  // Security & Low-level patterns
+  has_signatures: z.boolean().describe("Contract uses signature validation (ECRecover, ECDSA, permit functions)"),
+  has_low_level: z.boolean().describe("Contract uses low-level calls (assembly, delegatecall, call)"),
+  has_merkle_tree: z.boolean().describe("Contract implements Merkle tree or proof validation"),
+  has_timelock: z.boolean().describe("Contract implements timelock or delay mechanisms"),
+  has_centralized_control: z.boolean().describe("Contract has centralized admin controls or single points of failure"),
+  has_external_calls: z.boolean().describe("Contract makes external calls to other contracts"),
+  
+  // Complexity & Integration patterns  
+  has_flashloan: z.boolean().describe("Contract implements or integrates with flash loan functionality"),
+  has_chainlink: z.boolean().describe("Contract integrates with Chainlink price feeds or VRF"),
+  has_uniswap: z.boolean().describe("Contract integrates with Uniswap V2/V3 protocol"),
+  has_aave_compound: z.boolean().describe("Contract integrates with AAVE or Compound protocols"),
+  has_balancer: z.boolean().describe("Contract integrates with Balancer protocol"),
+  has_gnosis_safe: z.boolean().describe("Contract integrates with Gnosis Safe multisig"),
+  
+  // Technical complexity indicators
+  complexity_level: z.enum(['low', 'medium', 'high']).describe("Overall contract complexity based on features and patterns"),
+  
+  // Version information
   solidity_version: z.string().describe("Solidity version (x.x.x format)"),
   oz_version: z.string().describe("OpenZeppelin version detected or 'unknown'")
 });
@@ -242,6 +264,8 @@ Instructions:
 - Be conservative: only mark features as true if clearly present
 
 Focus on these patterns:
+
+**DeFi/Protocol patterns:**
 - Proxy: UUPS, Transparent, Beacon proxy patterns, upgradeable contracts
 - ERC20: _transfer, _mint, balanceOf, transfer functions
 - ERC721: tokenId parameters, NFT-related functions
@@ -252,6 +276,27 @@ Focus on these patterns:
 - CREATE opcodes: assembly usage, factory patterns
 - Cross-chain: bridge functions, cross-chain messaging
 - Staking: stake, unstake, delegate functions
+
+**Security & Low-level patterns:**
+- Signatures: ecrecover, ECDSA, permit, signature validation
+- Low-level: assembly blocks, delegatecall, call, staticcall
+- Merkle: merkle proofs, hash validation, tree structures
+- Timelock: delay mechanisms, time-based controls
+- Centralized control: onlyOwner, admin functions, single points of failure
+- External calls: interactions with external contracts
+
+**Integration patterns:**
+- FlashLoan: AAVE flash loans, flash mint patterns
+- Chainlink: price feeds, VRF, automation
+- Uniswap: V2/V3 router, pool interactions
+- AAVE/Compound: lending protocol integration
+- Balancer: weighted pools, vault interactions  
+- Gnosis Safe: multisig integration
+
+**Complexity indicators:**
+- Low: Simple contracts with basic functionality
+- Medium: Multiple features, some complexity
+- High: Complex DeFi protocols, many integrations
 
 Return a JSON object with boolean flags for each feature and version strings.`;
 
