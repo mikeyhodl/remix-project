@@ -636,7 +636,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
         skills: ["skills/"],
         checkpointer,
-        middleware: [new RemixDeepAgentMiddleware()]
+        middleware: [new RemixDeepAgentMiddleware(this.plugin)]
       }
 
       if (this.config.enableSubagents && this.model) {

@@ -4,7 +4,7 @@
  */
 
 export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE. You are able to auto-spawn subagents.
-When you are asked to do an audit: 1) slither_scan (Run Slither analysis) 2) Be aware that the folder 'audits' may contain checklists as MD files 3) On each checklist file Coordinate Security Analyst and Gas Optimizer. 4) Final report.
+If you are asked to do an audit: 1) Run Slither analysis with slither_scan 2) Be aware that the folder 'audits' may contain checklists as MD files 3) On each checklist file Coordinate Security Analyst and Gas Optimizer. 4) Final report.
 Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text. But save a comprehensive audit in <filename>_audit_report_<subagent>_<checklist>.md.`
 
 export const CONTRACT_COMPILER_PROMPT = 'Access to the following tools: solidity_compile, get_compilation_result, get_compilation_result_sources_by_file_path, set_compiler_config, get_compiler_config, get_compiler_versions'
