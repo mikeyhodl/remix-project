@@ -16,7 +16,7 @@ import {
   CODE_EXPLANATION_PROMPT
 } from '../deepagent/prompts/system/lightPrompts'
 import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
-import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection } from '../../types/deepagent'
+import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig, ApiKeyErrorEvent } from '../../types/deepagent'
 import { ToolRegistry } from '../../remix-mcp-server/types/mcpTools'
 import { classifyApiError, getErrorMessage } from './ApiErrorHandler'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
@@ -33,7 +33,7 @@ import { createModelInstance } from './ModelFactory'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { langSmithTracing } from './LangSmithTracing'
-import { CONVERSATION_THREAD_PREFIX } from '@remix/remix-ai-core'
+import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
@@ -52,6 +52,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   private allowedModels: string[] = []
   private sessionThreadId: string = DeepAgentInferencer.generateThreadId()
   private streamEventHandler: StreamEventHandler
+  private userApiKeys?: IUserApiKeyConfig
 
   private static generateThreadId(): string {
     return CONVERSATION_THREAD_PREFIX + `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -99,6 +100,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.config = {
       enabled: true,
       apiKey: 'proxy-handled', // Proxy server handles the API key
+      userApiKeys: config?.userApiKeys,
       memoryBackend: config?.memoryBackend || 'store',
       maxToolExecutions: config?.maxToolExecutions || 10,
       timeout: config?.timeout || 300000, // 5 minutes
@@ -112,6 +114,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       }
     }
+
+    // Store user API keys for model creation
+    this.userApiKeys = config?.userApiKeys
 
     // Initialize filesystem backend with shared EventEmitter for approval
     this.filesystemBackend = new RemixFilesystemBackend(plugin, this.event) as any
@@ -130,7 +135,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       console.log('[DeepAgentInferencer] Initializing DeepAgent with config:', this.config)
       console.log('[DeepAgentInferencer] Model selection:', this.modelSelection)
 
-      this.model = createModelInstance(this.modelSelection)
+      this.model = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
 
       console.log(`[DeepAgentInferencer] Created ${this.modelSelection.provider} model: ${this.modelSelection.modelId}`)
 
@@ -207,6 +212,42 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     })
 
     console.log('[DeepAgentInferencer] Emitted error to todos:', errorMessage)
+  }
+
+  private emitApiKeyError(errorType: DeepAgentErrorType, error: any): void {
+    if (!this.userApiKeys?.useOwnKeys) {
+      return
+    }
+
+    let apiKeyErrorType: ApiKeyErrorEvent['errorType'] = 'invalid'
+    switch (errorType) {
+    case DeepAgentErrorType.AUTHENTICATION_FAILED:
+      apiKeyErrorType = 'authentication_failed'
+      break
+    case DeepAgentErrorType.API_KEY_INVALID:
+      apiKeyErrorType = 'invalid'
+      break
+    case DeepAgentErrorType.QUOTA_EXCEEDED:
+      apiKeyErrorType = 'quota_exceeded'
+      break
+    case DeepAgentErrorType.RATE_LIMIT_EXCEEDED:
+      apiKeyErrorType = 'rate_limited'
+      break
+    default:
+      return // Don't emit for non-API key errors
+    }
+
+    const apiKeyError: ApiKeyErrorEvent = {
+      provider: this.modelSelection.provider,
+      errorType: apiKeyErrorType,
+      message: getErrorMessage(errorType, error),
+      canFallbackToProxy: true,
+      originalError: error?.message,
+      timestamp: Date.now()
+    }
+
+    console.log('[DeepAgentInferencer] Emitting API key error:', apiKeyError)
+    this.event.emit('onApiKeyError', apiKeyError)
   }
 
   async code_generation(prompt: string, params: IParams): Promise<string> {
@@ -397,7 +438,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      const dappModel = createModelInstance(this.modelSelection)
+      const dappModel = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
       const fullPrompt = `${systemPrompt}\n\n---\n\nUser Request:\n${prompt}`
 
       let langchainMessages: any[]
@@ -621,6 +662,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const userMessage = getErrorMessage(errorType, error, retryAfter)
 
       console.error(`[DeepAgentInferencer] Error during agent execution: ${errorType}`, error)
+      console.error('[DeepAgentInferencer] Original error message:', error)
 
       // Emit API error event for UI handling
       this.event.emit('onApiError', {
@@ -631,6 +673,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         originalError: error?.message,
         timestamp: Date.now()
       })
+
+      // Emit API key specific error for UI handling
+      if (errorType === DeepAgentErrorType.AUTHENTICATION_FAILED ||
+          errorType === DeepAgentErrorType.API_KEY_INVALID ||
+          errorType === DeepAgentErrorType.QUOTA_EXCEEDED ||
+          errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED) {
+        this.emitApiKeyError(errorType, error)
+      }
 
       // For recoverable errors, emit a friendly stream message and return
       if (errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED ||
@@ -667,10 +717,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const generalTools = filterOutFileOperationTools(filterOutSpecialistTools(this.tools))
 
       // Create agent configuration with selected tools
+      // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
-        tools: generalTools,
-        model: this.model,
+        tools: generalTools as any,
+        model: this.model as any,
         systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
         skills: ["skills/"],
         checkpointer,
@@ -689,7 +740,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         agentConfig.store = this.memoryBackend as any
       }
 
-      this.agent = await createDeepAgent(agentConfig as any)
+      // Cast result to any to handle @langchain/core version mismatch between root and deepagents
+      this.agent = await createDeepAgent(agentConfig as any) as any
 
       console.log(`[DeepAgentInferencer] Recreated agent with ${selectedTools.length} selected tools`)
     } catch (error) {
@@ -713,7 +765,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.modelSelection = selectedModel
 
     // Create new model instance
-    this.model = createModelInstance(selectedModel)
+    this.model = createModelInstance(selectedModel, DAPP_MAX_TOKENS, this.userApiKeys)
 
     if (!this.agent) await this.createAgentWithTools(this.tools)
     else {
@@ -740,6 +792,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       originalError: error?.message,
       timestamp: Date.now()
     })
+
+    // Emit API key specific error for UI handling
+    if (errorType === DeepAgentErrorType.AUTHENTICATION_FAILED ||
+        errorType === DeepAgentErrorType.API_KEY_INVALID ||
+        errorType === DeepAgentErrorType.QUOTA_EXCEEDED ||
+        errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED) {
+      this.emitApiKeyError(errorType, error)
+    }
 
     if (errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED ||
         errorType === DeepAgentErrorType.QUOTA_EXCEEDED) {

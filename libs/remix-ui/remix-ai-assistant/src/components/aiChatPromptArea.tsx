@@ -47,6 +47,7 @@ interface AiChatPromptAreaProps {
     setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
     messages: ChatMessage[]
     handleLoadSkills?: () => void
+    usingOwnApiKey?: boolean
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
@@ -170,6 +171,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         autoModeEnabled={props.autoModeEnabled}
         stopRequest={props.stopRequest}
         handleLoadSkills={props.handleLoadSkills}
+        usingOwnApiKey={props.usingOwnApiKey}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>

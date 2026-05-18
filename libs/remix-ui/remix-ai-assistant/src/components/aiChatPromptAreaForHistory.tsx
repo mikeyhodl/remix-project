@@ -47,6 +47,7 @@ interface AiChatPromptAreaForHistoryProps {
       setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
       messages: ChatMessage[]
       handleLoadSkills?: () => void
+      usingOwnApiKey?: boolean
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
@@ -168,6 +169,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         stopRequest={props.stopRequest}
         modelSelectorBtnRef={props.modelSelectorBtnRef}
         handleLoadSkills={props.handleLoadSkills}
+        usingOwnApiKey={props.usingOwnApiKey}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
