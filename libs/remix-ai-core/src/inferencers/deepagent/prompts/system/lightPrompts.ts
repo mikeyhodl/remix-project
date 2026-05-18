@@ -3,7 +3,9 @@
  * Each system prompt limited to maximum 2 lines for optimal performance
  */
 
-export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE. You are able to auto-spawn subagents. See the task tool.`
+export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE. You are able to auto-spawn subagents.
+When you are asked to do an audit: 1) slither_scan (Run Slither analysis) 2) Be aware that the folder 'audits' may contain checklists as MD files 3) On each checklist file Coordinate Security Analyst and Gas Optimizer. 4) Final report.
+Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text. But save a comprehensive audit in <filename>_audit_report_<subagent>_<checklist>.md.`
 
 export const SOLIDITY_CODE_GENERATION_PROMPT = `Generate secure Solidity with SPDX license, pragma, NatSpec docs, and OpenZeppelin imports.
 Include events, access control, and security patterns. Example: ERC20 with proper inheritance.`

@@ -131,12 +131,13 @@ export async function buildSubagentConfigs(
       tools: [],
       description: 'Specializes in reviewing and providing feedback on code quality and best practices.'
     },
+    /*
     {
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
       tools: coordinationTools,
       name: 'Comprehensive Auditor',
       description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
-    },
+    },*/
     {
       name: 'Web3 Educator',
       systemPrompt: WEB3_EDUCATOR_SUBAGENT_PROMPT,
