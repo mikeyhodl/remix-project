@@ -30,7 +30,6 @@ export { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 export { createCoordinationTools } from './handlers/CoordinationHandler';
 export { createDAppGeneratorTools } from './handlers/DAppGeneratorHandler';
 export { createContractClassificationTools } from './handlers/ContractClassifierHandler';
-export { createEnhancedAuditTools } from './handlers/EnhancedAuditHandler';
 
 // Resource Providers
 export { ProjectResourceProvider } from './providers/ProjectResourceProvider';
