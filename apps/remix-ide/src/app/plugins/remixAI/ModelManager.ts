@@ -16,7 +16,6 @@ import {
 import type { AIModel } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
-import { Registry } from '@remix-project/remix-lib'
 
 export interface ModelManagerDeps {
   plugin: IRemixAIPlugin
@@ -31,14 +30,45 @@ export class ModelManager {
     this.deps = deps
   }
 
+  /**
+   * Read a setting directly from localStorage storage to ensure fresh values
+   */
+  private getSettingFromStorage(key: string): string | boolean {
+    try {
+      // Config uses 'config-v0.8:' prefix and stores all settings in '.remix.config' file
+      const storageKey = 'config-v0.8:.remix.config'
+      const configData = localStorage.getItem(storageKey)
+      if (configData) {
+        const items = JSON.parse(configData)
+        const value = items[`settings/${key}`]
+        return value !== undefined ? value : ''
+      }
+      return ''
+    } catch (error) {
+      console.warn('[ModelManager] Failed to read from storage:', error)
+      return ''
+    }
+  }
+
   private getUserApiKeysConfig(): IUserApiKeyConfig | undefined {
     try {
-      const config = Registry.getInstance().get('config').api
-      const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
-      const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
-      const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
-      const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
-      const moonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
+      // Read directly from storage to ensure we get the latest values
+      const useOwnKeysValue = this.getSettingFromStorage('deepagent-api-keys-config')
+      const useOwnKeys = useOwnKeysValue === 'true' || useOwnKeysValue === true
+      const anthropicApiKey = String(this.getSettingFromStorage('deepagent-anthropic-api-key') || '')
+      const mistralApiKey = String(this.getSettingFromStorage('deepagent-mistral-api-key') || '')
+      const openaiApiKey = String(this.getSettingFromStorage('deepagent-openai-api-key') || '')
+      const moonshotApiKey = String(this.getSettingFromStorage('deepagent-moonshot-api-key') || '')
+
+      // Debug logging to see what values are being read
+      console.log('[ModelManager] Reading API keys from storage:', {
+        useOwnKeys,
+        hasAnthropicKey: !!anthropicApiKey,
+        hasMistralKey: !!mistralApiKey,
+        hasOpenaiKey: !!openaiApiKey,
+        hasMoonshotKey: !!moonshotApiKey,
+        openaiKeyLength: openaiApiKey?.length || 0
+      })
 
       // Auto-enable if any API key is set
       const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
