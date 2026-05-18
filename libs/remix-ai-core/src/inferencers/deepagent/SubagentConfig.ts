@@ -110,13 +110,14 @@ export async function buildSubagentConfigs(
       tools: classifierTools,
       description: 'Specializes in analyzing and classifying smart contract features and architectural patterns for targeted analysis.'
     },
+    /*
     {
       name: 'Solidity Engineer',
       systemPrompt: SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
       model: modelAny,
       tools: solidityTools,
       description: 'Expert in Solidity development, code generation, and smart contract architecture. Can write, explain, and optimize Solidity code.'
-    },
+    },*/
     {
       name: 'Web Search Specialist',
       systemPrompt: WEB_SEARCH_SUBAGENT_PROMPT,
@@ -124,13 +125,14 @@ export async function buildSubagentConfigs(
       tools: webSearchTools,
       description: 'Specializes in searching and retrieving information from web sources.'
     },
+    /*
     {
       name: 'Code Reviewer',
       systemPrompt: CODE_REVIEWER_SUBAGENT_PROMPT,
       model: modelAny,
       tools: [],
       description: 'Specializes in reviewing and providing feedback on code quality and best practices.'
-    },
+    },*/
     /*
     {
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
@@ -138,13 +140,14 @@ export async function buildSubagentConfigs(
       name: 'Comprehensive Auditor',
       description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
     },*/
+    /*
     {
       name: 'Web3 Educator',
       systemPrompt: WEB3_EDUCATOR_SUBAGENT_PROMPT,
       model: modelAny,
       tools: educationTools,
       description: 'Specializes in teaching and explaining Web3 concepts and technologies.'
-    },
+    },*/
     {
       name: 'Frontend Specialist',
       systemPrompt: FRONTEND_SPECIALIST_SUBAGENT_PROMPT,

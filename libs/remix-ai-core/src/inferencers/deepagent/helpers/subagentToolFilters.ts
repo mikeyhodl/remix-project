@@ -46,7 +46,6 @@ export function getSecurityToolsForSecurityAuditor(tools: DynamicStructuredTool[
     // Check if tool comes from Security Auditor MCP server
     const description = tool.description.toLowerCase()
     return description.includes('[security]') ||
-           tool.name.toLowerCase().includes('slither_scan') ||
            description.includes('security') ||
            tool.name.toLowerCase() === 'classify_contract' 
   })
@@ -210,7 +209,7 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
   const alchemyToolNames = new Set(getAlchemyToolsForAlchemySpecialist(tools).map(t => t.name))
   const circleToolNames = new Set(getCircleToolsForCircleSpecialist(tools).map(t => t.name))
   const educationToolNames = new Set(getEducationToolsForWeb3Educator(tools).map(t => t.name))
-  // const securityToolNames = new Set(getSecurityToolsForSecurityAuditor(tools).map(t => t.name))
+  const securityToolNames = new Set(getSecurityToolsForSecurityAuditor(tools).map(t => t.name))
   const debugToolNames = new Set(getDebugToolsForDebugSpecialist(tools).map(t => t.name))
   const solidityToolNames = new Set(getSolidityToolsForSolidityEngineer(tools).map(t => t.name))
   const webSearchToolNames = new Set(getWebSearchToolsForWebSearchSpecialist(tools).map(t => t.name))
@@ -223,7 +222,7 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
     !alchemyToolNames.has(tool.name) &&
     !circleToolNames.has(tool.name) &&
     !educationToolNames.has(tool.name) &&
-    // !securityToolNames.has(tool.name) &&
+    !securityToolNames.has(tool.name) &&
     !debugToolNames.has(tool.name) &&
     !solidityToolNames.has(tool.name) &&
     !webSearchToolNames.has(tool.name) &&
