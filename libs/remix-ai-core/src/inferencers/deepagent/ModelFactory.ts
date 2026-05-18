@@ -8,6 +8,10 @@ import { ModelSelection } from '../../types/deepagent'
 import { DAPP_MAX_TOKENS } from './constants'
 import { getRemixAuthHeader } from '../auth'
 
+const AI_DEBUG = (() => {
+  try { return typeof window !== 'undefined' && window.localStorage?.getItem('AI_DEBUG') === 'true' } catch { return false }
+})()
+
 /**
  * fetch wrapper that injects the user's Remix bearer token on every request.
  * Reads the token fresh from localStorage so login/logout takes effect
@@ -25,6 +29,155 @@ const authedFetch: typeof fetch = (input, init = {}) => {
 }
 
 /**
+ * Moonshot (Kimi) thinking models require that every assistant message
+ * containing `tool_calls` in the request history also carries the original
+ * `reasoning_content` returned by the model. LangChain's ChatOpenAI captures
+ * `reasoning_content` from streamed deltas into `additional_kwargs`, but its
+ * outbound serializer (convertMessagesToCompletionsMessageParams) does NOT
+ * re-emit it. Without this, the second turn fails with:
+ *   "thinking is enabled but reasoning_content is missing in assistant tool
+ *    call message at index N"
+ *
+ * Workaround: a fetch wrapper that
+ *  - tees the streamed SSE response, accumulates `reasoning_content` per
+ *    assistant turn, and caches it keyed by the resulting tool_call ids;
+ *  - on outbound requests, walks `body.messages` and stamps the cached
+ *    `reasoning_content` onto matching assistant tool_call messages.
+ */
+const moonshotReasoningByToolCallKey = new Map<string, string>()
+const MOONSHOT_REASONING_CACHE_MAX = 200
+
+function moonshotToolCallKey(toolCalls: any[]): string {
+  const ids = toolCalls
+    .map((tc) => tc?.id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    .sort()
+  return ids.join('|')
+}
+
+function cacheMoonshotReasoning(key: string, reasoning: string): void {
+  if (!key || !reasoning) return
+  if (moonshotReasoningByToolCallKey.size >= MOONSHOT_REASONING_CACHE_MAX) {
+    const firstKey = moonshotReasoningByToolCallKey.keys().next().value
+    if (firstKey !== undefined) moonshotReasoningByToolCallKey.delete(firstKey)
+  }
+  moonshotReasoningByToolCallKey.set(key, reasoning)
+}
+
+async function captureMoonshotReasoningFromSSE(stream: ReadableStream<Uint8Array>): Promise<void> {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let reasoning = ''
+  const toolCallsByIndex: Record<number, { id?: string }> = {}
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop() || ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const data = trimmed.slice(5).trim()
+        if (!data || data === '[DONE]') continue
+        try {
+          const json = JSON.parse(data)
+          const delta = json?.choices?.[0]?.delta
+          if (!delta) continue
+          if (typeof delta.reasoning_content === 'string') reasoning += delta.reasoning_content
+          if (Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = typeof tc?.index === 'number' ? tc.index : 0
+              if (!toolCallsByIndex[idx]) toolCallsByIndex[idx] = {}
+              if (typeof tc?.id === 'string' && tc.id) toolCallsByIndex[idx].id = tc.id
+            }
+          }
+        } catch {
+          /* not JSON, ignore */
+        }
+      }
+    }
+    const ids = Object.values(toolCallsByIndex)
+      .map((t) => t.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (ids.length > 0 && reasoning.length > 0) {
+      cacheMoonshotReasoning(ids.sort().join('|'), reasoning)
+      if (AI_DEBUG) console.log('[Moonshot←] cached reasoning_content for tool_calls', ids, `(${reasoning.length} chars)`)
+    }
+  } catch (e) {
+    if (AI_DEBUG) console.warn('[Moonshot←] capture failed', e)
+  }
+}
+
+function injectMoonshotReasoning(bodyText: string): string {
+  try {
+    const body = JSON.parse(bodyText)
+    if (!Array.isArray(body?.messages)) return bodyText
+    let mutated = false
+    for (const m of body.messages) {
+      if (
+        m &&
+        m.role === 'assistant' &&
+        Array.isArray(m.tool_calls) &&
+        m.tool_calls.length > 0 &&
+        (m.reasoning_content === undefined || m.reasoning_content === null)
+      ) {
+        const key = moonshotToolCallKey(m.tool_calls)
+        const cached = key ? moonshotReasoningByToolCallKey.get(key) : undefined
+        // Moonshot validates presence; supply a single-space fallback when we
+        // don't have the original (e.g. cache miss across page reload).
+        m.reasoning_content = cached ?? ' '
+        mutated = true
+        if (AI_DEBUG) console.log('[Moonshot→] injected reasoning_content', { key, fromCache: !!cached })
+      }
+    }
+    return mutated ? JSON.stringify(body) : bodyText
+  } catch {
+    return bodyText
+  }
+}
+
+const moonshotFetch: typeof fetch = async (input, init = {}) => {
+  const headers = new Headers(init.headers || {})
+  const auth = getRemixAuthHeader()
+  if (auth.Authorization) headers.set('Authorization', auth.Authorization)
+
+  let nextInit: RequestInit = { ...init, headers }
+  if (typeof nextInit.body === 'string') {
+    nextInit = { ...nextInit, body: injectMoonshotReasoning(nextInit.body) }
+  }
+
+  const response = await fetch(input as any, nextInit)
+  const ct = response.headers.get('content-type') || ''
+  if (response.ok && response.body && ct.includes('event-stream')) {
+    const [a, b] = response.body.tee()
+    void captureMoonshotReasoningFromSSE(b)
+    return new Response(a, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    })
+  }
+  if (response.ok && ct.includes('application/json')) {
+    response
+      .clone()
+      .json()
+      .then((json) => {
+        const msg = json?.choices?.[0]?.message
+        if (msg?.tool_calls?.length && typeof msg.reasoning_content === 'string') {
+          const key = moonshotToolCallKey(msg.tool_calls)
+          if (key) cacheMoonshotReasoning(key, msg.reasoning_content)
+        }
+      })
+      .catch(() => {})
+  }
+  return response
+}
+
+/**
  * HTTPClient (Mistral SDK) with a beforeRequest hook that injects the user's
  * Remix bearer token — evaluated per-request so login state stays in sync.
  *
@@ -32,9 +185,6 @@ const authedFetch: typeof fetch = (input, init = {}) => {
  * see exactly which message blocks trigger
  *   `Mistral only supports types "text" or "image_url" for complex message types.`
  */
-const AI_DEBUG = (() => {
-  try { return typeof window !== 'undefined' && window.localStorage?.getItem('AI_DEBUG') === 'true' } catch { return false }
-})()
 
 async function dumpMistralRequest(req: Request): Promise<void> {
   try {
@@ -193,7 +343,11 @@ export function createModelInstance(
       maxRetries: 0,
       configuration: {
         baseURL: `${endpointUrls.langchain}/moonshot/v1`,
-        fetch: authedFetch
+        // moonshotFetch wraps authedFetch and additionally
+        //  1) captures reasoning_content from streamed assistant turns, and
+        //  2) re-injects it onto outbound assistant tool_call messages —
+        // required by Moonshot's thinking-enabled models (e.g. kimi-k2-thinking).
+        fetch: moonshotFetch
       }
     }), `moonshot/${modelId}`)
   }
