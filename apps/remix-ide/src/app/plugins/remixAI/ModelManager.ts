@@ -11,7 +11,8 @@ import {
   listModels,
   getDefaultModel,
   getModelById,
-  IUserApiKeyConfig
+  IUserApiKeyConfig,
+  API_KEYS_ALLOWED_PLANS
 } from '@remix/remix-ai-core'
 import type { AIModel } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
@@ -28,6 +29,22 @@ export class ModelManager {
 
   constructor(deps: ModelManagerDeps) {
     this.deps = deps
+  }
+
+  private async canUseOwnApiKeys(): Promise<boolean> {
+    try {
+      const plugin = this.deps.plugin
+      const permissions = await plugin.call('auth', 'getAllPermissions')
+      const featureGroups = permissions?.feature_groups || []
+      const hasPermission = featureGroups.some((fg: any) =>
+        API_KEYS_ALLOWED_PLANS.includes(fg.name)
+      )
+      console.log('[ModelManager] API keys permission check:', { hasPermission, featureGroups: featureGroups.map((fg: any) => fg.name) })
+      return hasPermission
+    } catch (error) {
+      console.warn('[ModelManager] Failed to check API keys permission:', error)
+      return false
+    }
   }
 
   /**
@@ -50,8 +67,15 @@ export class ModelManager {
     }
   }
 
-  private getUserApiKeysConfig(): IUserApiKeyConfig | undefined {
+  private async getUserApiKeysConfig(): Promise<IUserApiKeyConfig | undefined> {
     try {
+      // First check if user has permission to use own API keys
+      const hasPermission = await this.canUseOwnApiKeys()
+      if (!hasPermission) {
+        console.log('[ModelManager] User does not have permission to use own API keys')
+        return undefined
+      }
+
       // Read directly from storage to ensure we get the latest values
       const useOwnKeysValue = this.getSettingFromStorage('deepagent-api-keys-config')
       const useOwnKeys = useOwnKeysValue === 'true' || useOwnKeysValue === true
@@ -207,9 +231,9 @@ export class ModelManager {
     })
   }
 
-  private async reinitializeDeepAgentForModelChange(model: AIModel, modelId: string): Promise<void> {
+  private async reinitializeDeepAgentForModelChange(_model: AIModel, _modelId: string): Promise<void> {
     const plugin = this.deps.plugin
-    console.log('[RemixAI Plugin] Model changed, reinitializing DeepAgent with new model:', model.provider, modelId)
+    console.log('[RemixAI Plugin] Model changed, reinitializing DeepAgent with new model:', _model.provider, _modelId)
 
     try {
       // Clean up old instance
@@ -217,7 +241,7 @@ export class ModelManager {
       await plugin.deepAgentInferencer!.close()
 
       // Get user API keys config
-      const userApiKeys = this.getUserApiKeysConfig()
+      const userApiKeys = await this.getUserApiKeysConfig()
       if (userApiKeys?.useOwnKeys) {
         console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (model change)')
       }
@@ -234,7 +258,7 @@ export class ModelManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: model.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: modelId }
+        { provider: _model.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: _modelId }
       )
       await plugin.deepAgentInferencer.initialize()
 

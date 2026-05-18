@@ -1,4 +1,4 @@
-import { CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, IUserApiKeyConfig } from '@remix/remix-ai-core'
+import { CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, IUserApiKeyConfig, API_KEYS_ALLOWED_PLANS } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin, ToolApprovalResponse } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
 import type { MCPServerManager } from './MCPServerManager'
@@ -17,9 +17,25 @@ export class DeepAgentManager {
     this.deps = deps
   }
 
+  private async canUseOwnApiKeys(): Promise<boolean> {
+    try {
+      const plugin = this.deps.plugin
+      const permissions = await plugin.call('auth', 'getAllPermissions')
+      const featureGroups = permissions?.feature_groups || []
+      const hasPermission = featureGroups.some((fg: any) =>
+        API_KEYS_ALLOWED_PLANS.includes(fg.name)
+      )
+      console.log('[DeepAgentManager] API keys permission check:', { hasPermission, featureGroups: featureGroups.map((fg: any) => fg.name) })
+      return hasPermission
+    } catch (error) {
+      console.warn('[DeepAgentManager] Failed to check API keys permission:', error)
+      return false
+    }
+  }
+
   private getSettingFromStorage(key: string): string | boolean {
     try {
-      const storageKey = 'ai.api.keys.remix.config'
+      const storageKey = 'config-v0.8:.remix.config'
       const configData = localStorage.getItem(storageKey)
       if (configData) {
         const items = JSON.parse(configData)
@@ -33,8 +49,15 @@ export class DeepAgentManager {
     }
   }
 
-  private getUserApiKeysConfig(): IUserApiKeyConfig | undefined {
+  private async getUserApiKeysConfig(): Promise<IUserApiKeyConfig | undefined> {
     try {
+      // First check if user has permission to use own API keys
+      const hasPermission = await this.canUseOwnApiKeys()
+      if (!hasPermission) {
+        console.log('[DeepAgentManager] User does not have permission to use own API keys')
+        return undefined
+      }
+
       // Read directly from storage to ensure we get the latest values
       const useOwnKeysValue = this.getSettingFromStorage('deepagent-api-keys-config')
       const useOwnKeys = useOwnKeysValue === 'true' || useOwnKeysValue === true
@@ -89,7 +112,7 @@ export class DeepAgentManager {
 
       // Create or reinitialize DeepAgentInferencer
       console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
-      const userApiKeys = this.getUserApiKeysConfig()
+      const userApiKeys = await this.getUserApiKeysConfig()
       if (userApiKeys?.useOwnKeys) {
         console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
       }
@@ -244,7 +267,7 @@ export class DeepAgentManager {
         }
 
         console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
-        const userApiKeys = this.getUserApiKeysConfig()
+        const userApiKeys = await this.getUserApiKeysConfig()
         if (userApiKeys?.useOwnKeys) {
           console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
         }
