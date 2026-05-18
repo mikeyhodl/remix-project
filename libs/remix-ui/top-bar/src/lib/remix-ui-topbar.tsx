@@ -716,6 +716,7 @@ export function RemixUiTopbar() {
               onMigrateToCloud={() => cloudStore.emit('showMigrationDialog')}
             />
             <div
+              data-id="panel-control"
               className="d-flex gap-2 align-items-center"
               style={{ marginLeft: isNonMaximizedWindow ? '0.75rem' : '1.5rem', flexShrink: 0 }}
             >
