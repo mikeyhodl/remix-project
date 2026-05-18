@@ -221,7 +221,6 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                   </div>
                 )}
 
-
                 {/* DApp Update Review Card */}
                 {msg.role === 'assistant' && msg.dappUpdateReview && (
                   <DAppUpdateReviewCard

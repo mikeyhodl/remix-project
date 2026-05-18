@@ -131,6 +131,7 @@ export interface AppState {
     desktopClientConnected: desktopConnection
     genericModalState?: GenericModal,
     aiChatHistoryState?: { showAiChatHistory: boolean, closeAiChatHistory: boolean, toggleIsAiChatMaximized: boolean },
-    showSkillsModal?: boolean
+    showSkillsModal?: boolean,
+    showChecklistModal?: boolean
 }
 

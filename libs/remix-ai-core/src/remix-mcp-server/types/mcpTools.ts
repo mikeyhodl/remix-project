@@ -269,6 +269,7 @@ export interface LoadSkillArgs {
   skill_id: string;
 }
 
+// eslint-disable-next-line
 export interface ListSkillsArgs {
   // No parameters needed
 }

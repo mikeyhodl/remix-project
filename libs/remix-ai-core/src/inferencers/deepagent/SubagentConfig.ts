@@ -1,8 +1,7 @@
-import { SubAgent, CompiledSubAgent } from 'deepagents'
+import { SubAgent, CompiledSubAgent, createDeepAgent } from 'deepagents'
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import {
-  SECURITY_AUDITOR_SUBAGENT_PROMPT,
   CODE_REVIEWER_SUBAGENT_PROMPT,
   FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
   ETHERSCAN_SUBAGENT_PROMPT,
@@ -15,7 +14,8 @@ import {
   DEBUG_SPECIALIST_SUBAGENT_PROMPT,
   SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
   WEB_SEARCH_SUBAGENT_PROMPT,
-  CIRCLE_SUBAGENT_PROMPT
+  CIRCLE_SUBAGENT_PROMPT,
+  SECURITY_ANALYSIS_PROMPT
 } from './prompts/system/lightPrompts'
 import {
   getBasicMcpToolsForSecurityAuditor,
@@ -29,7 +29,9 @@ import {
   getEtherscanToolsForEtherscanSpecialist,
   getAlchemyToolsForAlchemySpecialist,
   getTheGraphToolsForTheGraphSpecialist,
-  getCircleToolsForCircleSpecialist
+  getCircleToolsForCircleSpecialist,
+  getFileOperationTools,
+  getToolForClassifierSpecialist
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -52,17 +54,45 @@ export function buildSubagentConfigs(
   const circleTools = getCircleToolsForCircleSpecialist(tools)
   const basicMcpTools = getBasicMcpToolsForSecurityAuditor(tools)
   const basicFileTools = getBasicFileToolsForGasOptimizer(tools)
-  const coordinationTools = getCoordinationToolsForComprehensiveAuditor(tools)
+  const baseCoordinationTools = getCoordinationToolsForComprehensiveAuditor(tools)
+  const fileOperationTools = getFileOperationTools(tools)
+  const coordinationTools = [...baseCoordinationTools, ...fileOperationTools]
   const educationTools = getEducationToolsForWeb3Educator(tools)
   const debugTools = getDebugToolsForDebugSpecialist(tools)
   const solidityTools = getSolidityToolsForSolidityEngineer(tools)
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
+  const classifierTools = getToolForClassifierSpecialist(tools)
+
+  const comprehensiveAuditor = createDeepAgent({
+    systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
+    tools: coordinationTools,
+    subagents: [{
+        name: 'Gas Optimizer',
+        systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
+        model,
+        tools: basicFileTools,
+        description: 'Specializes in optimizing gas usage in smart contracts.'
+      },{
+        name: 'Security Analyst',
+        systemPrompt: SECURITY_ANALYSIS_PROMPT,
+        model,
+        tools: basicMcpTools,
+        description: 'Specializes reviewing code for security vulnerabilities.'
+      }]
+  })
 
   // Cast model to any to handle @langchain/core version mismatch between root and deepagents
   const modelAny = model as any
 
   return [
+    {
+      name: 'Contract Classifier',
+      systemPrompt: 'Contract Classifier: Analyze smart contract structure and classify features (proxy patterns, token standards, DeFi protocols, governance mechanisms). Extract contract skeleton and identify architectural patterns, complexity indicators, and risk factors using structured analysis.',
+      model,
+      tools: classifierTools,
+      description: 'Specializes in analyzing and classifying smart contract features and architectural patterns for targeted analysis.'
+    },
     {
       name: 'Solidity Engineer',
       systemPrompt: SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
@@ -78,20 +108,6 @@ export function buildSubagentConfigs(
       description: 'Specializes in searching and retrieving information from web sources.'
     },
     {
-      name: 'Security Auditor',
-      systemPrompt: SECURITY_AUDITOR_SUBAGENT_PROMPT,
-      model: modelAny,
-      tools: basicMcpTools,
-      description: 'Specializes in auditing and reviewing code for security vulnerabilities.'
-    },
-    {
-      name: 'Gas Optimizer',
-      systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
-      model: modelAny,
-      tools: basicFileTools,
-      description: 'Specializes in optimizing gas usage in smart contracts.'
-    },
-    {
       name: 'Code Reviewer',
       systemPrompt: CODE_REVIEWER_SUBAGENT_PROMPT,
       model: modelAny,
@@ -101,9 +117,9 @@ export function buildSubagentConfigs(
     {
       name: 'Comprehensive Auditor',
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
-      model: modelAny,
-      tools: coordinationTools,
-      description: 'Specializes in comprehensive auditing and analysis of smart contracts.'
+      model,
+      description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
+      runnable: comprehensiveAuditor    
     },
     {
       name: 'Web3 Educator',

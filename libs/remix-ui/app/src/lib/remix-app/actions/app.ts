@@ -25,7 +25,8 @@ export const enum appActionTypes {
   showAiChatHistorySidebar = 'SHOW_AI_CHATHISTORY_SIDEBAR',
   toggleIsAiChatMaximized = 'TOGGLE_IS_AI_CHAT_MAXIMIZED',
   closeAiChatHistorySidebar = 'CLOSE_AI_CHATHISTORY_SIDEBAR',
-  showSkillsModal = 'SHOW_SKILLS_MODAL'
+  showSkillsModal = 'SHOW_SKILLS_MODAL',
+  showChecklistModal = 'SHOW_CHECKLIST_MODAL'
 }
 
 type AppPayload = {
@@ -42,7 +43,8 @@ type AppPayload = {
   [appActionTypes.showAiChatHistorySidebar]: boolean,
   [appActionTypes.toggleIsAiChatMaximized]: boolean,
   [appActionTypes.closeAiChatHistorySidebar]: boolean,
-  [appActionTypes.showSkillsModal]: boolean
+  [appActionTypes.showSkillsModal]: boolean,
+  [appActionTypes.showChecklistModal]: boolean
 }
 
 export type AppAction = ActionMap<AppPayload>[keyof ActionMap<

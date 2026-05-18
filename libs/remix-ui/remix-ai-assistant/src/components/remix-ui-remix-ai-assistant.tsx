@@ -38,9 +38,9 @@ export interface RemixUiRemixAiAssistantProps {
   showHistorySidebar?: boolean
   isMaximized?: boolean
   onNewConversation?: () => void
-  onLoadConversation?: (id: string) => void
-  onArchiveConversation?: (id: string) => void
-  onDeleteConversation?: (id: string) => void
+  onLoadConversation?: (id: string) => Promise<void>
+  onArchiveConversation?: (id: string) => Promise<void>
+  onDeleteConversation?: (id: string) => Promise<void>
   onDeleteAllConversations?: () => void
   onToggleHistorySidebar?: () => void
   onSearch?: (query: string) => Promise<ConversationMetadata[]>
@@ -1834,9 +1834,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               currentConversationId={props.currentConversationId || null}
               showArchived={showArchivedConversations}
               onNewConversation={props.onNewConversation || (() => {})}
-              onLoadConversation={props.onLoadConversation || (() => {})}
-              onArchiveConversation={props.onArchiveConversation || (() => {})}
-              onDeleteConversation={props.onDeleteConversation || (() => {})}
+              onLoadConversation={props.onLoadConversation || (async (id: string) => {})}
+              onArchiveConversation={props.onArchiveConversation || (async (id: string) => {})}
+              onDeleteConversation={props.onDeleteConversation || (async (id: string) => {})}
               onDeleteAllConversations={props.onDeleteAllConversations}
               onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
               onClose={props.onToggleHistorySidebar || (() => {})}
@@ -1948,13 +1948,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     currentConversationId={props.currentConversationId || null}
                     showArchived={showArchivedConversations}
                     onNewConversation={props.onNewConversation || (() => {})}
-                    onLoadConversation={(id) => {
-                      props.onLoadConversation?.(id)
+                    onLoadConversation={async (id) => {
+                      await props.onLoadConversation?.(id)
                       // Close sidebar after loading conversation in non-maximized mode
-                      props.onToggleHistorySidebar?.()
+                      await props.onToggleHistorySidebar?.()
                     }}
-                    onArchiveConversation={props.onArchiveConversation || (() => {})}
-                    onDeleteConversation={props.onDeleteConversation || (() => {})}
+                    onArchiveConversation={props.onArchiveConversation || (async (id: string) => {})}
+                    onDeleteConversation={props.onDeleteConversation || (async (id: string) => {})}
                     onDeleteAllConversations={props.onDeleteAllConversations}
                     onToggleArchived={() => setShowArchivedConversations(!showArchivedConversations)}
                     onClose={props.onToggleHistorySidebar || (() => {})}
