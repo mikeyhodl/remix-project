@@ -84,8 +84,66 @@ const shortenToolDescription = (request: ModelRequest) => {
     if (tool.name === 'task') {
       tool.description = shortTaskDescription
     }
+  });
+
+  (request.systemMessage.content as any[]).map((part) => {
+    if (part.text.includes('## `write_todos`')) {
+      part.text = shortSytemWriteTodo
+    }
+    if (part.text.includes('## Filesystem Tools')) {
+      part.text = shortSystemFilesystemTools
+    }
+    if (part.text.includes('## `task`')) {
+      part.text = shortSystemTask
+    }
+    if (part.text.includes('## Skills System')) {
+      part.text = shortSystemSkillsSystem
+    }
   })
+  request.systemPrompt = (request.systemMessage.content as any).map((part: any) => part.text).join('\n')
 }
+
+const shortSytemWriteTodo = `## \`write_todos\`
+Use \`write_todos\` to track progress on complex, multi-step objectives. Skip it for simple tasks — it costs time and tokens.
+- Mark each todo complete immediately when done (no batching)
+- Revise the list as new information emerges
+- Never call in parallel`
+const shortSystemTask = `## \`task\` (subagent spawner)
+Spawns ephemeral subagents for isolated, delegatable work. Each returns a single result.
+
+**Use when:**
+- Task is complex, multi-step, and fully self-contained
+- Task can run in parallel with others
+- Task would bloat the main thread with heavy reasoning/context
+- Only the final output matters (not intermediate steps)
+
+**Skip when:**
+- You need to see intermediate reasoning
+- Task is trivial (few tool calls or simple lookup)
+- Splitting adds latency without benefit
+
+**Lifecycle:** Spawn → Run → Return → Reconcile
+
+**Rules:**
+- Parallelize aggressively — run independent tasks simultaneously
+- Use to silo independent steps within a multi-part objective`
+const shortSystemFilesystemTools = `## Filesystem Tools
+\`ls\`, \`read_file\`, \`write_file\`, \`edit_file\`, \`glob\`, \`grep\` — interact with the filesystem. All paths must be absolute (start with \`/\`).
+- \`ls\`: list directory contents
+- \`read_file\`: read a file
+- \`write_file\`: write a file
+- \`edit_file\`: edit a file
+- \`glob\`: find files by pattern (e.g. \`\*\*/\*.py\`)
+- \`grep\`: search text within files`
+const shortSystemSkillsSystem = `## Skills System
+Skills provide specialized workflows. When a task matches a skill's domain, read its \`SKILL.md\` before proceeding.
+
+**Available Skills:** *(none yet — create them in \`skills/\`)*
+
+**Usage:**
+1. Check if the task matches a skill's description
+2. Read the skill's \`SKILL.md\` via \`read_file\` (path shown in skill list)
+3. Follow its instructions; use any helper scripts with absolute paths`
 
 const shortWriteTodosDescription = 'Create and manage a structured task list for the current work session to track progress on complex, multi-step work. Use when: a task has 3+ distinct steps, requires planning across multiple operations, the user provides multiple tasks, or the user explicitly requests a todo list. Skip for trivial, single-step, or purely conversational requests where tracking adds no value. Mark tasks as in_progress before starting and completed immediately after finishing — never mark complete if blocked, partial, or errored. Always keep at least one task in_progress until all are done, and update the list in real time as scope changes.'
 const shortTaskDescription = `Launch ephemeral subagents for complex, isolated, or parallelizable tasks. Each runs statelessly and returns one final report.

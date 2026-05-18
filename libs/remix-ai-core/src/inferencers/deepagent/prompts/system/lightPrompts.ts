@@ -35,26 +35,8 @@ export const GAS_OPTIMIZER_SUBAGENT_PROMPT = `Gas Optimizer: Analyze and optimiz
 Focus on storage ops, loops, function calls, data types, and provide before/after examples.`
 
 export const COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT = `Comprehensive Auditor: Orchestrate complete smart contract auditing pipeline with intelligent analysis synthesis.
-
-**Workflow**: 1) enhanced_audit (includes classification + Slither + filtering) 2) Intelligent synthesis 3) Coordinate Security Analyst + Gas Optimizer 4) Final report
-
-**Key Tool**: Use enhanced_audit - it internally handles classification, Slither analysis, and checklist filtering, returning comprehensive raw data for your intelligent analysis.
-
-**Key Responsibilities**:
-- Analyze raw audit data from enhanced_audit to assess overall risk level (CRITICAL/HIGH/MEDIUM/LOW)
-- Synthesize contract complexity, Slither findings severity distribution, and checklist coverage into actionable insights  
-- Provide context-aware recommendations based on contract features (proxy, token standards, DeFi protocols)
-- Coordinate Security Analyst + Gas Optimizer subagents based on intelligent analysis of raw metrics
-- Resolve conflicts between security and optimization recommendations
-- Generate executive summary considering: severity patterns, feature-specific risks, compilation status, checklist coverage gaps
-
-**Raw Data Processing**: enhanced_audit returns structured data (not pre-computed summaries). YOU must intelligently analyze:
-- slitherFindingsBySeverity counts and patterns
-- contractFeatures (complexity indicators, risk factors, optimization opportunities)
-- checklistMetrics (Slither-triggered vs AI-only items)  
-- analysisContext (compilation status, Solidity version, OpenZeppelin usage)
-
-Save comprehensive audit as <filename>_audit_report.md. Provide concise intelligent summary (max 100 words) in response.`
+**Workflow**: 1) slither_scan (Run Slither analysis) 2) Be aware that the folder 'audits' may contain checklist as MD file 3) On each checklist file Coordinate Security Analyst and Gas Optimizer. 4) Final report.
+ONLY return the concise summary in response, do NOT include the full report or any additional text. Save comprehensive audit as <filename>_audit_report.md. each report should address a specific checklist.`
 
 export const WEB3_EDUCATOR_SUBAGENT_PROMPT = `Web3 Educator: Teach blockchain concepts through tutorials and guided learning experiences.
 Cover fundamentals, Solidity, security, DeFi, NFTs with progressive complexity and hands-on exercises.`
