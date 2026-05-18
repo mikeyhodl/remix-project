@@ -128,6 +128,7 @@ import TabProxy from './app/panels/tab-proxy.js'
 import BottomBarPanel from './app/components/bottom-bar-panel'
 import { TemplateExplorerModalPlugin } from './app/plugins/template-explorer-modal'
 import { SkillsExplorerModalPlugin } from './app/plugins/skills-explorer-modal'
+import { ChecklistExplorerModalPlugin } from './app/plugins/checklist-explorer-modal'
 import { TxRunnerPlugin } from './app/plugins/txRunnerPlugin'
 
 // Tracking now handled by this.track() method using MatomoManager
@@ -178,6 +179,7 @@ class AppComponent {
   topBar: Topbar
   templateExplorerModal: TemplateExplorerModalPlugin
   skillExplorerModal: SkillsExplorerModalPlugin
+  checklistExplorerModal: ChecklistExplorerModalPlugin
   remixAiAssistant: RemixAIAssistant
   settings: SettingsTab
   authPlugin: AuthPlugin
@@ -328,6 +330,7 @@ class AppComponent {
 
     this.templateExplorerModal = new TemplateExplorerModalPlugin()
     this.skillExplorerModal = new SkillsExplorerModalPlugin()
+    this.checklistExplorerModal = new ChecklistExplorerModalPlugin()
     // SERVICES
     // ----------------- gist service ---------------------------------
     this.gistHandler = new GistHandler()
@@ -495,6 +498,7 @@ class AppComponent {
 
     const templateExplorerModal = this.templateExplorerModal
     const skillExplorerModal = this.skillExplorerModal
+    const checklistExplorerModal = this.checklistExplorerModal
 
     const walletConnect = new WalletConnect()
 
@@ -699,7 +703,7 @@ class AppComponent {
       this.accountPlugin,
       feedbackPlugin
     ])
-    this.engine.register([templateExplorerModal, skillExplorerModal, this.topBar])
+    this.engine.register([templateExplorerModal, skillExplorerModal, checklistExplorerModal, this.topBar])
 
     this.layout.panels = {
       tabs: { plugin: tabProxy, active: true },
@@ -748,7 +752,7 @@ class AppComponent {
     ])
 
     await this.appManager.activatePlugin(['mainPanel', 'menuicons', 'tabs'])
-    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal', 'skillsexplorermodal'])
+    await this.appManager.activatePlugin(['topbar', 'templateexplorermodal', 'skillsexplorermodal', 'checklistexplorermodal'])
     await this.appManager.activatePlugin(['statusBar'])
     // await this.appManager.activatePlugin(['remix-template-explorer-modal'])
     await this.appManager.activatePlugin(['bottomBar'])
