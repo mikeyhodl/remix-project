@@ -1,9 +1,7 @@
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 
 export function getBasicMcpToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const basicToolNames = [
-    'slither_scan'
-  ]
+  const basicToolNames = []
 
   const basicTools = tools.filter(tool =>
     basicToolNames.includes(tool.name)
@@ -22,6 +20,7 @@ export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[])
 
 export function getCoordinationToolsForComprehensiveAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const coordinationToolNames: string[] = [
+    'slither_scan'
   ]
 
   const coordinationTools = tools.filter(tool =>
@@ -94,7 +93,7 @@ export function getSolidityToolsForSolidityEngineer(tools: DynamicStructuredTool
 export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const webSearchToolNames = [
     'full_web_search',
-    'get_web_search_summaries', 
+    'get_web_search_summaries',
     'get_single_web_page_content'
   ]
 
@@ -103,6 +102,18 @@ export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructured
   )
 
   return webSearchTools
+}
+
+export function getToolForClassifierSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'classify_contract'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
 }
 
 export function getConversionToolsForConversionSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
@@ -203,16 +214,32 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
   return filteredTools
 }
 
+export function getFileOperationTools(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const fileOperationToolNames = [
+    'directory_list',
+    'read_file_chunk',
+    'grep_file'
+  ]
+
+  // Return tools that start with 'file_' or are in the specific list
+  const fileOperationTools = tools.filter(tool =>
+    tool.name.startsWith('file_') ||
+    fileOperationToolNames.includes(tool.name)
+  )
+
+  return fileOperationTools
+}
+
 export function filterOutFileOperationTools(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const fileOperationToolNames = [
     'directory_list',
-    'read_file_chunk', 
+    'read_file_chunk',
     'grep_file'
   ]
 
   // Filter tools that start with 'file_' or are in the specific list
-  const filteredTools = tools.filter(tool => 
-    !tool.name.startsWith('file_') && 
+  const filteredTools = tools.filter(tool =>
+    !tool.name.startsWith('file_') &&
     !fileOperationToolNames.includes(tool.name)
   )
 

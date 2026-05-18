@@ -98,7 +98,8 @@ const RemixApp = (props: IRemixAppUi) => {
       toggleIsAiChatMaximized: props.app.remixAiAssistant.isMaximized,
       closeAiChatHistory: props.app.remixAiAssistant.showHistorySidebar
     },
-    showSkillsModal: false
+    showSkillsModal: false,
+    showChecklistModal: false
   })
   const [isAiWorkspaceBeingGenerated, setIsAiWorkspaceBeingGenerated] = useState<boolean>(false)
 
@@ -108,6 +109,9 @@ const RemixApp = (props: IRemixAppUi) => {
     }
     if (props.app.skillExplorerModal?.setAppStateDispatch) {
       props.app.skillExplorerModal.setAppStateDispatch(appStateDispatch)
+    }
+    if (props.app.checklistExplorerModal?.setAppStateDispatch) {
+      props.app.checklistExplorerModal.setAppStateDispatch(appStateDispatch)
     }
   }, [appStateDispatch, props.app.remixAiAssistant])
 
@@ -492,6 +496,7 @@ const RemixApp = (props: IRemixAppUi) => {
               {appState.genericModalState?.showModal && props.app.templateExplorerModal.render()
               }
               {appState.showSkillsModal && props.app.skillExplorerModal.render()}
+              {appState.showChecklistModal && props.app.checklistExplorerModal.render()}
               {props.app.invitationManager.render()}
               {props.app.membershipRequest.render()}
               {showBetaTestRegisterWidget && props.app.betaCornerWidget.render()}

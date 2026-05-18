@@ -703,7 +703,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       }
 
       // Read current files
-      let currentFiles = args.currentFiles || {}
+      const currentFiles = args.currentFiles || {}
       if (Object.keys(currentFiles).length === 0) {
         console.log('[QuickDapp] Reading workspace files...')
         await this.readWorkspaceFiles(plugin, '/', currentFiles)
