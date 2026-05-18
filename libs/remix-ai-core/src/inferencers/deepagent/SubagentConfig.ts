@@ -45,11 +45,11 @@ export interface SubagentConfigItem {
   description?: string | undefined
 }
 
-export function buildSubagentConfigs(
+export async function buildSubagentConfigs(
   tools: DynamicStructuredTool[],
   model: BaseChatModel,
   filesystemBackend: any
-): any[] {
+): Promise<(SubAgent | CompiledSubAgent)[]> {
   const etherscanTools = getEtherscanToolsForEtherscanSpecialist(tools)
   const theGraphTools = getTheGraphToolsForTheGraphSpecialist(tools)
   const alchemyTools = getAlchemyToolsForAlchemySpecialist(tools)
@@ -67,7 +67,8 @@ export function buildSubagentConfigs(
   const classifierTools = getToolForClassifierSpecialist(tools)
   const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
 
-  const comprehensiveAuditor = createDeepAgent({
+  /*
+  const comprehensiveAuditor = await createDeepAgent({
     systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
     tools: coordinationTools,
     subagents: [{
@@ -83,16 +84,29 @@ export function buildSubagentConfigs(
       tools: basicMcpTools,
       description: 'Specializes reviewing code for security vulnerabilities.'
     }]
-  })
+  })*/
 
   // Cast model to any to handle @langchain/core version mismatch between root and deepagents
   const modelAny = model as any
 
   return [
     {
+      name: 'Gas Optimizer',
+      systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
+      model: modelAny,
+      tools: basicFileTools,
+      description: 'Specializes in optimizing gas usage in smart contracts.'
+    },{
+      name: 'Security Analyst',
+      systemPrompt: SECURITY_ANALYSIS_PROMPT,
+      model: modelAny,
+      tools: basicMcpTools,
+      description: 'Specializes reviewing code for security vulnerabilities.'
+    },
+    {
       name: 'Contract Classifier',
       systemPrompt: 'Contract Classifier: Analyze smart contract structure and classify features (proxy patterns, token standards, DeFi protocols, governance mechanisms). Extract contract skeleton and identify architectural patterns, complexity indicators, and risk factors using structured analysis.',
-      model,
+      model: modelAny,
       tools: classifierTools,
       description: 'Specializes in analyzing and classifying smart contract features and architectural patterns for targeted analysis.'
     },
@@ -118,11 +132,10 @@ export function buildSubagentConfigs(
       description: 'Specializes in reviewing and providing feedback on code quality and best practices.'
     },
     {
-      name: 'Comprehensive Auditor',
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
-      model,
+      tools: coordinationTools,
+      name: 'Comprehensive Auditor',
       description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
-      runnable: comprehensiveAuditor
     },
     {
       name: 'Web3 Educator',

@@ -640,7 +640,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       if (this.config.enableSubagents && this.model) {
-        agentConfig.subagents = buildSubagentConfigs(
+        agentConfig.subagents = await buildSubagentConfigs(
           this.tools,
           this.model,
           this.filesystemBackend
