@@ -631,8 +631,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
-        tools: generalTools as any,
-        model: this.model as any,
+        tools: [],
+        model: this.model,
         systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
         skills: ["skills/"],
         checkpointer,

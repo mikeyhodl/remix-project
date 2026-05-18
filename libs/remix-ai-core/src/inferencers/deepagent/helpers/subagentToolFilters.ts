@@ -104,6 +104,32 @@ export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructured
   return webSearchTools
 }
 
+export function getToolForSolidityCompiler(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'solidity_compile', 'get_compilation_result', 'get_compilation_result_sources_by_file_path', 'set_compiler_config',
+    'get_compiler_config', 'get_compiler_versions'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
+}
+
+export function getToolsForDeployer(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'deploy_contract', 'call_contract', 'send_transaction', 'get_deployed_contracts', 'set_execution_environment', 'get_account_balance',
+    'get_user_accounts', 'set_selected_account', 'get_current_environment', 'run_script', 'simulate_transaction', 'add_instance'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
+}
+
 export function getToolForClassifierSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const classifierToolNames = [
     'classify_contract'
@@ -215,6 +241,8 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
   const webSearchToolNames = new Set(getWebSearchToolsForWebSearchSpecialist(tools).map(t => t.name))
   const frontendToolNames = new Set(getFrontendToolsForFrontendSpecialist(tools).map(t => t.name))
   const conversionToolNames = new Set(getConversionToolsForConversionSpecialist(tools).map(t => t.name))
+  const soldityComplierToolNames = new Set(getToolForSolidityCompiler(tools).map(t => t.name))
+  const contractRunnerToolNames = new Set(getToolsForDeployer(tools).map(t => t.name))
 
   const filteredTools = tools.filter(tool =>
     !etherscanToolNames.has(tool.name) &&
@@ -227,7 +255,9 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
     !solidityToolNames.has(tool.name) &&
     !webSearchToolNames.has(tool.name) &&
     !conversionToolNames.has(tool.name) &&
-    !frontendToolNames.has(tool.name)
+    !frontendToolNames.has(tool.name) &&
+    !soldityComplierToolNames.has(tool.name) &&
+    !contractRunnerToolNames.has(tool.name)
   )
   return filteredTools
 }

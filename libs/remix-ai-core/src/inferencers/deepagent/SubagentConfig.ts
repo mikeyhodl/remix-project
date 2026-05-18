@@ -17,6 +17,8 @@ import {
   CIRCLE_SUBAGENT_PROMPT,
   SECURITY_ANALYSIS_PROMPT,
   QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT
+  CONTRACT_RUNNER_PROMPT,
+  CONTRACT_COMPILER_PROMPT
 } from './prompts/system/lightPrompts'
 import {
   getBasicMcpToolsForSecurityAuditor,
@@ -34,6 +36,8 @@ import {
   getFileOperationTools,
   getToolForClassifierSpecialist,
   getQuickDappToolsForQuickDappSpecialist
+  getToolForSolidityCompiler,
+  getToolsForDeployer
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -66,6 +70,8 @@ export async function buildSubagentConfigs(
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
   const classifierTools = getToolForClassifierSpecialist(tools)
   const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
+  const solidityCompilerTools = getToolForSolidityCompiler(tools)
+  const deployerTools = getToolsForDeployer(tools)
 
   /*
   const comprehensiveAuditor = await createDeepAgent({
@@ -90,6 +96,20 @@ export async function buildSubagentConfigs(
   const modelAny = model as any
 
   return [
+    {
+      name: 'Solidity Compiler',
+      systemPrompt: CONTRACT_COMPILER_PROMPT,
+      model,
+      tools: solidityCompilerTools,
+      description: CONTRACT_COMPILER_PROMPT
+    },
+    {
+      name: 'Contract Runner',
+      systemPrompt: CONTRACT_RUNNER_PROMPT,
+      model,
+      tools: deployerTools,
+      description: CONTRACT_RUNNER_PROMPT
+    },
     {
       name: 'Gas Optimizer',
       systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
