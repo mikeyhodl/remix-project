@@ -36,7 +36,7 @@ const isChecklistItem = (item: ChecklistItem | ChecklistCategory): item is Check
 // Helper function to recursively collect all checklist items from nested categories
 const collectChecklistItems = (data: (ChecklistItem | ChecklistCategory)[]): ChecklistItem[] => {
   const items: ChecklistItem[] = []
-  
+
   for (const item of data) {
     if (isChecklistItem(item)) {
       items.push(item)
@@ -45,7 +45,7 @@ const collectChecklistItems = (data: (ChecklistItem | ChecklistCategory)[]): Che
       items.push(...collectChecklistItems(item.data))
     }
   }
-  
+
   return items
 }
 
@@ -137,7 +137,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         markdown += `${headerLevel} ${itemIndex}. ${item.question}\n\n`
         markdown += `**Category Path:** ${basePath}\n\n`
         markdown += `**Description:** ${item.description}\n\n`
-        
+
         if (item.remediation) {
           markdown += `**Remediation:** ${item.remediation}\n\n`
         }
@@ -159,12 +159,12 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         // It's a nested category
         const headerLevel = '#'.repeat(level)
         const newPath = basePath ? `${basePath} → ${item.category}` : item.category
-        
+
         markdown += `${headerLevel} ${item.category}\n\n`
         if (item.description) {
           markdown += `${item.description}\n\n`
         }
-        
+
         // Recursively process nested data
         markdown += generateNestedMarkdown(item.data, newPath, level + 1)
       }
@@ -224,27 +224,27 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
 
     try {
       await ensureDirectoryExists('audits')
-      
+
       const timestamp = new Date().toISOString().split('T')[0]
-      
+
       // Generate filename with selected categories
       const selectedCategoryNames = Array.from(selectedCategories).map(categoryPath => {
         const [mainCat, subCat] = categoryPath.split('::')
         return `${mainCat}-${subCat}`
       }).join('_')
-      
+
       // Clean the category names for filename (remove special characters and spaces)
       const cleanCategoryNames = selectedCategoryNames
         .replace(/[^a-zA-Z0-9_-]/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '')
         .substring(0, 100) // Limit length
-      
+
       const filename = `audit-checklist-${cleanCategoryNames}-${timestamp}.md`
       const checklistContent = generateChecklistMarkdown()
-      
+
       await plugin.call('fileManager', 'writeFile', `audits/${filename}`, checklistContent)
-      
+
       setSaving(false)
       onClose()
     } catch (err) {
@@ -262,7 +262,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
   // Helper function to recursively filter data based on search term
   const filterData = (data: (ChecklistItem | ChecklistCategory)[], searchTerm: string): (ChecklistItem | ChecklistCategory)[] => {
     const filtered: (ChecklistItem | ChecklistCategory)[] = []
-    
+
     for (const item of data) {
       if (isChecklistItem(item)) {
         // It's a checklist item, check if it matches the search
@@ -276,7 +276,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         // It's a category, check if it or its children match
         const filteredSubData = filterData(item.data, searchTerm)
         if (
-          filteredSubData.length > 0 || 
+          filteredSubData.length > 0 ||
           item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.description.toLowerCase().includes(searchTerm.toLowerCase())
         ) {
@@ -287,7 +287,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         }
       }
     }
-    
+
     return filtered
   }
 
@@ -297,8 +297,8 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
       ...mainCat,
       data: filteredSubData.filter(item => !isChecklistItem(item)) as ChecklistCategory[]
     }
-  }).filter(mainCat => 
-    mainCat.data.length > 0 || 
+  }).filter(mainCat =>
+    mainCat.data.length > 0 ||
     mainCat.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     mainCat.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -311,7 +311,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
   return (
     <section data-id="checklist-explorer-modal-react" className="checklist-explorer-modal-background" style={{ zIndex: 8888 }}>
       <div ref={containerRef} className="checklist-explorer-modal-container border bg-dark p-2">
-        
+
         {/* Header */}
         <div className="checklist-explorer-modal-close-container bg-dark mb-3 w-100 d-flex flex-row justify-content-between align-items-center">
           {showBackButton ? (
@@ -351,7 +351,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         </div>
 
         <div className="checklist-explorer-container">
-          
+
           {/* Step 1: Browse and select categories */}
           {wizardStep === 'browse' && (
             <>
@@ -390,16 +390,16 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                             <h5 className="mb-1">{mainCategory.category}</h5>
                             <p className="mb-0 small text-light-emphasis">{mainCategory.description}</p>
                           </div>
-                          
+
                           <div className="sub-categories border border-secondary rounded-bottom">
                             {mainCategory.data.map((subCategory) => {
                               const categoryPath = `${mainCategory.category}::${subCategory.category}`
                               const isSelected = selectedCategories.has(categoryPath)
                               const isExpanded = expandedCategories.has(categoryPath)
-                              
+
                               return (
                                 <div key={categoryPath} className="sub-category border-bottom">
-                                  <div 
+                                  <div
                                     className={`sub-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-light border-primary' : 'bg-light'}`}
                                     onClick={() => toggleCategory(categoryPath)}
                                     style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
@@ -414,7 +414,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                       <p className="text-muted mb-0 small">{subCategory.description}</p>
                                       <span className="badge bg-primary text-white small">{countTotalItems(subCategory.data)} items</span>
                                     </div>
-                                    <button 
+                                    <button
                                       className="btn btn-sm"
                                       onClick={(e) => {
                                         e.stopPropagation()
@@ -424,7 +424,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                       <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
                                     </button>
                                   </div>
-                                  
+
                                   {isExpanded && (
                                     <div className="category-items p-3 bg-light-subtle">
                                       {collectChecklistItems(subCategory.data).slice(0, 3).map((item) => (
