@@ -842,8 +842,10 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       this._tools.registerBatch(contractClassificationTools);
 
       // Register enhanced audit tools
+      /*
       const enhancedAuditTools = createEnhancedAuditTools();
       this._tools.registerBatch(enhancedAuditTools);
+      */
 
       // Register tutorial tools
       const tutorialTools = createTutorialsTools();
