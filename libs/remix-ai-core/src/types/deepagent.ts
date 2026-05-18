@@ -170,3 +170,12 @@ export class DeepAgentError extends Error {
     this.details = details
   }
 }
+
+export interface ApiKeyErrorEvent {
+  provider: ModelProvider
+  errorType: 'invalid' | 'expired' | 'quota_exceeded' | 'rate_limited' | 'authentication_failed'
+  message: string
+  canFallbackToProxy: boolean
+  originalError?: string
+  timestamp: number
+}

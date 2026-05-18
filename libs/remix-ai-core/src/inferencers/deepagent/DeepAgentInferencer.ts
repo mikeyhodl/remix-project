@@ -16,7 +16,7 @@ import {
   CODE_EXPLANATION_PROMPT
 } from '../deepagent/prompts/system/lightPrompts'
 import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
-import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig } from '../../types/deepagent'
+import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig, ApiKeyErrorEvent } from '../../types/deepagent'
 import { ToolRegistry } from '../../remix-mcp-server/types/mcpTools'
 import { classifyApiError, getErrorMessage } from './ApiErrorHandler'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
@@ -212,6 +212,42 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     })
 
     console.log('[DeepAgentInferencer] Emitted error to todos:', errorMessage)
+  }
+
+  private emitApiKeyError(errorType: DeepAgentErrorType, error: any): void {
+    if (!this.userApiKeys?.useOwnKeys) {
+      return
+    }
+
+    let apiKeyErrorType: ApiKeyErrorEvent['errorType'] = 'invalid'
+    switch (errorType) {
+    case DeepAgentErrorType.AUTHENTICATION_FAILED:
+      apiKeyErrorType = 'authentication_failed'
+      break
+    case DeepAgentErrorType.API_KEY_INVALID:
+      apiKeyErrorType = 'invalid'
+      break
+    case DeepAgentErrorType.QUOTA_EXCEEDED:
+      apiKeyErrorType = 'quota_exceeded'
+      break
+    case DeepAgentErrorType.RATE_LIMIT_EXCEEDED:
+      apiKeyErrorType = 'rate_limited'
+      break
+    default:
+      return // Don't emit for non-API key errors
+    }
+
+    const apiKeyError: ApiKeyErrorEvent = {
+      provider: this.modelSelection.provider,
+      errorType: apiKeyErrorType,
+      message: getErrorMessage(errorType, error),
+      canFallbackToProxy: true,
+      originalError: error?.message,
+      timestamp: Date.now()
+    }
+
+    console.log('[DeepAgentInferencer] Emitting API key error:', apiKeyError)
+    this.event.emit('onApiKeyError', apiKeyError)
   }
 
   async code_generation(prompt: string, params: IParams): Promise<string> {
@@ -626,7 +662,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const userMessage = getErrorMessage(errorType, error, retryAfter)
 
       console.error(`[DeepAgentInferencer] Error during agent execution: ${errorType}`, error)
-      console.error('[DeepAgentInferencer] Original error message:', error)  
+      console.error('[DeepAgentInferencer] Original error message:', error)
 
       // Emit API error event for UI handling
       this.event.emit('onApiError', {
@@ -637,6 +673,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         originalError: error?.message,
         timestamp: Date.now()
       })
+
+      // Emit API key specific error for UI handling
+      if (errorType === DeepAgentErrorType.AUTHENTICATION_FAILED ||
+          errorType === DeepAgentErrorType.API_KEY_INVALID ||
+          errorType === DeepAgentErrorType.QUOTA_EXCEEDED ||
+          errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED) {
+        this.emitApiKeyError(errorType, error)
+      }
 
       // For recoverable errors, emit a friendly stream message and return
       if (errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED ||
@@ -748,6 +792,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       originalError: error?.message,
       timestamp: Date.now()
     })
+
+    // Emit API key specific error for UI handling
+    if (errorType === DeepAgentErrorType.AUTHENTICATION_FAILED ||
+        errorType === DeepAgentErrorType.API_KEY_INVALID ||
+        errorType === DeepAgentErrorType.QUOTA_EXCEEDED ||
+        errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED) {
+      this.emitApiKeyError(errorType, error)
+    }
 
     if (errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED ||
         errorType === DeepAgentErrorType.QUOTA_EXCEEDED) {

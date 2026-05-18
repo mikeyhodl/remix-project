@@ -247,6 +247,63 @@ export class DeepAgentManager {
     }
   }
 
+  isUsingOwnApiKey(): boolean {
+    try {
+      const hasPermission = this.getSettingFromStorage('deepagent-api-keys-config')
+      const useOwnKeys = hasPermission === 'true' || hasPermission === true
+
+      if (!useOwnKeys) return false
+
+      // Check if any API key is set for the current provider
+      const plugin = this.deps.plugin
+      const currentProvider = plugin.selectedModel.provider
+
+      switch (currentProvider) {
+      case 'anthropic':
+        return !!this.getSettingFromStorage('deepagent-anthropic-api-key')
+      case 'openai':
+        return !!this.getSettingFromStorage('deepagent-openai-api-key')
+      case 'mistralai':
+        return !!this.getSettingFromStorage('deepagent-mistral-api-key')
+      case 'moonshot':
+        return !!this.getSettingFromStorage('deepagent-moonshot-api-key')
+      default:
+        return false
+      }
+    } catch (error) {
+      console.warn('[DeepAgentManager] Failed to check if using own API key:', error)
+      return false
+    }
+  }
+
+  async fallbackToProxy(): Promise<void> {
+    const plugin = this.deps.plugin
+
+    try {
+      console.log('[DeepAgentManager] Falling back to proxy server...')
+
+      // Update localStorage to disable own keys
+      const storageKey = 'config-v0.8:.remix.config'
+      const configData = localStorage.getItem(storageKey)
+      if (configData) {
+        const items = JSON.parse(configData)
+        items['settings/deepagent-api-keys-config'] = false
+        localStorage.setItem(storageKey, JSON.stringify(items))
+      }
+
+      // Emit event for UI update
+      plugin.emit('apiKeyModeChanged', { usingOwnKey: false })
+
+      // Reinitialize DeepAgent with proxy mode
+      await this.reinitialize()
+
+      console.log('[DeepAgentManager] Successfully fell back to proxy server')
+    } catch (error) {
+      console.error('[DeepAgentManager] Failed to fallback to proxy:', error)
+      throw error
+    }
+  }
+
   /**
    * Reinitialize DeepAgent with current settings.
    * Used when MCP servers are refreshed, reset, or API key settings change.

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 import '../css/remix-ai-assistant.css'
 
 import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AVAILABLE_MODELS, getDefaultModel, getModelById, AIModel } from '@remix/remix-ai-core'
-import { ToolApprovalRequest } from '@remix/remix-ai-core'
+import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
 import '../css/color.css'
@@ -99,6 +99,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [selectedModel, setSelectedModel] = useState<AIModel>(getDefaultModel())
   const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [autoModeEnabled, setAutoModeEnabled] = useState(false)
+  const [usingOwnApiKey, setUsingOwnApiKey] = useState(false)
+  const [apiKeyError, setApiKeyError] = useState<ApiKeyErrorEvent | null>(null)
   const [themeTracker, setThemeTracker] = useState<{ name: string } | null>(() => ({ name: getSystemThemeFallback() }))
   const historyRef = useRef<HTMLDivElement | null>(null)
   const modelBtnRef = useRef(null)
@@ -302,8 +304,31 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     props.plugin.on('remixAI', 'modelChanged', handleModelChanged)
 
+    const checkApiKeyStatus = async () => {
+      try {
+        const isUsingOwn = await props.plugin.call('remixAI', 'isUsingOwnApiKey')
+        setUsingOwnApiKey(!!isUsingOwn)
+      } catch (error) {
+        console.warn('[RemixAI Assistant] Failed to check API key status:', error)
+      }
+    }
+    checkApiKeyStatus()
+
+    const handleApiKeyModeChanged = (data: { usingOwnKey: boolean }) => {
+      setUsingOwnApiKey(data.usingOwnKey)
+    }
+    props.plugin.on('remixAI', 'apiKeyModeChanged', handleApiKeyModeChanged)
+
+    const handleApiKeyError = (error: ApiKeyErrorEvent) => {
+      console.error('[RemixAI Assistant] API key error:', error)
+      setApiKeyError(error)
+    }
+    props.plugin.on('remixAI', 'onApiKeyError', handleApiKeyError)
+
     return () => {
       props.plugin.off('remixAI', 'modelChanged')
+      props.plugin.off('remixAI', 'apiKeyModeChanged')
+      props.plugin.off('remixAI', 'onApiKeyError')
     }
   }, [props.plugin])
 
@@ -2065,6 +2090,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
+              usingOwnApiKey={usingOwnApiKey}
             />
           ) : (
             <AiChatPromptArea
@@ -2110,9 +2136,49 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ollamaModels={ollamaModels}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
+              usingOwnApiKey={usingOwnApiKey}
             />
           )
         }
+
+        {/* API Key Error Toast */}
+        {apiKeyError && (
+          <div
+            className="position-fixed bottom-0 start-50 translate-middle-x mb-5 p-3 bg-danger text-white rounded shadow"
+            style={{ zIndex: 9999, maxWidth: '400px' }}
+          >
+            <div className="d-flex align-items-start">
+              <i className="fas fa-exclamation-triangle me-2 mt-1"></i>
+              <div className="flex-grow-1">
+                <strong>{apiKeyError.errorType === 'authentication_failed' ? 'API Key Authentication Failed' : 'API Key Error'}</strong>
+                <p className="mb-2 small">{apiKeyError.message}</p>
+                {apiKeyError.canFallbackToProxy && (
+                  <button
+                    className="btn btn-sm btn-light me-2"
+                    onClick={async () => {
+                      try {
+                        await props.plugin.call('remixAI', 'fallbackToProxy')
+                        setApiKeyError(null)
+                        setUsingOwnApiKey(false)
+                      } catch (error) {
+                        console.error('Failed to fallback to proxy:', error)
+                      }
+                    }}
+                  >
+                    <i className="fas fa-server me-1"></i>
+                    Switch to Proxy
+                  </button>
+                )}
+                <button
+                  className="btn btn-sm btn-outline-light"
+                  onClick={() => setApiKeyError(null)}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   )

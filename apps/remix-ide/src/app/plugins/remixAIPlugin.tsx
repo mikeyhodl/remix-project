@@ -30,14 +30,16 @@ const profile = {
     'setAutoMode', 'getAutoModeStatus',
     'clearCaches', 'cancelRequest',
     'getAllowedModels', 'setModelAccess',
-    'generateDAppContent', 'fetchFigmaDesign', 'generateDAppFromFigma'
+    'generateDAppContent', 'fetchFigmaDesign', 'generateDAppFromFigma',
+    'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy'
   ],
   events: [
     'modelChanged',
     'chatMessageSent', 'chatPipeRequested',
     'codeExplainRequested', 'errorExplainRequested', 'vulnerabilityCheckRequested',
     'codeCompletionUsed', 'workspaceGenerated',
-    'mcpEnabled', 'mcpDisabled'
+    'mcpEnabled', 'mcpDisabled',
+    'apiKeyModeChanged', 'onApiKeyError'
   ],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
@@ -723,5 +725,20 @@ export class RemixAIPlugin extends Plugin {
 
   private async resetMCPServersToDefault(): Promise<void> {
     return this.mcpManager.resetToDefaultWithReinit()
+  }
+
+  isUsingOwnApiKey(): boolean {
+    return this.deepAgentManager.isUsingOwnApiKey()
+  }
+
+  getApiKeyStatus(): { provider: string; usingOwnKey: boolean } {
+    return {
+      provider: this.selectedModel.provider,
+      usingOwnKey: this.deepAgentManager.isUsingOwnApiKey()
+    }
+  }
+
+  async fallbackToProxy(): Promise<void> {
+    return this.deepAgentManager.fallbackToProxy()
   }
 }

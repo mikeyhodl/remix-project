@@ -34,6 +34,7 @@ export {
 export * from './types/types'
 export * from './types/mcp'
 export * from './helpers/streamHandler'
+export * from './helpers/apiKeyValidator'
 export * from './agents/codeExplainAgent'
 export * from './agents/completionAgent'
 export * from './agents/securityAgent'
