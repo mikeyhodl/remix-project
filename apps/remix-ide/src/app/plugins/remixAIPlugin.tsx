@@ -10,7 +10,7 @@ import { AIModel, getDefaultModel, getModelById, IUserApiKeyConfig } from '@remi
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 import { Registry } from '@remix-project/remix-lib'
-import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, DAppGenerationManager, ChatRequestBuffer } from './remixAI'
+import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, DAppGenerationManager, ChatRequestBuffer, ApiKeySettingsHelper } from './remixAI'
 
 const profile = {
   name: 'remixAI',
@@ -207,30 +207,11 @@ export class RemixAIPlugin extends Plugin {
         console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
         console.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
 
-        // Read user API keys from settings
-        let userApiKeys: IUserApiKeyConfig | undefined
-        try {
-          const config = Registry.getInstance().get('config').api
-          const useOwnKeys = config.get('settings/deepagent-api-keys-config') || false
-          const anthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
-          const mistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
-          const openaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
-          const moonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
-
-          // Auto-enable if any API key is set
-          const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
-          if (useOwnKeys || hasAnyKey) {
-            userApiKeys = {
-              useOwnKeys: useOwnKeys || !!hasAnyKey,
-              anthropicApiKey,
-              mistralApiKey,
-              openaiApiKey,
-              moonshotApiKey
-            }
-            console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
-          }
-        } catch (error) {
-          console.warn('[RemixAI Plugin] Failed to read user API keys config:', error)
+        // Read user API keys from settings using helper
+        const apiKeyHelper = new ApiKeySettingsHelper(this)
+        const userApiKeys = await apiKeyHelper.getUserApiKeysConfig()
+        if (userApiKeys?.useOwnKeys) {
+          console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
         }
 
         this.deepAgentInferencer = new DeepAgentInferencer(
@@ -727,14 +708,15 @@ export class RemixAIPlugin extends Plugin {
     return this.mcpManager.resetToDefaultWithReinit()
   }
 
-  isUsingOwnApiKey(): boolean {
+  async isUsingOwnApiKey(): Promise<boolean> {
     return this.deepAgentManager.isUsingOwnApiKey()
   }
 
-  getApiKeyStatus(): { provider: string; usingOwnKey: boolean } {
+  async getApiKeyStatus(): Promise<{ provider: string; usingOwnKey: boolean }> {
+    const usingOwnKey = await this.deepAgentManager.isUsingOwnApiKey()
     return {
       provider: this.selectedModel.provider,
-      usingOwnKey: this.deepAgentManager.isUsingOwnApiKey()
+      usingOwnKey
     }
   }
 

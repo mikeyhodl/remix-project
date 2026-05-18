@@ -10,13 +10,12 @@ import {
   getBestAvailableModel,
   listModels,
   getDefaultModel,
-  getModelById,
-  IUserApiKeyConfig,
-  API_KEYS_ALLOWED_PLANS
+  getModelById
 } from '@remix/remix-ai-core'
 import type { AIModel } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
+import { ApiKeySettingsHelper } from './ApiKeySettingsHelper'
 
 export interface ModelManagerDeps {
   plugin: IRemixAIPlugin
@@ -26,91 +25,11 @@ export interface ModelManagerDeps {
 
 export class ModelManager {
   private deps: ModelManagerDeps
+  private apiKeyHelper: ApiKeySettingsHelper
 
   constructor(deps: ModelManagerDeps) {
     this.deps = deps
-  }
-
-  private async canUseOwnApiKeys(): Promise<boolean> {
-    try {
-      const plugin = this.deps.plugin
-      const permissions = await plugin.call('auth', 'getAllPermissions')
-      const featureGroups = permissions?.feature_groups || []
-      const hasPermission = featureGroups.some((fg: any) =>
-        API_KEYS_ALLOWED_PLANS.includes(fg.name)
-      )
-      console.log('[ModelManager] API keys permission check:', { hasPermission, featureGroups: featureGroups.map((fg: any) => fg.name) })
-      return hasPermission
-    } catch (error) {
-      console.warn('[ModelManager] Failed to check API keys permission:', error)
-      return false
-    }
-  }
-
-  /**
-   * Read a setting directly from localStorage storage to ensure fresh values
-   */
-  private getSettingFromStorage(key: string): string | boolean {
-    try {
-      // Config uses 'config-v0.8:' prefix and stores all settings in '.remix.config' file
-      const storageKey = 'config-v0.8:.remix.config'
-      const configData = localStorage.getItem(storageKey)
-      if (configData) {
-        const items = JSON.parse(configData)
-        const value = items[`settings/${key}`]
-        return value !== undefined ? value : ''
-      }
-      return ''
-    } catch (error) {
-      console.warn('[ModelManager] Failed to read from storage:', error)
-      return ''
-    }
-  }
-
-  private async getUserApiKeysConfig(): Promise<IUserApiKeyConfig | undefined> {
-    try {
-      // First check if user has permission to use own API keys
-      const hasPermission = await this.canUseOwnApiKeys()
-      if (!hasPermission) {
-        console.log('[ModelManager] User does not have permission to use own API keys')
-        return undefined
-      }
-
-      // Read directly from storage to ensure we get the latest values
-      const useOwnKeysValue = this.getSettingFromStorage('deepagent-api-keys-config')
-      const useOwnKeys = useOwnKeysValue === 'true' || useOwnKeysValue === true
-      const anthropicApiKey = String(this.getSettingFromStorage('deepagent-anthropic-api-key') || '')
-      const mistralApiKey = String(this.getSettingFromStorage('deepagent-mistral-api-key') || '')
-      const openaiApiKey = String(this.getSettingFromStorage('deepagent-openai-api-key') || '')
-      const moonshotApiKey = String(this.getSettingFromStorage('deepagent-moonshot-api-key') || '')
-
-      // Debug logging to see what values are being read
-      console.log('[ModelManager] Reading API keys from storage:', {
-        useOwnKeys,
-        hasAnthropicKey: !!anthropicApiKey,
-        hasMistralKey: !!mistralApiKey,
-        hasOpenaiKey: !!openaiApiKey,
-        hasMoonshotKey: !!moonshotApiKey,
-        openaiKeyLength: openaiApiKey?.length || 0
-      })
-
-      // Auto-enable if any API key is set
-      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
-      if (!useOwnKeys && !hasAnyKey) {
-        return undefined
-      }
-
-      return {
-        useOwnKeys: useOwnKeys || !!hasAnyKey,
-        anthropicApiKey,
-        mistralApiKey,
-        openaiApiKey,
-        moonshotApiKey
-      }
-    } catch (error) {
-      console.warn('[ModelManager] Failed to read user API keys config:', error)
-      return undefined
-    }
+    this.apiKeyHelper = new ApiKeySettingsHelper(deps.plugin)
   }
 
   async setModel(modelId: string, allowedModels: string[] = []): Promise<void> {
@@ -241,7 +160,7 @@ export class ModelManager {
       await plugin.deepAgentInferencer!.close()
 
       // Get user API keys config
-      const userApiKeys = await this.getUserApiKeysConfig()
+      const userApiKeys = await this.apiKeyHelper.getUserApiKeysConfig()
       if (userApiKeys?.useOwnKeys) {
         console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (model change)')
       }
