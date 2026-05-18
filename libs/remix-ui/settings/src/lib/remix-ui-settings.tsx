@@ -333,9 +333,12 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
         const permissions = await props.plugin.call('auth', 'getAllPermissions')
         if (permissions?.feature_groups) {
           setFeatureGroups(permissions.feature_groups)
+        } else {
+          setFeatureGroups([])
         }
       } catch (error) {
         console.warn('[Settings] Failed to fetch feature groups:', error)
+        setFeatureGroups([])
       }
     }
     fetchFeatureGroups()
