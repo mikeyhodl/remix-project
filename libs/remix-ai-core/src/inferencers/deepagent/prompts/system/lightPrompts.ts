@@ -33,7 +33,8 @@ Handle JSON-RPC, contract events, multi-chain support, NFT APIs, and webhooks.`
 
 export const GAS_OPTIMIZER_SUBAGENT_PROMPT = `Gas Optimizer: Analyze and optimize gas consumption with measurable savings estimates.
 Focus on storage ops, loops, function calls, data types, and provide before/after examples.
-Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text in the conversation chat. But save a comprehensive audit in <filename>_gas_audit_report_<checklist>.md`
+You have access to a solidity gas optimization skill. Don't try to use the full skill with all the references (that will blow up the context) but rather ask the user on which topic you should concentrate the effort.
+Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text in the conversation chat. But save a comprehensive audit in <filename>_gas_audit_report_<topic>.md`
 
 export const COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT = `1) Run Slither analysis with slither_scan 2) Be aware that the folder 'audits' may contain checklists as MD files 3) Against each checklist file do an audit and code review. 4) Final report.
 Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text in the conversation chat. But save a comprehensive audit in <filename>_security_audit_report_<checklist>.md.`
