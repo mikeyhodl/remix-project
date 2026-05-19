@@ -88,6 +88,20 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Tracks which approval requests are currently being reviewed in the editor via showCustomDiff
   const [reviewingApprovals, setReviewingApprovals] = useState<Set<string>>(new Set())
   const pendingDiffApprovalRef = useRef<{ requestId: string; filePath: string } | null>(null)
+
+  // HITL auto-accept state
+  const HITL_AUTO_ACCEPT_KEY = 'remix_hitl_auto_accept'
+  const [hitlAutoAccept, setHitlAutoAccept] = useState(() => localStorage.getItem('remix_hitl_auto_accept') === 'true')
+  const hitlAutoAcceptRef = useRef(hitlAutoAccept)
+  useEffect(() => { hitlAutoAcceptRef.current = hitlAutoAccept }, [hitlAutoAccept])
+  const toggleHitlAutoAccept = useCallback(() => {
+    setHitlAutoAccept(prev => {
+      const next = !prev
+      localStorage.setItem(HITL_AUTO_ACCEPT_KEY, String(next))
+      console.log('[HITL] Auto-accept toggled:', next)
+      return next
+    })
+  }, [])
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
@@ -825,7 +839,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [props.plugin, removeApproval])
 
-  const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, modifiedArgs?: Record<string, any>) => {
+  const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, options?: { modifiedArgs?: Record<string, any>; enableAutoAccept?: boolean }) => {
     if (!approval) return
 
     // Close DiffEditor tab if the user had opened a Review
@@ -840,10 +854,17 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
+    // Enable auto-accept if the user checked the checkbox in the modal
+    if (options?.enableAutoAccept && !hitlAutoAcceptRef.current) {
+      setHitlAutoAccept(true)
+      localStorage.setItem(HITL_AUTO_ACCEPT_KEY, 'true')
+      console.log('[HITL] Auto-accept ENABLED from approval modal')
+    }
+
     props.plugin.call('remixAI', 'respondToToolApproval', {
       requestId: approval.requestId,
       approved: true,
-      modifiedArgs
+      modifiedArgs: options?.modifiedArgs
     })
     removeApproval(approval.requestId)
   }, [props.plugin, removeApproval, reviewingApprovals])
@@ -1801,6 +1822,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [])
 
+  const autoAcceptBannerEl = hitlAutoAccept && pendingApprovals.length === 0 && (
+    <div
+      className="hitl-auto-accept-banner"
+      data-id="hitl-auto-accept-banner"
+    >
+      <span className="hitl-auto-accept-banner__text">Auto-accepting all tool changes</span>
+      <button
+        onClick={toggleHitlAutoAccept}
+        className="hitl-auto-accept-banner__btn"
+        data-id="hitl-auto-accept-disable"
+      >
+        Disable
+      </button>
+    </div>
+  )
+
   return (
     props.isInitializing ? (
       <div
@@ -1849,7 +1886,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
           {/* Maximized Mode: Always show chat area */}
           {props.isMaximized ? (
-            <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+            <div className={`d-flex flex-column flex-grow-1 always-show ${messages.length === 0 ? 'ai-assistant-bg' : 'ai-chat-area-flat'}`} style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
               <ChatHistoryHeading
                 onNewChat={props.onNewConversation || (() => {})}
                 onToggleHistory={props.onToggleHistorySidebar || (() => {})}
@@ -1887,7 +1924,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   onDappReviewViewDiff={handleDappReviewViewDiff}
                 />
                 {pendingApprovals.length > 1 && (
-                  <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
+                  <div className="hitl-pending-summary">
                     <div className="d-flex justify-content-between align-items-center">
                       <span className="fw-bold">Multiple Changes Pending ({pendingApprovals.length})</span>
                       <div className="d-flex gap-2">
@@ -1913,7 +1950,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   <div key={approval.requestId} style={{ padding: '0 12px', marginBottom: '8px' }}>
                     <ToolApprovalModal
                       request={approval}
-                      onApprove={(modifiedArgs) => handleApproveToolAction(approval, modifiedArgs)}
+                      onApprove={(options) => handleApproveToolAction(approval, options)}
                       onReject={() => handleRejectToolAction(approval)}
                       onTimeout={() => handleTimeoutToolAction(approval)}
                       onReviewChanges={() => handleReviewChanges(approval)}
@@ -1922,6 +1959,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   </div>
                 ))}
               </section>
+              {autoAcceptBannerEl}
             </div>
           ) : (
           /* Non-Maximized Mode: Toggle between history view and chat view */
@@ -1964,10 +2002,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     theme={themeTracker?.name}
                   />
                 </div>
+                {autoAcceptBannerEl}
               </div>
             ) : (
             /* Show chat area when sidebar is closed */
-              <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : ''}`} style={{ overflow: 'hidden', minHeight: 0, backgroundColor: messages.length > 0 ? (themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') : undefined }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+              <div className={`d-flex flex-column flex-grow-1 sideBarIsClosed ${messages.length === 0 ? 'ai-assistant-bg' : 'ai-chat-area-flat'}`} style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
                 <ChatHistoryHeading
                   onNewChat={props.onNewConversation || (() => {})}
                   onToggleHistory={props.onToggleHistorySidebar || (() => {})}
@@ -2005,7 +2044,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     onDappReviewViewDiff={handleDappReviewViewDiff}
                   />
                   {pendingApprovals.length > 1 && (
-                    <div style={{ padding: '12px', borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
+                    <div className="hitl-pending-summary">
                       <div className="d-flex justify-content-between align-items-center">
                         <span className="fw-bold">Multiple Changes Pending ({pendingApprovals.length})</span>
                         <div className="d-flex gap-2">
@@ -2031,7 +2070,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     <div key={approval.requestId} style={{ padding: '0 12px', marginBottom: '8px' }}>
                       <ToolApprovalModal
                         request={approval}
-                        onApprove={(modifiedArgs) => handleApproveToolAction(approval, modifiedArgs)}
+                        onApprove={(options) => handleApproveToolAction(approval, options)}
                         onReject={() => handleRejectToolAction(approval)}
                         onTimeout={() => handleTimeoutToolAction(approval)}
                         onReviewChanges={() => handleReviewChanges(approval)}
@@ -2040,6 +2079,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     </div>
                   ))}
                 </section>
+                {autoAcceptBannerEl}
               </div>
             )
           )}
