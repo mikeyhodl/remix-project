@@ -1,4 +1,7 @@
-import { AIMessage, AgentMiddleware, BaseMessage, ModelRequest, WrapModelCallHandler, trimMessages } from 'langchain'
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable no-case-declarations */
+/* eslint-disable no-useless-escape */
+import { AgentMiddleware, ModelRequest, WrapModelCallHandler } from 'langchain'
 
 /**
  * Custom middleware for DeepAgent with beforeModel hook functionality
