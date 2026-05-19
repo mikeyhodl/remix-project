@@ -662,8 +662,6 @@ export class RemixAIPlugin extends Plugin {
     }
   }
 
-
-
   private async refreshMCPServersOnAuthChange(authState: any): Promise<void> {
     return this.mcpManager.refreshOnAuthChange(authState)
   }
