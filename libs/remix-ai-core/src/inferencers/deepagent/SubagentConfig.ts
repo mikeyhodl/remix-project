@@ -47,7 +47,7 @@ export function buildSubagentConfigs(
   tools: DynamicStructuredTool[],
   model: BaseChatModel,
   filesystemBackend: any
-): (SubAgent | CompiledSubAgent)[] {
+): any[] {
   const etherscanTools = getEtherscanToolsForEtherscanSpecialist(tools)
   const theGraphTools = getTheGraphToolsForTheGraphSpecialist(tools)
   const alchemyTools = getAlchemyToolsForAlchemySpecialist(tools)
@@ -82,6 +82,9 @@ export function buildSubagentConfigs(
     }]
   })
 
+  // Cast model to any to handle @langchain/core version mismatch between root and deepagents
+  const modelAny = model as any
+
   return [
     {
       name: 'Contract Classifier',
@@ -93,21 +96,21 @@ export function buildSubagentConfigs(
     {
       name: 'Solidity Engineer',
       systemPrompt: SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: solidityTools,
       description: 'Expert in Solidity development, code generation, and smart contract architecture. Can write, explain, and optimize Solidity code.'
     },
     {
       name: 'Web Search Specialist',
       systemPrompt: WEB_SEARCH_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: webSearchTools,
       description: 'Specializes in searching and retrieving information from web sources.'
     },
     {
       name: 'Code Reviewer',
       systemPrompt: CODE_REVIEWER_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: [],
       description: 'Specializes in reviewing and providing feedback on code quality and best practices.'
     },
@@ -121,56 +124,56 @@ export function buildSubagentConfigs(
     {
       name: 'Web3 Educator',
       systemPrompt: WEB3_EDUCATOR_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: educationTools,
       description: 'Specializes in teaching and explaining Web3 concepts and technologies.'
     },
     {
       name: 'Frontend Specialist',
       systemPrompt: FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: [],
       description: 'Specializes in frontend development and user interface design.'
     },
     {
       name: 'Etherscan Specialist',
       systemPrompt: ETHERSCAN_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: etherscanTools,
       description: 'Specializes in analyzing and retrieving data from the Etherscan blockchain explorer.'
     },
     {
       name: 'TheGraph Specialist',
       systemPrompt: THEGRAPH_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: theGraphTools,
       description: 'Specializes in analyzing and retrieving data from TheGraph decentralized query protocol.'
     },
     {
       name: 'Alchemy Specialist',
       systemPrompt: ALCHEMY_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: alchemyTools,
       description: 'Specializes in analyzing and retrieving data from the Alchemy blockchain infrastructure.'
     },
     {
       name: 'Debug Specialist',
       systemPrompt: DEBUG_SPECIALIST_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: debugTools,
       description: 'Specializes in debugging and troubleshooting smart contract issues.'
     },
     {
       name: 'Conversion Utilities Specialist',
       systemPrompt: CONVERSION_UTILITIES_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: conversionTools,
       description: 'Specializes in providing conversion utilities for various data formats.'
     },
     {
       name: 'Circle Specialist',
       systemPrompt: CIRCLE_SUBAGENT_PROMPT,
-      model,
+      model: modelAny,
       tools: circleTools,
       description: 'Specializes in Circle product documentation, APIs, and development resources.'
     }
