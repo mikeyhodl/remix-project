@@ -25,7 +25,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
   inputSchema = {
     type: 'object',
     properties: {
-      file: {
+      filePath: {
         type: 'string',
         description: ''
       },

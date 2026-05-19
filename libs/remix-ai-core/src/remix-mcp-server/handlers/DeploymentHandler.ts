@@ -290,12 +290,12 @@ export class RunScriptHandler extends BaseToolHandler {
   inputSchema = {
     type: 'object',
     properties: {
-      file: {
+      filePath: {
         type: 'string',
         description: ''
       }
     },
-    required: ['file']
+    required: ['filePath']
   };
 
   getPermissions(): string[] {
