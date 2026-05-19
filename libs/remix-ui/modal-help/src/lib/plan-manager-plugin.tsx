@@ -1363,6 +1363,175 @@ const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnaps
    Sections
    ───────────────────────────────────────────────────────────────────────── */
 
+// Pure helper — discount per plan = 1 − (yearly / (monthly × 12)).
+function computeYearlySavings(p: any): { percent: number; monthsFree: number } | null {
+  const prices: any[] = Array.isArray(p?.prices) ? p.prices : []
+  const m = prices.find((pr: any) => pr.billing_interval === 'month' && pr.is_active !== false)
+  const y = prices.find((pr: any) => pr.billing_interval === 'year' && pr.is_active !== false)
+  if (!m || !y || !m.price_cents || !y.price_cents) return null
+  const monthlyTotal = m.price_cents * 12
+  if (monthlyTotal <= 0) return null
+  const pct = Math.max(0, Math.round((1 - y.price_cents / monthlyTotal) * 100))
+  const monthsFree = Math.max(0, Math.round((monthlyTotal - y.price_cents) / m.price_cents))
+  return { percent: pct, monthsFree }
+}
+
+const PlanCard: React.FC<{
+  plan: any
+  isCurrent: boolean
+  isRecommended: boolean
+  isPurchasing: boolean
+  anyPurchasing: boolean
+  isTrialEligible: boolean
+  cancelledNotice: { expiresOn: string | null } | null
+  onSubscribe: (planId: string, priceId?: number) => void
+  onCancel: () => void
+}> = ({ plan, isCurrent, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel }) => {
+  const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
+  const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
+  const hasMonthly = activePrices.some((pr: any) => pr.billing_interval === 'month')
+  const hasYearly = activePrices.some((pr: any) => pr.billing_interval === 'year')
+  const hasBothCadences = hasMonthly && hasYearly
+  const [cadence, setCadence] = React.useState<'month' | 'year'>('month')
+  const cadencePrice = activePrices.find((pr: any) => pr.billing_interval === cadence)
+  const defaultPrice = activePrices.find((pr: any) => pr.is_default) || activePrices[0]
+  const selectedPrice = cadencePrice || defaultPrice || null
+  const selectedPriceCents: number = selectedPrice?.price_cents ?? plan.priceUsd ?? 0
+  const selectedInterval: string = selectedPrice?.billing_interval ?? plan.billingInterval ?? 'month'
+  const selectedPriceId: number | undefined = typeof selectedPrice?.id === 'number' ? selectedPrice.id : undefined
+
+  const planSavings = computeYearlySavings(plan)
+  const monthlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'month')
+  const yearlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'year')
+  let savingsBadge: string | null = null
+  if (planSavings && planSavings.percent > 0 && monthlyPrice && yearlyPrice && cadence === 'year') {
+    const dollarsSaved = Math.max(0, (monthlyPrice.price_cents * 12 - yearlyPrice.price_cents) / 100)
+    const dollarLabel = dollarsSaved >= 1 ? `$${dollarsSaved.toFixed(dollarsSaved % 1 === 0 ? 0 : 2)}` : null
+    const parts: string[] = []
+    if (dollarLabel) parts.push(`Save ${dollarLabel} / yr`)
+    else parts.push(`Save ${planSavings.percent}%`)
+    if (planSavings.monthsFree > 0) parts.push(`${planSavings.monthsFree} months free`)
+    savingsBadge = parts.join(' · ')
+  }
+
+  const priceLabel = selectedPriceCents === 0 ? 'Free' : `$${(selectedPriceCents / 100).toFixed(2)}`
+  const cadenceLabel = selectedPriceCents === 0
+    ? 'forever'
+    : selectedInterval === 'year' ? 'per year' : 'per month'
+  const isFree = selectedPriceCents === 0
+  const trialDays = Number(plan.trialPeriodDays) || 0
+  const showTrial = trialDays > 0 && isTrialEligible && !isCurrent && !isFree
+  const trialCredits = Number(plan.trialCredits) || 0
+  const disabled = isCurrent || isFree || anyPurchasing
+  const accent = pickAccent(plan.id)
+
+  return (
+    <article
+      className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
+      style={{ '--pm-accent': accent } as React.CSSProperties}
+    >
+      {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
+      {isCurrent && <div className="pm-plan__current">Current</div>}
+      {showTrial && (
+        <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
+          <i className="fas fa-gift"></i>
+          <span>{trialDays}-day free trial</span>
+        </div>
+      )}
+
+      <header className="pm-plan__head">
+        <div className="pm-plan__name">{plan.name}</div>
+        <div className="pm-plan__tag">{plan.description}</div>
+      </header>
+
+      {hasBothCadences && (
+        <div className="pm-plans__cadence" role="tablist" aria-label="Billing cadence">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cadence === 'month'}
+            className={`pm-plans__cadence-btn ${cadence === 'month' ? 'is-active' : ''}`}
+            onClick={() => setCadence('month')}
+          >Monthly</button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cadence === 'year'}
+            className={`pm-plans__cadence-btn ${cadence === 'year' ? 'is-active' : ''}`}
+            onClick={() => setCadence('year')}
+          >
+            Yearly
+            {planSavings && planSavings.percent > 0 && (
+              <span className="pm-plans__cadence-hint">save {planSavings.percent}%</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      <div className="pm-plan__price">
+        <span className="pm-plan__price-num">{priceLabel}</span>
+        <span className="pm-plan__price-cad">{cadenceLabel}</span>
+      </div>
+      {savingsBadge && (
+        <div className="pm-plan__savings" title="Compared to paying month-to-month">
+          <i className="fas fa-sparkles" aria-hidden></i>
+          <span>{savingsBadge}</span>
+        </div>
+      )}
+
+      <ul className="pm-plan__features">
+        <li>
+          <i className="fas fa-check"></i>
+          <span>{plan.creditsPerMonth.toLocaleString()} credits / month</span>
+        </li>
+        {(plan.features ?? []).map((f: string) => (
+          <li key={f}>
+            <i className="fas fa-check"></i>
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        className={`pm-plan__btn ${disabled ? 'is-disabled' : ''} ${showTrial ? 'is-trial' : ''}`}
+        disabled={disabled}
+        onClick={() => { if (!disabled) onSubscribe(plan.id, selectedPriceId) }}
+      >
+        {isCurrent ? 'Active'
+          : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>
+            : isFree ? 'Always free'
+              : showTrial
+                ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
+                : `Switch to ${plan.name}`}
+      </button>
+      {/* Cancel affordance — only on the active *paid* plan. Free /
+          beta have no subscription row to cancel. */}
+      {isCurrent && !isFree && (
+        <>
+          {cancelledNotice && (
+            <div className="pm-plan__cancel-notice" role="status">
+              <i className="fas fa-circle-exclamation"></i>
+              <span>
+                {cancelledNotice.expiresOn
+                  ? <>Active until {formatDate(cancelledNotice.expiresOn)} · will not renew</>
+                  : <>Will not renew</>}
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            className="pm-plan__cancel-link"
+            onClick={() => onCancel()}
+            title="Cancel your subscription"
+          >
+            {cancelledNotice ? 'Manage cancellation' : 'Cancel subscription'}
+          </button>
+        </>
+      )}
+    </article>
+  )
+}
+
 const PlansSection: React.FC<{
   plans: any[]
   currentPlanId: string | null
@@ -1381,34 +1550,6 @@ const PlansSection: React.FC<{
   /** When the active paid sub is set to cancel, show "will not renew" copy. */
   cancelledNotice: { expiresOn: string | null } | null
 }> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
-  // Cadence toggle — only meaningful when at least one plan exposes both
-  // a monthly and a yearly price. Default to monthly to match historical UX.
-  const hasYearlyAnywhere = plans.some((p: any) =>
-    Array.isArray(p?.prices) && p.prices.some((pr: any) => pr.billing_interval === 'year' && pr.is_active !== false))
-  const hasMonthlyAnywhere = plans.some((p: any) =>
-    Array.isArray(p?.prices) && p.prices.some((pr: any) => pr.billing_interval === 'month' && pr.is_active !== false))
-  const showCadenceToggle = hasYearlyAnywhere && hasMonthlyAnywhere
-  const [cadence, setCadence] = React.useState<'month' | 'year'>('month')
-
-  // Promo copy — figure out the *best* yearly discount across all plans so
-  // the toggle hint can be specific ("save up to 17%") rather than vague.
-  // Discount per plan = 1 − (yearly / (monthly × 12)).
-  const computeYearlySavings = (p: any): { percent: number; monthsFree: number } | null => {
-    const prices: any[] = Array.isArray(p?.prices) ? p.prices : []
-    const m = prices.find((pr: any) => pr.billing_interval === 'month' && pr.is_active !== false)
-    const y = prices.find((pr: any) => pr.billing_interval === 'year' && pr.is_active !== false)
-    if (!m || !y || !m.price_cents || !y.price_cents) return null
-    const monthlyTotal = m.price_cents * 12
-    if (monthlyTotal <= 0) return null
-    const pct = Math.max(0, Math.round((1 - y.price_cents / monthlyTotal) * 100))
-    const monthsFree = Math.max(0, Math.round((monthlyTotal - y.price_cents) / m.price_cents))
-    return { percent: pct, monthsFree }
-  }
-  const bestYearlySavingsPct = plans.reduce<number>((best, p) => {
-    const s = computeYearlySavings(p)
-    return s && s.percent > best ? s.percent : best
-  }, 0)
-
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -1438,182 +1579,24 @@ const PlansSection: React.FC<{
           </span>
         </div>
       )}
-      {showCadenceToggle && (
-        <div className="pm-plans__cadence" role="tablist" aria-label="Billing cadence">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={cadence === 'month'}
-            className={`pm-plans__cadence-btn ${cadence === 'month' ? 'is-active' : ''}`}
-            onClick={() => setCadence('month')}
-          >Monthly</button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={cadence === 'year'}
-            className={`pm-plans__cadence-btn ${cadence === 'year' ? 'is-active' : ''}`}
-            onClick={() => setCadence('year')}
-          >
-            Yearly
-            <span className="pm-plans__cadence-hint">
-              {bestYearlySavingsPct > 0 ? `save up to ${bestYearlySavingsPct}%` : 'save with annual'}
-            </span>
-          </button>
-        </div>
-      )}
       {sorted.map(plan => {
         const isCurrent = plan.id === currentPlanId ||
           (plan.featureGroupName != null && userFeatureGroupNames.includes(plan.featureGroupName))
         const isRecommended = plan.id === recommendedId
         const isPurchasing = purchasingId === plan.id
-        const accent = pickAccent(plan.id)
-        // Pick which price to display + bill for. Prefer the user-selected
-        // cadence; fall back to the plan's default price; finally fall back
-        // to the legacy single-price fields on `plan`.
-        const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
-        const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
-        const cadencePrice = activePrices.find((pr: any) => pr.billing_interval === cadence)
-        const defaultPrice = activePrices.find((pr: any) => pr.is_default) || activePrices[0]
-        const selectedPrice = cadencePrice || defaultPrice || null
-        const selectedPriceCents: number = selectedPrice?.price_cents ?? plan.priceUsd ?? 0
-        const selectedInterval: string = selectedPrice?.billing_interval ?? plan.billingInterval ?? 'month'
-        const selectedPriceId: number | undefined = typeof selectedPrice?.id === 'number' ? selectedPrice.id : undefined
-        // If the user picked 'year' but this plan only offers monthly, dim the
-        // CTA copy slightly to make the fallback visible. Skip the hint for
-        // free tiers — "monthly only" reads weird next to "Free forever".
-        const cadenceMismatch = showCadenceToggle && !cadencePrice && selectedInterval !== cadence && selectedPriceCents > 0
-
-        // Promo copy per card. Two flavors:
-        //   - On the *yearly* tab, show how much the user is saving vs paying
-        //     monthly for a year ("Save $X / yr · N months free").
-        //   - On the *monthly* tab, tease the yearly discount as a nudge
-        //     toward the better-value option.
-        const planSavings = computeYearlySavings(plan)
-        const monthlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'month')
-        const yearlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'year')
-        let savingsBadge: string | null = null
-        let savingsTease: string | null = null
-        if (planSavings && planSavings.percent > 0 && monthlyPrice && yearlyPrice) {
-          const dollarsSaved = Math.max(0, (monthlyPrice.price_cents * 12 - yearlyPrice.price_cents) / 100)
-          const dollarLabel = dollarsSaved >= 1 ? `$${dollarsSaved.toFixed(dollarsSaved % 1 === 0 ? 0 : 2)}` : null
-          if (cadence === 'year') {
-            const parts: string[] = []
-            if (dollarLabel) parts.push(`Save ${dollarLabel} / yr`)
-            else parts.push(`Save ${planSavings.percent}%`)
-            if (planSavings.monthsFree > 0) parts.push(`${planSavings.monthsFree} months free`)
-            savingsBadge = parts.join(' · ')
-          } else {
-            savingsTease = `Pay yearly → save ${planSavings.percent}%${planSavings.monthsFree > 0 ? ` (${planSavings.monthsFree} months free)` : ''}`
-          }
-        }
-
-        const priceLabel = selectedPriceCents === 0 ? 'Free' : `$${(selectedPriceCents / 100).toFixed(2)}`
-        const cadenceLabel = selectedPriceCents === 0
-          ? 'forever'
-          : selectedInterval === 'year' ? 'per year' : 'per month'
-        // Free plans don't go through Paddle — disable the CTA for now.
-        const isFree = selectedPriceCents === 0
-        // Plan offers a trial AND the user can still claim it AND they're not
-        // already on this plan AND it's a paid plan. Treats `null`/missing as 0.
-        const trialDays = Number(plan.trialPeriodDays) || 0
-        const showTrial = trialDays > 0 && isTrialEligible && !isCurrent && !isFree
-        const trialCredits = Number(plan.trialCredits) || 0
-        const disabled = isCurrent || isFree || anyPurchasing
         return (
-          <article
+          <PlanCard
             key={plan.id}
-            className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
-            style={{ '--pm-accent': accent } as React.CSSProperties}
-          >
-            {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
-            {isCurrent && <div className="pm-plan__current">Current</div>}
-            {showTrial && (
-              <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
-                <i className="fas fa-gift"></i>
-                <span>{trialDays}-day free trial</span>
-              </div>
-            )}
-
-            <header className="pm-plan__head">
-              <div className="pm-plan__name">{plan.name}</div>
-              <div className="pm-plan__tag">{plan.description}</div>
-            </header>
-
-            <div className="pm-plan__price">
-              <span className="pm-plan__price-num">{priceLabel}</span>
-              <span className="pm-plan__price-cad">{cadenceLabel}</span>
-              {cadenceMismatch && (
-                <span className="pm-plan__price-note" title="This plan is only billed monthly">monthly only</span>
-              )}
-            </div>
-            {savingsBadge && (
-              <div className="pm-plan__savings" title="Compared to paying month-to-month">
-                <i className="fas fa-sparkles" aria-hidden></i>
-                <span>{savingsBadge}</span>
-              </div>
-            )}
-            {savingsTease && (
-              <button
-                type="button"
-                className="pm-plan__savings-tease"
-                onClick={() => setCadence('year')}
-                title="Switch to yearly billing"
-              >
-                <i className="fas fa-arrow-right" aria-hidden></i>
-                <span>{savingsTease}</span>
-              </button>
-            )}
-
-            <ul className="pm-plan__features">
-              <li>
-                <i className="fas fa-check"></i>
-                <span>{plan.creditsPerMonth.toLocaleString()} credits / month</span>
-              </li>
-              {(plan.features ?? []).map((f: string) => (
-                <li key={f}>
-                  <i className="fas fa-check"></i>
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-
-            <button
-              className={`pm-plan__btn ${disabled ? 'is-disabled' : ''} ${showTrial ? 'is-trial' : ''}`}
-              disabled={disabled}
-              onClick={() => { if (!disabled) onSubscribe(plan.id, selectedPriceId) }}
-            >
-              {isCurrent ? 'Active'
-                : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>
-                  : isFree ? 'Always free'
-                    : showTrial
-                      ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
-                      : `Switch to ${plan.name}`}
-            </button>
-            {/* Cancel affordance — only on the active *paid* plan. Free /
-                beta have no subscription row to cancel. */}
-            {isCurrent && !isFree && (
-              <>
-                {cancelledNotice && (
-                  <div className="pm-plan__cancel-notice" role="status">
-                    <i className="fas fa-circle-exclamation"></i>
-                    <span>
-                      {cancelledNotice.expiresOn
-                        ? <>Active until {formatDate(cancelledNotice.expiresOn)} · will not renew</>
-                        : <>Will not renew</>}
-                    </span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="pm-plan__cancel-link"
-                  onClick={() => onCancel()}
-                  title="Cancel your subscription"
-                >
-                  {cancelledNotice ? 'Manage cancellation' : 'Cancel subscription'}
-                </button>
-              </>
-            )}
-          </article>
+            plan={plan}
+            isCurrent={isCurrent}
+            isRecommended={isRecommended}
+            isPurchasing={isPurchasing}
+            anyPurchasing={anyPurchasing}
+            isTrialEligible={isTrialEligible}
+            cancelledNotice={cancelledNotice}
+            onSubscribe={onSubscribe}
+            onCancel={onCancel}
+          />
         )
       })}
       {/* Team / Enterprise contact strip — compact one-liner so it doesn't
