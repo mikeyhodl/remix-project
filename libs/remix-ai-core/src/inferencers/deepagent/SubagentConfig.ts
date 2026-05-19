@@ -71,18 +71,18 @@ export function buildSubagentConfigs(
     systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
     tools: coordinationTools,
     subagents: [{
-        name: 'Gas Optimizer',
-        systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
-        model,
-        tools: basicFileTools,
-        description: 'Specializes in optimizing gas usage in smart contracts.'
-      },{
-        name: 'Security Analyst',
-        systemPrompt: SECURITY_ANALYSIS_PROMPT,
-        model,
-        tools: basicMcpTools,
-        description: 'Specializes reviewing code for security vulnerabilities.'
-      }]
+      name: 'Gas Optimizer',
+      systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
+      model,
+      tools: basicFileTools,
+      description: 'Specializes in optimizing gas usage in smart contracts.'
+    },{
+      name: 'Security Analyst',
+      systemPrompt: SECURITY_ANALYSIS_PROMPT,
+      model,
+      tools: basicMcpTools,
+      description: 'Specializes reviewing code for security vulnerabilities.'
+    }]
   })
 
   // Cast model to any to handle @langchain/core version mismatch between root and deepagents
@@ -122,7 +122,7 @@ export function buildSubagentConfigs(
       systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
       model,
       description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
-      runnable: comprehensiveAuditor    
+      runnable: comprehensiveAuditor
     },
     {
       name: 'Web3 Educator',
