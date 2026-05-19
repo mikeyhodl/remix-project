@@ -16,7 +16,6 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
    * @returns The result from the model call
    */
   async wrapModelCall(request: ModelRequest, handler: WrapModelCallHandler) {
-    console.log(request)
     // Before model call - log the request
     console.log('[RemixDeepAgentMiddleware] Before model call:', {
       messages: request?.messages?.length || 0,

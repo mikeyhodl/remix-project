@@ -245,3 +245,17 @@ export function filterOutFileOperationTools(tools: DynamicStructuredTool[]): Dyn
 
   return filteredTools
 }
+
+export function getQuickDappToolsForQuickDappSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const quickDappToolNames = [
+    'file_write',
+    'file_create',
+    'file_read',
+    'file_replace',
+    'directory_list',
+    'read_file_chunk',
+    'finalize_dapp_generation',
+    'fetch_figma_design'
+  ]
+  return tools.filter(tool => quickDappToolNames.includes(tool.name))
+}

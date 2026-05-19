@@ -171,9 +171,15 @@ export class QuickDappV2 extends ViewPlugin {
     if (!Array.isArray(payload.abi) || payload.abi.length === 0) {
       throw new Error(`createDappWorkspace: ABI must be a non-empty array`);
     }
-    if (payload.chainId === undefined || payload.chainId === null || String(payload.chainId) === 'undefined') {
-      console.warn('[QuickDapp] chainId undefined, defaulting to vm-osaka');
-      payload.chainId = 'vm-osaka';
+    if (!payload.chainId || payload.chainId === '-' || String(payload.chainId) === 'undefined') {
+      // AI may pass network.id ("-") instead of the provider name ("vm-osaka").
+      // Resolve the actual provider to get a valid chainId.
+      let resolved: string | null = null;
+      try {
+        resolved = await this.call('blockchain' as any, 'getProvider');
+      } catch (_) {}
+      console.warn(`[QuickDapp] chainId invalid ("${payload.chainId}"), resolved from provider: "${resolved}"`);
+      payload.chainId = resolved || 'vm-osaka';
     }
 
     const name = payload.contractName || 'Untitled';
@@ -181,8 +187,6 @@ export class QuickDappV2 extends ViewPlugin {
     const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 6)}`;
     const workspaceName = `${DAPP_WORKSPACE_PREFIX}${slug}`;
     const timestamp = Date.now();
-
-    console.log('[QuickDapp] createDappWorkspace called', { contractName: payload.contractName, address: payload.address });
 
     let sourceWorkspaceName = 'default_workspace';
     try {
@@ -237,6 +241,11 @@ export class QuickDappV2 extends ViewPlugin {
     let vmStateSnapshot: string | null = null;
     const vmProviderName = payload.chainId && String(payload.chainId).startsWith('vm-')
       ? String(payload.chainId) : null;
+
+    let actualProvider: string | null = null;
+    try {
+      actualProvider = await this.call('blockchain' as any, 'getProvider');
+    } catch (_) {}
     if (vmProviderName) {
       try {
         try {
@@ -250,6 +259,20 @@ export class QuickDappV2 extends ViewPlugin {
         const stateExists = await this.call('fileManager', 'exists', statePath);
         if (stateExists) {
           vmStateSnapshot = await this.call('fileManager', 'readFile', statePath) as string;
+        }
+
+        if (!vmStateSnapshot) {
+          try {
+            const directState = await Promise.race([
+              this.call('blockchain' as any, 'getStateDetails'),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+            ]) as string;
+            if (directState && directState.length > 2) {
+              vmStateSnapshot = directState;
+            }
+          } catch (e2) {
+            console.warn('[QuickDapp] getStateDetails fallback also failed:', e2);
+          }
         }
       } catch (e) {
         console.warn('[QuickDapp] VM state capture failed (non-critical):', e);
@@ -296,6 +319,13 @@ export class QuickDappV2 extends ViewPlugin {
         try { await this.call('fileManager', 'mkdir', '.states'); } catch (_) {}
         try { await this.call('fileManager', 'mkdir', `.states/${vmProviderName}`); } catch (_) {}
         await this.call('fileManager', 'writeFile', `.states/${vmProviderName}/state.json`, vmStateSnapshot);
+
+        // Explicitly reload VM state into memory.
+        try {
+          await this.call('blockchain' as any, 'loadContext', vmProviderName);
+        } catch (e2) {
+          console.warn('[QuickDapp] loadContext after state restore failed (non-critical):', e2);
+        }
       } catch (e) {
         console.warn('[QuickDapp] VM state restore failed (non-critical):', e);
       }

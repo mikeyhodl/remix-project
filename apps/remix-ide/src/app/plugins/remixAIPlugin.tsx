@@ -10,7 +10,7 @@ import { AIModel, getDefaultModel, getModelById, IUserApiKeyConfig } from '@remi
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 import { Registry } from '@remix-project/remix-lib'
-import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, DAppGenerationManager, ChatRequestBuffer, ApiKeySettingsHelper } from './remixAI'
+import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, ChatRequestBuffer, ApiKeySettingsHelper } from './remixAI'
 
 const profile = {
   name: 'remixAI',
@@ -30,7 +30,6 @@ const profile = {
     'setAutoMode', 'getAutoModeStatus',
     'clearCaches', 'cancelRequest',
     'getAllowedModels', 'setModelAccess',
-    'generateDAppContent', 'fetchFigmaDesign', 'generateDAppFromFigma',
     'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy'
   ],
   events: [
@@ -80,7 +79,6 @@ export class RemixAIPlugin extends Plugin {
   private permissionChecker: PermissionChecker
   private modelManager: ModelManager
   private deepAgentManager: DeepAgentManager
-  private dappManager: DAppGenerationManager
 
   constructor() {
     super(profile)
@@ -100,7 +98,6 @@ export class RemixAIPlugin extends Plugin {
       mcpManager: this.mcpManager,
       setupDeepAgentEventListeners: () => this.setupDeepAgentEventListeners()
     })
-    this.dappManager = new DAppGenerationManager({ plugin: this as any })
     // Set up MCP manager deps after all managers are created
     this.mcpManager.setDeps({
       plugin: this as any,
@@ -663,33 +660,6 @@ export class RemixAIPlugin extends Plugin {
     } else if (this.remoteInferencer) {
       (this.remoteInferencer as RemoteInferencer).cancelRequest()
     }
-  }
-
-  async generateDAppContent(params: {
-    messages: any[];
-    systemPrompt: string;
-    hasImage?: boolean;
-    isUpdate?: boolean;
-    hasFigma?: boolean;
-  }): Promise<string> {
-    return this.dappManager.generateDAppContent(params)
-  }
-
-  async fetchFigmaDesign(params: {
-    figmaUrl: string;
-    figmaToken: string;
-  }): Promise<{ success: boolean; fileName?: string; rawJson?: string; fileKey?: string; message?: string }> {
-    return this.dappManager.fetchFigmaDesign(params)
-  }
-
-  async generateDAppFromFigma(params: {
-    figmaUrl: string;
-    figmaToken: string;
-    description?: string;
-    systemPrompt: string;
-    isBaseMiniApp?: boolean;
-  }): Promise<string> {
-    return this.dappManager.generateDAppFromFigma(params)
   }
 
   private async refreshMCPServersOnAuthChange(authState: any): Promise<void> {

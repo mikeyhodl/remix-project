@@ -56,7 +56,6 @@ import { createFoundryHardhatTools } from './handlers/FoundryHardhatHandler';
 import { createCoordinationTools } from './handlers/CoordinationHandler';
 import { createSkillTools } from './handlers/SkillLoaderHandler';
 import { createDAppGeneratorTools } from './handlers/DAppGeneratorHandler';
-import { createFigmaTools } from './handlers/FigmaHandler';
 
 // Import resource providers
 import { ProjectResourceProvider } from './providers/ProjectResourceProvider';
@@ -886,10 +885,6 @@ export class RemixMCPServer extends EventEmitter implements IRemixMCPServer {
       // Register DApp Generator tools
       const dappGeneratorTools = createDAppGeneratorTools();
       this._tools.registerBatch(dappGeneratorTools);
-
-      // Register Figma tools
-      const figmaTools = createFigmaTools();
-      this._tools.registerBatch(figmaTools);
 
       const totalTools = this._tools.list().length;
 

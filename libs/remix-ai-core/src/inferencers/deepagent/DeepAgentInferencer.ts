@@ -415,95 +415,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   /**
-   * Answer with a custom system prompt - used for specialized generation like DApps.
-   * Creates a dedicated model instance with higher token limit (16384) to avoid
-   * truncation in large code generation tasks. Streams the response so the user
-   * gets real-time feedback during generation. Returns the full concatenated result
-   * for the caller to parse.
-   */
-  async answerWithCustomSystemPrompt(
-    prompt: string,
-    systemPrompt: string,
-    params: IParams,
-    imageBase64?: string
-  ): Promise<string> {
-    this.event.emit('onInference')
-    this.currentAbortController = new AbortController()
-
-    try {
-      if (!this.model) {
-        throw new DeepAgentError(
-          'DeepAgent not initialized',
-          DeepAgentErrorType.INITIALIZATION_FAILED
-        )
-      }
-
-      const dappModel = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
-      const fullPrompt = `${systemPrompt}\n\n---\n\nUser Request:\n${prompt}`
-
-      let langchainMessages: any[]
-
-      if (imageBase64) {
-        langchainMessages = [
-          new HumanMessage({
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`
-                }
-              },
-              { type: 'text', text: fullPrompt }
-            ]
-          })
-        ]
-      } else {
-        langchainMessages = [new HumanMessage(fullPrompt)]
-      }
-
-      const timeoutMs = 120_000
-      const timeoutSignal = AbortSignal.timeout(timeoutMs)
-      const combinedController = this.currentAbortController!
-      timeoutSignal.addEventListener('abort', () => combinedController.abort(), { once: true })
-
-      const stream = await dappModel.stream(langchainMessages, {
-        signal: combinedController.signal
-      })
-
-      let result = ''
-      for await (const chunk of stream) {
-        if (combinedController.signal.aborted) break
-
-        let delta = ''
-        if (typeof chunk.content === 'string') {
-          delta = chunk.content
-        } else if (Array.isArray(chunk.content)) {
-          delta = chunk.content
-            .map((c: any) => (typeof c === 'string' ? c : c.text || ''))
-            .join('')
-        }
-
-        if (delta) {
-          result += delta
-          this.event.emit('onStreamResult', delta)
-        }
-      }
-
-      this.event.emit('onInferenceDone')
-      return result
-    } catch (error: any) {
-      this.event.emit('onInferenceDone')
-      if (error?.name === 'AbortError' || this.currentAbortController?.signal.aborted) {
-        return ''
-      }
-      console.error('[DeepAgent] answerWithCustomSystemPrompt error:', error?.message || error)
-      throw error
-    } finally {
-      this.currentAbortController = null
-    }
-  }
-
-  /**
    * Code completion method (not supported by DeepAgent, falls back)
    */
   async code_completion(prompt: string, context: string, ctxFiles: any, fileName: string, params: IParams): Promise<any> {
@@ -842,6 +753,16 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       this.currentAbortController.abort()
       this.currentAbortController = null
       this.event.emit('onInferenceDone')
+
+      // Reset QuickDapp dashboard processing state on cancellation.
+      // Without this, cancelling mid-generation leaves the dashboard spinner stuck.
+      try {
+        this.plugin.emit('generationProgress', null)
+        this.plugin.emit('dappGenerationError', {
+          slug: undefined,
+          error: 'Generation cancelled by user'
+        })
+      } catch (_) { /* best-effort cleanup */ }
     }
   }
 
