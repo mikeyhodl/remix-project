@@ -192,22 +192,6 @@ export function getCircleToolsForCircleSpecialist(tools: DynamicStructuredTool[]
   return circleTools
 }
 
-export function getFrontendToolsForFrontendSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const frontendToolNames = [
-    'list_dapps',
-    'generate_dapp',
-    'update_dapp',
-    'fetch_figma_design',
-    'generate_dapp_from_figma'
-  ]
-
-  const frontendTools = tools.filter(tool =>
-    frontendToolNames.includes(tool.name)
-  )
-
-  return frontendTools
-}
-
 export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const etherscanToolNames = new Set(getEtherscanToolsForEtherscanSpecialist(tools).map(t => t.name))
   const theGraphToolNames = new Set(getTheGraphToolsForTheGraphSpecialist(tools).map(t => t.name))
@@ -218,7 +202,7 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
   const debugToolNames = new Set(getDebugToolsForDebugSpecialist(tools).map(t => t.name))
   const solidityToolNames = new Set(getSolidityToolsForSolidityEngineer(tools).map(t => t.name))
   const webSearchToolNames = new Set(getWebSearchToolsForWebSearchSpecialist(tools).map(t => t.name))
-  const frontendToolNames = new Set(getFrontendToolsForFrontendSpecialist(tools).map(t => t.name))
+  const frontendToolNames = new Set(getQuickDappToolsForQuickDappSpecialist(tools).map(t => t.name))
   const conversionToolNames = new Set(getConversionToolsForConversionSpecialist(tools).map(t => t.name))
   const soldityComplierToolNames = new Set(getToolForSolidityCompiler(tools).map(t => t.name))
   const contractRunnerToolNames = new Set(getToolsForDeployer(tools).map(t => t.name))
@@ -275,12 +259,6 @@ export function filterOutFileOperationTools(tools: DynamicStructuredTool[]): Dyn
 
 export function getQuickDappToolsForQuickDappSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const quickDappToolNames = [
-    'file_write',
-    'file_create',
-    'file_read',
-    'file_replace',
-    'directory_list',
-    'read_file_chunk',
     'finalize_dapp_generation',
     'fetch_figma_design'
   ]

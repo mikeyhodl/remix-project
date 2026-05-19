@@ -2,21 +2,17 @@ import { SubAgent, CompiledSubAgent, createDeepAgent } from 'deepagents'
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import {
-  CODE_REVIEWER_SUBAGENT_PROMPT,
   FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
   ETHERSCAN_SUBAGENT_PROMPT,
   THEGRAPH_SUBAGENT_PROMPT,
   ALCHEMY_SUBAGENT_PROMPT,
   GAS_OPTIMIZER_SUBAGENT_PROMPT,
   COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
-  WEB3_EDUCATOR_SUBAGENT_PROMPT,
   CONVERSION_UTILITIES_SUBAGENT_PROMPT,
   DEBUG_SPECIALIST_SUBAGENT_PROMPT,
-  SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
   WEB_SEARCH_SUBAGENT_PROMPT,
   CIRCLE_SUBAGENT_PROMPT,
-  SECURITY_ANALYSIS_PROMPT,
-  QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT
+  QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
   CONTRACT_RUNNER_PROMPT,
   CONTRACT_COMPILER_PROMPT,
   CONTRACT_CLASSIFIER_PROMPT,
@@ -24,7 +20,6 @@ import {
 } from './prompts/system/lightPrompts'
 import {
   getBasicFileToolsForGasOptimizer,
-  getEducationToolsForWeb3Educator,
   getDebugToolsForDebugSpecialist,
   getSolidityToolsForSolidityEngineer,
   getWebSearchToolsForWebSearchSpecialist,
@@ -35,7 +30,7 @@ import {
   getCircleToolsForCircleSpecialist,
   getFileOperationTools,
   getToolForClassifierSpecialist,
-  getQuickDappToolsForQuickDappSpecialist
+  getQuickDappToolsForQuickDappSpecialist,
   getToolForSolidityCompiler,
   getToolsForDeployer,
   getSecurityToolsForSecurityAuditor

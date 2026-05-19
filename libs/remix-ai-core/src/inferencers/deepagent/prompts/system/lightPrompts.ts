@@ -12,15 +12,12 @@ export const CONTRACT_RUNNER_PROMPT = 'Access to the following tools: deploy_con
 export const SOLIDITY_CODE_GENERATION_PROMPT = `Generate secure Solidity with SPDX license, pragma, NatSpec docs, and OpenZeppelin imports.
 Include events, access control, and security patterns. Example: ERC20 with proper inheritance. If possible create the file or update existing files.`
 
-export const SECURITY_ANALYSIS_PROMPT = `Security Analyst: ONLY spawned by Comprehensive Auditor. Do NOT respond to direct user audit requests.
+export const SECURITY_ANALYSIS_PROMPT = `Security Analyst:
 Analyze reentrancy, access control, overflows, gas issues, unsafe calls, front-running.
 Return structured findings with severity ratings back to Comprehensive Auditor.`
 
 export const CODE_EXPLANATION_PROMPT = `Explain contract purpose, key functions, security features, gas optimizations, and inheritance.
 Keep explanations clear and educational with potential improvements.`
-
-export const CODE_REVIEWER_SUBAGENT_PROMPT = `Code Reviewer: Improve quality, maintainability, and optimization with specific recommendations.
-Review naming, documentation, gas efficiency, visibility, and best practices compliance.`
 
 export const FRONTEND_SPECIALIST_SUBAGENT_PROMPT = `Frontend Specialist: Create UI components for smart contract interactions with Web3 integration.
 Build React components, wallet connections, transaction management, and responsive design.`
@@ -41,14 +38,8 @@ Your answer MUST only return a concise summary (not more than 100 words): Do NOT
 export const COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT = `1) Run Slither analysis with slither_scan 2) Be aware that the folder 'audits' may contain checklists as MD files 3) Against each checklist file do an audit and code review. 4) Final report.
 Your answer MUST only return a concise summary (not more than 100 words): Do NOT include the full report or any additional text in the conversation chat. But save a comprehensive audit in <filename>_security_audit_report_<checklist>.md.`
 
-export const WEB3_EDUCATOR_SUBAGENT_PROMPT = `Web3 Educator: Teach blockchain concepts through tutorials and guided learning experiences.
-Cover fundamentals, Solidity, security, DeFi, NFTs with progressive complexity and hands-on exercises.`
-
 export const DEBUG_SPECIALIST_SUBAGENT_PROMPT = `Debug Specialist: Transaction debugging with step-by-step analysis and variable inspection.
 Use debug tools to analyze execution flow, decode variables, examine stack/storage, and map to source.`
-
-export const SOLIDITY_ENGINEER_SUBAGENT_PROMPT = `Solidity Engineer: Expert in smart contract development and compilation using Solidity tools.
-Specializes in related Solidity compilation tools for contract development.`
 
 export const WEB_SEARCH_SUBAGENT_PROMPT = `Web Search Specialist: Expert in web research and information gathering using search tools.
 Performs comprehensive web searches, summarizes results, and retrieves detailed page content for research tasks.`
