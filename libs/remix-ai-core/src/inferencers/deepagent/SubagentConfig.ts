@@ -136,7 +136,8 @@ export async function buildSubagentConfigs(
         systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
         model,
         tools: basicFileTools,
-        description: 'Specializes in optimizing gas usage in smart contracts.'
+        description: 'Specializes in optimizing gas usage in smart contracts.',
+        skills: ['/skills/solidity-gas-optimization']
       },
       {
         name: 'Contract Classifier',
