@@ -414,8 +414,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-
-
   /**
    * Code completion method (not supported by DeepAgent, falls back)
    */
