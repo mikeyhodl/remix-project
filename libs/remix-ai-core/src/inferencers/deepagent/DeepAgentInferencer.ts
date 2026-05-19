@@ -625,8 +625,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const checkpointer = new IndexedDBCheckpointSaver()
-      const generalTools = filterOutFileOperationTools(filterOutSpecialistTools(this.tools))
-
+      const hasSkillsPermission = await this.plugin.call('auth', 'hasPermission', 'ai:skills')
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
@@ -634,7 +633,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         tools: [],
         model: this.model,
         systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
-        skills: ["skills/"],
+        skills: hasSkillsPermission ? ["skills/"] : [],
         checkpointer,
         middleware: [new RemixDeepAgentMiddleware(this.plugin)]
       }
