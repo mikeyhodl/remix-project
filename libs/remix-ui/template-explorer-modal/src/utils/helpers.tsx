@@ -408,6 +408,16 @@ export const templatesRepository = [
       }
     ],
     IsArtefact: true
+  },
+  {
+    name: 'Chainlink CRE',
+    items: [
+      {
+        value: "crePredictionMarket",
+        displayName: 'Prediction Market',
+        description: 'CRE Bootcamp: Building AI-Powered Prediction Markets'
+      }
+    ]
   }
 ]
 

@@ -153,6 +153,20 @@ export class TemplateExplorerModalFacade {
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE, payload: item })
     dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_TEMPLATE_GROUP, payload: template.name })
 
+    // If in Files mode, add to current workspace instead of creating new one
+    if (this.state.manageCategory === 'Files') {
+      templateCategoryStrategy.setStrategy(new ScriptsStrategy())
+      templateCategoryStrategy.switchScreen(dispatch)
+      await this.plugin.call('templateexplorermodal', 'addArtefactsToWorkspace', item.value, {}, false, (err: Error) => {
+        if (err) {
+          console.error(err)
+        }
+      })
+      this.closeWizard()
+      return
+    }
+
+    // Legacy check for file-only categories (for backward compatibility)
     if (template.name.toLowerCase().includes('github actions') || template.name.toLowerCase().includes('contract verification') || template.name.toLowerCase().includes('solidity create2') || template.name.toLowerCase().includes( 'generic zkp')) {
       templateCategoryStrategy.setStrategy(new ScriptsStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
