@@ -639,6 +639,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
+      if (hitlAutoAcceptRef.current) {
+        props.plugin.call('remixAI', 'respondToToolApproval', {
+          requestId: request.requestId,
+          approved: true
+        }).catch((err: any) => console.error('[HITL][AutoAccept] Failed to auto-approve:', err))
+        return
+      }
       setPendingApprovals(prev => [...prev, request])
     }
     props.plugin.on('remixAI', 'onToolApprovalRequired', handleToolApproval)
@@ -1964,11 +1971,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           ) : (
           /* Non-Maximized Mode: Toggle between history view and chat view */
             props.showHistorySidebar && props.isMaximized === false && props.conversations ? (
-              <div className="d-flex flex-column flex-grow-1 ai-assistant-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
+              <div className="d-flex flex-column flex-grow-1 ai-history-view-bg nonMaximizedMode" style={{ overflow: 'hidden', minHeight: 0 }} data-theme={themeTracker && themeTracker?.name.toLowerCase()}>
                 {/* Back button header */}
                 <div
                   className="p-2 border-bottom"
-                  style={{ backgroundColor: themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5' }}
                 >
                   <button
                     className={`btn btn-sm ${themeTracker?.name.toLowerCase() === 'dark' ? 'btn-dark' : 'btn-light text-light-emphasis'}`}
