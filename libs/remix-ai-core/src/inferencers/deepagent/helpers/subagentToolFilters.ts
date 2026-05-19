@@ -1,14 +1,5 @@
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 
-export function getBasicMcpToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const basicToolNames = []
-
-  const basicTools = tools.filter(tool =>
-    basicToolNames.includes(tool.name)
-  )
-  return basicTools
-}
-
 export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const basicFileToolNames: string[] = []
 
@@ -18,7 +9,7 @@ export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[])
   return basicFileTools
 }
 
-export function getCoordinationToolsForComprehensiveAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+export function getSecurityToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const coordinationToolNames: string[] = [
     'slither_scan'
   ]
@@ -39,18 +30,6 @@ export function getEducationToolsForWeb3Educator(tools: DynamicStructuredTool[])
     educationToolNames.includes(tool.name)
   )
   return educationTools
-}
-
-export function getSecurityToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const securityTools = tools.filter(tool => {
-    // Check if tool comes from Security Auditor MCP server
-    const description = tool.description.toLowerCase()
-    return description.includes('[security]') ||
-           description.includes('security') ||
-           tool.name.toLowerCase() === 'classify_contract' 
-  })
-
-  return securityTools
 }
 
 export function getDebugToolsForDebugSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {

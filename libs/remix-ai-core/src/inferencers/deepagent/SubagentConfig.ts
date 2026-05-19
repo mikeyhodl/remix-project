@@ -19,12 +19,11 @@ import {
   QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT
   CONTRACT_RUNNER_PROMPT,
   CONTRACT_COMPILER_PROMPT,
-  CONTRACT_CLASSIFIER_PROMPT
+  CONTRACT_CLASSIFIER_PROMPT,
+  SOLIDITY_CODE_GENERATION_PROMPT
 } from './prompts/system/lightPrompts'
 import {
-  getBasicMcpToolsForSecurityAuditor,
   getBasicFileToolsForGasOptimizer,
-  getCoordinationToolsForComprehensiveAuditor,
   getEducationToolsForWeb3Educator,
   getDebugToolsForDebugSpecialist,
   getSolidityToolsForSolidityEngineer,
@@ -38,7 +37,8 @@ import {
   getToolForClassifierSpecialist,
   getQuickDappToolsForQuickDappSpecialist
   getToolForSolidityCompiler,
-  getToolsForDeployer
+  getToolsForDeployer,
+  getSecurityToolsForSecurityAuditor
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -63,18 +63,17 @@ export async function buildSubagentConfigs(
   const hasAlchemyPermission = await plugin.call('auth', 'hasPermission', 'mcp:alchemy')
   const hasWebSearchPermission = await plugin.call('auth', 'hasPermission', 'mcp:web-search')
   const hasCirclePermission = await plugin.call('auth', 'hasPermission', 'mcp:circle')
+  const hasOZpermission = await plugin.call('auth', 'hasPermission', 'mcp:openzeppelin')
+
   const etherscanTools = getEtherscanToolsForEtherscanSpecialist(tools)
   const theGraphTools = getTheGraphToolsForTheGraphSpecialist(tools)
   const alchemyTools = getAlchemyToolsForAlchemySpecialist(tools)
   const circleTools = getCircleToolsForCircleSpecialist(tools)
-  const basicMcpTools = getBasicMcpToolsForSecurityAuditor(tools)
   const basicFileTools = getBasicFileToolsForGasOptimizer(tools)
-  const baseCoordinationTools = getCoordinationToolsForComprehensiveAuditor(tools)
   const fileOperationTools = getFileOperationTools(tools)
-  const coordinationTools = [...baseCoordinationTools, ...fileOperationTools]
-  const educationTools = getEducationToolsForWeb3Educator(tools)
+  const securityTools = [...getSecurityToolsForSecurityAuditor(tools), ...fileOperationTools]
   const debugTools = getDebugToolsForDebugSpecialist(tools)
-  const solidityTools = getSolidityToolsForSolidityEngineer(tools)
+  const solidityTools = [...getSolidityToolsForSolidityEngineer(tools), ...fileOperationTools]
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
   const classifierTools = getToolForClassifierSpecialist(tools)
@@ -148,7 +147,7 @@ export async function buildSubagentConfigs(
       },
       {
         systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
-        tools: coordinationTools,
+        tools: securityTools,
         name: 'Comprehensive Auditor',
         description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
       }
@@ -209,6 +208,17 @@ export async function buildSubagentConfigs(
         model,
         tools: alchemyTools,
         description: 'Specializes in analyzing and retrieving data from the Alchemy blockchain infrastructure.'
+      }
+    )
+  }
+  if (hasOZpermission) {
+    agents.push(
+      {
+        name: 'Advanced Solidity Developer',
+        systemPrompt: SOLIDITY_CODE_GENERATION_PROMPT,
+        model,
+        tools: solidityTools,
+        description: 'Specializes in writting solidity code using openzeppelin libraries'
       }
     )
   }
