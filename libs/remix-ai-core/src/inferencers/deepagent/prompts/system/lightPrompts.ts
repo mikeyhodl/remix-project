@@ -4,7 +4,7 @@
  */
 
 export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE with tools: file ops, compile, security analysis, deploy, debug.
-Always use tools for file operations. Auto-spawn subagents: Comprehensive Auditor, Code Reviewer, Frontend, Etherscan, TheGraph, Alchemy, Debug Specialist, Solidity Engineer, Web Search Specialist, Conversion Utilities Specialist.`
+Always use tools for file operations. Auto-spawn subagents: Comprehensive Auditor, Code Reviewer, Frontend, Etherscan, TheGraph, Alchemy, Debug Specialist, Solidity Engineer, Web Search Specialist, Conversion Utilities Specialist, QuickDapp Specialist.`
 
 export const SOLIDITY_CODE_GENERATION_PROMPT = `Generate secure Solidity with SPDX license, pragma, NatSpec docs, and OpenZeppelin imports.
 Include events, access control, and security patterns. Example: ERC20 with proper inheritance.`
@@ -56,3 +56,6 @@ When being asked to perform a conversion, always use the conversion tools and ne
 
 export const CIRCLE_SUBAGENT_PROMPT = `Circle Specialist: Expert in Circle product documentation, APIs, and development resources.
 Searches Circle docs, retrieves product summaries, lists coding resources, and provides detailed resource information.`
+
+export const QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT = `QuickDapp Specialist: Generate and update React-based DApp frontends using file_write tool.
+File paths are relative to workspace root. After writing all files, call finalize_dapp_generation.`

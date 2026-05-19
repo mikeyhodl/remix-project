@@ -15,7 +15,8 @@ import {
   SOLIDITY_ENGINEER_SUBAGENT_PROMPT,
   WEB_SEARCH_SUBAGENT_PROMPT,
   CIRCLE_SUBAGENT_PROMPT,
-  SECURITY_ANALYSIS_PROMPT
+  SECURITY_ANALYSIS_PROMPT,
+  QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT
 } from './prompts/system/lightPrompts'
 import {
   getBasicMcpToolsForSecurityAuditor,
@@ -31,7 +32,8 @@ import {
   getTheGraphToolsForTheGraphSpecialist,
   getCircleToolsForCircleSpecialist,
   getFileOperationTools,
-  getToolForClassifierSpecialist
+  getToolForClassifierSpecialist,
+  getQuickDappToolsForQuickDappSpecialist
 } from './helpers/subagentToolFilters'
 
 export interface SubagentConfigItem {
@@ -63,6 +65,7 @@ export function buildSubagentConfigs(
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
   const classifierTools = getToolForClassifierSpecialist(tools)
+  const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
 
   const comprehensiveAuditor = createDeepAgent({
     systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
@@ -133,7 +136,14 @@ export function buildSubagentConfigs(
       systemPrompt: FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
       model: modelAny,
       tools: [],
-      description: 'Specializes in frontend development and user interface design.'
+      description: 'Specializes in frontend development, UI design, and Web3 integration.'
+    },
+    {
+      name: 'QuickDapp Specialist',
+      systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
+      model: modelAny,
+      tools: quickDappTools,
+      description: 'Specializes in generating and updating React-based DApp frontends using file_write tools.'
     },
     {
       name: 'Etherscan Specialist',
