@@ -269,8 +269,10 @@ export interface LoadSkillArgs {
   skill_id: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface ListSkillsArgs {}
+// eslint-disable-next-line
+export interface ListSkillsArgs {
+  // No parameters needed
+}
 
 /**
  * Tool result types

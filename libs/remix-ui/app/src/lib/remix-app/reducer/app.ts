@@ -85,6 +85,13 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
     }
   }
 
+  case appActionTypes.showChecklistModal: {
+    return {
+      ...state,
+      showChecklistModal: action.payload
+    }
+  }
+
   default:
     return state
   }

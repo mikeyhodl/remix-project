@@ -97,6 +97,7 @@ let requiredModules = [
   'topbar',
   'templateexplorermodal',
   'skillsexplorermodal',
+  'checklistexplorermodal',
   'githubAuthHandler',
   'desktopClient',
   'auth',

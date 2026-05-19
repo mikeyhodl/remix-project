@@ -2,6 +2,7 @@ import { CONVERSATION_THREAD_PREFIX, DeepAgentInferencer } from '@remix/remix-ai
 import type { IRemixAIPlugin, ToolApprovalResponse } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
 import type { MCPServerManager } from './MCPServerManager'
+import { ApiKeySettingsHelper } from './ApiKeySettingsHelper'
 
 export interface DeepAgentManagerDeps {
   plugin: IRemixAIPlugin
@@ -12,9 +13,11 @@ export interface DeepAgentManagerDeps {
 
 export class DeepAgentManager {
   private deps: DeepAgentManagerDeps
+  private apiKeyHelper: ApiKeySettingsHelper
 
   constructor(deps: DeepAgentManagerDeps) {
     this.deps = deps
+    this.apiKeyHelper = new ApiKeySettingsHelper(deps.plugin)
   }
 
   async enable(): Promise<void> {
@@ -34,6 +37,10 @@ export class DeepAgentManager {
 
       // Create or reinitialize DeepAgentInferencer
       console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
+      const userApiKeys = await this.apiKeyHelper.getUserApiKeysConfig()
+      if (userApiKeys?.useOwnKeys) {
+        console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
+      }
       plugin.deepAgentInferencer = new DeepAgentInferencer(
         plugin as any, // Cast to Plugin type
         plugin.remixMCPServer.tools,
@@ -41,6 +48,7 @@ export class DeepAgentManager {
           memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
           enableSubagents: true,
           enablePlanning: true,
+          userApiKeys,
           autoMode: {
             enabled: localStorage.getItem('deepagent_auto_mode') === 'true',
             fallbackModel: {
@@ -51,7 +59,7 @@ export class DeepAgentManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: plugin.selectedModelId }
       )
 
       await plugin.deepAgentInferencer.initialize()
@@ -164,13 +172,42 @@ export class DeepAgentManager {
     }
   }
 
+  async isUsingOwnApiKey(): Promise<boolean> {
+    const plugin = this.deps.plugin
+    const currentProvider = plugin.selectedModel.provider
+    return this.apiKeyHelper.isUsingOwnApiKeyForProvider(currentProvider)
+  }
+
+  async fallbackToProxy(): Promise<void> {
+    const plugin = this.deps.plugin
+
+    try {
+      console.log('[DeepAgentManager] Falling back to proxy server...')
+
+      // Update setting to disable own keys via helper
+      await this.apiKeyHelper.disableOwnApiKeys()
+
+      // Emit event for UI update
+      plugin.emit('apiKeyModeChanged', { usingOwnKey: false })
+
+      // Reinitialize DeepAgent with proxy mode
+      await this.reinitialize()
+
+      console.log('[DeepAgentManager] Successfully fell back to proxy server')
+    } catch (error) {
+      console.error('[DeepAgentManager] Failed to fallback to proxy:', error)
+      throw error
+    }
+  }
+
   /**
    * Reinitialize DeepAgent with current settings.
-   * Used when MCP servers are refreshed or reset.
+   * Used when MCP servers are refreshed, reset, or API key settings change.
    */
   async reinitialize(): Promise<void> {
     const plugin = this.deps.plugin
-    const deepAgentEnabled = localStorage.getItem('deepagent_enabled') === 'true'
+    // Use actual plugin state - default is enabled, localStorage is only set when explicitly changed
+    const deepAgentEnabled = plugin.deepAgentEnabled || plugin.deepAgentInferencer !== null
 
     if (deepAgentEnabled && plugin.remixMCPServer) {
       try {
@@ -183,17 +220,22 @@ export class DeepAgentManager {
         }
 
         console.log('[RemixAI Plugin] Using model for DeepAgent:', plugin.selectedModel.provider, plugin.selectedModelId)
+        const userApiKeys = await this.apiKeyHelper.getUserApiKeysConfig()
+        if (userApiKeys?.useOwnKeys) {
+          console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
+        }
         plugin.deepAgentInferencer = new DeepAgentInferencer(
           plugin as any, // Cast to Plugin type
           plugin.remixMCPServer.tools,
           {
             memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
             enableSubagents: true,
-            enablePlanning: true
+            enablePlanning: true,
+            userApiKeys
           },
           plugin.remoteInferencer,
           plugin.mcpInferencer,
-          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai', modelId: plugin.selectedModelId }
+          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: plugin.selectedModelId }
         )
         await plugin.deepAgentInferencer.initialize()
         plugin.deepAgentEnabled = true

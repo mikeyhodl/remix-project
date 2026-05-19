@@ -151,8 +151,7 @@ const defaultUrls: EndpointUrls = {
   learneth: 'https://learneth.api.remix.live',
   rss: 'https://rss.api.remix.live',
   langchain: 'https://langchain.api.remix.live',
-  langsmith: 'http://localhost:3000/langsmith',
-  // langsmith: 'https://langchain.api.remix.live/langsmith',
+  langsmith: 'https://langsmith.api.remix.live',
 };
 
 // --- Resolution ---
