@@ -376,20 +376,16 @@ Focus on security implications and provide practical guidance for smart contract
                           value: keyword 
                         })
                         
-                        const deeperPrompt = `Go deeper into this specific concept: ${data.body}. Give me other examples, and if applicable, suggest Learneth tutorials I can do.`
-                        
-                        // Open RemixAI panel and show it
-                        await plugin.call('popupPanel', 'showPopupPanel', true)
-                        
+                        const deeperPrompt = `Go deeper into this specific concept: ${data.body}. Give me other examples, and if applicable, suggest Learneth tutorials.`
+
+                        await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
+                        await plugin.call('menuicons', 'select', 'remixaiassistant')
+                        await plugin.call('remixaiassistant', 'newConversation')
+
                         // Small delay to ensure panel is open
-                        setTimeout(async () => {
-                          // Show right side panel if it's hidden
-                          const isPanelHidden = await plugin.call('rightSidePanel', 'isPanelHidden')
-                          if (isPanelHidden) {
-                            await plugin.call('rightSidePanel', 'togglePanel')
-                          }
+                        setTimeout(async () => {                          
                           // Call RemixAI answer function
-                          await plugin.call('remixaiassitant', 'chatPipe', deeperPrompt)
+                          await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt)
                         }, 500)
                         
                         // Close the tooltip
