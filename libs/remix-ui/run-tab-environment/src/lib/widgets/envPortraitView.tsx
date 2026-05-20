@@ -84,7 +84,12 @@ function EnvironmentPortraitView() {
     try {
       const result = await plugin.call('blockchain', 'generatePrivateKey')
 
-      plugin.call('terminal', 'logGeneratedKey', result)
+      plugin.call('terminal', 'logCopyableValues', {
+        rows: [
+          { label: 'Generated Address', value: result.address, labelColor: 'var(--success)' },
+          { label: 'Private Key', value: result.privateKey, labelColor: 'var(--warning)' }
+        ]
+      })
       plugin.call('notification', 'toast', 'Private key generated successfully in Remix terminal.')
     } catch (error) {
       plugin.call('terminal', 'log', { type: 'error', value: `Error generating private key: ${error.message}` })

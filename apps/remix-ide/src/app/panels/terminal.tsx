@@ -19,7 +19,7 @@ function register(api) { KONSOLES.push(api) }
 const profile = {
   displayName: 'Terminal',
   name: 'terminal',
-  methods: ['log', 'logHtml', 'logGeneratedKey', 'togglePanel', 'isPanelHidden', 'maximizePanel', 'getLogs'],
+  methods: ['log', 'logHtml', 'logCopyableValues', 'togglePanel', 'isPanelHidden', 'maximizePanel', 'getLogs'],
   events: [],
   description: 'Remix IDE terminal',
   version: packageJson.version
@@ -190,12 +190,12 @@ export default class Terminal extends Plugin {
     this.terminalApi.logHtml(html)
   }
 
-  logGeneratedKey(data) {
+  logCopyableValues(data) {
     // Unhide terminal panel if it's hidden when a log is added
     if (this.isHidden) {
       this.showPanel()
     }
-    this.terminalApi.logGeneratedKey(data)
+    this.terminalApi.logCopyableValues(data)
   }
 
   log(message, type) {
