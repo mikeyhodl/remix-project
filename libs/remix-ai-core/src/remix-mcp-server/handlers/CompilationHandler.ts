@@ -95,12 +95,12 @@ export class SolidityCompileHandler extends BaseToolHandler {
       }
 
       let compilationResult: any;
-      if (args.file) {
-        await plugin.call('solidity' as any, 'compile', args.file) // this will enable the UI
+      if (args.filePath) {
+        await plugin.call('solidity' as any, 'compile', args.filePath) // this will enable the UI
         // Compile specific file - need to use plugin API or direct compilation
-        const content = await plugin.call('fileManager', 'readFile', args.file);
+        const content = await plugin.call('fileManager', 'readFile', args.filePath);
         const contract = {}
-        contract[args.file] = { content: content }
+        contract[args.filePath] = { content: content }
         const compilerPayload: CompilerAbstract = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
         const errors = compilerPayload.getErrors(false)
         console.log('Compilation errors:', errors)
@@ -111,7 +111,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
       } else {
         return this.createErrorResult(`Compilation failed: Workspace compilation not yet implemented. The argument file is not provided`);
       }
-      plugin.call('compilerArtefacts', 'saveCompilerAbstract', args.file, compilationResult)
+      plugin.call('compilerArtefacts', 'saveCompilerAbstract', args.filePath, compilationResult)
       // Process compilation result
       const result: CompilationResult = {
         success: !compilationResult.data?.errors || compilationResult.data?.errors.length === 0 || !compilationResult.data?.error,
@@ -124,7 +124,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
 
       // Emit compilationFinished event with correct parameters to trigger UI effects
       plugin.emit('compilationFinished',
-        args.file, // source target
+        args.filePath, // source target
         { sources: compilationResult?.source || {} }, // source files
         'soljson', // compiler type
         compilationResult.data, // compilation data
@@ -136,7 +136,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         for (const [fileName, fileContracts] of Object.entries(compilationResult.data.contracts)) {
           for (const [contractName, contractData] of Object.entries(fileContracts as any)) {
             const contract = contractData as any;
-            if (fileName.includes(args.file)){
+            if (fileName.includes(args.filePath)){
               result.contracts[`${fileName}:${contractName}`] = {
                 abi: contract.abi || [],
                 // bytecode: contract.evm?.bytecode?.object || '',

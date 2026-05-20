@@ -311,8 +311,8 @@ export class RunScriptHandler extends BaseToolHandler {
 
   async execute(args: RunScriptArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      const content = await plugin.call('fileManager', 'readFile', args.file)
-      await plugin.call('scriptRunnerBridge', 'execute', content, args.file)
+      const content = await plugin.call('fileManager', 'readFile', args.filePath)
+      await plugin.call('scriptRunnerBridge', 'execute', content, args.filePath)
 
       const result: RunScriptResult = {}
 
