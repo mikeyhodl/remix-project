@@ -157,12 +157,12 @@ export async function buildSubagentConfigs(
 
   if (hasCirclePermission) {
     agents.push({
-        name: 'Circle Specialist',
-        systemPrompt: CIRCLE_SUBAGENT_PROMPT,
-        model,
-        tools: circleTools,
-        description: 'Specializes in Circle product documentation, APIs, and development resources.'
-      })
+      name: 'Circle Specialist',
+      systemPrompt: CIRCLE_SUBAGENT_PROMPT,
+      model,
+      tools: circleTools,
+      description: 'Specializes in Circle product documentation, APIs, and development resources.'
+    })
   }
 
   if (hasEtherscanPermission) {

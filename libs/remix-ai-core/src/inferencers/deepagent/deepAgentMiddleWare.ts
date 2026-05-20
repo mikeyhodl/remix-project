@@ -118,7 +118,7 @@ const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => 
       (tool as any).lc_kwargs.description = ''
     }
   });
-  
+
   let hasSkills = true
   try {
     const dirs = await plugin.call('fileManager', 'dirList', 'skills')

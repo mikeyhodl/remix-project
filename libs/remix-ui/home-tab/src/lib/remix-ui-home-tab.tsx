@@ -149,7 +149,7 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     await plugin.call('remixaiassistant', 'newConversation')
     setTimeout(() => {
       plugin.call('remixaiassistant', 'chatPipe', `Start an audit of the contract. I am going to give you the actual file name.`)
-    }, 200)    
+    }, 200)
   }
 
   const startGasOptimization = async () => {
@@ -165,7 +165,7 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     }
     setTimeout(() => {
       plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. I am going to give you the actual file name.`)
-    })    
+    })
   }
 
   // if (appContext.appState.connectedToDesktop != desktopConnectionType.disabled) {
@@ -189,10 +189,10 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
                   <button data-id="landingPageLoadSkills" className="btn btn-primary btn-md me-2" disabled={!hasSkillsPermission} onClick={openSkillsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadSkills" /></button>
                 </div>
               </CustomTooltip>
-              <CustomTooltip tooltipText={hasAuditorPermission ?  intl.formatMessage({ id: 'home.selectCheckListAndStart' }) : intl.formatMessage({ id: 'home.availableInProPlan' })}>
+              <CustomTooltip tooltipText={hasAuditorPermission ? intl.formatMessage({ id: 'home.selectCheckListAndStart' }) : intl.formatMessage({ id: 'home.availableInProPlan' })}>
                 <div className="btn-group me-2" role="group">
                   <button data-id="landingPageLoadAudits" className="btn btn-primary btn-md" disabled={!hasAuditorPermission} onClick={openAuditsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadAudits" /></button>
-                  <button data-id="landingPageLoadAuditsPlay" className="btn btn-primary btn-md" disabled={!hasAuditorPermission} style={{borderLeft: '1px solid var(--bs-border-color, var(--bs-secondary))'}} onClick={startAudit}><i className="fa-solid fa-play me-1"></i></button>
+                  <button data-id="landingPageLoadAuditsPlay" className="btn btn-primary btn-md" disabled={!hasAuditorPermission} style={{ borderLeft: '1px solid var(--bs-border-color, var(--bs-secondary))' }} onClick={startAudit}><i className="fa-solid fa-play me-1"></i></button>
                 </div>
               </CustomTooltip>
               <CustomTooltip tooltipText={hasAuditorPermission ? intl.formatMessage({ id: 'home.startGasOptimization' }) : intl.formatMessage({ id: 'home.availableInProPlan' }) }>

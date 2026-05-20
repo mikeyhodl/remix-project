@@ -203,7 +203,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         markdown += generateNestedMarkdown(mainCategory.data, mainCategory.category)
       } else {
         // Handle sub-categories
-        const selectedSubCategories = mainCategory.data.filter(item => 
+        const selectedSubCategories = mainCategory.data.filter(item =>
           !isChecklistItem(item) && selectedCategories.has(`${mainCategory.category}::${item.category}`)
         ) as ChecklistCategory[]
 
@@ -405,15 +405,15 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                         // Check if this category has direct checklist items (no sub-categories)
                         const hasDirectItems = mainCategory.data.some(item => isChecklistItem(item))
                         const subCategories = mainCategory.data.filter(item => !isChecklistItem(item)) as ChecklistCategory[]
-                        
+
                         if (hasDirectItems && subCategories.length === 0) {
                           // Category with only direct checklist items
                           const isSelected = selectedCategories.has(mainCategory.category)
                           const isExpanded = expandedCategories.has(mainCategory.category)
-                          
+
                           return (
                             <div key={mainCategory.category} className="main-category mb-3">
-                              <div 
+                              <div
                                 className={`main-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-primary text-white' : 'bg-secondary text-light'}`}
                                 onClick={() => toggleCategory(mainCategory.category)}
                                 style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
@@ -428,7 +428,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                   <p className="mb-0 small opacity-75">{mainCategory.description}</p>
                                   <span className="badge bg-light text-dark small mt-1">{countTotalItems(mainCategory.data)} items</span>
                                 </div>
-                                <button 
+                                <button
                                   className="btn btn-sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -438,7 +438,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                   <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-white`}></i>
                                 </button>
                               </div>
-                              
+
                               {isExpanded && (
                                 <div className="category-items p-3 bg-light border border-secondary rounded-bottom">
                                   {collectChecklistItems(mainCategory.data).slice(0, 3).map((item) => (
@@ -462,16 +462,16 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                 <h5 className="mb-1">{mainCategory.category}</h5>
                                 <p className="mb-0 small text-light-emphasis">{mainCategory.description}</p>
                               </div>
-                              
+
                               <div className="sub-categories border border-secondary rounded-bottom">
                                 {subCategories.map((subCategory) => {
                                   const categoryPath = `${mainCategory.category}::${subCategory.category}`
                                   const isSelected = selectedCategories.has(categoryPath)
                                   const isExpanded = expandedCategories.has(categoryPath)
-                                  
+
                                   return (
                                     <div key={categoryPath} className="sub-category border-bottom">
-                                      <div 
+                                      <div
                                         className={`sub-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-light border-primary' : 'bg-light'}`}
                                         onClick={() => toggleCategory(categoryPath)}
                                         style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
@@ -486,7 +486,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                           <p className="text-muted mb-0 small">{subCategory.description}</p>
                                           <span className="badge bg-primary text-white small">{countTotalItems(subCategory.data)} items</span>
                                         </div>
-                                        <button 
+                                        <button
                                           className="btn btn-sm"
                                           onClick={(e) => {
                                             e.stopPropagation()
@@ -496,7 +496,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                           <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
                                         </button>
                                       </div>
-                                      
+
                                       {isExpanded && (
                                         <div className="category-items p-3 bg-light-subtle">
                                           {collectChecklistItems(subCategory.data).slice(0, 3).map((item) => (

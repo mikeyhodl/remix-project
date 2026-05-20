@@ -64,7 +64,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
       skills.push({ id: skill.id, name: skill.name, description })
     }
     return skills
-  }  
+  }
 
   // Parse uploaded file (either .md or .zip/.skill)
   const parseUploadedFile = async (file: File): Promise<ParsedSkillFile> => {
