@@ -76,6 +76,9 @@
             "@remix-ui/modal-help": [
               "libs/remix-ui/modal-help/src/index.ts"
             ],
+            "@remix-ui/plan-manager": [
+              "libs/remix-ui/plan-manager/src/index.ts"
+            ],
             "@remix-ui/panel": [
               "libs/remix-ui/panel/src/index.ts"
             ],
