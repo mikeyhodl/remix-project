@@ -94,13 +94,6 @@ export async function buildSubagentConfigs(
       description: CONTRACT_RUNNER_PROMPT
     },
     {
-      name: 'Frontend Specialist',
-      systemPrompt: FRONTEND_SPECIALIST_SUBAGENT_PROMPT,
-      model: modelAny,
-      tools: [],
-      description: 'Specializes in frontend development, UI design, and Web3 integration.'
-    },
-    {
       name: 'QuickDapp Specialist',
       systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
       model: modelAny,
