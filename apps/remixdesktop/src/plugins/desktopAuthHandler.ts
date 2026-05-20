@@ -2,7 +2,7 @@ import { Profile } from "@remixproject/plugin-utils";
 import { ElectronBasePlugin, ElectronBasePluginClient } from "@remixproject/plugin-electron";
 import { shell } from "electron";
 import crypto from "crypto";
-import { isE2ELocal } from "../main";
+import { isE2ELocal } from "src/main";
 
 const profile: Profile = {
   name: 'desktopAuthHandler',
@@ -19,7 +19,7 @@ const clientProfile: Profile = {
 }
 
 // The base URL for the Remix web IDE used for authentication
-const REMIX_WEB_URL = isE2ELocal ? 'http://localhost:8080' : 'https://remix.ethereum.org'
+const REMIX_WEB_URL =  isE2ELocal ? 'http://localhost:8080' : 'https://remix.ethereum.org'
 
 // State expires after 10 minutes
 const STATE_TTL_MS = 10 * 60 * 1000
