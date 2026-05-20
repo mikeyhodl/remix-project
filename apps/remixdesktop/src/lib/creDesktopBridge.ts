@@ -43,10 +43,7 @@ interface CREImportAck {
 
 /** Origins allowed to connect to the CRE bridge */
 const ALLOWED_ORIGINS = [
-  'https://cre.solange.dev',
-  // Allow any localhost port for local CRE dev
-  /^https?:\/\/localhost(:\d+)?$/,
-  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  'https://cre.solange.dev'
 ]
 
 function isOriginAllowed(origin: string | undefined): boolean {
