@@ -270,10 +270,14 @@ export class CreditsApiService {
   }
   
   /**
-   * Get current credit balance
+   * Get current credit balance.
+   * @param options.includeQuotas When true, the response also contains a
+   *   `quotas` array (per-model entitlements). The endpoint stays
+   *   backwards-compatible — old callers see no payload change.
    */
-  async getBalance(): Promise<ApiResponse<Credits>> {
-    return this.apiClient.get<Credits>('/balance')
+  async getBalance(options?: { includeQuotas?: boolean }): Promise<ApiResponse<Credits>> {
+    const qs = options?.includeQuotas ? '?include=quotas' : ''
+    return this.apiClient.get<Credits>(`/balance${qs}`)
   }
   
   /**

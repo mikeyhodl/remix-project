@@ -865,9 +865,11 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(8, 14, 18, 0.55);
-  backdrop-filter: blur(6px);
-  animation: pm-modal-fade .12s ease-out;
+  background:
+    radial-gradient(80% 60% at 50% 35%, rgba(47, 191, 177, 0.10), transparent 60%),
+    rgba(6, 11, 14, 0.62);
+  backdrop-filter: blur(10px) saturate(120%);
+  animation: pm-modal-fade .18s ease-out;
 }
 
 @keyframes pm-modal-fade {
@@ -876,69 +878,153 @@
 }
 
 .pm-modal {
+  position: relative;
   width: 100%;
-  max-width: 440px;
-  background: var(--pm-card);
+  max-width: 500px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)) , var(--pm-card);
   border: 0.5px solid var(--pm-line-2);
-  border-radius: 16px;
-  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.55);
+  border-radius: 22px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 40px 100px -30px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255,255,255,0.02);
   font-family: var(--pm-body);
   color: var(--pm-text);
   overflow: hidden;
-  animation: pm-modal-pop .14s ease-out;
+  animation: pm-modal-pop .22s cubic-bezier(.16,.84,.32,1.06);
+  --pm-modal-accent: var(--pm-accent, #2fbfb1);
 }
 
 .pm-modal--danger {
-  border-color: rgba(231, 91, 137, 0.45);
-  box-shadow: 0 30px 80px -20px rgba(231, 91, 137, 0.35);
+  --pm-modal-accent: #e75b89;
+  border-color: rgba(231, 91, 137, 0.30);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 40px 100px -30px rgba(231, 91, 137, 0.35),
+    0 0 0 1px rgba(231, 91, 137, 0.05);
+}
+
+/* Atmosphere layer — soft accent orb + grain for editorial cosmos feel */
+.pm-modal__atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.pm-modal__atmosphere-orb {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  aspect-ratio: 1 / 1;
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--pm-modal-accent) 35%, transparent) 0%, transparent 60%);
+  opacity: 0.55;
+  filter: blur(20px);
+}
+
+.pm-modal__atmosphere-grain {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
 }
 
 @keyframes pm-modal-pop {
-  from { transform: translateY(8px) scale(0.985); opacity: 0; }
+  from { transform: translateY(12px) scale(0.97); opacity: 0; }
   to   { transform: none; opacity: 1; }
+}
+
+.pm-modal > *:not(.pm-modal__atmosphere) {
+  position: relative;
+  z-index: 1;
 }
 
 .pm-modal__header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px 8px;
+  gap: 16px;
+  padding: 28px 28px 12px;
+}
+
+.pm-modal__icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: var(--pm-modal-accent);
+  background: color-mix(in srgb, var(--pm-modal-accent) 12%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--pm-modal-accent) 40%, transparent);
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--pm-modal-accent) 8%, transparent),
+    0 8px 24px -8px color-mix(in srgb, var(--pm-modal-accent) 55%, transparent);
+}
+
+.pm-modal__heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.pm-modal__eyebrow {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pm-text-mute);
 }
 
 .pm-modal__title {
   margin: 0;
   font-family: var(--pm-display);
   font-weight: 600;
-  font-size: 17px;
-  letter-spacing: -0.015em;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   color: var(--pm-text);
 }
 
 .pm-modal__close {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 0;
-  background: transparent;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 0.5px solid transparent;
+  background: rgba(255,255,255,0.04);
   color: var(--pm-text-dim);
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: 13px;
-  transition: background .15s ease, color .15s ease;
+  font-size: 12px;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
 .pm-modal__close:hover {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.08);
+  border-color: var(--pm-line-2);
   color: var(--pm-text);
 }
 
 .pm-modal__body {
-  padding: 4px 20px 16px;
-  font-size: 13px;
-  line-height: 1.55;
+  padding: 4px 28px 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
   color: var(--pm-text-dim);
 }
 
@@ -950,11 +1036,65 @@
   margin-bottom: 0;
 }
 
+/* Highlights row — proration / from→to chips */
+.pm-modal__highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 28px 18px;
+}
+
+.pm-modal__highlight {
+  flex: 1 1 130px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+  border: 0.5px solid var(--pm-line);
+}
+
+.pm-modal__highlight-label {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-text-mute);
+}
+
+.pm-modal__highlight-value {
+  font-family: var(--pm-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pm-text);
+  word-break: break-word;
+}
+
+.pm-modal__highlight--positive {
+  background: color-mix(in srgb, #2fbfb1 9%, transparent);
+  border-color: color-mix(in srgb, #2fbfb1 35%, transparent);
+}
+.pm-modal__highlight--positive .pm-modal__highlight-value { color: #6fe6d7; }
+
+.pm-modal__highlight--negative {
+  background: color-mix(in srgb, #e75b89 9%, transparent);
+  border-color: color-mix(in srgb, #e75b89 35%, transparent);
+}
+.pm-modal__highlight--negative .pm-modal__highlight-value { color: #f199b6; }
+
+.pm-modal__highlight--muted {
+  opacity: 0.78;
+}
+
 .pm-modal__actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 4px 16px 16px;
+  padding: 4px 24px 22px;
 }
 
 @media (min-width: 520px) {
@@ -962,7 +1102,7 @@
     flex-direction: row-reverse;
     justify-content: flex-start;
     flex-wrap: wrap;
-    padding: 4px 20px 18px;
+    padding: 4px 28px 24px;
   }
 }
 
@@ -974,33 +1114,35 @@
   font-family: var(--pm-body);
   font-size: 13px;
   font-weight: 600;
-  padding: 10px 14px;
-  border-radius: 10px;
+  padding: 11px 16px;
+  border-radius: 11px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease;
 }
 
 .pm-modal__btn:hover { transform: translateY(-1px); }
 .pm-modal__btn:active { transform: translateY(0); }
 
 .pm-modal__btn--primary {
-  background: var(--pm-accent, #2fbfb1);
-  border-color: var(--pm-accent, #2fbfb1);
+  background: var(--pm-modal-accent);
+  border-color: var(--pm-modal-accent);
   color: #06231f;
+  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--pm-modal-accent) 70%, transparent);
 }
 
 .pm-modal__btn--primary:hover {
-  background: color-mix(in srgb, var(--pm-accent, #2fbfb1) 88%, white);
+  background: color-mix(in srgb, var(--pm-modal-accent) 88%, white);
 }
 
 .pm-modal__btn--danger {
   background: #e75b89;
   border-color: #e75b89;
   color: #2a0814;
+  box-shadow: 0 8px 22px -10px rgba(231, 91, 137, 0.6);
 }
 
 .pm-modal__btn--danger:hover {
@@ -2424,4 +2566,203 @@
 .pm-verify__otp .login-modal-otp-digit.has-value {
   border-color: rgba(123, 104, 238, 0.75);
   background: rgba(123, 104, 238, 0.18);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   QuotasPanel — per-(provider, model) usage caps tied to the active plan.
+   Sits right under the Hero. Visual language matches the "editorial cosmos":
+   thin lines, mono eyebrow, glass cards, tonal progress bars.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pm-quotas {
+  position: relative;
+  z-index: 2;
+  padding: 22px 36px 26px;
+  border-bottom: 0.5px solid var(--pm-line);
+}
+
+.pm-quotas__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pm-quotas__eyebrow {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--pm-text-mute);
+  margin-bottom: 6px;
+}
+
+.pm-quotas__title {
+  font-family: var(--pm-display);
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--pm-text);
+  margin: 0;
+}
+
+.pm-quotas__hint {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--pm-text-mute);
+}
+
+.pm-quotas__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.pm-quota {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 0.5px solid var(--pm-line);
+  border-radius: 10px;
+  background: rgba(15, 17, 30, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.pm-quota--warn {
+  border-color: rgba(255, 184, 76, 0.32);
+}
+.pm-quota--crit {
+  border-color: rgba(255, 99, 99, 0.42);
+  background: rgba(48, 18, 22, 0.45);
+}
+.pm-quota--unlimited {
+  border-color: rgba(123, 104, 238, 0.32);
+}
+
+.pm-quota__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pm-quota__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pm-quota__name {
+  font-family: var(--pm-display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--pm-text);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-quota__period {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--pm-text-mute);
+  margin-top: 2px;
+}
+
+.pm-quota__counts {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  color: var(--pm-text);
+  white-space: nowrap;
+}
+.pm-quota__sep {
+  color: var(--pm-text-mute);
+}
+.pm-quota__cap {
+  color: var(--pm-text-mute);
+}
+
+.pm-quota__badge {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 0.5px solid currentColor;
+  white-space: nowrap;
+}
+.pm-quota__badge--unlimited {
+  color: rgba(180, 168, 255, 0.95);
+  background: rgba(123, 104, 238, 0.10);
+}
+
+.pm-quota__bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.pm-quota__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%);
+  transition: width 200ms ease;
+}
+.pm-quota--warn .pm-quota__bar-fill {
+  background: linear-gradient(90deg, #f6ad55 0%, #ed8936 100%);
+}
+.pm-quota--crit .pm-quota__bar-fill {
+  background: linear-gradient(90deg, #fc8181 0%, #e53e3e 100%);
+}
+
+.pm-quota__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pm-quota__reset {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--pm-text-mute);
+}
+.pm-quota--crit .pm-quota__reset {
+  color: rgba(255, 170, 170, 0.92);
+}
+
+.pm-quota__cta {
+  border: 0.5px solid rgba(255, 170, 170, 0.55);
+  background: rgba(255, 99, 99, 0.10);
+  color: rgba(255, 200, 200, 0.95);
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.pm-quota__cta:hover {
+  background: rgba(255, 99, 99, 0.22);
+  color: #fff;
 }

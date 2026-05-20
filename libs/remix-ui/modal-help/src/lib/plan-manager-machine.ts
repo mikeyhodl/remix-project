@@ -27,11 +27,14 @@
 import { setup, createActor, type AnyActorRef } from 'xstate'
 import type {
   Credits,
+  QuotaEntry,
   UserSubscription,
   SubscriptionPlan,
   CreditPackage,
   PermissionsResponse
 } from '@remix-api'
+
+export type { QuotaEntry }
 
 // ─── Public types ───────────────────────────────────────────────────
 
@@ -46,7 +49,7 @@ export type ActiveAlert =
   | null
 
 export type CheckoutResultKind = 'processing' | 'success' | 'closed' | 'error'
-export type CheckoutIntent = 'subscription' | 'topup' | 'feature'
+export type CheckoutIntent = 'subscription' | 'topup' | 'feature' | 'cancel'
 
 export interface CheckoutResult {
   kind: CheckoutResultKind
@@ -54,6 +57,12 @@ export interface CheckoutResult {
   itemLabel?: string
   errorMessage?: string
   transactionId?: string
+  /**
+   * Free-form per-flow context that the result screen can render — e.g.
+   * `{ effectiveFrom: 'next_billing_period', accessUntil: 'Jun 19, 2026' }`
+   * for a cancel result. Kept loose because intents have different shapes.
+   */
+  meta?: Record<string, string>
 }
 
 /** Snapshot the UI consumes — purely derived, never mutated outside the machine. */
@@ -96,6 +105,19 @@ export interface ConfirmAction {
   icon?: string
 }
 
+/**
+ * Optional inline key/value chip rendered above the actions. Use these to
+ * surface concrete data the user needs to see before committing — e.g.
+ * "Access until: Jun 19, 2026" for a cancel, or "You'll be charged: $4.32"
+ * for a plan switch. Tones drive colour: positive = teal, negative = pink,
+ * muted = dim grey, default = neutral.
+ */
+export interface ConfirmHighlight {
+  label: string
+  value: string
+  tone?: 'default' | 'positive' | 'negative' | 'muted'
+}
+
 export interface ConfirmDialog {
   /** Stable id so the React side can key the modal. */
   id: string
@@ -106,6 +128,14 @@ export interface ConfirmDialog {
   actions: ConfirmAction[]
   /** Visual variant for the modal frame. */
   variant?: 'default' | 'danger'
+  /** Small uppercase label rendered above the title. */
+  eyebrow?: string
+  /** Font Awesome class for the header icon (e.g. 'fas fa-arrow-right-arrow-left'). */
+  icon?: string
+  /** Accent colour (hex) for the header icon halo. Defaults vary by variant. */
+  accent?: string
+  /** Inline highlights surfaced before the actions. */
+  highlights?: ConfirmHighlight[]
 }
 
 /** Reason a non-UI plugin asked to open the panel. */
@@ -179,7 +209,7 @@ export type PlanManagerEvent =
   // checkout
   | { type: 'CHECKOUT_INTENT'; intent: CheckoutIntent; itemLabel?: string; productId?: string }
   | { type: 'CHECKOUT_OPENED' }
-  | { type: 'CHECKOUT_COMPLETED'; transactionId?: string }
+  | { type: 'CHECKOUT_COMPLETED'; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_CLOSED' }
   | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string }
   | { type: 'CHECKOUT_RESULT_DISMISS' }
@@ -280,7 +310,8 @@ export const planManagerMachine = setup({
         kind: 'processing',
         intent,
         itemLabel,
-        transactionId: event.transactionId
+        transactionId: event.transactionId,
+        meta: event.meta
       }
     },
     setCheckoutSuccess: ({ context }) => {
@@ -809,6 +840,25 @@ export function selectPurchasingProductId(snap: PlanManagerSnapshot): string | n
   if (!snap.pendingCheckout) return null
   if (snap.checkoutResult) return null
   return snap.pendingCheckout.productId ?? null
+}
+
+/**
+ * Per-(provider, model) quotas the user is entitled to via active feature
+ * groups. Comes straight from `credits.quotas` (the balance endpoint with
+ * `?include=quotas`).
+ *
+ * Filters out:
+ *   - non-array payloads (defensive against bad shapes)
+ *   - rows with `amount <= 0` (per the brief, these are disabled and must
+ *     not be rendered)
+ *
+ * Preserves the backend ordering (amount ASC, slug ASC) so the tightest
+ * cap — which drains first — stays on top.
+ */
+export function selectQuotas(snap: PlanManagerSnapshot): QuotaEntry[] {
+  const raw = snap.credits?.quotas
+  if (!Array.isArray(raw)) return []
+  return raw.filter(q => q && typeof q.amount === 'number' && q.amount > 0)
 }
 
 export type { CheckoutIntentRecord }

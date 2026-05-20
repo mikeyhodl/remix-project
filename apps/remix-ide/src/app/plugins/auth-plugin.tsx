@@ -656,13 +656,15 @@ export class AuthPlugin extends Plugin {
         loginUrl += `&invite_token=${encodeURIComponent(inviteToken)}`
       }
 
+      this.log('[AuthPlugin] Login URL:', loginUrl)
+
       // Open popup directly (must be in user click event)
       const popup = window.open(
         loginUrl,
         'RemixLogin',
         'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
       )
-
+      
       if (!popup) {
         throw new Error('Popup was blocked. Please allow popups for this site.')
       }
@@ -1127,7 +1129,7 @@ export class AuthPlugin extends Plugin {
 
       this.log('[AuthPlugin] Fetching credits using typed API')
 
-      const response = await this.creditsApi.getBalance()
+      const response = await this.creditsApi.getBalance({ includeQuotas: true })
 
       if (response.ok && response.data) {
         return response.data

@@ -40,14 +40,17 @@ import {
   type OpenReason,
   type ConfirmDialog,
   type ConfirmAction,
+  type ConfirmHighlight,
   selectActiveAlert,
   selectPlanState,
   selectCreditStatus,
   selectVisiblePlans,
   selectVisiblePackages,
+  selectQuotas,
   selectCanUpgrade,
   selectCheckoutResult,
-  selectPurchasingProductId
+  selectPurchasingProductId,
+  type QuotaEntry
 } from './plan-manager-machine'
 import { LoginModal, startSignInFlow, OtpDigitInput, OtpDigitInputHandle } from '@remix-ui/login'
 
@@ -364,6 +367,9 @@ export class PlanManagerPlugin extends ViewPlugin {
       //    we still let the user attempt the PATCH; the backend will reject
       //    if it really can't apply.
       let confirmMessage = `Switch your subscription to ${itemLabel}?`
+      let chargeCentsNum: number | null = null
+      let creditCentsNum: number | null = null
+      let switchCurrency = 'USD'
       try {
         const previewReq: any = { planSlug: planId, prorationBillingMode: PRORATION }
         if (externalPriceId) previewReq.priceId = externalPriceId
@@ -373,9 +379,12 @@ export class PlanManagerPlugin extends ViewPlugin {
           const charge = totals?.result?.amount ?? totals?.charge?.amount ?? totals?.total ?? null
           const credit = totals?.credit?.amount ?? null
           const currency = (preview.data.preview as any)?.currency_code || 'USD'
+          switchCurrency = currency
           if (charge != null && Number(charge) > 0) {
+            chargeCentsNum = Number(charge)
             confirmMessage = `Switch to ${itemLabel}? You'll be charged ${formatMoney(charge, currency)} now (prorated).`
           } else if (credit != null && Number(credit) > 0) {
+            creditCentsNum = Number(credit)
             confirmMessage = `Switch to ${itemLabel}? You'll receive a ${formatMoney(credit, currency)} credit on your next invoice.`
           }
         }
@@ -384,6 +393,17 @@ export class PlanManagerPlugin extends ViewPlugin {
       const choice = await this.requestConfirm({
         title: `Switch to ${itemLabel}`,
         message: confirmMessage,
+        eyebrow: 'Plan switch',
+        icon: 'fas fa-arrow-right-arrow-left',
+        accent: pickAccent(planId),
+        highlights: this.buildSwitchHighlights({
+          fromPlanName: selectPlanState(snap).planName,
+          toPlanName: itemLabel,
+          toPlanCents: typeof plan?.priceUsd === 'number' ? plan.priceUsd : null,
+          chargeCents: chargeCentsNum,
+          creditCents: creditCentsNum,
+          currency: switchCurrency
+        }),
         actions: [
           { value: 'cancel', label: 'Keep current plan', variant: 'ghost' },
           { value: 'confirm', label: `Switch to ${itemLabel}`, variant: 'primary', icon: 'fas fa-arrow-right' }
@@ -424,10 +444,11 @@ export class PlanManagerPlugin extends ViewPlugin {
     const planState = selectPlanState(snap)
     if (planState.kind !== 'paid') return
 
+    const periodEndDate = planState.expiresOn ? formatDate(planState.expiresOn) : null
+
     // If the caller didn't pre-select an option, ask the user.
     let chosen: 'next_billing_period' | 'immediately' | null = effectiveFrom ?? null
     if (!chosen) {
-      const periodEndDate = planState.expiresOn ? formatDate(planState.expiresOn) : null
       const periodEndLabel = periodEndDate
         ? `Cancel at period end (keeps access until ${periodEndDate})`
         : 'Cancel at period end'
@@ -435,6 +456,14 @@ export class PlanManagerPlugin extends ViewPlugin {
         title: `Cancel ${planState.planName}?`,
         message: 'Pick when the cancellation should take effect. After cancellation you\u2019ll keep the Free plan automatically \u2014 no action needed on your part.',
         variant: 'danger',
+        eyebrow: 'Cancel subscription',
+        icon: 'fas fa-circle-xmark',
+        accent: '#e75b89',
+        highlights: [
+          { label: 'Current plan', value: planState.planName, tone: 'default' },
+          ...(periodEndDate ? [{ label: 'Access until', value: periodEndDate, tone: 'positive' as const }] : []),
+          { label: 'After cancellation', value: 'Free plan', tone: 'muted' as const }
+        ],
         actions: [
           { value: 'keep', label: 'Keep subscription', variant: 'ghost' },
           { value: 'immediately', label: 'Cancel immediately', variant: 'danger', icon: 'fas fa-bolt' },
@@ -445,19 +474,34 @@ export class PlanManagerPlugin extends ViewPlugin {
       chosen = choice
     }
 
+    // Route through the same checkout-result UI as purchases so the user
+    // gets explicit confirmation, error states, and the data refresh that
+    // flips the plan card to "Free" in real time.
+    const planName = planState.planName
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'cancel', itemLabel: planName, productId: planState.planId ?? planName })
+
     try {
       const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
-      if (!billingApi) return
-      const resp = await billingApi.cancelSubscription({ effectiveFrom: chosen })
-      if (!resp?.ok) {
-        console.warn('[PlanManager] Cancel failed', resp?.error)
+      if (!billingApi) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
         return
       }
+      const resp = await billingApi.cancelSubscription({ effectiveFrom: chosen })
+      if (!resp?.ok) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not cancel your subscription.' })
+        return
+      }
+      // Success — surface the per-flow context to the result screen.
+      const meta: Record<string, string> = { effectiveFrom: chosen }
+      if (chosen === 'next_billing_period' && periodEndDate) meta.accessUntil = periodEndDate
+      this.store.send({ type: 'CHECKOUT_COMPLETED', meta })
       // Refresh — immediate cancel triggers webhook to grant free; period-end
       // cancel just sets cancelAtPeriodEnd, which the next refresh will pick up.
+      // The data refresh promotes the result from 'processing' → 'success'.
       setTimeout(() => { void this.loadAccountData() }, 250)
     } catch (err: any) {
       console.error('[PlanManager] Cancel subscription failed', err)
+      this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during cancellation.' })
     }
   }
 
@@ -469,7 +513,16 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   private pendingConfirmResolver: ((value: string | null) => void) | null = null
 
-  private requestConfirm(input: { title: string; message: string; actions: ConfirmAction[]; variant?: 'default' | 'danger' }): Promise<string | null> {
+  private requestConfirm(input: {
+    title: string;
+    message: string;
+    actions: ConfirmAction[];
+    variant?: 'default' | 'danger';
+    eyebrow?: string;
+    icon?: string;
+    accent?: string;
+    highlights?: ConfirmHighlight[];
+  }): Promise<string | null> {
     // Reject any in-flight confirm so we never have two stacked dialogs.
     if (this.pendingConfirmResolver) {
       this.pendingConfirmResolver(null)
@@ -480,12 +533,44 @@ export class PlanManagerPlugin extends ViewPlugin {
       title: input.title,
       message: input.message,
       actions: input.actions,
-      variant: input.variant ?? 'default'
+      variant: input.variant ?? 'default',
+      eyebrow: input.eyebrow,
+      icon: input.icon,
+      accent: input.accent,
+      highlights: input.highlights
     }
     return new Promise<string | null>((resolve) => {
       this.pendingConfirmResolver = resolve
       this.store.send({ type: 'CONFIRM_REQUEST', dialog })
     })
+  }
+
+  /**
+   * Build the proration / from→to highlights surfaced in the plan-switch
+   * confirm modal. Kept on the plugin (not the React side) so the same data
+   * the API call uses is the data the user sees — no double-formatting.
+   */
+  private buildSwitchHighlights(input: {
+    fromPlanName: string
+    toPlanName: string
+    toPlanCents: number | null
+    chargeCents: number | null
+    creditCents: number | null
+    currency: string
+  }): ConfirmHighlight[] {
+    const hs: ConfirmHighlight[] = [
+      { label: 'From', value: input.fromPlanName, tone: 'muted' },
+      { label: 'To', value: input.toPlanName, tone: 'default' }
+    ]
+    if (input.chargeCents != null && input.chargeCents > 0) {
+      hs.push({ label: 'Due now', value: formatMoney(input.chargeCents, input.currency), tone: 'negative' })
+    } else if (input.creditCents != null && input.creditCents > 0) {
+      hs.push({ label: 'Credit next invoice', value: formatMoney(input.creditCents, input.currency), tone: 'positive' })
+    }
+    if (input.toPlanCents != null && input.toPlanCents > 0) {
+      hs.push({ label: 'New plan price', value: `${formatMoney(input.toPlanCents, input.currency)} / mo`, tone: 'default' })
+    }
+    return hs
   }
 
   /** Called by the React modal when the user clicks an action or dismisses. */
@@ -986,6 +1071,7 @@ const PlanManagerOverlay: React.FC<{
   const activeAlert: ActiveAlert = useMemo(() => selectActiveAlert(snap), [snap])
   const visiblePlans = useMemo(() => selectVisiblePlans(snap), [snap])
   const visiblePackages = useMemo(() => selectVisiblePackages(snap), [snap])
+  const quotas = useMemo(() => selectQuotas(snap), [snap])
   const canUpgrade = useMemo(() => selectCanUpgrade(snap), [snap])
   const checkoutResult = selectCheckoutResult(snap)
   const purchasingProductId = selectPurchasingProductId(snap)
@@ -1099,6 +1185,16 @@ const PlanManagerOverlay: React.FC<{
             onTopUp={() => setActiveSection('topup')}
           />
 
+          <QuotasPanel
+            quotas={quotas}
+            aiModels={snap.permissions?.ai_models}
+            planLabel={planCtx.planName}
+            paidCredits={snap.credits?.paid_credits ?? 0}
+            canUpgrade={canUpgrade}
+            onUpgrade={() => setActiveSection('plans')}
+            onTopUp={() => setActiveSection('topup')}
+          />
+
           <nav className="pm-nav">
             {([
               { id: 'plans', label: 'Plans', icon: 'fas fa-layer-group' },
@@ -1166,6 +1262,195 @@ const PlanManagerOverlay: React.FC<{
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   QuotasPanel — per-(provider, model) usage caps tied to the active plan.
+
+   The backend ships a normalized `quotas` array on the balance endpoint
+   (when called with `?include=quotas`). Each row is one (provider, model,
+   period) bucket the user is entitled to via their active feature groups.
+
+   Rendering rules per QUOTAS_FRONTEND_BRIEF:
+     - Sort comes pre-applied (amount ASC, tightest cap first).
+     - `amount >= 1e15` → unlimited; show ∞ badge, no bar.
+     - `amount === 0`   → quota disabled; filtered out in selectQuotas.
+     - `provider/model === '*'` → "All providers" / "All models".
+     - Bar colour by usedPct: <70 green, 70–89 amber, ≥90 red.
+     - "Resets in 7h 12m" for daily, "Resets Mon, May 25" weekly,
+       "Resets Jun 1, 2026" monthly.
+     - Empty list → render nothing (no awkward "no quotas" copy).
+   ───────────────────────────────────────────────────────────────────────── */
+
+const UNLIMITED_THRESHOLD = 1e15
+
+// `permissions.ai_models` shape — we only depend on these two fields so type
+// it locally to avoid pulling the whole AccountPermissions surface.
+type ModelLookup = ReadonlyArray<{ id: string; display_name?: string; provider?: string }> | undefined
+
+function prettifyProvider(slug: string): string {
+  if (slug === '*') return 'All providers'
+  // 'mistralai' → 'Mistralai', 'anthropic' → 'Anthropic'. Backend slugs
+  // are lowercase identifiers, not user-facing copy, so a simple cap is
+  // good enough until we add a provider catalogue.
+  if (!slug) return ''
+  return slug.charAt(0).toUpperCase() + slug.slice(1)
+}
+
+function prettifyModel(slug: string, lookup: ModelLookup): string {
+  if (slug === '*') return 'All models'
+  const hit = lookup?.find(m => m.id === slug)
+  if (hit?.display_name) return hit.display_name
+  // Fallback: turn 'mistral-small-latest' → 'Mistral Small Latest'
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ')
+}
+
+function formatQuotaLabel(q: QuotaEntry, lookup: ModelLookup): string {
+  const model = prettifyModel(q.model, lookup)
+  const provider = prettifyProvider(q.provider)
+  // When the model is wildcarded but the provider is concrete, lead with
+  // the provider ("Mistralai · All models"). When both are wildcards we
+  // get the catch-all "All providers · All models" which is honest.
+  if (q.model === '*') return `${provider} · All models`
+  // For named models, the provider is usually obvious from the model name
+  // (e.g. "Claude Sonnet 4.6" is clearly Anthropic). Skip the provider
+  // when the catalogue confirms the same provider, otherwise prepend it.
+  const catalogProvider = lookup?.find(m => m.id === q.model)?.provider
+  if (catalogProvider && catalogProvider === q.provider) return model
+  if (q.provider === '*') return model
+  return `${provider} · ${model}`
+}
+
+function formatPeriodWord(period: QuotaEntry['period']): string {
+  if (period === 'day') return 'daily'
+  if (period === 'week') return 'weekly'
+  return 'monthly'
+}
+
+function pickBarTone(usedPct: number): 'ok' | 'warn' | 'crit' {
+  if (usedPct >= 90) return 'crit'
+  if (usedPct >= 70) return 'warn'
+  return 'ok'
+}
+
+function formatResetTime(iso: string, period: QuotaEntry['period'], now: number = Date.now()): string {
+  const ts = Date.parse(iso)
+  if (!Number.isFinite(ts)) return ''
+  if (ts <= now) return 'Resets shortly'
+  const diffMs = ts - now
+
+  if (period === 'day') {
+    const totalMin = Math.round(diffMs / 60000)
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    if (h === 0) return `Resets in ${m}m`
+    if (h < 24) return `Resets in ${h}h ${m}m`
+    return `Resets in ${Math.round(h / 24)}d`
+  }
+
+  const d = new Date(ts)
+  if (period === 'week') {
+    // "Resets Mon, May 25"
+    return `Resets ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+  }
+  // month → "Resets Jun 1, 2026"
+  return `Resets ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+}
+
+const QuotasPanel: React.FC<{
+  quotas: QuotaEntry[]
+  aiModels: ModelLookup
+  planLabel: string
+  /** Paid balance available to spend AFTER the free quota is drained. */
+  paidCredits: number
+  canUpgrade: boolean
+  onUpgrade: () => void
+  onTopUp: () => void
+}> = ({ quotas, aiModels, planLabel, paidCredits, canUpgrade, onUpgrade, onTopUp }) => {
+  if (!quotas || quotas.length === 0) return null
+
+  const hasPaid = paidCredits > 0
+
+  return (
+    <section className="pm-quotas" aria-label="Free AI usage included with your plan">
+      <div className="pm-quotas__head">
+        <div>
+          <div className="pm-quotas__eyebrow">Free with {planLabel}</div>
+          <h3 className="pm-quotas__title">Free AI usage included</h3>
+        </div>
+        <div className="pm-quotas__hint">
+          {hasPaid
+            ? <>Paid credits keep working past these caps.</>
+            : <>Top up or upgrade to keep using AI once a cap is hit.</>}
+        </div>
+      </div>
+
+      <div className="pm-quotas__list">
+        {quotas.map(q => {
+          const unlimited = q.amount >= UNLIMITED_THRESHOLD
+          const usedPct = unlimited
+            ? 0
+            : Math.min(100, Math.max(0, (q.used / q.amount) * 100))
+          const tone = pickBarTone(usedPct)
+          const exhausted = !unlimited && q.remaining <= 0
+          const label = formatQuotaLabel(q, aiModels)
+          const periodWord = formatPeriodWord(q.period)
+          const reset = formatResetTime(q.periodResetAt, q.period)
+
+          return (
+            <article
+              key={q.slug}
+              className={`pm-quota pm-quota--${tone} ${exhausted ? 'pm-quota--exhausted' : ''} ${unlimited ? 'pm-quota--unlimited' : ''}`}
+            >
+              <header className="pm-quota__head">
+                <div className="pm-quota__label">
+                  <span className="pm-quota__name">{label}</span>
+                  <span className="pm-quota__period">{periodWord} free</span>
+                </div>
+                {unlimited ? (
+                  <span className="pm-quota__badge pm-quota__badge--unlimited" title="Unlimited free usage">∞ Unlimited</span>
+                ) : (
+                  <div className="pm-quota__counts">
+                    <span className="pm-quota__used">{q.used.toLocaleString()}</span>
+                    <span className="pm-quota__sep">/</span>
+                    <span className="pm-quota__cap">{q.amount.toLocaleString()} free</span>
+                  </div>
+                )}
+              </header>
+
+              {!unlimited && (
+                <div className="pm-quota__bar" role="progressbar" aria-valuemin={0} aria-valuemax={q.amount} aria-valuenow={q.used}>
+                  <div className="pm-quota__bar-fill" style={{ width: `${usedPct}%` }} />
+                </div>
+              )}
+
+              <footer className="pm-quota__foot">
+                <span className="pm-quota__reset">
+                  {exhausted
+                    ? (hasPaid
+                      ? <>Free quota used — now drawing paid credits</>
+                      : <>Free quota used — {reset.toLowerCase()}</>)
+                    : reset}
+                </span>
+                {exhausted && !hasPaid && (
+                  <button
+                    className="pm-quota__cta"
+                    onClick={canUpgrade ? onUpgrade : onTopUp}
+                  >
+                    {canUpgrade ? 'Upgrade plan' : 'Top up'}
+                  </button>
+                )}
+              </footer>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Hero
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -1203,7 +1488,7 @@ const Hero: React.FC<{
     if (refreshDate && total > 0) {
       return <>Refills <em>{refreshDate}</em> · <em>+{total.toLocaleString()}</em> credits</>
     }
-    return <>Free tier · top up anytime, credits never expire</>
+    return <>Free tier</>
   }
 
   return (
@@ -1480,10 +1765,6 @@ const PlanCard: React.FC<{
       )}
 
       <ul className="pm-plan__features">
-        <li>
-          <i className="fas fa-check"></i>
-          <span>{plan.creditsPerMonth.toLocaleString()} credits / month</span>
-        </li>
         {(plan.features ?? []).map((f: string) => (
           <li key={f}>
             <i className="fas fa-check"></i>
@@ -2112,14 +2393,6 @@ const BetaTransitionAlert: React.FC<{
           {copy.lede(planCtx.daysUntilExpiry, planCtx.expiresOn)}
         </p>
         <p className="pm-beta-alert__body">{copy.body}</p>
-        <div className="pm-beta-alert__actions">
-          <button className="pm-beta-alert__btn pm-beta-alert__btn--primary" onClick={onUpgrade}>
-            <i className="fas fa-arrow-right"></i> {copy.primary}
-          </button>
-          <button className="pm-beta-alert__btn pm-beta-alert__btn--ghost" onClick={onTopUp}>
-            <i className="fas fa-bolt"></i> {copy.secondary}
-          </button>
-        </div>
       </div>
     </section>
   )
@@ -2607,14 +2880,17 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
   eyebrow: string
   icon: string
   title: (intent: string, itemLabel?: string) => string
-  body: (intent: string, itemLabel?: string) => string
+  body: (intent: string, itemLabel?: string, meta?: Record<string, string>) => string
 }> = {
   processing: {
     eyebrow: 'Processing',
     icon: 'fas fa-spinner fa-spin',
-    title: () => 'Confirming your payment…',
-    body: (_intent, item) =>
-      `We're waiting for confirmation from the payment processor${item ? ` for ${item}` : ''}. This usually takes a few seconds — feel free to keep this open or close it; we'll notify you when it lands.`
+    title: (intent, item) => intent === 'cancel'
+      ? `Cancelling ${item || 'your subscription'}…`
+      : 'Confirming your payment…',
+    body: (intent, item) => intent === 'cancel'
+      ? `We’re processing your cancellation${item ? ` of ${item}` : ''}. This usually takes just a moment.`
+      : `We're waiting for confirmation from the payment processor${item ? ` for ${item}` : ''}. This usually takes a few seconds — feel free to keep this open or close it; we'll notify you when it lands.`
   },
   success: {
     eyebrow: 'Payment confirmed',
@@ -2622,13 +2898,18 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
     title: (intent, item) =>
       intent === 'topup' ? `${item || 'Credits'} added to your account` :
         intent === 'subscription' ? `Welcome to ${item || 'your new plan'}` :
-          'Purchase confirmed',
-    body: (intent) =>
+          intent === 'cancel' ? `${item || 'Subscription'} cancelled` :
+            'Purchase confirmed',
+    body: (intent, _item, meta) =>
       intent === 'topup'
         ? 'Your balance has been updated. AI workflows are ready to go.'
         : intent === 'subscription'
           ? 'Your plan is active. New limits, integrations, and credits are available now.'
-          : 'You can start using your new entitlements right away.'
+          : intent === 'cancel'
+            ? (meta?.effectiveFrom === 'next_billing_period'
+              ? `Your subscription will end${meta?.accessUntil ? ` on ${meta.accessUntil}` : ' at the end of your current billing period'}. Until then nothing changes — you keep every paid feature and credit.`
+              : 'Your subscription has been cancelled and you’re back on the Free plan. Any unused paid credits stay in your account and keep working.')
+            : 'You can start using your new entitlements right away.'
   },
   closed: {
     eyebrow: 'Checkout cancelled',
@@ -2642,11 +2923,15 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
   error: {
     eyebrow: 'Payment failed',
     icon: 'fas fa-circle-exclamation',
-    title: () => 'We couldn\'t complete your payment',
+    title: (intent) => intent === 'cancel'
+      ? 'We couldn’t cancel your subscription'
+      : 'We couldn’t complete your payment',
     body: (intent) =>
       intent === 'topup'
         ? 'Your top-up didn\'t go through. No credits were added and no card was charged.'
-        : 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
+        : intent === 'cancel'
+          ? 'Your cancellation request didn’t go through. Your subscription is unchanged. Please try again or contact support if the problem persists.'
+          : 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
   }
 }
 
@@ -2657,8 +2942,15 @@ const CheckoutResultScreen: React.FC<{
   onViewTopUps: () => void
 }> = ({ result, onDismiss, onViewPlans, onViewTopUps }) => {
   const copy = CHECKOUT_COPY[result.kind]
-  const tryAgain = result.intent === 'topup' ? onViewTopUps : onViewPlans
-  const tryAgainLabel = result.intent === 'topup' ? 'Choose a top-up' : 'Back to plans'
+  const isCancel = result.intent === 'cancel'
+  const tryAgain = isCancel ? onViewPlans : (result.intent === 'topup' ? onViewTopUps : onViewPlans)
+  const tryAgainLabel = isCancel ? 'Back to plans' : (result.intent === 'topup' ? 'Choose a top-up' : 'Back to plans')
+  const eyebrow = isCancel
+    ? (result.kind === 'success' ? 'Cancellation confirmed'
+      : result.kind === 'processing' ? 'Cancelling'
+        : result.kind === 'error' ? 'Cancellation failed'
+          : copy.eyebrow)
+    : copy.eyebrow
 
   return (
     <section className={`pm-result pm-result--${result.kind}`}>
@@ -2668,9 +2960,9 @@ const CheckoutResultScreen: React.FC<{
         <i className={copy.icon}></i>
       </div>
 
-      <div className="pm-result__eyebrow">{copy.eyebrow}</div>
+      <div className="pm-result__eyebrow">{eyebrow}</div>
       <h2 className="pm-result__title">{copy.title(result.intent, result.itemLabel)}</h2>
-      <p className="pm-result__body">{copy.body(result.intent, result.itemLabel)}</p>
+      <p className="pm-result__body">{copy.body(result.intent, result.itemLabel, result.meta)}</p>
 
       {result.kind === 'error' && result.errorMessage && (
         <div className="pm-result__detail">
@@ -2688,8 +2980,9 @@ const CheckoutResultScreen: React.FC<{
 
       <div className="pm-result__actions">
         {result.kind === 'success' && (
-          <button className="pm-result__btn pm-result__btn--primary" onClick={onDismiss}>
-            <i className="fas fa-arrow-right"></i> Continue
+          <button className="pm-result__btn pm-result__btn--primary" onClick={isCancel ? onViewPlans : onDismiss}>
+            <i className={isCancel ? 'fas fa-arrow-left' : 'fas fa-arrow-right'}></i>{' '}
+            {isCancel ? 'Back to plans' : 'Continue'}
           </button>
         )}
 
@@ -2706,9 +2999,16 @@ const CheckoutResultScreen: React.FC<{
 
         {result.kind === 'error' && (
           <>
-            <button className="pm-result__btn pm-result__btn--primary" onClick={tryAgain}>
-              <i className="fas fa-rotate-right"></i> Try again
-            </button>
+            {!isCancel && (
+              <button className="pm-result__btn pm-result__btn--primary" onClick={tryAgain}>
+                <i className="fas fa-rotate-right"></i> Try again
+              </button>
+            )}
+            {isCancel && (
+              <button className="pm-result__btn pm-result__btn--primary" onClick={onDismiss}>
+                <i className="fas fa-arrow-left"></i> Back to account
+              </button>
+            )}
             <a
               className="pm-result__btn pm-result__btn--ghost"
               href="https://discord.gg/TWfKkZVwJW"
@@ -2761,28 +3061,55 @@ function ConfirmModal({ dialog, onResolve }: {
   return (
     <div className="pm-modal__backdrop" onClick={() => onResolve(null)} role="presentation">
       <div
-        className={`pm-modal pm-modal--${dialog.variant ?? 'default'}`}
+        className={`pm-modal pm-modal--${dialog.variant ?? 'default'}${dialog.icon ? ' pm-modal--with-icon' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${dialog.id}-title`}
         onClick={(e) => e.stopPropagation()}
+        style={dialog.accent ? ({ ['--pm-modal-accent' as any]: dialog.accent } as React.CSSProperties) : undefined}
       >
+        <div className="pm-modal__atmosphere" aria-hidden="true">
+          <div className="pm-modal__atmosphere-orb"></div>
+          <div className="pm-modal__atmosphere-grain"></div>
+        </div>
+        <button
+          type="button"
+          className="pm-modal__close"
+          aria-label="Dismiss"
+          onClick={() => onResolve(null)}
+        >
+          <i className="fas fa-times"></i>
+        </button>
         <div className="pm-modal__header">
-          <h3 className="pm-modal__title" id={`${dialog.id}-title`}>{dialog.title}</h3>
-          <button
-            type="button"
-            className="pm-modal__close"
-            aria-label="Dismiss"
-            onClick={() => onResolve(null)}
-          >
-            <i className="fas fa-times"></i>
-          </button>
+          {dialog.icon && (
+            <div className="pm-modal__icon" aria-hidden="true">
+              <i className={dialog.icon}></i>
+            </div>
+          )}
+          <div className="pm-modal__heading">
+            {dialog.eyebrow && <div className="pm-modal__eyebrow">{dialog.eyebrow}</div>}
+            <h3 className="pm-modal__title" id={`${dialog.id}-title`}>{dialog.title}</h3>
+          </div>
         </div>
         <div className="pm-modal__body">
           {dialog.message.split('\n').filter(Boolean).map((para, i) => (
             <p key={i}>{para}</p>
           ))}
         </div>
+        {dialog.highlights && dialog.highlights.length > 0 && (
+          <div className="pm-modal__highlights" role="list">
+            {dialog.highlights.map((h, i) => (
+              <div
+                key={`${h.label}-${i}`}
+                role="listitem"
+                className={`pm-modal__highlight pm-modal__highlight--${h.tone ?? 'default'}`}
+              >
+                <div className="pm-modal__highlight-label">{h.label}</div>
+                <div className="pm-modal__highlight-value">{h.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="pm-modal__actions">
           {dialog.actions.map((action) => (
             <button

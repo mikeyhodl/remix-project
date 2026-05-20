@@ -8,10 +8,42 @@ import { NotificationItem } from './notification-center-api'
 
 // ==================== Credits ====================
 
+/**
+ * Per-(provider, model) usage cap entitled by an active feature group.
+ * Returned by `GET /credits/balance?include=quotas`. Sorted by `amount ASC`
+ * so the tightest cap (which is also drained first) appears first.
+ *
+ * Wildcards: `provider === '*'` and/or `model === '*'` means the cap applies
+ * across the whole provider catalog or to any model. Render as
+ * "All providers" / "All models".
+ *
+ * Special amounts:
+ *   - `amount >= 1e15` → treat as unlimited (∞ badge)
+ *   - `amount === 0`   → quota is effectively disabled; hide the row
+ */
+export interface QuotaEntry {
+  /** Stable backend slug, e.g. `q:free:mistral-small:day`. Never show to end users. */
+  slug: string
+  provider: string  // 'mistralai', 'anthropic', '*', …
+  model: string     // 'mistral-small-latest', '*', …
+  period: 'day' | 'week' | 'month'
+  amount: number    // cap in credits
+  used: number      // credits drained this period
+  remaining: number // max(0, amount - used)
+  periodStart: string    // 'YYYY-MM-DD'
+  periodResetAt: string  // ISO datetime when the bucket resets
+}
+
 export interface Credits {
   balance: number
   free_credits: number
   paid_credits: number
+  /**
+   * Active per-(provider, model) quotas for this user. Only present when
+   * the balance call was made with `?include=quotas`. Empty array when the
+   * user has no active entitlements.
+   */
+  quotas?: QuotaEntry[]
 }
 
 export interface CreditTransaction {
