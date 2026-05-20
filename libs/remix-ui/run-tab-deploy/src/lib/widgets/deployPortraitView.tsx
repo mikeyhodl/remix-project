@@ -621,7 +621,7 @@ function DeployPortraitView() {
               constructorInterface?.type === 'constructor' && constructorInterface?.inputs.length > 0 && (
                 <div className='border-top pb-3'>
                   {
-                    constructorInterface?.inputs.map((input, index) => {
+                    constructorInterface?.inputs.map((input: any, index: any) => {
                       const isExpanded = expandedInputs.has(index)
                       const currentValue = inputValues[index] || ''
                       return (
