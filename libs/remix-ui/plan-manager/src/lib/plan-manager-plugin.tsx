@@ -178,6 +178,11 @@ export class PlanManagerPlugin extends ViewPlugin {
    */
   async open(intent?: OpenIntent): Promise<void> {
     this.store.send({ type: 'OPEN_OVERLAY', intent })
+    // Refresh on every open — catalog (plans/packages) and, when signed
+    // in, account-scoped data (credits/quotas, subscription, permissions).
+    // This keeps the panel consistent with the API instead of relying on
+    // whatever was loaded at login.
+    this.refreshOnOpen()
     try {
       await this.call('menuicons', 'select', 'planManager')
     } catch { /* noop */ }
@@ -188,7 +193,26 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   toggle(): void {
+    const wasOpen = this.store.getSnapshot().isOpen
     this.store.send({ type: 'TOGGLE_OVERLAY' })
+    // Only refresh on the closed → open transition.
+    if (!wasOpen) this.refreshOnOpen()
+  }
+
+  /**
+   * Re-fetch catalog + account data when the panel opens. Catalog is
+   * always re-fetched (public endpoint); account data only if signed in.
+   * Errors are swallowed by the underlying loaders, which dispatch
+   * CATALOG_FAILED / DATA_FAILED into the machine.
+   */
+  private refreshOnOpen(): void {
+    this.store.send({ type: 'CATALOG_LOAD' })
+    void this.loadCatalog()
+    const snap = this.store.getSnapshot()
+    if (snap.isAuthenticated) {
+      this.store.send({ type: 'REFRESH' })
+      void this.loadAccountData()
+    }
   }
 
   /**
