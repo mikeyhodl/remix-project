@@ -259,6 +259,58 @@ export class GenerateDAppHandler extends BaseToolHandler {
         console.warn('[QuickDapp] Dashboard focus failed (non-critical):', e?.message)
       }
 
+      // Create inline mode config immediately if in inline mode
+      if (isInlineMode) {
+        try {
+          console.log('[QuickDapp] Creating inline mode config at /frontend/dapp.config.json')
+
+          // Get network name from udappEnv
+          let networkName = 'Unknown Network'
+          try {
+            const network = await plugin.call('udappEnv', 'getNetwork')
+            networkName = network?.name || 'Unknown Network'
+          } catch (e) {
+            console.warn('[QuickDapp] Could not get network name:', e)
+          }
+
+          const inlineConfig = {
+            id: `inline-${Date.now()}`,
+            name: args.contractName,
+            slug: workspaceSlug,
+            workspaceName: workspaceSlug,
+            contract: {
+              name: args.contractName,
+              address: args.contractAddress,
+              abi: args.contractAbi,
+              chainId: args.chainId,
+              networkName
+            },
+            config: {
+              title: args.contractName,
+              description: args.description || `DApp for ${args.contractName}`,
+              template: 'custom'
+            },
+            status: 'creating',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            processingStartedAt: Date.now(),
+            inlineMode: true
+          }
+
+          // Ensure /frontend directory exists
+          try {
+            await plugin.call('fileManager', 'mkdir', '/frontend')
+          } catch (e) {
+            // Directory may already exist
+          }
+
+          await plugin.call('fileManager', 'writeFile', '/frontend/dapp.config.json', JSON.stringify(inlineConfig, null, 2))
+          console.log('[QuickDapp] Inline config created with status "creating"')
+        } catch (configErr) {
+          console.warn('[QuickDapp] Inline config creation failed (non-critical):', configErr)
+        }
+      }
+
       // Notify React UI that a new DApp is being created (sets processing spinner on card)
       plugin.emit('generationProgress', { status: 'preparing', contractAddress: args.contractAddress, slug: workspaceSlug })
 
@@ -640,6 +692,11 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         type: 'boolean',
         description: 'Set to true if this is an update (not a new generation)',
         default: false
+      },
+      isInlineMode: {
+        type: 'boolean',
+        description: 'Set to true if this is an inline mode DApp (created in /frontend folder)',
+        default: false
       }
     },
     required: ['workspaceName']
@@ -655,10 +712,10 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
   }
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
-    const { workspaceName, contractAddress, isUpdate } = args
+    const { workspaceName, contractAddress, isUpdate, isInlineMode } = args
 
     try {
-      console.log(`[QuickDapp] FinalizeDAppGeneration: slug=${workspaceName}, isUpdate=${!!isUpdate}`)
+      console.log(`[QuickDapp] FinalizeDAppGeneration: slug=${workspaceName}, isUpdate=${!!isUpdate}, isInlineMode=${!!isInlineMode}`)
 
       // Ensure we're in the correct workspace
       const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
@@ -671,16 +728,26 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         await new Promise(r => setTimeout(r, 500))
       }
 
-      // Update config status
+      // Update config status and get actual slug
+      const configPath = isInlineMode ? '/frontend/dapp.config.json' : 'dapp.config.json'
+      let actualSlug = workspaceName
       try {
-        const configContent = await plugin.call('fileManager', 'readFile', 'dapp.config.json')
+        const configContent = await plugin.call('fileManager', 'readFile', configPath)
         if (configContent) {
           const config = JSON.parse(configContent)
           config.status = 'created'
           config.processingStartedAt = null
           config.updatedAt = Date.now()
-          await plugin.call('fileManager', 'writeFile', 'dapp.config.json', JSON.stringify(config, null, 2))
-          console.log('[QuickDapp] Config updated to created')
+          await plugin.call('fileManager', 'writeFile', configPath, JSON.stringify(config, null, 2))
+          console.log(`[QuickDapp] Config updated to "created" at ${configPath}`)
+
+          // Use the actual slug from config for inline mode
+          if (isInlineMode && config.slug) {
+            actualSlug = config.slug
+            console.log(`[QuickDapp] Using inline mode slug: ${actualSlug}`)
+          }
+        } else {
+          console.warn(`[QuickDapp] Config file not found at ${configPath}`)
         }
       } catch (configErr) {
         console.warn('[QuickDapp] Config update failed (non-critical):', configErr)
@@ -689,10 +756,12 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       // Emit dappGenerated event — triggers UI refresh
       plugin.emit('dappGenerated', {
         address: contractAddress || '',
-        slug: workspaceName,
-        isUpdate: !!isUpdate
+        slug: actualSlug,
+        workspaceName: workspaceName,
+        isUpdate: !!isUpdate,
+        isInlineMode: !!isInlineMode
       })
-      console.log('[QuickDapp] dappGenerated emitted')
+      console.log('[QuickDapp] dappGenerated emitted with slug:', actualSlug)
 
       // Note: In agent-driven flow, file writes are already approved via HITL.
       // No separate review card (onDappUpdateCompleted) is needed.
@@ -700,9 +769,9 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       // Auto-open the DApp detail page
       try {
         await plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
-        await plugin.call('quick-dapp-v2' as any, 'openDapp', workspaceName)
+        await plugin.call('quick-dapp-v2' as any, 'openDapp', actualSlug)
         await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
-        console.log('[QuickDapp] Auto-open complete')
+        console.log('[QuickDapp] Auto-open complete for slug:', actualSlug)
       } catch (e: any) {
         console.warn('[QuickDapp] Auto-open failed (non-critical):', e?.message)
       }
@@ -769,6 +838,8 @@ export class ListDAppsHandler extends BaseToolHandler {
       console.log('[QuickDapp] Found', dappWorkspaces.length, 'dapp-* workspaces')
 
       const dapps: any[] = []
+
+      // Check dapp-* workspaces for root-level dapp.config.json
       for (const wsName of dappWorkspaces) {
         try {
           const hasConfig = await plugin.call('filePanel' as any, 'existsInWorkspace', wsName, 'dapp.config.json')
@@ -787,10 +858,40 @@ export class ListDAppsHandler extends BaseToolHandler {
             chainId: config.contract?.chainId || 'unknown',
             networkName: config.contract?.networkName || '',
             status: config.status || 'unknown',
-            createdAt: config.createdAt || 0
+            createdAt: config.createdAt || 0,
+            isInlineMode: false
           })
         } catch (e) {
           console.warn('[QuickDapp] Failed to read config for', wsName)
+        }
+      }
+
+      // Check ALL workspaces for inline mode DApps (frontend/dapp.config.json)
+      const allWorkspaceNames = allWorkspaces.map((ws: any) => typeof ws === 'string' ? ws : ws.name).filter(Boolean)
+      for (const wsName of allWorkspaceNames) {
+        try {
+          const hasInlineConfig = await plugin.call('filePanel' as any, 'existsInWorkspace', wsName, 'frontend/dapp.config.json')
+          if (!hasInlineConfig) continue
+
+          const content = await plugin.call('filePanel' as any, 'readFileFromWorkspace', wsName, 'frontend/dapp.config.json')
+          if (!content) continue
+
+          const config = JSON.parse(content)
+          dapps.push({
+            slug: config.id || `${wsName}-inline`,
+            workspaceName: wsName,
+            name: config.name || 'Untitled',
+            contractAddress: config.contract?.address || 'unknown',
+            contractName: config.contract?.name || 'unknown',
+            chainId: config.contract?.chainId || 'unknown',
+            networkName: config.contract?.networkName || '',
+            status: config.status || 'unknown',
+            createdAt: config.createdAt || 0,
+            isInlineMode: true
+          })
+          console.log('[QuickDapp] Found inline mode DApp in workspace:', wsName)
+        } catch (e) {
+          // Silently skip - most workspaces won't have inline DApps
         }
       }
 
