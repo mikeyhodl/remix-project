@@ -250,7 +250,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
               `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
               `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
               `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks. The provider is always available and on the correct network.\n` +
-              `- Simply connect: const provider = new ethers.BrowserProvider(window.ethereum); await provider.send("eth_requestAccounts", []); const signer = await provider.getSigner();\n`
+              `- Simply connect: const provider = new ethers.BrowserProvider(window.ethereum); await provider.send("eth_requestAccounts", []); const signer = await provider.getSigner();\n` +
+              `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
             : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
               `- The contract is deployed on chain ${args.chainId}. Set TARGET_CHAIN_ID = ${args.chainId} in the generated code.\n` +
               `- For wallet_switchEthereumChain, use chainId: '0x${Number(args.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
@@ -528,7 +529,8 @@ export class UpdateDAppHandler extends BaseToolHandler {
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
               `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
               `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
-              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n`
+              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n` +
+              `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
             : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
               `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
               `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
@@ -932,4 +934,3 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     }
   ]
 }
-
