@@ -51,7 +51,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         default: 'london'
       }
     },
-    required: ['file']
+    required: ['filePath']
   };
 
   getPermissions(): string[] {
