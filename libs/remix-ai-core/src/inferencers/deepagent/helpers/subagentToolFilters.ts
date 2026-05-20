@@ -1,14 +1,5 @@
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 
-export function getBasicMcpToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const basicToolNames = []
-
-  const basicTools = tools.filter(tool =>
-    basicToolNames.includes(tool.name)
-  )
-  return basicTools
-}
-
 export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const basicFileToolNames: string[] = []
 
@@ -18,7 +9,7 @@ export function getBasicFileToolsForGasOptimizer(tools: DynamicStructuredTool[])
   return basicFileTools
 }
 
-export function getCoordinationToolsForComprehensiveAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+export function getSecurityToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const coordinationToolNames: string[] = [
     'slither_scan'
   ]
@@ -39,18 +30,6 @@ export function getEducationToolsForWeb3Educator(tools: DynamicStructuredTool[])
     educationToolNames.includes(tool.name)
   )
   return educationTools
-}
-
-export function getSecurityToolsForSecurityAuditor(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
-  const securityTools = tools.filter(tool => {
-    // Check if tool comes from Security Auditor MCP server
-    const description = tool.description.toLowerCase()
-    return description.includes('[security]') ||
-           tool.name.toLowerCase().includes('slither_scan') ||
-           description.includes('security')
-  })
-
-  return securityTools
 }
 
 export function getDebugToolsForDebugSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
@@ -102,6 +81,32 @@ export function getWebSearchToolsForWebSearchSpecialist(tools: DynamicStructured
   )
 
   return webSearchTools
+}
+
+export function getToolForSolidityCompiler(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'solidity_compile', 'get_compilation_result', 'get_compilation_result_sources_by_file_path', 'set_compiler_config',
+    'get_compiler_config', 'get_compiler_versions'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
+}
+
+export function getToolsForDeployer(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
+  const classifierToolNames = [
+    'deploy_contract', 'call_contract', 'send_transaction', 'get_deployed_contracts', 'set_execution_environment', 'get_account_balance',
+    'get_user_accounts', 'set_selected_account', 'get_current_environment', 'run_script', 'simulate_transaction', 'add_instance'
+  ]
+
+  const classifierTools = tools.filter(tool =>
+    classifierToolNames.includes(tool.name)
+  )
+
+  return classifierTools
 }
 
 export function getToolForClassifierSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
@@ -197,7 +202,10 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
   const debugToolNames = new Set(getDebugToolsForDebugSpecialist(tools).map(t => t.name))
   const solidityToolNames = new Set(getSolidityToolsForSolidityEngineer(tools).map(t => t.name))
   const webSearchToolNames = new Set(getWebSearchToolsForWebSearchSpecialist(tools).map(t => t.name))
+  const frontendToolNames = new Set(getQuickDappToolsForQuickDappSpecialist(tools).map(t => t.name))
   const conversionToolNames = new Set(getConversionToolsForConversionSpecialist(tools).map(t => t.name))
+  const soldityComplierToolNames = new Set(getToolForSolidityCompiler(tools).map(t => t.name))
+  const contractRunnerToolNames = new Set(getToolsForDeployer(tools).map(t => t.name))
 
   const filteredTools = tools.filter(tool =>
     !etherscanToolNames.has(tool.name) &&
@@ -209,7 +217,10 @@ export function filterOutSpecialistTools(tools: DynamicStructuredTool[]): Dynami
     !debugToolNames.has(tool.name) &&
     !solidityToolNames.has(tool.name) &&
     !webSearchToolNames.has(tool.name) &&
-    !conversionToolNames.has(tool.name)
+    !conversionToolNames.has(tool.name) &&
+    !frontendToolNames.has(tool.name) &&
+    !soldityComplierToolNames.has(tool.name) &&
+    !contractRunnerToolNames.has(tool.name)
   )
   return filteredTools
 }
@@ -248,12 +259,6 @@ export function filterOutFileOperationTools(tools: DynamicStructuredTool[]): Dyn
 
 export function getQuickDappToolsForQuickDappSpecialist(tools: DynamicStructuredTool[]): DynamicStructuredTool[] {
   const quickDappToolNames = [
-    'file_write',
-    'file_create',
-    'file_read',
-    'file_replace',
-    'directory_list',
-    'read_file_chunk',
     'finalize_dapp_generation',
     'fetch_figma_design'
   ]

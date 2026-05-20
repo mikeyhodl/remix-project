@@ -47,7 +47,6 @@ import { createDeploymentTools } from './handlers/DeploymentHandler';
 import { createDebuggingTools } from './handlers/DebuggingHandler';
 import { createCodeAnalysisTools } from './handlers/CodeAnalysisHandler';
 import { createContractClassificationTools } from './handlers/ContractClassifierHandler';
-import { createEnhancedAuditTools } from './handlers/EnhancedAuditHandler';
 import { createChartJsTools } from './handlers/ChartJsHandler';
 import { createTutorialsTools } from './handlers/TutorialsHandler';
 import { createAmpTools } from './handlers/AmpHandler';

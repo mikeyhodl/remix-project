@@ -77,9 +77,7 @@ export {
 } from './constants'
 
 export {
-  getBasicMcpToolsForSecurityAuditor,
   getBasicFileToolsForGasOptimizer,
-  getCoordinationToolsForComprehensiveAuditor,
   getEducationToolsForWeb3Educator
 } from './helpers/subagentToolFilters'
 
