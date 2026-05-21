@@ -472,6 +472,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       } else {
         if (clearToolTimeoutRef.current) {
           clearTimeout(clearToolTimeoutRef.current)
+          clearToolTimeoutRef.current = null
         }
         const targetId = assistantId
         clearToolTimeoutRef.current = setTimeout(() => {
