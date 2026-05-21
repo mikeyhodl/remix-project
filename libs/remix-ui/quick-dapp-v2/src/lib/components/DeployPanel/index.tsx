@@ -10,6 +10,7 @@ import { generateWalletSelectionScript } from '../../utils/wallet-selection-scri
 import { validateEnsName } from '../../utils/ens-utils';
 // remixClient removed - using plugin from context instead
 import { trackMatomoEvent } from '@remix-api';
+import { DappOperations } from '@remix-ui/helper';
 
 import BaseAppWizard from './BaseAppWizard';
 import EnsRegistrationModal from './EnsRegistrationModal';
@@ -132,24 +133,18 @@ function DeployPanel(): JSX.Element {
     try {
       builder = new InBrowserVite();
       await builder.initialize();
-      const dappRootPath = '/';
+      const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
+      const dappRootPath = dappOps.getSourceRoot();
+
       const filesMap = new Map<string, string>();
       await readDappFiles(plugin, dappRootPath, filesMap, 0);
 
       if (filesMap.size === 0) throw new Error("No DApp files found");
+      const entryPoint = dappOps.getEntryPoint('src/main.jsx');
 
-      // Detect inline mode and set correct paths
-      const isInlineMode = (activeDapp as any)?.inlineMode === true;
-      const basePath = isInlineMode ? '/frontend' : undefined;
-      const entryPoint = isInlineMode ? '/frontend/src/main.jsx' : '/src/main.jsx';
-
-      const jsResult = await builder.build(filesMap, entryPoint, basePath);
+      const jsResult = await builder.build(filesMap, entryPoint);
       if (!jsResult.success) throw new Error(`Build failed: ${jsResult.error}`);
-
-      // Check for index.html in correct location
-      const indexHtmlPaths = isInlineMode
-        ? ['/frontend/index.html', 'frontend/index.html']
-        : ['/index.html', 'index.html'];
+      const indexHtmlPaths = dappOps.getPathVariations('index.html');
 
       let indexHtmlContent = '';
       for (const path of indexHtmlPaths) {
@@ -234,6 +229,7 @@ function DeployPanel(): JSX.Element {
       else modifiedHtml = `<html><head>${injectionScript}\n${ogTags}</head>${modifiedHtml}</html>`;
 
       // Build regex patterns that work for both workspace and inline modes
+      const isInlineMode = dappOps.isInline();
       const scriptRegex = isInlineMode
         ? /<script type="module"[^>]*src="(?:\/|\.\/)?(?:frontend\/)?src\/main\.jsx"[^>]*><\/script>/
         : /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/;

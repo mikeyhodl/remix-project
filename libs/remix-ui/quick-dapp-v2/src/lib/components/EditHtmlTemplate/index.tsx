@@ -7,6 +7,7 @@ import { AppContext } from '../../contexts';
 import DeployPanel from '../DeployPanel';
 // remixClient removed - using plugin from context instead
 import { InBrowserVite } from '../../InBrowserVite';
+import { DappOperations } from '@remix-ui/helper';
 
 interface Pages {
   [key: string]: string
@@ -200,13 +201,8 @@ function EditHtmlTemplate(): JSX.Element {
     if (!doc || !doc.body || doc.body.innerHTML === '') return;
 
     try {
-      const currentWs = await plugin.call('filePanel', 'getCurrentWorkspace');
-      if (currentWs?.name !== activeDapp.workspaceName) {
-        await plugin.call('filePanel', 'switchToWorkspace', {
-          name: activeDapp.workspaceName,
-          isLocalhost: false,
-        });
-      }
+      const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
+      await dappOps.switchToWorkspace();
 
       setIsCapturing(true);
       const dataUrl = await toPng(doc.body, {
@@ -223,8 +219,7 @@ function EditHtmlTemplate(): JSX.Element {
         }
       });
 
-      const previewPath = 'preview.png';
-      await plugin.call('fileManager', 'writeFile', previewPath, dataUrl);
+      await dappOps.writeFile('preview.png', dataUrl);
     } catch (error) {
       console.error('[Capture] Failed:', error);
     } finally {
@@ -245,17 +240,10 @@ function EditHtmlTemplate(): JSX.Element {
     setIsBuilding(true);
     setIframeError('');
     setShowIframe(true);
+    const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
 
     try {
-      const currentWs = await plugin.call('filePanel', 'getCurrentWorkspace');
-      if (currentWs?.name && currentWs.name !== activeDapp.workspaceName) {
-        console.log(`[QuickDapp] Switching from "${currentWs.name}" to DApp workspace "${activeDapp.workspaceName}"`);
-        await plugin.call('filePanel', 'switchToWorkspace', {
-          name: activeDapp.workspaceName,
-          isLocalhost: false,
-        });
-        await new Promise(r => setTimeout(r, 800));
-      }
+      await dappOps.switchToWorkspace();
     } catch (e) {
       console.warn('[QuickDapp] Failed to auto-switch workspace:', e);
     }
@@ -268,7 +256,7 @@ function EditHtmlTemplate(): JSX.Element {
     let indexHtmlContent = '';
 
     try {
-      const dappRootPath = '/';
+      const dappRootPath = dappOps.getSourceRoot();
       await readDappFiles(plugin, dappRootPath, mapFiles, 0);
       console.log('[QuickDapp][runBuild] Files read:', mapFiles.size);
 
@@ -278,10 +266,7 @@ function EditHtmlTemplate(): JSX.Element {
         return;
       }
 
-      const isInlineMode = (activeDapp as any)?.inlineMode === true;
-      const indexHtmlPaths = isInlineMode
-        ? ['/frontend/index.html', 'frontend/index.html']
-        : ['/index.html', 'index.html'];
+      const indexHtmlPaths = dappOps.getPathVariations('index.html');
 
       for (const [path] of mapFiles.entries()) {
         if (path.match(/\.(js|jsx|ts|tsx)$/)) {
@@ -389,11 +374,8 @@ window.addEventListener('unhandledrejection', function(e) {
 
     try {
       if (hasBuildableFiles) {
-        const isInlineMode = (activeDapp as any)?.inlineMode === true;
-        const basePath = isInlineMode ? '/frontend' : undefined;
-        const entryPoint = isInlineMode ? '/frontend/src/main.jsx' : '/src/main.jsx';
-
-        const result = await builder.build(mapFiles, entryPoint, basePath);
+        const entryPoint = dappOps.getEntryPoint('src/main.jsx');
+        const result = await builder.build(mapFiles, entryPoint, undefined);
         if (!result.success) {
           doc.open();
           doc.write(`<pre style="color: red; white-space: pre-wrap;">${result.error || 'Unknown build error'}</pre>`);

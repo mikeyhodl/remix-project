@@ -43,6 +43,8 @@ export interface DappConfig {
   thumbnailPath?: string;
 }
 
+export type DappMode = 'workspace' | 'inline';
+
 export interface AppState {
   loading: { screen: boolean };
   isAiLoading: boolean;
