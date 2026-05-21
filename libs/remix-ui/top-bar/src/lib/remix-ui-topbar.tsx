@@ -1,5 +1,5 @@
 /* eslint-disable @nrwl/nx/enforce-module-boundaries */
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import BasicLogo from '../components/BasicLogo'
 //@ts-ignore
 import '../css/topbar.css'
@@ -144,30 +144,24 @@ export function RemixUiTopbar() {
   useEffect(() => { labelsCompactRef.current = compactRightLabels }, [compactRightLabels])
   useEffect(() => { panelCompactRef.current = compactPanelControl }, [compactPanelControl])
 
+  const measure = useCallback(() => {
+    if (!panelControlRef.current || !rightSideRef.current) return
+    const gap =
+      rightSideRef.current.getBoundingClientRect().left -
+      panelControlRef.current.getBoundingClientRect().right
+
+    const labelsCompact = labelsCompactRef.current
+    const panelCompact = panelCompactRef.current
+
+    if (!labelsCompact && gap < 24) return setCompactRightLabels(true)
+    if (labelsCompact && !panelCompact && gap < 24) return setCompactPanelControl(true)
+    if (panelCompact && gap > 100) return setCompactPanelControl(false)
+    if (labelsCompact && !panelCompact && gap > 170) return setCompactRightLabels(false)
+  }, [])
+
   useEffect(() => {
     if (!sectionRef.current) return
     let frameId: number
-
-    // Measure the horizontal gap between panel-control's right edge and the
-    // right-side cluster's left edge. Two tiers of progressive degradation:
-    //   tier 1 — strip text labels from Feedback/Support buttons (~120px)
-    //   tier 2 — collapse the three panel toggles into a dropdown (~50px)
-    // Hysteresis: enter at gap < 24, exit at much wider gaps so a tiny resize
-    // can't oscillate us between modes.
-    const measure = () => {
-      if (!panelControlRef.current || !rightSideRef.current) return
-      const gap =
-        rightSideRef.current.getBoundingClientRect().left -
-        panelControlRef.current.getBoundingClientRect().right
-
-      const labelsCompact = labelsCompactRef.current
-      const panelCompact = panelCompactRef.current
-
-      if (!labelsCompact && gap < 24) return setCompactRightLabels(true)
-      if (labelsCompact && !panelCompact && gap < 24) return setCompactPanelControl(true)
-      if (panelCompact && gap > 100) return setCompactPanelControl(false)
-      if (labelsCompact && !panelCompact && gap > 200) return setCompactRightLabels(false)
-    }
 
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frameId)
@@ -180,7 +174,13 @@ export function RemixUiTopbar() {
       observer.disconnect()
       cancelAnimationFrame(frameId)
     }
-  }, [])
+  }, [measure])
+
+  // Re-measure when our own compact state changes.
+  useEffect(() => {
+    const id = requestAnimationFrame(measure)
+    return () => cancelAnimationFrame(id)
+  }, [measure, compactRightLabels, compactPanelControl])
 
   useEffect(() => {
     // Fetch login mode from auth plugin
