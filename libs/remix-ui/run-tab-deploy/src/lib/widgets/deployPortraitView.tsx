@@ -280,6 +280,7 @@ function DeployPortraitView() {
     }
     return networkName;
   }
+  console.log('theme active is ', themeQuality)
   return (
     <>
       <div className="card mx-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
@@ -288,10 +289,10 @@ function DeployPortraitView() {
           setIsExpanded(!isExpanded)
         }} style={{ cursor: 'pointer' }}>
           <div className='d-flex align-items-center gap-2' data-id="deploy-widget-header">
-            <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
+            <h6 className="my-auto" style={{ color: themeQuality.trim() === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="rounded-pill badge text-bg-info" style={{ color: themeQuality === 'dark' ? 'black' : 'white' }}>{ lastWordRemover(widgetState.networkDetected) }</span>
+            <span className="badge rounded-pill text-bg-info text-light" style={{ color: themeQuality.trim() === 'dark' ? '#000' : 'white' }}>{ lastWordRemover(widgetState.networkDetected) }</span>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>
