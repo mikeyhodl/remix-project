@@ -156,7 +156,7 @@ export function RemixUiTopbar() {
     if (!labelsCompact && gap < 24) return setCompactRightLabels(true)
     if (labelsCompact && !panelCompact && gap < 24) return setCompactPanelControl(true)
     if (panelCompact && gap > 100) return setCompactPanelControl(false)
-    if (labelsCompact && !panelCompact && gap > 170) return setCompactRightLabels(false)
+    if (labelsCompact && !panelCompact && gap > 120) return setCompactRightLabels(false)
   }, [])
 
   useEffect(() => {
