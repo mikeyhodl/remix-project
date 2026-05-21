@@ -268,7 +268,18 @@ function DeployPortraitView() {
     setVerifyChecked(isChecked)
     window.localStorage.setItem('deploy-verify-contract-checked', JSON.stringify(isChecked))
   }
-
+  console.log('What is in here? ', widgetState)
+  function lastWordRemover(networkName: string) : string {
+    const cutUpName = networkName.split(' ');
+    let newNetName = '';
+    const last = cutUpName.length - 1;
+    if (cutUpName[last] === 'network') {
+      const temp = cutUpName.slice(0, last);
+      newNetName = temp.join(' ');
+      return newNetName;
+    }
+    return networkName;
+  }
   return (
     <>
       <div className="card mx-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
@@ -276,11 +287,11 @@ function DeployPortraitView() {
           trackMatomoEvent?.({ category: 'udapp', action: 'deployCardToggle', name: isExpanded ? 'collapsed' : 'expanded', isClick: true })
           setIsExpanded(!isExpanded)
         }} style={{ cursor: 'pointer' }}>
-          <div className='d-flex align-items-center gap-2'>
+          <div className='d-flex align-items-center gap-2' data-id="deploy-widget-header">
             <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="small text-secondary">{ widgetState.networkDetected }</span>
+            <span className="rounded-pill badge text-bg-info" style={{ color: themeQuality === 'dark' ? 'black' : 'white' }}>{ lastWordRemover(widgetState.networkDetected) }</span>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>
