@@ -1064,7 +1064,11 @@ const PlanManagerOverlay: React.FC<{
   plugin: PlanManagerPlugin
   snap: PlanManagerSnapshot
 }> = ({ plugin, snap }) => {
-  const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage'>('plans')
+  // null = no expanded section (Plans / Top up / Usage all collapsed). The
+  // panel landing view is intentionally quiet: hero + a summary of free
+  // quotas + (when relevant) an upgrade promo. Tabs only expand on demand
+  // OR when another plugin opens us with a routing intent (see effect below).
+  const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage' | null>(null)
 
   // When a non-UI plugin opens us with an intent, follow its routing
   // hint. We track the intent identity (reference) so a fresh OPEN_OVERLAY
@@ -1080,6 +1084,8 @@ const PlanManagerOverlay: React.FC<{
       // Sensible defaults when the caller didn't pin a section.
       setActiveSection(intent.reason === 'quota-exhausted' ? 'topup' : 'plans')
     }
+    // Otherwise leave the section collapsed — the user opened the panel
+    // from the menu icon and we don't want to push a particular screen.
   }, [intent])
 
   // Close-on-Escape — UI concern, stays in React.
@@ -1209,6 +1215,20 @@ const PlanManagerOverlay: React.FC<{
             onTopUp={() => setActiveSection('topup')}
           />
 
+          {/*
+            Upgrade promo. Surfaced when the user has headroom in the
+            catalog (free / starter-tier paid / etc.) and no higher-priority
+            alert is showing — alerts already drive their own CTA, no
+            point doubling up. Sits above the quotas so it gets attention
+            before the user dives into per-model details.
+          */}
+          {!activeAlert && canUpgrade && (
+            <UpgradePromoBanner
+              planCtx={planCtx}
+              onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
+            />
+          )}
+
           <QuotasPanel
             quotas={quotas}
             aiModels={snap.permissions?.ai_models}
@@ -1228,7 +1248,9 @@ const PlanManagerOverlay: React.FC<{
               <button
                 key={s.id}
                 className={`pm-nav__item ${activeSection === s.id ? 'is-active' : ''}`}
-                onClick={() => setActiveSection(s.id)}
+                // Click on the active tab collapses it — we want a calm
+                // landing view, so re-clicking the same tab returns to it.
+                onClick={() => setActiveSection(prev => prev === s.id ? null : s.id)}
               >
                 <i className={s.icon}></i>
                 <span>{s.label}</span>
@@ -1392,26 +1414,70 @@ const QuotasPanel: React.FC<{
   onUpgrade: () => void
   onTopUp: () => void
 }> = ({ quotas, aiModels, planLabel, paidCredits, canUpgrade, onUpgrade, onTopUp }) => {
+  const [expanded, setExpanded] = React.useState(false)
+
   if (!quotas || quotas.length === 0) return null
 
   const hasPaid = paidCredits > 0
+  const totalCount = quotas.length
+
+  // Pick the 1-2 quotas most worth showing inline when collapsed:
+  //   1. exhausted finite quotas first (used >= amount)
+  //   2. then highest used % (finite)
+  //   3. then highest absolute used (catches "no usage yet" → biggest cap)
+  // Unlimited quotas drop to the bottom — they're not the story.
+  const previewQuotas = React.useMemo(() => {
+    const ranked = [...quotas].sort((a, b) => {
+      const aUnlim = a.amount >= UNLIMITED_THRESHOLD
+      const bUnlim = b.amount >= UNLIMITED_THRESHOLD
+      if (aUnlim !== bUnlim) return aUnlim ? 1 : -1
+      const aExhausted = !aUnlim && a.remaining <= 0
+      const bExhausted = !bUnlim && b.remaining <= 0
+      if (aExhausted !== bExhausted) return aExhausted ? -1 : 1
+      const aPct = aUnlim ? 0 : a.used / Math.max(1, a.amount)
+      const bPct = bUnlim ? 0 : b.used / Math.max(1, b.amount)
+      if (bPct !== aPct) return bPct - aPct
+      return (b.used ?? 0) - (a.used ?? 0)
+    })
+    return ranked.slice(0, Math.min(2, ranked.length))
+  }, [quotas])
+
+  const visibleQuotas = expanded ? quotas : previewQuotas
+  const hiddenCount = expanded ? 0 : Math.max(0, totalCount - visibleQuotas.length)
 
   return (
-    <section className="pm-quotas" aria-label="Free AI usage included with your plan">
+    <section
+      className={`pm-quotas ${expanded ? 'pm-quotas--expanded' : 'pm-quotas--collapsed'}`}
+      aria-label="Free AI usage included with your plan"
+    >
       <div className="pm-quotas__head">
         <div>
           <div className="pm-quotas__eyebrow">Free with {planLabel}</div>
           <h3 className="pm-quotas__title">Free AI usage included</h3>
         </div>
-        <div className="pm-quotas__hint">
-          {hasPaid
-            ? <>Paid credits keep working past these caps.</>
-            : <>Top up or upgrade to keep using AI once a cap is hit.</>}
+        <div className="pm-quotas__head-right">
+          <div className="pm-quotas__hint">
+            {hasPaid
+              ? <>Paid credits keep working past these caps.</>
+              : <>Top up or upgrade to keep using AI once a cap is hit.</>}
+          </div>
+          {totalCount > previewQuotas.length && (
+            <button
+              type="button"
+              className="pm-quotas__toggle"
+              onClick={() => setExpanded(v => !v)}
+              aria-expanded={expanded}
+            >
+              {expanded
+                ? <>Show less <i className="fas fa-chevron-up"></i></>
+                : <>Show all {totalCount} <i className="fas fa-chevron-down"></i></>}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="pm-quotas__list">
-        {quotas.map(q => {
+        {visibleQuotas.map(q => {
           const unlimited = q.amount >= UNLIMITED_THRESHOLD
           const usedPct = unlimited
             ? 0
@@ -1469,7 +1535,60 @@ const QuotasPanel: React.FC<{
             </article>
           )
         })}
+
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            className="pm-quota pm-quota--more"
+            onClick={() => setExpanded(true)}
+            aria-label={`Show ${hiddenCount} more model${hiddenCount === 1 ? '' : 's'}`}
+          >
+            <span className="pm-quota__more-num">+{hiddenCount}</span>
+            <span className="pm-quota__more-label">more model{hiddenCount === 1 ? '' : 's'}</span>
+            <span className="pm-quota__more-cta">View all <i className="fas fa-arrow-right"></i></span>
+          </button>
+        )}
       </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Upgrade promo
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Lightweight "you can move up" banner. Shown when `selectCanUpgrade` is
+ * true and no higher-priority alert is on screen. Copy adapts to the
+ * user's current plan kind so we don't tell a paid user about "starting".
+ */
+const UpgradePromoBanner: React.FC<{
+  planCtx: ReturnType<typeof selectPlanState>
+  onUpgrade: () => void
+}> = ({ planCtx, onUpgrade }) => {
+  const isFree = planCtx.kind === 'no_subscription'
+  const headline = isFree
+    ? 'Unlock more credits and advanced models'
+    : `Get more from Remix AI — upgrade from ${planCtx.planName}`
+  const sub = isFree
+    ? 'Higher daily caps, full model lineup, and paid credits that never expire.'
+    : 'Bigger free quotas across every model, plus priority access on new releases.'
+
+  return (
+    <section className="pm-promo" aria-label="Upgrade your plan">
+      <div className="pm-promo__glow" aria-hidden />
+      <div className="pm-promo__body">
+        <div className="pm-promo__eyebrow">
+          <i className="fas fa-arrow-up-right-dots"></i>
+          <span>Upgrade</span>
+        </div>
+        <h3 className="pm-promo__title">{headline}</h3>
+        <p className="pm-promo__sub">{sub}</p>
+      </div>
+      <button type="button" className="pm-promo__cta" onClick={onUpgrade}>
+        See plans
+        <i className="fas fa-arrow-right"></i>
+      </button>
     </section>
   )
 }
