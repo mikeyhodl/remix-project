@@ -111,17 +111,17 @@ export const AVAILABLE_MODELS: AIModel[] = [
     capabilities: ['chat', 'code', 'completion']
   },
 
-  // Special local models entry
-  {
-    id: 'ollama',
-    name: 'Local Models (Ollama)',
-    provider: 'ollama',
-    description: 'Run AI models locally on your machine',
-    requiresAuth: false,
-    isDefault: false,
-    category: 'local',
-    capabilities: ['chat', 'code', 'completion']
-  }
+  // Special local models entry (temporarily disabled - will re-enable later)
+  // {
+  //   id: 'ollama',
+  //   name: 'Local Models (Ollama)',
+  //   provider: 'ollama',
+  //   description: 'Run AI models locally on your machine',
+  //   requiresAuth: false,
+  //   isDefault: false,
+  //   category: 'local',
+  //   capabilities: ['chat', 'code', 'completion']
+  // }
 ]
 
 // Helper function to get default model

@@ -67,13 +67,13 @@ export function useModelAccess(): ModelAccess {
           }
         }
 
-        // Start with default model and ollama (always available)
+        // Start with default model (ollama temporarily disabled - will re-enable later)
         const defaultModel = getDefaultModel()
-        const allowedModelIds: string[] = [defaultModel.id, 'ollama']
+        const allowedModelIds: string[] = [defaultModel.id] // removed 'ollama' temporarily
 
-        // Add models from API-enabled providers
+        // Add models based on access rights
         AVAILABLE_MODELS.forEach(model => {
-          // Skip if already added (default or ollama)
+          // Skip if already added (default)
           if (allowedModelIds.includes(model.id)) {
             return
           }
