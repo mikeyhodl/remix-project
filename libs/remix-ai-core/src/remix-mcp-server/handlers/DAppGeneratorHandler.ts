@@ -197,7 +197,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
       // Return concise context to the agent for file generation.
       // Do NOT include the full system prompt or file dumps — they cause tool result overflow.
       // The agent/subagent already knows DApp frontend patterns.
-      console.log(`[GenerateDApp] Workspace setup complete. Delegating file creation to agent. slug=${workspaceSlug}`)
 
       // Extract contract ABI summary for concise context
       const abiSummary = args.contractAbi
@@ -218,8 +217,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
         contractName: args.contractName,
         workspaceReady: true,
         message: `DApp workspace "${workspaceSlug}" created successfully.\n\n` +
-          `**IMPORTANT: You MUST delegate file generation to a QuickDapp Specialist subagent using the task tool.**\n\n` +
-          `Use the task tool with subagent_type "QuickDapp Specialist" and provide the following context in the task prompt:\n\n` +
+          `Now proceed to generate the DApp files directly using file_write.\n\n` +
           `---\n` +
           `TASK: Generate a new DApp frontend\n` +
           `CONTRACT: ${args.contractName} at ${args.contractAddress} on chain ${args.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
@@ -227,16 +225,16 @@ export class GenerateDAppHandler extends BaseToolHandler {
           `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
           (args.isBaseMiniApp
             ? `\nBASE APP RULES:\n` +
-              `- Do NOT import @farcaster/miniapp-sdk (deprecated). Do NOT include fc:frame or fc:miniapp meta tags.\n` +
-              `- Use standard wallet pattern (window.__qdapp_getProvider or window.ethereum).\n` +
-              `- Default to Base Mainnet (8453) or Base Sepolia (84532).\n`
+            `- Do NOT import @farcaster/miniapp-sdk (deprecated). Do NOT include fc:frame or fc:miniapp meta tags.\n` +
+            `- Use standard wallet pattern (window.__qdapp_getProvider or window.ethereum).\n` +
+            `- Default to Base Mainnet (8453) or Base Sepolia (84532).\n`
             : '') +
           `${figmaLine}` +
           (args.figmaUrl
             ? `\nFIGMA DESIGN RULES:\n` +
-              `- Use max-w-7xl mx-auto px-4 instead of fixed widths. Use flex-wrap for mobile responsiveness.\n` +
-              `- Avoid position: absolute. Create separate component files for distinct sections.\n` +
-              `- Adapt Figma dimensions to fluid/responsive code.\n`
+            `- Use max-w-7xl mx-auto px-4 instead of fixed widths. Use flex-wrap for mobile responsiveness.\n` +
+            `- Avoid position: absolute. Create separate component files for distinct sections.\n` +
+            `- Adapt Figma dimensions to fluid/responsive code.\n`
             : '') +
           `\n${QUICKDAPP_BUILD_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
@@ -247,20 +245,19 @@ export class GenerateDAppHandler extends BaseToolHandler {
           `2. Use ethers.js v6 (BrowserProvider, Contract). Embed full ABI and contract address in code.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
-              `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
-              `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
-              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks. The provider is always available and on the correct network.\n` +
-              `- Simply connect: const provider = new ethers.BrowserProvider(window.ethereum); await provider.send("eth_requestAccounts", []); const signer = await provider.getSigner();\n` +
-              `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
+            `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
+            `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
+            `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks. The provider is always available and on the correct network.\n` +
+            `- Simply connect: const provider = new ethers.BrowserProvider(window.ethereum); await provider.send("eth_requestAccounts", []); const signer = await provider.getSigner();\n` +
+            `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
             : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
-              `- The contract is deployed on chain ${args.chainId}. Set TARGET_CHAIN_ID = ${args.chainId} in the generated code.\n` +
-              `- For wallet_switchEthereumChain, use chainId: '0x${Number(args.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
-              `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
-              `- Store raw provider in a React ref for reuse in network switching.\n` +
-              `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
+            `- The contract is deployed on chain ${args.chainId}. Set TARGET_CHAIN_ID = ${args.chainId} in the generated code.\n` +
+            `- For wallet_switchEthereumChain, use chainId: '0x${Number(args.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
+            `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+            `- Store raw provider in a React ref for reuse in network switching.\n` +
+            `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
           `3. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
-          `---\n\n` +
-          `Do NOT attempt to write files directly -- let the subagent handle it.`
+          `---`
       })
 
     } catch (error: any) {
@@ -490,8 +487,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
       plugin.emit('dappUpdateStart', { slug: targetWorkspace })
       plugin.emit('generationProgress', { status: 'preparing', contractAddress: contractResolved.address, slug: targetWorkspace })
 
-      console.log(`[UpdateDApp] Workspace validated. Delegating to subagent. slug=${targetWorkspace}`)
-
       // Build a concise file list (names only — no content in the main agent's context).
       // The subagent will read file contents in its own isolated context via file_read,
       // avoiding the context accumulation that causes "request entity too large" errors.
@@ -506,8 +501,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
         contractAddress: contractResolved.address,
         workspaceReady: true,
         message: `DApp workspace "${targetWorkspace}" is ready for update.\n\n` +
-          `**IMPORTANT: You MUST delegate this update to a QuickDapp Specialist subagent using the task tool.**\n\n` +
-          `Use the task tool with subagent_type "QuickDapp Specialist" and provide the following context in the task prompt:\n\n` +
+          `Now proceed to update the DApp files directly.\n\n` +
           `---\n` +
           `TASK: Modify the DApp in workspace "${targetWorkspace}"\n` +
           `USER REQUEST: ${description}\n` +
@@ -527,19 +521,18 @@ export class UpdateDAppHandler extends BaseToolHandler {
           `2. Modify only the relevant files using file_write\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
-              `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
-              `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
-              `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n` +
-              `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
+            `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
+            `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
+            `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n` +
+            `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
             : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
-              `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
-              `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
-              `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
-              `- Store raw provider in a React ref for reuse in network switching.\n` +
-              `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
+            `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
+            `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
+            `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+            `- Store raw provider in a React ref for reuse in network switching.\n` +
+            `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
           `3. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
-          `---\n\n` +
-          `Do NOT attempt to read or write files directly — let the subagent handle it.`
+          `---`
       })
 
     } catch (error: any) {
