@@ -48,14 +48,7 @@ export class DeepAgentManager {
           memoryBackend: (localStorage.getItem('deepagent_memory_backend') as 'state' | 'store') || 'store',
           enableSubagents: true,
           enablePlanning: true,
-          userApiKeys,
-          autoMode: {
-            enabled: localStorage.getItem('deepagent_auto_mode') === 'true',
-            fallbackModel: {
-              provider: 'mistralai',
-              modelId: 'mistral-medium-latest'
-            }
-          }
+          userApiKeys
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
@@ -111,29 +104,32 @@ export class DeepAgentManager {
   }
 
   async setAutoMode(enabled: boolean): Promise<void> {
-    const plugin = this.deps.plugin
-    console.log(`[RemixAI Plugin] ${enabled ? 'Enabling' : 'Disabling'} auto mode for DeepAgent`)
+    // const plugin = this.deps.plugin
+    // console.log(`[RemixAI Plugin] ${enabled ? 'Enabling' : 'Disabling'} auto mode for DeepAgent`)
 
-    if (plugin.deepAgentInferencer) {
-      plugin.deepAgentInferencer.setAutoMode(enabled)
-      console.log(`[RemixAI Plugin] Auto mode ${enabled ? 'enabled' : 'disabled'} for existing DeepAgent instance`)
-    } else {
-      console.warn('[RemixAI Plugin] DeepAgent not initialized, auto mode setting will apply when initialized')
-    }
+    // if (plugin.deepAgentInferencer) {
+    //   plugin.deepAgentInferencer.setAutoMode(enabled)
+    //   console.log(`[RemixAI Plugin] Auto mode ${enabled ? 'enabled' : 'disabled'} for existing DeepAgent instance`)
+    // } else {
+    //   console.warn('[RemixAI Plugin] DeepAgent not initialized, auto mode setting will apply when initialized')
+    // }
 
-    // Store the auto mode preference
-    localStorage.setItem('deepagent_auto_mode', enabled ? 'true' : 'false')
+    // // Store the auto mode preference
+    // localStorage.setItem('deepagent_auto_mode', enabled ? 'true' : 'false')
+    console.log('[RemixAI Plugin] Auto mode is disabled')
+
   }
 
   getAutoModeStatus(): boolean {
-    const plugin = this.deps.plugin
+    // const plugin = this.deps.plugin
 
-    if (plugin.deepAgentInferencer) {
-      return plugin.deepAgentInferencer.isAutoModeEnabled()
-    }
+    // if (plugin.deepAgentInferencer) {
+    //   return plugin.deepAgentInferencer.isAutoModeEnabled()
+    // }
 
-    // Return stored preference if DeepAgent not initialized
-    return localStorage.getItem('deepagent_auto_mode') === 'true'
+    // // Return stored preference if DeepAgent not initialized
+    // return localStorage.getItem('deepagent_auto_mode') === 'true'
+    return false
   }
 
   /**

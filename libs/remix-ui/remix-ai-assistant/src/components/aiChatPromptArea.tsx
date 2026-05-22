@@ -52,14 +52,15 @@ interface AiChatPromptAreaProps {
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
   const modelList = useMemo(() => {
-    const autoModeOption = {
-      label: 'Auto Mode',
-      bodyText: 'Automatically select the best model based on your prompt',
-      icon: 'fa-solid fa-magic-wand-sparkles' as const,
-      stateValue: 'auto',
-      dataId: 'ai-model-auto',
-      isLocked: false
-    }
+    // Auto mode is disabled - it can block with no answer
+    // const autoModeOption = {
+    //   label: 'Auto Mode',
+    //   bodyText: 'Automatically select the best model based on your prompt',
+    //   icon: 'fa-solid fa-magic-wand-sparkles' as const,
+    //   stateValue: 'auto',
+    //   dataId: 'ai-model-auto',
+    //   isLocked: false
+    // }
 
     const modelOptions = props.availableModels.map(model => {
       const hasAccess = props.modelAccess.checkAccess(model.id)
@@ -73,7 +74,9 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
       }
     })
 
-    return [autoModeOption, ...modelOptions]
+    // Auto mode is disabled - it can block with no answer
+    // return [autoModeOption, ...modelOptions]
+    return modelOptions
   }, [props.availableModels, props.modelAccess.allowedModels])
 
   const handleLockedItemClick = (item: groupListType) => {
@@ -97,7 +100,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
           <GroupListMenu
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
-            choice={props.autoModeEnabled ? 'auto' : props.selectedModelId}
+            choice={props.selectedModelId}
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
           />
