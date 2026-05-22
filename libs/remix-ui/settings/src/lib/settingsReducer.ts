@@ -1,6 +1,7 @@
 import { Registry } from '@remix-project/remix-lib'
 import { SettingsActions, SettingsState } from '../types'
-import { resetOllamaHostOnSettingsChange } from '@remix/remix-ai-core';
+import { onDeepAgentApiKeysChanged } from '@remix/remix-ai-core';
+// import { resetOllamaHostOnSettingsChange } from '@remix/remix-ai-core';
 const config = Registry.getInstance().get('config').api
 const settingsConfig = Registry.getInstance().get('settingsConfig').api
 const defaultTheme = config.get('settings/theme') ? settingsConfig.themes.find((theme) => theme.name.toLowerCase() === config.get('settings/theme').toLowerCase()) : settingsConfig.themes[0]
@@ -18,17 +19,21 @@ const sindriAccessToken = config.get('settings/sindri-access-token') || ''
 const etherscanAccessToken = config.get('settings/etherscan-access-token') || ''
 const mcpServersEnable = config.get('settings/mcp/servers/enable') || false
 const mcpServerManagement = config.get('settings/mcp-server-management') || false
-const ollamaEndpoint = config.get('settings/ollama-endpoint') || 'http://localhost:11434'
-const deepagentConfig = config.get('settings/deepagent-config') || false
-const langchainApiKey = localStorage.getItem('langchain_api_key') || ''
-const deepagentMemoryBackend = localStorage.getItem('deepagent_memory_backend') || 'store'
+// Ollama configuration is temporarily disabled - will be enabled later
+// const ollamaEndpoint = config.get('settings/ollama-endpoint') || 'http://localhost:11434'
+const deepagentApiKeysConfig = config.get('settings/deepagent-api-keys-config') || false
+const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
+const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
+const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
+const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 
 let githubConfig = config.get('settings/github-config') || false
 let ipfsConfig = config.get('settings/ipfs-config') || false
 let swarmConfig = config.get('settings/swarm-config') || false
 let sindriConfig = config.get('settings/sindri-config') || false
 let etherscanConfig = config.get('settings/etherscan-config') || false
-let ollamaConfig = config.get('settings/ollama-config') || false
+// Ollama configuration is temporarily disabled - will be enabled later
+// let ollamaConfig = config.get('settings/ollama-config') || false
 let generateContractMetadata = config.get('settings/generate-contract-metadata')
 let autoCompletion = config.get('settings/auto-completion')
 let showGas = config.get('settings/show-gas')
@@ -55,9 +60,16 @@ if (!etherscanConfig && etherscanAccessToken) {
   config.set('settings/etherscan-config', true)
   etherscanConfig = true
 }
-if (!ollamaConfig && ollamaEndpoint !== 'http://localhost:11434') {
-  config.set('settings/ollama-config', true)
-  ollamaConfig = true
+// Ollama configuration is temporarily disabled - will be enabled later
+// if (!ollamaConfig && ollamaEndpoint !== 'http://localhost:11434') {
+//   config.set('settings/ollama-config', true)
+//   ollamaConfig = true
+// }
+// Auto-enable deepagent API keys config if any API key is set
+let deepagentApiKeysConfigAuto = deepagentApiKeysConfig
+if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey || deepagentMoonshotApiKey)) {
+  config.set('settings/deepagent-api-keys-config', true)
+  deepagentApiKeysConfigAuto = true
 }
 if (typeof generateContractMetadata !== 'boolean') {
   config.set('settings/generate-contract-metadata', true)
@@ -221,24 +233,37 @@ export const initialState: SettingsState = {
     value: '',
     isLoading: false
   },
-  'ollama-config': {
-    value: ollamaConfig,
+  'billing-section': {
+    value: '',
     isLoading: false
   },
-  'ollama-endpoint': {
-    value: ollamaEndpoint,
+  // Ollama configuration is temporarily disabled - will be enabled later
+  // 'ollama-config': {
+  //   value: ollamaConfig,
+  //   isLoading: false
+  // },
+  // 'ollama-endpoint': {
+  //   value: ollamaEndpoint,
+  //   isLoading: false
+  // },
+  'deepagent-api-keys-config': {
+    value: deepagentApiKeysConfigAuto,
     isLoading: false
   },
-  'deepagent-config': {
-    value: deepagentConfig,
+  'deepagent-anthropic-api-key': {
+    value: deepagentAnthropicApiKey,
     isLoading: false
   },
-  'langchain-api-key': {
-    value: langchainApiKey,
+  'deepagent-mistral-api-key': {
+    value: deepagentMistralApiKey,
     isLoading: false
   },
-  'deepagent-memory-backend': {
-    value: deepagentMemoryBackend,
+  'deepagent-openai-api-key': {
+    value: deepagentOpenaiApiKey,
+    isLoading: false
+  },
+  'deepagent-moonshot-api-key': {
+    value: deepagentMoonshotApiKey,
     isLoading: false
   },
   toaster: {
@@ -251,30 +276,32 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
   switch (action.type) {
   case 'SET_VALUE':
     config.set('settings/' + action.payload.name, action.payload.value)
-    // Reset Ollama host cache when endpoint is changed
-    if (action.payload.name === 'ollama-endpoint') {
+    // Ollama configuration is temporarily disabled - will be enabled later
+    // // Reset Ollama host cache when endpoint is changed
+    // if (action.payload.name === 'ollama-endpoint') {
+    //   try {
+    //     resetOllamaHostOnSettingsChange();
+    //   } catch (error) {
+    //     // Ignore errors - Ollama functionality is optional
+    //   }
+    // }
+
+    // Reinitialize DeepAgent when API key settings change
+    if (action.payload.name === 'deepagent-api-keys-config' ||
+        action.payload.name === 'deepagent-anthropic-api-key' ||
+        action.payload.name === 'deepagent-mistral-api-key' ||
+        action.payload.name === 'deepagent-openai-api-key' ||
+        action.payload.name === 'deepagent-moonshot-api-key') {
       try {
-        resetOllamaHostOnSettingsChange();
+        onDeepAgentApiKeysChanged();
       } catch (error) {
-        // Ignore errors - Ollama functionality is optional
+        // Ignore errors - DeepAgent functionality is optional
       }
     }
 
-    // Handle DeepAgent settings - store in localStorage for sensitive data
-    if (action.payload.name === 'langchain-api-key') {
-      localStorage.setItem('langchain_api_key', String(action.payload.value))
-    }
-    if (action.payload.name === 'deepagent-memory-backend') {
-      localStorage.setItem('deepagent_memory_backend', String(action.payload.value))
-    }
-    // `deepagent-config` (DeepAgent enabled flag) is no longer persisted in
-    // localStorage \u2014 it is derived from /permissions (`ai:solcoder`). The
-    // setting toggle, if reintroduced, must call assistantState/remixAI
-    // directly rather than write a flag here.
-
-    return { ...state, [action.payload.name]: { ...state[action.payload.name], value: action.payload.value, isLoading: false } }
+    return { ...state, [action.payload.name]: { ...(state as any)[action.payload.name], value: action.payload.value, isLoading: false } }
   case 'SET_LOADING':
-    return { ...state, [action.payload.name]: { ...state[action.payload.name], isLoading: true } }
+    return { ...state, [action.payload.name]: { ...(state as any)[action.payload.name], isLoading: true } }
 
   case 'SET_TOAST_MESSAGE':
     return { ...state, toaster: { ...state.toaster, value: action.payload.value, isLoading: false } }

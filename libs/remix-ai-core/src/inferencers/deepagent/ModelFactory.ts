@@ -4,7 +4,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HTTPClient } from '@mistralai/mistralai/lib/http.js'
 import { endpointUrls } from '@remix-endpoints-helper'
-import { ModelSelection } from '../../types/deepagent'
+import { ModelSelection, IUserApiKeyConfig } from '../../types/deepagent'
 import { DAPP_MAX_TOKENS } from './constants'
 import { getRemixAuthHeader } from '../auth'
 
@@ -302,15 +302,17 @@ function wrapModelForDebug<T extends BaseChatModel>(model: T, label: string): T 
 
 export function createModelInstance(
   modelSelection: ModelSelection,
-  maxTokens: number = DAPP_MAX_TOKENS
+  maxTokens: number = DAPP_MAX_TOKENS,
+  userApiKeys?: IUserApiKeyConfig
 ): BaseChatModel {
   const { provider, modelId } = modelSelection
 
   switch (provider) {
   case 'mistralai': {
-    console.log(`[ModelFactory] Creating mistralai model: ${modelId}`)
+    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.mistralApiKey)
+    console.log(`[ModelFactory] Creating MistralAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     return wrapModelForDebug(new ChatMistralAI({
-      apiKey: 'proxy-handled',
+      apiKey: useDirectApi ? (userApiKeys!.mistralApiKey as string) : 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
@@ -321,17 +323,67 @@ export function createModelInstance(
       // want the FIRST envelope error to surface immediately so
       // assistantState can gate the next attempt.
       maxRetries: 0,
-      serverURL: `${endpointUrls.langchain}/mistral`,
-      httpClient: createAuthedMistralHttpClient()
+      // Proxy path needs the Remix bearer injected per-request via the
+      // custom HTTPClient. Direct path uses the user's own key and goes
+      // straight to Mistral, so no auth hook is needed.
+      ...(useDirectApi
+        ? {}
+        : {
+          serverURL: `${endpointUrls.langchain}/mistral`,
+          httpClient: createAuthedMistralHttpClient()
+        })
     }), `mistralai/${modelId}`)
   }
 
+  case 'openai': {
+    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.openaiApiKey)
+    console.log(`[ModelFactory] Creating OpenAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    return wrapModelForDebug(new ChatOpenAI({
+      apiKey: useDirectApi ? (userApiKeys!.openaiApiKey as string) : 'proxy-handled',
+      model: modelId,
+      temperature: 0.7,
+      maxTokens: maxTokens,
+      streaming: true,
+      maxRetries: 0,
+      ...(useDirectApi
+        ? {}
+        : {
+          configuration: {
+            baseURL: `${endpointUrls.langchain}/openai`,
+            fetch: authedFetch
+          }
+        })
+    }), `openai/${modelId}`)
+  }
+
   case 'moonshot': {
-    console.log(`[ModelFactory] Creating moonshot model: ${modelId}`)
     // Moonshot (Kimi) speaks the OpenAI Chat Completions wire format, so we
-    // use ChatOpenAI rather than the Mistral shim. The backend proxy is
-    // mounted at `${endpointUrls.langchain}/moonshot`; the OpenAI SDK
-    // appends `/chat/completions`, so the baseURL must include `/v1`.
+    // use ChatOpenAI rather than the Mistral shim.
+    //  - Direct API path: user supplied their own Moonshot key → call
+    //    api.moonshot.ai directly, disable thinking mode to avoid the
+    //    reasoning_content round-trip requirement.
+    //  - Proxy path: route through `${endpointUrls.langchain}/moonshot/v1`
+    //    with `moonshotFetch`, which injects the Remix bearer AND tees
+    //    SSE streams to capture+re-inject `reasoning_content` so the
+    //    thinking-enabled models (e.g. kimi-k2-thinking) don't reject
+    //    follow-up assistant tool_call messages.
+    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.moonshotApiKey)
+    console.log(`[ModelFactory] Creating Moonshot model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    if (useDirectApi) {
+      return wrapModelForDebug(new ChatOpenAI({
+        apiKey: userApiKeys!.moonshotApiKey as string,
+        model: modelId,
+        maxTokens: maxTokens,
+        streaming: true,
+        maxRetries: 0,
+        configuration: {
+          baseURL: 'https://api.moonshot.ai/v1'
+        },
+        modelKwargs: {
+          thinking: { type: 'disabled' }
+        }
+      }), `moonshot/${modelId}`)
+    }
     return wrapModelForDebug(new ChatOpenAI({
       apiKey: 'proxy-handled',
       model: modelId,
@@ -343,10 +395,6 @@ export function createModelInstance(
       maxRetries: 0,
       configuration: {
         baseURL: `${endpointUrls.langchain}/moonshot/v1`,
-        // moonshotFetch wraps authedFetch and additionally
-        //  1) captures reasoning_content from streamed assistant turns, and
-        //  2) re-injects it onto outbound assistant tool_call messages —
-        // required by Moonshot's thinking-enabled models (e.g. kimi-k2-thinking).
         fetch: moonshotFetch
       }
     }), `moonshot/${modelId}`)
@@ -354,9 +402,10 @@ export function createModelInstance(
 
   case 'anthropic':
   default: {
-    console.log(`[ModelFactory] Creating Anthropic model: ${modelId}`)
+    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.anthropicApiKey)
+    console.log(`[ModelFactory] Creating Anthropic model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     return wrapModelForDebug(new ChatAnthropic({
-      apiKey: 'proxy-handled',
+      apiKey: useDirectApi ? (userApiKeys!.anthropicApiKey as string) : 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
@@ -365,10 +414,14 @@ export function createModelInstance(
       // 429s behind exponential backoff and produces a cluster of
       // red requests in DevTools before the user sees anything.
       maxRetries: 0,
-      clientOptions: {
-        baseURL: endpointUrls.langchain,
-        fetch: authedFetch
-      }
+      ...(useDirectApi
+        ? {}
+        : {
+          clientOptions: {
+            baseURL: endpointUrls.langchain,
+            fetch: authedFetch
+          }
+        })
     }), `anthropic/${modelId}`)
   }
   }

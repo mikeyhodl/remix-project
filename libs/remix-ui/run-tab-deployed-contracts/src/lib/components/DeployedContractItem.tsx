@@ -14,6 +14,7 @@ import { ContractKebabMenu } from './ContractKebabMenu'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
 import { TrackingContext } from '@remix-ide/tracking'
+import { useAuth } from '@remix-ui/app'
 
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
@@ -31,8 +32,10 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const { dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
+  const { features } = useAuth()
+  const hasQuickdappAccess = features?.['dapp:quickdapp']?.is_enabled
   const [networkName, setNetworkName] = useState<string>('')
-  const [isExpanded, setIsExpanded] = useState<boolean>(false)
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState(null)
   const [value, setValue] = useState<string>('0')
   const [valueUnit, setValueUnit] = useState<string>('wei')
@@ -378,6 +381,13 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     }
 
     try {
+      // Permission gate: non-beta users see the QuickDapp lock screen
+      if (!hasQuickdappAccess) {
+        await plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
+        await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
+        return
+      }
+
       console.log('[QuickDapp] handleCreateDapp START', { name: contract.name, address: contract.address, timestamp: Date.now() });
 
       // Send contract details to AI Assistant for DApp generation
@@ -674,21 +684,21 @@ Before generating, please ask me about my design preferences first.`
                             className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between"
                             style={{
                               backgroundColor: 'var(--custom-onsurface-layer-3)',
-                              border: '1px solid var(--custom-onsurface-layer-4)',
+                              border: '1px solid var(--bs-border-color)',
                               color: 'var(--dark/text-secondary, #d5d7e3)',
                               padding: '8px 12px'
                             }}
                             icon="fas fa-caret-down"
                             useDefaultIcon={false}
                           >
-                            <div className="d-flex align-items-center gap-1 flex-fill text-start">
-                              <span style={{ color: 'var(--text-tertiary, #a2a3bd)' }}>Select a function to interact with...</span>
+                            <div className="d-flex align-items-center gap-1" style={{ flex: '1', minWidth: 0 }}>
+                              <span style={{ color: 'var(--text-tertiary, #a2a3bd)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Select a function to interact with...</span>
                             </div>
                           </Dropdown.Toggle>
                           <Dropdown.Menu
                             style={{
                               backgroundColor: 'var(--custom-onsurface-layer-2)',
-                              border: '1px solid var(--custom-onsurface-layer-4)',
+                              border: '1px solid var(--bs-border-color)',
                               maxHeight: '240px',
                               overflowY: 'auto',
                               width: '100%',
@@ -697,7 +707,7 @@ Before generating, please ask me about my design preferences first.`
                           >
                             <div style={{
                               padding: '8px',
-                              borderBottom: '1px solid var(--custom-onsurface-layer-4)',
+                              borderBottom: '1px solid var(--bs-border-color)',
                               backgroundColor: 'var(--custom-onsurface-layer-2)'
                             }}>
                               <input
@@ -712,7 +722,7 @@ Before generating, please ask me about my design preferences first.`
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
                                   backgroundColor: 'var(--custom-onsurface-layer-3)',
-                                  border: '1px solid var(--custom-onsurface-layer-4)',
+                                  border: '1px solid var(--bs-border-color)',
                                   color: 'var(--dark/text-secondary, #d5d7e3)',
                                   fontSize: '11px'
                                 }}
@@ -916,7 +926,7 @@ Before generating, please ask me about my design preferences first.`
                         getContent={() => getEncodedCall(selectedFunctionIndex)}
                       >
                         <button
-                          className="btn btn-sm flex-fill border-0"
+                          className="btn btn-sm flex-fill"
                           style={{ minWidth: '100px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}
                           data-id={`copyCalldata-${selectedFunctionIndex}`}
                         >
@@ -933,7 +943,7 @@ Before generating, please ask me about my design preferences first.`
                         getContent={() => getEncodedParams(selectedFunctionIndex)}
                       >
                         <button
-                          className="btn btn-sm flex-fill border-0"
+                          className="btn btn-sm flex-fill"
                           style={{ minWidth: '100px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}
                           data-id={`copyParameters-${selectedFunctionIndex}`}
                         >
@@ -1034,51 +1044,88 @@ Before generating, please ask me about my design preferences first.`
                       <FormattedMessage id="udapp.gasLimitLabel" />
                     </label>
                     <div className="position-relative flex-fill">
-                      <span
-                        className="badge font-sm"
-                        style={{
-                          position: 'absolute',
-                          left: '0.35rem',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          backgroundColor: '#64C4FF14',
-                          color: '#64c4ff',
-                          cursor: 'pointer',
-                          zIndex: 1
-                        }}
-                        onClick={() => {
-                          const newMode = gasLimit === 0 ? 'custom' : 'auto'
-                          trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitToggle', name: newMode, isClick: true })
-                          if (gasLimit === 0) {
-                            setGasLimit(3000000)
-                          } else {
-                            setGasLimit(0)
-                          }
-                        }}
+                      <CustomTooltip
+                        placement="top"
+                        tooltipId="deployedContractGasLimitBadgeTooltip"
+                        tooltipText={gasLimit === 0 ? intl.formatMessage({ id: 'udapp.gasLimitBadgeAutoTooltip', defaultMessage: 'Click to set custom gas limit' }) : intl.formatMessage({ id: 'udapp.gasLimitBadgeCustomTooltip', defaultMessage: 'Click to use auto estimated gas' })}
                       >
-                        {gasLimit === 0 ? 'auto' : 'custom'}
-                      </span>
-                      <input
-                        type="number"
-                        className="form-control form-control-sm border-0"
-                        placeholder="3000000"
-                        value={gasLimit}
-                        onChange={(e) => {
-                          trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitInput', name: e.target.value })
-                          setGasLimit(parseInt(e.target.value))
-                        }}
-                        disabled={gasLimit === 0}
-                        style={{
-                          color: 'var(--dark/text-quaternary, #959bad)',
-                          flex: 1,
-                          paddingLeft: '4rem',
-                          textAlign: 'right',
-                          opacity: gasLimit === 0 ? 0.6 : 1,
-                          cursor: gasLimit === 0 ? 'not-allowed' : 'text',
-                          fontSize: '0.7rem',
-                          minHeight: '30px'
-                        }}
-                      />
+                        <span
+                          className="badge font-sm"
+                          style={{
+                            position: 'absolute',
+                            left: '0.35rem',
+                            top: '35%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: '#64C4FF14',
+                            color: '#64c4ff',
+                            cursor: 'pointer',
+                            zIndex: 1
+                          }}
+                          onClick={() => {
+                            const newMode = gasLimit === 0 ? 'custom' : 'auto'
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitToggle', name: newMode, isClick: true })
+                            if (gasLimit === 0) {
+                              setGasLimit(3000000)
+                            } else {
+                              setGasLimit(0)
+                            }
+                          }}
+                        >
+                          {gasLimit === 0 ? 'auto' : 'custom'}
+                        </span>
+                      </CustomTooltip>
+                      {gasLimit === 0 ? (
+                        <CustomTooltip
+                          placement="top"
+                          tooltipId="deployedContractGasLimitInputTooltip"
+                          tooltipText={intl.formatMessage({ id: 'udapp.gasLimitAutoTooltip', defaultMessage: 'Currently using auto estimated gas. Click on auto to set custom gas limit' })}
+                        >
+                          <input
+                            type="number"
+                            className="form-control form-control-sm border-0"
+                            placeholder="3000000"
+                            value={gasLimit}
+                            onChange={(e) => {
+                              trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitInput', name: e.target.value })
+                              setGasLimit(parseInt(e.target.value))
+                            }}
+                            disabled={gasLimit === 0}
+                            style={{
+                              backgroundColor: themeQuality === 'dark' ? 'var(--custom-onsurface-layer-4)' : 'var(--bs-body-bg)',
+                              color: 'var(--dark/text-quaternary, #959bad)',
+                              flex: 1,
+                              paddingLeft: '4rem',
+                              textAlign: 'right',
+                              opacity: gasLimit === 0 ? 0.6 : 1,
+                              cursor: gasLimit === 0 ? 'not-allowed' : 'text',
+                              fontSize: '0.7rem',
+                              minHeight: '30px'
+                            }}
+                          />
+                        </CustomTooltip>
+                      ) : (
+                        <input
+                          type="number"
+                          className="form-control form-control-sm border-0"
+                          placeholder="3000000"
+                          value={gasLimit}
+                          onChange={(e) => {
+                            trackMatomoEvent?.({ category: 'udapp', action: 'deployedContractGasLimitInput', name: e.target.value })
+                            setGasLimit(parseInt(e.target.value))
+                          }}
+                          disabled={gasLimit === 0}
+                          style={{
+                            color: 'var(--dark/text-quaternary, #959bad)',
+                            flex: 1,
+                            paddingLeft: '4rem',
+                            textAlign: 'right',
+                            opacity: gasLimit === 0 ? 0.6 : 1,
+                            cursor: gasLimit === 0 ? 'not-allowed' : 'text',
+                            fontSize: '0.7rem',
+                            minHeight: '30px'
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

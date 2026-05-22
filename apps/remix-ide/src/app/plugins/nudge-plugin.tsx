@@ -298,6 +298,7 @@ export class NudgePlugin extends Plugin {
     /* ─── Unauthenticated nudges ─── */
 
     // Sign up prompt — shown to unauthenticated users when registration is open
+    /*
     this.engine_.addRule({
       id: 'nudge-sign-up',
       condition: all('user:not_logged_in', 'config:registration_open', 'config:login_enabled'),
@@ -332,6 +333,7 @@ export class NudgePlugin extends Plugin {
       showOnce: true,
       priority: 11
     })
+    */
 
     /* ─── Authenticated — contextual feature discovery ─── */
 
@@ -407,14 +409,14 @@ export class NudgePlugin extends Plugin {
       priority: 8
     })
 
-    // QuickDApp — triggers when user compiles a contract successfully
+    // QuickDApp — triggers when user deploys a contract successfully
     this.engine_.addRule({
       id: 'try-quickdapp',
-      condition: all('user:logged_in_beta', 'contract:compiled'),
+      condition: all('user:logged_in_beta', 'contract:deployed'),
       action: {
         type: 'widget',
         title: 'Try QuickDApp',
-        message: 'Your contract compiled! Generate a ready-to-use frontend dashboard to interact with it — no front-end code needed.',
+        message: 'Your contract is deployed! Generate a ready-to-use frontend dashboard to interact with it — no front-end code needed.',
         actionLabel: 'Learn More',
         actionTarget: 'helpPlugin::showModal::quickdapp',
         icon: 'fas fa-rocket',

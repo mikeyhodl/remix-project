@@ -1,8 +1,21 @@
-export type ModelProvider = 'anthropic' | 'mistralai' | 'moonshot' | 'openai' | 'ollama'
+export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama'
+
+export const API_KEYS_ALLOWED_PLANS = ['starter', 'pro', 'beta']
 
 export interface ModelSelection {
   provider: ModelProvider
   modelId: string
+}
+
+/**
+ * User API key configuration for direct API access
+ */
+export interface IUserApiKeyConfig {
+  useOwnKeys: boolean
+  anthropicApiKey?: string
+  mistralApiKey?: string
+  openaiApiKey?: string
+  moonshotApiKey?: string
 }
 
 /**
@@ -24,6 +37,7 @@ export interface IAutoModelConfig {
 export interface IDeepAgentConfig {
   enabled: boolean
   apiKey: string // Automatically set to 'proxy-handled' - proxy server manages the real API key
+  userApiKeys?: IUserApiKeyConfig // User-provided API keys for direct API access
   memoryBackend: 'state' | 'store'
   maxToolExecutions: number
   timeout: number
@@ -139,7 +153,6 @@ export enum DeepAgentErrorType {
   AUTHENTICATION_FAILED = 'authentication_failed',
   QUOTA_EXCEEDED = 'quota_exceeded',
   MODEL_OVERLOADED = 'model_overloaded',
-  INSUFFICIENT_CREDITS = 'insufficient_credits',
   UNKNOWN = 'unknown'
 }
 
@@ -156,4 +169,13 @@ export class DeepAgentError extends Error {
     this.type = type
     this.details = details
   }
+}
+
+export interface ApiKeyErrorEvent {
+  provider: ModelProvider
+  errorType: 'invalid' | 'expired' | 'quota_exceeded' | 'rate_limited' | 'authentication_failed'
+  message: string
+  canFallbackToProxy: boolean
+  originalError?: string
+  timestamp: number
 }

@@ -618,6 +618,16 @@ export const TabsUI = (props: TabsUIProps) => {
   }
 
   const handleQuickDappStartNow = async () => {
+    // Permission gate: non-beta users see the QuickDapp lock screen
+    const quickdappFeature = features?.['dapp:quickdapp']
+    if (!quickdappFeature?.is_enabled) {
+      try {
+        await props.plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
+        await props.plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
+      } catch (e) { /* best-effort */ }
+      return
+    }
+
     const currentFile = tabsState.name
     const currentFileName = currentFile?.split('/').pop() || ''
 
@@ -633,7 +643,7 @@ export const TabsUI = (props: TabsUIProps) => {
     } catch (e) { /* proceed if check fails */ }
 
     // Build the richest context we can — silently, no modals
-    let contextParts: string[] = []
+    const contextParts: string[] = []
     let instances: any[] = []
 
     // 1. Gather deployed contracts silently
@@ -758,8 +768,6 @@ export const TabsUI = (props: TabsUIProps) => {
     if (tabsState.currentExt !== 'sol' || !bannerVisible) return false
     const quickdappEnabled = appContext?.appConfig?.['quickdapp.enabled']
     if (quickdappEnabled === false) return false
-    const quickdappFeature = features?.['dapp:quickdapp']
-    if (!quickdappFeature?.is_enabled) return false
     return true
   })()
 
