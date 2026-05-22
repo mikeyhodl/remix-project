@@ -157,9 +157,6 @@ export function getErrorMessage(errorType: DeepAgentErrorType, error: any, retry
   case DeepAgentErrorType.NETWORK_ERROR:
     return 'Network error. Please check your connection and try again.'
 
-  case DeepAgentErrorType.INSUFFICIENT_CREDITS:
-    return 'Insufficient credits. Please check your billing details or add more credits to continue.'
-
   default:
     return error?.message || 'An unexpected error occurred.'
   }
