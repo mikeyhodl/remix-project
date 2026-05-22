@@ -73,7 +73,12 @@ export async function buildSubagentConfigs(
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
   const classifierTools = getToolForClassifierSpecialist(tools)
-  const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
+  // Merge in fileOperationTools (file_write, file_read, directory_list, …) the same
+  // way Solidity Engineer / Comprehensive Auditor do — the QUICKDAPP_SPECIALIST
+  // prompt explicitly tells the LLM to "use file_write for implementation", so
+  // file_* tools must be exposed. Without these the specialist also cannot emit
+  // per-file tool cards ("Writing index.html…") during DApp generation.
+  const quickDappTools = [...getQuickDappToolsForQuickDappSpecialist(tools), ...fileOperationTools]
   const solidityCompilerTools = getToolForSolidityCompiler(tools)
   const deployerTools = getToolsForDeployer(tools)
 

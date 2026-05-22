@@ -265,7 +265,11 @@ export function getQuickDappToolsForQuickDappSpecialist(tools: DynamicStructured
     'finalize_dapp_generation',
     'fetch_figma_design',
     'get_deployed_contracts',
-    'get_current_environment'
+    'get_current_environment',
+    // Task-plan tool so the specialist can update progress (e.g. "Creating index.html…")
+    // mid-DApp generation — without this no onTodoUpdate events fire once control
+    // transfers from the main agent.
+    'write_todos'
   ]
   return tools.filter(tool => quickDappToolNames.includes(tool.name))
 }
