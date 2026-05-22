@@ -868,10 +868,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const handleToolApproval = (request: ToolApprovalRequest) => {
       console.log('[Assistant UI] approval requested', request.toolName, request.requestId)
       if (hitlAutoAcceptRef.current) {
-        props.plugin.call('remixAI', 'respondToToolApproval', {
-          requestId: request.requestId,
-          approved: true
-        }).catch((err: any) => console.error('[HITL][AutoAccept] Failed to auto-approve:', err))
+        try {
+          ;(props.plugin as any).respondToToolApproval({
+            requestId: request.requestId,
+            approved: true
+          })
+          console.log('[HITL][AutoAccept] approved', request.requestId)
+        } catch (err: any) {
+          console.error('[HITL][AutoAccept] Failed to auto-approve:', err)
+        }
         return
       }
       setPendingApprovals(prev => [...prev, request])
@@ -1120,7 +1125,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     try {
-      await props.plugin.call('remixAI', 'respondToToolApproval', {
+      ;(props.plugin as any).respondToToolApproval({
         requestId: approval.requestId,
         approved: true,
         modifiedArgs: options?.modifiedArgs
