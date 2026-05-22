@@ -1598,25 +1598,26 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   }, [])
 
   const handleModelSelection = useCallback(async (modelId: string) => {
-    // Handle auto mode selection
-    if (modelId === 'auto') {
-      setAutoModeEnabled(true)
-      try {
-        await props.plugin.call('remixAI', 'setAutoMode', true)
-        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'auto_mode_enabled', isClick: true })
-      } catch (error) {
-        console.warn('Failed to enable auto mode:', error)
-      }
-      setShowModelSelector(false)
-      return
-    } else {
-      setAutoModeEnabled(false)
-      try {
-        await props.plugin.call('remixAI', 'setAutoMode', false)
-      } catch (error) {
-        console.warn('Failed to disable auto mode:', error)
-      }
-    }
+    // Auto mode is disabled - it can block with no answer
+    // if (modelId === 'auto') {
+    //   setAutoModeEnabled(true)
+    //   try {
+    //     await props.plugin.call('remixAI', 'setAutoMode', true)
+    //     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'auto_mode_enabled', isClick: true })
+    //   } catch (error) {
+    //     console.warn('Failed to enable auto mode:', error)
+    //   }
+    //   setShowModelSelector(false)
+    //   return
+    // } else {
+    //   setAutoModeEnabled(false)
+    //   try {
+    //     await props.plugin.call('remixAI', 'setAutoMode', false)
+    //   } catch (error) {
+    //     console.warn('Failed to disable auto mode:', error)
+    //   }
+    // }
+    setAutoModeEnabled(false)
 
     const model = AVAILABLE_MODELS.find(m => m.id === modelId)
     if (!model) return
