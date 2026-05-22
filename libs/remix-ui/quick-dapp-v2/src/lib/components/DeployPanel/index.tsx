@@ -133,7 +133,9 @@ function DeployPanel(): JSX.Element {
     try {
       builder = new InBrowserVite();
       await builder.initialize();
-      const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
+      // For workspace mode: use workspaceName, for inline mode: use slug
+      const identifier = activeDapp.inlineMode ? activeDapp.slug : activeDapp.workspaceName;
+      const dappOps = DappOperations.from(identifier, plugin);
       const dappRootPath = dappOps.getSourceRoot();
 
       const filesMap = new Map<string, string>();

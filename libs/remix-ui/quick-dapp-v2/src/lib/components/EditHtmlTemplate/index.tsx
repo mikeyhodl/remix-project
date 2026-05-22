@@ -201,7 +201,10 @@ function EditHtmlTemplate(): JSX.Element {
     if (!doc || !doc.body || doc.body.innerHTML === '') return;
 
     try {
-      const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
+      // For workspace mode: use workspaceName (e.g., "dapp-storage-abc123")
+      // For inline mode: use slug (e.g., "inline-storage-abc123")
+      const identifier = activeDapp.inlineMode ? activeDapp.slug : activeDapp.workspaceName;
+      const dappOps = DappOperations.from(identifier, plugin);
       await dappOps.switchToWorkspace();
 
       setIsCapturing(true);
@@ -240,10 +243,14 @@ function EditHtmlTemplate(): JSX.Element {
     setIsBuilding(true);
     setIframeError('');
     setShowIframe(true);
-    const dappOps = DappOperations.from(activeDapp.slug || activeDapp.workspaceName, plugin);
+    // For workspace mode: use workspaceName, for inline mode: use slug
+    const identifier = activeDapp.inlineMode ? activeDapp.slug : activeDapp.workspaceName;
+    const dappOps = DappOperations.from(identifier, plugin);
 
     try {
       await dappOps.switchToWorkspace();
+      // Additional delay to ensure workspace switch is fully processed
+      await new Promise(r => setTimeout(r, 300));
     } catch (e) {
       console.warn('[QuickDapp] Failed to auto-switch workspace:', e);
     }
@@ -256,12 +263,28 @@ function EditHtmlTemplate(): JSX.Element {
     let indexHtmlContent = '';
 
     try {
+      // Verify we're in the correct workspace
+      const currentWs = await plugin.call('filePanel', 'getCurrentWorkspace');
+      const expectedWs = dappOps.getWorkspaceName();
+      console.log('[QuickDapp][runBuild] Current workspace:', currentWs?.name, 'Expected:', expectedWs);
+
+      if (!dappOps.isInline() && currentWs?.name !== expectedWs) {
+        console.warn('[QuickDapp][runBuild] Workspace mismatch! Retrying switch...');
+        await plugin.call('filePanel', 'switchToWorkspace', {
+          name: expectedWs,
+          isLocalhost: false
+        });
+        await new Promise(r => setTimeout(r, 500));
+      }
+
       const dappRootPath = dappOps.getSourceRoot();
+      console.log('[QuickDapp][runBuild] Reading from:', dappRootPath, 'for dapp:', identifier);
       await readDappFiles(plugin, dappRootPath, mapFiles, 0);
-      console.log('[QuickDapp][runBuild] Files read:', mapFiles.size);
+      console.log('[QuickDapp][runBuild] Files read:', mapFiles.size, 'from', dappRootPath);
 
       if (mapFiles.size === 0) {
-        setIframeError(`No files found in workspace root. Make sure you are in the DApp workspace "${activeDapp.workspaceName}".`);
+        const wsInfo = await plugin.call('filePanel', 'getCurrentWorkspace');
+        setIframeError(`No files found in workspace root "${dappRootPath}". Current workspace: "${wsInfo?.name}". Expected: "${expectedWs}".`);
         setIsBuilding(false);
         return;
       }

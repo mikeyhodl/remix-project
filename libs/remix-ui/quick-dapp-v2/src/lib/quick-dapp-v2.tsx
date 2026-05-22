@@ -350,61 +350,6 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
     };
   }, [plugin, dappManager]);
 
-  // Periodic timeout check for stuck DApps
-  useEffect(() => {
-    if (!dappManager) return;
-
-    const TIMEOUT_CHECK_INTERVAL = 30000; // Check every 30 seconds
-    const FIVE_MINUTES = 5 * 60 * 1000;
-
-    const checkTimeouts = async () => {
-      try {
-        const dapps = await dappManager.getDapps();
-        if (!dapps) return;
-
-        const now = Date.now();
-        let hasChanges = false;
-
-        for (const dapp of dapps) {
-          if (dapp.status === 'creating' || dapp.status === 'updating') {
-            const processingStartedAt = dapp.processingStartedAt || 0;
-            const elapsed = now - processingStartedAt;
-
-            if (elapsed >= FIVE_MINUTES) {
-              console.log('[QuickDapp] Timeout: Dapp', dapp.slug, 'stuck in', dapp.status, 'for', (elapsed/1000).toFixed(0), 's - resetting');
-
-              // Clear processing state in UI
-              dispatch({
-                type: 'SET_DAPP_PROCESSING',
-                payload: { slug: dapp.slug, isProcessing: false }
-              });
-
-              // Update config
-              await dappManager.updateDappConfig(dapp.slug, {
-                status: 'created',
-                processingStartedAt: null
-              });
-
-              hasChanges = true;
-            }
-          }
-        }
-
-        // Refresh dapp list if any changes were made
-        if (hasChanges) {
-          const updatedDapps = await dappManager.getDapps();
-          dispatch({ type: 'SET_DAPPS', payload: updatedDapps || [] });
-        }
-      } catch (e) {
-        console.warn('[QuickDapp] Timeout check failed:', e);
-      }
-    };
-
-    const intervalId = setInterval(checkTimeouts, TIMEOUT_CHECK_INTERVAL);
-
-    return () => clearInterval(intervalId);
-  }, [dappManager, dispatch]);
-
   // Note: workspaceDeleted handler is now in the main event listener useEffect above
 
   // App initialization - runs once on mount

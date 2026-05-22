@@ -549,13 +549,7 @@ export class DappManager {
     const content = JSON.stringify(sanitized, null, 2);
     await (this.plugin as any).call('fileManager', 'writeFile', CONFIG_FILENAME, content, { silent: true });
 
-    if (currentWorkspace.name !== workspaceName) {
-      await this.switchToWorkspace(currentWorkspace.name);
-    }
-
-    if (currentWorkspace.name !== workspaceName) {
-      await this.focusPlugin();
-    }
+    // DON'T switch back - prevents infinite workspace switching loops
   }
 
   async saveGeneratedFiles(slug: string, pages: Record<string, string>) {
@@ -598,10 +592,7 @@ export class DappManager {
       }
     }
 
-    if (currentWorkspace.name !== workspaceName) {
-      await this.switchToWorkspace(currentWorkspace.name);
-      await this.focusPlugin();
-    }
+    // DON'T switch back - prevents infinite workspace switching loops
   }
 
   async deleteDapp(workspaceName: string): Promise<void> {
@@ -716,8 +707,6 @@ export class DappManager {
   }
 
   async getDappConfig(workspaceName: string): Promise<DappConfig | null> {
-    const currentWorkspace = await this.getCurrentWorkspace();
-
     try {
       const dappOps = DappOperations.from(workspaceName, this.plugin as any);
       await dappOps.switchToWorkspace();
@@ -738,40 +727,37 @@ export class DappManager {
           }
         } catch (e) {}
 
-        // Switch back to original workspace if needed
-        if (!dappOps.isInline() && currentWorkspace.name !== dappOps.getWorkspaceName()) {
-          await this.switchToWorkspace(currentWorkspace.name);
-          await this.focusPlugin();
-        }
+        // DON'T switch back - let the user stay in the dapp workspace
+        // This prevents infinite workspace switching loops
 
         return this.sanitizeConfig(config);
       }
 
-      // Switch back if we switched
-      if (!dappOps.isInline() && currentWorkspace.name !== dappOps.getWorkspaceName()) {
-        await this.switchToWorkspace(currentWorkspace.name);
-        await this.focusPlugin();
-      }
+      // No config found - don't switch back either
     } catch (e) {
       console.warn(`[DappManager] Failed to read config for ${workspaceName}`, e);
-
-      // Attempt to switch back to original workspace on error
-      const isInlineSlug = DappPathHelper.isInlineSlug(workspaceName);
-      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
-        try {
-          await this.switchToWorkspace(currentWorkspace.name);
-          await this.focusPlugin();
-        } catch (switchErr) {}
-      }
+      // Don't switch back on error either
     }
     return null;
   }
 
   async updateDappConfig(workspaceName: string, updates: Partial<DappConfig>): Promise<DappConfig | null> {
-    const currentWorkspace = await this.getCurrentWorkspace();
-
     try {
       const dappOps = DappOperations.from(workspaceName, this.plugin as any);
+
+      // For workspace mode, check if workspace exists before trying to switch
+      if (!dappOps.isInline()) {
+        try {
+          const wsExists = await (this.plugin as any).call('filePanel', 'workspaceExists', dappOps.getWorkspaceName());
+          if (!wsExists) {
+            console.warn(`[DappManager] Workspace ${dappOps.getWorkspaceName()} doesn't exist yet, skipping config update`);
+            return null;
+          }
+        } catch (e) {
+          console.warn('[DappManager] Failed to check workspace existence:', e);
+        }
+      }
+
       await dappOps.switchToWorkspace();
 
       const currentConfig = await dappOps.readConfig();
@@ -797,27 +783,15 @@ export class DappManager {
       const sanitizedConfig = this.sanitizeConfig(newConfig);
 
       await dappOps.writeConfig(sanitizedConfig);
-      if (!dappOps.isInline() && currentWorkspace.name !== dappOps.getWorkspaceName()) {
-        await this.switchToWorkspace(currentWorkspace.name);
-        await this.focusPlugin();
-      }
 
-      if (currentWorkspace.name === dappOps.getWorkspaceName() || dappOps.isInline()) {
-        await this.focusPlugin();
-      }
+      // DON'T switch back - let the user stay in the dapp workspace
+      // This prevents infinite workspace switching loops
 
       return sanitizedConfig;
 
     } catch (e) {
       console.error('[DappManager] Failed to update config:', e);
-
-      const isInlineSlug = DappPathHelper.isInlineSlug(workspaceName);
-      if (!isInlineSlug && currentWorkspace.name !== workspaceName) {
-        try {
-          await this.switchToWorkspace(currentWorkspace.name);
-          await this.focusPlugin();
-        } catch (switchErr) {}
-      }
+      // Don't switch back on error either
       return null;
     }
   }
