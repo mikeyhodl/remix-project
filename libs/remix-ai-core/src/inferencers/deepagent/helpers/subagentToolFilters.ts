@@ -263,7 +263,9 @@ export function getQuickDappToolsForQuickDappSpecialist(tools: DynamicStructured
     'update_dapp',
     'list_dapps',
     'finalize_dapp_generation',
-    'fetch_figma_design'
+    'fetch_figma_design',
+    'get_deployed_contracts',
+    'get_current_environment'
   ]
   return tools.filter(tool => quickDappToolNames.includes(tool.name))
 }
