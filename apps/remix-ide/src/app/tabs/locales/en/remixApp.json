@@ -44,11 +44,11 @@
   "remixApp.aiChatButton.thegraph": "The Graph",
   "remixApp.aiChatButton.alchemy": "Alchemy",
   "remixApp.aiChatButton.etherscan": "Etherscan",
-  "remixApp.aiChatButton.loadSkills": "Load Skills",
+  "remixApp.aiChatButton.loadSkills": "List Skills",
   "remixApp.aiChatButton.reviewFile": "Review {fileName}",
   "remixApp.aiChatButton.deployContract": "Deploy {contractName}",
   "remixApp.aiChatButton.ethernews": "Latest Ethereal news",
-  
+
   "remixApp.aiChatPrompt.createFile": "Let's create a new file together in the current workspace",
   "remixApp.aiChatPrompt.reviewFile": "Review the file {fileName}",
   "remixApp.aiChatPrompt.deployContract": "Deploy the {contractName} contract",
