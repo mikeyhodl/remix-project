@@ -139,6 +139,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       console.log('[DeepAgentInferencer] Initializing DeepAgent...')
       console.log('[DeepAgentInferencer] Initializing DeepAgent with config:', this.config)
       console.log('[DeepAgentInferencer] Model selection:', this.modelSelection)
+      await this.logInitDiagnostics()
 
       this.model = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
 
@@ -158,6 +159,45 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         DeepAgentErrorType.INITIALIZATION_FAILED,
         error
       )
+    }
+  }
+
+  private async logInitDiagnostics(): Promise<void> {
+    try {
+      const pluginAny = this.plugin as any
+      const snapshot = await pluginAny.call?.('assistantState', 'getSnapshot')
+      const features = snapshot?.permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
+
+      const hasBasicMcp = features?.['mcp:basicExternal']?.is_enabled === true
+      const configuredServers = Array.isArray(pluginAny?.mcpServers)
+        ? pluginAny.mcpServers.map((s: any) => s?.name).filter(Boolean)
+        : []
+      const connectedServers = this.mcpInferencer?.getConnectedServers?.() || []
+
+      let availableExternalToolCount = -1
+      if (this.mcpInferencer?.getAvailableToolsForLLM) {
+        try {
+          const externalTools = await this.mcpInferencer.getAvailableToolsForLLM()
+          availableExternalToolCount = Array.isArray(externalTools) ? externalTools.length : -1
+        } catch {
+          availableExternalToolCount = -1
+        }
+      }
+
+      console.log('[DeepAgentInferencer][InitDiagnostics]', {
+        isAuthenticated: !!snapshot?.isAuthenticated,
+        permissionsState: snapshot?.permissionsState || 'unknown',
+        hasPermissionsPayload: !!snapshot?.permissions,
+        hasBasicMcp,
+        selectedModel: this.modelSelection,
+        configuredServerCount: configuredServers.length,
+        configuredServers,
+        connectedServerCount: connectedServers.length,
+        connectedServers,
+        availableExternalToolCount
+      })
+    } catch (error: any) {
+      console.warn('[DeepAgentInferencer][InitDiagnostics] Failed to collect diagnostics:', error?.message || error)
     }
   }
 

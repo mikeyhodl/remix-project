@@ -163,6 +163,7 @@ export class RemixAIPlugin extends Plugin {
 
   async onActivation(): Promise<void> {
     const { hasBasicMcp } = await this.checkMCPAccess()
+    let mcpPermissionSyncInFlight = false
 
     // Resolve the initial model from /permissions — NO client-side defaults
     // and NO beta-user hardcode. The backend's `is_default: true` row wins.
@@ -214,8 +215,36 @@ export class RemixAIPlugin extends Plugin {
         console.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
       }
     }
+
+    // Auth can flip before /permissions has fully hydrated in assistantState.
+    // When that happens, refreshMCPServersOnAuthChange() may run with a stale
+    // snapshot and keep the default-only server set. Re-run the MCP refresh
+    // once permissions are definitively ready so mcp:basicExternal is applied
+    // without requiring a hard reload.
+    const syncMcpServersFromReadyPermissions = async (snap?: any): Promise<void> => {
+      if (mcpPermissionSyncInFlight) return
+
+      const permissionsState = snap?.permissionsState
+      const isAuthenticated = !!snap?.isAuthenticated
+
+      // Only run once the permissions payload is ready for an authenticated user.
+      if (!isAuthenticated || permissionsState !== 'ready') return
+
+      mcpPermissionSyncInFlight = true
+      try {
+        await this.refreshMCPServersOnAuthChange({ isAuthenticated: true })
+      } catch (e) {
+        console.warn('[RemixAI Plugin] MCP sync from ready permissions failed', e)
+      } finally {
+        mcpPermissionSyncInFlight = false
+      }
+    }
+
     await applyDefaultFromState()
-    this.on('assistantState' as any, 'stateChanged', () => { void applyDefaultFromState() })
+    this.on('assistantState' as any, 'stateChanged', (snap: any) => {
+      void applyDefaultFromState()
+      void syncMcpServersFromReadyPermissions(snap)
+    })
 
     // Listen for tool-approval responses forwarded by the assistant UI as engine events.
     // The UI cannot use plugin.call() here because remixAI's request queue is busy with
