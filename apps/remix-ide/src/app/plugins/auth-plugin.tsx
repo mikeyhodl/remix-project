@@ -185,12 +185,13 @@ export class AuthPlugin extends Plugin {
    */
   async checkPermission(feature: string): Promise<{ allowed: boolean; limit?: number; unit?: string }> {
     try {
-      const response = await this.permissionsApi.checkFeature(feature)
-      if (response.ok && response.data) {
+      const snap: any = await this.call('assistantState' as any, 'getSnapshot')
+      const perm = snap?.permissions?.features?.[feature]
+      if (perm && typeof perm === 'object') {
         return {
-          allowed: response.data.allowed,
-          limit: response.data.limit_value,
-          unit: response.data.limit_unit
+          allowed: perm.is_enabled === true,
+          limit: perm.limit_value,
+          unit: perm.limit_unit
         }
       }
       return { allowed: false }
@@ -216,10 +217,8 @@ export class AuthPlugin extends Plugin {
    */
   async getAllPermissions(): Promise<any> {
     try {
-      const response = await this.permissionsApi.getPermissions()
-      if (response.ok && response.data) {
-        return response.data
-      }
+      const snap: any = await this.call('assistantState' as any, 'getSnapshot')
+      if (snap?.permissions) return snap.permissions
       return { features: []}
     } catch (error) {
       console.error('[AuthPlugin] Get all permissions failed:', error)
@@ -252,11 +251,18 @@ export class AuthPlugin extends Plugin {
    */
   async checkPermissions(features: string[]): Promise<Record<string, { allowed: boolean; limit_value?: number; limit_unit?: string }>> {
     try {
-      const response = await this.permissionsApi.checkFeatures(features)
-      if (response.ok && response.data) {
-        return response.data.results
+      const snap: any = await this.call('assistantState' as any, 'getSnapshot')
+      const perms = snap?.permissions?.features || {}
+      const result: Record<string, { allowed: boolean; limit_value?: number; limit_unit?: string }> = {}
+      for (const feature of features) {
+        const perm = perms?.[feature]
+        result[feature] = {
+          allowed: perm?.is_enabled === true,
+          limit_value: perm?.limit_value,
+          limit_unit: perm?.limit_unit
+        }
       }
-      return {}
+      return result
     } catch (error) {
       console.error('[AuthPlugin] Check permissions failed:', error)
       return {}
@@ -270,11 +276,17 @@ export class AuthPlugin extends Plugin {
    */
   async getFeaturesByCategory(category: string): Promise<{ feature_name: string; allowed: boolean; limit_value?: number; limit_unit?: string }[]> {
     try {
-      const response = await this.permissionsApi.getFeaturesInCategory(category)
-      if (response.ok && response.data) {
-        return response.data.features
-      }
-      return []
+      const snap: any = await this.call('assistantState' as any, 'getSnapshot')
+      const perms = snap?.permissions?.features || {}
+      const prefix = `${category}:`
+      return Object.entries(perms)
+        .filter(([name]) => name.startsWith(prefix))
+        .map(([feature_name, perm]: [string, any]) => ({
+          feature_name,
+          allowed: perm?.is_enabled === true,
+          limit_value: perm?.limit_value,
+          limit_unit: perm?.limit_unit
+        }))
     } catch (error) {
       console.error('[AuthPlugin] Get features by category failed:', error)
       return []
@@ -288,11 +300,12 @@ export class AuthPlugin extends Plugin {
    */
   async getFeatureLimit(feature: string): Promise<{ limit?: number; unit?: string }> {
     try {
-      const response = await this.permissionsApi.checkFeature(feature)
-      if (response.ok && response.data) {
+      const snap: any = await this.call('assistantState' as any, 'getSnapshot')
+      const perm = snap?.permissions?.features?.[feature]
+      if (perm && typeof perm === 'object') {
         return {
-          limit: response.data.limit_value,
-          unit: response.data.limit_unit
+          limit: perm.limit_value,
+          unit: perm.limit_unit
         }
       }
       return {}
