@@ -1524,24 +1524,33 @@ const QuotasPanel: React.FC<{
           const label = formatQuotaLabel(q, aiModels)
           const periodWord = formatPeriodWord(q.period)
           const reset = formatResetTime(q.periodResetAt, q.period)
+          const slugId = q.slug.replace(/[^a-zA-Z0-9_-]/g, '-')
 
           return (
             <article
               key={q.slug}
+              data-id={`pm-quota-${slugId}`}
+              data-quota-slug={q.slug}
+              data-quota-provider={q.provider}
+              data-quota-model={q.model}
+              data-quota-period={q.period}
+              data-quota-used={q.used}
+              data-quota-amount={q.amount}
+              data-quota-remaining={q.remaining}
               className={`pm-quota pm-quota--${tone} ${exhausted ? 'pm-quota--exhausted' : ''} ${unlimited ? 'pm-quota--unlimited' : ''}`}
             >
               <header className="pm-quota__head">
                 <div className="pm-quota__label">
-                  <span className="pm-quota__name">{label}</span>
+                  <span className="pm-quota__name" data-id={`pm-quota-${slugId}-name`}>{label}</span>
                   <span className="pm-quota__period">{periodWord} free</span>
                 </div>
                 {unlimited ? (
                   <span className="pm-quota__badge pm-quota__badge--unlimited" title="Unlimited free usage">∞ Unlimited</span>
                 ) : (
                   <div className="pm-quota__counts">
-                    <span className="pm-quota__used">{q.used.toLocaleString()}</span>
+                    <span className="pm-quota__used" data-id={`pm-quota-${slugId}-used`}>{q.used.toLocaleString()}</span>
                     <span className="pm-quota__sep">/</span>
-                    <span className="pm-quota__cap">{q.amount.toLocaleString()} free</span>
+                    <span className="pm-quota__cap" data-id={`pm-quota-${slugId}-cap`}>{q.amount.toLocaleString()} free</span>
                   </div>
                 )}
               </header>

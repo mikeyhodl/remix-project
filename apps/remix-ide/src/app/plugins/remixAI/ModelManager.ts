@@ -157,6 +157,10 @@ export class ModelManager {
   private async reinitializeDeepAgentForModelChange(_model: AIModel, _modelId: string): Promise<void> {
     const plugin = this.deps.plugin
     console.log('[RemixAI Plugin] Model changed, reinitializing DeepAgent with new model:', _model.provider, _modelId)
+    ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:enter', 'model change → DeepAgent reinit', {
+      newProvider: _model.provider,
+      newModelId: _modelId
+    })
 
     try {
       // Clean up old instance
@@ -190,6 +194,10 @@ export class ModelManager {
       this.deps.setupDeepAgentEventListeners()
 
       console.log('[RemixAI Plugin] DeepAgent reinitialized with new model successfully')
+      ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:success', 'DeepAgent reinitialized after model change', {
+        provider: _model.provider,
+        modelId: _modelId
+      })
 
       // Apply pending thread_id after model switch reinitialization
       if (plugin.pendingDeepAgentThreadId) {
@@ -198,6 +206,10 @@ export class ModelManager {
       }
     } catch (error) {
       console.error('[RemixAI Plugin] Failed to reinitialize DeepAgent on model change:', error)
+      ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:failed', 'caught error inside reinitializeDeepAgentForModelChange()', {
+        errorMessage: (error as any)?.message,
+        errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
+      })
       // Keep DeepAgent enabled but log the error
     }
   }

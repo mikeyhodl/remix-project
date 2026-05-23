@@ -402,35 +402,18 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         console.log('[DeepAgent.answer] autoMode=DISABLED, using static model:', this.modelSelection)
       }
 
-      // Structural safety net: the deepagents middleware injects content blocks
-      // (memory, skills, filesystem state, optional cache_control breakpoints)
-      // into every model call. ChatMistralAI's converter throws on any block
-      // whose `type` is not "text" or "image_url" — manifesting as:
-      //   `Mistral only supports types "text" or "image_url" for complex
-      //    message types.`
-      // So Mistral is structurally incompatible with the agent flow, regardless
-      // of whether Auto Mode is on. If the active agent model is Mistral but
-      // Sonnet (or any Anthropic model) is permitted for this user, swap to it
-      // *before* runAgent fires the first model invocation.
-      if (this.modelSelection.provider === 'mistralai') {
-        const allowed = await resolveAllowedIds()
-        const sonnetId = allowed.find((m: string) => m.includes('sonnet'))
-          || allowed.find((m: string) => m.includes('claude'))
-        if (sonnetId) {
-          console.warn(
-            `[DeepAgent.answer] Mistral cannot run with deepagents middleware; substituting Anthropic ${sonnetId}`
-          )
-          await this.updateAgentModel({ provider: 'anthropic', modelId: sonnetId })
-        } else {
-          // Hard-fail rather than burning tokens on a request that will stall
-          // mid-stream when ChatMistralAI's converter trips on the first
-          // non-text content block.
-          throw new DeepAgentError(
-            'DeepAgent requires an Anthropic model. The currently selected Mistral model cannot run the agent flow, and no Anthropic model is permitted for your plan. Please switch to a Claude model or disable DeepAgent.',
-            DeepAgentErrorType.INVALID_REQUEST
-          )
-        }
-      }
+      // NOTE: previously this branch hard-failed (or swapped to Anthropic)
+      // when the selected provider was 'mistralai', on the assumption that
+      // ChatMistralAI's converter would throw on cache_control / non-text
+      // content blocks injected by the deepagents middleware. Verified in
+      // 2026-05 against @langchain/mistralai@1.0.7 + deepagents@1.0.0:
+      //   - deepagents only ever emits `type: "text"` blocks.
+      //   - ChatMistralAI's converter only throws on unknown `type` values;
+      //     extra sibling props like `cache_control` are silently dropped.
+      // So all three Langchain integrations (Mistral / OpenAI / Anthropic)
+      // can drive the agent. Access control happens earlier (permissions /
+      // model availability); runtime errors will surface from langgraph
+      // directly. Gate removed intentionally.
 
       const mcpContext = await this.gatherMCPResourcesContext(prompt)
       const enrichedContext = mcpContext

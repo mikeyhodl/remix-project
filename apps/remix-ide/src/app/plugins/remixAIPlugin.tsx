@@ -140,6 +140,96 @@ export class RemixAIPlugin extends Plugin {
     this.eventBridge.setupListeners(this.deepAgentInferencer, this as any)
   }
 
+  /**
+   * Single source of truth for diagnosing "why did this request go to
+   * solcoder/remote?". Emits a tagged console.group with every prereq
+   * we evaluate in the routing decision plus the current lifecycle
+   * state for DeepAgent / MCP / model selection.
+   *
+   * NOTE: investigation only — does not change behavior.
+   */
+  public traceRouteDecision(stage: string, extra: Record<string, any> = {}): void {
+    try {
+      const card = {
+        stage,
+        timestamp: new Date().toISOString(),
+        chosenRoute:
+          this.mcpEnabled && !!this.mcpInferencer
+            ? 'mcp'
+            : (this.deepAgentEnabled && !!this.deepAgentInferencer ? 'deepagent' : 'remote'),
+        mcp: {
+          mcpEnabled: this.mcpEnabled,
+          hasMcpInferencer: !!this.mcpInferencer,
+          mcpServersCount: this.mcpServers?.length ?? 0,
+          hasRemixMCPServer: !!this.remixMCPServer
+        },
+        deepAgent: {
+          deepAgentEnabled: this.deepAgentEnabled,
+          hasDeepAgentInferencer: !!this.deepAgentInferencer,
+          pendingThreadId: this.pendingDeepAgentThreadId
+        },
+        model: {
+          selectedModelId: this.selectedModelId,
+          selectedProvider: this.selectedModel?.provider ?? null,
+          requiredFeature: this.selectedModel?.requiredFeature ?? null,
+          available: this.selectedModel?.available ?? null
+        },
+        remote: {
+          hasRemoteInferencer: !!this.remoteInferencer
+        },
+        extra
+      }
+      // eslint-disable-next-line no-console
+      console.group(`[route-trace][${stage}] chosen=${card.chosenRoute}`)
+      // eslint-disable-next-line no-console
+      console.log(card)
+      if (card.chosenRoute === 'remote') {
+        // Make the fallback impossible to miss — also dump a stack
+        // snippet so we can see who is calling us.
+        // eslint-disable-next-line no-console
+        console.warn('[route-trace][SOLCODER-FALLBACK] DeepAgent/MCP unavailable, falling back to remote (solcoder).')
+        // eslint-disable-next-line no-console
+        console.warn('[route-trace][SOLCODER-FALLBACK] reason flags:', {
+          mcpEnabledButNoInferencer: this.mcpEnabled && !this.mcpInferencer,
+          deepAgentEnabledButNoInferencer: this.deepAgentEnabled && !this.deepAgentInferencer,
+          deepAgentDisabled: !this.deepAgentEnabled,
+          mcpDisabled: !this.mcpEnabled
+        })
+        try { throw new Error('route-trace stack') } catch (e: any) {
+          // eslint-disable-next-line no-console
+          console.warn('[route-trace][SOLCODER-FALLBACK] stack:\n' + (e?.stack || '').split('\n').slice(0, 12).join('\n'))
+        }
+      }
+      // eslint-disable-next-line no-console
+      console.groupEnd()
+    } catch { /* logging must never throw */ }
+  }
+
+  /**
+   * Tag every transition that toggles DeepAgent on/off so we can
+   * reconstruct, from the console, why a later request fell back to
+   * solcoder. `reason` is a short label, `extra` should include the
+   * key state values (selectedModel, hasRemixMCPServer, error).
+   */
+  public traceDeepAgentLifecycle(event: string, reason: string, extra: Record<string, any> = {}): void {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[deepagent-lifecycle]', {
+        event,
+        reason,
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasDeepAgentInferencer: !!this.deepAgentInferencer,
+        selectedModelId: this.selectedModelId,
+        selectedProvider: this.selectedModel?.provider ?? null,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        hasMcpInferencer: !!this.mcpInferencer,
+        mcpEnabled: this.mcpEnabled,
+        timestamp: new Date().toISOString(),
+        extra
+      })
+    } catch { /* logging must never throw */ }
+  }
+
   private async getLocalizedMessage(key: string): Promise<string> {
     try {
       const locale = await this.call('locale', 'currentLocale')
@@ -294,6 +384,13 @@ export class RemixAIPlugin extends Plugin {
     const allTools = await this.mcpInferencer?.getAllTools();
     console.log('[RemixAI Plugin] MCP tools available after wait:', allTools);
 
+    this.traceDeepAgentLifecycle('onActivation:preInitCheck', 'evaluating prereqs before constructing DeepAgentInferencer', {
+      deepAgentEnabled: this.deepAgentEnabled,
+      hasRemixMCPServer: !!this.remixMCPServer,
+      hasSelectedModel: !!this.selectedModel,
+      selectedModelId: this.selectedModelId,
+      willInitialize: !!(this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId)
+    })
     if (this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId) {
       try {
         console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
@@ -337,7 +434,18 @@ export class RemixAIPlugin extends Plugin {
         console.error('[RemixAI Plugin] Failed to initialize DeepAgent:', error)
         this.deepAgentEnabled = false
         this.deepAgentInferencer = null
+        this.traceDeepAgentLifecycle('onActivation:initFailed', 'caught error during DeepAgentInferencer construction/initialize', {
+          errorMessage: (error as any)?.message,
+          errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
+        })
       }
+    } else {
+      this.traceDeepAgentLifecycle('onActivation:initSkipped', 'prereqs missing — DeepAgent not constructed at activation', {
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        hasSelectedModel: !!this.selectedModel,
+        selectedModelId: this.selectedModelId
+      })
     }
   }
 
@@ -388,9 +496,16 @@ export class RemixAIPlugin extends Plugin {
    * `assistantState` calls are individually try/catch-wrapped so the legacy
    * path keeps working when the plugin is disabled (e.g. tests).
    */
-  private async withAssistantGate<T>(feature: string, run: () => Promise<T>): Promise<T | null> {
+  private getSelectedModelRequiredFeature(): string | undefined {
+    const feature = this.selectedModel?.requiredFeature
+    return feature && feature.length > 0 ? feature : undefined
+  }
+
+  private async withAssistantGate<T>(feature: string | undefined, run: () => Promise<T>): Promise<T | null> {
     try {
-      const ready = await this.call('assistantState' as any, 'requireReady', { feature })
+      const ready = feature
+        ? await this.call('assistantState' as any, 'requireReady', { feature })
+        : await this.call('assistantState' as any, 'requireReady')
       if (!ready) return null
     } catch { /* assistantState not active — fall through */ }
     try { await this.call('assistantState' as any, 'reportRequestStarted') } catch { /* noop */ }
@@ -438,7 +553,8 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
-    return this.withAssistantGate('ai:solcoder', async () => {
+    return this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('code_generation', { promptLen: prompt?.length ?? 0 })
       // Explicit MCP toggle wins over DeepAgent — the user opted in to the
       // MCP-enriched solcoder path and that's what they expect to run.
       if (this.mcpEnabled && this.mcpInferencer){
@@ -464,7 +580,8 @@ export class RemixAIPlugin extends Plugin {
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('chatMessageSent')
-    const result = await this.withAssistantGate('ai:solcoder', async () => {
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('answer', { promptLen: prompt?.length ?? 0 })
       let newPrompt = await this.codeExpAgent.chatCommand(prompt)
       // add workspace context
       newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
@@ -545,7 +662,8 @@ export class RemixAIPlugin extends Plugin {
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('codeExplainRequested')
-    const result = await this.withAssistantGate('ai:solcoder', async () => {
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('code_explaining', { promptLen: prompt?.length ?? 0, contextLen: context?.length ?? 0 })
       // Explicit MCP toggle wins over DeepAgent — see answer() for rationale.
       if (this.mcpEnabled && this.mcpInferencer){
         return await this.mcpInferencer.code_explaining(prompt, context, params)
@@ -561,7 +679,9 @@ export class RemixAIPlugin extends Plugin {
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('errorExplainRequested')
-    const result = await this.withAssistantGate('ai:solcoder', async () => {
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      // NOTE: error_explaining ALWAYS goes to remote (solcoder) by design.
+      this.traceRouteDecision('error_explaining', { hardcodedRoute: 'remote', promptLen: prompt?.length ?? 0 })
       let localFilesImports = ""
 
       // Get local imports from the workspace restrict to 5 most relevant files
@@ -580,7 +700,9 @@ export class RemixAIPlugin extends Plugin {
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('vulnerabilityCheckRequested')
-    const result = await this.withAssistantGate('ai:solcoder', async () => {
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      // NOTE: vulnerability_check ALWAYS goes to remote (solcoder) by design.
+      this.traceRouteDecision('vulnerability_check', { hardcodedRoute: 'remote', promptLen: prompt?.length ?? 0 })
       return await this.remoteInferencer.vulnerability_check(prompt, params)
     })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
@@ -705,7 +827,10 @@ export class RemixAIPlugin extends Plugin {
     // appears for a request we already know we won't honor (and the
     // downstream null result crashes the chat with "cannot read body").
     try {
-      const ready = await this.call('assistantState' as any, 'requireReady', { feature: 'ai:solcoder' })
+      const requiredFeature = this.getSelectedModelRequiredFeature()
+      const ready = requiredFeature
+        ? await this.call('assistantState' as any, 'requireReady', { feature: requiredFeature })
+        : await this.call('assistantState' as any, 'requireReady')
       if (!ready) return
     } catch { /* assistantState not active — fall through to legacy path */ }
 

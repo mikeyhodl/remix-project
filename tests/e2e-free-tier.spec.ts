@@ -20,4 +20,14 @@ test('test', async ({ page }) => {
   await expect(page.getByText('You\'ve used all your credits')).toBeVisible();
   await expect(page.getByRole('button', { name: /Plans/i })).toBeVisible();
   await page.getByRole('button', { name: /Plans/i }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('textbox', { name: 'Ask me anything about your' }).click();
+  await page.getByRole('textbox', { name: 'Ask me anything about your' }).fill('hi');
+  await page.locator('[data-id="remix-ai-composer-send-btn"]').click();
+  await page.getByText('Insufficient credits').click();
+  await page.getByText('Insufficient credits').click();
+  await expect(page.getByText('Insufficient credits')).toBeVisible();
+  await page.getByRole('button', { name: 'Top up credits' }).click();
+  await page.getByText('No top-up packages available').click();
+  await expect(page.getByText('No top-up packages available')).toBeVisible();
 });

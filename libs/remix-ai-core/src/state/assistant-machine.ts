@@ -83,7 +83,6 @@ export interface PlanManagerHandoff {
 
 export type AvailabilityState =
   | 'unknown'    // permissions not loaded yet
-  | 'disabled'  // ai:solcoder absent or disabled — assistant is OFF entirely
   | 'gated'     // sign-in / verify / upgrade needed
   | 'available' // ready to take requests
 
@@ -255,10 +254,6 @@ export const assistantMachine = setup({
     events: {} as AssistantEvent
   },
   guards: {
-    /** ai:solcoder absent or disabled → assistant fully OFF. */
-    isAssistantDisabled: ({ context }) => {
-      return !isFeatureEnabled(context.permissions, 'ai:solcoder')
-    },
     /** ai:verified_accounts present but email_verified !== true. */
     isEmailVerificationRequired: ({ context }) => {
       // Only require verification when the gate exists AND is enabled.
@@ -298,20 +293,13 @@ export const assistantMachine = setup({
     /**
      * After permissions land, decide the gate:
      *   1. anonymous              → 'auth-required'
-     *   2. ai:solcoder missing    → null  (handled by availability=disabled)
-     *   3. ai:verified_accounts   → 'email-unverified'
-     *   4. otherwise              → null  (available)
+      *   2. ai:verified_accounts   → 'email-unverified'
+      *   3. otherwise              → null  (available)
      * FEATURE_DENIED / quota gates are set imperatively by handleAIError.
      */
     deriveGateFromPermissions: ({ context }) => {
       if (!context.isAuthenticated) {
         context.gateReason = 'auth-required'
-        context.requiredFeature = null
-        return
-      }
-      if (!isFeatureEnabled(context.permissions, 'ai:solcoder')) {
-        // assistant is disabled, not gated — clear gate so the UI can hide.
-        context.gateReason = null
         context.requiredFeature = null
         return
       }
@@ -353,15 +341,8 @@ export const assistantMachine = setup({
       }
       if (err.code === 'FEATURE_DENIED') {
         const feature = extractFeatureName(err)
-        if (feature === 'ai:solcoder') {
-          // assistant fully off — no upgrade prompt makes sense, but the plan
-          // manager can still show sign-in for anonymous users.
-          context.gateReason = context.isAuthenticated ? null : 'auth-required'
-          context.requiredFeature = null
-        } else {
-          context.gateReason = 'feature-required'
-          context.requiredFeature = feature ?? null
-        }
+        context.gateReason = 'feature-required'
+        context.requiredFeature = feature ?? null
         return
       }
       if (err.code === 'PROVIDER_DENIED') {
@@ -555,19 +536,16 @@ export function snapshotFromActor(actor: AnyActorRef): AssistantSnapshot {
   // Availability is computed top-down so callers don't have to know about
   // the parallel regions:
   //   1. permissions still loading           → 'unknown'
-  //   2. ai:solcoder missing/disabled        → 'disabled'
-  //   3. any gateReason set                  → 'gated'
-  //   4. otherwise                           → 'available'
+  //   2. any gateReason set                  → 'gated'
+  //   3. otherwise                           → 'available'
   let availability: AvailabilityState = 'unknown'
   if (permissionsState === 'ready' || !ctx.isAuthenticated) {
-    if (ctx.isAuthenticated && !isFeatureEnabled(ctx.permissions, 'ai:solcoder')) {
-      availability = 'disabled'
-    } else if (ctx.gateReason) {
+    if (ctx.gateReason) {
       availability = 'gated'
     } else if (ctx.isAuthenticated) {
       availability = 'available'
     } else {
-      // Anonymous + no ai:solcoder check yet — treat as gated for sign-in.
+      // Anonymous users are gated for sign-in.
       availability = 'gated'
     }
   }
@@ -867,7 +845,7 @@ const COOLDOWN_OWNED_CODES = new Set([
 const GATE_OWNED_CODES = new Set([
   'EMAIL_NOT_VERIFIED'
   // FEATURE_DENIED handled imperatively below — only "owned" when it produces
-  // a gateReason. ai:solcoder + already-anonymous still wants a notice.
+  // a gateReason.
 ])
 
 export function selectChatNotice(snap: AssistantSnapshot): ChatNotice | null {

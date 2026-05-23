@@ -1399,7 +1399,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       // feature-blocked this opens planManager with the right reason and
       // returns false so we never show an orphan user bubble + null error.
       try {
-        const ready = await props.plugin.call('assistantState' as any, 'requireReady', { feature: 'ai:solcoder' })
+        const ready = await props.plugin.call('assistantState' as any, 'requireReady')
         if (!ready) return
       } catch { /* assistantState not active — fall through to legacy behaviour */ }
 

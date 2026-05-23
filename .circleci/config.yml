@@ -658,30 +658,11 @@ jobs:
           name: Install Playwright browser binaries
           command: npx playwright install --with-deps << pipeline.parameters.playwright_project >>
       - run:
-          name: Start Remix dist server
+          name: Run Playwright tests (scripted server lifecycle)
           command: |
-            nohup npx http-server ./dist/apps/remix-ide -a 127.0.0.1 -p 8080 > /tmp/remix-serve.log 2>&1 &
-      - run:
-          name: Wait for Remix on 127.0.0.1:8080
-          command: |
-            for i in $(seq 1 120); do
-              if curl -sf http://127.0.0.1:8080 >/dev/null; then
-                echo "Remix is up";
-                exit 0;
-              fi
-              sleep 2
-            done
-            echo "Remix did not become ready in time"
-            tail -n 200 /tmp/remix-serve.log || true
-            exit 1
-      - run:
-          name: Run Playwright tests
-          command: |
-            if [ -n "<< pipeline.parameters.playwright_spec >>" ]; then
-              yarn playwright test "<< pipeline.parameters.playwright_spec >>" --project=<< pipeline.parameters.playwright_project >>
-            else
-              yarn playwright test --project=<< pipeline.parameters.playwright_project >>
-            fi
+            PLAYWRIGHT_PROJECT="<< pipeline.parameters.playwright_project >>" \
+            PLAYWRIGHT_SPEC="<< pipeline.parameters.playwright_spec >>" \
+            bash ./apps/remix-ide/ci/run_playwright_ci.sh
       - store_test_results:
           path: ./test-results
       - store_artifacts:
@@ -691,7 +672,7 @@ jobs:
       - run:
           name: Dump server log on failure
           when: on_fail
-          command: tail -n 200 /tmp/remix-serve.log || true
+          command: tail -n 200 ./tmp/remix-serve.log || true
 
   deploy-build:
     docker:

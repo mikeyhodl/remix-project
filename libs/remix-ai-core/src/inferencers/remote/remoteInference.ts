@@ -31,28 +31,6 @@ async function buildAIErrorFromResponse(response: Response): Promise<Error> {
   return err
 }
 
-function buildSolcoderDisabledError(): Error {
-  const message = 'SOLCODER IS TEMPORARILY DISABLED. This request was blocked before contacting the solcoder service.'
-  const err: any = new Error(message)
-  err.status = 503
-  err.response = {
-    status: 503,
-    data: {
-      error: {
-        code: 'SERVICE_UNAVAILABLE',
-        message,
-        status: 503,
-        details: {
-          feature: 'ai:solcoder',
-          service: 'solcoder',
-          disabledByClient: true
-        }
-      }
-    }
-  }
-  return err
-}
-
 export class RemoteInferencer implements ICompletions, IGeneration {
   api_url: string
   completion_url: string
@@ -66,23 +44,6 @@ export class RemoteInferencer implements ICompletions, IGeneration {
     this.api_url = apiUrl!==undefined ? apiUrl: this.test_env? this.test_url : endpointUrls.solcoder
     this.completion_url = completionUrl!==undefined ? completionUrl : this.test_env? this.test_url : endpointUrls.completion
     this.event = new EventEmitter()
-  }
-
-  protected isSolcoderAllowed(): boolean {
-    if (typeof window === 'undefined') return false
-
-    // Keep the legacy remote solcoder path disabled by default.
-    // Opt back in with:
-    // localStorage.setItem('remote_solcoder_enabled', 'true')
-    return window.localStorage?.getItem('remote_solcoder_enabled') === 'true'
-  }
-
-  protected assertSolcoderEnabled(rType: AIRequestType): void {
-    if (rType !== AIRequestType.GENERAL) return
-    if (this.isSolcoderAllowed()) return
-
-    console.error('[RemoteInferencer] Blocking remote solcoder request: service disabled by client flag')
-    throw buildSolcoderDisabledError()
   }
 
   protected getProviderByteLimit(provider?: string): number {
@@ -154,7 +115,6 @@ export class RemoteInferencer implements ICompletions, IGeneration {
   }
 
   async _makeRequest(payload, rType:AIRequestType){
-    this.assertSolcoderEnabled(rType)
     this.event.emit("onInference")
     const requestURL = rType === AIRequestType.COMPLETION ? this.completion_url : this.api_url
     const historyPrompt = payload.originalPrompt || payload.prompt
@@ -211,7 +171,6 @@ export class RemoteInferencer implements ICompletions, IGeneration {
   }
 
   async _streamInferenceRequest(payload, rType:AIRequestType){
-    this.assertSolcoderEnabled(rType)
     let resultText = ""
     const historyPrompt = payload.originalPrompt || payload.prompt
     delete payload.originalPrompt

@@ -131,6 +131,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 onClick={handleSetModel}
                 className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
                 data-assist-btn="assistant-selector-btn"
+                data-id="ai-model-selector-btn"
                 ref={modelBtnRef}
               >
                 <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
