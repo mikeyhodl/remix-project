@@ -48,6 +48,8 @@ interface AiChatPromptAreaProps {
     messages: ChatMessage[]
     handleLoadSkills?: () => void
     usingOwnApiKey?: boolean
+    aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
+    aiRouteReady?: boolean
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
@@ -171,6 +173,8 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         stopRequest={props.stopRequest}
         handleLoadSkills={props.handleLoadSkills}
         usingOwnApiKey={props.usingOwnApiKey}
+        aiRoute={props.aiRoute}
+        aiRouteReady={props.aiRouteReady}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>

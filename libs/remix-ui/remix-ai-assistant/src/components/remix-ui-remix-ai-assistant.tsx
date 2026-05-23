@@ -88,6 +88,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Refreshed in the same `refreshFeatures` block as `ai:auto`.
   const [mcpEnabled, setMcpEnabled] = useState(true)
 
+  // Route readiness signal — drives the small badge next to the model
+  // selector and gates the input while DeepAgent/MCP/model are still
+  // settling. Updated via the `routeStatusChanged` event from the plugin
+  // (plus an initial fetch on mount).
+  const [aiRouteStatus, setAiRouteStatus] = useState<{
+    route: 'initializing' | 'agent' | 'tools' | 'chat'
+    ready: boolean
+  }>({ route: 'initializing', ready: false })
+
   const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
   const approvalQueueRef = useRef<ToolApprovalRequest[]>([])
@@ -406,6 +415,30 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('remixAI', 'onApiKeyError')
     }
   }, [props.plugin, availableModels])
+
+  // Subscribe to AI route-status updates so the UI can show a readiness
+  // badge and gate the input while DeepAgent/MCP/model are settling.
+  useEffect(() => {
+    let cancelled = false
+    const handleRouteStatusChanged = (status: { route: 'initializing' | 'agent' | 'tools' | 'chat'; ready: boolean }) => {
+      if (cancelled) return
+      setAiRouteStatus({ route: status.route, ready: status.ready })
+    }
+    props.plugin.on('remixAI', 'routeStatusChanged', handleRouteStatusChanged)
+    // Initial pull — the plugin may have published before we subscribed.
+    ;(async () => {
+      try {
+        const status = await props.plugin.call('remixAI', 'getRouteStatus' as any)
+        if (!cancelled && status) handleRouteStatusChanged(status as any)
+      } catch (err) {
+        if (!cancelled) console.warn('[RemixAI Assistant] getRouteStatus failed:', err)
+      }
+    })()
+    return () => {
+      cancelled = true
+      props.plugin.off('remixAI', 'routeStatusChanged')
+    }
+  }, [props.plugin])
 
   useEffect(() => {
     let refreshTimeout: NodeJS.Timeout | null = null
@@ -2556,6 +2589,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               messages={messages}
               handleLoadSkills={handleLoadSkills}
               usingOwnApiKey={usingOwnApiKey}
+              aiRoute={aiRouteStatus.route}
+              aiRouteReady={aiRouteStatus.ready}
             />
           ) : (
             <AiChatPromptArea
@@ -2602,6 +2637,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               messages={messages}
               handleLoadSkills={handleLoadSkills}
               usingOwnApiKey={usingOwnApiKey}
+              aiRoute={aiRouteStatus.route}
+              aiRouteReady={aiRouteStatus.ready}
             />
           )
         }

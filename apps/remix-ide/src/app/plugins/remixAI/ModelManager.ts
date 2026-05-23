@@ -118,6 +118,7 @@ export class ModelManager {
 
     // Emit event for UI updates
     plugin.emit('modelChanged', modelId)
+    ;(plugin as any).publishRouteStatus?.()
   }
 
   private async handleOllamaProvider(model: AIModel, modelId: string): Promise<void> {

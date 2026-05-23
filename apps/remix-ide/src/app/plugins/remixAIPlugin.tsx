@@ -31,7 +31,8 @@ const profile = {
     'setAutoMode', 'getAutoModeStatus',
     'clearCaches', 'cancelRequest',
     'getAllowedModels', 'setModelAccess',
-    'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy'
+    'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy',
+    'getRouteStatus'
   ],
   events: [
     'modelChanged',
@@ -39,7 +40,8 @@ const profile = {
     'codeExplainRequested', 'errorExplainRequested', 'vulnerabilityCheckRequested',
     'codeCompletionUsed', 'workspaceGenerated',
     'mcpEnabled', 'mcpDisabled',
-    'apiKeyModeChanged', 'onApiKeyError'
+    'apiKeyModeChanged', 'onApiKeyError',
+    'routeStatusChanged'
   ],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
@@ -228,6 +230,73 @@ export class RemixAIPlugin extends Plugin {
         extra
       })
     } catch { /* logging must never throw */ }
+  }
+
+  // ─── Route status (UI readiness signal) ─────────────────────────────
+  // The UI shows a small badge / disables input based on this. It is
+  // recomputed whenever the underlying state changes; `publishRouteStatus`
+  // is called from every code path that mutates a relevant field.
+  private _lastRouteStatus: string | null = null
+
+  /**
+   * Compute the current chat route status for the UI:
+   *  - 'initializing': prereqs are still settling (no selectedModel yet, or
+   *    DeepAgent is enabled but its inferencer hasn't been built yet).
+   *  - 'agent'       : DeepAgent path is live (subagents + tools).
+   *  - 'tools'       : MCP-only path is live (tools, no subagents).
+   *  - 'chat'        : plain remote/ollama path (no tools, no subagents).
+   */
+  public getRouteStatus(): {
+    route: 'initializing' | 'agent' | 'tools' | 'chat'
+    ready: boolean
+    details: Record<string, any>
+  } {
+    const hasModel = !!(this.selectedModel && this.selectedModelId)
+    const hasDeepAgent = !!(this.deepAgentEnabled && this.deepAgentInferencer)
+    const hasMcp = !!(this.mcpEnabled && this.mcpInferencer)
+    // DeepAgent prereqs known to the plugin: model + remixMCPServer + flag.
+    // If the flag is on and we have the prereqs but the inferencer isn't
+    // built yet, treat the route as "initializing" instead of falling back
+    // to 'chat' — this is the window where the UI should hold the user back.
+    const deepAgentSettling = this.deepAgentEnabled && !!this.remixMCPServer && hasModel && !this.deepAgentInferencer
+    let route: 'initializing' | 'agent' | 'tools' | 'chat'
+    if (!hasModel || deepAgentSettling) {
+      route = 'initializing'
+    } else if (hasDeepAgent) {
+      route = 'agent'
+    } else if (hasMcp) {
+      route = 'tools'
+    } else {
+      route = 'chat'
+    }
+    return {
+      route,
+      ready: route !== 'initializing',
+      details: {
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasDeepAgentInferencer: !!this.deepAgentInferencer,
+        mcpEnabled: this.mcpEnabled,
+        hasMcpInferencer: !!this.mcpInferencer,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        selectedModelId: this.selectedModelId,
+        selectedProvider: this.selectedModel?.provider ?? null
+      }
+    }
+  }
+
+  /**
+   * Recompute the route status and emit `routeStatusChanged` if it changed.
+   * Safe to call from any lifecycle hook; no-op if status is unchanged.
+   */
+  public publishRouteStatus(): void {
+    try {
+      const status = this.getRouteStatus()
+      const key = `${status.route}|${status.ready}`
+      if (key !== this._lastRouteStatus) {
+        this._lastRouteStatus = key
+        this.emit('routeStatusChanged', status)
+      }
+    } catch { /* never throw */ }
   }
 
   private async getLocalizedMessage(key: string): Promise<string> {
@@ -447,6 +516,7 @@ export class RemixAIPlugin extends Plugin {
         selectedModelId: this.selectedModelId
       })
     }
+    this.publishRouteStatus()
   }
 
   async initialize(remoteModel?:IRemoteModel){
@@ -956,6 +1026,7 @@ export class RemixAIPlugin extends Plugin {
   async enableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = true;
     this.emit('mcpEnabled')
+    this.publishRouteStatus()
 
     if (!this.mcpServers || this.mcpServers.length === 0) {
       return;
@@ -985,6 +1056,7 @@ export class RemixAIPlugin extends Plugin {
   async disableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = false;
     this.emit('mcpDisabled')
+    this.publishRouteStatus()
 
     if (this.mcpInferencer) {
       for (const server of this.mcpServers) {

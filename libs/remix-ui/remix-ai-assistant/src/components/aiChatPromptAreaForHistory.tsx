@@ -48,6 +48,8 @@ interface AiChatPromptAreaForHistoryProps {
       messages: ChatMessage[]
       handleLoadSkills?: () => void
       usingOwnApiKey?: boolean
+      aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
+      aiRouteReady?: boolean
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
@@ -169,6 +171,8 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         modelSelectorBtnRef={props.modelSelectorBtnRef}
         handleLoadSkills={props.handleLoadSkills}
         usingOwnApiKey={props.usingOwnApiKey}
+        aiRoute={props.aiRoute}
+        aiRouteReady={props.aiRouteReady}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>

@@ -40,6 +40,8 @@ export interface PromptAreaProps {
   autoModeEnabled?: boolean
   handleLoadSkills?: () => void
   usingOwnApiKey?: boolean
+  aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
+  aiRouteReady?: boolean
 }
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
@@ -64,7 +66,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   modelSelectorBtnRef,
   autoModeEnabled,
   handleLoadSkills,
-  usingOwnApiKey
+  usingOwnApiKey,
+  aiRoute = 'chat',
+  aiRouteReady = true
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
 
@@ -112,7 +116,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
               value={input}
-              disabled={isStreaming}
+              disabled={isStreaming || !aiRouteReady}
               onChange={e => {
                 setInput(e.target.value)
               }}
@@ -121,9 +125,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   e.preventDefault()
                   setInput(prev => prev + '\n')
                 } else
-                if (e.key === 'Enter' && !isStreaming) handleSend()
+                if (e.key === 'Enter' && !isStreaming && aiRouteReady) handleSend()
               }}
-              placeholder="Ask me anything about your code or generate new contracts..."
+              placeholder={aiRouteReady ? "Ask me anything about your code or generate new contracts..." : "Initialising agents…"}
             />
             <div className="d-flex flex-row align-items-center">
               {/* <div className="d-flex flex-row align-items-center"> */}
@@ -150,6 +154,40 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                       </span>
                     </CustomTooltip>
                   )}
+                  <CustomTooltip
+                    tooltipText={
+                      aiRoute === 'agent'
+                        ? 'DeepAgent ready — subagents + tools available'
+                        : aiRoute === 'tools'
+                          ? 'MCP tools ready (no subagents)'
+                          : aiRoute === 'chat'
+                            ? 'Plain chat — no tools or subagents'
+                            : 'Initialising agents — please wait'
+                    }
+                  >
+                    <span
+                      className={`badge ms-2 ${
+                        aiRoute === 'agent'
+                          ? 'bg-success'
+                          : aiRoute === 'tools'
+                            ? 'bg-info'
+                            : aiRoute === 'chat'
+                              ? 'bg-secondary'
+                              : 'bg-warning'
+                      }`}
+                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden' }}
+                      data-id="ai-route-status"
+                      data-route={aiRoute}
+                    >
+                      {aiRoute === 'agent'
+                        ? 'Agent'
+                        : aiRoute === 'tools'
+                          ? 'Tools'
+                          : aiRoute === 'chat'
+                            ? 'Chat'
+                            : 'Initialising…'}
+                    </span>
+                  </CustomTooltip>
                   <span className={showModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                 </div>
               </button>
@@ -171,13 +209,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               { !isRecording ? <PromptDefault
                 handleRecording={handleRecord}
                 isRecording={isRecording}
-                isStreaming={isStreaming}
+                isStreaming={isStreaming || !aiRouteReady}
                 handleSend={handleSend}
                 themeTracker={themeTracker}
                 handleCancel={stopRequest}
               /> : <PromptActiveButtons
                 handleRecordingStoppage={handleRecord}
-                isStreaming={isStreaming}
+                isStreaming={isStreaming || !aiRouteReady}
                 handleSend={handleSend}
                 isRecording={isRecording}
                 themeTracker={themeTracker}
