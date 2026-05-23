@@ -78,7 +78,7 @@ export async function buildSubagentConfigs(
   // prompt explicitly tells the LLM to "use file_write for implementation", so
   // file_* tools must be exposed. Without these the specialist also cannot emit
   // per-file tool cards ("Writing index.html…") during DApp generation.
-  const quickDappTools = [...getQuickDappToolsForQuickDappSpecialist(tools), ...fileOperationTools]
+  const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
   const solidityCompilerTools = getToolForSolidityCompiler(tools)
   const deployerTools = getToolsForDeployer(tools)
 
