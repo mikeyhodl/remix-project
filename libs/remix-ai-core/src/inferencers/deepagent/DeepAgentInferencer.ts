@@ -771,7 +771,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const checkpointer = new IndexedDBCheckpointSaver()
-      const hasSkillsPermission = await this.plugin.call('auth', 'hasPermission', 'ai:skills')
+      const hasSkillsPermission = await (async () => {
+        try {
+          return !!(await (this.plugin as any).call?.('assistantState', 'hasFeature', 'ai:skills'))
+        } catch {
+          return false
+        }
+      })()
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {

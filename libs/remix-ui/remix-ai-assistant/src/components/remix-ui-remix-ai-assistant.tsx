@@ -112,7 +112,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const trackMatomoEvent = <T extends MatomoEvent = AIEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
   }
-  const modelAccess = useModelAccess()
+  const modelAccess = useModelAccess(props.plugin as any)
   // Live AI model catalogue, sourced from the assistantState plugin (which
   // owns the /permissions response). Picker `isLocked` is derived from
   // each entry's `available` flag — we no longer cross-check provider

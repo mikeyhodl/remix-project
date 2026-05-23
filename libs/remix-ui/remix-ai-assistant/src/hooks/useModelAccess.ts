@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { endpointUrls } from '@remix-endpoints-helper'
+
+interface AssistantStatePluginCaller {
+  call: (pluginName: string, method: string, ...args: any[]) => Promise<any>
+}
 
 export interface ModelAccess {
   allowedMcps: string[]
@@ -19,7 +22,7 @@ export interface ModelAccess {
  * assistantState plugin (`getAvailableModels()`), which derives every
  * picker entry from the backend's `permissions.ai_models` array.
  */
-export function useModelAccess(): ModelAccess {
+export function useModelAccess(plugin?: AssistantStatePluginCaller): ModelAccess {
   const [allowedMcps, setAllowedMcps] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -29,26 +32,24 @@ export function useModelAccess(): ModelAccess {
     setError(null)
 
     try {
-      const token = localStorage.getItem('remix_access_token')
-      if (!token) { setAllowedMcps([]); return }
-      const headers = { 'Authorization': `Bearer ${token}` }
-
-      const response = await fetch(`${endpointUrls.permissions}`, {
-        credentials: 'include',
-        headers
-      })
-      if (response.ok) {
-        const data = await response.json()
-        const allowedMcpsFea: string[] = []
-        if (data.features?.['mcp:basicExternal']?.is_enabled) {
-          allowedMcpsFea.push('mcpBasicExternal')
-        }
-        setAllowedMcps(allowedMcpsFea)
-      } else {
+      if (!plugin?.call) {
         setAllowedMcps([])
+        return
       }
+
+      const snap: any = await plugin.call('assistantState', 'getSnapshot')
+      if (!snap?.isAuthenticated || !snap?.permissions) {
+        setAllowedMcps([])
+        return
+      }
+
+      const allowedMcpsFea: string[] = []
+      if (snap.permissions?.features?.['mcp:basicExternal']?.is_enabled) {
+        allowedMcpsFea.push('mcpBasicExternal')
+      }
+      setAllowedMcps(allowedMcpsFea)
     } catch (err) {
-      console.error('Failed to fetch MCP access:', err)
+      console.error('Failed to read MCP access from assistantState:', err)
       setAllowedMcps([])
       setError('Failed to load MCP access')
     } finally {
@@ -58,7 +59,7 @@ export function useModelAccess(): ModelAccess {
 
   useEffect(() => {
     fetchModelAccess()
-  }, [])
+  }, [plugin])
 
   const checkAccess = (_modelId: string) => true
 
