@@ -70,5 +70,4 @@ test('Unlimited Mistral Small works, Mistral Medium shows insufficient credits',
   await expect(notice).toContainText(/Insufficient credits/i)
   await expect(notice).toContainText(/do not have enough credits/i)
   await expect(page.locator('[data-id="ai-chat-notice-action-topup-credits"]')).toBeVisible()
-  await page.pause();
 })
