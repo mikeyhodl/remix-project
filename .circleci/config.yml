@@ -642,17 +642,25 @@ jobs:
     working_directory: ~/remix-project
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/remix-project
       - restore_cache:
           keys:
             - v1-deps-{{ checksum "yarn.lock" }}
       - run: yarn
       - run:
+          name: Unpack dist from workspace
+          command: |
+            if [ -f remix-dist.tar.gz ]; then
+              tar -xzf remix-dist.tar.gz
+            fi
+      - run:
           name: Install Playwright browser binaries
           command: npx playwright install --with-deps << pipeline.parameters.playwright_project >>
       - run:
-          name: Start Remix dev server
+          name: Start Remix dist server
           command: |
-            nohup yarn serve > /tmp/remix-serve.log 2>&1 &
+            nohup npx http-server ./dist/apps/remix-ide -a 127.0.0.1 -p 8080 > /tmp/remix-serve.log 2>&1 &
       - run:
           name: Wait for Remix on 127.0.0.1:8080
           command: |
@@ -937,4 +945,7 @@ workflows:
   playwright_tests:
     when: << pipeline.parameters.run_playwright_tests >>
     jobs:
-      - playwright-tests
+      - build
+      - playwright-tests:
+          requires:
+            - build
