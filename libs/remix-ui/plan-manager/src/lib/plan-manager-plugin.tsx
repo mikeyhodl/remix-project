@@ -51,6 +51,7 @@ import {
   selectCheckoutResult,
   selectPurchasingProductId,
   selectUiVisibility,
+  hasFeature,
   type QuotaEntry,
   type UiVisibility
 } from './plan-manager-machine'
@@ -93,7 +94,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Dev-only UI controls are hidden by default. Flip this to `true`
     // locally when you want scenario switchers + machine debug traces.
     this.debugUI = false
-    this.store = new PlanManagerStore({ debug: this.debugUI })
+    this.store = new PlanManagerStore({ debug: this.debugUI, stateCards: true })
 
     // Surface checkout results as a plugin event so external listeners
     // (e.g. analytics) can react without subscribing to the store.
@@ -1113,6 +1114,9 @@ const PlanManagerOverlay: React.FC<{
   // identity card (PlanIdentityCard) below. See selectUiVisibility for
   // default-deny rationale.
   const ui: UiVisibility = useMemo(() => selectUiVisibility(snap), [snap])
+  const requiresEmailVerification = !!snap.permissions
+    && hasFeature(snap.permissions, 'ai:verified_accounts')
+    && (snap.permissions.has_email === false || snap.permissions.email_verified === false)
   // Keep `activeSection` honest with permissions: if the user (or an
   // intent) selected a tab the backend has since hidden, drop the
   // selection so we don't render a section without its nav entry.
@@ -1186,16 +1190,14 @@ const PlanManagerOverlay: React.FC<{
           unlocks the rest of the UI.
         */}
         {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready'
-          && snap.permissions
-          && (snap.permissions.has_email === false || snap.permissions.email_verified === false) && (
+          && requiresEmailVerification && (
           <EmailVerificationScreen
             plugin={plugin}
             permissions={snap.permissions}
           />
         )}
         {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready'
-          && (!snap.permissions
-            || (snap.permissions.has_email !== false && snap.permissions.email_verified !== false)) && <>
+          && !requiresEmailVerification && <>
 
           {/*
             When the user has no `ui:show-*` features granted we collapse

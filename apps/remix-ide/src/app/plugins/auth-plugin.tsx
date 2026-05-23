@@ -220,10 +220,17 @@ export class AuthPlugin extends Plugin {
     try {
       const snap: any = await this.call('assistantState' as any, 'getSnapshot')
       if (snap?.permissions) return snap.permissions
-      return { features: []}
+
+      // assistantState may not be hydrated yet right after page reload.
+      // Fall back to the permissions API so AuthContext/top-menu data
+      // (feature groups, plan badges) doesn't flap to empty.
+      const response = await this.permissionsApi.getPermissions()
+      if (response.ok && response.data) return response.data
+
+      return { features: [], feature_groups: [] }
     } catch (error) {
       console.error('[AuthPlugin] Get all permissions failed:', error)
-      return { features: []}
+      return { features: [], feature_groups: [] }
     }
   }
 

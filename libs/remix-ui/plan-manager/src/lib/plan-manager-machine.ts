@@ -878,12 +878,12 @@ export function hasFeature(permissions: PermissionsResponse | null | undefined, 
   const f: any = (permissions as any).features
   if (Array.isArray(f)) {
     const hit = f.find((p: any) => p?.feature_name === name)
-    return !!hit?.allowed
+    return hit?.allowed === true || hit?.is_enabled === true
   }
   if (f && typeof f === 'object') {
     const v = f[name]
     if (typeof v === 'boolean') return v
-    if (v && typeof v === 'object') return !!v.allowed
+    if (v && typeof v === 'object') return v.allowed === true || v.is_enabled === true
   }
   return false
 }
@@ -933,9 +933,12 @@ export class PlanManagerStore {
   private actor: AnyActorRef
   private snapshot: PlanManagerSnapshot
   private listeners = new Set<() => void>()
+  private lastEventType: string = 'INIT'
+  private readonly stateCards: boolean
 
-  constructor(opts?: { debug?: boolean }) {
+  constructor(opts?: { debug?: boolean; stateCards?: boolean }) {
     const debug = opts?.debug ?? false
+    this.stateCards = opts?.stateCards ?? debug
     this.actor = createActor(planManagerMachine, {
       inspect: debug
         ? (ev: any) => {
@@ -955,15 +958,18 @@ export class PlanManagerStore {
     })
     this.actor.subscribe(() => {
       this.snapshot = snapshotFromActor(this.actor)
+      if (this.stateCards) this.logStateCard()
       for (const fn of this.listeners) {
         try { fn() } catch (e) { console.error('[PlanManagerStore] listener error', e) }
       }
     })
     this.actor.start()
     this.snapshot = snapshotFromActor(this.actor)
+    if (this.stateCards) this.logStateCard()
   }
 
   send(event: PlanManagerEvent): void {
+    this.lastEventType = event.type
     this.actor.send(event)
   }
 
@@ -977,5 +983,108 @@ export class PlanManagerStore {
   stop(): void {
     this.actor.stop()
     this.listeners.clear()
+  }
+
+  private logStateCard(): void {
+    const machineSnap = this.actor.getSnapshot() as { value: Record<string, string>; context: MachineContext }
+    const value = machineSnap?.value || { auth: 'unknown', data: 'idle', catalog: 'idle', checkout: 'idle', overlay: 'closed' }
+    const snap = this.snapshot
+    const permissions: any = snap.permissions
+    const featuresRaw: any = permissions?.features
+    const plan = selectPlanState(snap)
+    const credit = selectCreditStatus(snap)
+    const ui = selectUiVisibility(snap)
+    const alert = selectActiveAlert(snap)
+    const quotas = selectQuotas(snap)
+    const featureCount = Array.isArray(featuresRaw)
+      ? featuresRaw.length
+      : Object.keys((featuresRaw || {})).length
+
+    const readRawFeature = (name: string): any => {
+      if (Array.isArray(featuresRaw)) {
+        return featuresRaw.find((p: any) => p?.feature_name === name) ?? null
+      }
+      if (featuresRaw && typeof featuresRaw === 'object') {
+        return featuresRaw[name] ?? null
+      }
+      return null
+    }
+
+    const permissionDebug = {
+      featuresShape: Array.isArray(featuresRaw)
+        ? 'array'
+        : featuresRaw && typeof featuresRaw === 'object'
+          ? 'record'
+          : typeof featuresRaw,
+      uiFeatureRaw: {
+        'ui:show-credits': readRawFeature('ui:show-credits'),
+        'ui:show-plans': readRawFeature('ui:show-plans'),
+        'ui:show-quotas': readRawFeature('ui:show-quotas'),
+        'ui:show-top-ups': readRawFeature('ui:show-top-ups'),
+        'ui:show-usage': readRawFeature('ui:show-usage')
+      },
+      uiFeatureResolved: ui
+    }
+
+    const card = {
+      event: this.lastEventType,
+      regions: value,
+      auth: {
+        isAuthenticated: snap.isAuthenticated,
+        dataState: snap.dataState,
+        isOpen: snap.isOpen,
+        userId: machineSnap?.context?.userId ?? null,
+        lastError: snap.errorMessage
+      },
+      intent: {
+        openIntent: snap.openIntent,
+        confirmDialogId: snap.confirmDialog?.id ?? null
+      },
+      checkout: {
+        pending: snap.pendingCheckout,
+        result: snap.checkoutResult
+      },
+      derived: {
+        activeAlert: alert,
+        plan: {
+          kind: plan.kind,
+          name: plan.planName,
+          lifecycle: plan.lifecycle,
+          trial: plan.isInTrial,
+          trialDaysRemaining: plan.trialDaysRemaining
+        },
+        credit: {
+          state: credit.state,
+          remaining: credit.remaining,
+          total: credit.total,
+          usedPct: credit.usedPct
+        },
+        uiVisibility: ui
+      },
+      inventory: {
+        plans: snap.catalogPlans.length,
+        packages: snap.catalogPackages.length,
+        quotas: quotas.length,
+        features: featureCount
+      },
+      permissions: permissions,
+      permissionDebug,
+      snapshot: {
+        openIntent: snap.openIntent,
+        checkoutResult: snap.checkoutResult,
+        pendingCheckout: snap.pendingCheckout,
+        isTrialEligible: snap.isTrialEligible
+      }
+    }
+
+    const ts = new Date().toISOString()
+    const stateLabel = `${value.auth}/${value.data}/${value.catalog}/${value.checkout}/${value.overlay}`
+    console.groupCollapsed(`%c[PlanManager][StateCard] %c${ts} %c${this.lastEventType} %c${stateLabel}`,
+      'color:#1f4b99;font-weight:bold',
+      'color:#4a5568',
+      'color:#0b6b3a;font-weight:bold',
+      'color:#7a5200;font-weight:bold')
+    console.log(card)
+    console.groupEnd()
   }
 }

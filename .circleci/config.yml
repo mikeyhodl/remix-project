@@ -37,6 +37,16 @@ parameters:
   run_deploy_beta:
     type: boolean
     default: false
+  run_playwright_tests:
+    type: boolean
+    default: false
+  playwright_spec:
+    type: string
+    default: ""
+  playwright_project:
+    type: enum
+    enum: ["chromium", "firefox", "webkit"]
+    default: "chromium"
 
   # Resource sizing
   resource_class:
@@ -625,6 +635,56 @@ jobs:
       - store_artifacts:
           path: ./reports/screenshots
 
+  playwright-tests:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - run:
+          name: Install Playwright browser binaries
+          command: npx playwright install --with-deps << pipeline.parameters.playwright_project >>
+      - run:
+          name: Start Remix dev server
+          command: |
+            nohup yarn serve > /tmp/remix-serve.log 2>&1 &
+      - run:
+          name: Wait for Remix on 127.0.0.1:8080
+          command: |
+            for i in $(seq 1 120); do
+              if curl -sf http://127.0.0.1:8080 >/dev/null; then
+                echo "Remix is up";
+                exit 0;
+              fi
+              sleep 2
+            done
+            echo "Remix did not become ready in time"
+            tail -n 200 /tmp/remix-serve.log || true
+            exit 1
+      - run:
+          name: Run Playwright tests
+          command: |
+            if [ -n "<< pipeline.parameters.playwright_spec >>" ]; then
+              yarn playwright test "<< pipeline.parameters.playwright_spec >>" --project=<< pipeline.parameters.playwright_project >>
+            else
+              yarn playwright test --project=<< pipeline.parameters.playwright_project >>
+            fi
+      - store_test_results:
+          path: ./test-results
+      - store_artifacts:
+          path: ./playwright-report
+      - store_artifacts:
+          path: ./test-results
+      - run:
+          name: Dump server log on failure
+          when: on_fail
+          command: tail -n 200 /tmp/remix-serve.log || true
+
   deploy-build:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -873,3 +933,8 @@ workflows:
     jobs:
       - deploy-build:
           script: "beta"
+
+  playwright_tests:
+    when: << pipeline.parameters.run_playwright_tests >>
+    jobs:
+      - playwright-tests

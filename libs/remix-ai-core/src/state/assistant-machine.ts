@@ -215,6 +215,38 @@ function deriveCooldownExpiry(err: AIError, now: number): number | null {
   return null
 }
 
+/**
+ * /permissions.features can be either:
+ *   - array rows: [{ feature_name, is_enabled|allowed, ... }]
+ *   - record map: { [featureName]: boolean | { is_enabled|allowed, ... } }
+ */
+function getFeatureEntry(permissions: PermissionsResponse | null | undefined, key: string): any {
+  const features: any = permissions?.features
+  if (!features) return null
+  if (Array.isArray(features)) {
+    return features.find((row: any) => row?.feature_name === key) ?? null
+  }
+  if (typeof features === 'object') {
+    return features[key] ?? null
+  }
+  return null
+}
+
+function isFeatureEnabledEntry(entry: any): boolean {
+  if (entry === null || entry === undefined) return false
+  if (typeof entry === 'boolean') return entry
+  if (typeof entry !== 'object') return false
+  if (entry.is_enabled === false) return false
+  if (entry.allowed === false) return false
+  if (entry.is_enabled === true) return true
+  if (entry.allowed === true) return true
+  return false
+}
+
+function isFeatureEnabled(permissions: PermissionsResponse | null | undefined, key: string): boolean {
+  return isFeatureEnabledEntry(getFeatureEntry(permissions, key))
+}
+
 // ─── Machine ─────────────────────────────────────────────────────────
 
 export const assistantMachine = setup({
@@ -225,17 +257,12 @@ export const assistantMachine = setup({
   guards: {
     /** ai:solcoder absent or disabled → assistant fully OFF. */
     isAssistantDisabled: ({ context }) => {
-      const features = context.permissions?.features
-      if (!features) return false
-      const flag = (features as Record<string, AIFeatureFlag>)['ai:solcoder']
-      return !flag || flag.is_enabled === false
+      return !isFeatureEnabled(context.permissions, 'ai:solcoder')
     },
     /** ai:verified_accounts present but email_verified !== true. */
     isEmailVerificationRequired: ({ context }) => {
-      const features = context.permissions?.features
-      if (!features) return false
-      const flag = (features as Record<string, AIFeatureFlag>)['ai:verified_accounts']
-      if (!flag || flag.is_enabled === false) return false
+      // Only require verification when the gate exists AND is enabled.
+      if (!isFeatureEnabled(context.permissions, 'ai:verified_accounts')) return false
       return context.permissions?.email_verified !== true
     },
     isAnonymous: ({ context }) => !context.isAuthenticated,
@@ -282,16 +309,14 @@ export const assistantMachine = setup({
         context.requiredFeature = null
         return
       }
-      const features = context.permissions?.features as Record<string, AIFeatureFlag> | undefined
-      const solcoder = features?.['ai:solcoder']
-      if (!solcoder || solcoder.is_enabled === false) {
+      if (!isFeatureEnabled(context.permissions, 'ai:solcoder')) {
         // assistant is disabled, not gated — clear gate so the UI can hide.
         context.gateReason = null
         context.requiredFeature = null
         return
       }
-      const verified = features?.['ai:verified_accounts']
-      if (verified && verified.is_enabled !== false && context.permissions?.email_verified !== true) {
+      // Only enforce email verification when ai:verified_accounts exists and is enabled.
+      if (isFeatureEnabled(context.permissions, 'ai:verified_accounts') && context.permissions?.email_verified !== true) {
         context.gateReason = 'email-unverified'
         context.requiredFeature = null
         return
@@ -535,9 +560,7 @@ export function snapshotFromActor(actor: AnyActorRef): AssistantSnapshot {
   //   4. otherwise                           → 'available'
   let availability: AvailabilityState = 'unknown'
   if (permissionsState === 'ready' || !ctx.isAuthenticated) {
-    const features = ctx.permissions?.features as Record<string, AIFeatureFlag> | undefined
-    const solcoder = features?.['ai:solcoder']
-    if (ctx.isAuthenticated && (!solcoder || solcoder.is_enabled === false)) {
+    if (ctx.isAuthenticated && !isFeatureEnabled(ctx.permissions, 'ai:solcoder')) {
       availability = 'disabled'
     } else if (ctx.gateReason) {
       availability = 'gated'
@@ -582,11 +605,7 @@ export function selectCanAskAI(snap: AssistantSnapshot): boolean {
  * row, e.g. `ai:auto`, `ai:ollama`, `ai:completion`.
  */
 export function selectFeatureEnabled(snap: AssistantSnapshot, key: string): boolean {
-  const features = snap.permissions?.features as Record<string, AIFeatureFlag> | undefined
-  if (!features) return false
-  const flag = features[key]
-  if (!flag) return false
-  return flag.is_enabled !== false
+  return isFeatureEnabled(snap.permissions, key)
 }
 
 /** Map the snapshot to a plan-manager hand-off, or null if no action needed. */
@@ -615,8 +634,7 @@ export function selectAllowedModelIds(
   snap: AssistantSnapshot,
   models: ReadonlyArray<{ id: string; provider: string; capabilities?: string[] }>
 ): string[] {
-  const features = snap.permissions?.features as Record<string, AIFeatureFlag> | undefined
-  if (!features) {
+  if (!snap.permissions?.features) {
     // No permissions yet — fall back to anything that doesn't require auth.
     // (Mirrors getDefaultModel() behaviour.)
     return models.filter((m) => m.provider === 'mistralai').map((m) => m.id)
@@ -626,8 +644,7 @@ export function selectAllowedModelIds(
     if (m.provider === 'ollama') { allowed.push(m.id); continue }
     // Provider key is capitalised in /permissions/ (`ai:Mistral`, not `ai:mistralai`).
     const providerKey = providerToFeatureKey(m.provider)
-    const flag = providerKey ? features[providerKey] : undefined
-    if (flag && flag.is_enabled !== false) allowed.push(m.id)
+    if (providerKey && isFeatureEnabled(snap.permissions, providerKey)) allowed.push(m.id)
   }
   return allowed
 }
