@@ -99,7 +99,7 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
           />
-          {props.mcpEnabled && (
+          {false && props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
               <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
               <div className="form-check ms-2 mb-2">

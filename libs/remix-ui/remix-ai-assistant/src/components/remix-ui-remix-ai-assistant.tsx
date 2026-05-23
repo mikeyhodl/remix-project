@@ -86,7 +86,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // MCP Enhancement is gated by the `mcp:basicExternal` feature flag.
   // Anonymous users have no permissions, so the section stays hidden.
   // Refreshed in the same `refreshFeatures` block as `ai:auto`.
-  const [mcpEnabled, setMcpEnabled] = useState(false)
+  const [mcpEnabled, setMcpEnabled] = useState(true)
 
   const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
@@ -833,14 +833,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
     const refreshFeatures = async () => {
       try {
-        const auto = await props.plugin.call('assistantState' as any, 'hasFeature', 'ai:auto')
-        setAutoModeAvailable(!!auto)
-        const mcp = await props.plugin.call('assistantState' as any, 'hasFeature', 'mcp:basicExternal')
-        setMcpEnabled(!!mcp)
+        // const auto = await props.plugin.call('assistantState' as any, 'hasFeature', 'ai:auto')
+        setAutoModeAvailable(false)
+        // const mcp = await props.plugin.call('assistantState' as any, 'hasFeature', 'mcp:basicExternal')
+        setMcpEnabled(true)
         // When the section gets hidden, also collapse the inner toggle so
         // we don't leave MCP enhancement "on" for a user who can no longer
         // see or control it.
-        if (!mcp) setMcpEnhanced(false)
+        // if (!mcp) setMcpEnhanced(false)
       } catch { /* assistantState not active — ignore */ }
     }
     const onAssistantStateChange = (snap: any) => {
@@ -1821,6 +1821,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setInput('')
   }, [input, sendPrompt])
 
+  /*
   useEffect(() => {
     const handleMCPToggle = async () => {
       // Only toggle MCP if it's enabled via query parameter
@@ -1848,6 +1849,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       handleMCPToggle()
     }
   }, [mcpEnhanced, mcpEnabled])
+  */
 
   // Fetch available Ollama models when Ollama model is selected
   useEffect(() => {
