@@ -2070,9 +2070,9 @@ const PlansSection: React.FC<{
   const anyPurchasing = purchasingId !== null
 
   return (
-    <div className="pm-plans">
+    <div className="pm-plans" data-id="pm-plans-view">
       {requiredFeature && (
-        <div className="pm-plans__required" role="status">
+        <div className="pm-plans__required" role="status" data-id="pm-plans-required-feature" data-required-feature={requiredFeature}>
           <i className="fas fa-bolt" aria-hidden></i>
           <span>
             Your current plan doesn't include <code>{requiredFeature}</code>.
