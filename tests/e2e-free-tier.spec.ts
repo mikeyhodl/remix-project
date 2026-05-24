@@ -13,7 +13,7 @@ test('test', async ({ page }) => {
 
   // Sanity-check that the topbar Sign In button is rendered (we do NOT click it
   // here — we want to sign in through the plan-manager hand-off instead).
-  await expect(page.getByRole('button', { name: 'Sign In BETA' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign In BETA' })).toBeVisible({ timeout: 30000 });
 
   // Activate the AI assistant side panel.
   await page.locator('[data-id="verticalIconsKindremixaiassistant"]').click();

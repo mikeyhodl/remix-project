@@ -41,6 +41,12 @@ test('explain contract then ask AI about a compile error', async ({ page }) => {
   await page.locator('[data-id="ai-model-selector-btn"]').click();
   await page.locator('[data-id="ai-model-mistral-medium-latest"]').click();
 
+  // Wait for the route to stabilise (badge leaves "initializing") before we
+  // trigger any AI action — otherwise the prompt area is gated and the
+  // first click can be silently no-op'd in CI.
+  await expect(page.locator('[data-id="ai-route-status"]'))
+    .toHaveAttribute('data-route', /agent|tools|chat/, { timeout: 30000 })
+
   // --- 4. Click "Explain contract" in the bottom bar ------------------------
   await page.locator('[data-id="bottomBarExplainBtn"]').click();
 
@@ -87,6 +93,11 @@ contract Storage {
 
   const askAiBtn = page.locator('[data-id="ask-remix-ai-button"]').first()
   await expect(askAiBtn).toBeVisible({ timeout: 60000 });
+
+  // Re-confirm the AI route is ready before the second request — switching
+  // away to the solidity panel and back can transiently flip the badge.
+  await expect(page.locator('[data-id="ai-route-status"]'))
+    .toHaveAttribute('data-route', /agent|tools|chat/, { timeout: 30000 })
 
   // --- 7. Click "Ask RemixAI" on the error card -----------------------------
   await askAiBtn.click();
