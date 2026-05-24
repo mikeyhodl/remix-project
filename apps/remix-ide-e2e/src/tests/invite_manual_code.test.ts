@@ -8,7 +8,9 @@ require('dotenv').config()
 const poolApiKey = process.env.E2E_POOL_API_KEY || ''
 const INVITE_CODE = process.env.E2E_INVITE_CODE || ''
 
-module.exports = {
+module.exports = {}
+
+const test = {
     '@disabled': true,
 
     before: function (browser: NightwatchBrowser, done: VoidFunction) {
