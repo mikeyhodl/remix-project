@@ -198,7 +198,7 @@ const TOPICS: TopicDef[] = [
     // expiry timing — the modal does.
     id: 'beta-farewell',
     title: 'Beta is wrapping up',
-    description: 'Thank you! Take a short survey to claim 50% off your first 3 months of Remix Pro.',
+    description: 'Thank you! Take a short survey to get a discount on future products.',
     icon: 'fas fa-heart',
     color: '#e86baf',
     tag: 'Reward'
