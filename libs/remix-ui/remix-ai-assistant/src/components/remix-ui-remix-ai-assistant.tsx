@@ -1850,9 +1850,22 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // We do NOT hard-gate on cooldownDisplay — the banner is informational
     // only. If the user wants to retry while rate-limited, that's their
     // call; the backend will reject it and we surface the error normally.
-    await sendPrompt(input)
+    const trimmed = input.trim()
+    if (!trimmed || isStreaming) return
+
+    // Pre-flight the assistant gate so we only clear the textarea when
+    // the prompt will actually be processed. If the user is anonymous,
+    // has no verified email, lacks the feature or is out of quota,
+    // requireReady opens planManager and returns false — we preserve the
+    // typed prompt (which can be long) so it isn't silently wiped.
+    try {
+      const ready = await props.plugin.call('assistantState' as any, 'requireReady')
+      if (!ready) return
+    } catch { /* assistantState not active — fall through, sendPrompt will retry the check */ }
+
     setInput('')
-  }, [input, sendPrompt])
+    await sendPrompt(trimmed)
+  }, [input, isStreaming, props.plugin, sendPrompt])
 
   /*
   useEffect(() => {
