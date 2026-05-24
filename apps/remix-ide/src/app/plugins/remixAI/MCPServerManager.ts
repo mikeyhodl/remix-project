@@ -1,4 +1,4 @@
-import { MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig } from '@remix/remix-ai-core'
+import { MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core'
 import type { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { PermissionChecker } from './PermissionChecker'
@@ -91,10 +91,14 @@ export class MCPServerManager {
     return this.plugin.mcpServers
   }
 
-  getDefaultServers(hasBasicMcp: boolean): IMCPServer[] {
+  getDefaultServers(hasBasicMcp: boolean, hasWebSearch: boolean = false): IMCPServer[] {
     return [
       ...mcpDefaultServersConfig.defaultServers,
-      ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])
+      ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : []),
+      // Web Search requires authentication — only include when the user
+      // has the `mcp:web-search` permission. Otherwise the auto-connect
+      // would fire an unauthenticated request and the gateway returns 401.
+      ...(hasWebSearch ? mcpWebSearchServersConfig.defaultServers : [])
     ]
   }
 
@@ -246,12 +250,12 @@ export class MCPServerManager {
         return
       }
 
-      const { hasBasicMcp, isBetaUser } = await this.deps.permissionChecker.checkMCPAccess()
+      const { hasBasicMcp, hasWebSearch, isBetaUser } = await this.deps.permissionChecker.checkMCPAccess()
 
       // Determine the expected model based on user type
 
       // Calculate server list change
-      const newServerList = this.getDefaultServers(hasBasicMcp)
+      const newServerList = this.getDefaultServers(hasBasicMcp, hasWebSearch)
       const currentServerNames = this.plugin.mcpServers.map(s => s.name).sort().join(',')
       const newServerNames = newServerList.map(s => s.name).sort().join(',')
       const serversChanged = currentServerNames !== newServerNames

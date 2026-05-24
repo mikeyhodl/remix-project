@@ -91,6 +91,7 @@ export interface ToolApprovalResponse {
 // MCP access result
 export interface MCPAccessResult {
   hasBasicMcp: boolean
+  hasWebSearch: boolean
   isBetaUser: boolean
 }
 

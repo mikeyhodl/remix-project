@@ -14,7 +14,7 @@ import { isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHos
 import { FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS } from './inferencers/local/fimModelConfig'
 import { ChatHistory } from './prompts/chat'
 import { ChatCommandParser } from './helpers/chatCommandParser'
-import { mcpDefaultServersConfig, mcpBasicServersConfig } from './config/mcpDefaultServers'
+import { mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from './config/mcpDefaultServers'
 import { ChatHistoryStorageManager } from './storage/storageManager'
 import { IndexedDBChatHistoryBackend } from './storage/indexedDBBackend'
 import { WeightedToolSelector, IChatMessage } from './services/weightedToolSelector'
@@ -25,7 +25,7 @@ export {
   FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS, createRemixMCPServer,
   InsertionParams, CompletionParams, GenerationParams, AssistantParams,
   ChatEntry, AIRequestType, ChatHistory, resetOllamaHostOnSettingsChange,
-  mcpDefaultServersConfig, mcpBasicServersConfig,
+  mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig,
   AIModel, ANONYMOUS_FALLBACK_MODELS, ANONYMOUS_PLACEHOLDER_MODEL, OLLAMA_MODEL, getModelById, parseAIModelsFromPermissions,
   ChatHistoryStorageManager, IndexedDBChatHistoryBackend,
   WeightedToolSelector, IChatMessage

@@ -24,16 +24,17 @@ export class PermissionChecker {
       // populated by the time auth has flipped, so this is sync-cheap.
       const snap: any = await this.plugin.call('assistantState' as any, 'getSnapshot')
       if (!snap || !snap.isAuthenticated || !snap.permissions) {
-        return { hasBasicMcp: false, isBetaUser: false }
+        return { hasBasicMcp: false, hasWebSearch: false, isBetaUser: false }
       }
       const features = snap.permissions.features as Record<string, { is_enabled?: boolean }> | undefined
       const groups = snap.permissions.feature_groups as Array<{ name?: string }> | undefined
       const hasBasicMcp = features?.['mcp:basicExternal']?.is_enabled === true
+      const hasWebSearch = features?.['mcp:web-search']?.is_enabled === true
       const isBetaUser = Array.isArray(groups) && groups.some((g) => g?.name === 'beta')
-      return { hasBasicMcp, isBetaUser }
+      return { hasBasicMcp, hasWebSearch, isBetaUser }
     } catch (error) {
       console.error('[RemixAI Plugin] Failed to read MCP access from assistantState:', error)
-      return { hasBasicMcp: false, isBetaUser: false }
+      return { hasBasicMcp: false, hasWebSearch: false, isBetaUser: false }
     }
   }
 

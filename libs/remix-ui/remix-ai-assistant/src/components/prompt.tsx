@@ -42,6 +42,13 @@ export interface PromptAreaProps {
   usingOwnApiKey?: boolean
   aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
   aiRouteReady?: boolean
+  // When false the composer renders an explicit "Sign in" CTA in place
+  // of the disabled send button. Without this hint the user just sees a
+  // greyed-out paper plane and an "Initialising agents…" placeholder —
+  // both technically accurate but confusing because the route will
+  // never become ready until they authenticate.
+  isAuthenticated?: boolean
+  onSignIn?: () => void
 }
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
@@ -68,7 +75,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleLoadSkills,
   usingOwnApiKey,
   aiRoute = 'chat',
-  aiRouteReady = true
+  aiRouteReady = true,
+  isAuthenticated = true,
+  onSignIn
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
 
@@ -78,6 +87,19 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
   }, [input])
+
+  // The composer has three resting states:
+  //   1. ready              → normal send/stop affordance
+  //   2. !ready & authed    → disabled send (agents still booting)
+  //   3. !ready & anonymous → sign-in CTA (no amount of waiting fixes it)
+  // We split state 3 out so the user doesn't sit there waiting on a
+  // route that can never become ready until they authenticate.
+  const needsSignIn = !aiRouteReady && !isAuthenticated && !!onSignIn
+  const placeholderText = needsSignIn
+    ? 'Sign in to chat with RemixAI…'
+    : aiRouteReady
+      ? 'Ask me anything about your code or generate new contracts...'
+      : 'Initialising agents…'
 
   return (
     <>
@@ -127,7 +149,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 } else
                 if (e.key === 'Enter' && !isStreaming && aiRouteReady) handleSend()
               }}
-              placeholder={aiRouteReady ? "Ask me anything about your code or generate new contracts..." : "Initialising agents…"}
+              placeholder={placeholderText}
             />
             <div className="d-flex flex-row align-items-center">
               {/* <div className="d-flex flex-row align-items-center"> */}
@@ -209,13 +231,22 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               { !isRecording ? <PromptDefault
                 handleRecording={handleRecord}
                 isRecording={isRecording}
-                isStreaming={isStreaming || !aiRouteReady}
+                // Only render the cancel/stop affordance for an actual
+                // in-flight inference. When the route is merely "not
+                // ready yet" (e.g. anonymous user, agents still booting)
+                // we must show the disabled send button instead — a
+                // stop button that cancels nothing is broken UX and
+                // confused users into thinking the assistant was stuck.
+                isStreaming={isStreaming}
+                disabled={!aiRouteReady}
                 handleSend={handleSend}
                 themeTracker={themeTracker}
                 handleCancel={stopRequest}
+                showSignIn={needsSignIn}
+                onSignIn={onSignIn}
               /> : <PromptActiveButtons
                 handleRecordingStoppage={handleRecord}
-                isStreaming={isStreaming || !aiRouteReady}
+                isStreaming={isStreaming}
                 handleSend={handleSend}
                 isRecording={isRecording}
                 themeTracker={themeTracker}

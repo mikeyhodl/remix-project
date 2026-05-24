@@ -50,6 +50,8 @@ interface AiChatPromptAreaProps {
     usingOwnApiKey?: boolean
     aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
     aiRouteReady?: boolean
+    isAuthenticated?: boolean
+    onSignIn?: () => void
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
@@ -175,6 +177,8 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         usingOwnApiKey={props.usingOwnApiKey}
         aiRoute={props.aiRoute}
         aiRouteReady={props.aiRouteReady}
+        isAuthenticated={props.isAuthenticated}
+        onSignIn={props.onSignIn}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>

@@ -2,7 +2,7 @@ import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
-import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig } from '@remix/remix-ai-core';
+import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
@@ -321,7 +321,7 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async onActivation(): Promise<void> {
-    const { hasBasicMcp } = await this.checkMCPAccess()
+    const { hasBasicMcp, hasWebSearch } = await this.checkMCPAccess()
     let mcpPermissionSyncInFlight = false
 
     // Resolve the initial model from /permissions — NO client-side defaults
@@ -419,7 +419,16 @@ export class RemixAIPlugin extends Plugin {
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
 
-    this.mcpServers = [...mcpDefaultServersConfig.defaultServers, ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])]
+    // Web Search MUST be gated on `mcp:web-search` — see PermissionChecker.
+    // Including it unconditionally fires an anonymous request to /web-search
+    // and the gateway returns 401, polluting the console and flagging the
+    // session. The post-login `refreshMCPServersOnAuthChange` flow re-adds it
+    // once permissions hydrate.
+    this.mcpServers = [
+      ...mcpDefaultServersConfig.defaultServers,
+      ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : []),
+      ...(hasWebSearch ? mcpWebSearchServersConfig.defaultServers : [])
+    ]
 
     // Initialize MCP inferencer if we have servers and remixMCPServer exists
     if (this.mcpServers.length > 0 && this.remixMCPServer) {
@@ -1130,7 +1139,7 @@ export class RemixAIPlugin extends Plugin {
     return this.mcpManager.refreshOnAuthChange(authState)
   }
 
-  private async checkMCPAccess(): Promise<{ hasBasicMcp: boolean; isBetaUser: boolean }> {
+  private async checkMCPAccess(): Promise<{ hasBasicMcp: boolean; hasWebSearch: boolean; isBetaUser: boolean }> {
     return this.permissionChecker.checkMCPAccess()
   }
 

@@ -97,6 +97,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     ready: boolean
   }>({ route: 'initializing', ready: false })
 
+  // Authentication signal — mirrored from the assistantState snapshot.
+  // Drives the composer's sign-in CTA so an anonymous user gets a clear
+  // "Sign in to chat" affordance instead of a perpetually-disabled
+  // "Initialising agents…" placeholder (the route will never become
+  // ready until they authenticate).
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
+
   const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
   const approvalQueueRef = useRef<ToolApprovalRequest[]>([])
@@ -884,6 +891,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         cooldown: snap?.cooldown,
         ai_models_len: Array.isArray(snap?.permissions?.ai_models) ? snap.permissions.ai_models.length : 'absent'
       })
+      setIsAuthenticated(!!snap?.isAuthenticated)
       void refreshCooldown()
       void refreshModels()
       void refreshFeatures()
@@ -896,6 +904,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     void refreshModels()
     void refreshFeatures()
     void refreshChatNotice()
+    // Seed the authenticated flag synchronously from the cached snapshot
+    // so the composer never flashes a "sign in" CTA for an already
+    // logged-in user on remount.
+    ;(async () => {
+      try {
+        const snap: any = await props.plugin.call('assistantState' as any, 'getSnapshot')
+        if (snap) setIsAuthenticated(!!snap.isAuthenticated)
+      } catch { /* assistantState not active */ }
+    })()
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
@@ -2091,10 +2108,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   }, [props.plugin, modelAccess])
 
   const handleLockedModelClick = useCallback((modelId: string, modelName: string) => {
-    // The model entry carries `requiredFeature` and a `reason` string
-    // (e.g. 'auth_required', 'feature_required'). We translate those
-    // into one of the four plan-manager hand-off reasons — see the
-    // assistant-machine docs for the full table.
     const model = availableModels.find(m => m.id === modelId)
     let reason: 'auth-required' | 'email-unverified' | 'feature-required' | 'quota-exhausted' = 'feature-required'
     let requiredFeature: string | null = null
@@ -2110,6 +2123,18 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     })
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'locked_model_click', value: modelId, isClick: true })
   }, [props.plugin, availableModels])
+
+  // Opens the plan-manager paywall/sign-in modal with reason=auth-required.
+  // This is the same hand-off the locked-model picker uses for the
+  // `__signin__` placeholder model — keeping it consistent means the user
+  // sees the same sign-in UX from every entry point.
+  const handleSignIn = useCallback(() => {
+    props.plugin.call('planManager' as any, 'open', { reason: 'auth-required' }).catch(() => {
+      // planManager not active (e.g. tests) — fall back to legacy beta widget
+      props.plugin.call('betaCornerWidget', 'show').catch(() => { /* noop */ })
+    })
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'composer_sign_in_click', isClick: true })
+  }, [props.plugin, trackMatomoEvent])
 
   const modalMessage = () => {
     return (
@@ -2604,6 +2629,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               usingOwnApiKey={usingOwnApiKey}
               aiRoute={aiRouteStatus.route}
               aiRouteReady={aiRouteStatus.ready}
+              isAuthenticated={isAuthenticated}
+              onSignIn={handleSignIn}
             />
           ) : (
             <AiChatPromptArea
@@ -2652,6 +2679,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               usingOwnApiKey={usingOwnApiKey}
               aiRoute={aiRouteStatus.route}
               aiRouteReady={aiRouteStatus.ready}
+              isAuthenticated={isAuthenticated}
+              onSignIn={handleSignIn}
             />
           )
         }
