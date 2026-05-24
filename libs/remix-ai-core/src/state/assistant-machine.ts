@@ -62,10 +62,10 @@ export interface AIError {
  * in the error→UX table in the agent file.
  */
 export type GateReason =
-  | 'auth-required'        // user is anonymous
-  | 'email-unverified'     // ai:verified_accounts gate not satisfied
-  | 'feature-required'     // FEATURE_DENIED for some ai:* capability
-  | 'quota-exhausted'      // RATE_LIMITED on a per-feature quota
+  | 'auth-required' // user is anonymous
+  | 'email-unverified' // ai:verified_accounts gate not satisfied
+  | 'feature-required' // FEATURE_DENIED for some ai:* capability
+  | 'quota-exhausted' // RATE_LIMITED on a per-feature quota
   | null
 
 /** Mirrors the four `reason` strings the plan-manager understands. */
@@ -82,8 +82,8 @@ export interface PlanManagerHandoff {
 }
 
 export type AvailabilityState =
-  | 'unknown'    // permissions not loaded yet
-  | 'gated'     // sign-in / verify / upgrade needed
+  | 'unknown' // permissions not loaded yet
+  | 'gated' // sign-in / verify / upgrade needed
   | 'available' // ready to take requests
 
 export type SessionState =
@@ -96,7 +96,7 @@ export type SessionState =
 export type CooldownState =
   | 'none'
   | 'rate-limited' // expiresAt valid; UI shows countdown
-  | 'blocked'      // terminal: IP_BLOCKED / ABUSE_BLOCKED
+  | 'blocked' // terminal: IP_BLOCKED / ABUSE_BLOCKED
 
 /** Snapshot the UI subscribes to. Pure derivation from machine state + context. */
 export interface AssistantSnapshot {
@@ -390,7 +390,7 @@ export const assistantMachine = setup({
             actions: ['clearAuth']
           }
         ],
-        LOGOUT: { target: '.anonymous', actions: ['clearAuth'] }
+        LOGOUT: { target: '.anonymous', actions: ['clearAuth']}
       },
       states: {
         unknown: {},
@@ -440,8 +440,8 @@ export const assistantMachine = setup({
     session: {
       initial: 'idle',
       on: {
-        RESET_SESSION: { target: '.idle', actions: ['resetSession'] },
-        NOTICE_DISMISSED: { actions: ['dismissNotice'] }
+        RESET_SESSION: { target: '.idle', actions: ['resetSession']},
+        NOTICE_DISMISSED: { actions: ['dismissNotice']}
       },
       states: {
         idle: {
@@ -453,13 +453,13 @@ export const assistantMachine = setup({
           on: {
             STREAM_STARTED: 'streaming',
             REQUEST_SUCCEEDED: 'done',
-            ERROR_RECEIVED: { target: 'failed', actions: ['handleAIError'] }
+            ERROR_RECEIVED: { target: 'failed', actions: ['handleAIError']}
           }
         },
         streaming: {
           on: {
             REQUEST_SUCCEEDED: 'done',
-            ERROR_RECEIVED: { target: 'failed', actions: ['handleAIError'] }
+            ERROR_RECEIVED: { target: 'failed', actions: ['handleAIError']}
           }
         },
         done: {
@@ -470,7 +470,7 @@ export const assistantMachine = setup({
         failed: {
           on: {
             REQUEST_STARTED: 'requesting',
-            ERROR_RECEIVED: { actions: ['handleAIError'] }
+            ERROR_RECEIVED: { actions: ['handleAIError']}
           }
         }
       }
@@ -492,7 +492,7 @@ export const assistantMachine = setup({
             target: '.rateLimited'
           }
         ],
-        COOLDOWN_CLEARED: { target: '.none', actions: ['clearCooldown'] }
+        COOLDOWN_CLEARED: { target: '.none', actions: ['clearCooldown']}
       },
       states: {
         none: {},
@@ -504,7 +504,7 @@ export const assistantMachine = setup({
                 guard: 'cooldownStillActive',
                 target: 'rateLimited'
               },
-              { target: 'none', actions: ['clearCooldown'] }
+              { target: 'none', actions: ['clearCooldown']}
             ]
           }
         },
@@ -629,10 +629,10 @@ export function selectAllowedModelIds(
 
 function providerToFeatureKey(provider: string): string | null {
   switch (provider) {
-    case 'mistralai': return 'ai:Mistral'
-    case 'anthropic': return 'ai:Anthropic'
-    case 'openai': return 'ai:OpenAI'
-    default: return null
+  case 'mistralai': return 'ai:Mistral'
+  case 'anthropic': return 'ai:Anthropic'
+  case 'openai': return 'ai:OpenAI'
+  default: return null
   }
 }
 
