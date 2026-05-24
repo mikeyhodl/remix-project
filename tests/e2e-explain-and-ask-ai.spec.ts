@@ -62,6 +62,7 @@ test('explain contract then ask AI about a compile error', async ({ page }) => {
     { timeout: 90000, intervals: [1000, 2000, 3000] }
   ).toBeGreaterThan(20)
 
+  await page.waitForTimeout(5000); // extra wait to ensure all async state updates have settled before we proceed with the next steps
   // Snapshot how many assistant bubbles exist before we trigger the second request
   const assistantBubbles = page.locator('[data-id="ai-response-chat-bubble-section"].me-3')
   const initialAssistantCount = await assistantBubbles.count()
