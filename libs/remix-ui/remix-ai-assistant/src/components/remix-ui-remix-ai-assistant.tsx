@@ -1000,7 +1000,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         void props.plugin.call('remixAI', 'setAutoMode', false).catch(() => { /* noop */ })
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoModeAvailable])
 
   // Smart auto-scroll: only scroll to bottom if:

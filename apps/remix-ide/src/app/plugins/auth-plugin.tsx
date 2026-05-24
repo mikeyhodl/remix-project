@@ -233,10 +233,10 @@ export class AuthPlugin extends Plugin {
       const response = await this.permissionsApi.getPermissions()
       if (response.ok && response.data) return response.data
 
-      return { features: [], feature_groups: [] }
+      return { features: [], feature_groups: []}
     } catch (error) {
       console.error('[AuthPlugin] Get all permissions failed:', error)
-      return { features: [], feature_groups: [] }
+      return { features: [], feature_groups: []}
     }
   }
 
@@ -691,7 +691,7 @@ export class AuthPlugin extends Plugin {
         'RemixLogin',
         'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
       )
-      
+
       if (!popup) {
         throw new Error('Popup was blocked. Please allow popups for this site.')
       }

@@ -775,12 +775,12 @@ export class PlanManagerPlugin extends ViewPlugin {
           const topProviders = (p.providers && p.providers.length > 0)
             ? p.providers
             : (defaultPrice?.providers ?? (p.provider_slug ? [{
-                slug: p.provider_slug,
-                external_product_id: p.external_product_id ?? null,
-                external_price_id: p.external_price_id ?? null,
-                is_active: true,
-                sync_status: 'synced'
-              }] : []))
+              slug: p.provider_slug,
+              external_product_id: p.external_product_id ?? null,
+              external_price_id: p.external_price_id ?? null,
+              is_active: true,
+              sync_status: 'synced'
+            }] : []))
           return {
             id: p.slug,
             internalId: p.id,
@@ -808,12 +808,12 @@ export class PlanManagerPlugin extends ViewPlugin {
           const topProviders = (p.providers && p.providers.length > 0)
             ? p.providers
             : (defaultPrice?.providers ?? (p.provider_slug ? [{
-                slug: p.provider_slug,
-                external_product_id: p.external_product_id ?? null,
-                external_price_id: p.external_price_id ?? null,
-                is_active: true,
-                sync_status: 'synced'
-              }] : []))
+              slug: p.provider_slug,
+              external_product_id: p.external_product_id ?? null,
+              external_price_id: p.external_price_id ?? null,
+              is_active: true,
+              sync_status: 'synced'
+            }] : []))
           return {
             id: p.slug,
             internalId: p.id,
@@ -1742,22 +1742,22 @@ const SCENARIOS = {
     label: 'Credits',
     icon: 'fas fa-coins',
     options: [
-      { key: 'healthy',  label: 'Healthy',         credits: { balance: 800,  free_credits: 800,  paid_credits: 0 } },
-      { key: 'low',      label: 'Low (15%)',       credits: { balance: 150,  free_credits: 150,  paid_credits: 0 } },
-      { key: 'critical', label: 'Critical (1.8%)', credits: { balance: 18,   free_credits: 18,   paid_credits: 0 } },
-      { key: 'empty',    label: 'Empty',           credits: { balance: 0,    free_credits: 0,    paid_credits: 0 } }
+      { key: 'healthy', label: 'Healthy', credits: { balance: 800, free_credits: 800, paid_credits: 0 } },
+      { key: 'low', label: 'Low (15%)', credits: { balance: 150, free_credits: 150, paid_credits: 0 } },
+      { key: 'critical', label: 'Critical (1.8%)', credits: { balance: 18, free_credits: 18, paid_credits: 0 } },
+      { key: 'empty', label: 'Empty', credits: { balance: 0, free_credits: 0, paid_credits: 0 } }
     ] as Array<{ key: string; label: string; credits: any }>
   },
   plan: {
     label: 'Plan',
     icon: 'fas fa-calendar-alt',
     options: [
-      { key: 'beta-active',    permissions: makeBetaPermissions(null), subscription: null },
-      { key: 'beta-ending',    permissions: makeBetaPermissions(daysFromNow(5)), subscription: null },
-      { key: 'beta-ended',     permissions: makeBetaPermissions(daysFromNow(-3)), subscription: null },
-      { key: 'paid-active',    permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 28, false) },
-      { key: 'paid-expiring',  permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 4, true) },
-      { key: 'paid-expired',   permissions: { feature_groups: [], features: {} }, subscription: makeSub('canceled', -2, true) }
+      { key: 'beta-active', permissions: makeBetaPermissions(null), subscription: null },
+      { key: 'beta-ending', permissions: makeBetaPermissions(daysFromNow(5)), subscription: null },
+      { key: 'beta-ended', permissions: makeBetaPermissions(daysFromNow(-3)), subscription: null },
+      { key: 'paid-active', permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 28, false) },
+      { key: 'paid-expiring', permissions: { feature_groups: [], features: {} }, subscription: makeSub('active', 4, true) },
+      { key: 'paid-expired', permissions: { feature_groups: [], features: {} }, subscription: makeSub('canceled', -2, true) }
     ] as Array<{ key: string; permissions: any; subscription: any }>
   }
 }
@@ -1844,9 +1844,9 @@ const DevSwitchers: React.FC<{ plugin: PlanManagerPlugin; snap: PlanManagerSnaps
         >none</button>
         {([
           { kind: 'processing', label: 'processing', intent: 'subscription', itemLabel: 'Builder plan' },
-          { kind: 'success',    label: 'success',    intent: 'topup',        itemLabel: '50,000 credits', transactionId: 'txn_01H8…' },
-          { kind: 'closed',     label: 'closed',     intent: 'subscription', itemLabel: 'Builder plan' },
-          { kind: 'error',      label: 'error',      intent: 'topup',        itemLabel: '50,000 credits',
+          { kind: 'success', label: 'success', intent: 'topup', itemLabel: '50,000 credits', transactionId: 'txn_01H8…' },
+          { kind: 'closed', label: 'closed', intent: 'subscription', itemLabel: 'Builder plan' },
+          { kind: 'error', label: 'error', intent: 'topup', itemLabel: '50,000 credits',
             errorMessage: 'Your card was declined (insufficient funds).', transactionId: 'txn_01H9…' }
         ] as const).map(s => (
           <button

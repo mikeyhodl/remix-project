@@ -159,9 +159,9 @@ export interface OpenIntent {
 
 /** Tuning knobs — colocated so the machine is the single source of thresholds. */
 export const THRESHOLDS = {
-  CREDIT_LOW_PCT: 0.20,        // <20% of monthly allowance → 'low'
-  CREDIT_CRITICAL_PCT: 0.05,   // <5%                       → 'critical'
-  PLAN_EXPIRING_DAYS: 7        // ≤7 days to renewal/end    → 'expiring'
+  CREDIT_LOW_PCT: 0.20, // <20% of monthly allowance → 'low'
+  CREDIT_CRITICAL_PCT: 0.05, // <5%                       → 'critical'
+  PLAN_EXPIRING_DAYS: 7 // ≤7 days to renewal/end    → 'expiring'
 } as const
 
 interface CheckoutIntentRecord {
@@ -382,7 +382,7 @@ export const planManagerMachine = setup({
             actions: ['clearAuth']
           }
         ],
-        LOGOUT: { target: '.unauthenticated', actions: ['clearAuth'] }
+        LOGOUT: { target: '.unauthenticated', actions: ['clearAuth']}
       },
       states: {
         unknown: {},
@@ -408,8 +408,8 @@ export const planManagerMachine = setup({
         },
         loading: {
           on: {
-            DATA_LOADED: { target: 'ready', actions: ['setData'] },
-            DATA_FAILED: { target: 'error', actions: ['setDataError'] }
+            DATA_LOADED: { target: 'ready', actions: ['setData']},
+            DATA_FAILED: { target: 'error', actions: ['setDataError']}
           }
         },
         ready: {
@@ -419,7 +419,7 @@ export const planManagerMachine = setup({
             // calls loadAccountData while we're already in 'ready'). Just
             // apply the new data; success promotion happens via
             // PURCHASE_CONFIRMED, not here.
-            DATA_LOADED: { actions: ['setData'] },
+            DATA_LOADED: { actions: ['setData']},
             // External signal "I just got a 402 from the API" → re-fetch to
             // sync the UI with reality, but stay 'ready' so the panel doesn't
             // flash the skeleton.
@@ -432,7 +432,7 @@ export const planManagerMachine = setup({
               target: 'ready',
               actions: ['setData', 'setCheckoutSuccess']
             },
-            DATA_FAILED: { target: 'error', actions: ['setDataError'] }
+            DATA_FAILED: { target: 'error', actions: ['setDataError']}
           }
         },
         error: {
@@ -451,8 +451,8 @@ export const planManagerMachine = setup({
         idle: {},
         loading: {
           on: {
-            CATALOG_LOADED: { target: 'ready', actions: ['setCatalog'] },
-            CATALOG_FAILED: { target: 'error', actions: ['setCatalogError'] }
+            CATALOG_LOADED: { target: 'ready', actions: ['setCatalog']},
+            CATALOG_FAILED: { target: 'error', actions: ['setCatalogError']}
           }
         },
         ready: {
@@ -523,27 +523,27 @@ export const planManagerMachine = setup({
       states: {
         closed: {
           on: {
-            OPEN_OVERLAY: { target: 'open', actions: ['setOpenIntent'] },
-            TOGGLE_OVERLAY: { target: 'open', actions: ['setOpenIntent'] }
+            OPEN_OVERLAY: { target: 'open', actions: ['setOpenIntent']},
+            TOGGLE_OVERLAY: { target: 'open', actions: ['setOpenIntent']}
           }
         },
         open: {
           on: {
             // Re-opening while already open just updates the intent so the
             // panel can re-route (e.g. AI plugin opens for a different gate).
-            OPEN_OVERLAY: { actions: ['setOpenIntent'] },
-            CLOSE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent'] },
-            TOGGLE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent'] }
+            OPEN_OVERLAY: { actions: ['setOpenIntent']},
+            CLOSE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent']},
+            TOGGLE_OVERLAY: { target: 'closed', actions: ['clearOpenIntent']}
           }
         }
       }
     }
   },
   on: {
-    DEV_INJECT: { actions: ['devInject'] },
-    CONFIRM_REQUEST: { actions: ['setConfirmDialog'] },
-    CONFIRM_DISMISS: { actions: ['clearConfirmDialog'] },
-    PURCHASE_CONFIRMED: { actions: ['setCheckoutSuccess'] }
+    DEV_INJECT: { actions: ['devInject']},
+    CONFIRM_REQUEST: { actions: ['setConfirmDialog']},
+    CONFIRM_DISMISS: { actions: ['clearConfirmDialog']},
+    PURCHASE_CONFIRMED: { actions: ['setCheckoutSuccess']}
   }
 })
 
@@ -592,8 +592,8 @@ export interface PlanState {
   planName: string
   isBeta: boolean
   isCancelled: boolean
-  daysUntilExpiry: number      // negative → already expired
-  expiresOn: string | null     // ISO date string
+  daysUntilExpiry: number // negative → already expired
+  expiresOn: string | null // ISO date string
   lifecycle: PlanLifecycle
   // Trial info — only meaningful when lifecycle === 'trial'.
   isInTrial: boolean
@@ -737,9 +737,9 @@ export interface CreditStatus {
   remaining: number
   total: number
   used: number
-  usedPct: number     // 0–100
+  usedPct: number // 0–100
   remainingPct: number // 0–1
-  refreshDate: string | null  // ISO, when the next allowance lands
+  refreshDate: string | null // ISO, when the next allowance lands
 }
 
 export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
@@ -906,10 +906,10 @@ export interface UiVisibility {
 export function selectUiVisibility(snap: PlanManagerSnapshot): UiVisibility {
   const p = snap.permissions
   const showCredits = hasFeature(p, 'ui:show-credits')
-  const showPlans   = hasFeature(p, 'ui:show-plans')
-  const showQuotas  = hasFeature(p, 'ui:show-quotas')
-  const showTopUps  = hasFeature(p, 'ui:show-top-ups')
-  const showUsage   = hasFeature(p, 'ui:show-usage')
+  const showPlans = hasFeature(p, 'ui:show-plans')
+  const showQuotas = hasFeature(p, 'ui:show-quotas')
+  const showTopUps = hasFeature(p, 'ui:show-top-ups')
+  const showUsage = hasFeature(p, 'ui:show-usage')
   return {
     showCredits,
     showPlans,
@@ -943,12 +943,12 @@ export class PlanManagerStore {
       inspect: debug
         ? (ev: any) => {
           if (ev.type === '@xstate.event') {
-             
+
             console.log('%c[PlanManager] event %c%s',
               'color:#1f4b99', 'color:#0b6b3a;font-weight:bold',
               JSON.stringify(ev.event))
           } else if (ev.type === '@xstate.snapshot') {
-             
+
             console.log('%c[PlanManager] state %c%s',
               'color:#1f4b99', 'color:#7a5200',
               JSON.stringify(ev.snapshot?.value))

@@ -69,7 +69,6 @@ export const OtpDigitInput = forwardRef<OtpDigitInputHandle, OtpDigitInputProps>
 
   useEffect(() => {
     if (autoFocus) inputRefs.current[0]?.focus()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleDigitChange = (index: number, raw: string) => {

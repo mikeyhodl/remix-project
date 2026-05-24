@@ -250,7 +250,7 @@ export class RemixAIPlugin extends Plugin {
     route: 'initializing' | 'agent' | 'tools' | 'chat'
     ready: boolean
     details: Record<string, any>
-  } {
+    } {
     const hasModel = !!(this.selectedModel && this.selectedModelId)
     const hasDeepAgent = !!(this.deepAgentEnabled && this.deepAgentInferencer)
     const hasMcp = !!(this.mcpEnabled && this.mcpInferencer)
