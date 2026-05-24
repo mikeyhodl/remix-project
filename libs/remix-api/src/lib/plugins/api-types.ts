@@ -1362,3 +1362,33 @@ export interface PoolReleaseAllResponse {
   released: number
 }
 
+// ==================== Eth Skills ====================
+
+/**
+ * Summary entry from GET /ethskills/skills.
+ */
+export interface EthSkillSummary {
+  id: string
+  name: string
+  description: string
+}
+
+/**
+ * Full skill payload from GET /ethskills/skills/:id.
+ * `resources` maps relative filename → file content.
+ */
+export interface EthSkillDetail {
+  id: string
+  name: string
+  description: string
+  content: string
+  resources: Record<string, string>
+}
+
+/**
+ * Response shape for GET /ethskills/skills.
+ */
+export interface EthSkillsListResponse {
+  skills: EthSkillSummary[]
+}
+

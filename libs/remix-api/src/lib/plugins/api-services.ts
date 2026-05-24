@@ -79,7 +79,9 @@ import {
   SendEmailVerificationRequest,
   SendEmailVerificationResponse,
   VerifyEmailVerificationRequest,
-  VerifyEmailVerificationResponse
+  VerifyEmailVerificationResponse,
+  EthSkillDetail,
+  EthSkillsListResponse
 } from './api-types'
 
 /**
@@ -1124,5 +1126,39 @@ export class TestPoolApiService {
    */
   async releaseAll(): Promise<ApiResponse<PoolReleaseAllResponse>> {
     return this.request<PoolReleaseAllResponse>('/release-all', { method: 'POST' })
+  }
+}
+
+/**
+ * Eth Skills API Service - Lists and fetches skills from the
+ * `ethskills` backend (served via the MCP CORS proxy).
+ *
+ * All requests carry the authenticated user's Bearer token through the
+ * shared ApiClient so the backend can enforce per-user access and quotas.
+ */
+export class EthSkillsApiService {
+  constructor(private apiClient: IApiClient) {}
+
+  /**
+   * Set the authentication token for API requests.
+   */
+  setToken(token: string): void {
+    this.apiClient.setToken(token)
+  }
+
+  /**
+   * List all skills available to the authenticated user.
+   * GET /ethskills/skills
+   */
+  async listSkills(): Promise<ApiResponse<EthSkillsListResponse>> {
+    return this.apiClient.get<EthSkillsListResponse>('/skills')
+  }
+
+  /**
+   * Fetch a single skill (with its resources) by id.
+   * GET /ethskills/skills/:id
+   */
+  async getSkill(skillId: string): Promise<ApiResponse<EthSkillDetail>> {
+    return this.apiClient.get<EthSkillDetail>(`/skills/${encodeURIComponent(skillId)}`)
   }
 }

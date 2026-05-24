@@ -43,6 +43,7 @@ export type EndpointUrls = {
   dappGenerator: string;
   figma: string;
   mcp: string;
+  ethskills: string;
   quickdappIpfs: string;
   ensService: string;
   ccipRead: string;
@@ -83,6 +84,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   dappGenerator: 'dapp-generator',
   figma: 'figma',
   mcp: 'mcp',
+  ethskills: 'mcp/ethskills',
   quickdappIpfs: 'quickdapp-ipfs',
   ensService: 'ens-service',
   ccipRead: 'ccip-read',
@@ -148,6 +150,7 @@ const defaultUrls: EndpointUrls = {
   dappGenerator: 'https://quickdapp-ai.api.remix.live',
   figma: 'https://quickdapp-figma.api.remix.live',
   mcp: 'https://mcp.api.remix.live',
+  ethskills: 'https://mcp.api.remix.live/ethskills',
   quickdappIpfs: 'https://quickdapp-ipfs.api.remix.live',
   ensService: 'https://quickdapp-ens.api.remix.live',
   ccipRead: 'https://quickdapp-ccip.api.remix.live',
