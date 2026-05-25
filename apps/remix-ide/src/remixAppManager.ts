@@ -122,7 +122,8 @@ let requiredModules = [
   'lifecycle',
   'nudgePlugin',
   'helpPlugin',
-  'planManager'
+  'planManager',
+  'assistantState'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)
