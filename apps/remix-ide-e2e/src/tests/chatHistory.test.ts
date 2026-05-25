@@ -5,8 +5,8 @@ import init from '../helpers/init'
 import { releaseAccount } from '../helpers/pool'
 const regExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const poolApiKey = process.env.E2E_POOL_API_KEY || ''
-// TODO: reenable once the test pool is stable and has capacity to run these tests reliably
-module.exports = {}
+
+
 const test = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
@@ -244,7 +244,19 @@ const test = {
       })
       .pause(500)
       .click('*[data-id="toggle-history-btn"]')
-      .click('*[data-id="toggle-archived-btn"]')
+      .pause(500)
+      // The previous "unarchive" test left the sidebar in archived view
+      // (button text becomes "Show Active"); switch back to the active
+      // view so the newly-created conversation is visible.
+      .execute(function () {
+        const btn = document.querySelector('[data-id="toggle-archived-btn"]') as HTMLElement | null
+        if (btn && btn.textContent && btn.textContent.includes('Show Active')) {
+          btn.click()
+          return true
+        }
+        return false
+      }, [], function () { /* no-op */ })
+      .pause(300)
       .execute(function () {
         const items = document.querySelectorAll('[data-id^="conversation-item-"]')
         return items.length > 0 ? items[0].getAttribute('data-id')?.replace('conversation-item-', '') : null
@@ -951,3 +963,6 @@ const test = {
       })
   }
 }
+
+
+module.exports = test
