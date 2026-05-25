@@ -300,7 +300,7 @@ function DeployPortraitView() {
               placement="top"
               tooltipText={widgetState.networkDetected}
             >
-              <span className="badge rounded-pill text-bg-info text-light text-truncate" style={{ color: themeQuality.trim() === 'dark' ? '#000' : 'white', maxWidth: '200px' }}>{ wordRemover(lastWordRemover(widgetState.networkDetected)) }</span>
+              <span className="badge rounded-pill text-bg-info text-light text-truncate" style={{ color: themeQuality.trim() === 'dark' ? '#000' : 'white', maxWidth: '170px' }}>{ wordRemover(lastWordRemover(widgetState.networkDetected)) }</span>
             </CustomTooltip>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
