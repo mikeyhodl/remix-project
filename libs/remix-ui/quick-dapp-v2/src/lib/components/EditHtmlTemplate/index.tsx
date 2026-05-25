@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { Button, Row, Col, Card, Modal } from 'react-bootstrap';
+import { Button, Row, Col, Card } from 'react-bootstrap';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { toPng } from 'html-to-image';
 import { AppContext } from '../../contexts';
@@ -54,19 +54,20 @@ function EditHtmlTemplate(): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const builderRef = useRef<InBrowserVite | null>(null);
 
-  const [notificationModal, setNotificationModal] = useState({
-    show: false,
-    title: '',
-    message: '' as React.ReactNode,
-    variant: 'primary'
-  });
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showTips, setShowTips] = useState(false);
   const [showVmTips, setShowVmTips] = useState(false);
 
   useEffect(() => {
     if (!plugin) return;
+
+    // Clear stuck processing state on mount if dapp files exist
+    if (activeDapp && appState.dappProcessing[activeDapp.slug]) {
+      console.log('[EditHtmlTemplate] Detected stuck processing state for', activeDapp.slug, '- clearing it');
+      dispatch({
+        type: 'SET_DAPP_PROCESSING',
+        payload: { slug: activeDapp.slug, isProcessing: false }
+      });
+    }
 
     const onDappUpdated = (data: any) => {
       if (activeDapp && data.slug === activeDapp.slug) {
@@ -76,8 +77,8 @@ function EditHtmlTemplate(): JSX.Element {
         });
 
         if (activeDapp.status === 'deployed') {
-          setNotificationModal({
-            show: true,
+          plugin.call('notification', 'modal', {
+            id: 'dapp-code-updated-warning',
             title: 'Code Updated',
             message: (
               <div>
@@ -89,15 +90,11 @@ function EditHtmlTemplate(): JSX.Element {
                 </div>
               </div>
             ),
-            variant: 'warning'
+            modalType: 'alert',
+            okLabel: 'OK'
           });
         } else {
-          setNotificationModal({
-            show: true,
-            title: 'Update Successful',
-            message: 'The AI has successfully updated your dapp code.',
-            variant: 'success'
-          });
+          plugin.call('notification', 'toast', 'The AI has successfully updated your dapp code.');
         }
 
         setTimeout(() => runBuild(true), 500);
@@ -113,8 +110,8 @@ function EditHtmlTemplate(): JSX.Element {
           type: 'SET_DAPP_PROCESSING',
           payload: { slug: activeDapp.slug, isProcessing: false }
         });
-        setNotificationModal({
-          show: true,
+        plugin.call('notification', 'modal', {
+          id: 'dapp-update-failed',
           title: 'Update Failed',
           message: (
             <div>
@@ -124,7 +121,8 @@ function EditHtmlTemplate(): JSX.Element {
               </div>
             </div>
           ),
-          variant: 'danger'
+          modalType: 'alert',
+          okLabel: 'OK'
         });
       }
     };
@@ -139,10 +137,32 @@ function EditHtmlTemplate(): JSX.Element {
   }, [activeDapp, dispatch, plugin]);
 
   const handleDeleteDapp = async () => {
-    if (!activeDapp || !dappManager) return;
+    if (!activeDapp || !dappManager || !plugin) return;
 
-    // Hide modal immediately to prevent UI hang during async deletion
-    setShowDeleteModal(false);
+    const userConfirmed = await new Promise<boolean>((resolve) => {
+      plugin.call('notification', 'modal', {
+        id: 'quick-dapp-delete-confirm',
+        title: 'Delete DApp?',
+        message: (
+          <div>
+            <p>Are you sure you want to delete this DApp?</p>
+            <p className="text-warning small mb-0">
+              <i className="fas fa-exclamation-triangle me-1"></i>
+              This will also delete the associated workspace and all its files. This action cannot be undone.
+            </p>
+          </div>
+        ),
+        modalType: 'confirm',
+        okLabel: 'Yes, Delete',
+        cancelLabel: 'Cancel',
+        okFn: () => resolve(true),
+        cancelFn: () => resolve(false),
+        hideFn: () => resolve(false)
+      });
+    });
+
+    if (!userConfirmed) return;
+
     const slugToDelete = activeDapp.slug;
 
     try {
@@ -161,18 +181,16 @@ function EditHtmlTemplate(): JSX.Element {
 
     } catch (e: any) {
       console.error('[QuickDapp] Delete failed:', e);
+      plugin.call('notification', 'toast', `Failed to delete DApp: ${e.message}`);
     }
-  };
-
-  const closeNotificationModal = () => {
-    setNotificationModal(prev => ({ ...prev, show: false }));
   };
 
   const handleBack = async () => {
     if (!isAiUpdating && !isBuilding) {
+      setIsCapturing(true);
       await captureAndSaveThumbnail();
+      setIsCapturing(false);
     }
-
     if (dappManager && activeDapp) {
       try {
         const updatedConfig = await dappManager.getDappConfig(activeDapp.workspaceName);
@@ -193,7 +211,20 @@ function EditHtmlTemplate(): JSX.Element {
 
   const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-  const captureAndSaveThumbnail = async () => {
+  // Fix for unresponsive browser when creating thumbnail https://github.com/bubkoo/html-to-image/issues/542
+  const getAllPropertyNames = () => {
+    const names = [];
+    const style = getComputedStyle(iframeRef.current);
+    for (let i = 0; i < style.length; i++) {
+      const name = style[i];
+      if (!name.startsWith('--')) {
+        names.push(name);
+      }
+    }
+    return names;
+  }
+
+  const captureAndSaveThumbnail = async (force: boolean = false) => {
     if (!activeDapp || !iframeRef.current) return;
     const iframe = iframeRef.current;
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -201,13 +232,18 @@ function EditHtmlTemplate(): JSX.Element {
     if (!doc || !doc.body || doc.body.innerHTML === '') return;
 
     try {
-      // For workspace mode: use workspaceName (e.g., "dapp-storage-abc123")
-      // For inline mode: use slug (e.g., "inline-storage-abc123")
       const identifier = activeDapp.inlineMode ? activeDapp.slug : activeDapp.workspaceName;
       const dappOps = DappOperations.from(identifier, plugin);
       await dappOps.switchToWorkspace();
+      if (!force) {
+        const previewExists = await dappOps.fileExists('preview.png');
+        if (previewExists) {
+          console.log('[Capture] Preview already exists, skipping');
+          return;
+        }
+      }
 
-      setIsCapturing(true);
+      const propertyNames = getAllPropertyNames()
       const dataUrl = await toPng(doc.body, {
         quality: 0.8,
         width: 640,
@@ -219,14 +255,13 @@ function EditHtmlTemplate(): JSX.Element {
         imagePlaceholder: TRANSPARENT_PIXEL,
         fetchRequestInit: {
           cache: 'no-cache',
-        }
+        },
+        includeStyleProperties: propertyNames
       });
 
       await dappOps.writeFile('preview.png', dataUrl);
     } catch (error) {
       console.error('[Capture] Failed:', error);
-    } finally {
-      setIsCapturing(false);
     }
   };
 
@@ -440,11 +475,13 @@ window.addEventListener('unhandledrejection', function(e) {
       }
 
       if (showNotification) {
-        setNotificationModal({
-          show: true,
+        captureAndSaveThumbnail(true);
+        plugin.call('notification', 'modal', {
+          id: 'dapp-preview-updated',
           title: 'Preview Updated',
           message: 'Preview refreshed successfully.',
-          variant: 'success'
+          modalType: 'alert',
+          okLabel: 'OK'
         });
       }
 
@@ -463,11 +500,12 @@ window.addEventListener('unhandledrejection', function(e) {
     // Check if AI is currently busy (streaming)
     const streamingEl = document.querySelector('[data-id="remix-ai-streaming"]');
     if (streamingEl?.getAttribute('data-streaming') === 'true') {
-      setNotificationModal({
-        show: true,
+      plugin.call('notification', 'modal', {
+        id: 'ai-assistant-busy',
         title: 'AI Assistant Busy',
         message: 'The AI Assistant is currently processing a request. Please wait for it to finish, then try again.',
-        variant: 'warning'
+        modalType: 'alert',
+        okLabel: 'OK'
       });
       return;
     }
@@ -808,7 +846,7 @@ window.addEventListener('unhandledrejection', function(e) {
             <Button
               variant="outline-danger"
               size="sm"
-              onClick={() => setShowDeleteModal(true)}
+              onClick={handleDeleteDapp}
               disabled={isBuilding || isCapturing}
               data-id="delete-dapp-editor-btn"
             >
@@ -927,33 +965,6 @@ window.addEventListener('unhandledrejection', function(e) {
           </Row>
         </div>
       </div>
-
-      <Modal show={notificationModal.show} onHide={closeNotificationModal} centered data-id="notification-modal">
-        <Modal.Header closeButton>
-          <Modal.Title className={notificationModal.variant === 'danger' ? 'text-danger' : notificationModal.variant === 'warning' ? 'text-warning' : 'text-success'}>
-            {notificationModal.title}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>{notificationModal.message}</Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={closeNotificationModal} data-id="notification-modal-close-btn">Close</Button>
-        </Modal.Footer>
-      </Modal>
-
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton><Modal.Title>Delete DApp?</Modal.Title></Modal.Header>
-        <Modal.Body>
-          <p>Are you sure you want to delete this DApp?</p>
-          <p className="text-warning small mb-0">
-            <i className="fas fa-exclamation-triangle me-1"></i>
-            This will also delete the associated workspace and all its files. This action cannot be undone.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDeleteDapp} data-id="confirm-delete-dapp-btn">Yes, Delete</Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 }

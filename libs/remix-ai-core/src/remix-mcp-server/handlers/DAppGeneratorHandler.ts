@@ -332,7 +332,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
         contractName: args.contractName,
         isInlineMode,
         workspaceReady: true,
-        message: `DApp workspace "${workspaceSlug}" created successfully.\n\n` +
+        message: `DApp workspace "${dappOps.getWorkspaceName()}" created successfully.\n\n` +
           `Now proceed to generate the DApp files directly using file_write.\n\n` +
           `---\n` +
           `TASK: Generate a new DApp frontend${isInlineMode ? ' in /frontend folder (inline mode)' : ''}\n` +
@@ -372,7 +372,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
             `- Store raw provider in a React ref for reuse in network switching.\n` +
             `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `3. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
+          `3. After ALL files written, call finalize_dapp_generation with workspaceName="${dappOps.getWorkspaceName()}" and contractAddress="${args.contractAddress}"\n` +
           `---`
       })
 

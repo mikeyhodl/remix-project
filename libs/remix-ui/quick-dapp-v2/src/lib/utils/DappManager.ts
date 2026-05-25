@@ -608,10 +608,28 @@ export class DappManager {
       console.warn('[DappManager] deleteDapp config read failed (proceeding):', e);
     }
 
-    try {
-      await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
-    } catch (e) {
-      console.error('[DappManager] deleteDapp deleteWorkspace failed:', e);
+    const isInline = dappConfig?.inlineMode === true;
+
+    if (isInline) {
+      try {
+        const currentWs = await this.getCurrentWorkspace();
+        if (currentWs.name !== workspaceName) await this.switchToWorkspace(workspaceName);
+        await this.plugin.call('fileManager', 'remove', 'frontend');
+
+        // Delete the config file
+        await this.plugin.call('fileManager', 'remove', CONFIG_FILENAME);
+
+        console.log(`[DappManager] Deleted inline dapp frontend folder from workspace: ${workspaceName}`);
+      } catch (e) {
+        console.error('[DappManager] deleteDapp (inline) remove frontend failed:', e);
+      }
+    } else {
+      // For workspace dapps, delete the entire workspace
+      try {
+        await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
+      } catch (e) {
+        console.error('[DappManager] deleteDapp deleteWorkspace failed:', e);
+      }
     }
 
     const sourceWs = dappConfig?.sourceWorkspace?.name || 'default_workspace';
@@ -679,10 +697,15 @@ export class DappManager {
 
   async deleteAllDapps(): Promise<void> {
     const dapps = await this.getDapps();
-    const workspacesToDelete = dapps.map(dapp => dapp.workspaceName);
+    const inlineDapps = dapps.filter(dapp => dapp.inlineMode === true);
+    const workspaceDapps = dapps.filter(dapp => !dapp.inlineMode);
+    const workspacesToDelete = workspaceDapps.map(dapp => dapp.workspaceName);
 
+    // Find a safe workspace to switch to
     const allWorkspaces = await this.getWorkspaces();
-    const nonDappWorkspace = allWorkspaces.find(ws => !ws.name.startsWith(DAPP_WORKSPACE_PREFIX));
+    const nonDappWorkspace = allWorkspaces.find(ws =>
+      !ws.name.startsWith(DAPP_WORKSPACE_PREFIX) && !workspacesToDelete.includes(ws.name)
+    );
 
     if (nonDappWorkspace) {
       await this.switchToWorkspace(nonDappWorkspace.name);
@@ -695,9 +718,40 @@ export class DappManager {
       }
     }
 
+    for (const dapp of inlineDapps) {
+      try {
+        const wsName = dapp.workspaceName;
+        await this.switchToWorkspace(wsName);
+        await this.plugin.call('fileManager', 'remove', 'frontend');
+        await this.plugin.call('fileManager', 'remove', CONFIG_FILENAME);
+
+        // Clean up mapping files
+        if (dapp.sourceWorkspace?.name && dapp.contract?.address) {
+          const mappingPath = `.deploys/dapp-mappings/${dapp.contract.address}_${wsName}.json`;
+          try {
+            await this.plugin.call('fileManager', 'remove', mappingPath);
+          } catch (e) {}
+        }
+
+        console.log(`[DappManager] Deleted inline dapp from workspace: ${wsName}`);
+      } catch (e) {
+        console.error('[DappManager] Failed to delete inline dapp:', dapp.workspaceName, e);
+      }
+    }
+
+    // Switch back to safe workspace before deleting workspace dapps
+    if (nonDappWorkspace) {
+      await this.switchToWorkspace(nonDappWorkspace.name);
+    } else {
+      try {
+        await this.switchToWorkspace('default_workspace');
+      } catch (e) {}
+    }
+
     for (const workspaceName of workspacesToDelete) {
       try {
         await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
+        console.log(`[DappManager] Deleted workspace dapp: ${workspaceName}`);
       } catch (e) {
         console.error('[DappManager] Failed to delete workspace:', workspaceName, e);
       }
@@ -708,24 +762,30 @@ export class DappManager {
 
   async getDappConfig(workspaceName: string): Promise<DappConfig | null> {
     try {
-      const dappOps = DappOperations.from(workspaceName, this.plugin as any);
+      // Try inline mode first (check if frontend/dapp.config.json exists)
+      const hasInlineConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, 'frontend/dapp.config.json');
+      const mode = hasInlineConfig ? 'inline' : 'workspace';
+
+      const dappOps = new (DappOperations as any)(mode, workspaceName, this.plugin as any);
       await dappOps.switchToWorkspace();
       const config = await dappOps.readConfig();
 
       if (config) {
-        config.workspaceName = dappOps.getWorkspaceName();
+        config.workspaceName = workspaceName;
         if (!config.slug) {
           config.slug = dappOps.getSlug();
         }
-        config.inlineMode = dappOps.isInline();
+        config.inlineMode = mode === 'inline';
 
         // Try to load preview image
         try {
-          const previewContent = await dappOps.readFile(dappOps.isInline() ? 'preview.png' : 'preview.png');
+          const previewContent = await dappOps.readFile('preview.png');
           if (previewContent) {
             config.thumbnailPath = previewContent;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[DappManager] Failed to load preview for', workspaceName, e);
+        }
 
         // DON'T switch back - let the user stay in the dapp workspace
         // This prevents infinite workspace switching loops
