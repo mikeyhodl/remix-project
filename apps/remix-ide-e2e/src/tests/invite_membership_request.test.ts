@@ -8,6 +8,9 @@ require('dotenv').config()
 const poolApiKey = process.env.E2E_POOL_API_KEY || ''
 const INVITE_CODE_MEMBERSHIP = process.env.E2E_INVITE_CODE_MEMBERSHIP || ''
 
+
+// DEPRECATED TEST SUITE — the membership request flow is currently disabled in open mode, and these tests are not currently maintained. Keeping the code here for reference in case we want to re-enable this flow in the future.
+
 module.exports = {}
 
 
