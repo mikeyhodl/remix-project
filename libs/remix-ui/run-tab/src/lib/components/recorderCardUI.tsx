@@ -59,7 +59,6 @@ export function RecorderUI(props: RecorderProps) {
           </span>
         </div>
       </div>
-      <h3 className="text-success fw-bold">Wetin the happen here</h3>
 
       { toggleExpander && <div className={`pb-2 flex-column d-flex`} data-id='remixRecorderExpanded'>
         <div className="mb-1 mt-1 form-check mb-1" id='udappRecorderUseLatest'>
