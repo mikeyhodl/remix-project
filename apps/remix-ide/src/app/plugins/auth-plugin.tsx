@@ -34,6 +34,13 @@ export class AuthPlugin extends Plugin {
   private cachedLoginMessage: string = ''
   private cachedAccessPolicy: AccessPolicyResponse | null = null
   private cachedAppConfig: AppConfig | null = null
+  /**
+   * Fresh permissions cached after refreshPermissions(). When set, takes
+   * precedence over the assistantState snapshot in getAllPermissions() so
+   * that consumers reading right after a redeem/plan-change see the new
+   * feature_groups instead of the stale cached snapshot.
+   */
+  private freshPermissions: any | null = null
 
   /** Debug-gated logger – silent when DEBUG is false */
   private log(...args: any[]) {
@@ -224,6 +231,11 @@ export class AuthPlugin extends Plugin {
   async getAllPermissions(): Promise<any> {
     this.log('[AuthPlugin] Fetching all permissions for user')
     try {
+      // Prefer the fresh cache populated by refreshPermissions() so callers
+      // right after a redeem/plan-change see the new entitlements, not the
+      // (still-stale) assistantState snapshot.
+      if (this.freshPermissions) return this.freshPermissions
+
       const snap: any = await this.call('assistantState' as any, 'getSnapshot')
       if (snap?.permissions) return snap.permissions
 
@@ -241,24 +253,30 @@ export class AuthPlugin extends Plugin {
   }
 
   /**
-   * Re-emit authStateChanged so consumers (e.g. AuthContext) refetch
-   * permissions / feature groups. Call after invite redemption, plan
-   * changes, or anything that mutates the user's entitlements.
+   * Re-fetch permissions from the backend and re-emit authStateChanged
+   * so consumers (e.g. AuthContext) pick up the new feature_groups /
+   * features. Call after invite redemption, plan changes, or anything
+   * that mutates the user's entitlements.
    *
-   * Important: `getAllPermissions` reads from the assistantState
-   * snapshot first, so we force that snapshot to refresh from the
-   * backend before re-emitting — otherwise downstream consumers see
-   * stale feature_groups (e.g. they wouldn't see the newly-granted
-   * beta group immediately after redeeming an invite).
+   * We deliberately fetch the permissions API directly here (instead of
+   * round-tripping through assistantState) so this method is self-
+   * contained and can never cycle back through another plugin. The fresh
+   * result is stashed on `this.freshPermissions` so the subsequent
+   * `getAllPermissions` call from AuthContext returns the new data
+   * instead of the (still-stale) assistantState snapshot.
    */
   async refreshPermissions(): Promise<void> {
     try {
-      await this.call('assistantState' as any, 'refreshPermissions')
+      await this.getToken() // ensure permissionsApi has the current bearer
+      const response = await this.permissionsApi.getPermissions()
+      if (response.ok && response.data) {
+        this.freshPermissions = response.data
+        this.log('[AuthPlugin] refreshPermissions – fetched fresh permissions')
+      } else {
+        this.log('[AuthPlugin] refreshPermissions – API returned no data:', response.error)
+      }
     } catch (e) {
-      // assistantState may not be available (e.g. desktop bootstrap
-      // before activation) — AuthContext will fall back to the
-      // permissions API path in getAllPermissions().
-      this.log('[AuthPlugin] refreshPermissions – assistantState refresh failed, falling back:', e)
+      this.log('[AuthPlugin] refreshPermissions – fetch failed, falling back to cached snapshot:', e)
     }
     const user = await this.getUser()
     const token = await this.getToken()
@@ -1472,6 +1490,7 @@ export class AuthPlugin extends Plugin {
     localStorage.removeItem('remix_user')
     this.clearAuthTokenFromApiClients()
     this.clearRefreshTimer()
+    this.freshPermissions = null
   }
 
   // Convert address to EIP-55 checksum format using ethers
