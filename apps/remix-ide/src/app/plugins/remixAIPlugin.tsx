@@ -799,8 +799,8 @@ export class RemixAIPlugin extends Plugin {
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
-    params.provider = 'anthropic' // enforce all generation to be only on anthropic
-    params.model = 'claude-haiku-4-5'
+    params.provider = 'mistralai' // enforce all generation to be only on anthropic
+    params.model = 'mistral-medium-latest'
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
