@@ -268,7 +268,7 @@ function DeployPortraitView() {
     setVerifyChecked(isChecked)
     window.localStorage.setItem('deploy-verify-contract-checked', JSON.stringify(isChecked))
   }
-  console.log('What is in here? ', widgetState)
+
   function lastWordRemover(networkName: string) : string {
     const cutUpName = networkName.split(' ');
     let newNetName = '';
@@ -280,7 +280,11 @@ function DeployPortraitView() {
     }
     return networkName;
   }
-  console.log('theme active is ', themeQuality)
+
+  function wordRemover(networkName: string) : string {
+    return networkName.includes('vm-') ? networkName.split(' ').slice(2).join(' ') : networkName
+  }
+
   return (
     <>
       <div className="card mx-2" style={{ backgroundColor: 'var(--custom-onsurface-layer-1)', '--theme-text-color': themeQuality === 'dark' ? 'white' : 'black' } as React.CSSProperties}>
@@ -292,7 +296,12 @@ function DeployPortraitView() {
             <h6 className="my-auto" style={{ color: themeQuality.trim() === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="badge rounded-pill text-bg-info text-light" style={{ color: themeQuality.trim() === 'dark' ? '#000' : 'white' }}>{ lastWordRemover(widgetState.networkDetected) }</span>
+            <CustomTooltip
+              placement="top"
+              tooltipText={widgetState.networkDetected}
+            >
+              <span className="badge rounded-pill text-bg-info text-light text-truncate" style={{ color: themeQuality.trim() === 'dark' ? '#000' : 'white', maxWidth: '200px' }}>{ wordRemover(lastWordRemover(widgetState.networkDetected)) }</span>
+            </CustomTooltip>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>
