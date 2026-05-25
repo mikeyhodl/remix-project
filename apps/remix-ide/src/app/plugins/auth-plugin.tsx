@@ -244,8 +244,22 @@ export class AuthPlugin extends Plugin {
    * Re-emit authStateChanged so consumers (e.g. AuthContext) refetch
    * permissions / feature groups. Call after invite redemption, plan
    * changes, or anything that mutates the user's entitlements.
+   *
+   * Important: `getAllPermissions` reads from the assistantState
+   * snapshot first, so we force that snapshot to refresh from the
+   * backend before re-emitting — otherwise downstream consumers see
+   * stale feature_groups (e.g. they wouldn't see the newly-granted
+   * beta group immediately after redeeming an invite).
    */
   async refreshPermissions(): Promise<void> {
+    try {
+      await this.call('assistantState' as any, 'refreshPermissions')
+    } catch (e) {
+      // assistantState may not be available (e.g. desktop bootstrap
+      // before activation) — AuthContext will fall back to the
+      // permissions API path in getAllPermissions().
+      this.log('[AuthPlugin] refreshPermissions – assistantState refresh failed, falling back:', e)
+    }
     const user = await this.getUser()
     const token = await this.getToken()
     if (user && token) {
