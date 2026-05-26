@@ -5,7 +5,7 @@
 
 import { IMCPToolResult } from '../../types/mcp';
 import { BaseToolHandler } from '../registry/RemixToolRegistry';
-import { endpointUrls } from "@remix-endpoints-helper"
+import type { EthSkillsApiService } from '@remix-api';
 import {
   ToolCategory,
   RemixToolDefinition,
@@ -75,10 +75,10 @@ export class SkillLoaderHandler extends BaseToolHandler {
     try {
       console.log(`[SkillLoaderHandler] Loading skill: ${args.skill_id}`);
 
-      const skillUrl = endpointUrls.mcpCorsProxy + '/ethskills/skills/' + args.skill_id;
-
-      // Fetch skill data from remote endpoint
-      const skillData = await this.fetchSkillData(skillUrl);
+      // Fetch skill data via the authenticated EthSkills API service.
+      // Going through the AuthPlugin's ApiClient means the Bearer token
+      // (and auto-refresh on 401) is handled centrally.
+      const skillData = await this.fetchSkillData(args.skill_id, plugin);
 
       // Create skill directory
       const skillDir = `skills/${args.skill_id}`;
@@ -121,16 +121,20 @@ export class SkillLoaderHandler extends BaseToolHandler {
   }
 
   /**
-   * Fetch skill data from remote endpoint
+   * Fetch skill data via the authenticated EthSkills API service.
    */
-  private async fetchSkillData(url: string): Promise<SkillData> {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  private async fetchSkillData(skillId: string, plugin: Plugin): Promise<SkillData> {
+    const ethSkillsApi: EthSkillsApiService = await plugin.call('auth' as any, 'getEthSkillsApi');
+    if (!ethSkillsApi) {
+      throw new Error('EthSkills API service is not available');
     }
 
-    const data = await response.json();
+    const response = await ethSkillsApi.getSkill(skillId);
+    if (!response.ok || !response.data) {
+      throw new Error(response.error || `Failed to fetch skill ${skillId} (HTTP ${response.status})`);
+    }
+
+    const data = response.data;
 
     // Validate response structure
     if (!data.id || !data.name || !data.content || !data.resources) {
@@ -185,10 +189,9 @@ export class ListSkillsHandler extends BaseToolHandler {
     try {
       console.log(`[ListSkillsHandler] Fetching skills list`);
 
-      const skillsUrl = endpointUrls.mcpCorsProxy + '/ethskills/skills'
-
-      // Fetch skills list from remote endpoint
-      const skills = await this.fetchSkillsList(skillsUrl);
+      // Fetch via the authenticated EthSkills API service (Bearer token +
+      // auto-refresh wired through the shared ApiClient in AuthPlugin).
+      const skills = await this.fetchSkillsList(plugin);
 
       const result: ListSkillsResult = {
         success: true,
@@ -207,25 +210,27 @@ export class ListSkillsHandler extends BaseToolHandler {
   }
 
   /**
-   * Fetch skills list from remote endpoint
+   * Fetch skills list via the authenticated EthSkills API service.
    */
-  private async fetchSkillsList(url: string): Promise<SkillInfo[]> {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  private async fetchSkillsList(plugin: Plugin): Promise<SkillInfo[]> {
+    const ethSkillsApi: EthSkillsApiService = await plugin.call('auth' as any, 'getEthSkillsApi');
+    if (!ethSkillsApi) {
+      throw new Error('EthSkills API service is not available');
     }
 
-    const data = await response.json();
+    const response = await ethSkillsApi.listSkills();
+    if (!response.ok || !response.data) {
+      throw new Error(response.error || `Failed to fetch skills list (HTTP ${response.status})`);
+    }
 
     // Validate response structure - expect array of skill objects
-    if (!Array.isArray(data.skills)) {
+    if (!Array.isArray(response.data.skills)) {
       throw new Error('Invalid skills list format - expected array of skills');
     }
 
     // Validate each skill object
     const skills: SkillInfo[] = [];
-    for (const skill of data.skills) {
+    for (const skill of response.data.skills) {
       if (!skill.id || !skill.name) {
         console.warn(`[ListSkillsHandler] Skipping invalid skill object:`, skill);
         continue;

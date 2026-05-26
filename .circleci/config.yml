@@ -37,6 +37,16 @@ parameters:
   run_deploy_beta:
     type: boolean
     default: false
+  run_playwright_tests:
+    type: boolean
+    default: false
+  playwright_spec:
+    type: string
+    default: ""
+  playwright_project:
+    type: enum
+    enum: ["chromium", "firefox", "webkit"]
+    default: "chromium"
 
   # Resource sizing
   resource_class:
@@ -625,6 +635,45 @@ jobs:
       - store_artifacts:
           path: ./reports/screenshots
 
+  playwright-tests:
+    docker:
+      - image: cimg/node:20.19.0-browsers
+    resource_class: << pipeline.parameters.resource_class >>
+    working_directory: ~/remix-project
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/remix-project
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "yarn.lock" }}
+      - run: yarn
+      - run:
+          name: Unpack dist from workspace
+          command: |
+            if [ -f remix-dist.tar.gz ]; then
+              tar -xzf remix-dist.tar.gz
+            fi
+      - run:
+          name: Install Playwright browser binaries
+          command: npx playwright install --with-deps << pipeline.parameters.playwright_project >>
+      - run:
+          name: Run Playwright tests (scripted server lifecycle)
+          command: |
+            PLAYWRIGHT_PROJECT="<< pipeline.parameters.playwright_project >>" \
+            PLAYWRIGHT_SPEC="<< pipeline.parameters.playwright_spec >>" \
+            bash ./apps/remix-ide/ci/run_playwright_ci.sh
+      - store_test_results:
+          path: ./test-results
+      - store_artifacts:
+          path: ./playwright-report
+      - store_artifacts:
+          path: ./test-results
+      - run:
+          name: Dump server log on failure
+          when: on_fail
+          command: tail -n 200 ./tmp/remix-serve.log || true
+
   deploy-build:
     docker:
       - image: cimg/node:20.19.0-browsers
@@ -790,12 +839,16 @@ workflows:
               shard_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
               vertical_mode: [true]
               skip_timings: [true]
+      - playwright-tests:
+          requires:
+            - build
       - tests-passed:
           requires:
             - lint
             - remix-libs
             - chrome-tests
             - plugins
+            - playwright-tests
       - deploy-build:
           script: "alpha"
           requires:
@@ -873,3 +926,11 @@ workflows:
     jobs:
       - deploy-build:
           script: "beta"
+
+  playwright_tests:
+    when: << pipeline.parameters.run_playwright_tests >>
+    jobs:
+      - build
+      - playwright-tests:
+          requires:
+            - build

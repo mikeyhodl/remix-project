@@ -19,7 +19,7 @@ module.exports = {
 
     // Pass the pool key + enableLogin in the hash so the auth plugin can use it.
     // No fake token injection — the real login flow will do the checkout.
-    const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}`
+    const url = `http://127.0.0.1:8080#e2e_pool_key=${poolApiKey}&e2e_feature_groups=e2e-unlimited-quota`
     init(browser, done, url, true)
   },
 
@@ -1869,7 +1869,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="ai-workspace-prompt-input"]', 10000)
       .click('*[data-id="ai-workspace-prompt-input"]')
       .setValue('*[data-id="ai-workspace-prompt-input"]', 'Create a simple ERC20 token contract called TestToken with a mint function')
-      .pause(500)
+      .pause()
       // Click "Generate my Workspace" button
       .waitForElementVisible('*[data-id="validateWorkspaceButton"]', 5000)
       .click('*[data-id="validateWorkspaceButton"]')

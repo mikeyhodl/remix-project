@@ -2,7 +2,7 @@ import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { AiAssistantType, groupListType } from '../types/componentTypes'
-import { ChatMessage } from '@remix/remix-ai-core'
+import { ChatMessage, AIModel } from '@remix/remix-ai-core'
 
 interface AiChatPromptAreaProps {
     selectedModelId: unknown
@@ -19,9 +19,10 @@ interface AiChatPromptAreaProps {
     mcpEnabled: boolean
     mcpEnhanced: boolean
     setMcpEnhanced: React.Dispatch<React.SetStateAction<boolean>>
-    availableModels: any[]
+    availableModels: AIModel[]
     selectedModel: any
     autoModeEnabled: boolean
+    autoModeAvailable: boolean
     handleModelSelection: (modelName: string) => void
     onLockedModelClick?: (modelId: string, modelName: string) => void
     input: string
@@ -43,41 +44,40 @@ interface AiChatPromptAreaProps {
     setShowOllamaModelSelector: React.Dispatch<React.SetStateAction<boolean>>
     showOllamaModelSelector: boolean
     showModelSelector: boolean
-    modelAccess: any
     setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
     messages: ChatMessage[]
     handleLoadSkills?: () => void
     usingOwnApiKey?: boolean
+    aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
+    aiRouteReady?: boolean
+    isAuthenticated?: boolean
+    onSignIn?: () => void
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
   const modelList = useMemo(() => {
-    // Auto mode is disabled - it can block with no answer
-    // const autoModeOption = {
-    //   label: 'Auto Mode',
-    //   bodyText: 'Automatically select the best model based on your prompt',
-    //   icon: 'fa-solid fa-magic-wand-sparkles' as const,
-    //   stateValue: 'auto',
-    //   dataId: 'ai-model-auto',
-    //   isLocked: false
-    // }
+    const autoModeOption = {
+      label: 'Auto Mode',
+      bodyText: 'Automatically select the best model based on your prompt',
+      icon: 'fa-solid fa-magic-wand-sparkles' as const,
+      stateValue: 'auto',
+      dataId: 'ai-model-auto',
+      isLocked: false
+    }
 
     const modelOptions = props.availableModels.map(model => {
-      const hasAccess = props.modelAccess.checkAccess(model.id)
       return {
-        label: model.name,
+        label: model.displayName,
         bodyText: model.description,
         icon: 'fa-solid fa-check' as const,
         stateValue: model.id,
         dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`,
-        isLocked: !hasAccess
+        isLocked: !model.available
       }
     })
 
-    // Auto mode is disabled - it can block with no answer
-    // return [autoModeOption, ...modelOptions]
-    return modelOptions
-  }, [props.availableModels, props.modelAccess.allowedModels])
+    return props.autoModeAvailable ? [autoModeOption, ...modelOptions] : modelOptions
+  }, [props.availableModels, props.autoModeAvailable])
 
   const handleLockedItemClick = (item: groupListType) => {
     props.onLockedModelClick?.(item.stateValue, item.label)
@@ -87,7 +87,8 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
   return (
     <section
       id="remix-ai-prompt-area"
-      className={props.messages.length === 0 && !props.showHistorySidebar ? 'ai-assistant-prompt-bg' : 'ai-assistant-prompt-flat'}
+      className="ai-assistant-prompt-bg"
+      style={{ flexShrink: 0, minHeight: '110px', backgroundColor: props.messages.length > 0 && (props.themeTracker?.name.toLowerCase() === 'dark' ? '#222336' : '#eff1f5') as any }}
       data-theme={props.themeTracker && props.themeTracker?.name.toLowerCase()}
     >
       {props.showModelSelector && (
@@ -100,11 +101,11 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
           <GroupListMenu
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
-            choice={props.selectedModelId}
+            choice={props.autoModeEnabled ? 'auto' : props.selectedModelId}
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
           />
-          {props.mcpEnabled && (
+          {false && props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
               <div className="text-uppercase ms-2 mb-2 small">MCP Enhancement</div>
               <div className="form-check ms-2 mb-2">
@@ -124,7 +125,6 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
               </div>
             </div>
           )}
-
         </div>
       )}
       {props.showOllamaModelSelector && props.selectedModel?.provider === 'ollama' && (
@@ -175,6 +175,10 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         stopRequest={props.stopRequest}
         handleLoadSkills={props.handleLoadSkills}
         usingOwnApiKey={props.usingOwnApiKey}
+        aiRoute={props.aiRoute}
+        aiRouteReady={props.aiRouteReady}
+        isAuthenticated={props.isAuthenticated}
+        onSignIn={props.onSignIn}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
