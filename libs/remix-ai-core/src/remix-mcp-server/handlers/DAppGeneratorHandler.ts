@@ -257,6 +257,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
           `STEPS:\n` +
           `1. Write files using write_file: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css, /src/components/*.jsx\n` +
           `2. Use ethers.js v6 (BrowserProvider, Contract). Embed full ABI and contract address in code.\n` +
+          `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
             `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
@@ -270,7 +271,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
             `- Store raw provider in a React ref for reuse in network switching.\n` +
             `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `3. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
+          `4. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
           `---`
       })
 
@@ -534,6 +535,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
           `STEPS:\n` +
           `1. Use read_file to read the files you need to modify\n` +
           `2. Modify only the relevant files using write_file\n` +
+          `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
             `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
@@ -546,7 +548,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
             `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
             `- Store raw provider in a React ref for reuse in network switching.\n` +
             `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `3. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
+          `4. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
           `---`
       })
 
@@ -617,7 +619,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         await new Promise(r => setTimeout(r, 500))
       }
 
-      // Update config status
+      // Update config status — defensively restore sourceWorkspace if agent overwrote it
       try {
         const configContent = await plugin.call('fileManager', 'readFile', 'dapp.config.json')
         if (configContent) {
@@ -625,6 +627,38 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
           config.status = 'created'
           config.processingStartedAt = null
           config.updatedAt = Date.now()
+
+          // Defensive: restore sourceWorkspace if missing (agent may have overwritten config)
+          if (!config.sourceWorkspace) {
+            console.warn(`[QuickDapp][FINALIZE] sourceWorkspace MISSING from config — attempting restore from mapping files`)
+            try {
+              const mappingsDir = '.deploys/dapp-mappings'
+              const exists = await plugin.call('fileManager', 'exists', mappingsDir)
+              if (exists) {
+                const mappingFiles = await plugin.call('fileManager', 'readdir', mappingsDir)
+                if (mappingFiles) {
+                  for (const filePath of Object.keys(mappingFiles)) {
+                    const fileName = filePath.split('/').pop()
+                    if (!fileName) continue
+                    try {
+                      const content = await plugin.call('fileManager', 'readFile', `${mappingsDir}/${fileName}`)
+                      const mapping = JSON.parse(content)
+                      if (mapping.dappWorkspace === workspaceName && mapping.sourceWorkspace) {
+                        config.sourceWorkspace = { name: mapping.sourceWorkspace }
+                        console.log(`[QuickDapp][FINALIZE] Restored sourceWorkspace="${mapping.sourceWorkspace}" from mapping file`)
+                        break
+                      }
+                    } catch { /* skip unreadable mapping */ }
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('[QuickDapp][FINALIZE] Could not restore sourceWorkspace from mappings:', e)
+            }
+          } else {
+            console.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
+          }
+
           await plugin.call('fileManager', 'writeFile', 'dapp.config.json', JSON.stringify(config, null, 2))
           console.log('[QuickDapp] Config updated to created')
         }
